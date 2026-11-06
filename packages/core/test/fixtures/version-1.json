@@ -1,0 +1,52 @@
+{
+  "kind": "blocks",
+  "version": 1,
+  "settings": {
+    "width": 600,
+    "backgroundColor": "#f4f4f5",
+    "fontFamily": "Arial, Helvetica, sans-serif",
+    "preheader": "Welcome to the team",
+    "language": "en"
+  },
+  "rows": [
+    {
+      "id": "row-1",
+      "props": {},
+      "columns": [
+        {
+          "id": "column-1",
+          "width": 100,
+          "props": {},
+          "blocks": [
+            {
+              "id": "block-1",
+              "type": "text",
+              "props": {
+                "content": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        { "type": "text", "text": "Hello {{first_name}}," }
+                      ]
+                    },
+                    { "type": "paragraph" }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "row-2",
+      "props": {},
+      "columns": [
+        { "id": "column-2", "width": 50, "props": {}, "blocks": [] },
+        { "id": "column-3", "width": 50, "props": {}, "blocks": [] }
+      ]
+    }
+  ]
+}

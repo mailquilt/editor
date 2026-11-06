@@ -92,6 +92,47 @@ describe(renderEmail, () => {
     await expect(renderEmail(email)).rejects.toThrow(/hologram/u);
   });
 
+  const refused: [string, (email: BlocksDocument) => unknown, RegExp][] = [
+    ["nothing", () => null, /object/iu],
+    [
+      "a newer version",
+      (email) => ({ ...email, version: 2 }),
+      /version 2 is newer/iu,
+    ],
+    ["a malformed document", ({ rows: _rows, ...email }) => email, /rows/u],
+    [
+      "a Column width that would break out of its attribute",
+      (email) => {
+        const column = email.rows[0]?.columns[0] as unknown as {
+          width: string;
+        };
+        column.width = '100"><script>alert(1)</script>';
+        return email;
+      },
+      /rows\.0\.columns\.0\.width/u,
+    ],
+  ];
+
+  it.each(refused)(
+    "refuses %s, with the reason",
+    async (_name, damage, reason) => {
+      const document = damage(emailWithText("Hi"));
+
+      await expect(renderEmail(document as BlocksDocument)).rejects.toThrow(
+        reason
+      );
+    }
+  );
+
+  it("doesn't change a document it refuses", async () => {
+    const document = { ...emailWithText("Hi"), version: 2 };
+    const before = structuredClone(document);
+
+    await expect(renderEmail(document)).rejects.toThrow(/newer/u);
+
+    expect(document).toStrictEqual(before);
+  });
+
   it("runs in plain Node with no DOM, editor or Tiptap code loaded", () => {
     // Runs the built package in its own process, because the test runner's own
     // modules would hide what the package actually loads.

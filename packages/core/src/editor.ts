@@ -1,7 +1,8 @@
 import * as v from "valibot";
 
-import { blockDefinitions } from "./blocks.js";
-import type { Block, BlocksDocument } from "./document.js";
+import { describeIssues, validateProps } from "./blocks.js";
+import type { BlocksDocument } from "./document.js";
+import { loadDocument } from "./load-document.js";
 import { applyOperation, findBlock, reverseOperation } from "./operations.js";
 import type { Operation } from "./operations.js";
 
@@ -42,37 +43,16 @@ const commandSchema = v.strictObject({
   type: v.literal("updateProps"),
 });
 
-const describeIssues = (issues: readonly v.BaseIssue<unknown>[]) =>
-  issues
-    .map((issue) => {
-      const path = v.getDotPath(issue);
-      return path ? `${path}: ${issue.message}` : issue.message;
-    })
-    .join("; ");
-
-const validateProps = (block: Block, props: Record<string, unknown>) => {
-  const definition = blockDefinitions.get(block.type);
-  if (!definition) {
-    return {
-      reason: `Block "${block.id}" has unknown type "${block.type}"`,
-      valid: false as const,
-    };
-  }
-  const result = v.safeParse(definition.schema, props);
-  return result.success
-    ? { props: result.output, valid: true as const }
-    : {
-        reason: `Invalid props for Block "${block.id}": ${describeIssues(result.issues)}`,
-        valid: false as const,
-      };
-};
-
 export const createEditor = ({
   document: initialDocument,
 }: {
   document: BlocksDocument;
 }): Editor => {
-  let current = structuredClone(initialDocument);
+  const loaded = loadDocument(initialDocument);
+  if (!loaded.ok) {
+    throw new Error(loaded.reason);
+  }
+  let current = loaded.document;
   const undoStack: Operation[][] = [];
   const redoStack: Operation[][] = [];
   let openMergeKey: string | undefined;

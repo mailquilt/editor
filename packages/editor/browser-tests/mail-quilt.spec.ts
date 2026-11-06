@@ -170,9 +170,12 @@ test("a detached element creates no text editors until it's attached again", asy
 }) => {
   const editorsWhileDetached = await canvas(page).evaluate(async (element) => {
     const mailQuilt = element as MailQuilt;
-    // The getter returns a copy, so this is a different document object.
-    const copy = mailQuilt.value;
-    mailQuilt.value = copy;
+    // A different document, so the element has an update waiting when it leaves.
+    const different = mailQuilt.value;
+    if (different) {
+      different.settings.width = 500;
+    }
+    mailQuilt.value = different;
     const parent = mailQuilt.parentElement;
     mailQuilt.remove();
     await mailQuilt.updateComplete;
@@ -549,5 +552,266 @@ test.describe("undo and redo while typing", () => {
     await expect(textBlock(page)).toHaveText("");
     await undo(page);
     await expect(textBlock(page)).toHaveText("Hello");
+  });
+});
+
+const setValue = (page: Page, document: unknown) =>
+  canvas(page).evaluate((element, value) => {
+    (element as MailQuilt).value = value as MailQuilt["value"];
+  }, document);
+
+const currentValue = (page: Page) =>
+  canvas(page).evaluate((element) => (element as MailQuilt).value);
+
+const reverseKeys = (value: unknown): unknown => {
+  if (Array.isArray(value)) {
+    return value.map(reverseKeys);
+  }
+  return typeof value === "object" && value !== null
+    ? Object.fromEntries(
+        Object.entries(value)
+          // oxlint-disable-next-line unicorn/no-array-reverse -- This package's ES2022 lib has no toReversed, and these entries are a new array.
+          .reverse()
+          .map(([key, item]) => [key, reverseKeys(item)])
+      )
+    : value;
+};
+
+const withText = (document: unknown, text: string) => {
+  // oxlint-disable-next-line typescript/no-explicit-any -- Saved JSON, reached along a path this test's email is known to have.
+  const copy = structuredClone(document) as any;
+  copy.rows[0].columns[0].blocks[0].props.content.content[0].content[0].text =
+    text;
+  return copy;
+};
+
+/** Sets `value` and returns the reasons from any `mq-error` that follows. */
+const setValueAndCollectErrors = (page: Page, document: unknown) =>
+  canvas(page).evaluate(async (element, value) => {
+    const mailQuilt = element as MailQuilt;
+    const reasons: string[] = [];
+    const onError = (event: HTMLElementEventMap["mq-error"]) => {
+      reasons.push(event.detail.reason);
+    };
+    mailQuilt.addEventListener("mq-error", onError);
+    mailQuilt.value = value as MailQuilt["value"];
+    await mailQuilt.updateComplete;
+    mailQuilt.removeEventListener("mq-error", onError);
+    return reasons;
+  }, document);
+
+test.describe("setting value", () => {
+  test("a clone of the last document sent out keeps undo and the cursor", async ({
+    page,
+  }) => {
+    await focusStartOfTextBlock(page);
+    await page.keyboard.type("ab");
+    await expect(page.getByTestId("change-count")).toHaveText("2");
+
+    await setValue(
+      page,
+      JSON.parse(
+        (await page.getByTestId("latest-document").textContent()) ?? ""
+      )
+    );
+
+    await expect(textBlock(page)).toBeFocused();
+    await page.keyboard.type("c");
+    await expect(textBlock(page)).toHaveText("abcHello");
+    await undo(page);
+    await expect(textBlock(page)).toHaveText("Hello");
+  });
+
+  test("the same content with its keys in another order keeps undo and the cursor", async ({
+    page,
+  }) => {
+    await focusStartOfTextBlock(page);
+    await page.keyboard.type("ab");
+    await expect(textBlock(page)).toHaveText("abHello");
+
+    await setValue(page, reverseKeys(await currentValue(page)));
+
+    await page.keyboard.type("c");
+    await expect(textBlock(page)).toHaveText("abcHello");
+    await undo(page);
+    await expect(textBlock(page)).toHaveText("Hello");
+  });
+
+  test("a clone of the document just loaded keeps the cursor", async ({
+    page,
+  }) => {
+    await focusStartOfTextBlock(page);
+
+    await setValue(page, await currentValue(page));
+
+    await expect(textBlock(page)).toBeFocused();
+    await page.keyboard.type("a");
+    await expect(textBlock(page)).toHaveText("aHello");
+  });
+
+  test("a different document loads and clears undo history", async ({
+    page,
+  }) => {
+    await focusStartOfTextBlock(page);
+    await page.keyboard.type("ab");
+    await expect(page.getByTestId("change-count")).toHaveText("2");
+
+    await setValue(page, withText(await currentValue(page), "Another email"));
+    await expect(textBlock(page)).toHaveText("Another email");
+
+    await focusStartOfTextBlock(page);
+    await undo(page);
+    await expect(textBlock(page)).toHaveText("Another email");
+    await redo(page);
+    await expect(textBlock(page)).toHaveText("Another email");
+    // Loading isn't a change, so a host's auto-save has nothing to overwrite.
+    await expect(page.getByTestId("change-count")).toHaveText("2");
+  });
+
+  test("a document the host changed after it was sent out loads", async ({
+    page,
+  }) => {
+    await canvas(page).evaluate((element) => {
+      const mailQuilt = element as MailQuilt;
+      mailQuilt.addEventListener("mq-change", ({ detail: { document } }) => {
+        const block = document.rows[0]?.columns[0]?.blocks[0];
+        if (block) {
+          block.props.content = {
+            content: [
+              {
+                content: [{ text: "Host's own text", type: "text" }],
+                type: "paragraph",
+              },
+            ],
+            type: "doc",
+          };
+        }
+        mailQuilt.value = document;
+      });
+    });
+    await focusStartOfTextBlock(page);
+
+    await page.keyboard.type("a");
+
+    await expect(textBlock(page)).toHaveText("Host's own text");
+  });
+
+  test("clearing value empties the canvas, and a document loads again after", async ({
+    page,
+  }) => {
+    const saved = await currentValue(page);
+
+    await canvas(page).evaluate((element) => {
+      (element as MailQuilt).value = undefined;
+    });
+    await expect(textBlock(page)).toHaveCount(0);
+
+    await setValue(page, saved);
+    await expect(textBlock(page)).toHaveText("Hello");
+  });
+});
+
+test.describe("refusing a document", () => {
+  // oxlint-disable-next-line typescript/no-explicit-any -- These damage documents on purpose, which the real type forbids.
+  const refused: [string, (email: any) => unknown, RegExp][] = [
+    ["a malformed document", ({ rows: _rows, ...email }) => email, /rows/u],
+    ["a value that isn't a document", () => null, /object/iu],
+    [
+      "an unknown Block type",
+      (email) => {
+        email.rows[0].columns[0].blocks[0].type = "hologram";
+        return email;
+      },
+      /unknown type "hologram"/u,
+    ],
+    [
+      "a newer version",
+      (email) => ({ ...email, version: 2 }),
+      /version 2 is newer/iu,
+    ],
+  ];
+
+  for (const [name, damage, reason] of refused) {
+    test(`${name} fires mq-error and leaves the email as it was`, async ({
+      page,
+    }) => {
+      await focusStartOfTextBlock(page);
+      await page.keyboard.type("ab");
+      await expect(page.getByTestId("change-count")).toHaveText("2");
+      const before = await canvas(page).evaluate(
+        (element) => (element as MailQuilt).value
+      );
+
+      const reasons = await setValueAndCollectErrors(
+        page,
+        damage(structuredClone(before))
+      );
+
+      expect(reasons).toStrictEqual([expect.stringMatching(reason)]);
+      await expect(textBlock(page)).toHaveText("abHello");
+      expect(
+        await canvas(page).evaluate((element) => (element as MailQuilt).value)
+      ).toStrictEqual(before);
+      expect(await exportHtml(page)).toContain("abHello");
+      await expect(page.getByTestId("change-count")).toHaveText("2");
+
+      // The email is still the same one, with its cursor and undo history.
+      await expect(textBlock(page)).toBeFocused();
+      await page.keyboard.type("c");
+      await expect(textBlock(page)).toHaveText("abcHello");
+      await undo(page);
+      await expect(textBlock(page)).toHaveText("Hello");
+    });
+  }
+
+  test("doesn't change the refused document", async ({ page }) => {
+    const unchanged = await canvas(page).evaluate(async (element) => {
+      const mailQuilt = element as MailQuilt;
+      const damaged = { ...mailQuilt.value, extra: "keep me", version: 2 };
+      const before = JSON.stringify(damaged);
+      mailQuilt.value = damaged as unknown as MailQuilt["value"];
+      await mailQuilt.updateComplete;
+      return JSON.stringify(damaged) === before;
+    });
+
+    expect(unchanged).toBeTruthy();
+  });
+
+  test("mq-error reaches a listener added just after setting value", async ({
+    page,
+  }) => {
+    const reason = await page.evaluate(
+      () =>
+        // oxlint-disable-next-line promise/avoid-new -- Events have no promise form.
+        new Promise((resolve) => {
+          const element = document.createElement("mail-quilt");
+          element.value = { version: 2 } as unknown as MailQuilt["value"];
+          // Outside the element, as a host's page-level handler would be.
+          document.addEventListener("mq-error", (event) => {
+            resolve((event as HTMLElementEventMap["mq-error"]).detail.reason);
+          });
+          document.body.append(element);
+        })
+    );
+
+    expect(reason).toMatch(/version 2 is newer/iu);
+  });
+
+  test("a refused first document leaves nothing to edit or export", async ({
+    page,
+  }) => {
+    const result = await page.evaluate(async () => {
+      const element = document.createElement("mail-quilt");
+      element.value = { version: 2 } as unknown as MailQuilt["value"];
+      document.body.append(element);
+      await element.updateComplete;
+      return {
+        editors:
+          element.shadowRoot?.querySelectorAll("[contenteditable]").length,
+        value: element.value ?? null,
+      };
+    });
+
+    expect(result).toStrictEqual({ editors: 0, value: null });
   });
 });
