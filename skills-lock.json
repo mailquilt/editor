@@ -103,6 +103,12 @@
       "skillPath": "skills/tsdown/SKILL.md",
       "computedHash": "61dbe95853b178b5feebdce008cec3cb7258ea13164de3f13418e7e5d19ee334"
     },
+    "ultracite": {
+      "source": "haydenbleasel/ultracite",
+      "sourceType": "github",
+      "skillPath": "skills/ultracite/SKILL.md",
+      "computedHash": "c543d7dd84476545b8f65d14af9ec5e221eb8ee14ebe801cd4315638551d8663"
+    },
     "unslop": {
       "source": "backnotprop/pstack",
       "sourceType": "github",
