@@ -25,7 +25,10 @@ export const describeIssues = (issues: readonly v.BaseIssue<unknown>[]) =>
     })
     .join("; ");
 
-export const validateProps = (block: Block, props: Record<string, unknown>) => {
+export const validateProps = (
+  block: Pick<Block, "id" | "type">,
+  props: unknown
+) => {
   const definition = blockDefinitions.get(block.type);
   if (!definition) {
     return {

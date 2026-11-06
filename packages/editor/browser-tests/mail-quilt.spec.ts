@@ -668,6 +668,42 @@ test.describe("setting value", () => {
     await expect(page.getByTestId("change-count")).toHaveText("2");
   });
 
+  test("a document wrapped in a Proxy loads, as Vue's reactive() makes", async ({
+    page,
+  }) => {
+    const different = withText(await currentValue(page), "Another email");
+
+    await canvas(page).evaluate((element, document) => {
+      (element as MailQuilt).value = new Proxy(document, {});
+    }, different);
+
+    await expect(textBlock(page)).toHaveText("Another email");
+    await focusStartOfTextBlock(page);
+    await page.keyboard.type("a");
+    await expect(textBlock(page)).toHaveText("aAnother email");
+  });
+
+  test("the same document wrapped in a Proxy keeps undo and the cursor", async ({
+    page,
+  }) => {
+    await focusStartOfTextBlock(page);
+    await page.keyboard.type("ab");
+    await expect(textBlock(page)).toHaveText("abHello");
+
+    await canvas(page).evaluate((element) => {
+      const mailQuilt = element as MailQuilt;
+      mailQuilt.value = new Proxy(
+        mailQuilt.value as NonNullable<MailQuilt["value"]>,
+        {}
+      );
+    });
+
+    await page.keyboard.type("c");
+    await expect(textBlock(page)).toHaveText("abcHello");
+    await undo(page);
+    await expect(textBlock(page)).toHaveText("Hello");
+  });
+
   test("a document the host changed after it was sent out loads", async ({
     page,
   }) => {
@@ -763,6 +799,40 @@ test.describe("refusing a document", () => {
       await expect(textBlock(page)).toHaveText("Hello");
     });
   }
+
+  test("a clone with a damaged list isn't mistaken for the same document", async ({
+    page,
+  }) => {
+    const damaged = await canvas(page).evaluate(
+      (element) => (element as MailQuilt).value
+    );
+    damaged?.rows.push(
+      null as unknown as NonNullable<typeof damaged>["rows"][0]
+    );
+
+    const reasons = await setValueAndCollectErrors(page, damaged);
+
+    expect(reasons).toStrictEqual([expect.stringMatching(/rows\.1/u)]);
+    await expect(textBlock(page)).toHaveText("Hello");
+  });
+
+  test("a color MJML can't export is refused on load, not at export", async ({
+    page,
+  }) => {
+    const damaged = await canvas(page).evaluate(
+      (element) => (element as MailQuilt).value
+    );
+    if (damaged) {
+      damaged.settings.backgroundColor = "not a color";
+    }
+
+    const reasons = await setValueAndCollectErrors(page, damaged);
+
+    expect(reasons).toStrictEqual([
+      expect.stringMatching(/settings\.backgroundColor/u),
+    ]);
+    expect(await exportHtml(page)).toContain("Hello");
+  });
 
   test("doesn't change the refused document", async ({ page }) => {
     const unchanged = await canvas(page).evaluate(async (element) => {

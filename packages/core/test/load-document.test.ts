@@ -30,6 +30,16 @@ describe(loadDocument, () => {
     expect(loadDocument(email)).toMatchObject({ ok: true });
   });
 
+  it.each(["#fff", "#F4F4F5", "rgb(1,2,3)", "rgb(1, 2, 3)", "rgba(1,2,3,0.5)"])(
+    "reads the background color %s",
+    (backgroundColor) => {
+      const email = readFixture("version-1");
+      email.settings.backgroundColor = backgroundColor;
+
+      expect(loadDocument(email)).toMatchObject({ ok: true });
+    }
+  );
+
   it("keeps an email with no Rows, which deleting every Row leaves behind", () => {
     const email = readFixture("version-1");
     email.rows = [];
@@ -86,6 +96,156 @@ describe("refusing a document", () => {
         return email;
       },
       /settings\.width/u,
+    ],
+    [
+      "a background color that's empty",
+      (email) => {
+        email.settings.backgroundColor = "";
+        return email;
+      },
+      /settings\.backgroundColor.*color/u,
+    ],
+    [
+      "a background color that's not a color",
+      (email) => {
+        email.settings.backgroundColor = "not a color";
+        return email;
+      },
+      /settings\.backgroundColor.*color/u,
+    ],
+    [
+      "a background color that's a CSS variable",
+      (email) => {
+        email.settings.backgroundColor = "var(--x)";
+        return email;
+      },
+      /settings\.backgroundColor.*color/u,
+    ],
+    [
+      "a background color that's hsl()",
+      (email) => {
+        email.settings.backgroundColor = "hsl(1,2%,3%)";
+        return email;
+      },
+      /settings\.backgroundColor.*color/u,
+    ],
+    [
+      "a background color that's 8-digit hex",
+      (email) => {
+        email.settings.backgroundColor = "#ffffff80";
+        return email;
+      },
+      /settings\.backgroundColor.*color/u,
+    ],
+    [
+      "a background color that's a Merge Tag",
+      (email) => {
+        email.settings.backgroundColor = "{{brand}}";
+        return email;
+      },
+      /settings\.backgroundColor.*color/u,
+    ],
+    [
+      "an email width that's fractional",
+      (email) => {
+        email.settings.width = 600.5;
+        return email;
+      },
+      /settings\.width/u,
+    ],
+    [
+      "an email width that's huge",
+      (email) => {
+        email.settings.width = 1e21;
+        return email;
+      },
+      /settings\.width/u,
+    ],
+    [
+      "an email width that's tiny",
+      (email) => {
+        email.settings.width = 1e-7;
+        return email;
+      },
+      /settings\.width/u,
+    ],
+    [
+      "an email width that's zero",
+      (email) => {
+        email.settings.width = 0;
+        return email;
+      },
+      /settings\.width/u,
+    ],
+    [
+      "a Column width too small to render",
+      (email) => {
+        email.rows[1].columns[0].width = 1e-7;
+        email.rows[1].columns[1].width = 100 - 1e-7;
+        return email;
+      },
+      /rows\.1\.columns\.0\.width/u,
+    ],
+    [
+      "a Block prop named constructor",
+      (email) => {
+        Object.defineProperty(
+          email.rows[0].columns[0].blocks[0].props,
+          "constructor",
+          {
+            enumerable: true,
+            value: "x",
+          }
+        );
+        return email;
+      },
+      /"block-1".*constructor/u,
+    ],
+    [
+      "a Block prop named __proto__",
+      (email) => {
+        Object.defineProperty(
+          email.rows[0].columns[0].blocks[0].props,
+          "__proto__",
+          {
+            enumerable: true,
+            value: "x",
+          }
+        );
+        return email;
+      },
+      /"block-1".*__proto__/u,
+    ],
+    [
+      "a Block prop named prototype",
+      (email) => {
+        Object.defineProperty(
+          email.rows[0].columns[0].blocks[0].props,
+          "prototype",
+          {
+            enumerable: true,
+            value: "x",
+          }
+        );
+        return email;
+      },
+      /"block-1".*prototype/u,
+    ],
+    [
+      "Block props that aren't an object",
+      (email) => {
+        email.rows[0].columns[0].blocks[0].props = "Hello";
+        return email;
+      },
+      /"block-1"/u,
+    ],
+    [
+      "a Block with no props",
+      (email) => {
+        delete email.rows[0].columns[0].blocks[0].props;
+        return email;
+      },
+      /props/u,
     ],
     [
       "a Row with no Columns",
@@ -373,6 +533,12 @@ describe(isSameDocument, () => {
       "the order of Rows",
       (email) => {
         email.rows.reverse();
+      },
+    ],
+    [
+      "a list with an extra empty entry",
+      (email) => {
+        email.rows.push(undefined);
       },
     ],
     [

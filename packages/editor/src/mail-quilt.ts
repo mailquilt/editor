@@ -104,22 +104,23 @@ export class MailQuilt extends LitElement {
    * trusted fires `mq-error`, and the current email stays as it was.
    */
   set value(document: BlocksDocument | undefined) {
+    // Checked first, because a controlled host does this after every keystroke.
     if (isSameDocument(document, this.#lastKnownDocument)) {
       return;
     }
-    let editor: Editor | undefined;
-    if (document !== undefined) {
-      const loaded = loadDocument(document);
-      if (!loaded.ok) {
-        this.#emitError(loaded.reason);
-        return;
-      }
-      editor = createEditor({ document: loaded.document });
+    if (document === undefined) {
+      this.#show(undefined);
+      return;
     }
-    this.#lastKnownDocument = structuredClone(document);
-    this.#destroyViews();
-    this.#editor = editor;
-    this.requestUpdate();
+    const loaded = loadDocument(document);
+    if (!loaded.ok) {
+      this.#emitError(loaded.reason);
+      return;
+    }
+    // An older document only matches the current one once it has been migrated.
+    if (!isSameDocument(loaded.document, this.#lastKnownDocument)) {
+      this.#show(loaded.document);
+    }
   }
 
   /** Returns the final HTML. MJML loads the first time this is called. */
@@ -263,6 +264,13 @@ export class MailQuilt extends LitElement {
       }
     }
     this.#emitChange(document);
+  }
+
+  #show(document: BlocksDocument | undefined) {
+    this.#lastKnownDocument = document;
+    this.#destroyViews();
+    this.#editor = document && createEditor({ document });
+    this.requestUpdate();
   }
 
   #emitChange(document: BlocksDocument) {

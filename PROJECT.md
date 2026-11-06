@@ -219,6 +219,7 @@ Migrations add these only when their features are built:
 - Text Blocks store limited Tiptap JSON (see `docs/adr/0001-store-rich-text-as-limited-json.md`).
 - Image Blocks take a URL, which may be a Merge Tag such as `{{logo_url}}`. Uploads come later through an adapter.
 - `editor` and `renderer` refuse documents they cannot trust: malformed documents, unknown Block types, and versions newer than they support. They never repair or change them, so a host's auto-save cannot overwrite the original.
+- Anything that loads must also export, so values follow what MJML accepts. Colors are written as `#rgb`, `#rrggbb`, `rgb()` or `rgba()`, the email width is a whole number of pixels, and a Column is at least 1% wide.
 
 ## 11. Blocks and settings
 
@@ -457,9 +458,10 @@ With a bundler, import `"@mailquilt/editor"`. Without one, such as in Rails, Lar
 </script>
 ```
 
-- **`value`** sets the document. If it is the document the editor just sent out, it is ignored. A different document loads and clears undo history. Without this rule, a host that passes each change straight back would wipe undo and lose the cursor on every edit.
+- **`value`** sets the document. If its content matches the last document the editor received or sent out, it is ignored, even if the host cloned it or its keys came back in another order. Any other document loads and clears undo history, and setting `undefined` empties the editor. Without this rule, a host that passes each change straight back would wipe undo and lose the cursor on every edit.
+- **Only pass back the latest document.** An earlier one counts as different and loads. A host that saves each change to a server should not set `value` from each response, because a late response would replace newer typing and clear undo.
 - **`mq-change`** fires after each committed change and carries the new document. The prefix avoids confusion with native `change` events from inputs.
-- **`mq-error`** fires when a document is refused, and nothing is changed.
+- **`mq-error`** fires when a document is refused, and nothing is changed. `event.detail.reason` says why. It fires just after the code that set `value` finishes, so a listener added straight after setting `value` still hears it. A listener added later, such as in a React `useEffect`, misses a refused first document, so add it before setting `value` or use a ref callback.
 - **`exportHtml()`** returns the final HTML and loads MJML only when called.
 
 The CDN build must also load MJML only when needed.

@@ -22,6 +22,15 @@ const COLUMN_WIDTH_TOLERANCE = 1e-6;
 
 const idSchema = v.pipe(v.string(), v.nonEmpty());
 
+/** Formats MJML accepts, so that an email that loads can also be exported. */
+const colorSchema = v.pipe(
+  v.string(),
+  v.regex(
+    /^(?:#[\da-f]{3}(?:[\da-f]{3})?|rgb\(\d{1,3},\s?\d{1,3},\s?\d{1,3}\)|rgba\(\d{1,3},\s?\d{1,3},\s?\d{1,3},\s?\d(?:\.\d{1,3})?\))$/iu,
+    "Must be a color written as #rgb, #rrggbb, rgb() or rgba()"
+  )
+);
+
 // Strict at every level, so a field this version doesn't know is refused rather
 // than dropped, which would lose it at the host's next save.
 const documentSchema = v.strictObject({
@@ -34,13 +43,15 @@ const documentSchema = v.strictObject({
             blocks: v.array(
               v.strictObject({
                 id: idSchema,
-                props: v.record(v.string(), v.unknown()),
+                // Checked by validateProps, because v.record would silently drop
+                // a key such as "constructor".
+                props: v.unknown(),
                 type: v.string(),
               })
             ),
             id: idSchema,
             props: v.strictObject({}),
-            width: v.pipe(v.number(), v.gtValue(0), v.maxValue(100)),
+            width: v.pipe(v.number(), v.minValue(1), v.maxValue(100)),
           })
         ),
         v.minLength(1),
@@ -51,11 +62,11 @@ const documentSchema = v.strictObject({
     })
   ),
   settings: v.strictObject({
-    backgroundColor: v.string(),
+    backgroundColor: colorSchema,
     fontFamily: v.string(),
     language: v.optional(v.string()),
     preheader: v.optional(v.string()),
-    width: v.pipe(v.number(), v.finite(), v.gtValue(0)),
+    width: v.pipe(v.number(), v.safeInteger(), v.minValue(1)),
   }),
   version: v.pipe(v.number(), v.integer()),
 });
@@ -161,7 +172,7 @@ export const createDocumentLoader =
     const problem = findProblem(parsed.output);
     return problem
       ? { ok: false, reason: problem }
-      : { document: parsed.output, ok: true };
+      : { document: parsed.output as BlocksDocument, ok: true };
   };
 
 /**
@@ -174,7 +185,7 @@ export const loadDocument = createDocumentLoader(DOCUMENT_VERSION, {});
 /**
  * Compares content, not identity or key order, because a host may clone a
  * document or get it back from a store that reorders keys. A field set to
- * undefined counts as missing, because JSON drops it.
+ * undefined counts as missing, because JSON drops it. List entries always count.
  */
 export const isSameDocument = (a: unknown, b: unknown): boolean => {
   if (a === b) {
@@ -187,6 +198,9 @@ export const isSameDocument = (a: unknown, b: unknown): boolean => {
     b === null ||
     Array.isArray(a) !== Array.isArray(b)
   ) {
+    return false;
+  }
+  if (Array.isArray(a) && a.length !== (b as unknown[]).length) {
     return false;
   }
   const first = a as Record<string, unknown>;
