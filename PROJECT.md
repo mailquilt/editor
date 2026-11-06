@@ -619,8 +619,7 @@ Vue and Svelte are added per package when they exist. The presets are not applie
 
 ### Git
 
-- Commit directly to `main` until there are users.
-- Then use short-lived branches and pull requests.
+- Use short-lived branches and pull requests for every change. Don't commit directly to `main`.
 - Use messages such as `feat(core): add moveBlock command` and `fix(editor): keep selection after undo`.
 
 ### Versioning and release

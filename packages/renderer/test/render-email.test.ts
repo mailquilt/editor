@@ -47,6 +47,26 @@ const emailWithText = (...paragraphs: string[]): BlocksDocument => ({
   version: 1,
 });
 
+const emailWithInline = (...inline: unknown[]): BlocksDocument => {
+  const email = emailWithText("");
+  const block = email.rows[0]?.columns[0]?.blocks[0];
+  if (block) {
+    block.props = {
+      content: {
+        content: [{ content: inline, type: "paragraph" }],
+        type: "doc",
+      },
+    };
+  }
+  return email;
+};
+
+const linked = (href: string, text = "Click") => ({
+  marks: [{ attrs: { href }, type: "link" }],
+  text,
+  type: "text",
+});
+
 describe(renderEmail, () => {
   it("matches the saved HTML for one Text Block", async () => {
     const html = await renderEmail(
@@ -80,6 +100,118 @@ describe(renderEmail, () => {
       '<p style="margin:0;white-space:pre-wrap">a    b</p>'
     );
     expect(html).toContain('<p style="margin:0;white-space:pre-wrap">   </p>');
+  });
+
+  it("matches the saved HTML for formatted text", async () => {
+    const html = await renderEmail(
+      emailWithInline(
+        { text: "Plain, ", type: "text" },
+        { marks: [{ type: "bold" }], text: "bold, ", type: "text" },
+        { marks: [{ type: "italic" }], text: "italic, ", type: "text" },
+        { marks: [{ type: "underline" }], text: "underlined", type: "text" },
+        { type: "hardBreak" },
+        {
+          marks: [
+            { attrs: { href: "{{cta_url}}" }, type: "link" },
+            { type: "bold" },
+            { type: "italic" },
+          ],
+          text: "a bold italic link",
+          type: "text",
+        }
+      )
+    );
+
+    await expect(html).toMatchFileSnapshot("expected/formatted-text.html");
+  });
+
+  it.each([
+    ["bold", "<strong>x</strong>"],
+    ["italic", "<em>x</em>"],
+    ["underline", "<u>x</u>"],
+  ])("renders %s with its own tag", async (type, expected) => {
+    const html = await renderEmail(
+      emailWithInline({ marks: [{ type }], text: "x", type: "text" })
+    );
+
+    expect(html).toContain(expected);
+  });
+
+  it("puts a link around the other marks on its text", async () => {
+    const html = await renderEmail(
+      emailWithInline({
+        marks: [
+          { attrs: { href: "https://example.com" }, type: "link" },
+          { type: "bold" },
+        ],
+        text: "x",
+        type: "text",
+      })
+    );
+
+    expect(html).toContain(
+      '<a href="https://example.com" target="_blank"><strong>x</strong></a>'
+    );
+  });
+
+  it("keeps a Merge Tag in a link intact", async () => {
+    const html = await renderEmail(emailWithInline(linked("{{cta_url}}")));
+
+    expect(html).toContain('<a href="{{cta_url}}" target="_blank">Click</a>');
+  });
+
+  it("escapes a link URL so it can't become markup", async () => {
+    const html = await renderEmail(
+      emailWithInline(linked(`https://a.b/?x="><script>&y=</mj-text>`))
+    );
+
+    expect(html).toContain(
+      'href="https://a.b/?x=&quot;&gt;&lt;script&gt;&amp;y=&lt;/mj-text&gt;"'
+    );
+    expect(html).not.toContain("<script>");
+  });
+
+  it("escapes formatted text", async () => {
+    const html = await renderEmail(
+      emailWithInline({
+        marks: [{ type: "bold" }],
+        text: "<b>&",
+        type: "text",
+      })
+    );
+
+    expect(html).toContain("<strong>&lt;b&gt;&amp;</strong>");
+  });
+
+  it("refuses to render an executable link", async () => {
+    await expect(
+      // oxlint-disable-next-line eslint/no-script-url -- This is what the test refuses.
+      renderEmail(emailWithInline(linked("javascript:alert(1)")))
+    ).rejects.toThrow(/link/iu);
+  });
+
+  it("renders a line break, ignoring marks left on it", async () => {
+    const html = await renderEmail(
+      emailWithInline(
+        { text: "a", type: "text" },
+        { marks: [{ type: "bold" }], type: "hardBreak" },
+        { text: "b", type: "text" }
+      )
+    );
+
+    expect(html).toContain(
+      '<p style="margin:0;white-space:pre-wrap">a<br />b</p>'
+    );
+  });
+
+  it("keeps the empty line after a line break at the end, as the canvas shows it", async () => {
+    const html = await renderEmail(
+      emailWithInline({ text: "a", type: "text" }, { type: "hardBreak" })
+    );
+
+    expect(html).toContain(
+      '<p style="margin:0;white-space:pre-wrap">a<br /><br /></p>'
+    );
   });
 
   it("refuses a Block type it can't render", async () => {

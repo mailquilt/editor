@@ -103,7 +103,7 @@ test("host CSS doesn't reach the canvas", async ({ page }) => {
   await expect(hostParagraph).toHaveCSS("color", "rgb(255, 0, 0)");
   await expect(hostParagraph).toHaveCSS("margin-top", "50px");
   await expect(page.locator("main")).toHaveCSS("display", "flex");
-  await expect(page.locator("button")).toHaveCSS(
+  await expect(page.getByRole("button", { name: "Re-render" })).toHaveCSS(
     "background-color",
     "rgba(0, 0, 0, 0)"
   );

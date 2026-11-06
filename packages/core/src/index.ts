@@ -6,8 +6,11 @@ export type {
   EmailSettings,
   Row,
 } from "./document.js";
+export { isAllowedLinkHref } from "./rich-text.js";
 export type {
   RichTextDocument,
+  RichTextHardBreak,
+  RichTextMark,
   RichTextNode,
   RichTextParagraph,
 } from "./rich-text.js";
