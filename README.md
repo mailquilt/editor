@@ -16,10 +16,7 @@ This Turborepo includes the following packages/apps:
 
 ### Apps and Packages
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `@next/eslint-plugin-next` and `eslint-config-prettier`)
+- `@repo/ui`: a React component library
 - `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
 
 Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
@@ -29,8 +26,6 @@ Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
 This Turborepo has some additional tools already setup for you:
 
 - [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
 
 ### Build
 
@@ -57,15 +52,15 @@ You can build a specific package by using a [filter](https://turborepo.dev/docs/
 With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
 
 ```sh
-turbo build --filter=docs
+turbo build --filter=<package>
 ```
 
 Without global `turbo`:
 
 ```sh
-npx turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
+npx turbo build --filter=<package>
+pnpm exec turbo build --filter=<package>
+pnpm exec turbo build --filter=<package>
 ```
 
 ### Develop
@@ -93,15 +88,15 @@ You can develop a specific package by using a [filter](https://turborepo.dev/doc
 With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
 
 ```sh
-turbo dev --filter=web
+turbo dev --filter=<package>
 ```
 
 Without global `turbo`:
 
 ```sh
-npx turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
+npx turbo dev --filter=<package>
+pnpm exec turbo dev --filter=<package>
+pnpm exec turbo dev --filter=<package>
 ```
 
 ### Remote Caching
