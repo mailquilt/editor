@@ -13,4 +13,6 @@ export type {
 } from "./rich-text.js";
 export type { ApplyOptions, ApplyResult, Command, Editor } from "./editor.js";
 export { createEditor } from "./editor.js";
+export type { LoadResult } from "./load-document.js";
+export { isSameDocument, loadDocument } from "./load-document.js";
 export type { Operation } from "./operations.js";

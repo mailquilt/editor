@@ -1,3 +1,4 @@
+import { loadDocument } from "@mailquilt/core";
 import type {
   Block,
   BlocksDocument,
@@ -36,7 +37,14 @@ const columnToMjml = ({ blocks, width }: Column) =>
 const rowToMjml = ({ columns }: Row) =>
   `<mj-section>${columns.map(columnToMjml).join("")}</mj-section>`;
 
-export const toMjml = ({ rows, settings }: BlocksDocument) => `<mjml>
+/** Throws if the document can't be trusted, and renders migrated older ones. */
+export const toMjml = (document: BlocksDocument) => {
+  const loaded = loadDocument(document);
+  if (!loaded.ok) {
+    throw new Error(loaded.reason);
+  }
+  const { rows, settings } = loaded.document;
+  return `<mjml>
   <mj-head>
     <mj-attributes>
       <mj-all font-family="${escapeAttribute(settings.fontFamily)}" />
@@ -48,3 +56,4 @@ export const toMjml = ({ rows, settings }: BlocksDocument) => `<mjml>
     ${rows.map(rowToMjml).join("")}
   </mj-body>
 </mjml>`;
+};

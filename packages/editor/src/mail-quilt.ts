@@ -1,4 +1,4 @@
-import { createEditor } from "@mailquilt/core";
+import { createEditor, isSameDocument, loadDocument } from "@mailquilt/core";
 import type { BlocksDocument, Editor, RichTextDocument } from "@mailquilt/core";
 import { renderEmail } from "@mailquilt/renderer";
 import { css, html, LitElement, nothing } from "lit";
@@ -86,7 +86,7 @@ export class MailQuilt extends LitElement {
   `;
 
   #editor: Editor | undefined;
-  /** The document last received from or sent to the host. */
+  /** A private copy of the document last received from or sent to the host. */
   #lastKnownDocument: BlocksDocument | undefined;
   readonly #views = new Map<string, TextBlockView>();
   /** Edits in the same typing session merge into one undo step. */
@@ -97,15 +97,30 @@ export class MailQuilt extends LitElement {
     return this.#editor?.getDocument();
   }
 
-  /** Setting the document this element already knows about changes nothing. */
+  /**
+   * A document with the same content as the last one received or sent out
+   * changes nothing, so a controlled host keeps its undo history and cursor. Any
+   * other document loads and clears undo history. A document that can't be
+   * trusted fires `mq-error`, and the current email stays as it was.
+   */
   set value(document: BlocksDocument | undefined) {
-    if (document === this.#lastKnownDocument) {
+    // Checked first, because a controlled host does this after every keystroke.
+    if (isSameDocument(document, this.#lastKnownDocument)) {
       return;
     }
-    this.#lastKnownDocument = document;
-    this.#destroyViews();
-    this.#editor = document && createEditor({ document });
-    this.requestUpdate();
+    if (document === undefined) {
+      this.#show(undefined);
+      return;
+    }
+    const loaded = loadDocument(document);
+    if (!loaded.ok) {
+      this.#emitError(loaded.reason);
+      return;
+    }
+    // An older document only matches the current one once it has been migrated.
+    if (!isSameDocument(loaded.document, this.#lastKnownDocument)) {
+      this.#show(loaded.document);
+    }
   }
 
   /** Returns the final HTML. MJML loads the first time this is called. */
@@ -251,8 +266,16 @@ export class MailQuilt extends LitElement {
     this.#emitChange(document);
   }
 
-  #emitChange(document: BlocksDocument) {
+  #show(document: BlocksDocument | undefined) {
     this.#lastKnownDocument = document;
+    this.#destroyViews();
+    this.#editor = document && createEditor({ document });
+    this.requestUpdate();
+  }
+
+  #emitChange(document: BlocksDocument) {
+    // A copy, because the host owns what it receives and may change it.
+    this.#lastKnownDocument = structuredClone(document);
     this.dispatchEvent(
       new CustomEvent("mq-change", {
         bubbles: true,
@@ -260,6 +283,19 @@ export class MailQuilt extends LitElement {
         detail: { document },
       })
     );
+  }
+
+  #emitError(reason: string) {
+    // Later, because a host may set `value` just before adding its listener.
+    queueMicrotask(() => {
+      this.dispatchEvent(
+        new CustomEvent("mq-error", {
+          bubbles: true,
+          composed: true,
+          detail: { reason },
+        })
+      );
+    });
   }
 
   #destroyViews() {
@@ -277,6 +313,7 @@ if (!customElements.get("mail-quilt")) {
 declare global {
   interface HTMLElementEventMap {
     "mq-change": CustomEvent<{ document: BlocksDocument }>;
+    "mq-error": CustomEvent<{ reason: string }>;
   }
 
   interface HTMLElementTagNameMap {

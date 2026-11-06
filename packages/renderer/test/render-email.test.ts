@@ -92,6 +92,132 @@ describe(renderEmail, () => {
     await expect(renderEmail(email)).rejects.toThrow(/hologram/u);
   });
 
+  // MJML's strict validation rejects more than CSS does, so anything that loads
+  // has to get through it, or an email could be edited but never exported.
+  const accepted: [string, (email: BlocksDocument) => void][] = [
+    [
+      "a short hex color",
+      (email) => {
+        email.settings.backgroundColor = "#FFF";
+      },
+    ],
+    [
+      "an rgb() color",
+      (email) => {
+        email.settings.backgroundColor = "rgb(1, 2, 3)";
+      },
+    ],
+    [
+      "an rgba() color",
+      (email) => {
+        email.settings.backgroundColor = "rgba(1,2,3,0.5)";
+      },
+    ],
+    [
+      "the narrowest email",
+      (email) => {
+        email.settings.width = 1;
+      },
+    ],
+    [
+      "the widest email",
+      (email) => {
+        email.settings.width = Number.MAX_SAFE_INTEGER;
+      },
+    ],
+    [
+      "an empty font family",
+      (email) => {
+        email.settings.fontFamily = "";
+      },
+    ],
+    [
+      "a font family with quotes",
+      (email) => {
+        email.settings.fontFamily = `"Times New Roman", <serif>`;
+      },
+    ],
+    [
+      "the narrowest Column",
+      (email) => {
+        const [row] = email.rows;
+        if (row) {
+          row.columns = [
+            { blocks: [], id: "narrow", props: {}, width: 1 },
+            { blocks: [], id: "wide", props: {}, width: 99 },
+          ];
+        }
+      },
+    ],
+    [
+      "rounded Column widths",
+      (email) => {
+        const [row] = email.rows;
+        if (row) {
+          row.columns = [
+            { blocks: [], id: "a", props: {}, width: 33.33 },
+            { blocks: [], id: "b", props: {}, width: 33.33 },
+            { blocks: [], id: "c", props: {}, width: 33.34 },
+          ];
+        }
+      },
+    ],
+    [
+      "no Rows",
+      (email) => {
+        email.rows = [];
+      },
+    ],
+  ];
+
+  it.each(accepted)("exports %s", async (_name, change) => {
+    const email = emailWithText("Hi");
+    change(email);
+
+    await expect(renderEmail(email)).resolves.toMatch(/^<!doctype html>/iu);
+  });
+
+  const refused: [string, (email: BlocksDocument) => unknown, RegExp][] = [
+    ["nothing", () => null, /object/iu],
+    [
+      "a newer version",
+      (email) => ({ ...email, version: 2 }),
+      /version 2 is newer/iu,
+    ],
+    ["a malformed document", ({ rows: _rows, ...email }) => email, /rows/u],
+    [
+      "a Column width that would break out of its attribute",
+      (email) => {
+        const column = email.rows[0]?.columns[0] as unknown as {
+          width: string;
+        };
+        column.width = '100"><script>alert(1)</script>';
+        return email;
+      },
+      /rows\.0\.columns\.0\.width/u,
+    ],
+  ];
+
+  it.each(refused)(
+    "refuses %s, with the reason",
+    async (_name, damage, reason) => {
+      const document = damage(emailWithText("Hi"));
+
+      await expect(renderEmail(document as BlocksDocument)).rejects.toThrow(
+        reason
+      );
+    }
+  );
+
+  it("doesn't change a document it refuses", async () => {
+    const document = { ...emailWithText("Hi"), version: 2 };
+    const before = structuredClone(document);
+
+    await expect(renderEmail(document)).rejects.toThrow(/newer/u);
+
+    expect(document).toStrictEqual(before);
+  });
+
   it("runs in plain Node with no DOM, editor or Tiptap code loaded", () => {
     // Runs the built package in its own process, because the test runner's own
     // modules would hide what the package actually loads.
