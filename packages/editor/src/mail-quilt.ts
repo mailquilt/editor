@@ -1,4 +1,9 @@
-import { createEditor, isSameDocument, loadDocument } from "@mailquilt/core";
+import {
+  createEditor,
+  isAllowedLinkHref,
+  isSameDocument,
+  loadDocument,
+} from "@mailquilt/core";
 import type { BlocksDocument, Editor, RichTextDocument } from "@mailquilt/core";
 import { renderEmail } from "@mailquilt/renderer";
 import { css, html, LitElement, nothing } from "lit";
@@ -6,19 +11,40 @@ import { repeat } from "lit/directives/repeat.js";
 import { styleMap } from "lit/directives/style-map.js";
 
 import { createTextBlockView } from "./text-block-view.js";
-import type { TextBlockView } from "./text-block-view.js";
+import type {
+  TextBlockView,
+  TextFormats,
+  ToggleableMark,
+} from "./text-block-view.js";
 
 /** Typing after a gap this long starts a new undo step. */
 const TYPING_PAUSE_MS = 1000;
+
+const MARK_BUTTONS: { label: string; mark: ToggleableMark; text: string }[] = [
+  { label: "Bold", mark: "bold", text: "B" },
+  { label: "Italic", mark: "italic", text: "I" },
+  { label: "Underline", mark: "underline", text: "U" },
+];
+
+const INVALID_LINK_MESSAGE =
+  "Use a URL starting with https://, http://, mailto: or tel:, or a Merge Tag such as {{cta_url}}.";
+
+/** Layouts without Latin letters report their own, so use the key's position. */
+const shortcutKey = (event: KeyboardEvent) =>
+  /^[a-z]$/iu.test(event.key)
+    ? event.key.toLowerCase()
+    : event.code.replace("Key", "").toLowerCase();
+
+const isLinkShortcut = (event: KeyboardEvent) =>
+  !(event.isComposing || event.altKey || event.shiftKey) &&
+  (event.metaKey || event.ctrlKey) &&
+  shortcutKey(event) === "k";
 
 const historyShortcut = (event: KeyboardEvent) => {
   if (event.isComposing || event.altKey) {
     return;
   }
-  // Layouts without Latin letters report their own, so use the key's position.
-  const key = /^[a-z]$/iu.test(event.key)
-    ? event.key.toLowerCase()
-    : event.code.replace("Key", "").toLowerCase();
+  const key = shortcutKey(event);
   if (key === "z" && (event.metaKey || event.ctrlKey)) {
     return event.shiftKey ? "redo" : "undo";
   }
@@ -33,6 +59,13 @@ const historyInput = (event: InputEvent) => {
   }
   if (event.inputType === "historyRedo") {
     return "redo";
+  }
+};
+
+/** Pressing a toolbar button leaves focus and the selection in the Block. */
+const keepFocusInBlock = (event: MouseEvent) => {
+  if (!(event.target instanceof HTMLInputElement)) {
+    event.preventDefault();
   }
 };
 
@@ -83,6 +116,96 @@ export class MailQuilt extends LitElement {
     .ProseMirror p {
       margin: 0;
     }
+
+    /* Like the canvas, this stops inherited values from the host element. */
+    .toolbar {
+      all: initial;
+      align-items: center;
+      background: #ffffff;
+      border-bottom: 1px solid #d4d4d8;
+      box-sizing: border-box;
+      color: #18181b;
+      display: flex;
+      flex-wrap: wrap;
+      font-family: system-ui, sans-serif;
+      font-size: 14px;
+      gap: 4px;
+      line-height: 1.5;
+      padding: 4px;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    .toolbar button {
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      color: inherit;
+      cursor: pointer;
+      font: inherit;
+      min-height: 28px;
+      min-width: 28px;
+      padding: 0 6px;
+    }
+
+    .toolbar button:hover:not(:disabled) {
+      background: #f4f4f5;
+    }
+
+    .toolbar button:focus-visible,
+    .toolbar input:focus-visible {
+      outline: 2px solid #2563eb;
+      outline-offset: 1px;
+    }
+
+    .toolbar button[aria-pressed="true"] {
+      background: #e4e4e7;
+      border-color: #71717a;
+    }
+
+    .toolbar button:disabled {
+      color: #71717a;
+      cursor: default;
+    }
+
+    .toolbar .bold {
+      font-weight: 700;
+    }
+
+    .toolbar .italic {
+      font-style: italic;
+    }
+
+    .toolbar .underline {
+      text-decoration: underline;
+    }
+
+    .link-form {
+      align-items: center;
+      display: flex;
+      flex-basis: 100%;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+
+    .link-form input {
+      border: 1px solid #71717a;
+      border-radius: 4px;
+      box-sizing: border-box;
+      color: inherit;
+      font: inherit;
+      margin-inline-start: 4px;
+      min-height: 28px;
+      padding: 0 6px;
+      width: 20em;
+    }
+
+    .link-form p {
+      color: #b91c1c;
+      flex-basis: 100%;
+      margin: 0;
+    }
   `;
 
   #editor: Editor | undefined;
@@ -92,6 +215,11 @@ export class MailQuilt extends LitElement {
   /** Edits in the same typing session merge into one undo step. */
   #typingSession = 0;
   #lastTypedAt = 0;
+  /** The Block the toolbar acts on: the last one to have focus. */
+  #activeBlockId: string | undefined;
+  #formats: TextFormats | undefined;
+  /** Set while the link field is open. */
+  #linkForm: { error: boolean } | undefined;
 
   get value() {
     return this.#editor?.getDocument();
@@ -153,13 +281,19 @@ export class MailQuilt extends LitElement {
           if (!this.#views.has(block.id)) {
             this.#views.set(
               block.id,
-              createTextBlockView(
-                block.props.content as RichTextDocument,
-                (next) => this.#commitText(block.id, next),
-                () => {
+              createTextBlockView({
+                content: block.props.content as RichTextDocument,
+                onChange: (next) => this.#commitText(block.id, next),
+                onFocus: () => {
+                  this.#activeBlockId = block.id;
+                  this.#closeLinkForm();
+                  this.#syncFormats();
+                },
+                onStateChange: () => this.#syncFormats(),
+                onTypingBreak: () => {
                   this.#typingSession += 1;
-                }
-              )
+                },
+              })
             );
           }
         }
@@ -175,6 +309,7 @@ export class MailQuilt extends LitElement {
     const { rows, settings } = document;
 
     return html`
+      ${this.#renderToolbar()}
       <div
         class="email"
         @beforeinput=${this.#onBeforeInput}
@@ -213,6 +348,156 @@ export class MailQuilt extends LitElement {
     `;
   }
 
+  #renderToolbar() {
+    const formats = this.#formats;
+    return html`
+      <div
+        aria-label="Text formatting"
+        class="toolbar"
+        role="group"
+        @mousedown=${keepFocusInBlock}
+      >
+        ${MARK_BUTTONS.map(
+          ({ label, mark, text }) => html`
+            <button
+              aria-label=${label}
+              aria-pressed=${formats?.[mark] ? "true" : "false"}
+              class=${mark}
+              ?disabled=${!formats}
+              title=${label}
+              type="button"
+              @click=${() => this.#activeView?.toggleMark(mark)}
+            >
+              ${text}
+            </button>
+          `
+        )}
+        <button
+          aria-pressed=${formats?.linkHref === undefined ? "false" : "true"}
+          ?disabled=${!formats}
+          type="button"
+          @click=${this.#openLinkForm}
+        >
+          Link
+        </button>
+        <button
+          ?disabled=${!formats}
+          type="button"
+          @click=${() => this.#activeView?.insertLineBreak()}
+        >
+          Line break
+        </button>
+        ${this.#linkForm ? this.#renderLinkForm(this.#linkForm.error) : nothing}
+      </div>
+    `;
+  }
+
+  #renderLinkForm(error: boolean) {
+    const href = this.#formats?.linkHref;
+    return html`
+      <form
+        class="link-form"
+        novalidate
+        @keydown=${this.#onLinkFormKeydown}
+        @submit=${this.#onLinkFormSubmit}
+      >
+        <label>
+          Link URL
+          <input
+            aria-describedby=${error ? "link-error" : nothing}
+            aria-invalid=${error ? "true" : "false"}
+            autocomplete="off"
+            name="href"
+            spellcheck="false"
+            type="text"
+            value=${href ?? ""}
+          />
+        </label>
+        <button type="submit">Apply</button>
+        ${
+          href === undefined
+            ? nothing
+            : html`
+                <button type="button" @click=${this.#removeLink}>
+                  Remove link
+                </button>
+              `
+        }
+        <button type="button" @click=${this.#cancelLinkForm}>Cancel</button>
+        ${
+          error
+            ? html`<p id="link-error" role="alert">${INVALID_LINK_MESSAGE}</p>`
+            : nothing
+        }
+      </form>
+    `;
+  }
+
+  get #activeView() {
+    return this.#activeBlockId === undefined
+      ? undefined
+      : this.#views.get(this.#activeBlockId);
+  }
+
+  /** Re-renders only on a change, because this runs on every transaction. */
+  #syncFormats() {
+    const formats = this.#activeView?.formats();
+    if (JSON.stringify(formats) !== JSON.stringify(this.#formats)) {
+      this.#formats = formats;
+      this.requestUpdate();
+    }
+  }
+
+  async #openLinkForm() {
+    if (!this.#activeView) {
+      return;
+    }
+    this.#linkForm = { error: false };
+    this.requestUpdate();
+    await this.updateComplete;
+    const input =
+      this.renderRoot.querySelector<HTMLInputElement>(".link-form input");
+    input?.focus();
+    input?.select();
+  }
+
+  #closeLinkForm() {
+    if (this.#linkForm) {
+      this.#linkForm = undefined;
+      this.requestUpdate();
+    }
+  }
+
+  #cancelLinkForm() {
+    this.#closeLinkForm();
+    this.#activeView?.focus();
+  }
+
+  #removeLink() {
+    this.#closeLinkForm();
+    this.#activeView?.removeLink();
+  }
+
+  #onLinkFormKeydown(event: KeyboardEvent) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      this.#cancelLinkForm();
+    }
+  }
+
+  #onLinkFormSubmit(event: SubmitEvent) {
+    event.preventDefault();
+    const form = event.target as HTMLFormElement;
+    const href = String(new FormData(form).get("href")).trim();
+    if (!isAllowedLinkHref(href)) {
+      this.#linkForm = { error: true };
+      this.requestUpdate();
+      return;
+    }
+    this.#closeLinkForm();
+    this.#activeView?.setLink(href);
+  }
+
   #commitText(blockId: string, content: RichTextDocument) {
     const editor = this.#editor;
     if (!editor) {
@@ -240,6 +525,12 @@ export class MailQuilt extends LitElement {
   }
 
   #onKeydown(event: KeyboardEvent) {
+    if (isLinkShortcut(event)) {
+      // Browsers use this one to focus their search or address bar.
+      event.preventDefault();
+      this.#openLinkForm();
+      return;
+    }
     this.#runHistoryStep(event, historyShortcut(event));
   }
 
@@ -303,6 +594,10 @@ export class MailQuilt extends LitElement {
       view.destroy();
     }
     this.#views.clear();
+    // The toolbar's state describes those views and their selections.
+    this.#activeBlockId = undefined;
+    this.#formats = undefined;
+    this.#linkForm = undefined;
   }
 }
 

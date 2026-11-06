@@ -4,6 +4,9 @@ import type {
   BlocksDocument,
   Column,
   RichTextDocument,
+  RichTextHardBreak,
+  RichTextMark,
+  RichTextNode,
   Row,
 } from "@mailquilt/core";
 
@@ -13,14 +16,48 @@ const escapeText = (text: string) =>
 const escapeAttribute = (value: string) =>
   escapeText(value).replaceAll('"', "&quot;");
 
+const wrapInMark = (html: string, mark: RichTextMark) => {
+  switch (mark.type) {
+    case "bold": {
+      return `<strong>${html}</strong>`;
+    }
+    case "italic": {
+      return `<em>${html}</em>`;
+    }
+    case "underline": {
+      return `<u>${html}</u>`;
+    }
+    case "link": {
+      return `<a href="${escapeAttribute(mark.attrs.href)}" target="_blank">${html}</a>`;
+    }
+    default: {
+      throw new Error("Unknown mark");
+    }
+  }
+};
+
+const inlineToHtml = (node: RichTextHardBreak | RichTextNode) => {
+  if (node.type === "hardBreak") {
+    return "<br />";
+  }
+  let html = escapeText(node.text);
+  // Inner marks first, so that the first mark goes on the outside. Tiptap lists
+  // links first, which keeps them around the other marks.
+  for (const mark of (node.marks ?? []).toReversed()) {
+    html = wrapInMark(html, mark);
+  }
+  return html;
+};
+
 const richTextToHtml = ({ content }: RichTextDocument) =>
   content
     .map((paragraph) => {
-      const text = paragraph.content
-        ?.map((node) => escapeText(node.text))
-        .join("");
-      // An empty paragraph still takes up a line, as it does on the canvas.
-      return `<p style="margin:0;white-space:pre-wrap">${text || "<br />"}</p>`;
+      const inline = paragraph.content ?? [];
+      const html = inline.map(inlineToHtml).join("");
+      // A last empty line takes up space on the canvas, but a <br /> at the end
+      // of a paragraph doesn't make one on its own. Nor does an empty paragraph.
+      const needsLastLine = inline.at(-1)?.type !== "text";
+      return `<p style="margin:0;white-space:pre-wrap">${html}${needsLastLine ? "<br />" : ""}</p>`;
     })
     .join("");
 
