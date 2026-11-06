@@ -11,5 +11,6 @@ export type {
   RichTextNode,
   RichTextParagraph,
 } from "./rich-text.js";
-export type { ApplyResult, Command, Editor } from "./editor.js";
+export type { ApplyOptions, ApplyResult, Command, Editor } from "./editor.js";
 export { createEditor } from "./editor.js";
+export type { Operation } from "./operations.js";

@@ -197,3 +197,357 @@ test("exported HTML keeps repeated spaces typed in a Text Block", async ({
   expect(await exportHtml(page)).toContain("white-space:pre-wrap");
   expect(await exportHtml(page)).toContain("a   b Hello");
 });
+
+const undo = (page: Page) => page.keyboard.press("ControlOrMeta+z");
+const redo = (page: Page) => page.keyboard.press("ControlOrMeta+Shift+z");
+
+/**
+ * Chromium reports a moved selection just after the key press, so the editor
+ * can only act on it once this has passed. A person's next key is always later.
+ */
+const waitForSelectionToRegister = (page: Page) =>
+  page.evaluate(
+    () =>
+      // oxlint-disable-next-line promise/avoid-new -- These browser callbacks have no promise form.
+      new Promise((resolve) => {
+        requestAnimationFrame(() => setTimeout(resolve, 0));
+      })
+  );
+
+const addSecondTextBlock = (page: Page) =>
+  canvas(page).evaluate((element) => {
+    const mailQuilt = element as MailQuilt;
+    const document = mailQuilt.value;
+    const column = document?.rows[0]?.columns[0];
+    const block = column?.blocks[0];
+    if (block) {
+      column?.blocks.push({ ...structuredClone(block), id: "block-2" });
+    }
+    mailQuilt.value = document;
+  });
+
+test.describe("undo and redo while typing", () => {
+  test("undo removes a burst of typing as one step", async ({ page }) => {
+    await focusStartOfTextBlock(page);
+    await page.keyboard.type("abc");
+    await expect(page.getByTestId("change-count")).toHaveText("3");
+
+    await undo(page);
+
+    await expect(textBlock(page)).toHaveText("Hello");
+  });
+
+  test("redo restores what undo removed", async ({ page }) => {
+    await focusStartOfTextBlock(page);
+    await page.keyboard.type("abc");
+    await undo(page);
+    await expect(textBlock(page)).toHaveText("Hello");
+
+    await redo(page);
+
+    await expect(textBlock(page)).toHaveText("abcHello");
+  });
+
+  test("Control+Y also redoes", async ({ page }) => {
+    await focusStartOfTextBlock(page);
+    await page.keyboard.type("abc");
+    await undo(page);
+    await expect(textBlock(page)).toHaveText("Hello");
+
+    await page.keyboard.press("Control+y");
+
+    await expect(textBlock(page)).toHaveText("abcHello");
+  });
+
+  test("undo and redo fire mq-change with the new document", async ({
+    page,
+  }) => {
+    await focusStartOfTextBlock(page);
+    await page.keyboard.type("abc");
+    await expect(page.getByTestId("change-count")).toHaveText("3");
+
+    await undo(page);
+    await expect(page.getByTestId("change-count")).toHaveText("4");
+    await expect.poll(() => latestDocumentText(page)).toBe("Hello");
+
+    await redo(page);
+    await expect(page.getByTestId("change-count")).toHaveText("5");
+    await expect.poll(() => latestDocumentText(page)).toBe("abcHello");
+  });
+
+  test("undo with nothing to undo changes nothing", async ({ page }) => {
+    await focusStartOfTextBlock(page);
+
+    await undo(page);
+    await redo(page);
+
+    await expect(textBlock(page)).toHaveText("Hello");
+    await expect(page.getByTestId("change-count")).toHaveText("0");
+  });
+
+  test("a pause in typing starts a new undo step", async ({ page }) => {
+    await page.clock.install();
+    await page.reload();
+    await focusStartOfTextBlock(page);
+    await page.keyboard.type("ab");
+    await expect(textBlock(page)).toHaveText("abHello");
+
+    await page.clock.fastForward(1500);
+    await page.keyboard.type("cd");
+    await expect(textBlock(page)).toHaveText("abcdHello");
+
+    await undo(page);
+    await expect(textBlock(page)).toHaveText("abHello");
+    await undo(page);
+    await expect(textBlock(page)).toHaveText("Hello");
+  });
+
+  test("edits in different Blocks share one history", async ({ page }) => {
+    await addSecondTextBlock(page);
+    const first = textBlock(page).first();
+    const second = textBlock(page).last();
+    await first.click();
+    await page.keyboard.type("a");
+    await expect(first).toHaveText("Helloa");
+    await second.click();
+    await page.keyboard.type("b");
+    await expect(second).toHaveText("Hellob");
+    await first.click();
+    await page.keyboard.type("c");
+    await expect(first).toHaveText("Helloac");
+
+    await undo(page);
+    await expect(first).toHaveText("Helloa");
+    await undo(page);
+    await expect(second).toHaveText("Hello");
+    await expect(first).toHaveText("Helloa");
+    await undo(page);
+    await expect(first).toHaveText("Hello");
+  });
+
+  test("leaving a Block and coming back starts a new undo step", async ({
+    page,
+  }) => {
+    await addSecondTextBlock(page);
+    const first = textBlock(page).first();
+    const second = textBlock(page).last();
+    await first.click();
+    await page.keyboard.type("a");
+    await expect(first).toHaveText("Helloa");
+
+    await second.click();
+    await expect(second).toBeFocused();
+    await first.click();
+    await expect(first).toBeFocused();
+    await page.keyboard.type("b");
+    await expect(first).toHaveText("Helloab");
+
+    await undo(page);
+    await expect(first).toHaveText("Helloa");
+  });
+
+  test("typing after undo goes where the undone text was, as a new step", async ({
+    page,
+  }) => {
+    await focusStartOfTextBlock(page);
+    await page.keyboard.type("abc");
+    await undo(page);
+    await expect(textBlock(page)).toHaveText("Hello");
+
+    await page.keyboard.type("x");
+    await expect(textBlock(page)).toHaveText("xHello");
+
+    await undo(page);
+    await expect(textBlock(page)).toHaveText("Hello");
+  });
+
+  test("typing after redo continues after the restored text", async ({
+    page,
+  }) => {
+    await focusStartOfTextBlock(page);
+    await page.keyboard.type("abc");
+    await undo(page);
+    await expect(textBlock(page)).toHaveText("Hello");
+    await redo(page);
+    await expect(textBlock(page)).toHaveText("abcHello");
+
+    await page.keyboard.type("d");
+
+    await expect(textBlock(page)).toHaveText("abcdHello");
+  });
+
+  test("undo keeps focus in the Block", async ({ page }) => {
+    await focusStartOfTextBlock(page);
+    await page.keyboard.type("abc");
+
+    await undo(page);
+
+    await expect(textBlock(page)).toHaveText("Hello");
+    await expect(textBlock(page)).toBeFocused();
+  });
+
+  test("undo puts the cursor back between repeated letters", async ({
+    page,
+  }) => {
+    await focusStartOfTextBlock(page);
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.type("l");
+    await expect(textBlock(page)).toHaveText("Helllo");
+
+    await undo(page);
+    await expect(textBlock(page)).toHaveText("Hello");
+    await page.keyboard.type("x");
+
+    await expect(textBlock(page)).toHaveText("Helxlo");
+  });
+
+  test("redo puts the cursor back between repeated letters", async ({
+    page,
+  }) => {
+    await focusStartOfTextBlock(page);
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.type("l");
+    await undo(page);
+    await expect(textBlock(page)).toHaveText("Hello");
+
+    await redo(page);
+    await expect(textBlock(page)).toHaveText("Helllo");
+    await page.keyboard.type("x");
+
+    await expect(textBlock(page)).toHaveText("Hellxlo");
+  });
+
+  test("redoing a new paragraph leaves the cursor in that text", async ({
+    page,
+  }) => {
+    const warnings: string[] = [];
+    page.on("console", (message) => {
+      if (message.type() === "warning") {
+        warnings.push(message.text());
+      }
+    });
+    await focusStartOfTextBlock(page);
+    await page.keyboard.press("Enter");
+    await expect(textBlock(page).locator("p")).toHaveCount(2);
+    await undo(page);
+    await expect(textBlock(page).locator("p")).toHaveCount(1);
+
+    await redo(page);
+    await expect(textBlock(page).locator("p")).toHaveCount(2);
+    await page.keyboard.type("x");
+
+    await expect(textBlock(page).locator("p").last()).toHaveText("xHello");
+    expect(warnings).toStrictEqual([]);
+  });
+
+  test("the browser's own undo and redo commands use the same history", async ({
+    page,
+  }) => {
+    const sendHistoryCommand = (inputType: string) =>
+      textBlock(page).evaluate((element, type) => {
+        element.dispatchEvent(
+          new InputEvent("beforeinput", {
+            bubbles: true,
+            cancelable: true,
+            composed: true,
+            inputType: type,
+          })
+        );
+      }, inputType);
+    await focusStartOfTextBlock(page);
+    await page.keyboard.type("abc");
+    await expect(textBlock(page)).toHaveText("abcHello");
+
+    await sendHistoryCommand("historyUndo");
+    await expect(textBlock(page)).toHaveText("Hello");
+    await expect(page.getByTestId("change-count")).toHaveText("4");
+
+    await sendHistoryCommand("historyRedo");
+    await expect(textBlock(page)).toHaveText("abcHello");
+    await expect(page.getByTestId("change-count")).toHaveText("5");
+  });
+
+  test("undo and redo work on a keyboard layout without Latin letters", async ({
+    page,
+  }) => {
+    const pressOnRussianLayout = (
+      key: string,
+      code: string,
+      shiftKey: boolean
+    ) =>
+      textBlock(page).evaluate(
+        (element, init) => {
+          element.dispatchEvent(
+            new KeyboardEvent("keydown", {
+              bubbles: true,
+              cancelable: true,
+              composed: true,
+              ctrlKey: true,
+              ...init,
+            })
+          );
+        },
+        { code, key, shiftKey }
+      );
+    await focusStartOfTextBlock(page);
+    await page.keyboard.type("abc");
+    await expect(textBlock(page)).toHaveText("abcHello");
+
+    await pressOnRussianLayout("я", "KeyZ", false);
+    await expect(textBlock(page)).toHaveText("Hello");
+
+    await pressOnRussianLayout("Я", "KeyZ", true);
+    await expect(textBlock(page)).toHaveText("abcHello");
+  });
+
+  test("moving the cursor starts a new undo step", async ({ page }) => {
+    await focusStartOfTextBlock(page);
+    await page.keyboard.type("a");
+    await page.keyboard.press("ArrowRight");
+    await waitForSelectionToRegister(page);
+    await page.keyboard.type("b");
+    await expect(textBlock(page)).toHaveText("aHbello");
+
+    await undo(page);
+
+    await expect(textBlock(page)).toHaveText("aHello");
+  });
+
+  test("a paste is its own undo step", async ({ page }) => {
+    await focusStartOfTextBlock(page);
+    await page.keyboard.press("ControlOrMeta+a");
+    await page.keyboard.press("ControlOrMeta+c");
+    await page.keyboard.press("ArrowRight");
+    await waitForSelectionToRegister(page);
+    await page.keyboard.type("x");
+    await page.keyboard.press("ControlOrMeta+v");
+    await expect(textBlock(page)).toHaveText("HelloxHello");
+    await page.keyboard.type("y");
+    await expect(textBlock(page)).toHaveText("HelloxHelloy");
+
+    await undo(page);
+    await expect(textBlock(page)).toHaveText("HelloxHello");
+    await undo(page);
+    await expect(textBlock(page)).toHaveText("Hellox");
+    await undo(page);
+    await expect(textBlock(page)).toHaveText("Hello");
+  });
+
+  test("a cut is its own undo step", async ({ page }) => {
+    await focusStartOfTextBlock(page);
+    await page.keyboard.press("ControlOrMeta+a");
+    await page.keyboard.press("ControlOrMeta+x");
+    await expect(textBlock(page)).toHaveText("");
+    await page.keyboard.type("y");
+    await expect(textBlock(page)).toHaveText("y");
+
+    await undo(page);
+    await expect(textBlock(page)).toHaveText("");
+    await undo(page);
+    await expect(textBlock(page)).toHaveText("Hello");
+  });
+});
