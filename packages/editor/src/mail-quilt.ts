@@ -8,6 +8,34 @@ import { styleMap } from "lit/directives/style-map.js";
 import { createTextBlockView } from "./text-block-view.js";
 import type { TextBlockView } from "./text-block-view.js";
 
+/** Typing after a gap this long starts a new undo step. */
+const TYPING_PAUSE_MS = 1000;
+
+const historyShortcut = (event: KeyboardEvent) => {
+  if (event.isComposing || event.altKey) {
+    return;
+  }
+  // Layouts without Latin letters report their own, so use the key's position.
+  const key = /^[a-z]$/iu.test(event.key)
+    ? event.key.toLowerCase()
+    : event.code.replace("Key", "").toLowerCase();
+  if (key === "z" && (event.metaKey || event.ctrlKey)) {
+    return event.shiftKey ? "redo" : "undo";
+  }
+  if (key === "y" && event.ctrlKey && !event.metaKey && !event.shiftKey) {
+    return "redo";
+  }
+};
+
+const historyInput = (event: InputEvent) => {
+  if (event.inputType === "historyUndo") {
+    return "undo";
+  }
+  if (event.inputType === "historyRedo") {
+    return "redo";
+  }
+};
+
 export class MailQuilt extends LitElement {
   static override styles = css`
     :host {
@@ -61,6 +89,9 @@ export class MailQuilt extends LitElement {
   /** The document last received from or sent to the host. */
   #lastKnownDocument: BlocksDocument | undefined;
   readonly #views = new Map<string, TextBlockView>();
+  /** Edits in the same typing session merge into one undo step. */
+  #typingSession = 0;
+  #lastTypedAt = 0;
 
   get value() {
     return this.#editor?.getDocument();
@@ -109,7 +140,10 @@ export class MailQuilt extends LitElement {
               block.id,
               createTextBlockView(
                 block.props.content as RichTextDocument,
-                (next) => this.#commitText(block.id, next)
+                (next) => this.#commitText(block.id, next),
+                () => {
+                  this.#typingSession += 1;
+                }
               )
             );
           }
@@ -128,6 +162,8 @@ export class MailQuilt extends LitElement {
     return html`
       <div
         class="email"
+        @beforeinput=${this.#onBeforeInput}
+        @keydown=${this.#onKeydown}
         style=${styleMap({
           "background-color": settings.backgroundColor,
           "font-family": settings.fontFamily,
@@ -167,17 +203,55 @@ export class MailQuilt extends LitElement {
     if (!editor) {
       return;
     }
-    const result = editor.apply({
-      blockId,
-      props: { content },
-      type: "updateProps",
-    });
+    const now = performance.now();
+    if (now - this.#lastTypedAt >= TYPING_PAUSE_MS) {
+      this.#typingSession += 1;
+    }
+    this.#lastTypedAt = now;
+    const result = editor.apply(
+      { blockId, props: { content }, type: "updateProps" },
+      { mergeKey: `${blockId}:${this.#typingSession}` }
+    );
     if (!result.ok) {
       // Tiptap's schema should be no wider than core's, so this is a bug here.
       console.error(`<mail-quilt> rejected an edit: ${result.reason}`);
       return;
     }
+    this.#emitChange(editor.getDocument());
+  }
+
+  #onBeforeInput(event: InputEvent) {
+    this.#runHistoryStep(event, historyInput(event));
+  }
+
+  #onKeydown(event: KeyboardEvent) {
+    this.#runHistoryStep(event, historyShortcut(event));
+  }
+
+  #runHistoryStep(event: Event, step: "redo" | "undo" | undefined) {
+    if (!step) {
+      return;
+    }
+    // The browser's own undo would change the text behind the document's back.
+    event.preventDefault();
+    const editor = this.#editor;
+    if (!editor?.[step]()) {
+      return;
+    }
     const document = editor.getDocument();
+    for (const row of document.rows) {
+      for (const column of row.columns) {
+        for (const block of column.blocks) {
+          this.#views
+            .get(block.id)
+            ?.setContent(block.props.content as RichTextDocument);
+        }
+      }
+    }
+    this.#emitChange(document);
+  }
+
+  #emitChange(document: BlocksDocument) {
     this.#lastKnownDocument = document;
     this.dispatchEvent(
       new CustomEvent("mq-change", {
