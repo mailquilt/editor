@@ -1,0 +1,34 @@
+{
+  "name": "@mailquilt/renderer",
+  "version": "0.0.0",
+  "description": "Turns a Mail Quilt document into email HTML. Runs without a DOM.",
+  "license": "MIT",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/node.d.ts",
+      "browser": "./dist/browser.js",
+      "default": "./dist/node.js"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "check-types": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@mailquilt/core": "workspace:*",
+    "mjml": "^5.4.1",
+    "mjml-browser": "^5.4.1"
+  },
+  "devDependencies": {
+    "@repo/typescript-config": "workspace:*",
+    "@types/node": "^24.19.2",
+    "tsdown": "^0.23.5",
+    "typescript": "7.0.2",
+    "vitest": "^5.1.0"
+  }
+}

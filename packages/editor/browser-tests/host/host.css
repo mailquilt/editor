@@ -1,0 +1,31 @@
+/* Tailwind's reset, as a real host app would load it. */
+@import "tailwindcss";
+
+/* Unfriendly host CSS that would break the canvas if it reached it. */
+* {
+  color: rgb(255, 0, 0) !important;
+  font-family: "Comic Sans MS", cursive !important;
+  font-size: 40px !important;
+  letter-spacing: 5px !important;
+  line-height: 3 !important;
+  text-transform: uppercase !important;
+  white-space: nowrap !important;
+}
+
+p {
+  background: rgb(255, 255, 0) !important;
+  margin: 50px !important;
+}
+
+div {
+  border: 5px solid rgb(0, 255, 0) !important;
+  padding: 30px !important;
+}
+
+[contenteditable],
+.ProseMirror,
+.email,
+.row,
+.column {
+  display: none !important;
+}
