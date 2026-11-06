@@ -16,7 +16,6 @@ This Turborepo includes the following packages/apps:
 
 ### Apps and Packages
 
-- `@repo/ui`: a React component library
 - `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
 
 Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
