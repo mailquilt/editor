@@ -8,7 +8,6 @@ import {
   Feedback,
   PointerActivationConstraints,
   PointerSensor,
-  PreventSelection,
   Scroller,
 } from "@dnd-kit/dom";
 import { getScrollableAncestors } from "@dnd-kit/dom/utilities";
@@ -36,9 +35,21 @@ const midpointY = (element: Element) => {
   return (top + bottom) / 2;
 };
 
-const contains = (element: Element, { x, y }: { x: number; y: number }) => {
+/** How far outside the editor a drop still counts, as space below the email. */
+const DROP_MARGIN_PX = 40;
+
+const contains = (
+  element: Element,
+  { x, y }: { x: number; y: number },
+  margin = 0
+) => {
   const { bottom, left, right, top } = element.getBoundingClientRect();
-  return x >= left && x <= right && y >= top && y <= bottom;
+  return (
+    x >= left - margin &&
+    x <= right + margin &&
+    y >= top - margin &&
+    y <= bottom + margin
+  );
 };
 
 const removeExcept = (
@@ -67,8 +78,10 @@ export const createBlockDragging = ({
   root: ShadowRoot;
 }): BlockDragging => {
   const manager = new DragDropManager({
-    plugins: [AutoScroller, Cursor, Feedback, PreventSelection],
-    // Keyboard controls use Commands of their own, not a dragged Block.
+    // Not PreventSelection, which would clear the cursor in the Block being edited.
+    // A press on a handle or palette item doesn't start a selection anyway.
+    plugins: [AutoScroller, Cursor, Feedback],
+    // Only the pointer drags. Keyboard moves won't go through a dragged Block.
     sensors: [
       PointerSensor.configure({
         // A press alone stays a click, however long it lasts.
@@ -83,19 +96,30 @@ export const createBlockDragging = ({
 
   /**
    * Where a drop would land now, and the line that shows it. Blocks are counted
-   * without the dragged one, as a move's index is. A Column that an undo has just
-   * removed no longer counts as one. The toolbar isn't a place to drop, so that
-   * letting go of a palette item that barely moved adds nothing.
+   * without the dragged one, as a move's index is. There's no landing far from the
+   * editor, which is how to abandon a drag, or on the toolbar, so that letting go
+   * of a palette item that barely moved adds nothing.
    */
   const landing = () => {
-    const { position, source, target } = manager.dragOperation;
+    const { position, source } = manager.dragOperation;
     const pointer = position.current;
+    const email = root.querySelector(".email");
     const toolbar = root.querySelector(".toolbar");
-    if (toolbar && contains(toolbar, pointer)) {
+    if (
+      !email ||
+      (toolbar && contains(toolbar, pointer)) ||
+      !contains(root.host, pointer, DROP_MARGIN_PX)
+    ) {
       return;
     }
-    const column = target?.element?.isConnected ? target.element : undefined;
-    const parent = column ?? (root.querySelector(".email") as Element);
+    // Worked out here, because dnd-kit's own target lags behind the pointer.
+    const [collision] = manager.collisionObserver.computeCollisions();
+    const droppable =
+      collision && manager.registry.droppables.get(collision.id);
+    const column = droppable?.element?.isConnected
+      ? droppable.element
+      : undefined;
+    const parent = column ?? email;
     const items = [...parent.querySelectorAll(column ? BLOCKS : ".row")].filter(
       (element) => element !== source?.element
     );
@@ -116,7 +140,7 @@ export const createBlockDragging = ({
           box.top,
       },
       place: column
-        ? { columnId: String(target?.id), index }
+        ? { columnId: String(droppable?.id), index }
         : { rowIndex: index },
     };
   };
@@ -144,8 +168,12 @@ export const createBlockDragging = ({
   ) => {
     const draggable = draggables.get(id);
     if (draggable) {
-      draggable.element = element;
-      draggable.handle = handle;
+      // Giving the dragged one a new element would make dnd-kit lift that element
+      // and never put it down, so it waits for the drag to finish.
+      if (!draggable.isDragSource) {
+        draggable.element = element;
+        draggable.handle = handle;
+      }
       return;
     }
     draggables.set(
@@ -189,6 +217,10 @@ export const createBlockDragging = ({
       const id = `palette:${blockType}`;
       draggableIds.add(id);
       syncDraggable(id, element, { blockType });
+    }
+    const { source } = manager.dragOperation;
+    if (source) {
+      draggableIds.add(String(source.id));
     }
     removeExcept(draggables, draggableIds);
 
@@ -235,31 +267,35 @@ export const createBlockDragging = ({
   });
 
   let syncTimer: ReturnType<typeof setTimeout> | undefined;
-  manager.monitor.addEventListener("dragend", ({ canceled }) => {
+  manager.monitor.addEventListener("dragend", ({ canceled, nativeEvent }) => {
     cancelAnimationFrame(frame);
     showIndicator();
-    const { source } = manager.dragOperation;
+    const { position, source } = manager.dragOperation;
     // An undo during the drag can take away the Block being dragged.
-    const place =
-      canceled || !source?.element?.isConnected ? undefined : landing()?.place;
-    if (source && place) {
-      onDrop(source.data as DragSource, place);
+    if (!canceled && source?.element?.isConnected) {
+      // The pointer may have moved since the last frame, and the page scrolled.
+      if (nativeEvent instanceof PointerEvent) {
+        position.current = { x: nativeEvent.clientX, y: nativeEvent.clientY };
+      }
+      for (const droppable of droppables.values()) {
+        droppable.refreshShape();
+      }
+      const place = landing()?.place;
+      if (place) {
+        onDrop(source.data as DragSource, place);
+      }
     }
-    // Once the drag has finished. Its source getting a new element sooner would
-    // make dnd-kit lift that element and never put it down.
+    // Once the drag has finished, for the element that had to wait.
     syncTimer = setTimeout(syncElements, 0);
   });
 
   return {
     destroy: () => {
+      // First, because this ends any drag, which sets the timer.
+      manager.destroy();
       cancelAnimationFrame(frame);
       clearTimeout(syncTimer);
-      manager.destroy();
     },
-    sync: () => {
-      if (manager.dragOperation.status.idle) {
-        syncElements();
-      }
-    },
+    sync: syncElements,
   };
 };

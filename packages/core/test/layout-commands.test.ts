@@ -348,6 +348,112 @@ describe("the moveBlock Command", () => {
   });
 });
 
+describe("the Commands that add a Row for a Block", () => {
+  it("moves a Block to a new single-Column Row", () => {
+    const { editor, operations } = setup();
+
+    expectAccepted(
+      editor.apply({ blockId: "b", rowIndex: 1, type: "moveBlockToNewRow" })
+    );
+
+    const document = editor.getDocument();
+    expect(columnsOf(document)).toStrictEqual([[["a"], ["c"]], [["b"]]]);
+    expect(
+      widthsOf({ ...document, rows: document.rows.slice(1) })
+    ).toStrictEqual([100]);
+    expect(operations).toHaveLength(1);
+    expect(operations[0]?.map(({ type }) => type)).toStrictEqual([
+      "insert",
+      "move",
+    ]);
+    expectValid(document);
+  });
+
+  it("adds a Block in a new single-Column Row, reporting the Block's ID", () => {
+    const { editor } = setup();
+
+    const result = editor.apply({
+      blockType: "text",
+      rowIndex: 0,
+      type: "insertBlockInNewRow",
+    });
+
+    const document = editor.getDocument();
+    expect(result).toStrictEqual({
+      createdId: document.rows[0]?.columns[0]?.blocks[0]?.id,
+      ok: true,
+    });
+    expect(document.rows).toHaveLength(2);
+    expectValid(document);
+  });
+
+  it("adds the first Row and Block to an email with none", () => {
+    const { editor } = setup({ ...createEmail(), rows: [] });
+
+    expectAccepted(
+      editor.apply({
+        blockType: "text",
+        rowIndex: 0,
+        type: "insertBlockInNewRow",
+      })
+    );
+
+    expect(editor.getDocument().rows).toHaveLength(1);
+  });
+
+  it("is one undo step that undo and redo reverse exactly", () => {
+    const { editor } = setup();
+
+    expectAccepted(
+      editor.apply({ blockId: "b", rowIndex: 0, type: "moveBlockToNewRow" })
+    );
+
+    const { changed, redone, undone } = undoThenRedo(editor);
+    expect(columnsOf(undone)).toStrictEqual([[["a", "b"], ["c"]]]);
+    expect(redone).toStrictEqual(changed);
+  });
+
+  it.each([
+    [
+      "an unknown Block",
+      { blockId: "nope", rowIndex: 0, type: "moveBlockToNewRow" },
+      /No Block/u,
+    ],
+    [
+      "an unknown Block type",
+      { blockType: "nope", rowIndex: 0, type: "insertBlockInNewRow" },
+      /Unknown Block type/u,
+    ],
+    [
+      "a Row index past the end",
+      { blockId: "a", rowIndex: 2, type: "moveBlockToNewRow" },
+      /past the end/u,
+    ],
+  ])("rejects %s, adding no Row", (_name, command, reason) => {
+    const { editor, operations } = setup();
+    const before = editor.getDocument();
+
+    const result = send(editor, command);
+
+    expect(result).toHaveProperty("reason", expect.stringMatching(reason));
+    expect(editor.getDocument()).toStrictEqual(before);
+    expect(operations).toStrictEqual([]);
+    expect(editor.undo()).toBeFalsy();
+  });
+});
+
+describe("a Command for what's already so", () => {
+  it("says so, unlike a Command that can't be done", () => {
+    const { editor } = setup();
+
+    expect(editor.apply(move("a", "left", 0))).toMatchObject({
+      ok: false,
+      unchanged: true,
+    });
+    expect(editor.apply(move("a", "nope", 0))).not.toHaveProperty("unchanged");
+  });
+});
+
 describe("rejecting a Block Command", () => {
   const rejected: [string, unknown, RegExp][] = [
     [

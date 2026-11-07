@@ -8,7 +8,6 @@ import {
   rowLayoutOf,
 } from "@mailquilt/core";
 import type {
-  ApplyOptions,
   BlocksDocument,
   Column,
   Command,
@@ -39,9 +38,6 @@ const MARK_BUTTONS: { label: string; mark: ToggleableMark; text: string }[] = [
   { label: "Italic", mark: "italic", text: "I" },
   { label: "Underline", mark: "underline", text: "U" },
 ];
-
-/** Joins the Row made for a Block in an email with no Rows to that Block's step. */
-const FIRST_BLOCK_MERGE_KEY = "first-block";
 
 const INVALID_LINK_MESSAGE =
   "Use a URL starting with https://, http://, mailto: or tel:, or a Merge Tag such as {{cta_url}}.";
@@ -79,8 +75,17 @@ const historyInput = (event: InputEvent) => {
   }
 };
 
-/** Leaves focus and the selection where they are when a handle is pressed. */
-const keepFocus = (event: MouseEvent) => event.preventDefault();
+/** The Command for a drop, which adds a Row if it landed outside any. */
+const dropCommand = (source: DragSource, place: DropPlace): Command => {
+  if ("blockId" in source) {
+    return "columnId" in place
+      ? { ...source, ...place, type: "moveBlock" }
+      : { ...source, ...place, type: "moveBlockToNewRow" };
+  }
+  return "columnId" in place
+    ? { ...source, ...place, type: "insertBlock" }
+    : { ...source, ...place, type: "insertBlockInNewRow" };
+};
 
 /** One opening of the Preview. */
 interface Preview {
@@ -172,7 +177,6 @@ export class MailQuilt extends LitElement {
     .drag-handle {
       align-items: center;
       background: #e4e4e7;
-      border: 0;
       border-end-end-radius: 4px;
       color: #18181b;
       cursor: grab;
@@ -185,9 +189,9 @@ export class MailQuilt extends LitElement {
       inset-inline-start: 0;
       justify-content: center;
       opacity: 0;
-      padding: 0;
       position: absolute;
       touch-action: none;
+      user-select: none;
       width: 16px;
       z-index: 1;
     }
@@ -452,8 +456,6 @@ export class MailQuilt extends LitElement {
   #previewHtml: string | undefined;
   /** Set while the element is connected and has rendered. */
   #dragging: BlockDragging | undefined;
-  /** Each drop is its own undo step, even straight after the last one. */
-  #dropCount = 0;
 
   get value() {
     return this.#editor?.getDocument();
@@ -655,16 +657,14 @@ export class MailQuilt extends LitElement {
               class="block"
               data-block-id=${block.id}
             >
-              <button
-                aria-label="Drag Block"
+              <div
+                aria-hidden="true"
                 class="drag-handle"
-                tabindex="-1"
                 title="Drag Block"
-                type="button"
-                @mousedown=${keepFocus}
+                @mousedown=${this.#onHandleMousedown}
               >
                 ⋮⋮
-              </button>
+              </div>
               ${this.#views.get(block.id)?.element}
             </div>
           `
@@ -950,9 +950,9 @@ export class MailQuilt extends LitElement {
   }
 
   /** The accepted result, leaving the caller to show and report the change. */
-  #tryCommand(command: Command, options?: ApplyOptions) {
-    const result = this.#editor?.apply(command, options);
-    if (result && !result.ok) {
+  #tryCommand(command: Command) {
+    const result = this.#editor?.apply(command);
+    if (result && !result.ok && !result.unchanged) {
       // The controls only offer what's allowed, so this is a bug here.
       console.error(`<mail-quilt> rejected a Command: ${result.reason}`);
     }
@@ -1011,34 +1011,23 @@ export class MailQuilt extends LitElement {
     if (!editor) {
       return;
     }
-    let target = place ?? this.#defaultBlockPlace(editor);
-    const options = target ? undefined : { mergeKey: FIRST_BLOCK_MERGE_KEY };
-    const row =
-      options &&
-      this.#tryCommand({ index: 0, layout: "100", type: "insertRow" }, options);
-    target ??= this.#defaultBlockPlace(editor);
-    const block =
-      target &&
-      this.#tryCommand(
-        { blockType: "text", ...target, type: "insertBlock" },
-        options
-      );
-
-    if (row || block) {
-      await this.#showPlaced(block?.createdId);
+    const target = place ?? this.#defaultBlockPlace(editor);
+    const block = this.#tryCommand(
+      target
+        ? { blockType: "text", ...target, type: "insertBlock" }
+        : { blockType: "text", rowIndex: 0, type: "insertBlockInNewRow" }
+    );
+    if (block) {
+      await this.#showPlaced(block.createdId);
     }
   }
 
   /** Reports a change that put a Block in place, then selects it to type in. */
   async #showPlaced(blockId: string | undefined) {
-    if (blockId !== undefined) {
-      this.#activeBlockId = blockId;
-    }
+    this.#activeBlockId = blockId;
     this.#publishStructure();
-    if (blockId !== undefined) {
-      await this.updateComplete;
-      this.#activeView?.focus();
-    }
+    await this.updateComplete;
+    this.#activeView?.focus();
   }
 
   #defaultBlockPlace(editor: Editor) {
@@ -1051,48 +1040,13 @@ export class MailQuilt extends LitElement {
     return column && { columnId: column.id, index: column.blocks.length };
   }
 
-  /** One undo step, with any new Row, unless the Block is already there. */
   async #drop(source: DragSource, place: DropPlace) {
-    const document = this.#editor?.getDocument();
-    const moving = "blockId" in source ? source.blockId : undefined;
-    const from =
-      document && moving !== undefined
-        ? findBlockPosition(document, moving)
-        : undefined;
-    if (
-      from &&
-      "columnId" in place &&
-      from.columnId === place.columnId &&
-      from.index === place.index
-    ) {
-      return;
+    const result = this.#tryCommand(dropCommand(source, place));
+    if (result) {
+      await this.#showPlaced(
+        "blockId" in source ? source.blockId : result.createdId
+      );
     }
-
-    this.#dropCount += 1;
-    const options = { mergeKey: `drop-${this.#dropCount}` };
-    const target =
-      "columnId" in place ? place : this.#insertRowFor(place.rowIndex, options);
-    if (!target) {
-      return;
-    }
-    const result = this.#tryCommand(
-      "blockId" in source
-        ? { blockId: source.blockId, ...target, type: "moveBlock" }
-        : { blockType: source.blockType, ...target, type: "insertBlock" },
-      options
-    );
-    await this.#showPlaced(result && (moving ?? result.createdId));
-  }
-
-  /** Adds a single-Column Row, returning where a Block goes in it. */
-  #insertRowFor(index: number, options: ApplyOptions) {
-    const inserted = this.#tryCommand(
-      { index, layout: "100", type: "insertRow" },
-      options
-    );
-    const row = inserted && this.#editor?.getDocument().rows[index];
-    const column = row?.columns[0];
-    return column && { columnId: column.id, index: 0 };
   }
 
   #commitText(blockId: string, content: RichTextDocument) {
@@ -1151,6 +1105,17 @@ export class MailQuilt extends LitElement {
     event.preventDefault();
     if (!this.shadowRoot?.activeElement && target instanceof Element) {
       target.closest("button")?.focus();
+    }
+  }
+
+  /**
+   * Leaves focus and the selection where they are. With no focus in the editor,
+   * the toolbar takes it, because keyboard undo only reaches the editor from inside.
+   */
+  #onHandleMousedown(event: MouseEvent) {
+    event.preventDefault();
+    if (!this.shadowRoot?.activeElement) {
+      this.renderRoot.querySelector<HTMLElement>(".toolbar")?.focus();
     }
   }
 

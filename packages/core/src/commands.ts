@@ -3,7 +3,12 @@ import * as v from "valibot";
 import { blockDefinitions, describeIssues, validateProps } from "./blocks.js";
 import { createId } from "./create-email.js";
 import type { BlocksDocument, Column, Row } from "./document.js";
-import { findBlock, findBlockPosition, findColumn } from "./operations.js";
+import {
+  applyOperation,
+  findBlock,
+  findBlockPosition,
+  findColumn,
+} from "./operations.js";
 import type { Operation } from "./operations.js";
 
 /** The layouts a Row can have, in the order a person chooses from them. */
@@ -66,6 +71,16 @@ const commandSchema = v.variant("type", [
     type: v.literal("moveBlock"),
   }),
   v.strictObject({
+    blockId: v.string(),
+    rowIndex: indexSchema,
+    type: v.literal("moveBlockToNewRow"),
+  }),
+  v.strictObject({
+    blockType: v.string(),
+    rowIndex: indexSchema,
+    type: v.literal("insertBlockInNewRow"),
+  }),
+  v.strictObject({
     index: indexSchema,
     layout: layoutSchema,
     type: v.literal("insertRow"),
@@ -87,7 +102,7 @@ export type Command = v.InferOutput<typeof commandSchema>;
 /** What an accepted Command does to the document. */
 export type CommandPlan =
   | { ok: true; operations: Operation[]; createdId?: string }
-  | { ok: false; reason: string };
+  | { ok: false; reason: string; unchanged?: true };
 
 const rejected = (reason: string) => ({ ok: false as const, reason });
 
@@ -186,7 +201,11 @@ const planMoveBlock = (
     );
   }
   if (sameColumn && from.index === index) {
-    return rejected(`Block "${blockId}" is already at index ${index}`);
+    return {
+      ok: false,
+      reason: `Block "${blockId}" is already at index ${index}`,
+      unchanged: true,
+    };
   }
   return {
     ok: true,
@@ -221,6 +240,33 @@ const planInsertRow = (
     ok: true,
     operations: [{ index, row, type: "insert" }],
   };
+};
+
+/**
+ * Plans a new single-Column Row and what `planBlock` puts in its Column, as one
+ * step, so a rejected Block leaves no empty Row behind.
+ */
+const planInNewRow = (
+  document: BlocksDocument,
+  rowIndex: number,
+  planBlock: (withRow: BlocksDocument, columnId: string) => CommandPlan
+): CommandPlan => {
+  const rowPlan = planInsertRow(document, "100", rowIndex);
+  if (!rowPlan.ok) {
+    return rowPlan;
+  }
+  const withRow = structuredClone(document);
+  for (const operation of rowPlan.operations) {
+    applyOperation(withRow, operation);
+  }
+  const columnId = withRow.rows[rowIndex]?.columns[0]?.id as string;
+  const blockPlan = planBlock(withRow, columnId);
+  return blockPlan.ok
+    ? {
+        ...blockPlan,
+        operations: [...rowPlan.operations, ...blockPlan.operations],
+      }
+    : blockPlan;
 };
 
 const planRemoveRow = (
@@ -328,6 +374,16 @@ export const planCommand = (
         output.blockId,
         output.columnId,
         output.index
+      );
+    }
+    case "moveBlockToNewRow": {
+      return planInNewRow(document, output.rowIndex, (withRow, columnId) =>
+        planMoveBlock(withRow, output.blockId, columnId, 0)
+      );
+    }
+    case "insertBlockInNewRow": {
+      return planInNewRow(document, output.rowIndex, (withRow, columnId) =>
+        planInsertBlock(withRow, output.blockType, columnId, 0)
       );
     }
     case "insertRow": {
