@@ -18,6 +18,7 @@ import type {
 } from "@mailquilt/core";
 import { renderEmail } from "@mailquilt/renderer";
 import { css, html, LitElement, nothing } from "lit";
+import { keyed } from "lit/directives/keyed.js";
 import { repeat } from "lit/directives/repeat.js";
 import { styleMap } from "lit/directives/style-map.js";
 
@@ -25,9 +26,11 @@ import { BLOCKS, createBlockDragging } from "./block-dragging.js";
 import type { BlockDragging, DragSource, DropPlace } from "./block-dragging.js";
 import {
   arrowDirection,
+  columnLabel,
   moveCommand,
   neighbourBlockId,
   placeLabel,
+  positionLabel,
 } from "./block-keyboard.js";
 import type { Direction } from "./block-keyboard.js";
 import { createTextBlockView } from "./text-block-view.js";
@@ -175,7 +178,7 @@ export class MailQuilt extends LitElement {
     /* Where a browser scrolls a focused Block to, clear of the sticky toolbar. */
     .block,
     .ProseMirror {
-      scroll-margin-block-start: 6rem;
+      scroll-margin-block-start: calc(var(--toolbar-height, 0px) + 8px);
     }
 
     .block[aria-current="true"] {
@@ -499,6 +502,25 @@ export class MailQuilt extends LitElement {
   #dragging: BlockDragging | undefined;
   /** What the screen reader last heard about a move. */
   #announcement = "";
+  /** Each announcement gets a new element, so the same words are read again. */
+  #announcementId = 0;
+  /** Where the Enter key now held down was pressed. */
+  #enterPressedOn: EventTarget | undefined;
+  #toolbarHeight = 0;
+  /** The toolbar wraps at any width, and a Block has to scroll clear of it. */
+  readonly #toolbarObserver = new ResizeObserver(([entry]) => {
+    if (entry) {
+      this.#toolbarHeight = entry.target.getBoundingClientRect().height;
+      this.requestUpdate();
+    }
+  });
+  #observedToolbar: Element | null = null;
+
+  constructor() {
+    super();
+    // On the way in, because ProseMirror handles the key before it bubbles here.
+    this.addEventListener("keydown", this.#onKeydownCapture, { capture: true });
+  }
 
   get value() {
     return this.#editor?.getDocument();
@@ -547,6 +569,8 @@ export class MailQuilt extends LitElement {
     super.disconnectedCallback();
     this.#dragging?.destroy();
     this.#dragging = undefined;
+    this.#toolbarObserver.disconnect();
+    this.#observedToolbar = null;
     this.#destroyViews();
   }
 
@@ -609,6 +633,7 @@ export class MailQuilt extends LitElement {
         this.renderRoot.querySelector<HTMLElement>(".toolbar")
       )?.focus();
     }
+    this.#observeToolbar();
     if (this.isConnected && this.shadowRoot) {
       this.#dragging ??= createBlockDragging({
         onDrop: (source, place) => this.#drop(source, place),
@@ -627,7 +652,9 @@ export class MailQuilt extends LitElement {
 
     return html`
       ${this.#renderToolbar()} ${this.#renderPreview()}
-      <div class="announcement" role="status">${this.#announcement}</div>
+      <div class="announcement" role="status">
+        ${keyed(this.#announcementId, html`<span>${this.#announcement}</span>`)}
+      </div>
       <p hidden id="block-keys">
         Press Enter to edit the text, and Escape to come back. Use arrow keys to
         select another Block, and Alt with arrow keys to move this one.
@@ -637,6 +664,7 @@ export class MailQuilt extends LitElement {
         @beforeinput=${this.#onBeforeInput}
         @keydown=${this.#onKeydown}
         style=${styleMap({
+          "--toolbar-height": `${this.#toolbarHeight}px`,
           "background-color": settings.backgroundColor,
           "font-family": settings.fontFamily,
           width: `${settings.width}px`,
@@ -652,11 +680,7 @@ export class MailQuilt extends LitElement {
                 row.columns,
                 (column) => column.id,
                 (column, columnIndex) =>
-                  this.#renderColumn(
-                    document,
-                    column,
-                    `Row ${rowIndex + 1}, Column ${columnIndex + 1}`
-                  )
+                  this.#renderColumn(column, columnLabel(rowIndex, columnIndex))
               )}
             </div>
           `
@@ -698,11 +722,7 @@ export class MailQuilt extends LitElement {
     `;
   }
 
-  #renderColumn(
-    document: BlocksDocument,
-    { blocks, id, width }: Column,
-    place: string
-  ) {
+  #renderColumn({ blocks, id, width }: Column, place: string) {
     return html`
       <div
         class=${blocks.length === 0 ? "column empty" : "column"}
@@ -712,16 +732,17 @@ export class MailQuilt extends LitElement {
         ${repeat(
           blocks,
           (block) => block.id,
-          (block) => html`
+          (block, blockIndex) => html`
             <div
               aria-current=${block.id === this.#activeBlockId ? "true" : nothing}
               aria-describedby="block-keys"
-              aria-label=${`Text Block, ${placeLabel(document, block.id)}`}
+              aria-label=${`Text Block, ${place}, ${positionLabel(blockIndex, blocks.length)}`}
               class="block"
               data-block-id=${block.id}
               role="group"
               tabindex="0"
-              @focus=${() => this.#selectBlock(block.id)}
+              @focus=${(event: FocusEvent) =>
+                this.#onBlockFocus(event, block.id)}
               @keydown=${this.#onBlockKeydown}
             >
               <div
@@ -911,6 +932,12 @@ export class MailQuilt extends LitElement {
     return this.#activeBlockId === undefined
       ? undefined
       : this.#views.get(this.#activeBlockId);
+  }
+
+  /** Firefox's scroll on focus leaves a Block that's partly in view where it is. */
+  #onBlockFocus({ currentTarget }: FocusEvent, blockId: string) {
+    this.#selectBlock(blockId);
+    (currentTarget as HTMLElement).scrollIntoView({ block: "nearest" });
   }
 
   #selectBlock(blockId: string) {
@@ -1190,6 +1217,23 @@ export class MailQuilt extends LitElement {
   }
 
   /**
+   * A key that moved focus into a Block's text would otherwise keep repeating
+   * there, adding empty paragraphs. Repeats only count where the press began.
+   */
+  readonly #onKeydownCapture = (event: KeyboardEvent) => {
+    if (event.key !== "Enter") {
+      return;
+    }
+    const [target] = event.composedPath();
+    if (!event.repeat) {
+      this.#enterPressedOn = target;
+    } else if (target !== this.#enterPressedOn) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  };
+
+  /**
    * These act only with focus on the Block itself. In its text, the same keys move
    * the cursor, by word with Alt on macOS, and Enter starts a new paragraph.
    */
@@ -1200,8 +1244,16 @@ export class MailQuilt extends LitElement {
     }
     const block = event.currentTarget as HTMLElement;
     if (event.target !== block) {
-      if (event.key === "Escape" && !event.isComposing) {
+      // WebKit can end a composition first, and then report the key as 229.
+      if (
+        event.key === "Escape" &&
+        !event.isComposing &&
+        event.keyCode !== 229
+      ) {
         event.preventDefault();
+        // This one is used up, so a host's dialog stays open. Pressed again on the
+        // Block, it reaches the host.
+        event.stopPropagation();
         block.focus();
       }
       return;
@@ -1212,16 +1264,16 @@ export class MailQuilt extends LitElement {
       this.#activeView?.focus();
       return;
     }
-    const selectIn = arrowDirection(event, { alt: false });
-    const moveIn = arrowDirection(event, { alt: true });
-    if (selectIn || moveIn) {
-      // The page would scroll too, or go back in history with Alt+Left.
-      event.preventDefault();
+    const direction = arrowDirection(event);
+    if (!direction) {
+      return;
     }
-    if (selectIn) {
-      this.#selectNeighbour(selectIn);
-    } else if (moveIn) {
-      this.#moveSelectedBlock(moveIn);
+    // The page would scroll too, or go back in history with Alt+Left.
+    event.preventDefault();
+    if (event.altKey) {
+      this.#moveSelectedBlock(direction);
+    } else {
+      this.#selectNeighbour(direction);
     }
   }
 
@@ -1245,21 +1297,49 @@ export class MailQuilt extends LitElement {
     }
     const command = moveCommand(document, blockId, direction);
     if (!command) {
-      this.#announcement = `The Block can't move ${direction}.`;
-      this.requestUpdate();
+      this.#announce(`The Block can't move ${direction}.`);
       return;
     }
     if (this.#tryCommand(command)) {
       this.#announceMove(blockId);
       this.#publishStructure();
+      this.#revealBlock(blockId);
     }
   }
 
-  #announceMove(blockId: string) {
+  #announceMove(blockId: string, prefix = "Moved to") {
     const document = this.#editor?.getDocument();
     const place = document && placeLabel(document, blockId);
     if (place) {
-      this.#announcement = `Moved to ${place}.`;
+      this.#announce(`${prefix} ${place}.`);
+    }
+  }
+
+  #announce(text: string) {
+    this.#announcement = text;
+    this.#announcementId += 1;
+    this.requestUpdate();
+  }
+
+  /**
+   * Focus alone doesn't do this. A Block keeps focus if its neighbour is what moves
+   * in the DOM, and focusing its text doesn't scroll.
+   */
+  async #revealBlock(blockId: string) {
+    await this.updateComplete;
+    this.#blockElement(blockId)?.scrollIntoView({ block: "nearest" });
+  }
+
+  #observeToolbar() {
+    const toolbar = this.isConnected
+      ? this.renderRoot.querySelector(".toolbar")
+      : null;
+    if (toolbar !== this.#observedToolbar) {
+      this.#toolbarObserver.disconnect();
+      if (toolbar) {
+        this.#toolbarObserver.observe(toolbar);
+      }
+      this.#observedToolbar = toolbar;
     }
   }
 
@@ -1315,13 +1395,23 @@ export class MailQuilt extends LitElement {
 
   #stepHistory(step: "redo" | "undo") {
     const editor = this.#editor;
-    if (!editor?.[step]()) {
+    if (!editor) {
+      return;
+    }
+    let moved: string[] = [];
+    const stopListening = editor.subscribe((operations) => {
+      moved = operations.flatMap((operation) =>
+        operation.type === "move" ? [operation.blockId] : []
+      );
+    });
+    const changed = editor[step]();
+    stopListening();
+    if (!changed) {
       return;
     }
     // The change can move the selection the link field would apply to.
     this.#closeLinkForm();
-    // So that the same move, made again, is a change for a screen reader to read.
-    this.#announcement = "";
+    this.#announceHistoryStep(step, moved);
     const document = editor.getDocument();
     for (const row of document.rows) {
       for (const column of row.columns) {
@@ -1335,6 +1425,22 @@ export class MailQuilt extends LitElement {
     // Undo and redo can add, remove or move Blocks, Columns and Rows.
     this.requestUpdate();
     this.#emitChange(document);
+  }
+
+  /** One Block moved, or nothing to say. A layout can move many at once. */
+  #announceHistoryStep(step: "redo" | "undo", moved: string[]) {
+    const [blockId] = moved;
+    if (blockId === undefined || moved.length > 1) {
+      this.#announce("");
+      return;
+    }
+    this.#announceMove(
+      blockId,
+      `${step === "undo" ? "Undo" : "Redo"} moved a Block to`
+    );
+    if (blockId === this.#activeBlockId) {
+      this.#revealBlock(blockId);
+    }
   }
 
   #show(document: BlocksDocument | undefined) {

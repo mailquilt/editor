@@ -10,14 +10,11 @@ const ARROW_KEYS: Record<string, Direction> = {
   ArrowUp: "up",
 };
 
-/** The direction of an arrow key pressed with no modifier other than, if asked, Alt. */
-export const arrowDirection = (
-  event: KeyboardEvent,
-  { alt }: { alt: boolean }
-): Direction | undefined =>
-  event.altKey === alt && !(event.ctrlKey || event.metaKey || event.shiftKey)
-    ? ARROW_KEYS[event.key]
-    : undefined;
+/** The direction of an arrow key, pressed alone or with only Alt. */
+export const arrowDirection = (event: KeyboardEvent): Direction | undefined =>
+  event.ctrlKey || event.metaKey || event.shiftKey
+    ? undefined
+    : ARROW_KEYS[event.key];
 
 const locate = (document: BlocksDocument, blockId: string) => {
   const position = findBlockPosition(document, blockId);
@@ -32,12 +29,18 @@ const locate = (document: BlocksDocument, blockId: string) => {
   return column && { ...position, column, columnIndex, row };
 };
 
+export const columnLabel = (rowIndex: number, columnIndex: number) =>
+  `Row ${rowIndex + 1}, Column ${columnIndex + 1}`;
+
+export const positionLabel = (index: number, count: number) =>
+  `position ${index + 1} of ${count}`;
+
 /** Where a Block is, in words. */
 export const placeLabel = (document: BlocksDocument, blockId: string) => {
   const place = locate(document, blockId);
   return (
     place &&
-    `Row ${place.rowIndex + 1}, Column ${place.columnIndex + 1}, position ${place.index + 1} of ${place.column.blocks.length}`
+    `${columnLabel(place.rowIndex, place.columnIndex)}, ${positionLabel(place.index, place.column.blocks.length)}`
   );
 };
 
