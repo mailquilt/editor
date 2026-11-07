@@ -360,11 +360,22 @@ export class MailQuilt extends LitElement {
       .block:hover .drag-handle,
       .block[aria-current="true"] .drag-handle {
         opacity: 1;
+        z-index: 2;
       }
 
       @media (hover: none) {
         .drag-handle {
           opacity: 1;
+        }
+      }
+
+      /*
+       * Only a thin Spacer's handle reaches past its Block. While it's hidden it
+       * leaves that space alone. While it shows, it's on top, to be pressed.
+       */
+      @media (hover: hover) {
+        .block:has(> .spacer):not(:hover, [aria-current="true"]) .drag-handle {
+          pointer-events: none;
         }
       }
 
@@ -387,7 +398,7 @@ export class MailQuilt extends LitElement {
         justify-content: space-between;
         line-height: 1.5;
         padding: 2px 4px;
-        /* Above what reaches past a thin Spacer, so that its buttons get clicks. */
+        /* Above a thin Spacer's click area, so that its buttons get clicks. */
         position: relative;
         z-index: 1;
       }
@@ -514,7 +525,7 @@ export class MailQuilt extends LitElement {
         padding: 4px;
         position: sticky;
         top: 0;
-        z-index: 2;
+        z-index: 3;
       }
 
       .move-block {

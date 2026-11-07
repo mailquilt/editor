@@ -98,6 +98,27 @@ const takesClickAt = (locator: Locator, offsetX: number, offsetY: number) =>
     [offsetX, offsetY]
   );
 
+/** A Spacer alone in Row 1, right between Row 1's and Row 2's controls. */
+const spacerBetweenRowControls = async (page: Page, height: string) => {
+  await open(page, ["spacer"]);
+  await blockGroup(page, "Spacer").focus();
+  await change(field(page, "Height (px)"), height);
+  await page.getByRole("button", { name: "Add Row" }).click();
+};
+
+const layoutOf = (page: Page, row: string) =>
+  page
+    .getByRole("group", { name: row })
+    .getByRole("button", { exact: true, name: "100" });
+
+const spacerHandle = (page: Page) =>
+  blockGroup(page, "Spacer").locator(".drag-handle");
+
+const makeThin = async (page: Page) => {
+  await blockGroup(page, "Spacer").focus();
+  await change(field(page, "Height (px)"), "1");
+};
+
 const NAMES = ["Image", "Divider", "Spacer"];
 
 const withArticle = (name: string) =>
@@ -745,24 +766,124 @@ test.describe("a Spacer", () => {
     test(`leaves Row controls their clicks at a height of ${height}`, async ({
       page,
     }) => {
-      await open(page, ["spacer"]);
-      await blockGroup(page, "Spacer").focus();
-      await change(field(page, "Height (px)"), height);
-      await page.getByRole("button", { name: "Add Row" }).click();
-      const layoutOf = (row: string) =>
-        page
-          .getByRole("group", { name: row })
-          .getByRole("button", { exact: true, name: "100" });
-      const above = await box(layoutOf("Row 1"));
+      await spacerBetweenRowControls(page, height);
+      // Selects something else, as a selected Spacer's handle shows on top.
+      await page
+        .getByRole("button", { name: /^Add Text Block here, Row 2/u })
+        .click();
+      await expect(blockGroup(page, "Spacer")).not.toHaveAttribute(
+        "aria-current",
+        "true"
+      );
+      const above = await box(layoutOf(page, "Row 1"));
 
       // Row 1's controls are above it, under the part that reaches up.
       await expect(
-        takesClickAt(layoutOf("Row 1"), above.width / 2, above.height - 3)
+        takesClickAt(layoutOf(page, "Row 1"), above.width / 2, above.height - 3)
       ).resolves.toBeTruthy();
-      // Row 2's are below it, under its drag handle as well.
-      await expect(takesClickAt(layoutOf("Row 2"), 6, 3)).resolves.toBeTruthy();
+      // Row 2's are below it, under its hidden drag handle as well.
+      await expect(
+        takesClickAt(layoutOf(page, "Row 2"), 6, 3)
+      ).resolves.toBeTruthy();
     });
   }
+
+  test("covers a Row's control with its handle only as far as the handle goes", async ({
+    page,
+  }) => {
+    await spacerBetweenRowControls(page, "1");
+
+    await expect(blockGroup(page, "Spacer")).toHaveAttribute(
+      "aria-current",
+      "true"
+    );
+    await expect(
+      takesClickAt(layoutOf(page, "Row 2"), 6, 3)
+    ).resolves.toBeFalsy();
+    await expect(
+      takesClickAt(layoutOf(page, "Row 2"), 14, 12)
+    ).resolves.toBeTruthy();
+  });
+
+  test.describe("as thin as it gets", () => {
+    test("moves by its handle when selected, not what comes next", async ({
+      page,
+    }) => {
+      await open(page, ["spacer", "text", "heading"]);
+      await makeThin(page);
+
+      await dragTo(page, spacerHandle(page), blockGroup(page, "Heading"));
+
+      await expect(blockTypes(page)).resolves.toEqual([
+        "text",
+        "heading",
+        "spacer",
+      ]);
+    });
+
+    test("moves by its handle when selected, with a Row right below", async ({
+      page,
+    }) => {
+      await open(page, ["spacer"]);
+      await makeThin(page);
+      await page.getByRole("button", { name: "Add Row" }).click();
+      await blockGroup(page, "Spacer").focus();
+
+      await dragTo(
+        page,
+        spacerHandle(page),
+        canvas(page).locator(".column.empty")
+      );
+
+      await expect(blockTypes(page, 0, 0)).resolves.toEqual([]);
+      await expect(blockTypes(page, 1, 0)).resolves.toEqual(["spacer"]);
+    });
+
+    test("moves by its handle when only hovered", async ({ page }) => {
+      await open(page, ["text", "spacer", "heading"]);
+      await makeThin(page);
+      await blockGroup(page, "Text").focus();
+      const { x, y, width } = await blockGroup(page, "Spacer").evaluate(
+        (element) => {
+          const rect = element.getBoundingClientRect();
+          return { width: rect.width, x: rect.x, y: rect.y };
+        }
+      );
+
+      // Along the line, as a pointer finds the handle by finding the Spacer.
+      await page.mouse.move(x + width / 2, y);
+      await page.mouse.move(x + 8, y, { steps: 8 });
+      await expect(spacerHandle(page)).toHaveCSS("opacity", "1");
+      await dragTo(page, spacerHandle(page), blockGroup(page, "Heading"));
+
+      await expect(blockTypes(page)).resolves.toEqual([
+        "text",
+        "heading",
+        "spacer",
+      ]);
+    });
+
+    test("leaves the next Block its own handle, while selected", async ({
+      page,
+    }) => {
+      await open(page, ["spacer", "text", "heading"]);
+      await makeThin(page);
+      const text = blockGroup(page, "Text");
+      await text.hover();
+
+      await dragTo(
+        page,
+        text.locator(".drag-handle"),
+        blockGroup(page, "Heading")
+      );
+
+      await expect(blockTypes(page)).resolves.toEqual([
+        "spacer",
+        "heading",
+        "text",
+      ]);
+    });
+  });
 
   for (const height of ["0", "1001"]) {
     test(`refuses a height of ${height}, and says so`, async ({ page }) => {
@@ -780,6 +901,47 @@ test.describe("a Spacer", () => {
       );
     });
   }
+});
+
+test.describe("a selected Block's drag handle", () => {
+  test("goes under the toolbar when the page scrolls", async ({ page }) => {
+    await open(page, ["text"]);
+    await page.setViewportSize({ height: 300, width: 1280 });
+    await blockGroup(page, "Text").focus();
+
+    const onTop = await blockGroup(page, "Text")
+      .locator(".drag-handle")
+      .evaluate((handle) => {
+        const root = handle.getRootNode() as ShadowRoot;
+        const toolbar = root.querySelector(".toolbar") as Element;
+        // To the top of the window, where the toolbar sticks.
+        window.scrollBy(0, handle.getBoundingClientRect().y);
+        const { height, width, x, y } = handle.getBoundingClientRect();
+        const hit = root.elementFromPoint(x + width / 2, y + height / 2);
+        return { handle: hit === handle, toolbar: toolbar.contains(hit) };
+      });
+
+    expect(onTop).toEqual({ handle: false, toolbar: true });
+  });
+});
+
+test.describe("a drag handle on a touch screen", () => {
+  test.skip(
+    ({ browserName }) => browserName !== "chromium",
+    "Only Chromium can emulate a phone."
+  );
+  test.use({ hasTouch: true, isMobile: true });
+
+  test("can always be pressed, as nothing hovers to reveal it", async ({
+    page,
+  }) => {
+    await open(page, ["text", "spacer"]);
+
+    await expect(blockGroup(page, "Spacer").locator(".drag-handle")).toHaveCSS(
+      "pointer-events",
+      "auto"
+    );
+  });
 });
 
 test.describe("accessibility", () => {
