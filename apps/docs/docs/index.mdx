@@ -7,6 +7,30 @@ Mail Quilt is an email builder that developers embed in their apps.
 
 [Try the Playground](./playground)
 
+## Use it without a bundler
+
+On a page with no build step, such as in Rails, Laravel or plain HTML, load the CDN build from a `<script type="module">`:
+
+```html
+<mail-quilt></mail-quilt>
+<script type="module">
+  import "https://cdn.jsdelivr.net/npm/@mailquilt/editor@0.1.0/dist/cdn/index.js";
+
+  const editor = document.querySelector("mail-quilt");
+  editor.addEventListener("mq-change", (event) => {
+    save(event.detail.document);
+  });
+  editor.addEventListener("mq-error", (event) => {
+    showLoadError(event.detail.reason);
+  });
+  editor.value = savedDocument;
+
+  const html = await editor.exportHtml();
+</script>
+```
+
+Use the full path to `dist/cdn/index.js`, including the version. MJML loads from a file beside it when Preview or `exportHtml()` first needs it, and that file can't be found from a shortened URL such as `https://cdn.jsdelivr.net/npm/@mailquilt/editor`.
+
 ## Content Security Policy
 
 Preview shows the email in a sandboxed iframe, and that iframe inherits your page's Content Security Policy. Emails rely on inline styles, so Preview needs `'unsafe-inline'` in `style-src`:

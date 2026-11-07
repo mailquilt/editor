@@ -42,5 +42,5 @@ for (const name of Object.keys(
     `overrides:\n${overrides}\n`
   );
   pnpm(dir, "install");
-  pnpm(dir, "run", "build");
+  pnpm(dir, "run", "--if-present", "build");
 }

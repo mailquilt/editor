@@ -444,8 +444,9 @@ With a bundler, import `"@mailquilt/editor"`. Without one, such as in Rails, Lar
 ```html
 <mail-quilt id="builder"></mail-quilt>
 <script type="module">
-  // The URL points at the CDN build of @mailquilt/editor.
-  import "https://cdn.example/@mailquilt/editor";
+  // The full path to the CDN build of @mailquilt/editor, because MJML loads from
+  // a file beside it.
+  import "https://cdn.example/@mailquilt/editor@0.1.0/dist/cdn/index.js";
 
   const builder = document.querySelector("#builder");
   builder.value = savedDocument;

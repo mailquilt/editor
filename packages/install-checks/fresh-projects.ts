@@ -5,9 +5,13 @@ import path from "node:path";
 export const freshProjectsDir = path.join(tmpdir(), "mailquilt-install-checks");
 
 export const freshProjects = {
+  cdn: { port: 4177 },
   "plain-js": { port: 4175 },
   react: { port: 4176 },
 } as const;
+
+/** Serves `@mailquilt/editor` as a CDN would. `projects/cdn/index.html` names it. */
+export const cdnPort = 4178;
 
 export const freshProjectDir = (name: keyof typeof freshProjects) =>
   path.join(freshProjectsDir, name);

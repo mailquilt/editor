@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Mail Quilt CDN install check</title>
+  </head>
+  <body>
+    <mail-quilt></mail-quilt>
+    <button id="export" type="button">Export HTML</button>
+    <output data-testid="exported-html"></output>
+    <output data-testid="load-error"></output>
+    <script type="module">
+      import "http://localhost:4178/dist/cdn/index.js";
+
+      const starterEmail = {
+        kind: "blocks",
+        rows: [
+          {
+            columns: [
+              {
+                blocks: [
+                  {
+                    id: "block-1",
+                    props: {
+                      content: {
+                        content: [
+                          {
+                            content: [{ text: "Hello", type: "text" }],
+                            type: "paragraph",
+                          },
+                        ],
+                        type: "doc",
+                      },
+                    },
+                    type: "text",
+                  },
+                ],
+                id: "column-1",
+                props: {},
+                width: 100,
+              },
+            ],
+            id: "row-1",
+            props: {},
+          },
+        ],
+        settings: {
+          backgroundColor: "#ffffff",
+          fontFamily: "Arial, Helvetica, sans-serif",
+          width: 600,
+        },
+        version: 1,
+      };
+
+      const editor = document.querySelector("mail-quilt");
+      const saved = localStorage.getItem("email");
+
+      editor.addEventListener("mq-change", (event) => {
+        localStorage.setItem("email", JSON.stringify(event.detail.document));
+      });
+      editor.addEventListener("mq-error", (event) => {
+        document.querySelector("[data-testid=load-error]").textContent =
+          event.detail.reason;
+      });
+      editor.value = saved ? JSON.parse(saved) : starterEmail;
+
+      document.querySelector("#export").addEventListener("click", async () => {
+        document.querySelector("[data-testid=exported-html]").textContent =
+          await editor.exportHtml();
+      });
+    </script>
+  </body>
+</html>
