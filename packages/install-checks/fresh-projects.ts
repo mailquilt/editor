@@ -10,7 +10,7 @@ export const freshProjects = {
   react: { port: 4176 },
 } as const;
 
-/** Serves `@mailquilt/editor` as a CDN would. `projects/cdn/index.html` names it. */
+/** Serves `@mailquilt/editor` as a CDN would. */
 export const cdnPort = 4178;
 
 export const freshProjectDir = (name: keyof typeof freshProjects) =>

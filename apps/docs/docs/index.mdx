@@ -13,6 +13,7 @@ On a page with no build step, such as in Rails, Laravel or plain HTML, load the 
 
 ```html
 <mail-quilt></mail-quilt>
+<button id="export" type="button">Export</button>
 <script type="module">
   import "https://cdn.jsdelivr.net/npm/@mailquilt/editor@0.1.0/dist/cdn/index.js";
 
@@ -25,11 +26,16 @@ On a page with no build step, such as in Rails, Laravel or plain HTML, load the 
   });
   editor.value = savedDocument;
 
-  const html = await editor.exportHtml();
+  document.querySelector("#export").addEventListener("click", async () => {
+    send(await editor.exportHtml());
+  });
 </script>
 ```
 
-Use the full path to `dist/cdn/index.js`, including the version. MJML loads from a file beside it when Preview or `exportHtml()` first needs it, and that file can't be found from a shortened URL such as `https://cdn.jsdelivr.net/npm/@mailquilt/editor`.
+MJML loads from a file beside the build the first time Preview or `exportHtml()` needs it.
+
+- **Use the full path to `dist/cdn/index.js`.** A shortened URL, such as `https://cdn.jsdelivr.net/npm/@mailquilt/editor`, doesn't point at this build.
+- **Pin the version.** Each release can rename the MJML file, so an unpinned URL can ask for a file the latest release no longer has.
 
 ## Content Security Policy
 
@@ -40,3 +46,11 @@ Content-Security-Policy: style-src 'self' 'unsafe-inline'
 ```
 
 Without it, Preview shows the email without its styling. The editor and `exportHtml()` aren't affected, and the exported HTML is unchanged.
+
+A page using the CDN build also needs `script-src` to allow the folder holding the build, because the build is several files. The path must end in `/`:
+
+```text
+Content-Security-Policy: script-src 'self' https://cdn.jsdelivr.net/npm/@mailquilt/editor@0.1.0/dist/cdn/
+```
+
+If that allows only `dist/cdn/index.js`, the editor doesn't load. An inline script like the one above also needs a nonce or hash, or you can move it to a file of your own.

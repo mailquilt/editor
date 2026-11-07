@@ -444,8 +444,7 @@ With a bundler, import `"@mailquilt/editor"`. Without one, such as in Rails, Lar
 ```html
 <mail-quilt id="builder"></mail-quilt>
 <script type="module">
-  // The full path to the CDN build of @mailquilt/editor, because MJML loads from
-  // a file beside it.
+  // The full path to the CDN build of @mailquilt/editor.
   import "https://cdn.example/@mailquilt/editor@0.1.0/dist/cdn/index.js";
 
   const builder = document.querySelector("#builder");
@@ -454,7 +453,7 @@ With a bundler, import `"@mailquilt/editor"`. Without one, such as in Rails, Lar
     save(event.detail.document);
   });
   builder.addEventListener("mq-error", (event) => {
-    showLoadError(event.detail);
+    showLoadError(event.detail.reason);
   });
 
   const html = await builder.exportHtml();
