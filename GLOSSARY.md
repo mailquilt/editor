@@ -13,6 +13,9 @@ _Avoid_: Section
 **Column**:
 A vertical slot within a Row that holds Blocks.
 
+**Layout**:
+A preset of Column widths for a Row, such as 33/67.
+
 **Block**:
 A single piece of email content inside a Column, such as text, an image or a button.
 _Avoid_: Element, widget, component

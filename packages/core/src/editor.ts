@@ -1,19 +1,17 @@
-import * as v from "valibot";
-
-import { describeIssues, validateProps } from "./blocks.js";
+import { planCommand } from "./commands.js";
+import type { Command } from "./commands.js";
 import type { BlocksDocument } from "./document.js";
 import { loadDocument } from "./load-document.js";
-import { applyOperation, findBlock, reverseOperation } from "./operations.js";
+import { applyOperation, reverseOperation } from "./operations.js";
 import type { Operation } from "./operations.js";
 
-/** A request to change an email. It can be rejected. */
-export interface Command {
-  type: "updateProps";
-  blockId: string;
-  props: Record<string, unknown>;
-}
-
-export type ApplyResult = { ok: true } | { ok: false; reason: string };
+export type ApplyResult =
+  | {
+      ok: true;
+      /** The ID of what the Command added, if it added a Block or Row. */
+      createdId?: string;
+    }
+  | { ok: false; reason: string };
 
 export interface ApplyOptions {
   /**
@@ -36,12 +34,6 @@ export interface Editor {
    */
   subscribe: (listener: (operations: Operation[]) => void) => () => void;
 }
-
-const commandSchema = v.strictObject({
-  blockId: v.string(),
-  props: v.record(v.string(), v.unknown()),
-  type: v.literal("updateProps"),
-});
 
 export const createEditor = ({
   document: initialDocument,
@@ -75,33 +67,12 @@ export const createEditor = ({
 
   return {
     apply: (command, options) => {
-      const parsed = v.safeParse(commandSchema, command);
-      if (!parsed.success) {
-        return {
-          ok: false,
-          reason: `Invalid Command: ${describeIssues(parsed.issues)}`,
-        };
+      const plan = planCommand(current, command);
+      if (!plan.ok) {
+        return plan;
       }
 
-      const { blockId, props } = parsed.output;
-      const block = findBlock(current, blockId);
-      if (!block) {
-        return { ok: false, reason: `No Block with ID "${blockId}"` };
-      }
-
-      const validated = validateProps(block, { ...block.props, ...props });
-      if (!validated.valid) {
-        return { ok: false, reason: validated.reason };
-      }
-
-      const operations: Operation[] = [
-        {
-          blockId,
-          previousProps: block.props,
-          props: validated.props,
-          type: "setProps",
-        },
-      ];
+      const { createdId, operations } = plan;
       changeDocument(operations);
       const mergeKey = options?.mergeKey;
       const openStep = undoStack.at(-1);
@@ -113,7 +84,7 @@ export const createEditor = ({
       openMergeKey = mergeKey;
       redoStack.length = 0;
       notify(operations);
-      return { ok: true };
+      return createdId === undefined ? { ok: true } : { createdId, ok: true };
     },
     getDocument: () => structuredClone(current),
     redo: () => {

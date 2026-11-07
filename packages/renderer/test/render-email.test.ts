@@ -67,6 +67,35 @@ const linked = (href: string, text = "Click") => ({
   type: "text",
 });
 
+const emailWithColumns = (
+  ...columns: { texts: string[]; width: number }[]
+): BlocksDocument => ({
+  ...emailWithText(""),
+  rows: [
+    {
+      columns: columns.map(({ texts, width }, columnIndex) => ({
+        blocks: texts.map((text, blockIndex) => ({
+          id: `block-${columnIndex}-${blockIndex}`,
+          props: {
+            content: {
+              content: [
+                { content: [{ text, type: "text" }], type: "paragraph" },
+              ],
+              type: "doc",
+            },
+          },
+          type: "text",
+        })),
+        id: `column-${columnIndex}`,
+        props: {},
+        width,
+      })),
+      id: "row-1",
+      props: {},
+    },
+  ],
+});
+
 describe(renderEmail, () => {
   it("matches the saved HTML for one Text Block", async () => {
     const html = await renderEmail(
@@ -74,6 +103,70 @@ describe(renderEmail, () => {
     );
 
     await expect(html).toMatchFileSnapshot("expected/one-text-block.html");
+  });
+
+  it.each([
+    [
+      "50-50",
+      emailWithColumns(
+        { texts: ["Left"], width: 50 },
+        { texts: ["Right"], width: 50 }
+      ),
+    ],
+    [
+      "33-67",
+      emailWithColumns(
+        { texts: ["Narrow"], width: 33 },
+        { texts: ["Wide"], width: 67 }
+      ),
+    ],
+    [
+      "67-33",
+      emailWithColumns(
+        { texts: ["Wide"], width: 67 },
+        { texts: ["Narrow"], width: 33 }
+      ),
+    ],
+    [
+      "33-33-33",
+      emailWithColumns(
+        { texts: ["One"], width: 33.33 },
+        { texts: ["Two"], width: 33.33 },
+        { texts: ["Three"], width: 33.34 }
+      ),
+    ],
+    [
+      "25-25-25-25",
+      emailWithColumns(
+        { texts: ["One"], width: 25 },
+        { texts: ["Two"], width: 25 },
+        { texts: ["Three"], width: 25 },
+        { texts: ["Four"], width: 25 }
+      ),
+    ],
+    [
+      "50-50-empty-column",
+      emailWithColumns(
+        { texts: [], width: 50 },
+        { texts: ["Right"], width: 50 }
+      ),
+    ],
+    [
+      "33-33-33-empty-columns",
+      emailWithColumns(
+        { texts: ["Only"], width: 33.33 },
+        { texts: [], width: 33.33 },
+        { texts: [], width: 33.34 }
+      ),
+    ],
+    [
+      "50-50-all-empty",
+      emailWithColumns({ texts: [], width: 50 }, { texts: [], width: 50 }),
+    ],
+  ])("matches the saved HTML for the %s Row", async (name, email) => {
+    await expect(renderEmail(email)).resolves.toMatchFileSnapshot(
+      `expected/columns-${name}.html`
+    );
   });
 
   it("keeps Merge Tags intact", async () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { Block, BlocksDocument } from "../src/index.js";
+import type { Block, BlocksDocument, Column, Row } from "../src/index.js";
 import { applyOperation, reverseOperation } from "../src/operations.js";
 import type { Operation } from "../src/operations.js";
 
@@ -25,6 +25,11 @@ const email = (): BlocksDocument => ({
   },
   version: 1,
 });
+
+const rowIds = (document: BlocksDocument) => document.rows.map(({ id }) => id);
+
+const columnIds = (document: BlocksDocument) =>
+  document.rows[0]?.columns.map(({ id }) => id);
 
 const blockIds = (document: BlocksDocument) =>
   document.rows[0]?.columns.map((column) => column.blocks.map(({ id }) => id));
@@ -63,6 +68,39 @@ const setProps: Operation = {
   type: "setProps",
 };
 
+const newRow = { columns: [], id: "new-row", props: {} };
+
+const insertRow: Operation = { index: 0, row: newRow, type: "insert" };
+
+const removeRow: Operation = {
+  index: 0,
+  row: email().rows[0] as Row,
+  type: "remove",
+};
+
+const newColumn = { blocks: [], id: "middle", props: {}, width: 20 };
+
+const insertColumn: Operation = {
+  column: newColumn,
+  index: 1,
+  rowId: "row",
+  type: "insert",
+};
+
+const removeColumn: Operation = {
+  column: email().rows[0]?.columns[1] as Column,
+  index: 1,
+  rowId: "row",
+  type: "remove",
+};
+
+const setColumnWidth: Operation = {
+  columnId: "left",
+  previousWidth: 50,
+  type: "setColumnWidth",
+  width: 75,
+};
+
 describe("applying an Operation", () => {
   it("inserts a Block at an index in a Column", () => {
     expect(blockIds(applied(insert))).toStrictEqual([["a", "new", "b"], ["c"]]);
@@ -93,6 +131,49 @@ describe("applying an Operation", () => {
     expect(changed?.props).toStrictEqual({ content: "new" });
   });
 
+  it("inserts a Row at an index", () => {
+    expect(rowIds(applied(insertRow))).toStrictEqual(["new-row", "row"]);
+  });
+
+  it("removes a Row with everything in it", () => {
+    expect(applied(removeRow).rows).toStrictEqual([]);
+  });
+
+  it("inserts a Column at an index in a Row", () => {
+    expect(columnIds(applied(insertColumn))).toStrictEqual([
+      "left",
+      "middle",
+      "right",
+    ]);
+  });
+
+  it("removes a Column from a Row", () => {
+    expect(columnIds(applied(removeColumn))).toStrictEqual(["left"]);
+  });
+
+  it("sets a Column's width", () => {
+    expect(applied(setColumnWidth).rows[0]?.columns[0]?.width).toBe(75);
+  });
+
+  it("keeps an inserted Row separate from the Operation", () => {
+    const row: Row = {
+      columns: [{ blocks: [], id: "inside", props: {}, width: 100 }],
+      id: "new-row",
+      props: {},
+    };
+    const document = email();
+    applyOperation(document, { index: 0, row, type: "insert" });
+
+    applyOperation(document, {
+      block: block("new"),
+      columnId: "inside",
+      index: 0,
+      type: "insert",
+    });
+
+    expect(row.columns[0]?.blocks).toStrictEqual([]);
+  });
+
   it("keeps an inserted Block separate from the Operation", () => {
     const document = applied(insert);
 
@@ -111,8 +192,19 @@ describe("applying an Operation", () => {
     ["a remove from", { ...remove, columnId: "missing" }],
     ["a move from", { ...move, from: { columnId: "missing", index: 0 } }],
     ["a move to", { ...move, to: { columnId: "missing", index: 0 } }],
+    ["a width on", { ...setColumnWidth, columnId: "missing" }],
   ] as [string, Operation][])(
     "throws for %s a missing Column",
+    (_name, operation) => {
+      expect(() => applied(operation)).toThrow(/missing/u);
+    }
+  );
+
+  it.each([
+    ["an insert into", { ...insertColumn, rowId: "missing" }],
+    ["a remove from", { ...removeColumn, rowId: "missing" }],
+  ] as [string, Operation][])(
+    "throws for %s a missing Row",
     (_name, operation) => {
       expect(() => applied(operation)).toThrow(/missing/u);
     }
@@ -136,6 +228,11 @@ describe.each([
   ["remove", remove],
   ["move", move],
   ["set properties", setProps],
+  ["insert Row", insertRow],
+  ["remove Row", removeRow],
+  ["insert Column", insertColumn],
+  ["remove Column", removeColumn],
+  ["set Column width", setColumnWidth],
 ] as [string, Operation][])("the %s Operation", (_name, operation) => {
   it("is undone by its reverse", () => {
     const document = applied(operation);
