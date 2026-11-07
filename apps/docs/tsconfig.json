@@ -3,7 +3,13 @@
   "compilerOptions": {
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "noEmit": true
+    "noEmit": true,
+    "types": ["node"]
   },
-  "include": ["islands", "blume.config.ts"]
+  "include": [
+    "islands",
+    "browser-tests",
+    "blume.config.ts",
+    "playwright.config.ts"
+  ]
 }
