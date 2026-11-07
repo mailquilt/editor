@@ -1,0 +1,13 @@
+{
+  "extends": "@repo/typescript-config/react-library.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": [
+    "src",
+    "browser-tests",
+    "playwright.config.ts",
+    "tsdown.config.ts"
+  ],
+  "exclude": ["browser-tests/host/dist"]
+}
