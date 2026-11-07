@@ -22,7 +22,10 @@ export type SettingsField = FieldBase &
   (
     | { type: "color" }
     | { type: "number"; max?: number; min: number; unit: string }
-    | { type: "select"; options: readonly { label: string; value: string }[] }
+    | {
+        type: "select";
+        options: readonly { label: string; value: number | string }[];
+      }
     | { type: "text" }
   );
 
@@ -34,6 +37,21 @@ export const colorSchema = v.pipe(
   v.regex(
     /^(?:#[\da-f]{3}(?:[\da-f]{3})?|rgb\(\d{1,3},\s?\d{1,3},\s?\d{1,3}\)|rgba\(\d{1,3},\s?\d{1,3},\s?\d{1,3},\s?\d(?:\.\d{1,3})?\))$/iu,
     "Must be a color written as #rgb, #rrggbb, rgb() or rgba()"
+  )
+);
+
+export const INVALID_SOLID_COLOR =
+  "Use a solid color such as #ff0000, or rgb(255, 0, 0).";
+
+/**
+ * For a color MJML paints in two layers, as on both parts of a button, where a
+ * see-through one would come out darker than it should.
+ */
+export const solidColorSchema = v.pipe(
+  colorSchema,
+  v.check(
+    (color) => !/^rgba/iu.test(color),
+    "Must be a solid color, not rgba()"
   )
 );
 

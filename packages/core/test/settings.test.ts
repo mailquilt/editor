@@ -472,11 +472,9 @@ const keys = (fields: readonly SettingsField[]) => fields.map(({ key }) => key);
 
 describe("settings fields", () => {
   it("are alignment, color and font size for a Text Block", () => {
-    expect(keys(blockSettingsFields("text"))).toStrictEqual([
-      "align",
-      "color",
-      "fontSize",
-    ]);
+    expect(
+      keys(blockSettingsFields({ props: {}, type: "text" }))
+    ).toStrictEqual(["align", "color", "fontSize"]);
   });
 
   it("are background color for a Row", () => {

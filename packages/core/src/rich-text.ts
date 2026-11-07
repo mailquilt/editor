@@ -44,6 +44,17 @@ const ALLOWED_LINK_HREF =
 
 export const isAllowedLinkHref = (href: string) => ALLOWED_LINK_HREF.test(href);
 
+export const INVALID_LINK =
+  "Use a URL starting with https://, http://, mailto: or tel:, or a Merge Tag such as {{cta_url}}.";
+
+export const linkHrefSchema = v.pipe(
+  v.string(),
+  v.check(
+    isAllowedLinkHref,
+    "A link must start with http:, https:, mailto:, tel: or a Merge Tag"
+  )
+);
+
 const marksSchema = v.pipe(
   v.array(
     v.variant("type", [
@@ -52,13 +63,7 @@ const marksSchema = v.pipe(
       v.strictObject({ type: v.literal("underline") }),
       v.strictObject({
         attrs: v.strictObject({
-          href: v.pipe(
-            v.string(),
-            v.check(
-              isAllowedLinkHref,
-              "A link must start with http:, https:, mailto:, tel: or a Merge Tag"
-            )
-          ),
+          href: linkHrefSchema,
         }),
         type: v.literal("link"),
       }),

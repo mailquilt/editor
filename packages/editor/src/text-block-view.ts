@@ -17,6 +17,7 @@ export type ToggleableMark = "bold" | "italic" | "underline";
 
 /** What the toolbar shows for the cursor or selection. */
 export type TextFormats = Record<ToggleableMark, boolean> & {
+  canBold: boolean;
   linkHref: string | undefined;
 };
 
@@ -58,6 +59,15 @@ const Link = Mark.create({
   renderHTML: ({ HTMLAttributes }) => ["a", HTMLAttributes, 0],
 });
 
+/**
+ * Keeps the mark, so that text saved with it still opens, and takes the shortcut
+ * away. It's handled rather than removed, or the browser would make the text bold
+ * itself.
+ */
+const BoldWithoutShortcut = Bold.extend({
+  addKeyboardShortcuts: () => ({ "Mod-B": () => true, "Mod-b": () => true }),
+});
+
 /** Formatting is its own undo step, unlike the typing around it. */
 const changesFormatting = ({ steps }: Transaction) =>
   steps.some(
@@ -91,19 +101,25 @@ const cursorAfterChange = (
 };
 
 /**
- * Owns the DOM and Tiptap editor of one Text Block. Lit only places `element`
+ * Owns the DOM and Tiptap editor of one Block's text. Lit only places `element`
  * on the canvas, so the Tiptap editor survives re-renders.
  *
  * Tiptap's history stays off because its extension isn't loaded (ADR 0002).
  */
 export const createTextBlockView = ({
+  canBold,
   content,
+  label,
   onChange,
   onFocus,
   onStateChange,
   onTypingBreak,
 }: {
+  /** False for text that's bold already, where the mark would change nothing. */
+  canBold: boolean;
   content: RichTextDocument;
+  /** What a screen reader calls the text box. */
+  label: string;
   onChange: (content: RichTextDocument) => void;
   onFocus: () => void;
   /** Called after anything that may change what `formats` returns. */
@@ -116,7 +132,7 @@ export const createTextBlockView = ({
     content,
     editorProps: {
       attributes: {
-        "aria-label": "Text Block",
+        "aria-label": label,
         "aria-multiline": "true",
         role: "textbox",
       },
@@ -129,7 +145,7 @@ export const createTextBlockView = ({
       Document,
       Paragraph,
       Text,
-      Bold,
+      canBold ? Bold : BoldWithoutShortcut,
       Italic,
       Underline,
       HardBreak,
@@ -178,6 +194,7 @@ export const createTextBlockView = ({
     focus,
     formats: () => ({
       bold: editor.isActive("bold"),
+      canBold,
       italic: editor.isActive("italic"),
       linkHref: editor.isActive("link")
         ? (editor.getAttributes("link").href as string)

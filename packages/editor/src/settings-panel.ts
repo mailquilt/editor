@@ -168,7 +168,7 @@ export const fieldText = (
 
 /** What a control's text means. Empty asks for the property to be removed. */
 export const fieldValue = (
-  { type }: SettingsField,
+  field: SettingsField,
   control: HTMLInputElement | HTMLSelectElement
 ) => {
   if ("validity" in control && control.validity.badInput) {
@@ -178,7 +178,14 @@ export const fieldValue = (
   if (!text) {
     return null;
   }
-  return type === "number" ? Number(text) : text;
+  if (field.type === "select") {
+    // A control's value is text, whatever type the property has. A saved email
+    // can have what the list doesn't.
+    return (
+      field.options.find(({ value }) => String(value) === text)?.value ?? text
+    );
+  }
+  return field.type === "number" ? Number(text) : text;
 };
 
 const renderField = (
@@ -249,7 +256,9 @@ const renderField = (
       }
       case "select": {
         // A saved email can have what the list doesn't.
-        const options = field.options.some(({ value }) => value === text)
+        const options = field.options.some(
+          ({ value }) => String(value) === text
+        )
           ? field.options
           : [...field.options, { label: text, value: text }];
         return html`
@@ -260,7 +269,10 @@ const renderField = (
           >
             ${options.map(
               ({ label, value }) => html`
-                <option .selected=${live(value === text)} .value=${value}>
+                <option
+                  .selected=${live(String(value) === text)}
+                  .value=${String(value)}
+                >
                   ${label}
                 </option>
               `

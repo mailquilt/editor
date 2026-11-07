@@ -1,4 +1,9 @@
-export { blockSettingsFields, blockStyles } from "./blocks.js";
+export {
+  BLOCK_TYPES,
+  blockLabel,
+  blockSettingsFields,
+  blockStyles,
+} from "./blocks.js";
 export { createEmail } from "./create-email.js";
 export type {
   Block,
@@ -7,7 +12,7 @@ export type {
   EmailSettings,
   Row,
 } from "./document.js";
-export { isAllowedLinkHref } from "./rich-text.js";
+export { INVALID_LINK, isAllowedLinkHref } from "./rich-text.js";
 export type {
   RichTextDocument,
   RichTextHardBreak,
