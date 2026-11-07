@@ -134,6 +134,11 @@ describe("Button Block", () => {
     ["rich text as its label", { label: { type: "doc" } }, /label/u],
     ["an unknown alignment", { align: "justify" }, /align/u],
     ["a background MJML can't read", { backgroundColor: "red" }, /background/u],
+    [
+      "a see-through background, which MJML would paint twice",
+      { backgroundColor: "rgba(37, 99, 235, 0.5)" },
+      /backgroundColor/u,
+    ],
     ["a text color MJML can't read", { color: "red" }, /color/u],
     ["a property it doesn't have", { fontSize: 20 }, /fontSize/u],
   ])("rejects %s", (_name, props, reason) => {
@@ -142,6 +147,33 @@ describe("Button Block", () => {
     expect(
       editor.apply({ blockId: "button-1", props, type: "updateProps" })
     ).toStrictEqual({ ok: false, reason: expect.stringMatching(reason) });
+  });
+
+  it.each([["#123456"], ["#123"], ["rgb(1, 2, 3)"]])(
+    "accepts the solid background %s",
+    (backgroundColor) => {
+      const { editor } = setup();
+
+      expect(
+        editor.apply({
+          blockId: "button-1",
+          props: { backgroundColor },
+          type: "updateProps",
+        })
+      ).toStrictEqual({ ok: true });
+    }
+  );
+
+  it("accepts see-through text, which is painted once", () => {
+    const { editor } = setup();
+
+    expect(
+      editor.apply({
+        blockId: "button-1",
+        props: { color: "rgba(255, 255, 255, 0.5)" },
+        type: "updateProps",
+      })
+    ).toStrictEqual({ ok: true });
   });
 
   it("makes one undo step of a change to its label", () => {

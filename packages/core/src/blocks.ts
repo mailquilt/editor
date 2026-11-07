@@ -2,7 +2,12 @@ import * as v from "valibot";
 
 import type { Block } from "./document.js";
 import { INVALID_LINK, linkHrefSchema, richTextSchema } from "./rich-text.js";
-import { colorSchema, INVALID_COLOR } from "./settings.js";
+import {
+  colorSchema,
+  INVALID_COLOR,
+  INVALID_SOLID_COLOR,
+  solidColorSchema,
+} from "./settings.js";
 import type { SettingsField } from "./settings.js";
 
 const MIN_FONT_SIZE = 1;
@@ -30,10 +35,13 @@ const alignField = (fallback: string): SettingsField => ({
   type: "select",
 });
 
-const colorField = (fallback: string, label = "Color"): SettingsField => ({
+const colorField = (
+  fallback: string,
+  { invalidMessage = INVALID_COLOR, key = "color", label = "Color" } = {}
+): SettingsField => ({
   default: fallback,
-  invalidMessage: INVALID_COLOR,
-  key: "color",
+  invalidMessage,
+  key,
   label,
   type: "color",
 });
@@ -114,27 +122,36 @@ const headingBlockSchema = v.strictObject({
 
 type HeadingBlockProps = v.InferOutput<typeof headingBlockSchema>;
 
+const headingFields = (fontSize: number): readonly SettingsField[] => [
+  {
+    invalidMessage: "Choose a level from the list.",
+    key: "level",
+    label: "Level",
+    options: [
+      { label: "Heading 1", value: 1 },
+      { label: "Heading 2", value: 2 },
+      { label: "Heading 3", value: 3 },
+    ],
+    type: "select",
+  },
+  alignField(HEADING_LOOK.align),
+  colorField(HEADING_LOOK.color),
+  fontSizeField(fontSize),
+];
+
+/** One list for each level, as the font size a field shows depends on it. */
+const HEADING_FIELDS = {
+  1: headingFields(HEADING_FONT_SIZES[1]),
+  2: headingFields(HEADING_FONT_SIZES[2]),
+  3: headingFields(HEADING_FONT_SIZES[3]),
+};
+
 const headingBlock = {
   defaults: {
     content: { content: [{ type: "paragraph" }], type: "doc" },
     level: 1,
   } satisfies HeadingBlockProps,
-  fields: (props) => [
-    {
-      invalidMessage: "Choose a level from the list.",
-      key: "level",
-      label: "Level",
-      options: [
-        { label: "Heading 1", value: 1 },
-        { label: "Heading 2", value: 2 },
-        { label: "Heading 3", value: 3 },
-      ],
-      type: "select",
-    },
-    alignField(HEADING_LOOK.align),
-    colorField(HEADING_LOOK.color),
-    fontSizeField(HEADING_FONT_SIZES[(props as HeadingBlockProps).level]),
-  ],
+  fields: (props) => HEADING_FIELDS[(props as HeadingBlockProps).level],
   label: "Heading",
   schema: headingBlockSchema,
   styles: (props) => {
@@ -162,7 +179,7 @@ const BUTTON_LOOK = {
 
 const buttonBlockSchema = v.strictObject({
   align: v.optional(alignSchema),
-  backgroundColor: v.optional(colorSchema),
+  backgroundColor: v.optional(solidColorSchema),
   color: v.optional(colorSchema),
   href: v.optional(linkHrefSchema),
   // Plain text, because the whole Button is the link.
@@ -188,14 +205,12 @@ const BUTTON_FIELDS: readonly SettingsField[] = [
     label: "Link",
     type: "text",
   },
-  {
-    default: BUTTON_LOOK.backgroundColor,
-    invalidMessage: INVALID_COLOR,
+  colorField(BUTTON_LOOK.backgroundColor, {
+    invalidMessage: INVALID_SOLID_COLOR,
     key: "backgroundColor",
     label: "Background color",
-    type: "color",
-  },
-  colorField(BUTTON_LOOK.color, "Text color"),
+  }),
+  colorField(BUTTON_LOOK.color, { label: "Text color" }),
   alignField(BUTTON_LOOK.align),
 ];
 

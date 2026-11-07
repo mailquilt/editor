@@ -76,8 +76,9 @@ const MOVE_BUTTONS: { direction: Direction; keys: string; text: string }[] = [
 
 const NO_SELECTION_HINT = "Select a Block to change it and its Row.";
 
-/** A Block with text to edit on the canvas has one of these views. */
-const hasRichText = ({ props }: Block) => "content" in props;
+/** Whether a Block has text to edit on the canvas, and so a TextBlockView. */
+const hasRichText = ({ type }: Pick<Block, "type">) =>
+  type === "text" || type === "heading";
 
 /** Layouts without Latin letters report their own, so use the key's position. */
 const shortcutKey = (event: KeyboardEvent) =>
@@ -152,13 +153,10 @@ const renderPreviewContent = ({ result }: Preview) => {
  * background belongs to this and not the whole Block, unlike a Block's other styles.
  */
 const renderButton = (block: Block) => {
-  const styles = blockStyles(block);
+  const { "text-align": align, ...face } = blockStyles(block);
   return html`
-    <div
-      class="button-block"
-      style=${styleMap({ "text-align": styles["text-align"] })}
-    >
-      <span class="button" style=${styleMap(styles)}>${block.props.label}</span>
+    <div class="button-block" style=${styleMap({ "text-align": align })}>
+      <span class="button" style=${styleMap(face)}>${block.props.label}</span>
     </div>
   `;
 };
@@ -218,12 +216,18 @@ export class MailQuilt extends LitElement {
       }
 
       .column.empty {
+        align-content: center;
         align-items: center;
+        /* So that the padding doesn't add to a width that matches the export's. */
+        box-sizing: border-box;
         display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
         justify-content: center;
         min-height: 56px;
         outline: 1px dashed #71717a;
         outline-offset: -1px;
+        padding: 8px;
       }
 
       .block {
@@ -276,6 +280,7 @@ export class MailQuilt extends LitElement {
         opacity: 0;
         position: absolute;
         touch-action: none;
+        -webkit-user-select: none;
         user-select: none;
         width: 16px;
         z-index: 1;
@@ -319,10 +324,6 @@ export class MailQuilt extends LitElement {
         gap: 2px;
       }
 
-      .add-block {
-        margin: 8px;
-      }
-
       /* The same space as a Text Block's padding, as in the email output. */
       .button-block {
         padding: 16px;
@@ -334,6 +335,9 @@ export class MailQuilt extends LitElement {
         display: inline-block;
         overflow-wrap: anywhere;
         padding: 10px 25px;
+        /* MJML's table centers the lines of a label, wherever the Button sits. */
+        text-align: center;
+        -webkit-user-select: none;
         user-select: none;
       }
 
@@ -662,6 +666,8 @@ export class MailQuilt extends LitElement {
             this.#views.set(
               block.id,
               createTextBlockView({
+                // A Heading is bold already, so the mark would change nothing.
+                canBold: block.type !== "heading",
                 content: block.props.content as RichTextDocument,
                 label: `${blockLabel(block.type)} Block`,
                 onChange: (next) => this.#commitText(block.id, next),
@@ -732,7 +738,7 @@ export class MailQuilt extends LitElement {
         Press Enter to edit the text, and Escape to come back. Use arrow keys to
         select another Block, and Alt with arrow keys to move this one.
       </p>
-      <p hidden id="button-block-keys">
+      <p hidden id="block-keys-no-text">
         Use arrow keys to select another Block, and Alt with arrow keys to move
         this one.
       </p>
@@ -826,7 +832,7 @@ export class MailQuilt extends LitElement {
           (block, blockIndex) => html`
             <div
               aria-current=${block.id === this.#activeBlockId ? "true" : nothing}
-              aria-describedby=${hasRichText(block) ? "block-keys" : "button-block-keys"}
+              aria-describedby=${hasRichText(block) ? "block-keys" : "block-keys-no-text"}
               aria-label=${`${blockLabel(block.type)} Block, ${place}, ${positionLabel(blockIndex, blocks.length)}`}
               class="block"
               data-block-id=${block.id}
@@ -845,22 +851,26 @@ export class MailQuilt extends LitElement {
               >
                 ⋮⋮
               </div>
-              ${this.#views.get(block.id)?.element ?? renderButton(block)}
+              ${hasRichText(block) ? this.#views.get(block.id)?.element : nothing}
+              ${block.type === "button" ? renderButton(block) : nothing}
             </div>
           `
         )}
         ${
           blocks.length === 0
-            ? html`
-                <button
-                  aria-label=${`Add Text Block here, ${place}`}
-                  class="add-block"
-                  type="button"
-                  @click=${() => this.#addBlock("text", { columnId: id, index: 0 })}
-                >
-                  Add Text Block here
-                </button>
-              `
+            ? BLOCK_TYPES.map(
+                ({ label, type }) => html`
+                  <button
+                    aria-label=${`Add ${label} Block here, ${place}`}
+                    class="add-block"
+                    title=${`Add a ${label} Block here`}
+                    type="button"
+                    @click=${() => this.#addBlock(type, { columnId: id, index: 0 })}
+                  >
+                    + ${label}
+                  </button>
+                `
+              )
             : nothing
         }
       </div>
@@ -922,7 +932,7 @@ export class MailQuilt extends LitElement {
                 aria-label=${label}
                 aria-pressed=${formats?.[mark] ? "true" : "false"}
                 class=${mark}
-                ?disabled=${!formats}
+                ?disabled=${!formats || (mark === "bold" && !formats.canBold)}
                 title=${label}
                 type="button"
                 @click=${() => this.#activeView?.toggleMark(mark)}

@@ -171,6 +171,16 @@ const buttonLook = (locator: Locator) =>
     };
   });
 
+/** How far a label's last line, which is short, starts inside its Button. */
+const lastLineInset = (face: Locator) =>
+  face.evaluate((element) => {
+    const range = element.ownerDocument.createRange();
+    range.selectNodeContents(element);
+    const lines = [...range.getClientRects()].filter(({ width }) => width > 0);
+    const last = lines.at(-1);
+    return Math.round((last?.x ?? 0) - element.getBoundingClientRect().x);
+  });
+
 /** Browsers can differ by a fraction of a pixel between two pages. */
 const toTenths = (pixels: number) => Math.round(pixels * 10) / 10;
 
@@ -493,7 +503,146 @@ test.describe("a Heading", () => {
   });
 });
 
+test.describe("Bold in a Heading, which is already bold", () => {
+  test("isn't offered, while the other formats are", async ({ page }) => {
+    await open(page, ["heading"]);
+    await headingText(page).click();
+
+    await expect(page.getByRole("button", { name: "Bold" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Italic" })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Underline" })).toBeEnabled();
+  });
+
+  test("is offered again in a Text Block", async ({ page }) => {
+    await open(page, ["heading", "text"]);
+    await headingText(page).click();
+    await page.getByRole("textbox", { name: "Text Block" }).click();
+
+    await expect(page.getByRole("button", { name: "Bold" })).toBeEnabled();
+  });
+
+  for (const keys of ["ControlOrMeta+b", "ControlOrMeta+Shift+b"]) {
+    test(`does nothing with ${keys}`, async ({ page }) => {
+      await open(page, ["heading"]);
+      await headingText(page).click();
+      await page.keyboard.press("ControlOrMeta+a");
+
+      await page.keyboard.press(keys);
+      await settle(page);
+
+      const props = await lastBlockProps(page);
+      expect(JSON.stringify(props)).not.toContain("bold");
+      await expect(headingText(page).locator("strong")).toHaveCount(0);
+    });
+  }
+
+  test("stays on a saved Heading that has it, which still opens", async ({
+    page,
+  }) => {
+    await open(page, ["heading"]);
+    const email = await currentValue(page);
+    const block = email.rows[0]?.columns[0]?.blocks[0];
+    if (block) {
+      block.props.content = {
+        content: [
+          {
+            content: [
+              { marks: [{ type: "bold" }], text: "Saved", type: "text" },
+            ],
+            type: "paragraph",
+          },
+        ],
+        type: "doc",
+      };
+    }
+
+    await setValue(page, email);
+
+    await expect(headingText(page)).toHaveText("Saved");
+    await expect(exportHtml(page)).resolves.toContain(
+      "<strong>Saved</strong></h2>"
+    );
+  });
+});
+
+test.describe("an empty Column", () => {
+  for (const name of ["Text", "Heading", "Button"]) {
+    const type = name.toLowerCase();
+
+    test(`gets a ${name} from its own control, by keyboard`, async ({
+      page,
+    }) => {
+      await open(page, ["text"], []);
+      const add = page.getByRole("button", {
+        name: `Add ${name} Block here, Row 1, Column 2`,
+      });
+      await add.focus();
+
+      await page.keyboard.press("Enter");
+
+      await expect(blockTypes(page, 0, 1)).resolves.toEqual([type]);
+
+      await undo(page);
+      await expect(blockTypes(page, 0, 1)).resolves.toEqual([]);
+    });
+  }
+
+  test("keeps its controls inside a narrow Column", async ({ page }) => {
+    await open(page, ["text"], [], [], []);
+    const column = canvas(page).locator(".column").nth(1);
+    const box = await column.boundingBox();
+
+    const controls = await column.getByRole("button").all();
+    expect(controls).toHaveLength(3);
+    for (const control of controls) {
+      // oxlint-disable-next-line no-await-in-loop -- One at a time, to name the one that's out.
+      const inner = await control.boundingBox();
+      expect(inner?.x).toBeGreaterThanOrEqual(box?.x ?? 0);
+      expect((inner?.x ?? 0) + (inner?.width ?? 0)).toBeLessThanOrEqual(
+        (box?.x ?? 0) + (box?.width ?? 0)
+      );
+    }
+  });
+});
+
 test.describe("a Button", () => {
+  test("doesn't select its label when dragged across", async ({ page }) => {
+    await open(page, ["button"]);
+    const box = await buttonFace(page).boundingBox();
+    const y = (box?.y ?? 0) + (box?.height ?? 0) / 2;
+
+    await page.mouse.move((box?.x ?? 0) + 2, y);
+    await page.mouse.down();
+    await page.mouse.move((box?.x ?? 0) + (box?.width ?? 0) - 2, y, {
+      steps: 5,
+    });
+    await page.mouse.up();
+
+    const selected = await page.evaluate(() =>
+      (globalThis.getSelection()?.toString() ?? "").trim()
+    );
+    expect(selected).toBe("");
+  });
+
+  test("centers a label that wraps, on the canvas as in the export", async ({
+    page,
+  }) => {
+    await open(page, ["button"], []);
+    await blockGroup(page, "Button").focus();
+    await change(
+      field(page, "Label"),
+      "Buy every single thing you see in the shop today"
+    );
+
+    const onCanvas = await lastLineInset(buttonFace(page));
+    const { opened } = await openExport(page);
+    await opened.setViewportSize({ height: 800, width: 800 });
+    const exported = await lastLineInset(opened.locator("td[bgcolor] > p"));
+
+    expect(onCanvas).toBeGreaterThan(25);
+    expect(onCanvas).toBe(exported);
+  });
+
   test("has no text to format", async ({ page }) => {
     await open(page, ["button"]);
     await blockGroup(page, "Button").click();
@@ -577,6 +726,18 @@ test.describe("a Button", () => {
     await expect(field(page, "Label")).toHaveAttribute("aria-invalid", "true");
     await expect(panelBlock(page).getByRole("alert")).toHaveText(
       "Enter the text the Button shows."
+    );
+    await expect(lastBlockProps(page)).resolves.toEqual({ label: "Buy" });
+  });
+
+  test("refuses a see-through background, and says so", async ({ page }) => {
+    await open(page, ["button"]);
+    await blockGroup(page, "Button").focus();
+
+    await change(field(page, "Background color"), "rgba(0, 0, 0, 0.5)");
+
+    await expect(panelBlock(page).getByRole("alert")).toHaveText(
+      "Use a solid color such as #ff0000, or rgb(255, 0, 0)."
     );
     await expect(lastBlockProps(page)).resolves.toEqual({ label: "Buy" });
   });

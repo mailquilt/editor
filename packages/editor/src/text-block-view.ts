@@ -17,6 +17,7 @@ export type ToggleableMark = "bold" | "italic" | "underline";
 
 /** What the toolbar shows for the cursor or selection. */
 export type TextFormats = Record<ToggleableMark, boolean> & {
+  canBold: boolean;
   linkHref: string | undefined;
 };
 
@@ -58,6 +59,15 @@ const Link = Mark.create({
   renderHTML: ({ HTMLAttributes }) => ["a", HTMLAttributes, 0],
 });
 
+/**
+ * Keeps the mark, so that text saved with it still opens, and takes the shortcut
+ * away. It's handled rather than removed, or the browser would make the text bold
+ * itself.
+ */
+const BoldWithoutShortcut = Bold.extend({
+  addKeyboardShortcuts: () => ({ "Mod-B": () => true, "Mod-b": () => true }),
+});
+
 /** Formatting is its own undo step, unlike the typing around it. */
 const changesFormatting = ({ steps }: Transaction) =>
   steps.some(
@@ -97,6 +107,7 @@ const cursorAfterChange = (
  * Tiptap's history stays off because its extension isn't loaded (ADR 0002).
  */
 export const createTextBlockView = ({
+  canBold,
   content,
   label,
   onChange,
@@ -104,6 +115,8 @@ export const createTextBlockView = ({
   onStateChange,
   onTypingBreak,
 }: {
+  /** False for text that's bold already, where the mark would change nothing. */
+  canBold: boolean;
   content: RichTextDocument;
   /** What a screen reader calls the text box. */
   label: string;
@@ -132,7 +145,7 @@ export const createTextBlockView = ({
       Document,
       Paragraph,
       Text,
-      Bold,
+      canBold ? Bold : BoldWithoutShortcut,
       Italic,
       Underline,
       HardBreak,
@@ -181,6 +194,7 @@ export const createTextBlockView = ({
     focus,
     formats: () => ({
       bold: editor.isActive("bold"),
+      canBold,
       italic: editor.isActive("italic"),
       linkHref: editor.isActive("link")
         ? (editor.getAttributes("link").href as string)

@@ -110,6 +110,21 @@ describe("a Heading Block", () => {
     ).resolves.toMatchFileSnapshot("expected/heading-levels.html");
   });
 
+  it("has the email's font and line height on its own tag", async () => {
+    const html = await renderEmail({
+      ...emailWith(heading({ content: richText([text("Sale")]), level: 1 })),
+      settings: {
+        backgroundColor: "#ffffff",
+        fontFamily: "'Courier New', Courier, monospace",
+        width: 600,
+      },
+    });
+
+    expect(html).toMatch(
+      /<h1 style="[^"]*font-family:'Courier New', Courier, monospace;line-height:1\.5;[^"]*">/u
+    );
+  });
+
   it("stays one heading across paragraphs, as lines", async () => {
     const html = await renderEmail(
       emailWith(

@@ -40,6 +40,21 @@ export const colorSchema = v.pipe(
   )
 );
 
+export const INVALID_SOLID_COLOR =
+  "Use a solid color such as #ff0000, or rgb(255, 0, 0).";
+
+/**
+ * For a color MJML paints in two layers, as on both parts of a button, where a
+ * see-through one would come out darker than it should.
+ */
+export const solidColorSchema = v.pipe(
+  colorSchema,
+  v.check(
+    (color) => !/^rgba/iu.test(color),
+    "Must be a solid color, not rgba()"
+  )
+);
+
 export const emailSettingsSchema = v.strictObject({
   backgroundColor: colorSchema,
   fontFamily: v.string(),
