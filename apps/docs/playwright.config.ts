@@ -13,8 +13,9 @@ export default defineConfig({
   testDir: "browser-tests",
   use: { baseURL: `http://localhost:${port}` },
   webServer: {
-    // The site Turborepo built before this ran, under the base path it deploys to.
-    command: `blume preview --port ${port}`,
+    // Under the base path it deploys to. Built here too, so a run started outside
+    // Turborepo can't test an old build.
+    command: `blume build && blume preview --port ${port}`,
     port,
     reuseExistingServer: !process.env.CI,
   },

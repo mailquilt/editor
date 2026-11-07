@@ -47,12 +47,16 @@ const CANT_SAVE =
   "This browser can't save your email here. Export it as JSON to keep it.";
 
 /** The email to open, and what the person should know about it. */
-const openSavedEmail = (): { document: BlocksDocument; notice?: string } => {
+const openSavedEmail = (): {
+  cantSave?: boolean;
+  document: BlocksDocument;
+  notice?: string;
+} => {
   let saved: string | null;
   try {
     saved = localStorage.getItem(SAVED_EMAIL_KEY);
   } catch {
-    return { document: createStarterEmail(), notice: CANT_SAVE };
+    return { cantSave: true, document: createStarterEmail() };
   }
   if (saved === null) {
     return { document: createStarterEmail() };
@@ -66,12 +70,13 @@ const openSavedEmail = (): { document: BlocksDocument; notice?: string } => {
       };
 };
 
-/** Returns what the person should know if it couldn't save. */
+/** Returns whether it saved. */
 const saveEmail = (document: BlocksDocument) => {
   try {
     localStorage.setItem(SAVED_EMAIL_KEY, JSON.stringify(document));
+    return true;
   } catch {
-    return CANT_SAVE;
+    return false;
   }
 };
 
@@ -89,15 +94,15 @@ const Playground = () => {
   const canvas = useRef<MailQuiltElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const [email, setEmail] = useState(openSavedEmail);
-  const { document, notice } = email;
+  const { cantSave, document, notice } = email;
 
   // Saved here, not in an effect, so that opening the Playground can't replace
   // a saved email it refused before the person has changed anything.
   const keepEmail = (next: BlocksDocument) => {
-    setEmail({ document: next, notice: saveEmail(next) });
+    setEmail({ cantSave: !saveEmail(next), document: next });
   };
 
-  const showNotice = (next: string) => {
+  const showNotice = (next?: string) => {
     setEmail((current) => ({ ...current, notice: next }));
   };
 
@@ -114,6 +119,7 @@ const Playground = () => {
       const html = await canvas.current?.exportHtml();
       if (html !== undefined) {
         downloadFile("email.html", "text/html", html);
+        showNotice();
       }
     } catch (error) {
       showNotice(`The HTML couldn't be exported: ${String(error)}`);
@@ -144,6 +150,7 @@ const Playground = () => {
 
   return (
     <div style={{ display: "grid", gap: "1rem", padding: "1rem" }}>
+      {cantSave && <p role="alert">{CANT_SAVE}</p>}
       {notice && <p role="alert">{notice}</p>}
       <MailQuilt onChange={keepEmail} ref={canvas} value={document} />
       <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>

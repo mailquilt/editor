@@ -40,6 +40,12 @@ const importFile = async (page: Page, text: string) => {
   });
 };
 
+// Playwright stops intercepting file choosers when its last listener goes, and
+// Firefox can then miss the chooser of a later import in the same test.
+test.beforeEach(({ page }) => {
+  page.on("filechooser", () => null);
+});
+
 test.describe("saving in the browser", () => {
   test("opens the starter email when nothing is saved", async ({ page }) => {
     await page.goto(PLAYGROUND);
@@ -92,6 +98,25 @@ test.describe("saving in the browser", () => {
     await expect(textBlock(page)).toContainText("Unsaved Hi");
   });
 
+  test("keeps saying it can't save while showing another reason", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(window, "localStorage", {
+        get() {
+          throw new DOMException("Blocked", "SecurityError");
+        },
+      });
+    });
+    await page.goto(PLAYGROUND);
+
+    await importFile(page, "{not json");
+
+    const alerts = page.getByRole("alert");
+    await expect(alerts.filter({ hasText: "valid JSON" })).toBeVisible();
+    await expect(alerts.filter({ hasText: "can't save" })).toBeVisible();
+  });
+
   for (const { name, reason, saved } of [
     { name: "damaged", reason: "valid JSON", saved: "{not json" },
     {
@@ -112,6 +137,10 @@ test.describe("saving in the browser", () => {
 
       await expect(textBlock(page)).toContainText("type here");
       await expect(page.getByRole("alert")).toContainText(reason);
+      // Opening the page must leave the only copy for the person to deal with.
+      expect(
+        await page.evaluate((key) => localStorage.getItem(key), SAVED_EMAIL_KEY)
+      ).toBe(saved);
     });
   }
 });
@@ -227,4 +256,20 @@ test("says so when the HTML can't be exported", async ({ page }) => {
   await page.getByRole("button", { name: "Export HTML" }).click();
 
   await expect(page.getByRole("alert")).toContainText("couldn't be exported");
+});
+
+test("a failed HTML export's reason goes away once one works", async ({
+  page,
+}) => {
+  await page.goto(PLAYGROUND);
+  await expect(textBlock(page)).toBeVisible();
+  await page.route("**/*.js", (route) => route.abort());
+  await page.getByRole("button", { name: "Export HTML" }).click();
+  await expect(page.getByRole("alert")).toContainText("couldn't be exported");
+  await page.unrouteAll();
+
+  const { name } = await exportFile(page, "Export HTML");
+
+  expect(name).toBe("email.html");
+  await expect(page.getByRole("alert")).toHaveCount(0);
 });
