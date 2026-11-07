@@ -137,3 +137,23 @@ test("comes back working after being removed", async ({ page }) => {
   await page.keyboard.type("Oh ");
   await expect(page.getByTestId("latest-document")).toContainText("Oh Hello");
 });
+
+const calls = (page: Page) => page.getByTestId("ref-calls");
+
+test.describe("a callback ref", () => {
+  test("is only called once the element has its email", async ({ page }) => {
+    await page.goto("/?callback-ref");
+    await expect(textBlock(page)).toHaveText("Hello");
+
+    await expect(calls(page)).toHaveText("email");
+  });
+
+  test("is cleaned up when the editor is removed", async ({ page }) => {
+    await page.goto("/?callback-ref");
+    await expect(calls(page)).toContainText("email");
+
+    await page.getByRole("button", { name: "Toggle editor" }).click();
+
+    await expect(calls(page)).toHaveText("email, cleanup");
+  });
+});

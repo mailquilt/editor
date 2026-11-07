@@ -19,16 +19,17 @@ const pnpm = (cwd: string, ...args: string[]) => {
 rmSync(freshProjectsDir, { force: true, recursive: true });
 mkdirSync(tarballs, { recursive: true });
 
-for (const name of packages) {
-  pnpm(path.join(here, "..", name), "pack", "--pack-destination", tarballs);
-}
-
 // Packed packages name each other by version, which isn't on npm yet.
 const overrides = packages
-  .map(
-    (name) =>
-      `  "@mailquilt/${name}": "file:${path.join(tarballs, `mailquilt-${name}-0.0.0.tgz`)}"`
-  )
+  .map((name) => {
+    const { filename } = JSON.parse(
+      execFileSync("pnpm", ["pack", "--json", "--pack-destination", tarballs], {
+        cwd: path.join(here, "..", name),
+        encoding: "utf-8",
+      })
+    );
+    return `  "@mailquilt/${name}": "file:${filename}"`;
+  })
   .join("\n");
 
 for (const name of Object.keys(

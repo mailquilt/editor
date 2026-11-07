@@ -1,5 +1,5 @@
 import type { ComponentProps } from "react";
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 
 import { MailQuilt } from "../../src/index.js";
@@ -102,7 +102,42 @@ const Host = () => {
   );
 };
 
+const callbackRefEmail = emailWith("Hello");
+
+const describeRefCall = (element: MailQuiltElement | null) => {
+  if (!element) {
+    return "null";
+  }
+  return element.value ? "email" : "no email";
+};
+
+/** Writes down each thing its callback ref is given, and when it's cleaned up. */
+const CallbackRefHost = () => {
+  const [calls, setCalls] = useState<string[]>([]);
+  const [shown, setShown] = useState(true);
+  const record = useCallback((element: MailQuiltElement | null) => {
+    setCalls((all) => [...all, describeRefCall(element)]);
+    return () => setCalls((all) => [...all, "cleanup"]);
+  }, []);
+
+  return (
+    <main>
+      <button onClick={() => setShown((now) => !now)} type="button">
+        Toggle editor
+      </button>
+      <output data-testid="ref-calls">{calls.join(", ")}</output>
+      {shown && <MailQuilt ref={record} value={callbackRefEmail} />}
+    </main>
+  );
+};
+
 const root = window.document.querySelector("#root");
 if (root) {
-  createRoot(root).render(<Host />);
+  createRoot(root).render(
+    new URLSearchParams(window.location.search).has("callback-ref") ? (
+      <CallbackRefHost />
+    ) : (
+      <Host />
+    )
+  );
 }

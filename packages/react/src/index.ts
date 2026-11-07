@@ -44,12 +44,6 @@ export const MailQuilt = ({
     loadEditor().then(() => setLoaded(true));
   }, []);
 
-  useImperativeHandle<MailQuiltElement | null, MailQuiltElement | null>(
-    ref,
-    () => editor,
-    [editor]
-  );
-
   useLayoutEffect(() => {
     if (!(editor && onChange)) {
       return;
@@ -79,6 +73,14 @@ export const MailQuilt = ({
       editor.value = value;
     }
   }, [editor, value]);
+
+  // Last, so a callback ref gets an element that already has its email, and with
+  // nothing until then, because a ref is otherwise never called with `null` first.
+  useImperativeHandle<MailQuiltElement | null, MailQuiltElement | null>(
+    editor ? ref : undefined,
+    () => editor,
+    [editor]
+  );
 
   return createElement("mail-quilt", { ref: setElement });
 };
