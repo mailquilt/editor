@@ -26,7 +26,7 @@ export type SettingsField = FieldBase &
     | { type: "text" }
   );
 
-const INVALID_COLOR = "Use a color such as #ff0000, or rgb(255, 0, 0).";
+export const INVALID_COLOR = "Use a color such as #ff0000, or rgb(255, 0, 0).";
 
 /** Formats MJML accepts, so that an email that loads can also be exported. */
 export const colorSchema = v.pipe(
@@ -40,18 +40,27 @@ export const colorSchema = v.pipe(
 export const emailSettingsSchema = v.strictObject({
   backgroundColor: colorSchema,
   fontFamily: v.string(),
+  language: v.optional(v.string()),
+  preheader: v.optional(v.string()),
+  width: v.pipe(v.number(), v.safeInteger(), v.minValue(1)),
+});
+
+/**
+ * A language a person sets has to be a code, because a screen reader reads the
+ * email by it. A saved one isn't held to this: refusing it would keep the email
+ * from opening, so nobody could fix it, and the renderer escapes whatever it is.
+ */
+export const newLanguageSettingsSchema = v.strictObject({
+  ...emailSettingsSchema.entries,
   language: v.optional(
     v.pipe(
       v.string(),
-      // The shape of a language tag, because a screen reader reads the email by it.
       v.regex(
         /^[a-z]{2,3}(?:-[a-z\d]{2,8})*$/iu,
         "Must be a language code such as en or pt-BR"
       )
     )
   ),
-  preheader: v.optional(v.string()),
-  width: v.pipe(v.number(), v.safeInteger(), v.minValue(1)),
 });
 
 export const EMAIL_SETTINGS_FIELDS: readonly SettingsField[] = [

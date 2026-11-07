@@ -16,7 +16,11 @@ import {
   findColumn,
 } from "./operations.js";
 import type { Operation, PropsTarget } from "./operations.js";
-import { emailSettingsSchema, rowPropsSchema } from "./settings.js";
+import {
+  emailSettingsSchema,
+  newLanguageSettingsSchema,
+  rowPropsSchema,
+} from "./settings.js";
 
 /** The layouts a Row can have, in the order a person chooses from them. */
 export const ROW_LAYOUTS = [
@@ -187,7 +191,11 @@ const planUpdateEmailSettings = (
   settings: Record<string, unknown>
 ): CommandPlan =>
   planProps({ emailSettings: true }, document.settings, settings, (merged) =>
-    parseProps(emailSettingsSchema, merged, "the email's settings")
+    parseProps(
+      "language" in settings ? newLanguageSettingsSchema : emailSettingsSchema,
+      merged,
+      "the email's settings"
+    )
   );
 
 const planInsertBlock = (

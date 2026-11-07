@@ -99,6 +99,10 @@ const historyShortcut = (event: KeyboardEvent) => {
   }
 };
 
+/** WebKit can end a composition first, and then report the key as 229. */
+const isComposing = (event: KeyboardEvent) =>
+  event.isComposing || event.keyCode === 229;
+
 const historyInput = (event: InputEvent) => {
   if (event.inputType === "historyUndo") {
     return "undo";
@@ -156,7 +160,7 @@ export class MailQuilt extends LitElement {
       }
 
       .canvas-area {
-        flex: 999 1 320px;
+        flex-grow: 999;
         min-width: 0;
       }
 
@@ -697,7 +701,10 @@ export class MailQuilt extends LitElement {
         class="workspace"
         style=${styleMap({ "--toolbar-height": `${this.#toolbarHeight}px` })}
       >
-        <div class="canvas-area">
+        <div
+          class="canvas-area"
+          style=${styleMap({ "flex-basis": `${settings.width}px` })}
+        >
           <div
             class="email"
             lang=${settings.language ?? nothing}
@@ -938,6 +945,7 @@ export class MailQuilt extends LitElement {
           id: "row",
           legend: "Row",
           targetId: row.id,
+          unsetColor: document.settings.backgroundColor,
           values: row.props,
         }
       );
@@ -1226,7 +1234,7 @@ export class MailQuilt extends LitElement {
     const { dataset } = event.target as HTMLElement;
     const key = dataset.draftKey;
     if (key !== undefined && this.#drafts.has(key)) {
-      if (event.key === "Escape") {
+      if (event.key === "Escape" && !isComposing(event)) {
         event.preventDefault();
         event.stopPropagation();
         this.#drafts.delete(key);
@@ -1399,12 +1407,7 @@ export class MailQuilt extends LitElement {
     }
     const block = event.currentTarget as HTMLElement;
     if (event.target !== block) {
-      // WebKit can end a composition first, and then report the key as 229.
-      if (
-        event.key === "Escape" &&
-        !event.isComposing &&
-        event.keyCode !== 229
-      ) {
+      if (event.key === "Escape" && !isComposing(event)) {
         event.preventDefault();
         // This one is used up, so a host's dialog stays open. Pressed again on the
         // Block, it reaches the host.
@@ -1515,6 +1518,7 @@ export class MailQuilt extends LitElement {
       return;
     }
     event.preventDefault();
+    this.#commitFocusedField();
     if (!this.shadowRoot?.activeElement && target instanceof Element) {
       target.closest("button")?.focus();
     }
@@ -1526,8 +1530,20 @@ export class MailQuilt extends LitElement {
    */
   #onHandleMousedown(event: MouseEvent) {
     event.preventDefault();
+    this.#commitFocusedField();
     if (!this.shadowRoot?.activeElement) {
       this.renderRoot.querySelector<HTMLElement>(".toolbar")?.focus();
+    }
+  }
+
+  /**
+   * The presses above keep focus where it is, so a settings field would hold on to
+   * what's typed in it while the press acts on the email. Blurring commits it.
+   */
+  #commitFocusedField() {
+    const active = this.shadowRoot?.activeElement;
+    if (active?.closest(".settings")) {
+      (active as HTMLElement).blur();
     }
   }
 

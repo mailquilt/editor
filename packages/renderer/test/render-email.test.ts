@@ -203,6 +203,38 @@ describe(renderEmail, () => {
     expect(html).toContain('role="article" lang="fr-CA"');
   });
 
+  it("keeps a saved language that isn't a code, safely", async () => {
+    const email = emailWithText("Hi");
+    email.settings.language = 'en"><script>alert(1)</script>';
+
+    const html = await renderEmail(email);
+
+    expect(html).not.toContain("<script>");
+    expect(html).toContain('lang="en&quot;&gt;&lt;script&gt;');
+  });
+
+  it("exports a saved language such as en_US", async () => {
+    const email = emailWithText("Hi");
+    email.settings.language = "en_US";
+
+    await expect(renderEmail(email)).resolves.toContain('<html lang="en_US"');
+  });
+
+  it("leaves the language undetermined when it's saved empty", async () => {
+    const email = emailWithText("Hi");
+    email.settings.language = "";
+
+    await expect(renderEmail(email)).resolves.toContain('<html lang="und"');
+  });
+
+  it("exports a setting that's undefined as if it weren't set", async () => {
+    const email = emailWithText("Hi");
+    const block = email.rows[0]?.columns[0]?.blocks[0] as Block;
+    block.props = { ...block.props, color: undefined };
+
+    await expect(renderEmail(email)).resolves.toContain("color:#000000");
+  });
+
   it("leaves the language undetermined when none is set", async () => {
     const html = await renderEmail(emailWithText("Hi"));
 

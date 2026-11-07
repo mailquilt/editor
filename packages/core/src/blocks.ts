@@ -2,7 +2,7 @@ import * as v from "valibot";
 
 import type { Block } from "./document.js";
 import { richTextSchema } from "./rich-text.js";
-import { colorSchema } from "./settings.js";
+import { colorSchema, INVALID_COLOR } from "./settings.js";
 import type { SettingsField } from "./settings.js";
 
 const MIN_FONT_SIZE = 1;
@@ -42,7 +42,7 @@ const TEXT_FIELDS: readonly SettingsField[] = [
   },
   {
     default: TEXT_LOOK.color,
-    invalidMessage: "Use a color such as #ff0000, or rgb(255, 0, 0).",
+    invalidMessage: INVALID_COLOR,
     key: "color",
     label: "Color",
     type: "color",
@@ -67,10 +67,11 @@ export const textBlock = {
   schema: textBlockSchema,
   /** The Block's CSS, for both the canvas and the email output. */
   styles: (props: Record<string, unknown>): Record<string, string> => {
-    const { align, color, fontSize } = {
-      ...TEXT_LOOK,
-      ...(props as TextBlockProps),
-    };
+    const {
+      align = TEXT_LOOK.align,
+      color = TEXT_LOOK.color,
+      fontSize = TEXT_LOOK.fontSize,
+    } = props as TextBlockProps;
     return {
       color,
       "font-size": `${fontSize}px`,

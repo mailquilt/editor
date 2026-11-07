@@ -1,6 +1,7 @@
 import type { Command, SettingsField } from "@mailquilt/core";
 import { css, html, nothing } from "lit";
 import { live } from "lit/directives/live.js";
+import { repeat } from "lit/directives/repeat.js";
 
 /** One group of controls, and what its fields change. */
 export interface SettingsSection {
@@ -11,6 +12,8 @@ export interface SettingsSection {
   targetId: string;
   fields: readonly SettingsField[];
   values: Record<string, unknown>;
+  /** What a color picker shows with no color set: what's behind it. */
+  unsetColor?: string;
   command: (changes: Record<string, unknown>) => Command;
 }
 
@@ -234,7 +237,7 @@ const renderField = (
             <input
               aria-label=${`${field.label} picker`}
               type="color"
-              .value=${live(hexColor(text))}
+              .value=${live(hexColor(text || (section.unsetColor ?? "")))}
               @change=${onCommit}
             />
             ${textControl("text")}
@@ -312,7 +315,10 @@ export const renderSettingsPanel = (
     @keydown=${events.onKeydown}
   >
     ${hint ? html`<p>${hint}</p>` : nothing}
-    ${sections.map(
+    ${repeat(
+      sections,
+      // Keyed, so that a field with focus survives the others coming and going.
+      ({ id }) => id,
       (section) => html`
         <fieldset>
           <legend>${section.legend}</legend>

@@ -366,13 +366,6 @@ describe("saved settings", () => {
       },
       /fontSize/u,
     ],
-    [
-      "a language that isn't a code",
-      (email: BlocksDocument) => {
-        email.settings.language = 'en"><script>';
-      },
-      /language/u,
-    ],
   ])("refuses %s", (_name, change, reason) => {
     expect(saved(change)).toStrictEqual({
       ok: false,
@@ -381,9 +374,68 @@ describe("saved settings", () => {
   });
 });
 
+const withLanguage = (language: string) => {
+  const document = createEmail();
+  document.settings.language = language;
+  return document;
+};
+
+describe("a saved language that isn't a code", () => {
+  it.each(["en_US", "", 'en"><script>', "de-DE-u-co-phonebk"])(
+    "still loads %j, unchanged",
+    (language) => {
+      expect(loadDocument(withLanguage(language))).toMatchObject({
+        document: { settings: { language } },
+        ok: true,
+      });
+    }
+  );
+
+  it("doesn't stop other settings from changing", () => {
+    const editor = createEditor({ document: withLanguage("en_US") });
+
+    expect(
+      editor.apply({ settings: { width: 640 }, type: "updateEmailSettings" })
+    ).toStrictEqual({ ok: true });
+    expect(editor.getDocument().settings).toMatchObject({
+      language: "en_US",
+      width: 640,
+    });
+  });
+
+  it("can be replaced with a code", () => {
+    const editor = createEditor({ document: withLanguage("en_US") });
+
+    editor.apply({ settings: { language: "en" }, type: "updateEmailSettings" });
+
+    expect(editor.getDocument().settings.language).toBe("en");
+  });
+
+  it("can be removed", () => {
+    const editor = createEditor({ document: withLanguage("en_US") });
+
+    editor.apply({ settings: { language: null }, type: "updateEmailSettings" });
+
+    expect(editor.getDocument().settings).not.toHaveProperty("language");
+  });
+});
+
 describe(blockStyles, () => {
   it("gives a Text Block with no settings the look of a new email", () => {
     expect(blockStyles({ props: {}, type: "text" })).toStrictEqual({
+      color: "#000000",
+      "font-size": "16px",
+      "text-align": "left",
+    });
+  });
+
+  it("treats a setting that's undefined as not set", () => {
+    expect(
+      blockStyles({
+        props: { align: undefined, color: undefined, fontSize: undefined },
+        type: "text",
+      })
+    ).toStrictEqual({
       color: "#000000",
       "font-size": "16px",
       "text-align": "left",
