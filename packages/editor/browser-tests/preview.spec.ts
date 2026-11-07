@@ -2,10 +2,15 @@ import { expect, test } from "@playwright/test";
 import type { Page, Route } from "@playwright/test";
 
 import type { MailQuilt } from "../src/index.js";
+import {
+  canvas,
+  exportHtml,
+  focusStartOfTextBlock,
+  setValue,
+  textBlock,
+} from "./helpers.js";
+import { emailWith, emailWithInline } from "./host/email.js";
 
-const canvas = (page: Page) => page.locator("mail-quilt");
-const textBlock = (page: Page) =>
-  page.getByRole("textbox", { name: "Text Block" });
 const previewButton = (page: Page) =>
   page.getByRole("button", { exact: true, name: "Preview" });
 const previewDialog = (page: Page) =>
@@ -17,70 +22,39 @@ const previewEmail = (page: Page) =>
 const closeButton = (page: Page) =>
   previewDialog(page).getByRole("button", { name: "Close" });
 
-const exportHtml = (page: Page) =>
-  canvas(page).evaluate((element) => (element as MailQuilt).exportHtml());
-
-const setValue = (page: Page, document: unknown) =>
-  canvas(page).evaluate((element, value) => {
-    (element as MailQuilt).value = value as MailQuilt["value"];
-  }, document);
-
-/** Types at the start of the Text Block, so a lost cursor scrambles the text. */
-const focusStartOfTextBlock = async (page: Page) => {
-  await textBlock(page).click();
-  await expect(textBlock(page)).toBeFocused();
-  await page.keyboard.press(
-    process.platform === "darwin" ? "Meta+ArrowLeft" : "Home"
-  );
-};
-
 /** Stops MJML loading until the returned function is called. */
 const holdMjml = async (page: Page) => {
   const held: Route[] = [];
-  await page.route("**/*mjml-browser*", (route) => {
-    held.push(route);
+  let released = false;
+  await page.route("**/*mjml-browser*", async (route) => {
+    // The request can arrive after the page shows its loading message.
+    if (released) {
+      await route.continue();
+    } else {
+      held.push(route);
+    }
   });
   return async () => {
+    released = true;
     await Promise.all(held.map((route) => route.continue()));
   };
 };
 
-const emailWithInline = (inline: unknown) => ({
-  kind: "blocks",
-  rows: [
-    {
-      columns: [
-        {
-          blocks: [
-            {
-              id: "block-1",
-              props: {
-                content: {
-                  content: [{ content: [inline], type: "paragraph" }],
-                  type: "doc",
-                },
-              },
-              type: "text",
-            },
-          ],
-          id: "column-1",
-          props: {},
-          width: 100,
-        },
-      ],
-      id: "row-1",
-      props: {},
-    },
-  ],
-  settings: {
-    backgroundColor: "#ffffff",
-    fontFamily: "Arial, Helvetica, sans-serif",
-    width: 600,
-  },
-  version: 1,
-});
+/** Counts the times `exportHtml` runs, which is what the Preview renders with. */
+const countExports = (page: Page) =>
+  canvas(page).evaluate((element) => {
+    const mailQuilt = element as MailQuilt;
+    const original = mailQuilt.exportHtml.bind(mailQuilt);
+    window.document.documentElement.dataset.exports = "0";
+    mailQuilt.exportHtml = () => {
+      const { dataset } = window.document.documentElement;
+      dataset.exports = String(Number(dataset.exports) + 1);
+      return original();
+    };
+  });
 
-const emailWith = (text: string) => emailWithInline({ text, type: "text" });
+const exportCount = (page: Page) =>
+  page.evaluate(() => window.document.documentElement.dataset.exports);
 
 const emailWithLink = (text: string, href: string) =>
   emailWithInline({
@@ -151,7 +125,7 @@ test("a slow MJML shows a loading message, then the email", async ({
   await expect(previewDialog(page).getByRole("status")).toHaveCount(0);
 });
 
-test("MJML failing to load shows a message, and the editor keeps working", async ({
+test("MJML failing to load shows the reason, and the editor keeps working", async ({
   page,
 }) => {
   await page.route("**/*mjml-browser*", (route) => route.abort());
@@ -159,13 +133,43 @@ test("MJML failing to load shows a message, and the editor keeps working", async
   await previewButton(page).click();
 
   await expect(previewDialog(page).getByRole("alert")).toContainText(
-    "couldn't be loaded"
+    "The preview couldn't be loaded:"
   );
   await closeButton(page).click();
   await expect(previewDialog(page)).toBeHidden();
   await focusStartOfTextBlock(page);
   await page.keyboard.type("a");
   await expect(textBlock(page)).toHaveText("aHello");
+});
+
+test("opening the Preview again retries after MJML failed to load", async ({
+  page,
+}) => {
+  await page.route("**/*mjml-browser*", (route) => route.abort());
+  await previewButton(page).click();
+  await expect(previewDialog(page).getByRole("alert")).toBeVisible();
+  await closeButton(page).click();
+
+  await page.unroute("**/*mjml-browser*");
+  await previewButton(page).click();
+
+  await expect(previewEmail(page)).toContainText("Hello");
+  await expect(previewDialog(page).getByRole("alert")).toHaveCount(0);
+});
+
+test("a render that fails shows why, and doesn't promise a retry will help", async ({
+  page,
+}) => {
+  await canvas(page).evaluate((element) => {
+    (element as MailQuilt).exportHtml = () =>
+      Promise.reject(new Error("Unknown Block type"));
+  });
+
+  await previewButton(page).click();
+
+  await expect(previewDialog(page).getByRole("alert")).toHaveText(
+    "The preview couldn't be loaded: Unknown Block type"
+  );
 });
 
 test.describe("reflecting the latest edits", () => {
@@ -204,6 +208,39 @@ test.describe("reflecting the latest edits", () => {
 
     await expect(previewEmail(page)).toContainText("Hello");
     await expect(previewEmail(page)).not.toContainText("xHello");
+  });
+
+  test("an unchanged email isn't compiled again, and any change is", async ({
+    page,
+  }) => {
+    await countExports(page);
+    const openThenClose = async (text: string) => {
+      await previewButton(page).click();
+      await expect(previewEmail(page)).toContainText(text);
+      await closeButton(page).click();
+      await expect(previewDialog(page)).toBeHidden();
+    };
+
+    await openThenClose("Hello");
+    await openThenClose("Hello");
+    expect(await exportCount(page)).toBe("1");
+
+    await focusStartOfTextBlock(page);
+    await page.keyboard.type("x");
+    await openThenClose("xHello");
+    expect(await exportCount(page)).toBe("2");
+
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(textBlock(page)).toHaveText("Hello");
+    await previewButton(page).click();
+    await expect(previewEmail(page)).not.toContainText("xHello");
+    await closeButton(page).click();
+    expect(await exportCount(page)).toBe("3");
+
+    await setValue(page, emailWith("From the host"));
+    await expect(textBlock(page)).toHaveText("From the host");
+    await openThenClose("From the host");
+    expect(await exportCount(page)).toBe("4");
   });
 
   test("Preview shows a document the host set", async ({ page }) => {
@@ -391,6 +428,52 @@ test.describe("closing", () => {
     await expect(textBlock(page)).toHaveText("abHello");
   });
 
+  test("opening with the mouse and no Block focused returns focus to Preview", async ({
+    page,
+  }) => {
+    await previewButton(page).click();
+    await expect(closeButton(page)).toBeFocused();
+
+    await page.keyboard.press("Escape");
+
+    await expect(previewButton(page)).toBeFocused();
+  });
+
+  test("opening from the link field returns focus to that field", async ({
+    page,
+  }) => {
+    await textBlock(page).click();
+    await page.getByRole("button", { exact: true, name: "Link" }).click();
+    const linkField = page.getByRole("textbox", { name: "Link URL" });
+    await expect(linkField).toBeFocused();
+
+    await previewButton(page).click();
+    await expect(closeButton(page)).toBeFocused();
+    await page.keyboard.press("Escape");
+
+    await expect(linkField).toBeFocused();
+  });
+
+  test("Close then Preview in one task still shows the email", async ({
+    page,
+  }) => {
+    await previewButton(page).click();
+    await expect(previewEmail(page)).toContainText("Hello");
+
+    await canvas(page).evaluate((element) => {
+      const buttons = [
+        ...(element.shadowRoot?.querySelectorAll("button") ?? []),
+      ];
+      const named = (name: string) =>
+        buttons.find((button) => button.textContent?.trim() === name);
+      named("Close")?.click();
+      named("Preview")?.click();
+    });
+
+    await expect(previewEmail(page)).toContainText("Hello");
+    await expect(previewDialog(page)).toBeVisible();
+  });
+
   test("the canvas can't be edited behind the Preview", async ({ page }) => {
     await focusStartOfTextBlock(page);
     await previewButton(page).click();
@@ -399,6 +482,41 @@ test.describe("closing", () => {
     await page.keyboard.type("x");
 
     await expect(textBlock(page)).toHaveText("Hello");
+  });
+});
+
+test.describe("opening with focus on a toolbar button", () => {
+  test("typing doesn't reach the Block behind the Preview", async ({
+    page,
+  }) => {
+    await focusStartOfTextBlock(page);
+    await previewButton(page).focus();
+    await page.keyboard.press("Enter");
+    await expect(previewEmail(page)).toContainText("Hello");
+
+    await page.keyboard.type("x");
+
+    await expect(textBlock(page)).toHaveText("Hello");
+    await expect(page.getByTestId("change-count")).toHaveText("0");
+  });
+
+  test("the Block keeps its cursor for when focus comes back", async ({
+    page,
+  }) => {
+    await focusStartOfTextBlock(page);
+    await page.keyboard.type("a");
+    await expect(textBlock(page)).toHaveText("aHello");
+    await previewButton(page).focus();
+    await page.keyboard.press("Enter");
+    await expect(previewEmail(page)).toContainText("aHello");
+    await page.keyboard.press("Escape");
+    await expect(previewButton(page)).toBeFocused();
+
+    await textBlock(page).focus();
+    await expect(textBlock(page)).toBeFocused();
+    await page.keyboard.type("b");
+
+    await expect(textBlock(page)).toHaveText("abHello");
   });
 });
 
@@ -456,7 +574,7 @@ test.describe("the host changing things while the Preview is open", () => {
     await expect(previewEmail(page)).toContainText("Hello");
 
     await setValue(page, undefined);
-    await expect(previewDialog(page)).toHaveCount(0);
+    await expect(page.locator("mail-quilt dialog")).toHaveCount(0);
     await setValue(page, emailWith("Back again"));
 
     await expect(textBlock(page)).toHaveText("Back again");

@@ -71,23 +71,21 @@ const keepFocusInBlock = (event: MouseEvent) => {
 
 /** One opening of the Preview. */
 interface Preview {
-  html?: string;
-  failed?: boolean;
-  /** Whether the toolbar's Block had focus, and gets it back on closing. */
-  returnToBlock: boolean;
+  /** Unset while the email renders. */
+  result?: { html: string } | { failure: string };
 }
 
-const renderPreviewContent = ({ failed, html: email }: Preview) => {
-  if (failed) {
-    return html`
-      <p role="alert">
-        The preview couldn't be loaded. Close this and try again.
-      </p>
-    `;
+const renderPreviewContent = ({ result }: Preview) => {
+  if (!result) {
+    return html`<p role="status">Loading preview…</p>`;
   }
-  return email === undefined
-    ? html`<p role="status">Loading preview…</p>`
-    : html`<iframe sandbox="" srcdoc=${email} title="Email preview"></iframe>`;
+  return "html" in result
+    ? html`
+        <iframe sandbox="" srcdoc=${result.html} title="Email preview"></iframe>
+      `
+    : html`
+        <p role="alert">The preview couldn't be loaded: ${result.failure}</p>
+      `;
 };
 
 export class MailQuilt extends LitElement {
@@ -314,6 +312,8 @@ export class MailQuilt extends LitElement {
   #linkForm: { error: boolean } | undefined;
   /** Set while the Preview is open. */
   #preview: Preview | undefined;
+  /** The current document's HTML, once the Preview has rendered it. */
+  #previewHtml: string | undefined;
 
   get value() {
     return this.#editor?.getDocument();
@@ -618,32 +618,40 @@ export class MailQuilt extends LitElement {
     return this.renderRoot.querySelector<HTMLDialogElement>(".preview");
   }
 
-  /** Renders on each opening, so it shows the document as it is now. */
-  async #openPreview() {
-    const focused = this.shadowRoot?.activeElement;
-    const returnToBlock =
-      focused instanceof HTMLElement && focused.matches(".ProseMirror");
-    if (returnToBlock) {
-      // WebKit keeps a Block's selection through a mouse press and types into it,
-      // even behind a modal dialog. Blurring first also stops the dialog handing
-      // focus back itself, which would put the cursor at the start of the Block.
-      focused.blur();
-      this.ownerDocument.getSelection()?.removeAllRanges();
+  /** Shows the document as it is now, compiling it only if it has changed. */
+  async #openPreview({ currentTarget }: Event) {
+    // Toolbar buttons don't take focus from a mouse press, and the dialog returns
+    // focus to whatever had it.
+    if (!this.shadowRoot?.activeElement) {
+      (currentTarget as HTMLElement).focus();
     }
-    const preview: Preview = { returnToBlock };
+
+    const cached = this.#previewHtml;
+    const preview: Preview = {};
+    if (cached !== undefined) {
+      preview.result = { html: cached };
+    }
     this.#preview = preview;
     this.#previewDialog?.showModal();
     this.requestUpdate();
+    if (cached !== undefined) {
+      return;
+    }
+
     try {
-      preview.html = await this.exportHtml();
+      const email = await this.exportHtml();
+      preview.result = { html: email };
+      // Closed in the meantime, so the document may have changed since.
+      if (this.#preview === preview) {
+        this.#previewHtml = email;
+      }
     } catch (error) {
       console.error("<mail-quilt> couldn't render the preview", error);
-      preview.failed = true;
+      preview.result = {
+        failure: error instanceof Error ? error.message : String(error),
+      };
     }
-    // Closed in the meantime, so nothing is waiting for this one.
-    if (this.#preview === preview) {
-      this.requestUpdate();
-    }
+    this.requestUpdate();
   }
 
   #closePreview() {
@@ -651,8 +659,9 @@ export class MailQuilt extends LitElement {
   }
 
   #onPreviewClose() {
-    if (this.#preview?.returnToBlock) {
-      this.#activeView?.focus();
+    // This event is queued, so it can arrive after the next opening.
+    if (this.#previewDialog?.open) {
+      return;
     }
     this.#preview = undefined;
     this.requestUpdate();
@@ -681,6 +690,11 @@ export class MailQuilt extends LitElement {
   }
 
   #onBeforeInput(event: InputEvent) {
+    // WebKit types into a Block's selection even with focus on the dialog.
+    if (this.#previewDialog?.open) {
+      event.preventDefault();
+      return;
+    }
     this.#runHistoryStep(event, historyInput(event));
   }
 
@@ -719,6 +733,7 @@ export class MailQuilt extends LitElement {
 
   #show(document: BlocksDocument | undefined) {
     this.#lastKnownDocument = document;
+    this.#previewHtml = undefined;
     this.#destroyViews();
     this.#editor = document && createEditor({ document });
     this.requestUpdate();
@@ -727,6 +742,7 @@ export class MailQuilt extends LitElement {
   #emitChange(document: BlocksDocument) {
     // A copy, because the host owns what it receives and may change it.
     this.#lastKnownDocument = structuredClone(document);
+    this.#previewHtml = undefined;
     this.dispatchEvent(
       new CustomEvent("mq-change", {
         bubbles: true,
