@@ -479,16 +479,26 @@ describe("the setRowLayout Command", () => {
   });
 
   it("keeps Blocks in the last remaining Column ahead of the moved ones", () => {
-    const { editor } = setup();
-    send(editor, { layout: "33/33/33", rowId: "row", type: "setRowLayout" });
-    const last = editor.getDocument().rows[0]?.columns[2];
+    const { editor } = setup({
+      ...createEmail(),
+      rows: [
+        {
+          columns: [
+            { blocks: [block("a")], id: "one", props: {}, width: 33.33 },
+            { blocks: [block("b")], id: "two", props: {}, width: 33.33 },
+            { blocks: [block("c")], id: "three", props: {}, width: 33.34 },
+          ],
+          id: "row",
+          props: {},
+        },
+      ],
+    });
 
     send(editor, { layout: "50/50", rowId: "row", type: "setRowLayout" });
 
     expect(columnsOf(editor.getDocument())).toStrictEqual([
-      [["a", "b"], ["c"]],
+      [["a"], ["b", "c"]],
     ]);
-    expect(editor.getDocument().rows[0]?.columns).not.toContainEqual(last);
   });
 
   it("uses move Operations, so Blocks aren't deleted and created again", () => {

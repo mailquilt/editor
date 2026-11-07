@@ -46,7 +46,7 @@ export const findBlock = (document: BlocksDocument, blockId: string) =>
     .flatMap(({ blocks }) => blocks)
     .find(({ id }) => id === blockId);
 
-/** Where a Block is, or undefined if it isn't in the document. */
+/** A Block and where it is, or undefined if it isn't in the document. */
 export const findBlockPosition = (
   document: BlocksDocument,
   blockId: string
@@ -54,8 +54,9 @@ export const findBlockPosition = (
   for (const [rowIndex, row] of document.rows.entries()) {
     for (const column of row.columns) {
       const index = column.blocks.findIndex(({ id }) => id === blockId);
-      if (index !== -1) {
-        return { columnId: column.id, index, rowIndex };
+      const block = column.blocks[index];
+      if (block) {
+        return { block, columnId: column.id, index, rowIndex };
       }
     }
   }
@@ -80,23 +81,23 @@ const getRow = (document: BlocksDocument, rowId: string) => {
   return row;
 };
 
-const listFor = (
+/** A Placement's item, and the list in the document that it belongs in. */
+const resolvePlacement = (
   document: BlocksDocument,
   placement: Placement
-): (Block | Column | Row)[] => {
+): { item: Block | Column | Row; list: (Block | Column | Row)[] } => {
   if ("row" in placement) {
-    return document.rows;
+    return { item: placement.row, list: document.rows };
   }
   return "column" in placement
-    ? getRow(document, placement.rowId).columns
-    : getColumn(document, placement.columnId).blocks;
-};
-
-const placedItem = (placement: Placement) => {
-  if ("row" in placement) {
-    return placement.row;
-  }
-  return "column" in placement ? placement.column : placement.block;
+    ? {
+        item: placement.column,
+        list: getRow(document, placement.rowId).columns,
+      }
+    : {
+        item: placement.block,
+        list: getColumn(document, placement.columnId).blocks,
+      };
 };
 
 /** Changes `document` in place. */
@@ -106,16 +107,13 @@ export const applyOperation = (
 ) => {
   switch (operation.type) {
     case "insert": {
+      const { item, list } = resolvePlacement(document, operation);
       // A copy, because later Operations change this item in place.
-      listFor(document, operation).splice(
-        operation.index,
-        0,
-        structuredClone(placedItem(operation))
-      );
+      list.splice(operation.index, 0, structuredClone(item));
       break;
     }
     case "remove": {
-      listFor(document, operation).splice(operation.index, 1);
+      resolvePlacement(document, operation).list.splice(operation.index, 1);
       break;
     }
     case "move": {

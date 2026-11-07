@@ -31,6 +31,9 @@ const deleteRow = (page: Page, position: number) =>
 const addToColumn = (page: Page) =>
   page.getByRole("button", { name: "Add Text Block here" });
 
+const toolbar = (page: Page) =>
+  page.getByRole("group", { name: "Email tools" });
+
 const selectedBlock = (page: Page) =>
   canvas(page).locator('[aria-current="true"]').getByRole("textbox");
 
@@ -238,9 +241,22 @@ test.describe("deleting a Block", () => {
     await page.keyboard.press("Enter");
 
     await expect(textBlock(page)).toHaveCount(0);
-    await expect(paletteText(page)).toBeFocused();
+    await expect(toolbar(page)).toBeFocused();
     await undo(page);
     await expect(textBlock(page)).toHaveText("Hello");
+  });
+
+  test("a second Enter from the keyboard doesn't add a Block", async ({
+    page,
+  }) => {
+    await textBlock(page).click();
+    await deleteBlock(page).focus();
+
+    await page.keyboard.press("Enter");
+    await expect(textBlock(page)).toHaveCount(0);
+    await page.keyboard.press("Enter");
+
+    expect(await structure(page)).toStrictEqual([[[]]]);
   });
 });
 
@@ -333,14 +349,14 @@ test.describe("adding and deleting Rows", () => {
     expect(await structure(page)).toStrictEqual([[[]]]);
   });
 
-  test("deleting the Row with the focused Block moves focus to the palette", async ({
+  test("deleting the Row with the focused Block moves focus to the toolbar", async ({
     page,
   }) => {
     await textBlock(page).click();
 
     await deleteRow(page, 1).click();
 
-    await expect(paletteText(page)).toBeFocused();
+    await expect(toolbar(page)).toBeFocused();
     await undo(page);
     await expect(textBlock(page)).toHaveText("Hello");
   });
@@ -352,7 +368,23 @@ test.describe("adding and deleting Rows", () => {
 
     await page.keyboard.press("Enter");
 
-    await expect(paletteText(page)).toBeFocused();
+    await expect(toolbar(page)).toBeFocused();
+  });
+
+  test("deleting another Row from the keyboard leaves the selected Block alone", async ({
+    page,
+  }) => {
+    await addRow(page).click();
+    await expect(rowControls(page, 2)).toBeVisible();
+    await textBlock(page).click();
+    await deleteRow(page, 2).focus();
+
+    await page.keyboard.press("Enter");
+    await expect(rowControls(page, 2)).toHaveCount(0);
+    await page.keyboard.press("Enter");
+
+    await expect(toolbar(page)).toBeFocused();
+    await expect(textBlock(page).locator("p")).toHaveCount(1);
   });
 
   test("controlled host keeps undo after a structural change", async ({
@@ -539,14 +571,7 @@ test.describe("structure changes and the rest of the editor", () => {
     await expect(selectedBlock(page).locator("strong")).toHaveText("x");
   });
 
-  test("undo in the link field doesn't undo the email", async ({
-    browserName,
-    page,
-  }) => {
-    test.fixme(
-      browserName === "webkit",
-      "WebKit sends a second historyUndo to the Block, which the canvas obeys."
-    );
+  test("undo in the link field doesn't undo the email", async ({ page }) => {
     await textBlock(page).click();
     await page.keyboard.type("x");
     await expect(page.getByTestId("change-count")).toHaveText("1");
@@ -570,6 +595,70 @@ test.describe("structure changes and the rest of the editor", () => {
     await undo(page);
 
     await expect(rowControls(page, 2)).toHaveCount(0);
+  });
+
+  test("a keyboard undo works after clicking Add Row with nothing focused", async ({
+    page,
+  }) => {
+    await addRow(page).click();
+    await expect(rowControls(page, 2)).toBeVisible();
+
+    await undo(page);
+
+    await expect(rowControls(page, 2)).toHaveCount(0);
+  });
+
+  test("a keyboard undo works after clicking a layout with nothing focused", async ({
+    page,
+  }) => {
+    await layoutButton(page, 1, "50/50").click();
+    await expect(addToColumn(page)).toHaveCount(1);
+
+    await undo(page);
+
+    await expect(addToColumn(page)).toHaveCount(0);
+  });
+
+  test("a keyboard undo works after clicking Delete Row with nothing focused", async ({
+    page,
+  }) => {
+    await deleteRow(page, 1).click();
+    await expect(textBlock(page)).toHaveCount(0);
+
+    await undo(page);
+
+    await expect(textBlock(page)).toHaveText("Hello");
+  });
+
+  test("the Undo button closes the link field and returns to the Block", async ({
+    page,
+  }) => {
+    await textBlock(page).click();
+    await page.keyboard.type("x");
+    await expect(page.getByTestId("change-count")).toHaveText("1");
+    await page.keyboard.press("ControlOrMeta+a");
+    await page.getByRole("button", { exact: true, name: "Link" }).click();
+    const field = page.getByRole("textbox", { name: "Link URL" });
+    await expect(field).toBeFocused();
+
+    await page.getByRole("button", { name: "Undo" }).click();
+
+    await expect(field).toHaveCount(0);
+    await expect(textBlock(page)).toHaveText("Hello");
+    await expect(textBlock(page)).toBeFocused();
+  });
+
+  test("the Undo button leaves the link field open with nothing to undo", async ({
+    page,
+  }) => {
+    await textBlock(page).click();
+    await page.getByRole("button", { exact: true, name: "Link" }).click();
+    const field = page.getByRole("textbox", { name: "Link URL" });
+    await expect(field).toBeFocused();
+
+    await page.getByRole("button", { name: "Undo" }).click();
+
+    await expect(field).toBeVisible();
   });
 
   test("a keyboard undo works with focus on a Row's controls", async ({
@@ -608,5 +697,18 @@ test.describe("structure changes and the rest of the editor", () => {
       /system-ui|sans-serif/u
     );
     await expect(rowControls(page, 1)).toHaveCSS("color", "rgb(24, 24, 27)");
+  });
+
+  test("the button in an empty Column doesn't use the email's font", async ({
+    page,
+  }) => {
+    await layoutButton(page, 1, "50/50").click();
+
+    await expect(addToColumn(page)).toHaveCSS("font-size", "12px");
+    await expect(addToColumn(page)).toHaveCSS(
+      "font-family",
+      /system-ui|sans-serif/u
+    );
+    await expect(addToColumn(page)).not.toHaveCSS("font-family", /Arial/u);
   });
 });

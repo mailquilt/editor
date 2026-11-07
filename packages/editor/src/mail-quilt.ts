@@ -77,13 +77,6 @@ const historyInput = (event: InputEvent) => {
   }
 };
 
-/** Pressing a toolbar button leaves focus and the selection in the Block. */
-const keepFocusInBlock = (event: MouseEvent) => {
-  if (!(event.target instanceof HTMLInputElement)) {
-    event.preventDefault();
-  }
-};
-
 /** One opening of the Preview. */
 interface Preview {
   /** Unset while the email renders. */
@@ -170,8 +163,6 @@ export class MailQuilt extends LitElement {
     }
 
     .add-block {
-      font-family: system-ui, sans-serif;
-      font-size: 12px;
       margin: 8px;
     }
 
@@ -248,6 +239,7 @@ export class MailQuilt extends LitElement {
       background: #e4e4e7;
     }
 
+    .toolbar:focus-visible,
     .toolbar button:focus-visible,
     .toolbar input:focus-visible,
     .row-controls button:focus-visible,
@@ -259,6 +251,8 @@ export class MailQuilt extends LitElement {
 
     .add-block {
       border-color: #71717a;
+      font-family: system-ui, sans-serif;
+      font-size: 12px;
     }
 
     .toolbar button[aria-pressed="true"],
@@ -379,8 +373,8 @@ export class MailQuilt extends LitElement {
   #lastTypedAt = 0;
   /** The selected Block, which the toolbar acts on: the last one to have focus. */
   #activeBlockId: string | undefined;
-  /** Whether focus was in the editor when the current update began. */
-  #hadFocus = false;
+  /** What had focus in the editor when the current update began. */
+  #focusedBeforeUpdate: Element | null | undefined;
   #formats: TextFormats | undefined;
   /** Set while the link field is open. */
   #linkForm: { error: boolean } | undefined;
@@ -438,7 +432,7 @@ export class MailQuilt extends LitElement {
   }
 
   protected override willUpdate() {
-    this.#hadFocus = Boolean(this.shadowRoot?.activeElement);
+    this.#focusedBeforeUpdate = this.shadowRoot?.activeElement;
     // Lit still updates detached elements, and nothing would destroy these
     // views. connectedCallback requests an update that creates them instead.
     if (!this.isConnected) {
@@ -476,16 +470,21 @@ export class MailQuilt extends LitElement {
 
   /**
    * A change can remove the element with focus, or disable it. Focus stays in the
-   * editor, where undo still works: on the selected Block, which may just have
-   * moved to another Column, or else on the palette.
+   * editor, where undo still works. A Block that just moved, or whose link field
+   * just closed, gets it back. Otherwise the toolbar takes it, because it does
+   * nothing when a key that activated a button is pressed again or held down.
    */
   protected override updated() {
+    const before = this.#focusedBeforeUpdate;
     const active = this.shadowRoot?.activeElement as
       | HTMLButtonElement
       | null
       | undefined;
-    if (this.#hadFocus && (!active || active.disabled)) {
-      (this.#activeView ?? this.#paletteButton)?.focus();
+    if (before && (!active || active.disabled)) {
+      const view = before.closest(".block, .link-form")
+        ? this.#activeView
+        : undefined;
+      (view ?? this.renderRoot.querySelector<HTMLElement>(".toolbar"))?.focus();
     }
   }
 
@@ -533,7 +532,7 @@ export class MailQuilt extends LitElement {
         aria-label=${`Row ${index + 1}`}
         class="row-controls"
         role="group"
-        @mousedown=${keepFocusInBlock}
+        @mousedown=${this.#onControlMousedown}
       >
         <div aria-label="Layout" class="layouts" role="group">
           ${ROW_LAYOUTS.map(
@@ -597,9 +596,12 @@ export class MailQuilt extends LitElement {
     const formats = this.#formats;
     return html`
       <div
+        aria-label="Email tools"
         class="toolbar"
+        role="group"
+        tabindex="-1"
         @keydown=${this.#onToolbarKeydown}
-        @mousedown=${keepFocusInBlock}
+        @mousedown=${this.#onControlMousedown}
       >
         <div aria-label="Add content" class="palette" role="group">
           <button
@@ -845,24 +847,29 @@ export class MailQuilt extends LitElement {
     this.requestUpdate();
   }
 
-  get #paletteButton() {
-    return this.renderRoot.querySelector<HTMLElement>(".palette button");
-  }
-
   /** Applies a Command that changes the structure of the email. */
   #apply(command: Command) {
-    const editor = this.#editor;
-    if (!editor) {
-      return;
+    if (this.#tryCommand(command)) {
+      this.#publishStructure();
     }
-    const result = editor.apply(command);
-    if (!result.ok) {
+  }
+
+  /** The accepted result, leaving the caller to show and report the change. */
+  #tryCommand(command: Command, options?: ApplyOptions) {
+    const result = this.#editor?.apply(command, options);
+    if (result && !result.ok) {
       // The controls only offer what's allowed, so this is a bug here.
       console.error(`<mail-quilt> rejected a Command: ${result.reason}`);
-      return;
     }
-    this.requestUpdate();
-    this.#emitChange(editor.getDocument());
+    return result?.ok ? result : undefined;
+  }
+
+  #publishStructure() {
+    const document = this.#editor?.getDocument();
+    if (document) {
+      this.requestUpdate();
+      this.#emitChange(document);
+    }
   }
 
   #chooseLayout(
@@ -910,29 +917,28 @@ export class MailQuilt extends LitElement {
       return;
     }
     let target = place ?? this.#defaultBlockPlace(editor);
-    let options: ApplyOptions | undefined;
-    if (!target) {
-      options = { mergeKey: FIRST_BLOCK_MERGE_KEY };
-      editor.apply({ index: 0, layout: "100", type: "insertRow" }, options);
-      target = this.#defaultBlockPlace(editor);
-    }
-    if (!target) {
-      return;
-    }
+    const options = target ? undefined : { mergeKey: FIRST_BLOCK_MERGE_KEY };
+    const row =
+      options &&
+      this.#tryCommand({ index: 0, layout: "100", type: "insertRow" }, options);
+    target ??= this.#defaultBlockPlace(editor);
+    const block =
+      target &&
+      this.#tryCommand(
+        { blockType: "text", ...target, type: "insertBlock" },
+        options
+      );
 
-    const result = editor.apply(
-      { blockType: "text", ...target, type: "insertBlock" },
-      options
-    );
-    if (!result.ok) {
-      console.error(`<mail-quilt> rejected a Command: ${result.reason}`);
-      return;
+    if (block) {
+      this.#activeBlockId = block.createdId;
     }
-    this.#activeBlockId = result.createdId;
-    this.requestUpdate();
-    this.#emitChange(editor.getDocument());
-    await this.updateComplete;
-    this.#activeView?.focus();
+    if (row || block) {
+      this.#publishStructure();
+    }
+    if (block) {
+      await this.updateComplete;
+      this.#activeView?.focus();
+    }
   }
 
   #defaultBlockPlace(editor: Editor) {
@@ -968,8 +974,10 @@ export class MailQuilt extends LitElement {
   }
 
   #onBeforeInput(event: InputEvent) {
-    // WebKit types into a Block's selection even with focus on the dialog.
-    if (this.#previewDialog?.open) {
+    // WebKit types into a Block's selection, and undoes there too, even with focus
+    // on the dialog, a control or the link field.
+    const active = this.shadowRoot?.activeElement;
+    if (this.#previewDialog?.open || (active && !active.closest(".block"))) {
       event.preventDefault();
       return;
     }
@@ -984,6 +992,22 @@ export class MailQuilt extends LitElement {
       return;
     }
     this.#runHistoryStep(event, historyShortcut(event));
+  }
+
+  /**
+   * Pressing a control leaves focus and the selection in the Block. With no focus
+   * in the editor, the control takes it, because keyboard undo only reaches the
+   * editor from inside it. Browsers disagree on whether a press focuses a button.
+   */
+  #onControlMousedown(event: MouseEvent) {
+    const { target } = event;
+    if (target instanceof HTMLInputElement) {
+      return;
+    }
+    event.preventDefault();
+    if (!this.shadowRoot?.activeElement && target instanceof Element) {
+      target.closest("button")?.focus();
+    }
   }
 
   /** Undo and redo from a toolbar button, where a Block may no longer have focus. */
@@ -1008,6 +1032,8 @@ export class MailQuilt extends LitElement {
     if (!editor?.[step]()) {
       return;
     }
+    // The change can move the selection the link field would apply to.
+    this.#closeLinkForm();
     const document = editor.getDocument();
     for (const row of document.rows) {
       for (const column of row.columns) {

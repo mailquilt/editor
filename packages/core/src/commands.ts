@@ -145,12 +145,11 @@ const planRemoveBlock = (
   document: BlocksDocument,
   blockId: string
 ): CommandPlan => {
-  const block = findBlock(document, blockId);
   const position = findBlockPosition(document, blockId);
-  if (!(block && position)) {
+  if (!position) {
     return rejected(`No Block with ID "${blockId}"`);
   }
-  const { columnId, index } = position;
+  const { block, columnId, index } = position;
   return {
     ok: true,
     operations: [{ block, columnId, index, type: "remove" }],
