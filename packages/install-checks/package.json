@@ -1,0 +1,20 @@
+{
+  "name": "@repo/install-checks",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "test": "node prepare.ts && playwright test"
+  },
+  "devDependencies": {
+    "@mailquilt/core": "workspace:*",
+    "@mailquilt/editor": "workspace:*",
+    "@mailquilt/react": "workspace:*",
+    "@mailquilt/renderer": "workspace:*",
+    "@playwright/test": "^1.65.0",
+    "@repo/typescript-config": "workspace:*",
+    "@types/node": "^24.19.2",
+    "typescript": "7.0.2"
+  }
+}

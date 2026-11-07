@@ -1,0 +1,14 @@
+{
+  "extends": "@repo/typescript-config/base.json",
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": [
+    "tests",
+    "fresh-projects.ts",
+    "playwright.config.ts",
+    "prepare.ts"
+  ]
+}

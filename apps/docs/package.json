@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@mailquilt/core": "workspace:*",
-    "@mailquilt/editor": "workspace:*",
+    "@mailquilt/react": "workspace:*",
     "blume": "^2.2.6",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
