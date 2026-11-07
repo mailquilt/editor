@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-import { freshProjectDir, freshProjects } from "./fresh-projects.ts";
+import { cdnPort, freshProjectDir, freshProjects } from "./fresh-projects.ts";
 
 export default defineConfig({
   forbidOnly: Boolean(process.env.CI),
@@ -10,6 +10,17 @@ export default defineConfig({
   testDir: "tests",
   // Each runs directly, because Playwright's stop signal doesn't get past `pnpm`.
   webServer: [
+    {
+      command: `node serve.js . ${freshProjects.cdn.port}`,
+      cwd: freshProjectDir("cdn"),
+      port: freshProjects.cdn.port,
+    },
+    {
+      // Only the installed package, so the build can't reach its dependencies.
+      command: `node serve.js node_modules/@mailquilt/editor ${cdnPort}`,
+      cwd: freshProjectDir("cdn"),
+      port: cdnPort,
+    },
     {
       command: `node_modules/.bin/vite preview --port ${freshProjects["plain-js"].port} --strictPort`,
       cwd: freshProjectDir("plain-js"),

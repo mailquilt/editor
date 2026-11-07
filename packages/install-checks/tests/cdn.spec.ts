@@ -1,0 +1,96 @@
+import { expect, test } from "@playwright/test";
+import type { Page, Response } from "@playwright/test";
+
+import { cdnPort, freshProjects } from "../fresh-projects.ts";
+import { checkLoadSaveExport } from "./load-save-export.ts";
+
+const pageUrl = `http://localhost:${freshProjects.cdn.port}/`;
+const cdnBuildUrl = `http://localhost:${cdnPort}/dist/cdn/`;
+
+/** Only MJML itself has this. The renderer's own output never uses it. */
+const mjmlOnly = "mj-accordion";
+
+const urlsWithMjml = async (responses: Response[]) => {
+  const checked = await Promise.all(
+    responses.map(async (each) => {
+      const body = await each.text();
+      return { hasMjml: body.includes(mjmlOnly), url: each.url() };
+    })
+  );
+  return checked.filter(({ hasMjml }) => hasMjml).map(({ url }) => url);
+};
+
+/** Checks `load` fetches MJML from beside the CDN build, and that nothing did before. */
+const checkMjmlLoadsOnlyFor = async (page: Page, load: () => Promise<void>) => {
+  const fetched: Response[] = [];
+  page.on("response", (response) => fetched.push(response));
+  await page.goto(pageUrl);
+  await expect(page.getByRole("textbox", { name: "Text Block" })).toHaveText(
+    "Hello"
+  );
+  const fetchedBeforehand = [...fetched];
+  expect(await urlsWithMjml(fetchedBeforehand)).toStrictEqual([]);
+
+  await load();
+
+  const mjml = await urlsWithMjml(fetched.slice(fetchedBeforehand.length));
+  expect(mjml).toHaveLength(1);
+  expect(mjml[0]).toContain(cdnBuildUrl);
+};
+
+test("a page with no bundler loads, saves and exports an email", async ({
+  page,
+}) => {
+  await checkLoadSaveExport(page, pageUrl);
+});
+
+test("a refused document fires mq-error", async ({ page }) => {
+  await page.goto(pageUrl);
+  const text = page.getByRole("textbox", { name: "Text Block" });
+  await expect(text).toHaveText("Hello");
+
+  await page.evaluate(() => {
+    const editor = document.querySelector("mail-quilt") as unknown as {
+      value: unknown;
+    };
+    editor.value = { kind: "blocks", rows: [], version: 2 };
+  });
+
+  await expect(page.getByTestId("load-error")).toContainText(
+    /version 2 is newer/iu
+  );
+  await expect(text).toHaveText("Hello");
+});
+
+test("MJML loads from beside the CDN build, only for export", async ({
+  page,
+}) => {
+  await checkMjmlLoadsOnlyFor(page, async () => {
+    await page.getByRole("button", { name: "Export HTML" }).click();
+    await expect(page.getByTestId("exported-html")).toContainText("Hello");
+  });
+});
+
+test("MJML loads from beside the CDN build, only for preview", async ({
+  page,
+}) => {
+  await checkMjmlLoadsOnlyFor(page, async () => {
+    await page.getByRole("button", { exact: true, name: "Preview" }).click();
+    await expect(
+      page.frameLocator("iframe[title='Email preview']").locator("body")
+    ).toContainText("Hello");
+  });
+});
+
+test("the CDN build lists the license of each package it bundles", async ({
+  request,
+}) => {
+  const response = await request.get(`${cdnBuildUrl}THIRD-PARTY-LICENSES.txt`);
+  expect(response.ok()).toBe(true);
+  const licenses = await response.text();
+
+  for (const name of ["@tiptap/core", "cheerio", "lit", "mjml-browser"]) {
+    expect(licenses).toMatch(new RegExp(`^${name}@`, "mu"));
+  }
+  expect(licenses).toContain("Permission is hereby granted");
+});
