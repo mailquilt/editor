@@ -22,7 +22,10 @@ export type SettingsField = FieldBase &
   (
     | { type: "color" }
     | { type: "number"; max?: number; min: number; unit: string }
-    | { type: "select"; options: readonly { label: string; value: string }[] }
+    | {
+        type: "select";
+        options: readonly { label: string; value: number | string }[];
+      }
     | { type: "text" }
   );
 

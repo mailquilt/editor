@@ -1,9 +1,12 @@
 import {
+  BLOCK_TYPES,
+  blockLabel,
   blockSettingsFields,
   blockStyles,
   createEditor,
   EMAIL_SETTINGS_FIELDS,
   findBlockPosition,
+  INVALID_LINK,
   isAllowedLinkHref,
   isSameDocument,
   loadDocument,
@@ -13,6 +16,7 @@ import {
   rowStyles,
 } from "@mailquilt/core";
 import type {
+  Block,
   BlocksDocument,
   Column,
   Command,
@@ -72,8 +76,8 @@ const MOVE_BUTTONS: { direction: Direction; keys: string; text: string }[] = [
 
 const NO_SELECTION_HINT = "Select a Block to change it and its Row.";
 
-const INVALID_LINK_MESSAGE =
-  "Use a URL starting with https://, http://, mailto: or tel:, or a Merge Tag such as {{cta_url}}.";
+/** A Block with text to edit on the canvas has one of these views. */
+const hasRichText = ({ props }: Block) => "content" in props;
 
 /** Layouts without Latin letters report their own, so use the key's position. */
 const shortcutKey = (event: KeyboardEvent) =>
@@ -141,6 +145,22 @@ const renderPreviewContent = ({ result }: Preview) => {
     : html`
         <p role="alert">The preview couldn't be loaded: ${result.failure}</p>
       `;
+};
+
+/**
+ * A Button's face, and no link, because a click on the canvas selects it. Its
+ * background belongs to this and not the whole Block, unlike a Block's other styles.
+ */
+const renderButton = (block: Block) => {
+  const styles = blockStyles(block);
+  return html`
+    <div
+      class="button-block"
+      style=${styleMap({ "text-align": styles["text-align"] })}
+    >
+      <span class="button" style=${styleMap(styles)}>${block.props.label}</span>
+    </div>
+  `;
 };
 
 export class MailQuilt extends LitElement {
@@ -301,6 +321,20 @@ export class MailQuilt extends LitElement {
 
       .add-block {
         margin: 8px;
+      }
+
+      /* The same space as a Text Block's padding, as in the email output. */
+      .button-block {
+        padding: 16px;
+      }
+
+      /* What MJML gives a button, so that the canvas looks like the email output. */
+      .button {
+        border-radius: 3px;
+        display: inline-block;
+        overflow-wrap: anywhere;
+        padding: 10px 25px;
+        user-select: none;
       }
 
       /* ProseMirror's base styles (ADR 0002). */
@@ -624,11 +658,12 @@ export class MailQuilt extends LitElement {
       for (const column of row.columns) {
         for (const block of column.blocks) {
           blockIds.add(block.id);
-          if (!this.#views.has(block.id)) {
+          if (hasRichText(block) && !this.#views.has(block.id)) {
             this.#views.set(
               block.id,
               createTextBlockView({
                 content: block.props.content as RichTextDocument,
+                label: `${blockLabel(block.type)} Block`,
                 onChange: (next) => this.#commitText(block.id, next),
                 onFocus: () => this.#selectBlock(block.id),
                 onStateChange: () => this.#syncFormats(),
@@ -696,6 +731,10 @@ export class MailQuilt extends LitElement {
       <p hidden id="block-keys">
         Press Enter to edit the text, and Escape to come back. Use arrow keys to
         select another Block, and Alt with arrow keys to move this one.
+      </p>
+      <p hidden id="button-block-keys">
+        Use arrow keys to select another Block, and Alt with arrow keys to move
+        this one.
       </p>
       <div
         class="workspace"
@@ -787,12 +826,12 @@ export class MailQuilt extends LitElement {
           (block, blockIndex) => html`
             <div
               aria-current=${block.id === this.#activeBlockId ? "true" : nothing}
-              aria-describedby="block-keys"
-              aria-label=${`Text Block, ${place}, ${positionLabel(blockIndex, blocks.length)}`}
+              aria-describedby=${hasRichText(block) ? "block-keys" : "button-block-keys"}
+              aria-label=${`${blockLabel(block.type)} Block, ${place}, ${positionLabel(blockIndex, blocks.length)}`}
               class="block"
               data-block-id=${block.id}
               role="group"
-              style=${styleMap(blockStyles(block))}
+              style=${styleMap(hasRichText(block) ? blockStyles(block) : {})}
               tabindex="0"
               @focus=${(event: FocusEvent) =>
                 this.#onBlockFocus(event, block.id)}
@@ -806,7 +845,7 @@ export class MailQuilt extends LitElement {
               >
                 ⋮⋮
               </div>
-              ${this.#views.get(block.id)?.element}
+              ${this.#views.get(block.id)?.element ?? renderButton(block)}
             </div>
           `
         )}
@@ -817,7 +856,7 @@ export class MailQuilt extends LitElement {
                   aria-label=${`Add Text Block here, ${place}`}
                   class="add-block"
                   type="button"
-                  @click=${() => this.#addTextBlock({ columnId: id, index: 0 })}
+                  @click=${() => this.#addBlock("text", { columnId: id, index: 0 })}
                 >
                   Add Text Block here
                 </button>
@@ -840,14 +879,18 @@ export class MailQuilt extends LitElement {
         @mousedown=${this.#onControlMousedown}
       >
         <div aria-label="Add content" class="palette" role="group">
-          <button
-            data-block-type="text"
-            title="Add a Text Block"
-            type="button"
-            @click=${() => this.#addTextBlock()}
-          >
-            Text
-          </button>
+          ${BLOCK_TYPES.map(
+            ({ label, type }) => html`
+              <button
+                data-block-type=${type}
+                title=${`Add a ${label} Block`}
+                type="button"
+                @click=${() => this.#addBlock(type)}
+              >
+                ${label}
+              </button>
+            `
+          )}
         </div>
         <button type="button" @click=${this.#addRow}>Add Row</button>
         <button
@@ -929,7 +972,7 @@ export class MailQuilt extends LitElement {
             props,
             type: "updateProps",
           }),
-          fields: blockSettingsFields(block.type),
+          fields: blockSettingsFields(block),
           id: "block",
           legend: "Selected Block",
           targetId: block.id,
@@ -1030,7 +1073,7 @@ export class MailQuilt extends LitElement {
         <button type="button" @click=${this.#cancelLinkForm}>Cancel</button>
         ${
           error
-            ? html`<p id="link-error" role="alert">${INVALID_LINK_MESSAGE}</p>`
+            ? html`<p id="link-error" role="alert">${INVALID_LINK}</p>`
             : nothing
         }
       </form>
@@ -1281,10 +1324,13 @@ export class MailQuilt extends LitElement {
   }
 
   /**
-   * Adds a Text Block and selects it, ready to type in. By default it goes after
-   * the selected Block, or else at the end of the last Column.
+   * Adds a Block and selects it, ready to type in if it has text. By default it
+   * goes after the selected Block, or else at the end of the last Column.
    */
-  async #addTextBlock(place?: { columnId: string; index: number }) {
+  async #addBlock(
+    blockType: string,
+    place?: { columnId: string; index: number }
+  ) {
     const editor = this.#editor;
     if (!editor) {
       return;
@@ -1292,20 +1338,27 @@ export class MailQuilt extends LitElement {
     const target = place ?? this.#defaultBlockPlace(editor);
     const block = this.#tryCommand(
       target
-        ? { blockType: "text", ...target, type: "insertBlock" }
-        : { blockType: "text", rowIndex: 0, type: "insertBlockInNewRow" }
+        ? { blockType, ...target, type: "insertBlock" }
+        : { blockType, rowIndex: 0, type: "insertBlockInNewRow" }
     );
     if (block) {
       await this.#showPlaced(block.createdId);
     }
   }
 
-  /** Reports a change that put a Block in place, then selects it to type in. */
+  /**
+   * Reports a change that put a Block in place, then selects it, in its text if
+   * it has any.
+   */
   async #showPlaced(blockId: string | undefined) {
     this.#activeBlockId = blockId;
     this.#publishStructure();
     await this.updateComplete;
-    this.#activeView?.focus();
+    if (this.#activeView) {
+      this.#activeView.focus();
+    } else if (blockId !== undefined) {
+      this.#blockElement(blockId)?.focus();
+    }
   }
 
   #defaultBlockPlace(editor: Editor) {

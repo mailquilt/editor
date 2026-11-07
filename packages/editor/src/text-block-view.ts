@@ -91,19 +91,22 @@ const cursorAfterChange = (
 };
 
 /**
- * Owns the DOM and Tiptap editor of one Text Block. Lit only places `element`
+ * Owns the DOM and Tiptap editor of one Block's text. Lit only places `element`
  * on the canvas, so the Tiptap editor survives re-renders.
  *
  * Tiptap's history stays off because its extension isn't loaded (ADR 0002).
  */
 export const createTextBlockView = ({
   content,
+  label,
   onChange,
   onFocus,
   onStateChange,
   onTypingBreak,
 }: {
   content: RichTextDocument;
+  /** What a screen reader calls the text box. */
+  label: string;
   onChange: (content: RichTextDocument) => void;
   onFocus: () => void;
   /** Called after anything that may change what `formats` returns. */
@@ -116,7 +119,7 @@ export const createTextBlockView = ({
     content,
     editorProps: {
       attributes: {
-        "aria-label": "Text Block",
+        "aria-label": label,
         "aria-multiline": "true",
         role: "textbox",
       },

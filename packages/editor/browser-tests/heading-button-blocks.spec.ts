@@ -1,0 +1,741 @@
+import { AxeBuilder } from "@axe-core/playwright";
+import { expect, test } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
+
+import {
+  canvas,
+  currentValue,
+  emailWith,
+  exportHtml,
+  setValue,
+} from "./helpers.js";
+
+const palette = (page: Page, name: string) =>
+  page
+    .getByRole("group", { name: "Add content" })
+    .getByRole("button", { exact: true, name });
+
+const headingText = (page: Page) =>
+  page.getByRole("textbox", { name: "Heading Block" });
+
+const blockGroup = (page: Page, name: string) =>
+  canvas(page).getByRole("group", { name: `${name} Block` });
+
+/** The part of a Button that looks like one, on the canvas. */
+const buttonFace = (page: Page) =>
+  blockGroup(page, "Button").locator(".button");
+
+const panelBlock = (page: Page) =>
+  page
+    .getByRole("group", { name: "Settings" })
+    .getByRole("group", { exact: true, name: "Selected Block" });
+
+const field = (page: Page, name: string) =>
+  panelBlock(page).getByLabel(name, { exact: true });
+
+const change = async (control: Locator, text: string) => {
+  await control.fill(text);
+  await control.press("Enter");
+};
+
+const undo = (page: Page) => page.getByRole("button", { name: "Undo" }).click();
+const redo = (page: Page) => page.getByRole("button", { name: "Redo" }).click();
+
+const blocks = async (page: Page, rowIndex = 0, columnIndex = 0) => {
+  const { rows } = await currentValue(page);
+  return rows[rowIndex]?.columns[columnIndex]?.blocks ?? [];
+};
+
+const blockTypes = async (page: Page, rowIndex = 0, columnIndex = 0) => {
+  const found = await blocks(page, rowIndex, columnIndex);
+  return found.map(({ type }) => type);
+};
+
+const lastBlockProps = async (page: Page) => {
+  const found = await blocks(page);
+  return found.at(-1)?.props;
+};
+
+/** An email whose only Row's Columns hold these Blocks, by type. */
+const open = async (page: Page, ...columns: string[][]) => {
+  const email = emailWith([[[]]]);
+  const [row] = email.rows;
+  if (row) {
+    const props = {
+      button: { label: "Buy" },
+      heading: {
+        content: {
+          content: [
+            { content: [{ text: "Sale", type: "text" }], type: "paragraph" },
+          ],
+          type: "doc",
+        },
+        level: 2,
+      },
+      text: {
+        content: {
+          content: [
+            { content: [{ text: "Words", type: "text" }], type: "paragraph" },
+          ],
+          type: "doc",
+        },
+      },
+    };
+    row.columns = columns.map((types, columnIndex) => ({
+      blocks: types.map((type, blockIndex) => ({
+        id: `${type}-${columnIndex}-${blockIndex}`,
+        props: props[type as keyof typeof props],
+        type,
+      })),
+      id: `column-${columnIndex}`,
+      props: {},
+      width: 100 / columns.length,
+    }));
+  }
+  await page.goto("/");
+  await setValue(page, email);
+  await expect(canvas(page).locator(".block").first()).toBeVisible();
+};
+
+const openExport = async (page: Page) => {
+  const html = await exportHtml(page);
+  const opened = await page.context().newPage();
+  await opened.setContent(html);
+  return { html, opened };
+};
+
+const settle = (page: Page) =>
+  page.evaluate(
+    () =>
+      // oxlint-disable-next-line promise/avoid-new -- requestAnimationFrame only takes a callback.
+      new Promise((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(resolve));
+      })
+  );
+
+const dragTo = async (page: Page, from: Locator, to: Locator, part = 0.75) => {
+  const start = await from.boundingBox();
+  const end = await to.boundingBox();
+  if (!(start && end)) {
+    throw new Error("The element has no box");
+  }
+  const startX = start.x + start.width / 2;
+  const startY = start.y + start.height / 2;
+  await page.mouse.move(startX, startY);
+  await page.mouse.down();
+  await page.mouse.move(startX + 8, startY + 8, { steps: 2 });
+  await settle(page);
+  await page.mouse.move(end.x + end.width / 2, end.y + end.height * part, {
+    steps: 8,
+  });
+  await settle(page);
+  await page.mouse.up();
+  await settle(page);
+};
+
+const headingLook = (locator: Locator) =>
+  locator.evaluate((element) => {
+    const { color, fontSize, fontWeight, textAlign } =
+      getComputedStyle(element);
+    return { color, fontSize, fontWeight, textAlign };
+  });
+
+const buttonLook = (locator: Locator) =>
+  locator.evaluate((element) => {
+    const {
+      backgroundColor,
+      borderTopLeftRadius,
+      color,
+      fontFamily,
+      fontSize,
+      fontWeight,
+      lineHeight,
+      paddingLeft,
+      paddingTop,
+    } = getComputedStyle(element);
+    const { height, width, x } = element.getBoundingClientRect();
+    return {
+      backgroundColor,
+      borderTopLeftRadius,
+      color,
+      fontFamily,
+      fontSize,
+      fontWeight,
+      height,
+      lineHeight,
+      paddingLeft,
+      paddingTop,
+      width,
+      // Its middle, as the export has no settings panel beside it.
+      x: x + width / 2,
+    };
+  });
+
+/** Browsers can differ by a fraction of a pixel between two pages. */
+const toTenths = (pixels: number) => Math.round(pixels * 10) / 10;
+
+const violations = async (page: Page) => {
+  const { violations: found } = await new AxeBuilder({ page })
+    .include("mail-quilt")
+    .setLegacyMode()
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
+    .analyze();
+  return found.map(({ id, nodes }) => ({
+    id,
+    targets: nodes.map(({ target }) => target),
+  }));
+};
+
+// The test host's unfriendly CSS pushes the canvas far down the page.
+test.use({ viewport: { height: 1600, width: 1280 } });
+
+test.describe("the palette", () => {
+  test("offers Text, Heading and Button", async ({ page }) => {
+    await open(page, ["text"]);
+
+    await expect(
+      page.getByRole("group", { name: "Add content" }).getByRole("button")
+    ).toHaveText(["Text", "Heading", "Button"]);
+  });
+
+  test("adds a Heading, ready to type in", async ({ page }) => {
+    await open(page, ["text"]);
+
+    await palette(page, "Heading").click();
+    await page.keyboard.type("Big news");
+
+    await expect(headingText(page)).toHaveText("Big news");
+    await expect(blockTypes(page)).resolves.toEqual(["text", "heading"]);
+    await expect(lastBlockProps(page)).resolves.toMatchObject({ level: 1 });
+  });
+
+  test("adds a Button, selected, with its settings showing", async ({
+    page,
+  }) => {
+    await open(page, ["text"]);
+
+    await palette(page, "Button").click();
+
+    await expect(blockGroup(page, "Button")).toBeFocused();
+    await expect(buttonFace(page)).toHaveText("Button");
+    await expect(field(page, "Label")).toHaveValue("Button");
+    await expect(blockTypes(page)).resolves.toEqual(["text", "button"]);
+  });
+
+  for (const name of ["Heading", "Button"]) {
+    const type = name.toLowerCase();
+
+    test(`undoes and redoes adding a ${name}`, async ({ page }) => {
+      await open(page, ["text"]);
+      await palette(page, name).click();
+
+      await undo(page);
+      await expect(blockTypes(page)).resolves.toEqual(["text"]);
+
+      await redo(page);
+      await expect(blockTypes(page)).resolves.toEqual(["text", type]);
+    });
+
+    test(`adds a ${name} with Enter, after the selected Block`, async ({
+      page,
+    }) => {
+      await open(page, ["text", "text"]);
+      await blockGroup(page, "Text").first().focus();
+      await palette(page, name).focus();
+
+      await page.keyboard.press("Enter");
+
+      await expect(blockTypes(page)).resolves.toEqual(["text", type, "text"]);
+    });
+
+    test(`holding Enter adds one ${name}`, async ({ page }) => {
+      await open(page, ["text"]);
+      await palette(page, name).focus();
+
+      await page.keyboard.down("Enter");
+      await expect(canvas(page).locator(".block")).toHaveCount(2);
+      await page.keyboard.down("Enter");
+      await page.keyboard.down("Enter");
+      await page.keyboard.up("Enter");
+
+      await expect(blockTypes(page)).resolves.toEqual(["text", type]);
+      // Only the text's own paragraphs: holding it didn't start a new one.
+      await expect(canvas(page).locator(".block p")).toHaveCount(
+        type === "heading" ? 2 : 1
+      );
+    });
+
+    test(`drags a ${name} in from the palette`, async ({ page }) => {
+      await open(page, ["text"], []);
+
+      await dragTo(
+        page,
+        palette(page, name),
+        canvas(page).locator(".column").nth(1)
+      );
+
+      await expect(blockTypes(page, 0, 1)).resolves.toEqual([type]);
+
+      await undo(page);
+      await expect(blockTypes(page, 0, 1)).resolves.toEqual([]);
+    });
+  }
+});
+
+for (const name of ["Heading", "Button"]) {
+  const type = name.toLowerCase();
+
+  test.describe(`moving a ${name}`, () => {
+    test("by its handle, within a Column", async ({ page }) => {
+      await open(page, ["text", type]);
+      const block = blockGroup(page, name);
+      await block.hover();
+
+      await dragTo(
+        page,
+        block.locator(".drag-handle"),
+        blockGroup(page, "Text"),
+        0.25
+      );
+
+      await expect(blockTypes(page)).resolves.toEqual([type, "text"]);
+
+      await undo(page);
+      await expect(blockTypes(page)).resolves.toEqual(["text", type]);
+    });
+
+    test("by its handle, to another Column", async ({ page }) => {
+      await open(page, [type], []);
+      const block = blockGroup(page, name);
+      await block.hover();
+
+      await dragTo(
+        page,
+        block.locator(".drag-handle"),
+        canvas(page).locator(".column").nth(1)
+      );
+
+      await expect(blockTypes(page, 0, 1)).resolves.toEqual([type]);
+      await expect(blockTypes(page, 0, 0)).resolves.toEqual([]);
+    });
+
+    test("by keyboard", async ({ page }) => {
+      await open(page, ["text", type]);
+      await blockGroup(page, name).focus();
+
+      await page.keyboard.press("Alt+ArrowUp");
+
+      await expect(blockTypes(page)).resolves.toEqual([type, "text"]);
+      await expect(blockGroup(page, name)).toBeFocused();
+      await expect(canvas(page).getByRole("status")).toHaveText(
+        "Moved to Row 1, Column 1, position 1 of 2."
+      );
+
+      await page.keyboard.press("ControlOrMeta+z");
+      await expect(blockTypes(page)).resolves.toEqual(["text", type]);
+    });
+
+    test("is reached with arrow keys", async ({ page }) => {
+      await open(page, ["text", type]);
+      await blockGroup(page, "Text").focus();
+
+      await page.keyboard.press("ArrowDown");
+
+      await expect(blockGroup(page, name)).toBeFocused();
+
+      await page.keyboard.press("ArrowUp");
+
+      await expect(blockGroup(page, "Text")).toBeFocused();
+    });
+
+    test("can be deleted, and comes back with undo", async ({ page }) => {
+      await open(page, ["text", type]);
+      await blockGroup(page, name).focus();
+
+      await page.getByRole("button", { name: "Delete Block" }).click();
+      await expect(blockTypes(page)).resolves.toEqual(["text"]);
+
+      await undo(page);
+      await expect(blockTypes(page)).resolves.toEqual(["text", type]);
+      await expect(blockGroup(page, name)).toBeVisible();
+    });
+  });
+}
+
+test.describe("a Heading", () => {
+  test("has its text formatted like any other text", async ({ page }) => {
+    await open(page, ["heading"]);
+    await headingText(page).click();
+    await page.keyboard.press("ControlOrMeta+a");
+
+    await page.getByRole("button", { name: "Italic" }).click();
+
+    const { html } = await openExport(page);
+    expect(html).toMatch(/<h2 [^>]*><em>Sale<\/em><\/h2>/u);
+  });
+
+  test("undoes typing as one step", async ({ page }) => {
+    await open(page, ["heading"]);
+    await headingText(page).click();
+    await page.keyboard.press("ControlOrMeta+a");
+    await page.keyboard.type("New");
+    await expect(headingText(page)).toHaveText("New");
+
+    await page.keyboard.press("ControlOrMeta+z");
+
+    await expect(headingText(page)).toHaveText("Sale");
+  });
+
+  test("stays one heading after Enter, as two lines", async ({ page }) => {
+    await open(page, ["heading"]);
+    await headingText(page).click();
+    await page.keyboard.press("ControlOrMeta+a");
+    await page.keyboard.type("One");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("Two");
+
+    const { opened } = await openExport(page);
+
+    await expect(opened.getByRole("heading")).toHaveCount(1);
+    await expect(opened.getByRole("heading", { level: 2 })).toHaveText(
+      "OneTwo"
+    );
+  });
+
+  test("changes level, on the canvas, in the panel and in the export", async ({
+    page,
+  }) => {
+    await open(page, ["heading"]);
+    await headingText(page).click();
+    await expect(field(page, "Font size (px)")).toHaveValue("24");
+    await expect(field(page, "Level")).toHaveValue("2");
+    await expect(blockGroup(page, "Heading")).toHaveCSS("font-size", "24px");
+
+    await field(page, "Level").selectOption({ label: "Heading 1" });
+
+    await expect(lastBlockProps(page)).resolves.toMatchObject({ level: 1 });
+    await expect(field(page, "Font size (px)")).toHaveValue("32");
+    await expect(blockGroup(page, "Heading")).toHaveCSS("font-size", "32px");
+    const { opened } = await openExport(page);
+    await expect(opened.getByRole("heading", { level: 1 })).toHaveText("Sale");
+    await expect(opened.getByRole("heading", { level: 1 })).toHaveCSS(
+      "font-size",
+      "32px"
+    );
+    await opened.close();
+
+    await page.keyboard.press("ControlOrMeta+z");
+
+    await expect(lastBlockProps(page)).resolves.toMatchObject({ level: 2 });
+    await expect(field(page, "Level")).toHaveValue("2");
+  });
+
+  test("keeps a font size that was set when its level changes", async ({
+    page,
+  }) => {
+    await open(page, ["heading"]);
+    await headingText(page).click();
+    await change(field(page, "Font size (px)"), "50");
+
+    await field(page, "Level").selectOption({ label: "Heading 3" });
+
+    await expect(field(page, "Font size (px)")).toHaveValue("50");
+    await expect(blockGroup(page, "Heading")).toHaveCSS("font-size", "50px");
+  });
+
+  test("goes back to its level's size when the size is cleared", async ({
+    page,
+  }) => {
+    await open(page, ["heading"]);
+    await headingText(page).click();
+    await change(field(page, "Font size (px)"), "50");
+
+    await change(field(page, "Font size (px)"), "");
+
+    await expect(field(page, "Font size (px)")).toHaveValue("24");
+    await expect(lastBlockProps(page)).resolves.not.toHaveProperty("fontSize");
+  });
+
+  test("shows its settings the same on the canvas and in the export", async ({
+    page,
+  }) => {
+    await open(page, ["heading"]);
+    await headingText(page).click();
+    await field(page, "Alignment").selectOption("right");
+    await change(field(page, "Color"), "#ff0000");
+    await change(field(page, "Font size (px)"), "40");
+
+    const expected = {
+      color: "rgb(255, 0, 0)",
+      fontSize: "40px",
+      fontWeight: "700",
+      textAlign: "right",
+    };
+
+    await expect(headingLook(headingText(page))).resolves.toEqual(expected);
+    const { opened } = await openExport(page);
+    await expect(headingLook(opened.getByRole("heading"))).resolves.toEqual(
+      expected
+    );
+  });
+
+  test("takes up the same space on the canvas as in the export", async ({
+    page,
+  }) => {
+    await open(page, ["heading"]);
+
+    const onCanvas = await headingText(page).boundingBox();
+    const { opened } = await openExport(page);
+    const exported = await opened.getByRole("heading").boundingBox();
+
+    // The canvas's box has the Block's padding, and the heading's doesn't.
+    expect(exported?.height).toBe((onCanvas?.height ?? 0) - 32);
+  });
+});
+
+test.describe("a Button", () => {
+  test("has no text to format", async ({ page }) => {
+    await open(page, ["button"]);
+    await blockGroup(page, "Button").click();
+
+    await expect(page.getByRole("button", { name: "Bold" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Link" })).toBeDisabled();
+  });
+
+  test("is selected by a click on it, without going anywhere", async ({
+    page,
+  }) => {
+    await open(page, ["text", "button"]);
+    await canvas(page).locator(".block").first().focus();
+    await field(page, "Alignment").waitFor();
+    const url = page.url();
+
+    await buttonFace(page).click();
+
+    await expect(blockGroup(page, "Button")).toHaveAttribute(
+      "aria-current",
+      "true"
+    );
+    await expect(field(page, "Label")).toHaveValue("Buy");
+    expect(page.url()).toBe(url);
+  });
+
+  test("describes the keys that work on it, with none for editing text", async ({
+    page,
+  }) => {
+    await open(page, ["button"]);
+
+    await expect(blockGroup(page, "Button")).toHaveAccessibleDescription(
+      "Use arrow keys to select another Block, and Alt with arrow keys to move this one."
+    );
+  });
+
+  test("ignores Enter", async ({ page }) => {
+    await open(page, ["button"]);
+    await blockGroup(page, "Button").focus();
+
+    await page.keyboard.press("Enter");
+
+    await expect(blockGroup(page, "Button")).toBeFocused();
+    await expect(blockTypes(page)).resolves.toEqual(["button"]);
+  });
+
+  test("changes its label as one undo step", async ({ page }) => {
+    await open(page, ["button"]);
+    await blockGroup(page, "Button").focus();
+
+    await change(field(page, "Label"), "Shop {{season}}");
+
+    await expect(buttonFace(page)).toHaveText("Shop {{season}}");
+
+    await undo(page);
+    await expect(buttonFace(page)).toHaveText("Buy");
+    await expect(field(page, "Label")).toHaveValue("Buy");
+
+    await redo(page);
+    await expect(buttonFace(page)).toHaveText("Shop {{season}}");
+  });
+
+  test("shows a label as text, whatever it holds", async ({ page }) => {
+    await open(page, ["button"]);
+    await blockGroup(page, "Button").focus();
+
+    await change(field(page, "Label"), "<img src=x onerror=alert(1)>");
+
+    await expect(buttonFace(page)).toHaveText("<img src=x onerror=alert(1)>");
+    await expect(buttonFace(page).locator("img")).toHaveCount(0);
+    const { html } = await openExport(page);
+    expect(html).not.toContain("<img");
+  });
+
+  test("refuses to go without a label", async ({ page }) => {
+    await open(page, ["button"]);
+    await blockGroup(page, "Button").focus();
+
+    await change(field(page, "Label"), "   ");
+
+    await expect(field(page, "Label")).toHaveAttribute("aria-invalid", "true");
+    await expect(panelBlock(page).getByRole("alert")).toHaveText(
+      "Enter the text the Button shows."
+    );
+    await expect(lastBlockProps(page)).resolves.toEqual({ label: "Buy" });
+  });
+
+  for (const href of [
+    // oxlint-disable-next-line no-script-url -- What's being refused.
+    "javascript:alert(1)",
+    "data:text/html,x",
+    // oxlint-disable-next-line no-script-url -- What's being refused.
+    "{{x}}javascript:alert(1)",
+  ]) {
+    test(`refuses the link ${href}`, async ({ page }) => {
+      await open(page, ["button"]);
+      await blockGroup(page, "Button").focus();
+
+      await change(field(page, "Link"), href);
+
+      await expect(field(page, "Link")).toHaveAttribute("aria-invalid", "true");
+      await expect(panelBlock(page).getByRole("alert")).toContainText(
+        "Merge Tag"
+      );
+      await expect(lastBlockProps(page)).resolves.toEqual({ label: "Buy" });
+    });
+  }
+
+  for (const href of ["https://shop.example/sale", "{{cta_url}}"]) {
+    test(`links to ${href} in the export, and undoes it`, async ({ page }) => {
+      await open(page, ["button"]);
+      await blockGroup(page, "Button").focus();
+
+      await change(field(page, "Link"), href);
+
+      await expect(field(page, "Link")).toHaveAttribute(
+        "aria-invalid",
+        "false"
+      );
+      const { opened } = await openExport(page);
+      await expect(opened.getByRole("link", { name: "Buy" })).toHaveAttribute(
+        "href",
+        href
+      );
+      await opened.close();
+
+      await undo(page);
+      await expect(lastBlockProps(page)).resolves.toEqual({ label: "Buy" });
+      await expect(field(page, "Link")).toHaveValue("");
+    });
+  }
+
+  test("removes its link when the field is cleared", async ({ page }) => {
+    await open(page, ["button"]);
+    await blockGroup(page, "Button").focus();
+    await change(field(page, "Link"), "https://shop.example");
+
+    await change(field(page, "Link"), "");
+
+    await expect(lastBlockProps(page)).resolves.toEqual({ label: "Buy" });
+    const { opened } = await openExport(page);
+    await expect(opened.getByRole("link")).toHaveCount(0);
+    await expect(opened.getByText("Buy")).toBeVisible();
+  });
+
+  test("looks the same on the canvas and in the export", async ({ page }) => {
+    await open(page, ["button"]);
+    await blockGroup(page, "Button").focus();
+    await change(field(page, "Link"), "https://shop.example");
+    await change(field(page, "Label"), "Buy it all today");
+    await change(field(page, "Background color"), "#112233");
+    await change(field(page, "Text color"), "#ddeeff");
+    await field(page, "Alignment").selectOption("center");
+
+    const onCanvas = await buttonLook(buttonFace(page));
+    const email = await canvas(page)
+      .locator(".email")
+      .evaluate((element) => {
+        const { width, x } = element.getBoundingClientRect();
+        return x + width / 2;
+      });
+    const { opened } = await openExport(page);
+    await opened.setViewportSize({ height: 800, width: 800 });
+    const exported = await buttonLook(
+      opened.getByRole("link", { name: "Buy" })
+    );
+
+    expect({
+      ...exported,
+      width: toTenths(exported.width),
+      x: toTenths(exported.x),
+    }).toEqual({
+      ...onCanvas,
+      width: toTenths(onCanvas.width),
+      // The export is centered on an 800px page.
+      x: toTenths(onCanvas.x - email + 400),
+    });
+  });
+
+  for (const align of ["left", "right"]) {
+    test(`sits ${align} on the canvas and in the export`, async ({ page }) => {
+      await open(page, ["button"]);
+      await blockGroup(page, "Button").focus();
+      await field(page, "Alignment").selectOption(align);
+
+      const side = async (face: Locator, container: Locator) => {
+        const inner = await face.boundingBox();
+        const outer = await container.boundingBox();
+        return toTenths(
+          align === "left"
+            ? (inner?.x ?? 0) - (outer?.x ?? 0)
+            : (outer?.x ?? 0) +
+                (outer?.width ?? 0) -
+                (inner?.x ?? 0) -
+                (inner?.width ?? 0)
+        );
+      };
+
+      await expect(
+        side(buttonFace(page), blockGroup(page, "Button"))
+      ).resolves.toBe(16);
+      const { opened } = await openExport(page);
+      await opened.setViewportSize({ height: 800, width: 800 });
+      await expect(
+        side(opened.getByText("Buy"), opened.locator("body > div"))
+      ).resolves.toBe(116);
+    });
+  }
+});
+
+test.describe("accessibility", () => {
+  for (const [name, target] of [
+    ["Heading", "heading"],
+    ["Button", "button"],
+  ] as const) {
+    test(`finds no violations with a ${name} selected`, async ({ page }) => {
+      await open(page, ["text", target]);
+      await blockGroup(page, name).focus();
+
+      await expect(violations(page)).resolves.toEqual([]);
+    });
+  }
+
+  test("finds no problem with the exported heading or link", async ({
+    page,
+  }) => {
+    await open(page, ["heading", "button"]);
+    await blockGroup(page, "Button").focus();
+    await change(field(page, "Link"), "https://shop.example");
+    const { opened } = await openExport(page);
+
+    await expect(
+      opened.getByRole("heading", { level: 2, name: "Sale" })
+    ).toBeVisible();
+    await expect(opened.getByRole("link", { name: "Buy" })).toBeVisible();
+    const { violations: found } = await new AxeBuilder({ page: opened })
+      // MJML writes an empty <title> for every email, whatever its Blocks.
+      .disableRules(["document-title"])
+      .setLegacyMode()
+      .withTags(["wcag2a", "wcag2aa"])
+      .analyze();
+
+    expect(found.map(({ id }) => id)).toEqual([]);
+  });
+});
