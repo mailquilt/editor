@@ -23,12 +23,13 @@ export type DropPlace =
 export interface BlockDragging {
   /** Matches the draggable and droppable elements to what's on the canvas now. */
   sync: () => void;
+  isDragging: () => boolean;
   destroy: () => void;
 }
 
 /** The copy that dnd-kit leaves behind while dragging has the same attributes. */
 const NOT_PLACEHOLDER = ":not([data-dnd-placeholder])";
-const BLOCKS = `.block${NOT_PLACEHOLDER}`;
+export const BLOCKS = `.block${NOT_PLACEHOLDER}`;
 
 const midpointY = (element: Element) => {
   const { bottom, top } = element.getBoundingClientRect();
@@ -296,6 +297,7 @@ export const createBlockDragging = ({
       cancelAnimationFrame(frame);
       clearTimeout(syncTimer);
     },
+    isDragging: () => manager.dragOperation.status.dragging,
     sync: syncElements,
   };
 };
