@@ -2,28 +2,19 @@ import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
 import type { MailQuilt } from "../src/index.js";
-
-const canvas = (page: Page) => page.locator("mail-quilt");
-const textBlock = (page: Page) =>
-  page.getByRole("textbox", { name: "Text Block" });
+import {
+  canvas,
+  exportHtml,
+  focusStartOfTextBlock,
+  setValue,
+  textBlock,
+} from "./helpers.js";
 
 const latestDocumentText = async (page: Page) => {
   const text = await page.getByTestId("latest-document").textContent();
   const document = JSON.parse(text ?? "null");
   return document.rows[0].columns[0].blocks[0].props.content.content[0]
     .content[0].text as string;
-};
-
-const exportHtml = (page: Page) =>
-  canvas(page).evaluate((element) => (element as MailQuilt).exportHtml());
-
-/** Types at the start of the Text Block, so a lost cursor scrambles the text. */
-const focusStartOfTextBlock = async (page: Page) => {
-  await textBlock(page).click();
-  await expect(textBlock(page)).toBeFocused();
-  await page.keyboard.press(
-    process.platform === "darwin" ? "Meta+ArrowLeft" : "Home"
-  );
 };
 
 test.beforeEach(async ({ page }) => {
@@ -554,11 +545,6 @@ test.describe("undo and redo while typing", () => {
     await expect(textBlock(page)).toHaveText("Hello");
   });
 });
-
-const setValue = (page: Page, document: unknown) =>
-  canvas(page).evaluate((element, value) => {
-    (element as MailQuilt).value = value as MailQuilt["value"];
-  }, document);
 
 const currentValue = (page: Page) =>
   canvas(page).evaluate((element) => (element as MailQuilt).value);

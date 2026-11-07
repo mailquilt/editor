@@ -69,6 +69,25 @@ const keepFocusInBlock = (event: MouseEvent) => {
   }
 };
 
+/** One opening of the Preview. */
+interface Preview {
+  /** Unset while the email renders. */
+  result?: { html: string } | { failure: string };
+}
+
+const renderPreviewContent = ({ result }: Preview) => {
+  if (!result) {
+    return html`<p role="status">Loading preview…</p>`;
+  }
+  return "html" in result
+    ? html`
+        <iframe sandbox="" srcdoc=${result.html} title="Email preview"></iframe>
+      `
+    : html`
+        <p role="alert">The preview couldn't be loaded: ${result.failure}</p>
+      `;
+};
+
 export class MailQuilt extends LitElement {
   static override styles = css`
     :host {
@@ -137,7 +156,17 @@ export class MailQuilt extends LitElement {
       z-index: 1;
     }
 
-    .toolbar button {
+    .formatting {
+      align-items: center;
+      display: flex;
+      flex: 1;
+      flex-wrap: wrap;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .toolbar button,
+    .preview-header button {
       background: transparent;
       border: 1px solid transparent;
       border-radius: 4px;
@@ -149,12 +178,14 @@ export class MailQuilt extends LitElement {
       padding: 0 6px;
     }
 
-    .toolbar button:hover:not(:disabled) {
+    .toolbar button:hover:not(:disabled),
+    .preview-header button:hover {
       background: #f4f4f5;
     }
 
     .toolbar button:focus-visible,
-    .toolbar input:focus-visible {
+    .toolbar input:focus-visible,
+    .preview-header button:focus-visible {
       outline: 2px solid #2563eb;
       outline-offset: 1px;
     }
@@ -206,6 +237,65 @@ export class MailQuilt extends LitElement {
       flex-basis: 100%;
       margin: 0;
     }
+
+    /* A closed dialog relies on the browser's display: none, so no all: initial. */
+    .preview {
+      background: #ffffff;
+      border: 0;
+      border-radius: 8px;
+      height: calc(100dvh - 32px);
+      max-height: none;
+      max-width: none;
+      padding: 0;
+      width: calc(100vw - 32px);
+    }
+
+    .preview::backdrop {
+      background: rgb(0 0 0 / 50%);
+    }
+
+    /* Like the canvas, this stops inherited values from the host element. */
+    .preview-panel {
+      all: initial;
+      box-sizing: border-box;
+      color: #18181b;
+      display: flex;
+      flex-direction: column;
+      font-family: system-ui, sans-serif;
+      font-size: 14px;
+      height: 100%;
+      line-height: 1.5;
+    }
+
+    .preview-header {
+      align-items: center;
+      border-bottom: 1px solid #d4d4d8;
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 4px 4px 12px;
+    }
+
+    .preview-header h2 {
+      font: inherit;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .preview-panel iframe {
+      border: 0;
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+    }
+
+    .preview-panel > p {
+      margin: 0;
+      padding: 16px;
+    }
+
+    .preview-panel > p[role="alert"] {
+      color: #b91c1c;
+    }
   `;
 
   #editor: Editor | undefined;
@@ -220,6 +310,10 @@ export class MailQuilt extends LitElement {
   #formats: TextFormats | undefined;
   /** Set while the link field is open. */
   #linkForm: { error: boolean } | undefined;
+  /** Set while the Preview is open. */
+  #preview: Preview | undefined;
+  /** The current document's HTML, once the Preview has rendered it. */
+  #previewHtml: string | undefined;
 
   get value() {
     return this.#editor?.getDocument();
@@ -309,7 +403,7 @@ export class MailQuilt extends LitElement {
     const { rows, settings } = document;
 
     return html`
-      ${this.#renderToolbar()}
+      ${this.#renderToolbar()} ${this.#renderPreview()}
       <div
         class="email"
         @beforeinput=${this.#onBeforeInput}
@@ -351,44 +445,66 @@ export class MailQuilt extends LitElement {
   #renderToolbar() {
     const formats = this.#formats;
     return html`
-      <div
-        aria-label="Text formatting"
-        class="toolbar"
-        role="group"
-        @mousedown=${keepFocusInBlock}
-      >
-        ${MARK_BUTTONS.map(
-          ({ label, mark, text }) => html`
-            <button
-              aria-label=${label}
-              aria-pressed=${formats?.[mark] ? "true" : "false"}
-              class=${mark}
-              ?disabled=${!formats}
-              title=${label}
-              type="button"
-              @click=${() => this.#activeView?.toggleMark(mark)}
-            >
-              ${text}
-            </button>
-          `
-        )}
-        <button
-          aria-pressed=${formats?.linkHref === undefined ? "false" : "true"}
-          ?disabled=${!formats}
-          type="button"
-          @click=${this.#openLinkForm}
-        >
-          Link
-        </button>
-        <button
-          ?disabled=${!formats}
-          type="button"
-          @click=${() => this.#activeView?.insertLineBreak()}
-        >
-          Line break
-        </button>
-        ${this.#linkForm ? this.#renderLinkForm(this.#linkForm.error) : nothing}
+      <div class="toolbar" @mousedown=${keepFocusInBlock}>
+        <div aria-label="Text formatting" class="formatting" role="group">
+          ${MARK_BUTTONS.map(
+            ({ label, mark, text }) => html`
+              <button
+                aria-label=${label}
+                aria-pressed=${formats?.[mark] ? "true" : "false"}
+                class=${mark}
+                ?disabled=${!formats}
+                title=${label}
+                type="button"
+                @click=${() => this.#activeView?.toggleMark(mark)}
+              >
+                ${text}
+              </button>
+            `
+          )}
+          <button
+            aria-pressed=${formats?.linkHref === undefined ? "false" : "true"}
+            ?disabled=${!formats}
+            type="button"
+            @click=${this.#openLinkForm}
+          >
+            Link
+          </button>
+          <button
+            ?disabled=${!formats}
+            type="button"
+            @click=${() => this.#activeView?.insertLineBreak()}
+          >
+            Line break
+          </button>
+          ${this.#linkForm ? this.#renderLinkForm(this.#linkForm.error) : nothing}
+        </div>
+        <button type="button" @click=${this.#openPreview}>Preview</button>
       </div>
+    `;
+  }
+
+  /**
+   * The dialog stays rendered so that closing it, not removing it, returns focus.
+   * An empty `sandbox` gives the email an opaque origin and no scripts, forms,
+   * popups or top-level navigation.
+   */
+  #renderPreview() {
+    const preview = this.#preview;
+    return html`
+      <dialog
+        aria-labelledby="preview-title"
+        class="preview"
+        @close=${this.#onPreviewClose}
+      >
+        <div class="preview-panel">
+          <div class="preview-header">
+            <h2 id="preview-title">Preview</h2>
+            <button type="button" @click=${this.#closePreview}>Close</button>
+          </div>
+          ${preview ? renderPreviewContent(preview) : nothing}
+        </div>
+      </dialog>
     `;
   }
 
@@ -498,6 +614,59 @@ export class MailQuilt extends LitElement {
     this.#activeView?.setLink(href);
   }
 
+  get #previewDialog() {
+    return this.renderRoot.querySelector<HTMLDialogElement>(".preview");
+  }
+
+  /** Shows the document as it is now, compiling it only if it has changed. */
+  async #openPreview({ currentTarget }: Event) {
+    // Toolbar buttons don't take focus from a mouse press, and the dialog returns
+    // focus to whatever had it.
+    if (!this.shadowRoot?.activeElement) {
+      (currentTarget as HTMLElement).focus();
+    }
+
+    const cached = this.#previewHtml;
+    const preview: Preview = {};
+    if (cached !== undefined) {
+      preview.result = { html: cached };
+    }
+    this.#preview = preview;
+    this.#previewDialog?.showModal();
+    this.requestUpdate();
+    if (cached !== undefined) {
+      return;
+    }
+
+    try {
+      const email = await this.exportHtml();
+      preview.result = { html: email };
+      // Closed in the meantime, so the document may have changed since.
+      if (this.#preview === preview) {
+        this.#previewHtml = email;
+      }
+    } catch (error) {
+      console.error("<mail-quilt> couldn't render the preview", error);
+      preview.result = {
+        failure: error instanceof Error ? error.message : String(error),
+      };
+    }
+    this.requestUpdate();
+  }
+
+  #closePreview() {
+    this.#previewDialog?.close();
+  }
+
+  #onPreviewClose() {
+    // This event is queued, so it can arrive after the next opening.
+    if (this.#previewDialog?.open) {
+      return;
+    }
+    this.#preview = undefined;
+    this.requestUpdate();
+  }
+
   #commitText(blockId: string, content: RichTextDocument) {
     const editor = this.#editor;
     if (!editor) {
@@ -521,6 +690,11 @@ export class MailQuilt extends LitElement {
   }
 
   #onBeforeInput(event: InputEvent) {
+    // WebKit types into a Block's selection even with focus on the dialog.
+    if (this.#previewDialog?.open) {
+      event.preventDefault();
+      return;
+    }
     this.#runHistoryStep(event, historyInput(event));
   }
 
@@ -559,6 +733,7 @@ export class MailQuilt extends LitElement {
 
   #show(document: BlocksDocument | undefined) {
     this.#lastKnownDocument = document;
+    this.#previewHtml = undefined;
     this.#destroyViews();
     this.#editor = document && createEditor({ document });
     this.requestUpdate();
@@ -567,6 +742,7 @@ export class MailQuilt extends LitElement {
   #emitChange(document: BlocksDocument) {
     // A copy, because the host owns what it receives and may change it.
     this.#lastKnownDocument = structuredClone(document);
+    this.#previewHtml = undefined;
     this.dispatchEvent(
       new CustomEvent("mq-change", {
         bubbles: true,
@@ -598,6 +774,12 @@ export class MailQuilt extends LitElement {
     this.#activeBlockId = undefined;
     this.#formats = undefined;
     this.#linkForm = undefined;
+    // The Preview shows the old document. A removed dialog also stays `open`, so
+    // it would come back without being modal.
+    if (this.#preview) {
+      this.#previewDialog?.close();
+      this.#preview = undefined;
+    }
   }
 }
 

@@ -2,8 +2,8 @@ import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
 import type { MailQuilt } from "../src/index.js";
+import { canvas, exportHtml } from "./helpers.js";
 
-const canvas = (page: Page) => page.locator("mail-quilt");
 const textBlock = (page: Page) =>
   page.getByRole("textbox", { name: "Text Block" }).first();
 const secondTextBlock = (page: Page) =>
@@ -19,9 +19,6 @@ const linkInput = (page: Page) =>
 const undo = (page: Page) => page.keyboard.press("ControlOrMeta+z");
 const redo = (page: Page) => page.keyboard.press("ControlOrMeta+Shift+z");
 const selectAll = (page: Page) => page.keyboard.press("ControlOrMeta+a");
-
-const exportHtml = (page: Page) =>
-  canvas(page).evaluate((element) => (element as MailQuilt).exportHtml());
 
 /** The saved content of the Block at `index`, as the host last received it. */
 const savedParagraphs = async (page: Page, index = 0) => {

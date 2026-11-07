@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 
 import "../../src/index.js";
 import type { MailQuilt } from "../../src/index.js";
+import { emailWith } from "./email.js";
 
 declare module "react" {
   // oxlint-disable-next-line typescript/no-namespace -- React declares JSX as a namespace, so only a namespace can extend it.
@@ -17,45 +18,7 @@ declare module "react" {
   }
 }
 
-const initialDocument: BlocksDocument = {
-  kind: "blocks",
-  rows: [
-    {
-      columns: [
-        {
-          blocks: [
-            {
-              id: "block-1",
-              props: {
-                content: {
-                  content: [
-                    {
-                      content: [{ text: "Hello", type: "text" }],
-                      type: "paragraph",
-                    },
-                  ],
-                  type: "doc",
-                },
-              },
-              type: "text",
-            },
-          ],
-          id: "column-1",
-          props: {},
-          width: 100,
-        },
-      ],
-      id: "row-1",
-      props: {},
-    },
-  ],
-  settings: {
-    backgroundColor: "#ffffff",
-    fontFamily: "Arial, Helvetica, sans-serif",
-    width: 600,
-  },
-  version: 1,
-};
+const initialDocument = emailWith("Hello");
 
 /** A controlled host: every `mq-change` goes into state and back into `value`. */
 const Host = () => {
