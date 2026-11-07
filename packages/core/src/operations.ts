@@ -1,4 +1,10 @@
-import type { Block, BlocksDocument, Column, Row } from "./document.js";
+import type {
+  Block,
+  BlocksDocument,
+  Column,
+  EmailSettings,
+  Row,
+} from "./document.js";
 
 interface BlockPosition {
   columnId: string;
@@ -10,6 +16,12 @@ type Placement =
   | ({ block: Block } & BlockPosition)
   | { column: Column; index: number; rowId: string }
   | { index: number; row: Row };
+
+/** What a setProps changes. */
+export type PropsTarget =
+  | { blockId: string }
+  | { rowId: string }
+  | { emailSettings: true };
 
 /**
  * A recorded change that actually happened to an email. This is the fixed set
@@ -25,12 +37,11 @@ export type Operation =
       /** The index once the Block has left `from`. */
       to: BlockPosition;
     }
-  | {
+  | ({
       type: "setProps";
-      blockId: string;
       props: Record<string, unknown>;
       previousProps: Record<string, unknown>;
-    }
+    } & PropsTarget)
   | {
       type: "setColumnWidth";
       columnId: string;
@@ -131,11 +142,17 @@ export const applyOperation = (
       break;
     }
     case "setProps": {
-      const block = findBlock(document, operation.blockId);
-      if (!block) {
-        throw new Error(`No Block with ID "${operation.blockId}"`);
+      if ("emailSettings" in operation) {
+        document.settings = operation.props as unknown as EmailSettings;
+      } else if ("rowId" in operation) {
+        getRow(document, operation.rowId).props = operation.props;
+      } else {
+        const block = findBlock(document, operation.blockId);
+        if (!block) {
+          throw new Error(`No Block with ID "${operation.blockId}"`);
+        }
+        block.props = operation.props;
       }
-      block.props = operation.props;
       break;
     }
     case "setColumnWidth": {

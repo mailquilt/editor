@@ -71,6 +71,12 @@ export const setValue = (page: Page, document: unknown) =>
     (element as MailQuilt).value = value as MailQuilt["value"];
   }, document);
 
+/** On macOS, End scrolls the page and leaves the cursor where it is. */
+export const moveCursorToLineEnd = (page: Page) =>
+  page.keyboard.press(
+    process.platform === "darwin" ? "Meta+ArrowRight" : "End"
+  );
+
 /** Types at the start of the Text Block, so a lost cursor scrambles the text. */
 export const focusStartOfTextBlock = async (page: Page) => {
   await textBlock(page).click();

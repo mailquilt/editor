@@ -3,6 +3,7 @@ import * as v from "valibot";
 import { describeIssues, validateProps } from "./blocks.js";
 import { DOCUMENT_VERSION } from "./create-email.js";
 import type { BlocksDocument } from "./document.js";
+import { emailSettingsSchema, rowPropsSchema } from "./settings.js";
 
 export type LoadResult =
   | { ok: true; document: BlocksDocument }
@@ -21,15 +22,6 @@ type Migrations = Record<
 const COLUMN_WIDTH_TOLERANCE = 1e-6;
 
 const idSchema = v.pipe(v.string(), v.nonEmpty());
-
-/** Formats MJML accepts, so that an email that loads can also be exported. */
-const colorSchema = v.pipe(
-  v.string(),
-  v.regex(
-    /^(?:#[\da-f]{3}(?:[\da-f]{3})?|rgb\(\d{1,3},\s?\d{1,3},\s?\d{1,3}\)|rgba\(\d{1,3},\s?\d{1,3},\s?\d{1,3},\s?\d(?:\.\d{1,3})?\))$/iu,
-    "Must be a color written as #rgb, #rrggbb, rgb() or rgba()"
-  )
-);
 
 // Strict at every level, so a field this version doesn't know is refused rather
 // than dropped, which would lose it at the host's next save.
@@ -58,16 +50,10 @@ const documentSchema = v.strictObject({
         v.maxLength(4)
       ),
       id: idSchema,
-      props: v.strictObject({}),
+      props: rowPropsSchema,
     })
   ),
-  settings: v.strictObject({
-    backgroundColor: colorSchema,
-    fontFamily: v.string(),
-    language: v.optional(v.string()),
-    preheader: v.optional(v.string()),
-    width: v.pipe(v.number(), v.safeInteger(), v.minValue(1)),
-  }),
+  settings: emailSettingsSchema,
   version: v.pipe(v.number(), v.integer()),
 });
 

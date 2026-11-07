@@ -1,15 +1,22 @@
 import * as v from "valibot";
 
-import { blockDefinitions, describeIssues, validateProps } from "./blocks.js";
+import {
+  blockDefinitions,
+  describeIssues,
+  parseProps,
+  validateProps,
+} from "./blocks.js";
 import { createId } from "./create-email.js";
 import type { BlocksDocument, Column, Row } from "./document.js";
+import { isSameDocument } from "./load-document.js";
 import {
   applyOperation,
   findBlock,
   findBlockPosition,
   findColumn,
 } from "./operations.js";
-import type { Operation } from "./operations.js";
+import type { Operation, PropsTarget } from "./operations.js";
+import { emailSettingsSchema, rowPropsSchema } from "./settings.js";
 
 /** The layouts a Row can have, in the order a person chooses from them. */
 export const ROW_LAYOUTS = [
@@ -52,6 +59,15 @@ const commandSchema = v.variant("type", [
     blockId: v.string(),
     props: v.record(v.string(), v.unknown()),
     type: v.literal("updateProps"),
+  }),
+  v.strictObject({
+    props: v.record(v.string(), v.unknown()),
+    rowId: v.string(),
+    type: v.literal("updateRowProps"),
+  }),
+  v.strictObject({
+    settings: v.record(v.string(), v.unknown()),
+    type: v.literal("updateEmailSettings"),
   }),
   v.strictObject({
     blockType: v.string(),
@@ -106,31 +122,73 @@ export type CommandPlan =
 
 const rejected = (reason: string) => ({ ok: false as const, reason });
 
-const planUpdateProps = (
-  document: BlocksDocument,
-  blockId: string,
-  props: Record<string, unknown>
+/**
+ * Plans what `changes` makes of `current`. A null removes a property, as in JSON
+ * Merge Patch, so that a Command stays plain JSON. The schema decides whether that
+ * property can go.
+ */
+const planProps = (
+  target: PropsTarget,
+  current: object,
+  changes: Record<string, unknown>,
+  validate: (props: Record<string, unknown>) => ReturnType<typeof parseProps>
 ): CommandPlan => {
-  const block = findBlock(document, blockId);
-  if (!block) {
-    return rejected(`No Block with ID "${blockId}"`);
-  }
-  const validated = validateProps(block, { ...block.props, ...props });
+  const merged = Object.entries({ ...current, ...changes }).filter(
+    ([, value]) => value !== null
+  );
+  const validated = validate(Object.fromEntries(merged));
   if (!validated.valid) {
     return rejected(validated.reason);
+  }
+  if (isSameDocument(validated.props, current)) {
+    return { ok: false, reason: "Nothing would change", unchanged: true };
   }
   return {
     ok: true,
     operations: [
       {
-        blockId,
-        previousProps: block.props,
+        ...target,
+        previousProps: { ...current },
         props: validated.props,
         type: "setProps",
       },
     ],
   };
 };
+
+const planUpdateProps = (
+  document: BlocksDocument,
+  blockId: string,
+  props: Record<string, unknown>
+): CommandPlan => {
+  const block = findBlock(document, blockId);
+  return block
+    ? planProps({ blockId }, block.props, props, (merged) =>
+        validateProps(block, merged)
+      )
+    : rejected(`No Block with ID "${blockId}"`);
+};
+
+const planUpdateRowProps = (
+  document: BlocksDocument,
+  rowId: string,
+  props: Record<string, unknown>
+): CommandPlan => {
+  const row = document.rows.find(({ id }) => id === rowId);
+  return row
+    ? planProps({ rowId }, row.props, props, (merged) =>
+        parseProps(rowPropsSchema, merged, `Row "${rowId}"`)
+      )
+    : rejected(`No Row with ID "${rowId}"`);
+};
+
+const planUpdateEmailSettings = (
+  document: BlocksDocument,
+  settings: Record<string, unknown>
+): CommandPlan =>
+  planProps({ emailSettings: true }, document.settings, settings, (merged) =>
+    parseProps(emailSettingsSchema, merged, "the email's settings")
+  );
 
 const planInsertBlock = (
   document: BlocksDocument,
@@ -356,6 +414,12 @@ export const planCommand = (
   switch (output.type) {
     case "updateProps": {
       return planUpdateProps(document, output.blockId, output.props);
+    }
+    case "updateRowProps": {
+      return planUpdateRowProps(document, output.rowId, output.props);
+    }
+    case "updateEmailSettings": {
+      return planUpdateEmailSettings(document, output.settings);
     }
     case "insertBlock": {
       return planInsertBlock(

@@ -1,11 +1,16 @@
 import {
+  blockSettingsFields,
+  blockStyles,
   createEditor,
+  EMAIL_SETTINGS_FIELDS,
   findBlockPosition,
   isAllowedLinkHref,
   isSameDocument,
   loadDocument,
   ROW_LAYOUTS,
+  ROW_SETTINGS_FIELDS,
   rowLayoutOf,
+  rowStyles,
 } from "@mailquilt/core";
 import type {
   BlocksDocument,
@@ -15,6 +20,7 @@ import type {
   RichTextDocument,
   Row,
   RowLayout,
+  SettingsField,
 } from "@mailquilt/core";
 import { renderEmail } from "@mailquilt/renderer";
 import { css, html, LitElement, nothing } from "lit";
@@ -33,6 +39,14 @@ import {
   positionLabel,
 } from "./block-keyboard.js";
 import type { Direction } from "./block-keyboard.js";
+import {
+  draftKey,
+  fieldText,
+  fieldValue,
+  renderSettingsPanel,
+  settingsPanelStyles,
+} from "./settings-panel.js";
+import type { FieldDraft, SettingsSection } from "./settings-panel.js";
 import { createTextBlockView } from "./text-block-view.js";
 import type {
   TextBlockView,
@@ -55,6 +69,8 @@ const MOVE_BUTTONS: { direction: Direction; keys: string; text: string }[] = [
   { direction: "left", keys: "Alt+←", text: "←" },
   { direction: "right", keys: "Alt+→", text: "→" },
 ];
+
+const NO_SELECTION_HINT = "Select a Block to change it and its Row.";
 
 const INVALID_LINK_MESSAGE =
   "Use a URL starting with https://, http://, mailto: or tel:, or a Merge Tag such as {{cta_url}}.";
@@ -124,361 +140,377 @@ const renderPreviewContent = ({ result }: Preview) => {
 };
 
 export class MailQuilt extends LitElement {
-  static override styles = css`
-    :host {
-      display: block;
-    }
+  static override styles = [
+    settingsPanelStyles,
+    css`
+      :host {
+        display: block;
+      }
 
-    /*
+      /* Wraps the panel below the canvas once they don't both fit. */
+      .workspace {
+        all: initial;
+        align-items: flex-start;
+        display: flex;
+        flex-wrap: wrap;
+      }
+
+      .canvas-area {
+        flex: 999 1 320px;
+        min-width: 0;
+      }
+
+      /*
      * Inherited properties cross the Shadow DOM boundary, so hostile values on
      * the host element stop here.
      */
-    .email {
-      all: initial;
-      box-sizing: border-box;
-      color: #000000;
-      display: block;
-      font-size: 16px;
-      line-height: 1.5;
-      margin: 0 auto;
-      max-width: 100%;
-      position: relative;
-    }
+      .email {
+        all: initial;
+        box-sizing: border-box;
+        color: #000000;
+        display: block;
+        font-size: 16px;
+        line-height: 1.5;
+        margin: 0 auto;
+        max-width: 100%;
+        position: relative;
+      }
 
-    .drop-indicator {
-      background: #2563eb;
-      height: 3px;
-      margin-block-start: -1.5px;
-      pointer-events: none;
-      position: absolute;
-      z-index: 1;
-    }
+      .drop-indicator {
+        background: #2563eb;
+        height: 3px;
+        margin-block-start: -1.5px;
+        pointer-events: none;
+        position: absolute;
+        z-index: 1;
+      }
 
-    .row {
-      display: flex;
-    }
+      .row {
+        display: flex;
+      }
 
-    .column {
-      min-width: 0;
-    }
+      .column {
+        min-width: 0;
+      }
 
-    .column.empty {
-      align-items: center;
-      display: flex;
-      justify-content: center;
-      min-height: 56px;
-      outline: 1px dashed #71717a;
-      outline-offset: -1px;
-    }
+      .column.empty {
+        align-items: center;
+        display: flex;
+        justify-content: center;
+        min-height: 56px;
+        outline: 1px dashed #71717a;
+        outline-offset: -1px;
+      }
 
-    .block {
-      position: relative;
-    }
+      .block {
+        position: relative;
+      }
 
-    /* Where a browser scrolls a focused Block to, clear of the sticky toolbar. */
-    .block,
-    .ProseMirror {
-      scroll-margin-block-start: calc(var(--toolbar-height, 0px) + 8px);
-    }
+      /* Where a browser scrolls a focused Block to, clear of the sticky toolbar. */
+      .block,
+      .ProseMirror {
+        scroll-margin-block-start: calc(var(--toolbar-height, 0px) + 8px);
+      }
 
-    .block[aria-current="true"] {
-      outline: 2px solid #2563eb;
-      outline-offset: -2px;
-    }
+      .block[aria-current="true"] {
+        outline: 2px solid #2563eb;
+        outline-offset: -2px;
+      }
 
-    /* Stands out from a Block that's only selected, or whose text has focus. */
-    .block:focus-visible {
-      background-color: rgb(37 99 235 / 10%);
-      outline: 3px solid #1d4ed8;
-      outline-offset: -3px;
-    }
+      /* Stands out from a Block that's only selected, or whose text has focus. */
+      .block:focus-visible {
+        background-color: rgb(37 99 235 / 10%);
+        outline: 3px solid #1d4ed8;
+        outline-offset: -3px;
+      }
 
-    /* The Block that follows the pointer, which also shows what's under it. */
-    .block[data-dnd-dragging] {
-      background: #ffffff;
-      box-shadow: 0 4px 12px rgb(0 0 0 / 25%);
-      opacity: 0.8;
-    }
+      /* The Block that follows the pointer, which also shows what's under it. */
+      .block[data-dnd-dragging] {
+        background: #ffffff;
+        box-shadow: 0 4px 12px rgb(0 0 0 / 25%);
+        opacity: 0.8;
+      }
 
-    /*
+      /*
      * Narrower than a Text Block's padding, so that a press on any text selects it
      * instead of dragging the Block.
      */
-    .drag-handle {
-      align-items: center;
-      background: #e4e4e7;
-      border-end-end-radius: 4px;
-      color: #18181b;
-      cursor: grab;
-      display: flex;
-      font:
-        12px/1 system-ui,
-        sans-serif;
-      height: 24px;
-      inset-block-start: 0;
-      inset-inline-start: 0;
-      justify-content: center;
-      opacity: 0;
-      position: absolute;
-      touch-action: none;
-      user-select: none;
-      width: 16px;
-      z-index: 1;
-    }
-
-    .block:hover .drag-handle,
-    .block[aria-current="true"] .drag-handle {
-      opacity: 1;
-    }
-
-    @media (hover: none) {
       .drag-handle {
+        align-items: center;
+        background: #e4e4e7;
+        border-end-end-radius: 4px;
+        color: #18181b;
+        cursor: grab;
+        display: flex;
+        font:
+          12px/1 system-ui,
+          sans-serif;
+        height: 24px;
+        inset-block-start: 0;
+        inset-inline-start: 0;
+        justify-content: center;
+        opacity: 0;
+        position: absolute;
+        touch-action: none;
+        user-select: none;
+        width: 16px;
+        z-index: 1;
+      }
+
+      .block:hover .drag-handle,
+      .block[aria-current="true"] .drag-handle {
         opacity: 1;
       }
-    }
 
-    [data-block-type] {
-      touch-action: none;
-    }
+      @media (hover: none) {
+        .drag-handle {
+          opacity: 1;
+        }
+      }
 
-    /* Like the canvas, this stops inherited values from the email's settings. */
-    .row-controls {
-      all: initial;
-      align-items: center;
-      background: #f4f4f5;
-      box-sizing: border-box;
-      color: #18181b;
-      display: flex;
-      flex-wrap: wrap;
-      font-family: system-ui, sans-serif;
-      font-size: 12px;
-      gap: 4px;
-      justify-content: space-between;
-      line-height: 1.5;
-      padding: 2px 4px;
-    }
+      [data-block-type] {
+        touch-action: none;
+      }
 
-    .layouts {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 2px;
-    }
+      /* Like the canvas, this stops inherited values from the email's settings. */
+      .row-controls {
+        all: initial;
+        align-items: center;
+        background: #f4f4f5;
+        box-sizing: border-box;
+        color: #18181b;
+        display: flex;
+        flex-wrap: wrap;
+        font-family: system-ui, sans-serif;
+        font-size: 12px;
+        gap: 4px;
+        justify-content: space-between;
+        line-height: 1.5;
+        padding: 2px 4px;
+      }
 
-    .add-block {
-      margin: 8px;
-    }
+      .layouts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2px;
+      }
 
-    /* ProseMirror's base styles (ADR 0002). */
-    .ProseMirror {
-      font-variant-ligatures: none;
-      overflow-wrap: break-word;
-      padding: 16px;
-      position: relative;
-      white-space: pre-wrap;
-      white-space: break-spaces;
-    }
+      .add-block {
+        margin: 8px;
+      }
 
-    .ProseMirror:focus-visible {
-      outline: 2px solid #2563eb;
-      outline-offset: -2px;
-    }
+      /* ProseMirror's base styles (ADR 0002). */
+      .ProseMirror {
+        font-variant-ligatures: none;
+        overflow-wrap: break-word;
+        padding: 16px;
+        position: relative;
+        white-space: pre-wrap;
+        white-space: break-spaces;
+      }
 
-    .ProseMirror p {
-      margin: 0;
-    }
+      .ProseMirror:focus-visible {
+        outline: 2px solid #2563eb;
+        outline-offset: -2px;
+      }
 
-    .announcement {
-      clip-path: inset(50%);
-      height: 1px;
-      overflow: hidden;
-      position: absolute;
-      white-space: nowrap;
-      width: 1px;
-    }
+      .ProseMirror p {
+        margin: 0;
+      }
 
-    /* Like the canvas, this stops inherited values from the host element. */
-    .toolbar {
-      all: initial;
-      align-items: center;
-      background: #ffffff;
-      border-bottom: 1px solid #d4d4d8;
-      box-sizing: border-box;
-      color: #18181b;
-      display: flex;
-      flex-wrap: wrap;
-      font-family: system-ui, sans-serif;
-      font-size: 14px;
-      gap: 4px;
-      line-height: 1.5;
-      padding: 4px;
-      position: sticky;
-      top: 0;
-      z-index: 2;
-    }
+      .announcement {
+        clip-path: inset(50%);
+        height: 1px;
+        overflow: hidden;
+        position: absolute;
+        white-space: nowrap;
+        width: 1px;
+      }
 
-    .move-block {
-      display: flex;
-      gap: 2px;
-    }
+      /* Like the canvas, this stops inherited values from the host element. */
+      .toolbar {
+        all: initial;
+        align-items: center;
+        background: #ffffff;
+        border-bottom: 1px solid #d4d4d8;
+        box-sizing: border-box;
+        color: #18181b;
+        display: flex;
+        flex-wrap: wrap;
+        font-family: system-ui, sans-serif;
+        font-size: 14px;
+        gap: 4px;
+        line-height: 1.5;
+        padding: 4px;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+      }
 
-    .formatting {
-      align-items: center;
-      display: flex;
-      flex: 1;
-      flex-wrap: wrap;
-      gap: 4px;
-      min-width: 0;
-    }
+      .move-block {
+        display: flex;
+        gap: 2px;
+      }
 
-    .toolbar button,
-    .row-controls button,
-    .add-block,
-    .preview-header button {
-      background: transparent;
-      border: 1px solid transparent;
-      border-radius: 4px;
-      color: inherit;
-      cursor: pointer;
-      font: inherit;
-      min-height: 28px;
-      min-width: 28px;
-      padding: 0 6px;
-    }
+      .formatting {
+        align-items: center;
+        display: flex;
+        flex: 1;
+        flex-wrap: wrap;
+        gap: 4px;
+        min-width: 0;
+      }
 
-    .toolbar button:hover:not(:disabled),
-    .add-block:hover,
-    .preview-header button:hover {
-      background: #f4f4f5;
-    }
+      .toolbar button,
+      .row-controls button,
+      .add-block,
+      .preview-header button {
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: 4px;
+        color: inherit;
+        cursor: pointer;
+        font: inherit;
+        min-height: 28px;
+        min-width: 28px;
+        padding: 0 6px;
+      }
 
-    .row-controls button:hover {
-      background: #e4e4e7;
-    }
+      .toolbar button:hover:not(:disabled),
+      .add-block:hover,
+      .preview-header button:hover {
+        background: #f4f4f5;
+      }
 
-    .toolbar:focus-visible,
-    .toolbar button:focus-visible,
-    .toolbar input:focus-visible,
-    .row-controls button:focus-visible,
-    .add-block:focus-visible,
-    .preview-header button:focus-visible {
-      outline: 2px solid #2563eb;
-      outline-offset: 1px;
-    }
+      .row-controls button:hover {
+        background: #e4e4e7;
+      }
 
-    .add-block {
-      border-color: #71717a;
-      font-family: system-ui, sans-serif;
-      font-size: 12px;
-    }
+      .toolbar:focus-visible,
+      .toolbar button:focus-visible,
+      .toolbar input:focus-visible,
+      .row-controls button:focus-visible,
+      .add-block:focus-visible,
+      .preview-header button:focus-visible {
+        outline: 2px solid #2563eb;
+        outline-offset: 1px;
+      }
 
-    .toolbar button[aria-pressed="true"],
-    .row-controls button[aria-pressed="true"] {
-      background: #e4e4e7;
-      border-color: #71717a;
-    }
+      .add-block {
+        border-color: #71717a;
+        font-family: system-ui, sans-serif;
+        font-size: 12px;
+      }
 
-    .toolbar button:disabled {
-      color: #71717a;
-      cursor: default;
-    }
+      .toolbar button[aria-pressed="true"],
+      .row-controls button[aria-pressed="true"] {
+        background: #e4e4e7;
+        border-color: #71717a;
+      }
 
-    .toolbar .bold {
-      font-weight: 700;
-    }
+      .toolbar button:disabled {
+        color: #71717a;
+        cursor: default;
+      }
 
-    .toolbar .italic {
-      font-style: italic;
-    }
+      .toolbar .bold {
+        font-weight: 700;
+      }
 
-    .toolbar .underline {
-      text-decoration: underline;
-    }
+      .toolbar .italic {
+        font-style: italic;
+      }
 
-    .link-form {
-      align-items: center;
-      display: flex;
-      flex-basis: 100%;
-      flex-wrap: wrap;
-      gap: 4px;
-    }
+      .toolbar .underline {
+        text-decoration: underline;
+      }
 
-    .link-form input {
-      border: 1px solid #71717a;
-      border-radius: 4px;
-      box-sizing: border-box;
-      color: inherit;
-      font: inherit;
-      margin-inline-start: 4px;
-      min-height: 28px;
-      padding: 0 6px;
-      width: 20em;
-    }
+      .link-form {
+        align-items: center;
+        display: flex;
+        flex-basis: 100%;
+        flex-wrap: wrap;
+        gap: 4px;
+      }
 
-    .link-form p {
-      color: #b91c1c;
-      flex-basis: 100%;
-      margin: 0;
-    }
+      .link-form input {
+        border: 1px solid #71717a;
+        border-radius: 4px;
+        box-sizing: border-box;
+        color: inherit;
+        font: inherit;
+        margin-inline-start: 4px;
+        min-height: 28px;
+        padding: 0 6px;
+        width: 20em;
+      }
 
-    /* A closed dialog relies on the browser's display: none, so no all: initial. */
-    .preview {
-      background: #ffffff;
-      border: 0;
-      border-radius: 8px;
-      height: calc(100dvh - 32px);
-      max-height: none;
-      max-width: none;
-      padding: 0;
-      width: calc(100vw - 32px);
-    }
+      .link-form p {
+        color: #b91c1c;
+        flex-basis: 100%;
+        margin: 0;
+      }
 
-    .preview::backdrop {
-      background: rgb(0 0 0 / 50%);
-    }
+      /* A closed dialog relies on the browser's display: none, so no all: initial. */
+      .preview {
+        background: #ffffff;
+        border: 0;
+        border-radius: 8px;
+        height: calc(100dvh - 32px);
+        max-height: none;
+        max-width: none;
+        padding: 0;
+        width: calc(100vw - 32px);
+      }
 
-    /* Like the canvas, this stops inherited values from the host element. */
-    .preview-panel {
-      all: initial;
-      box-sizing: border-box;
-      color: #18181b;
-      display: flex;
-      flex-direction: column;
-      font-family: system-ui, sans-serif;
-      font-size: 14px;
-      height: 100%;
-      line-height: 1.5;
-    }
+      .preview::backdrop {
+        background: rgb(0 0 0 / 50%);
+      }
 
-    .preview-header {
-      align-items: center;
-      border-bottom: 1px solid #d4d4d8;
-      display: flex;
-      justify-content: space-between;
-      padding: 4px 4px 4px 12px;
-    }
+      /* Like the canvas, this stops inherited values from the host element. */
+      .preview-panel {
+        all: initial;
+        box-sizing: border-box;
+        color: #18181b;
+        display: flex;
+        flex-direction: column;
+        font-family: system-ui, sans-serif;
+        font-size: 14px;
+        height: 100%;
+        line-height: 1.5;
+      }
 
-    .preview-header h2 {
-      font: inherit;
-      font-weight: 600;
-      margin: 0;
-    }
+      .preview-header {
+        align-items: center;
+        border-bottom: 1px solid #d4d4d8;
+        display: flex;
+        justify-content: space-between;
+        padding: 4px 4px 4px 12px;
+      }
 
-    .preview-panel iframe {
-      border: 0;
-      flex: 1;
-      min-height: 0;
-      width: 100%;
-    }
+      .preview-header h2 {
+        font: inherit;
+        font-weight: 600;
+        margin: 0;
+      }
 
-    .preview-panel > p {
-      margin: 0;
-      padding: 16px;
-    }
+      .preview-panel iframe {
+        border: 0;
+        flex: 1;
+        min-height: 0;
+        width: 100%;
+      }
 
-    .preview-panel > p[role="alert"] {
-      color: #b91c1c;
-    }
-  `;
+      .preview-panel > p {
+        margin: 0;
+        padding: 16px;
+      }
+
+      .preview-panel > p[role="alert"] {
+        color: #b91c1c;
+      }
+    `,
+  ];
 
   #editor: Editor | undefined;
   /** A private copy of the document last received from or sent to the host. */
@@ -492,6 +524,8 @@ export class MailQuilt extends LitElement {
   /** What had focus in the editor when the current update began. */
   #focusedBeforeUpdate: Element | null | undefined;
   #formats: TextFormats | undefined;
+  /** Text in the settings panel that isn't the document's value. */
+  readonly #drafts = new Map<string, FieldDraft>();
   /** Set while the link field is open. */
   #linkForm: { error: boolean } | undefined;
   /** Set while the Preview is open. */
@@ -660,32 +694,43 @@ export class MailQuilt extends LitElement {
         select another Block, and Alt with arrow keys to move this one.
       </p>
       <div
-        class="email"
-        @beforeinput=${this.#onBeforeInput}
-        @keydown=${this.#onKeydown}
-        style=${styleMap({
-          "--toolbar-height": `${this.#toolbarHeight}px`,
-          "background-color": settings.backgroundColor,
-          "font-family": settings.fontFamily,
-          width: `${settings.width}px`,
-        })}
+        class="workspace"
+        style=${styleMap({ "--toolbar-height": `${this.#toolbarHeight}px` })}
       >
-        ${repeat(
-          rows,
-          (row) => row.id,
-          (row, rowIndex) => html`
-            ${this.#renderRowControls(row, rowIndex)}
-            <div class="row">
-              ${repeat(
-                row.columns,
-                (column) => column.id,
-                (column, columnIndex) =>
-                  this.#renderColumn(column, columnLabel(rowIndex, columnIndex))
-              )}
-            </div>
-          `
-        )}
-        <div class="drop-indicator" hidden></div>
+        <div class="canvas-area">
+          <div
+            class="email"
+            lang=${settings.language ?? nothing}
+            @beforeinput=${this.#onBeforeInput}
+            @keydown=${this.#onKeydown}
+            style=${styleMap({
+              "background-color": settings.backgroundColor,
+              "font-family": settings.fontFamily,
+              width: `${settings.width}px`,
+            })}
+          >
+            ${repeat(
+              rows,
+              (row) => row.id,
+              (row, rowIndex) => html`
+                ${this.#renderRowControls(row, rowIndex)}
+                <div class="row" style=${styleMap(rowStyles(row))}>
+                  ${repeat(
+                    row.columns,
+                    (column) => column.id,
+                    (column, columnIndex) =>
+                      this.#renderColumn(
+                        column,
+                        columnLabel(rowIndex, columnIndex)
+                      )
+                  )}
+                </div>
+              `
+            )}
+            <div class="drop-indicator" hidden></div>
+          </div>
+        </div>
+        ${this.#renderSettings(document)}
       </div>
     `;
   }
@@ -740,6 +785,7 @@ export class MailQuilt extends LitElement {
               class="block"
               data-block-id=${block.id}
               role="group"
+              style=${styleMap(blockStyles(block))}
               tabindex="0"
               @focus=${(event: FocusEvent) =>
                 this.#onBlockFocus(event, block.id)}
@@ -861,6 +907,61 @@ export class MailQuilt extends LitElement {
         <button type="button" @click=${this.#openPreview}>Preview</button>
       </div>
     `;
+  }
+
+  #renderSettings(document: BlocksDocument) {
+    const selected = this.#selectedPosition(document);
+    const row = selected && document.rows[selected.rowIndex];
+    const sections: SettingsSection[] = [];
+    if (selected && row) {
+      const { block } = selected;
+      sections.push(
+        {
+          command: (props) => ({
+            blockId: block.id,
+            props,
+            type: "updateProps",
+          }),
+          fields: blockSettingsFields(block.type),
+          id: "block",
+          legend: "Selected Block",
+          targetId: block.id,
+          values: block.props,
+        },
+        {
+          command: (props) => ({
+            props,
+            rowId: row.id,
+            type: "updateRowProps",
+          }),
+          fields: ROW_SETTINGS_FIELDS,
+          id: "row",
+          legend: "Row",
+          targetId: row.id,
+          values: row.props,
+        }
+      );
+    }
+    sections.push({
+      command: (settings) => ({ settings, type: "updateEmailSettings" }),
+      fields: EMAIL_SETTINGS_FIELDS,
+      id: "email",
+      legend: "Email",
+      targetId: "",
+      values: { ...document.settings },
+    });
+    return renderSettingsPanel(
+      sections,
+      selected ? undefined : NO_SELECTION_HINT,
+      {
+        draftOf: (key) => this.#drafts.get(key),
+        onCommit: (section, field, control) =>
+          this.#commitField(section, field, control),
+        onInput: (section, field, { value }) =>
+          this.#draftField(section, field, value),
+        onKeydown: (event) => this.#onSettingsKeydown(event),
+      }
+    );
   }
 
   /**
@@ -1084,6 +1185,58 @@ export class MailQuilt extends LitElement {
     }
   }
 
+  #draftField(section: SettingsSection, field: SettingsField, text: string) {
+    const key = draftKey(section, field);
+    const refused = this.#drafts.get(key)?.refused ?? false;
+    if (text === fieldText(field, section.values) && !refused) {
+      this.#drafts.delete(key);
+    } else {
+      this.#drafts.set(key, { refused, text });
+    }
+  }
+
+  /** Each commit is one undo step. What can't be accepted stays to be fixed. */
+  #commitField(
+    section: SettingsSection,
+    field: SettingsField,
+    control: HTMLInputElement | HTMLSelectElement
+  ) {
+    const key = draftKey(section, field);
+    // Rejections are expected here, as they're what a person typed.
+    const result = this.#editor?.apply(
+      section.command({ [field.key]: fieldValue(field, control) })
+    );
+    if (result?.ok || result?.unchanged) {
+      this.#drafts.delete(key);
+    } else {
+      this.#drafts.set(key, { refused: true, text: control.value });
+    }
+    if (result?.ok) {
+      this.#publishStructure();
+    } else {
+      this.requestUpdate();
+    }
+  }
+
+  /**
+   * Text being typed has the field's own undo, like the link field. Otherwise undo
+   * is the email's, as everywhere else, and Escape takes back what was typed.
+   */
+  #onSettingsKeydown(event: KeyboardEvent) {
+    const { dataset } = event.target as HTMLElement;
+    const key = dataset.draftKey;
+    if (key !== undefined && this.#drafts.has(key)) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        this.#drafts.delete(key);
+        this.requestUpdate();
+      }
+      return;
+    }
+    this.#runHistoryStep(event, historyShortcut(event));
+  }
+
   #chooseLayout(
     rowId: string,
     layout: RowLayout,
@@ -1185,8 +1338,10 @@ export class MailQuilt extends LitElement {
       { mergeKey: `${blockId}:${this.#typingSession}` }
     );
     if (!result.ok) {
-      // Tiptap's schema should be no wider than core's, so this is a bug here.
-      console.error(`<mail-quilt> rejected an edit: ${result.reason}`);
+      if (!result.unchanged) {
+        // Tiptap's schema should be no wider than core's, so this is a bug here.
+        console.error(`<mail-quilt> rejected an edit: ${result.reason}`);
+      }
       return;
     }
     this.#emitChange(editor.getDocument());
@@ -1411,6 +1566,8 @@ export class MailQuilt extends LitElement {
     }
     // The change can move the selection the link field would apply to.
     this.#closeLinkForm();
+    // What was refused may be fine now, and the fields show what's come back.
+    this.#drafts.clear();
     this.#announceHistoryStep(step, moved);
     const document = editor.getDocument();
     for (const row of document.rows) {
@@ -1447,6 +1604,7 @@ export class MailQuilt extends LitElement {
     this.#lastKnownDocument = document;
     this.#previewHtml = undefined;
     this.#announcement = "";
+    this.#drafts.clear();
     this.#destroyViews();
     this.#editor = document && createEditor({ document });
     this.requestUpdate();
