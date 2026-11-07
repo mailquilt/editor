@@ -1,63 +1,14 @@
 import { expect, test } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 
-import type { MailQuilt } from "../src/index.js";
-import { canvas, setValue, textBlock } from "./helpers.js";
-
-type Document = NonNullable<MailQuilt["value"]>;
-
-const blockWith = (text: string) => ({
-  id: `block-${text}`,
-  props: {
-    content: {
-      content: [{ content: [{ text, type: "text" }], type: "paragraph" }],
-      type: "doc",
-    },
-  },
-  type: "text",
-});
-
-/** An email from each Row's Columns, as the text of each Column's Blocks. */
-const emailWith = (rows: string[][][]): Document => ({
-  kind: "blocks",
-  rows: rows.map((columns, rowIndex) => ({
-    columns: columns.map((texts, columnIndex) => ({
-      blocks: texts.map(blockWith),
-      id: `column-${rowIndex}-${columnIndex}`,
-      props: {},
-      width: 100 / columns.length,
-    })),
-    id: `row-${rowIndex}`,
-    props: {},
-  })),
-  settings: {
-    backgroundColor: "#ffffff",
-    fontFamily: "Arial, Helvetica, sans-serif",
-    width: 600,
-  },
-  version: 1,
-});
-
-const currentValue = (page: Page) =>
-  canvas(page).evaluate((element) => (element as MailQuilt).value as Document);
-
-/** Each Row's Columns, as the text of each Column's Blocks. */
-const structure = async (page: Page) => {
-  const { rows } = await currentValue(page);
-  return rows.map((row) =>
-    row.columns.map((column) =>
-      column.blocks.map(({ props }) => {
-        const { content } = props as {
-          content: { content: { content?: { text: string }[] }[] };
-        };
-        return content.content
-          .flatMap((paragraph) => paragraph.content ?? [])
-          .map(({ text }) => text)
-          .join("");
-      })
-    )
-  );
-};
+import {
+  canvas,
+  currentValue,
+  emailWith,
+  setValue,
+  structure,
+  textBlock,
+} from "./helpers.js";
 
 const blockElement = (page: Page, text: string) =>
   canvas(page).locator(".block:not([data-dnd-placeholder])", {
@@ -182,6 +133,21 @@ const scrollTop = (page: Page) =>
 const changeCount = (page: Page) => page.getByTestId("change-count");
 
 test.describe("moving a Block by its handle", () => {
+  test("announces where the Block went", async ({ page }) => {
+    await load(page, [[["A"], ["B"]]]);
+
+    await drag(
+      page,
+      handleOf(page, "A"),
+      await bottomOf(blockElement(page, "B"))
+    );
+
+    await expect(structure(page)).resolves.toEqual([[[], ["B", "A"]]]);
+    await expect(canvas(page).getByRole("status")).toHaveText(
+      "Moved to Row 1, Column 2, position 2 of 2."
+    );
+  });
+
   test("to another Column", async ({ page }) => {
     await load(page, [[["One", "Two"], ["Three"]]]);
 
