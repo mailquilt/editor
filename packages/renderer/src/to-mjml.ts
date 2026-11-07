@@ -1,4 +1,4 @@
-import { loadDocument } from "@mailquilt/core";
+import { blockStyles, loadDocument, rowStyles } from "@mailquilt/core";
 import type {
   Block,
   BlocksDocument,
@@ -61,18 +61,27 @@ const richTextToHtml = ({ content }: RichTextDocument) =>
     })
     .join("");
 
+/** MJML's attributes share their CSS names, apart from this one. */
+const mjmlAttributes = (styles: Record<string, string>) =>
+  Object.entries(styles)
+    .map(
+      ([name, value]) =>
+        ` ${name === "text-align" ? "align" : name}="${escapeAttribute(value)}"`
+    )
+    .join("");
+
 const blockToMjml = (block: Block) => {
   if (block.type !== "text") {
     throw new Error(`Can't render unknown Block type "${block.type}"`);
   }
-  return `<mj-text>${richTextToHtml(block.props.content as RichTextDocument)}</mj-text>`;
+  return `<mj-text${mjmlAttributes(blockStyles(block))}>${richTextToHtml(block.props.content as RichTextDocument)}</mj-text>`;
 };
 
 const columnToMjml = ({ blocks, width }: Column) =>
   `<mj-column width="${width}%">${blocks.map(blockToMjml).join("")}</mj-column>`;
 
-const rowToMjml = ({ columns }: Row) =>
-  `<mj-section>${columns.map(columnToMjml).join("")}</mj-section>`;
+const rowToMjml = (row: Row) =>
+  `<mj-section${mjmlAttributes(rowStyles(row))}>${row.columns.map(columnToMjml).join("")}</mj-section>`;
 
 /** Throws if the document can't be trusted, and renders migrated older ones. */
 export const toMjml = (document: BlocksDocument) => {
@@ -81,12 +90,19 @@ export const toMjml = (document: BlocksDocument) => {
     throw new Error(loaded.reason);
   }
   const { rows, settings } = loaded.document;
-  return `<mjml>
+  const language = settings.language
+    ? ` lang="${escapeAttribute(settings.language)}"`
+    : "";
+  const preheader = settings.preheader
+    ? `<mj-preview>${escapeText(settings.preheader)}</mj-preview>`
+    : "";
+  return `<mjml${language}>
   <mj-head>
+    ${preheader}
     <mj-attributes>
       <mj-all font-family="${escapeAttribute(settings.fontFamily)}" />
       <mj-section padding="0" />
-      <mj-text color="#000000" font-size="16px" line-height="1.5" padding="16px" />
+      <mj-text line-height="1.5" padding="16px" />
     </mj-attributes>
   </mj-head>
   <mj-body background-color="${escapeAttribute(settings.backgroundColor)}" width="${settings.width}px">

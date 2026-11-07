@@ -1,0 +1,504 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  blockSettingsFields,
+  blockStyles,
+  createEditor,
+  createEmail,
+  EMAIL_SETTINGS_FIELDS,
+  loadDocument,
+  ROW_SETTINGS_FIELDS,
+  rowStyles,
+} from "../src/index.js";
+import type {
+  Block,
+  BlocksDocument,
+  Operation,
+  SettingsField,
+} from "../src/index.js";
+
+const setup = () => {
+  const document = createEmail();
+  const [row] = document.rows;
+  const blockId = row?.columns[0]?.blocks[0]?.id as string;
+  const editor = createEditor({ document });
+  const operations: Operation[][] = [];
+  editor.subscribe((step) => operations.push(step));
+  return { blockId, editor, operations, rowId: row?.id as string };
+};
+
+const blockProps = (document: BlocksDocument) =>
+  document.rows[0]?.columns[0]?.blocks[0]?.props;
+
+describe("Text Block settings", () => {
+  it("sets alignment, color and font size, keeping the text", () => {
+    const { blockId, editor } = setup();
+    const { content } = blockProps(editor.getDocument()) as {
+      content: unknown;
+    };
+
+    expect(
+      editor.apply({
+        blockId,
+        props: { align: "center", color: "#ff0000", fontSize: 24 },
+        type: "updateProps",
+      })
+    ).toStrictEqual({ ok: true });
+
+    expect(blockProps(editor.getDocument())).toStrictEqual({
+      align: "center",
+      color: "#ff0000",
+      content,
+      fontSize: 24,
+    });
+  });
+
+  it.each([
+    ["an unknown alignment", { align: "middle" }, /align/u],
+    ["a color MJML can't read", { color: "red" }, /color/u],
+    ["a font size that isn't a number", { fontSize: "24px" }, /fontSize/u],
+    ["a fractional font size", { fontSize: 12.5 }, /fontSize/u],
+    ["a font size of zero", { fontSize: 0 }, /fontSize/u],
+    ["a font size past the limit", { fontSize: 201 }, /fontSize/u],
+    ["a property it doesn't have", { colour: "#ff0000" }, /colour/u],
+  ])("rejects %s", (_name, props, reason) => {
+    const { blockId, editor, operations } = setup();
+    const before = editor.getDocument();
+
+    const result = editor.apply({ blockId, props, type: "updateProps" });
+
+    expect(result).toStrictEqual({
+      ok: false,
+      reason: expect.stringMatching(reason),
+    });
+    expect(editor.getDocument()).toStrictEqual(before);
+    expect(operations).toStrictEqual([]);
+  });
+
+  it("goes back to the default when a null removes a setting", () => {
+    const { blockId, editor } = setup();
+    editor.apply({ blockId, props: { color: "#ff0000" }, type: "updateProps" });
+
+    editor.apply({ blockId, props: { color: null }, type: "updateProps" });
+
+    expect(blockProps(editor.getDocument())).not.toHaveProperty("color");
+  });
+
+  it("can't remove the text with a null", () => {
+    const { blockId, editor } = setup();
+
+    const result = editor.apply({
+      blockId,
+      props: { content: null },
+      type: "updateProps",
+    });
+
+    expect(result).toStrictEqual({
+      ok: false,
+      reason: expect.stringMatching(/content/u),
+    });
+  });
+
+  it("makes each change one undo step", () => {
+    const { blockId, editor } = setup();
+    const before = editor.getDocument();
+
+    editor.apply({ blockId, props: { color: "#ff0000" }, type: "updateProps" });
+    editor.apply({ blockId, props: { fontSize: 24 }, type: "updateProps" });
+    expect(editor.undo()).toBeTruthy();
+
+    expect(blockProps(editor.getDocument())).toMatchObject({
+      color: "#ff0000",
+    });
+    expect(blockProps(editor.getDocument())).not.toHaveProperty("fontSize");
+
+    expect(editor.undo()).toBeTruthy();
+    expect(editor.getDocument()).toStrictEqual(before);
+  });
+
+  it("makes no undo step for a change to the same value", () => {
+    const { blockId, editor, operations } = setup();
+    editor.apply({ blockId, props: { color: "#ff0000" }, type: "updateProps" });
+
+    const result = editor.apply({
+      blockId,
+      props: { color: "#ff0000" },
+      type: "updateProps",
+    });
+
+    expect(result).toMatchObject({ ok: false, unchanged: true });
+    expect(operations).toHaveLength(1);
+  });
+});
+
+describe("Row settings", () => {
+  it("sets the background color as one undo step", () => {
+    const { editor, rowId } = setup();
+    const before = editor.getDocument();
+
+    expect(
+      editor.apply({
+        props: { backgroundColor: "#00ff00" },
+        rowId,
+        type: "updateRowProps",
+      })
+    ).toStrictEqual({ ok: true });
+    expect(editor.getDocument().rows[0]?.props).toStrictEqual({
+      backgroundColor: "#00ff00",
+    });
+
+    editor.undo();
+    expect(editor.getDocument()).toStrictEqual(before);
+
+    editor.redo();
+    expect(editor.getDocument().rows[0]?.props).toStrictEqual({
+      backgroundColor: "#00ff00",
+    });
+  });
+
+  it("removes the background color with a null", () => {
+    const { editor, rowId } = setup();
+    editor.apply({
+      props: { backgroundColor: "#00ff00" },
+      rowId,
+      type: "updateRowProps",
+    });
+
+    editor.apply({
+      props: { backgroundColor: null },
+      rowId,
+      type: "updateRowProps",
+    });
+
+    expect(editor.getDocument().rows[0]?.props).toStrictEqual({});
+  });
+
+  it.each([
+    [
+      "a color MJML can't read",
+      { backgroundColor: "green" },
+      /backgroundColor/u,
+    ],
+    ["a property it doesn't have", { padding: 8 }, /padding/u],
+  ])("rejects %s", (_name, props, reason) => {
+    const { editor, operations, rowId } = setup();
+
+    expect(
+      editor.apply({ props, rowId, type: "updateRowProps" })
+    ).toStrictEqual({
+      ok: false,
+      reason: expect.stringMatching(reason),
+    });
+    expect(operations).toStrictEqual([]);
+  });
+
+  it("rejects a Row that isn't there", () => {
+    const { editor } = setup();
+
+    expect(
+      editor.apply({ props: {}, rowId: "nope", type: "updateRowProps" })
+    ).toStrictEqual({ ok: false, reason: 'No Row with ID "nope"' });
+  });
+
+  it("reports serializable Operations", () => {
+    const { editor, operations, rowId } = setup();
+
+    editor.apply({
+      props: { backgroundColor: "#00ff00" },
+      rowId,
+      type: "updateRowProps",
+    });
+
+    expect(structuredClone(operations)).toStrictEqual([
+      [
+        {
+          previousProps: {},
+          props: { backgroundColor: "#00ff00" },
+          rowId,
+          type: "setProps",
+        },
+      ],
+    ]);
+  });
+});
+
+describe("Email settings", () => {
+  const everything = {
+    backgroundColor: "#eeeeee",
+    fontFamily: "Georgia, serif",
+    language: "pt-BR",
+    preheader: "Hello {{first_name}}",
+    width: 640,
+  };
+
+  it("sets width, background color, font, preheader and language", () => {
+    const { editor } = setup();
+
+    expect(
+      editor.apply({ settings: everything, type: "updateEmailSettings" })
+    ).toStrictEqual({ ok: true });
+
+    expect(editor.getDocument().settings).toStrictEqual(everything);
+  });
+
+  it("changes only what it names, as one undo step", () => {
+    const { editor } = setup();
+    const before = editor.getDocument();
+
+    editor.apply({ settings: { width: 640 }, type: "updateEmailSettings" });
+    expect(editor.getDocument().settings).toStrictEqual({
+      ...before.settings,
+      width: 640,
+    });
+
+    editor.undo();
+    expect(editor.getDocument()).toStrictEqual(before);
+  });
+
+  it("removes a preheader or language with a null", () => {
+    const { editor } = setup();
+    const before = editor.getDocument();
+    editor.apply({
+      settings: { language: "en", preheader: "Hi" },
+      type: "updateEmailSettings",
+    });
+
+    editor.apply({
+      settings: { language: null, preheader: null },
+      type: "updateEmailSettings",
+    });
+
+    expect(editor.getDocument().settings).toStrictEqual(before.settings);
+  });
+
+  it.each([
+    ["a width that isn't whole", { width: 600.5 }, /width/u],
+    ["a width of zero", { width: 0 }, /width/u],
+    ["no width", { width: null }, /width/u],
+    ["a width that isn't a number", { width: Number.NaN }, /width/u],
+    ["a color MJML can't read", { backgroundColor: "red" }, /backgroundColor/u],
+    ["no background color", { backgroundColor: null }, /backgroundColor/u],
+    ["no font", { fontFamily: null }, /fontFamily/u],
+    ["a preheader that isn't text", { preheader: 1 }, /preheader/u],
+    ["a language that isn't a code", { language: "English" }, /language/u],
+    ["a language that breaks out", { language: 'en"x' }, /language/u],
+    ["a setting it doesn't have", { subject: "Hi" }, /subject/u],
+  ])("rejects %s", (_name, settings, reason) => {
+    const { editor, operations } = setup();
+    const before = editor.getDocument();
+
+    expect(
+      editor.apply({ settings, type: "updateEmailSettings" })
+    ).toStrictEqual({
+      ok: false,
+      reason: expect.stringMatching(reason),
+    });
+    expect(editor.getDocument()).toStrictEqual(before);
+    expect(operations).toStrictEqual([]);
+  });
+
+  it.each(["en", "fil", "pt-BR", "zh-Hant-TW"])("accepts %s", (language) => {
+    const { editor } = setup();
+
+    expect(
+      editor.apply({ settings: { language }, type: "updateEmailSettings" })
+    ).toStrictEqual({ ok: true });
+  });
+
+  it("makes no undo step for a change to the same value", () => {
+    const { editor, operations } = setup();
+    const { width } = editor.getDocument().settings;
+
+    expect(
+      editor.apply({ settings: { width }, type: "updateEmailSettings" })
+    ).toMatchObject({ ok: false, unchanged: true });
+    expect(operations).toStrictEqual([]);
+  });
+});
+
+const saved = (change: (email: BlocksDocument) => void) => {
+  const email = createEmail();
+  change(email);
+  return loadDocument(email);
+};
+
+describe("saved settings", () => {
+  it("loads a Block, Row and email with every setting", () => {
+    const result = saved((email) => {
+      const row = email.rows[0] as BlocksDocument["rows"][0];
+      row.props = { backgroundColor: "#00ff00" };
+      const block = row.columns[0]?.blocks[0] as Block;
+      block.props = {
+        ...block.props,
+        align: "right",
+        color: "#ff0000",
+        fontSize: 24,
+      };
+      email.settings.language = "en";
+      email.settings.preheader = "Hi";
+    });
+
+    expect(result).toMatchObject({ ok: true });
+  });
+
+  it.each([
+    [
+      "a Row color MJML can't read",
+      (email: BlocksDocument) => {
+        (email.rows[0] as BlocksDocument["rows"][0]).props = {
+          backgroundColor: "green",
+        };
+      },
+      /backgroundColor/u,
+    ],
+    [
+      "a Row setting it doesn't know",
+      (email: BlocksDocument) => {
+        (email.rows[0] as BlocksDocument["rows"][0]).props = { padding: 8 };
+      },
+      /padding/u,
+    ],
+    [
+      "a Block setting outside its schema",
+      (email: BlocksDocument) => {
+        const block = email.rows[0]?.columns[0]?.blocks[0] as Block;
+        block.props = { ...block.props, fontSize: 0 };
+      },
+      /fontSize/u,
+    ],
+  ])("refuses %s", (_name, change, reason) => {
+    expect(saved(change)).toStrictEqual({
+      ok: false,
+      reason: expect.stringMatching(reason),
+    });
+  });
+});
+
+const withLanguage = (language: string) => {
+  const document = createEmail();
+  document.settings.language = language;
+  return document;
+};
+
+describe("a saved language that isn't a code", () => {
+  it.each(["en_US", "", 'en"><script>', "de-DE-u-co-phonebk"])(
+    "still loads %j, unchanged",
+    (language) => {
+      expect(loadDocument(withLanguage(language))).toMatchObject({
+        document: { settings: { language } },
+        ok: true,
+      });
+    }
+  );
+
+  it("doesn't stop other settings from changing", () => {
+    const editor = createEditor({ document: withLanguage("en_US") });
+
+    expect(
+      editor.apply({ settings: { width: 640 }, type: "updateEmailSettings" })
+    ).toStrictEqual({ ok: true });
+    expect(editor.getDocument().settings).toMatchObject({
+      language: "en_US",
+      width: 640,
+    });
+  });
+
+  it("can be replaced with a code", () => {
+    const editor = createEditor({ document: withLanguage("en_US") });
+
+    editor.apply({ settings: { language: "en" }, type: "updateEmailSettings" });
+
+    expect(editor.getDocument().settings.language).toBe("en");
+  });
+
+  it("can be removed", () => {
+    const editor = createEditor({ document: withLanguage("en_US") });
+
+    editor.apply({ settings: { language: null }, type: "updateEmailSettings" });
+
+    expect(editor.getDocument().settings).not.toHaveProperty("language");
+  });
+});
+
+describe(blockStyles, () => {
+  it("gives a Text Block with no settings the look of a new email", () => {
+    expect(blockStyles({ props: {}, type: "text" })).toStrictEqual({
+      color: "#000000",
+      "font-size": "16px",
+      "text-align": "left",
+    });
+  });
+
+  it("treats a setting that's undefined as not set", () => {
+    expect(
+      blockStyles({
+        props: { align: undefined, color: undefined, fontSize: undefined },
+        type: "text",
+      })
+    ).toStrictEqual({
+      color: "#000000",
+      "font-size": "16px",
+      "text-align": "left",
+    });
+  });
+
+  it("turns a Text Block's settings into CSS", () => {
+    expect(
+      blockStyles({
+        props: { align: "center", color: "#ff0000", fontSize: 24 },
+        type: "text",
+      })
+    ).toStrictEqual({
+      color: "#ff0000",
+      "font-size": "24px",
+      "text-align": "center",
+    });
+  });
+});
+
+describe(rowStyles, () => {
+  it("adds nothing for a Row with no background color", () => {
+    expect(rowStyles({ props: {} })).toStrictEqual({});
+  });
+
+  it("turns a Row's background color into CSS", () => {
+    expect(rowStyles({ props: { backgroundColor: "#00ff00" } })).toStrictEqual({
+      "background-color": "#00ff00",
+    });
+  });
+});
+
+const keys = (fields: readonly SettingsField[]) => fields.map(({ key }) => key);
+
+describe("settings fields", () => {
+  it("are alignment, color and font size for a Text Block", () => {
+    expect(keys(blockSettingsFields("text"))).toStrictEqual([
+      "align",
+      "color",
+      "fontSize",
+    ]);
+  });
+
+  it("are background color for a Row", () => {
+    expect(keys(ROW_SETTINGS_FIELDS)).toStrictEqual(["backgroundColor"]);
+  });
+
+  it("are width, background color, font, preheader and language for an email", () => {
+    expect(keys(EMAIL_SETTINGS_FIELDS)).toStrictEqual([
+      "width",
+      "backgroundColor",
+      "fontFamily",
+      "preheader",
+      "language",
+    ]);
+  });
+
+  it("offer the font of a new email", () => {
+    const font = EMAIL_SETTINGS_FIELDS.find(({ key }) => key === "fontFamily");
+    const options = font?.type === "select" ? font.options : [];
+
+    expect(options.map(({ value }) => value)).toContain(
+      createEmail().settings.fontFamily
+    );
+  });
+});

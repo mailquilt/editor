@@ -14,7 +14,7 @@ export type ApplyResult =
   | {
       ok: false;
       reason: string;
-      /** The Block is already where the Command asks, so nothing went wrong. */
+      /** Things are already as the Command asks, so nothing went wrong. */
       unchanged?: true;
     };
 

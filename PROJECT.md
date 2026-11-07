@@ -90,6 +90,7 @@ Keyboard, drag and drop, and the document path are part of `0.1.0`. AI, MCP, CLI
 - **The document is the source of truth.** Block-based emails are stored as JSON, not HTML.
 - **All edits go through Commands.** A Command is a request that can be rejected. An accepted Command produces one or more Operations and counts as one undo step. Undo applies the reverse Operations.
 - **Operations are a small fixed set:** insert, remove, move, set properties and set Column width. Move is its own Operation, so later collaboration does not treat it as a delete plus a new Block.
+- **A null removes a property.** A Command that sets properties merges them like JSON Merge Patch, so Commands stay plain JSON. The schema decides whether that property can go.
 - **There is one undo history.** Tiptap's history is off. Typing in one Block merges into one undo step until the user pauses or leaves that Block.
 - **The core is framework-free.** `core` and `renderer` must run without a browser DOM or UI framework.
 - **The UI is written once.** The editor is a Web Component, and framework wrappers stay thin.
@@ -219,7 +220,7 @@ Migrations add these only when their features are built:
 - Text Blocks store limited Tiptap JSON (see `docs/adr/0001-store-rich-text-as-limited-json.md`).
 - Image Blocks take a URL, which may be a Merge Tag such as `{{logo_url}}`. Uploads come later through an adapter.
 - `editor` and `renderer` refuse documents they cannot trust: malformed documents, unknown Block types, and versions newer than they support. They never repair or change them, so a host's auto-save cannot overwrite the original.
-- Anything that loads must also export, so values follow what MJML accepts. Colors are written as `#rgb`, `#rrggbb`, `rgb()` or `rgba()`, the email width is a whole number of pixels, and a Column is at least 1% wide.
+- Anything that loads must also export, so values follow what MJML accepts. Colors are written as `#rgb`, `#rrggbb`, `rgb()` or `rgba()`, the email width is a whole number of pixels, and a Column is at least 1% wide. A language set through a Command must be a code such as `en` or `pt-BR`. A saved one loads whatever it is, so that its email can still be opened and fixed, and the renderer escapes it.
 
 ## 11. Blocks and settings
 

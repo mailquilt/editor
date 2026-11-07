@@ -5,6 +5,7 @@ import {
   canvas,
   currentValue,
   emailWith,
+  moveCursorToLineEnd,
   setValue,
   structure,
   textBlock,
@@ -341,7 +342,7 @@ test.describe("moving a Block by its handle", () => {
 
 const placeCursorAfterTwo = async (page: Page) => {
   await blockElement(page, "Two").getByRole("textbox").click();
-  await page.keyboard.press("End");
+  await moveCursorToLineEnd(page);
   await page.keyboard.type("A");
 };
 
@@ -825,7 +826,7 @@ test.describe("text after a move", () => {
   test("includes what was typed just before", async ({ page }) => {
     await load(page, [[["One"], ["Two"]]]);
     await blockElement(page, "One").getByRole("textbox").click();
-    await page.keyboard.press("End");
+    await moveCursorToLineEnd(page);
     await page.keyboard.type(" more");
 
     await drag(
@@ -863,7 +864,7 @@ test.describe("text after a move", () => {
     );
     await blockElement(page, "Three").getByRole("textbox").click();
     await blockElement(page, "Two").getByRole("textbox").click();
-    await page.keyboard.press("End");
+    await moveCursorToLineEnd(page);
     await page.keyboard.type("!");
 
     expect(await structure(page)).toStrictEqual([[["One"], ["Two!", "Three"]]]);
@@ -1014,7 +1015,7 @@ test.describe("undo", () => {
     );
     await undo(page);
     await blockElement(page, "One").getByRole("textbox").click();
-    await page.keyboard.press("End");
+    await moveCursorToLineEnd(page);
     await page.keyboard.type("!");
 
     expect(await structure(page)).toStrictEqual([[["One!"], ["Two"]]]);

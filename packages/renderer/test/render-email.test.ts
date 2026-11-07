@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 
-import type { BlocksDocument } from "@mailquilt/core";
+import type { Block, BlocksDocument } from "@mailquilt/core";
 import { describe, expect, it } from "vitest";
 
 import { renderEmail } from "../src/node.js";
@@ -167,6 +167,121 @@ describe(renderEmail, () => {
     await expect(renderEmail(email)).resolves.toMatchFileSnapshot(
       `expected/columns-${name}.html`
     );
+  });
+
+  it("matches the saved HTML for an email with every setting", async () => {
+    const email = emailWithText("Hello {{first_name}},");
+    email.settings = {
+      backgroundColor: "#eeeeee",
+      fontFamily: "Georgia, 'Times New Roman', serif",
+      language: "pt-BR",
+      preheader: "Your week, {{first_name}}",
+      width: 640,
+    };
+    const row = email.rows[0] as BlocksDocument["rows"][0];
+    row.props = { backgroundColor: "#ddeeff" };
+    const block = row.columns[0]?.blocks[0] as Block;
+    block.props = {
+      ...block.props,
+      align: "center",
+      color: "#ff0000",
+      fontSize: 24,
+    };
+
+    await expect(renderEmail(email)).resolves.toMatchFileSnapshot(
+      "expected/every-setting.html"
+    );
+  });
+
+  it("puts the language on the document and the email", async () => {
+    const email = emailWithText("Hi");
+    email.settings.language = "fr-CA";
+
+    const html = await renderEmail(email);
+
+    expect(html).toContain('<html lang="fr-CA"');
+    expect(html).toContain('role="article" lang="fr-CA"');
+  });
+
+  it("keeps a saved language that isn't a code, safely", async () => {
+    const email = emailWithText("Hi");
+    email.settings.language = 'en"><script>alert(1)</script>';
+
+    const html = await renderEmail(email);
+
+    expect(html).not.toContain("<script>");
+    expect(html).toContain('lang="en&quot;&gt;&lt;script&gt;');
+  });
+
+  it("exports a saved language such as en_US", async () => {
+    const email = emailWithText("Hi");
+    email.settings.language = "en_US";
+
+    await expect(renderEmail(email)).resolves.toContain('<html lang="en_US"');
+  });
+
+  it("leaves the language undetermined when it's saved empty", async () => {
+    const email = emailWithText("Hi");
+    email.settings.language = "";
+
+    await expect(renderEmail(email)).resolves.toContain('<html lang="und"');
+  });
+
+  it("exports a setting that's undefined as if it weren't set", async () => {
+    const email = emailWithText("Hi");
+    const block = email.rows[0]?.columns[0]?.blocks[0] as Block;
+    block.props = { ...block.props, color: undefined };
+
+    await expect(renderEmail(email)).resolves.toContain("color:#000000");
+  });
+
+  it("leaves the language undetermined when none is set", async () => {
+    const html = await renderEmail(emailWithText("Hi"));
+
+    expect(html).toContain('<html lang="und"');
+  });
+
+  it("shows the preheader to inboxes but not in the email", async () => {
+    const email = emailWithText("Hi");
+    email.settings.preheader = "Read me first";
+
+    const html = await renderEmail(email);
+
+    expect(html).toMatch(
+      /<div style="display:none;[^"]*">Read me first<\/div>/u
+    );
+  });
+
+  it("leaves out the preheader when none is set", async () => {
+    const html = await renderEmail(emailWithText("Hi"));
+
+    expect(html).not.toContain("display:none");
+  });
+
+  it("escapes a preheader so it can't become markup", async () => {
+    const email = emailWithText("Hi");
+    email.settings.preheader = `</mj-preview><script>alert("x")</script> & {{name}}`;
+
+    const html = await renderEmail(email);
+
+    expect(html).toContain(
+      `&lt;/mj-preview&gt;&lt;script&gt;alert("x")&lt;/script&gt; &amp; {{name}}`
+    );
+    expect(html).not.toContain("<script>");
+  });
+
+  it.each([
+    ["rgb()", "rgb(1, 2, 3)"],
+    ["rgba()", "rgba(1,2,3,0.5)"],
+    ["short hex", "#FFF"],
+  ])("exports %s as a Text and Row color", async (_name, color) => {
+    const email = emailWithText("Hi");
+    const row = email.rows[0] as BlocksDocument["rows"][0];
+    row.props = { backgroundColor: color };
+    const block = row.columns[0]?.blocks[0] as Block;
+    block.props = { ...block.props, color };
+
+    await expect(renderEmail(email)).resolves.toContain(`color:${color}`);
   });
 
   it("keeps Merge Tags intact", async () => {

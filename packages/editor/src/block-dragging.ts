@@ -99,16 +99,16 @@ export const createBlockDragging = ({
    * Where a drop would land now, and the line that shows it. Blocks are counted
    * without the dragged one, as a move's index is. There's no landing far from the
    * editor, which is how to abandon a drag, or on the toolbar, so that letting go
-   * of a palette item that barely moved adds nothing.
+   * of a palette item that barely moved adds nothing, or on the settings panel.
    */
   const landing = () => {
     const { position, source } = manager.dragOperation;
     const pointer = position.current;
     const email = root.querySelector(".email");
-    const toolbar = root.querySelector(".toolbar");
+    const controls = root.querySelectorAll(".toolbar, .settings");
     if (
       !email ||
-      (toolbar && contains(toolbar, pointer)) ||
+      [...controls].some((element) => contains(element, pointer)) ||
       !contains(root.host, pointer, DROP_MARGIN_PX)
     ) {
       return;

@@ -1,3 +1,4 @@
+export { blockSettingsFields, blockStyles } from "./blocks.js";
 export { createEmail } from "./create-email.js";
 export type {
   Block,
@@ -22,3 +23,9 @@ export type { LoadResult } from "./load-document.js";
 export { isSameDocument, loadDocument } from "./load-document.js";
 export { findBlockPosition } from "./operations.js";
 export type { Operation } from "./operations.js";
+export {
+  EMAIL_SETTINGS_FIELDS,
+  ROW_SETTINGS_FIELDS,
+  rowStyles,
+} from "./settings.js";
+export type { SettingsField } from "./settings.js";
