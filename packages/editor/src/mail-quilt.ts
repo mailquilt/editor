@@ -1,10 +1,22 @@
 import {
   createEditor,
+  findBlockPosition,
   isAllowedLinkHref,
   isSameDocument,
   loadDocument,
+  ROW_LAYOUTS,
+  rowLayoutOf,
 } from "@mailquilt/core";
-import type { BlocksDocument, Editor, RichTextDocument } from "@mailquilt/core";
+import type {
+  ApplyOptions,
+  BlocksDocument,
+  Column,
+  Command,
+  Editor,
+  RichTextDocument,
+  Row,
+  RowLayout,
+} from "@mailquilt/core";
 import { renderEmail } from "@mailquilt/renderer";
 import { css, html, LitElement, nothing } from "lit";
 import { repeat } from "lit/directives/repeat.js";
@@ -25,6 +37,9 @@ const MARK_BUTTONS: { label: string; mark: ToggleableMark; text: string }[] = [
   { label: "Italic", mark: "italic", text: "I" },
   { label: "Underline", mark: "underline", text: "U" },
 ];
+
+/** Joins the Row made for a Block in an email with no Rows to that Block's step. */
+const FIRST_BLOCK_MERGE_KEY = "first-block";
 
 const INVALID_LINK_MESSAGE =
   "Use a URL starting with https://, http://, mailto: or tel:, or a Merge Tag such as {{cta_url}}.";
@@ -59,13 +74,6 @@ const historyInput = (event: InputEvent) => {
   }
   if (event.inputType === "historyRedo") {
     return "redo";
-  }
-};
-
-/** Pressing a toolbar button leaves focus and the selection in the Block. */
-const keepFocusInBlock = (event: MouseEvent) => {
-  if (!(event.target instanceof HTMLInputElement)) {
-    event.preventDefault();
   }
 };
 
@@ -117,6 +125,47 @@ export class MailQuilt extends LitElement {
       min-width: 0;
     }
 
+    .column.empty {
+      align-items: center;
+      display: flex;
+      justify-content: center;
+      min-height: 56px;
+      outline: 1px dashed #71717a;
+      outline-offset: -1px;
+    }
+
+    .block[aria-current="true"] {
+      outline: 2px solid #2563eb;
+      outline-offset: -2px;
+    }
+
+    /* Like the canvas, this stops inherited values from the email's settings. */
+    .row-controls {
+      all: initial;
+      align-items: center;
+      background: #f4f4f5;
+      box-sizing: border-box;
+      color: #18181b;
+      display: flex;
+      flex-wrap: wrap;
+      font-family: system-ui, sans-serif;
+      font-size: 12px;
+      gap: 4px;
+      justify-content: space-between;
+      line-height: 1.5;
+      padding: 2px 4px;
+    }
+
+    .layouts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2px;
+    }
+
+    .add-block {
+      margin: 8px;
+    }
+
     /* ProseMirror's base styles (ADR 0002). */
     .ProseMirror {
       font-variant-ligatures: none;
@@ -166,6 +215,8 @@ export class MailQuilt extends LitElement {
     }
 
     .toolbar button,
+    .row-controls button,
+    .add-block,
     .preview-header button {
       background: transparent;
       border: 1px solid transparent;
@@ -179,18 +230,33 @@ export class MailQuilt extends LitElement {
     }
 
     .toolbar button:hover:not(:disabled),
+    .add-block:hover,
     .preview-header button:hover {
       background: #f4f4f5;
     }
 
+    .row-controls button:hover {
+      background: #e4e4e7;
+    }
+
+    .toolbar:focus-visible,
     .toolbar button:focus-visible,
     .toolbar input:focus-visible,
+    .row-controls button:focus-visible,
+    .add-block:focus-visible,
     .preview-header button:focus-visible {
       outline: 2px solid #2563eb;
       outline-offset: 1px;
     }
 
-    .toolbar button[aria-pressed="true"] {
+    .add-block {
+      border-color: #71717a;
+      font-family: system-ui, sans-serif;
+      font-size: 12px;
+    }
+
+    .toolbar button[aria-pressed="true"],
+    .row-controls button[aria-pressed="true"] {
       background: #e4e4e7;
       border-color: #71717a;
     }
@@ -305,8 +371,10 @@ export class MailQuilt extends LitElement {
   /** Edits in the same typing session merge into one undo step. */
   #typingSession = 0;
   #lastTypedAt = 0;
-  /** The Block the toolbar acts on: the last one to have focus. */
+  /** The selected Block, which the toolbar acts on: the last one to have focus. */
   #activeBlockId: string | undefined;
+  /** What had focus in the editor when the current update began. */
+  #focusedBeforeUpdate: Element | null | undefined;
   #formats: TextFormats | undefined;
   /** Set while the link field is open. */
   #linkForm: { error: boolean } | undefined;
@@ -364,14 +432,17 @@ export class MailQuilt extends LitElement {
   }
 
   protected override willUpdate() {
+    this.#focusedBeforeUpdate = this.shadowRoot?.activeElement;
     // Lit still updates detached elements, and nothing would destroy these
     // views. connectedCallback requests an update that creates them instead.
     if (!this.isConnected) {
       return;
     }
+    const blockIds = new Set<string>();
     for (const row of this.value?.rows ?? []) {
       for (const column of row.columns) {
         for (const block of column.blocks) {
+          blockIds.add(block.id);
           if (!this.#views.has(block.id)) {
             this.#views.set(
               block.id,
@@ -382,6 +453,7 @@ export class MailQuilt extends LitElement {
                   this.#activeBlockId = block.id;
                   this.#closeLinkForm();
                   this.#syncFormats();
+                  this.requestUpdate();
                 },
                 onStateChange: () => this.#syncFormats(),
                 onTypingBreak: () => {
@@ -392,6 +464,27 @@ export class MailQuilt extends LitElement {
           }
         }
       }
+    }
+    this.#removeViewsExcept(blockIds);
+  }
+
+  /**
+   * A change can remove the element with focus, or disable it. Focus stays in the
+   * editor, where undo still works. A Block that just moved, or whose link field
+   * just closed, gets it back. Otherwise the toolbar takes it, because it does
+   * nothing when a key that activated a button is pressed again or held down.
+   */
+  protected override updated() {
+    const before = this.#focusedBeforeUpdate;
+    const active = this.shadowRoot?.activeElement as
+      | HTMLButtonElement
+      | null
+      | undefined;
+    if (before && (!active || active.disabled)) {
+      const view = before.closest(".block, .link-form")
+        ? this.#activeView
+        : undefined;
+      (view ?? this.renderRoot.querySelector<HTMLElement>(".toolbar"))?.focus();
     }
   }
 
@@ -417,23 +510,13 @@ export class MailQuilt extends LitElement {
         ${repeat(
           rows,
           (row) => row.id,
-          (row) => html`
+          (row, index) => html`
+            ${this.#renderRowControls(row, index)}
             <div class="row">
               ${repeat(
                 row.columns,
                 (column) => column.id,
-                (column) => html`
-                  <div
-                    class="column"
-                    style=${styleMap({ width: `${column.width}%` })}
-                  >
-                    ${repeat(
-                      column.blocks,
-                      (block) => block.id,
-                      (block) => this.#views.get(block.id)?.element
-                    )}
-                  </div>
-                `
+                (column) => this.#renderColumn(column)
               )}
             </div>
           `
@@ -442,10 +525,101 @@ export class MailQuilt extends LitElement {
     `;
   }
 
+  #renderRowControls(row: Row, index: number) {
+    const current = rowLayoutOf(row);
+    return html`
+      <div
+        aria-label=${`Row ${index + 1}`}
+        class="row-controls"
+        role="group"
+        @mousedown=${this.#onControlMousedown}
+      >
+        <div aria-label="Layout" class="layouts" role="group">
+          ${ROW_LAYOUTS.map(
+            (layout) => html`
+              <button
+                aria-pressed=${layout === current ? "true" : "false"}
+                type="button"
+                @click=${() => this.#chooseLayout(row.id, layout, current)}
+              >
+                ${layout}
+              </button>
+            `
+          )}
+        </div>
+        <button
+          type="button"
+          @click=${() => this.#apply({ rowId: row.id, type: "removeRow" })}
+        >
+          Delete Row
+        </button>
+      </div>
+    `;
+  }
+
+  #renderColumn({ blocks, id, width }: Column) {
+    return html`
+      <div
+        class=${blocks.length === 0 ? "column empty" : "column"}
+        style=${styleMap({ width: `${width}%` })}
+      >
+        ${repeat(
+          blocks,
+          (block) => block.id,
+          (block) => html`
+            <div
+              aria-current=${block.id === this.#activeBlockId ? "true" : nothing}
+              class="block"
+            >
+              ${this.#views.get(block.id)?.element}
+            </div>
+          `
+        )}
+        ${
+          blocks.length === 0
+            ? html`
+                <button
+                  class="add-block"
+                  type="button"
+                  @click=${() => this.#addTextBlock({ columnId: id, index: 0 })}
+                >
+                  Add Text Block here
+                </button>
+              `
+            : nothing
+        }
+      </div>
+    `;
+  }
+
   #renderToolbar() {
     const formats = this.#formats;
     return html`
-      <div class="toolbar" @mousedown=${keepFocusInBlock}>
+      <div
+        aria-label="Email tools"
+        class="toolbar"
+        role="group"
+        tabindex="-1"
+        @keydown=${this.#onToolbarKeydown}
+        @mousedown=${this.#onControlMousedown}
+      >
+        <div aria-label="Add content" class="palette" role="group">
+          <button
+            title="Add a Text Block"
+            type="button"
+            @click=${() => this.#addTextBlock()}
+          >
+            Text
+          </button>
+        </div>
+        <button type="button" @click=${this.#addRow}>Add Row</button>
+        <button
+          ?disabled=${this.#activeBlockId === undefined}
+          type="button"
+          @click=${this.#deleteSelectedBlock}
+        >
+          Delete Block
+        </button>
         <div aria-label="Text formatting" class="formatting" role="group">
           ${MARK_BUTTONS.map(
             ({ label, mark, text }) => html`
@@ -479,6 +653,12 @@ export class MailQuilt extends LitElement {
           </button>
           ${this.#linkForm ? this.#renderLinkForm(this.#linkForm.error) : nothing}
         </div>
+        <button type="button" @click=${() => this.#stepHistory("undo")}>
+          Undo
+        </button>
+        <button type="button" @click=${() => this.#stepHistory("redo")}>
+          Redo
+        </button>
         <button type="button" @click=${this.#openPreview}>Preview</button>
       </div>
     `;
@@ -667,6 +847,110 @@ export class MailQuilt extends LitElement {
     this.requestUpdate();
   }
 
+  /** Applies a Command that changes the structure of the email. */
+  #apply(command: Command) {
+    if (this.#tryCommand(command)) {
+      this.#publishStructure();
+    }
+  }
+
+  /** The accepted result, leaving the caller to show and report the change. */
+  #tryCommand(command: Command, options?: ApplyOptions) {
+    const result = this.#editor?.apply(command, options);
+    if (result && !result.ok) {
+      // The controls only offer what's allowed, so this is a bug here.
+      console.error(`<mail-quilt> rejected a Command: ${result.reason}`);
+    }
+    return result?.ok ? result : undefined;
+  }
+
+  #publishStructure() {
+    const document = this.#editor?.getDocument();
+    if (document) {
+      this.requestUpdate();
+      this.#emitChange(document);
+    }
+  }
+
+  #chooseLayout(
+    rowId: string,
+    layout: RowLayout,
+    current: RowLayout | undefined
+  ) {
+    if (layout !== current) {
+      this.#apply({ layout, rowId, type: "setRowLayout" });
+    }
+  }
+
+  #selectedPosition(document: BlocksDocument) {
+    return this.#activeBlockId === undefined
+      ? undefined
+      : findBlockPosition(document, this.#activeBlockId);
+  }
+
+  #addRow() {
+    const document = this.#editor?.getDocument();
+    if (!document) {
+      return;
+    }
+    const selected = this.#selectedPosition(document);
+    this.#apply({
+      index: selected ? selected.rowIndex + 1 : document.rows.length,
+      layout: "100",
+      type: "insertRow",
+    });
+  }
+
+  #deleteSelectedBlock() {
+    if (this.#activeBlockId !== undefined) {
+      this.#apply({ blockId: this.#activeBlockId, type: "removeBlock" });
+    }
+  }
+
+  /**
+   * Adds a Text Block and selects it, ready to type in. By default it goes after
+   * the selected Block, or else at the end of the last Column.
+   */
+  async #addTextBlock(place?: { columnId: string; index: number }) {
+    const editor = this.#editor;
+    if (!editor) {
+      return;
+    }
+    let target = place ?? this.#defaultBlockPlace(editor);
+    const options = target ? undefined : { mergeKey: FIRST_BLOCK_MERGE_KEY };
+    const row =
+      options &&
+      this.#tryCommand({ index: 0, layout: "100", type: "insertRow" }, options);
+    target ??= this.#defaultBlockPlace(editor);
+    const block =
+      target &&
+      this.#tryCommand(
+        { blockType: "text", ...target, type: "insertBlock" },
+        options
+      );
+
+    if (block) {
+      this.#activeBlockId = block.createdId;
+    }
+    if (row || block) {
+      this.#publishStructure();
+    }
+    if (block) {
+      await this.updateComplete;
+      this.#activeView?.focus();
+    }
+  }
+
+  #defaultBlockPlace(editor: Editor) {
+    const document = editor.getDocument();
+    const selected = this.#selectedPosition(document);
+    if (selected) {
+      return { columnId: selected.columnId, index: selected.index + 1 };
+    }
+    const column = document.rows.at(-1)?.columns.at(-1);
+    return column && { columnId: column.id, index: column.blocks.length };
+  }
+
   #commitText(blockId: string, content: RichTextDocument) {
     const editor = this.#editor;
     if (!editor) {
@@ -690,8 +974,10 @@ export class MailQuilt extends LitElement {
   }
 
   #onBeforeInput(event: InputEvent) {
-    // WebKit types into a Block's selection even with focus on the dialog.
-    if (this.#previewDialog?.open) {
+    // WebKit types into a Block's selection, and undoes there too, even with focus
+    // on the dialog, a control or the link field.
+    const active = this.shadowRoot?.activeElement;
+    if (this.#previewDialog?.open || (active && !active.closest(".block"))) {
       event.preventDefault();
       return;
     }
@@ -708,16 +994,46 @@ export class MailQuilt extends LitElement {
     this.#runHistoryStep(event, historyShortcut(event));
   }
 
+  /**
+   * Pressing a control leaves focus and the selection in the Block. With no focus
+   * in the editor, the control takes it, because keyboard undo only reaches the
+   * editor from inside it. Browsers disagree on whether a press focuses a button.
+   */
+  #onControlMousedown(event: MouseEvent) {
+    const { target } = event;
+    if (target instanceof HTMLInputElement) {
+      return;
+    }
+    event.preventDefault();
+    if (!this.shadowRoot?.activeElement && target instanceof Element) {
+      target.closest("button")?.focus();
+    }
+  }
+
+  /** Undo and redo from a toolbar button, where a Block may no longer have focus. */
+  #onToolbarKeydown(event: KeyboardEvent) {
+    // The link field has its own undo for what's being typed in it.
+    if (!(event.target instanceof HTMLInputElement)) {
+      this.#runHistoryStep(event, historyShortcut(event));
+    }
+  }
+
   #runHistoryStep(event: Event, step: "redo" | "undo" | undefined) {
     if (!step) {
       return;
     }
     // The browser's own undo would change the text behind the document's back.
     event.preventDefault();
+    this.#stepHistory(step);
+  }
+
+  #stepHistory(step: "redo" | "undo") {
     const editor = this.#editor;
     if (!editor?.[step]()) {
       return;
     }
+    // The change can move the selection the link field would apply to.
+    this.#closeLinkForm();
     const document = editor.getDocument();
     for (const row of document.rows) {
       for (const column of row.columns) {
@@ -728,6 +1044,8 @@ export class MailQuilt extends LitElement {
         }
       }
     }
+    // Undo and redo can add, remove or move Blocks, Columns and Rows.
+    this.requestUpdate();
     this.#emitChange(document);
   }
 
@@ -763,6 +1081,24 @@ export class MailQuilt extends LitElement {
         })
       );
     });
+  }
+
+  /** A Block that undo brings back gets a new view from the document. */
+  #removeViewsExcept(blockIds: Set<string>) {
+    for (const [blockId, view] of this.#views) {
+      if (!blockIds.has(blockId)) {
+        view.destroy();
+        this.#views.delete(blockId);
+      }
+    }
+    if (
+      this.#activeBlockId !== undefined &&
+      !blockIds.has(this.#activeBlockId)
+    ) {
+      this.#activeBlockId = undefined;
+      this.#formats = undefined;
+      this.#linkForm = undefined;
+    }
   }
 
   #destroyViews() {

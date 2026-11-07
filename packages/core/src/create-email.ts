@@ -3,7 +3,7 @@ import type { BlocksDocument } from "./document.js";
 
 export const DOCUMENT_VERSION = 1;
 
-const createId = () => {
+export const createId = () => {
   // getRandomValues, unlike randomUUID, also works on plain-HTTP host pages.
   const bytes = crypto.getRandomValues(new Uint8Array(9));
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join(

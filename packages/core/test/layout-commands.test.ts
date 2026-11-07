@@ -1,0 +1,643 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  createEditor,
+  createEmail,
+  loadDocument,
+  ROW_LAYOUTS,
+  rowLayoutOf,
+} from "../src/index.js";
+import type { BlocksDocument, Command, Operation } from "../src/index.js";
+
+const block = (id: string) => ({
+  id,
+  props: { content: { content: [{ type: "paragraph" }], type: "doc" } },
+  type: "text",
+});
+
+const twoColumnEmail = (): BlocksDocument => ({
+  ...createEmail(),
+  rows: [
+    {
+      columns: [
+        { blocks: [block("a"), block("b")], id: "left", props: {}, width: 50 },
+        { blocks: [block("c")], id: "right", props: {}, width: 50 },
+      ],
+      id: "row",
+      props: {},
+    },
+  ],
+});
+
+const setup = (document = twoColumnEmail()) => {
+  const editor = createEditor({ document });
+  const operations: Operation[][] = [];
+  editor.subscribe((changed) => operations.push(changed));
+  return { document, editor, operations };
+};
+
+/** A loose type, because these tests send what the real type forbids. */
+const send = (editor: ReturnType<typeof createEditor>, command: unknown) =>
+  editor.apply(command as Command);
+
+const columnsOf = (document: BlocksDocument) =>
+  document.rows.map((row) =>
+    row.columns.map((column) => column.blocks.map(({ id }) => id))
+  );
+
+const expectAccepted = (result: ReturnType<typeof send>) => {
+  expect(result).toMatchObject({ ok: true });
+};
+
+/** Every accepted Command must leave an email that loads and can be saved. */
+const expectValid = (document: BlocksDocument) => {
+  expect(loadDocument(document)).toMatchObject({ ok: true });
+};
+
+/** The document after an undo and then a redo of the last Command. */
+const undoThenRedo = (editor: ReturnType<typeof createEditor>) => {
+  const changed = editor.getDocument();
+  editor.undo();
+  const undone = editor.getDocument();
+  editor.redo();
+  return { changed, redone: editor.getDocument(), undone };
+};
+
+const widthsOf = (document: BlocksDocument) =>
+  document.rows[0]?.columns.map(({ width }) => width);
+
+describe("the insertBlock Command", () => {
+  it("adds an empty Text Block at an index in a Column", () => {
+    const { editor } = setup();
+
+    const result = send(editor, {
+      blockType: "text",
+      columnId: "left",
+      index: 1,
+      type: "insertBlock",
+    });
+
+    expectAccepted(result);
+    const added = editor.getDocument().rows[0]?.columns[0]?.blocks[1];
+    expect(added).toMatchObject({
+      props: { content: { content: [{ type: "paragraph" }], type: "doc" } },
+      type: "text",
+    });
+    expect(columnsOf(editor.getDocument())).toStrictEqual([
+      [["a", added?.id, "b"], ["c"]],
+    ]);
+    expectValid(editor.getDocument());
+  });
+
+  it("reports the ID of the new Block", () => {
+    const { editor } = setup();
+
+    const result = send(editor, {
+      blockType: "text",
+      columnId: "left",
+      index: 0,
+      type: "insertBlock",
+    });
+
+    expect(result).toStrictEqual({
+      createdId: editor.getDocument().rows[0]?.columns[0]?.blocks[0]?.id,
+      ok: true,
+    });
+  });
+
+  it("adds a Block to an empty Column", () => {
+    const document = twoColumnEmail();
+    const right = document.rows[0]?.columns[1];
+    if (right) {
+      right.blocks = [];
+    }
+    const { editor } = setup(document);
+
+    expectAccepted(
+      send(editor, {
+        blockType: "text",
+        columnId: "right",
+        index: 0,
+        type: "insertBlock",
+      })
+    );
+
+    expect(editor.getDocument().rows[0]?.columns[1]?.blocks).toHaveLength(1);
+  });
+
+  it("gives each new Block its own defaults", () => {
+    const { editor } = setup();
+    const insert = () =>
+      send(editor, {
+        blockType: "text",
+        columnId: "left",
+        index: 0,
+        type: "insertBlock",
+      });
+    insert();
+    insert();
+
+    const [first, second] =
+      editor.getDocument().rows[0]?.columns[0]?.blocks ?? [];
+
+    expect(first?.id).not.toBe(second?.id);
+    expect(first?.props).not.toBe(second?.props);
+  });
+
+  it("is one undo step", () => {
+    const { document, editor } = setup();
+
+    send(editor, {
+      blockType: "text",
+      columnId: "left",
+      index: 0,
+      type: "insertBlock",
+    });
+
+    const { changed, redone, undone } = undoThenRedo(editor);
+
+    expect(undone).toStrictEqual(document);
+    expect(redone).toStrictEqual(changed);
+  });
+
+  it("records one insert Operation", () => {
+    const { editor, operations } = setup();
+
+    send(editor, {
+      blockType: "text",
+      columnId: "right",
+      index: 1,
+      type: "insertBlock",
+    });
+
+    expect(operations).toStrictEqual([
+      [
+        {
+          block: editor.getDocument().rows[0]?.columns[1]?.blocks[1],
+          columnId: "right",
+          index: 1,
+          type: "insert",
+        },
+      ],
+    ]);
+  });
+});
+
+describe("the removeBlock Command", () => {
+  it("removes the Block", () => {
+    const { editor } = setup();
+
+    expectAccepted(send(editor, { blockId: "a", type: "removeBlock" }));
+
+    expect(columnsOf(editor.getDocument())).toStrictEqual([[["b"], ["c"]]]);
+  });
+
+  it("leaves an empty Column in place, with its width", () => {
+    const { editor } = setup();
+
+    send(editor, { blockId: "c", type: "removeBlock" });
+
+    expect(editor.getDocument().rows[0]?.columns[1]).toMatchObject({
+      blocks: [],
+      id: "right",
+      width: 50,
+    });
+    expectValid(editor.getDocument());
+  });
+
+  it("is one undo step that restores the Block where it was", () => {
+    const { document, editor } = setup();
+
+    send(editor, { blockId: "a", type: "removeBlock" });
+
+    const { changed, redone, undone } = undoThenRedo(editor);
+
+    expect(undone).toStrictEqual(document);
+    expect(redone).toStrictEqual(changed);
+  });
+
+  it("brings back the Block's latest text on undo", () => {
+    const { editor } = setup();
+    const content = {
+      content: [
+        { content: [{ text: "Typed", type: "text" }], type: "paragraph" },
+      ],
+      type: "doc",
+    };
+    send(editor, { blockId: "a", props: { content }, type: "updateProps" });
+
+    send(editor, { blockId: "a", type: "removeBlock" });
+    editor.undo();
+
+    expect(
+      editor.getDocument().rows[0]?.columns[0]?.blocks[0]?.props
+    ).toStrictEqual({ content });
+  });
+});
+
+describe("rejecting a Block Command", () => {
+  const rejected: [string, unknown, RegExp][] = [
+    [
+      "a Block type that doesn't exist",
+      {
+        blockType: "hologram",
+        columnId: "left",
+        index: 0,
+        type: "insertBlock",
+      },
+      /hologram/u,
+    ],
+    [
+      "a Column that doesn't exist",
+      { blockType: "text", columnId: "missing", index: 0, type: "insertBlock" },
+      /no column.*missing/iu,
+    ],
+    [
+      "an index past the end of the Column",
+      { blockType: "text", columnId: "left", index: 3, type: "insertBlock" },
+      /index 3/iu,
+    ],
+    [
+      "a negative index",
+      { blockType: "text", columnId: "left", index: -1, type: "insertBlock" },
+      /index/u,
+    ],
+    [
+      "an index that isn't a whole number",
+      { blockType: "text", columnId: "left", index: 0.5, type: "insertBlock" },
+      /index/u,
+    ],
+    [
+      "a field the Command doesn't have",
+      {
+        blockType: "text",
+        columnId: "left",
+        extra: true,
+        index: 0,
+        type: "insertBlock",
+      },
+      /extra/u,
+    ],
+    [
+      "removing a Block that doesn't exist",
+      { blockId: "missing", type: "removeBlock" },
+      /no block.*missing/iu,
+    ],
+  ];
+
+  it.each(rejected)(
+    "rejects %s and leaves the document and history unchanged",
+    (_name, command, reason) => {
+      const { document, editor, operations } = setup();
+
+      expect(send(editor, command)).toStrictEqual({
+        ok: false,
+        reason: expect.stringMatching(reason),
+      });
+
+      expect(editor.getDocument()).toStrictEqual(document);
+      expect(editor.undo()).toBeFalsy();
+      expect(operations).toStrictEqual([]);
+    }
+  );
+});
+
+describe("the insertRow Command", () => {
+  it("adds a Row at an index, with one empty Column per preset width", () => {
+    const { editor } = setup();
+
+    const result = send(editor, {
+      index: 0,
+      layout: "33/67",
+      type: "insertRow",
+    });
+
+    const [added, existing] = editor.getDocument().rows;
+    expect(result).toStrictEqual({ createdId: added?.id, ok: true });
+    expect(existing?.id).toBe("row");
+    expect(added?.columns.map(({ width }) => width)).toStrictEqual([33, 67]);
+    expect(added?.columns.map(({ blocks }) => blocks)).toStrictEqual([[], []]);
+    expectValid(editor.getDocument());
+  });
+
+  it("adds a Row at the end", () => {
+    const { editor } = setup();
+
+    send(editor, { index: 1, layout: "100", type: "insertRow" });
+
+    expect(editor.getDocument().rows[0]?.id).toBe("row");
+    expect(editor.getDocument().rows).toHaveLength(2);
+  });
+
+  it("adds the first Row to an email with none", () => {
+    const { editor } = setup({ ...twoColumnEmail(), rows: [] });
+
+    expectAccepted(
+      send(editor, { index: 0, layout: "100", type: "insertRow" })
+    );
+
+    expect(editor.getDocument().rows).toHaveLength(1);
+  });
+
+  it("is one undo step", () => {
+    const { document, editor } = setup();
+
+    send(editor, { index: 0, layout: "25/25/25/25", type: "insertRow" });
+
+    const { changed, redone, undone } = undoThenRedo(editor);
+
+    expect(undone).toStrictEqual(document);
+    expect(redone).toStrictEqual(changed);
+  });
+});
+
+describe("the removeRow Command", () => {
+  it("removes the Row with its Columns and Blocks", () => {
+    const { editor } = setup();
+
+    expectAccepted(send(editor, { rowId: "row", type: "removeRow" }));
+
+    expect(editor.getDocument().rows).toStrictEqual([]);
+    expectValid(editor.getDocument());
+  });
+
+  it("is one undo step that restores everything in the Row", () => {
+    const { document, editor } = setup();
+
+    send(editor, { rowId: "row", type: "removeRow" });
+
+    const { changed, redone, undone } = undoThenRedo(editor);
+
+    expect(undone).toStrictEqual(document);
+    expect(redone).toStrictEqual(changed);
+  });
+});
+
+describe("the setRowLayout Command", () => {
+  it.each([
+    ["100", [100]],
+    ["50/50", [50, 50]],
+    ["33/67", [33, 67]],
+    ["67/33", [67, 33]],
+    ["33/33/33", [33.33, 33.33, 33.34]],
+    ["25/25/25/25", [25, 25, 25, 25]],
+  ])("applies the %s preset", (layout, widths) => {
+    const document = twoColumnEmail();
+    const [row] = document.rows;
+    if (row && layout === "50/50") {
+      row.columns = [{ blocks: [], id: "only", props: {}, width: 100 }];
+    }
+    const { editor } = setup(document);
+
+    expectAccepted(
+      send(editor, { layout, rowId: "row", type: "setRowLayout" })
+    );
+
+    expect(widthsOf(editor.getDocument())).toStrictEqual(widths);
+    expectValid(editor.getDocument());
+  });
+
+  it("offers exactly these presets, whose widths each add up to 100", () => {
+    expect(ROW_LAYOUTS).toStrictEqual([
+      "100",
+      "50/50",
+      "33/67",
+      "67/33",
+      "33/33/33",
+      "25/25/25/25",
+    ]);
+
+    for (const layout of ROW_LAYOUTS) {
+      const { editor } = setup({ ...twoColumnEmail(), rows: [] });
+      send(editor, { index: 0, layout, type: "insertRow" });
+      const total = widthsOf(editor.getDocument())?.reduce((a, b) => a + b, 0);
+
+      expect(total).toBeCloseTo(100, 6);
+    }
+  });
+
+  it("keeps Blocks where they are when only the widths change", () => {
+    const { editor } = setup();
+
+    send(editor, { layout: "33/67", rowId: "row", type: "setRowLayout" });
+
+    expect(columnsOf(editor.getDocument())).toStrictEqual([
+      [["a", "b"], ["c"]],
+    ]);
+  });
+
+  it("adds empty Columns after the existing ones", () => {
+    const { editor } = setup();
+
+    send(editor, { layout: "25/25/25/25", rowId: "row", type: "setRowLayout" });
+
+    expect(columnsOf(editor.getDocument())).toStrictEqual([
+      [["a", "b"], ["c"], [], []],
+    ]);
+    expect(editor.getDocument().rows[0]?.columns[0]?.id).toBe("left");
+    expect(editor.getDocument().rows[0]?.columns[1]?.id).toBe("right");
+  });
+
+  it("moves Blocks from removed Columns into the last remaining one", () => {
+    const { editor } = setup();
+
+    send(editor, { layout: "100", rowId: "row", type: "setRowLayout" });
+
+    expect(columnsOf(editor.getDocument())).toStrictEqual([[["a", "b", "c"]]]);
+    expect(editor.getDocument().rows[0]?.columns[0]?.id).toBe("left");
+  });
+
+  it("keeps the order of Blocks from several removed Columns", () => {
+    const { editor } = setup();
+    send(editor, { layout: "25/25/25/25", rowId: "row", type: "setRowLayout" });
+    const [third, fourth] = (editor.getDocument().rows[0]?.columns ?? []).slice(
+      2
+    );
+    const insertInto = (columnId?: string) =>
+      send(editor, {
+        blockType: "text",
+        columnId,
+        index: 0,
+        type: "insertBlock",
+      });
+    const thirdResult = insertInto(third?.id);
+    const fourthResult = insertInto(fourth?.id);
+
+    send(editor, { layout: "50/50", rowId: "row", type: "setRowLayout" });
+
+    expect(columnsOf(editor.getDocument())).toStrictEqual([
+      [
+        ["a", "b"],
+        [
+          "c",
+          thirdResult.ok && thirdResult.createdId,
+          fourthResult.ok && fourthResult.createdId,
+        ],
+      ],
+    ]);
+    expectValid(editor.getDocument());
+  });
+
+  it("keeps Blocks in the last remaining Column ahead of the moved ones", () => {
+    const { editor } = setup({
+      ...createEmail(),
+      rows: [
+        {
+          columns: [
+            { blocks: [block("a")], id: "one", props: {}, width: 33.33 },
+            { blocks: [block("b")], id: "two", props: {}, width: 33.33 },
+            { blocks: [block("c")], id: "three", props: {}, width: 33.34 },
+          ],
+          id: "row",
+          props: {},
+        },
+      ],
+    });
+
+    send(editor, { layout: "50/50", rowId: "row", type: "setRowLayout" });
+
+    expect(columnsOf(editor.getDocument())).toStrictEqual([
+      [["a"], ["b", "c"]],
+    ]);
+  });
+
+  it("uses move Operations, so Blocks aren't deleted and created again", () => {
+    const { editor, operations } = setup();
+
+    send(editor, { layout: "100", rowId: "row", type: "setRowLayout" });
+
+    expect(operations[0]).toStrictEqual([
+      {
+        blockId: "c",
+        from: { columnId: "right", index: 0 },
+        to: { columnId: "left", index: 2 },
+        type: "move",
+      },
+      {
+        column: { blocks: [], id: "right", props: {}, width: 50 },
+        index: 1,
+        rowId: "row",
+        type: "remove",
+      },
+      {
+        columnId: "left",
+        previousWidth: 50,
+        type: "setColumnWidth",
+        width: 100,
+      },
+    ]);
+  });
+
+  it.each(["100", "33/33/33", "25/25/25/25", "67/33"])(
+    "is one undo step when changing to %s, restoring every Block's place",
+    (layout) => {
+      const { document, editor } = setup();
+
+      send(editor, { layout, rowId: "row", type: "setRowLayout" });
+
+      const { changed, redone, undone } = undoThenRedo(editor);
+
+      expect(undone).toStrictEqual(document);
+      expect(redone).toStrictEqual(changed);
+    }
+  );
+
+  it("restores several removed Columns in order on undo", () => {
+    const { editor } = setup();
+    send(editor, { layout: "25/25/25/25", rowId: "row", type: "setRowLayout" });
+    const third = editor.getDocument().rows[0]?.columns[2];
+    send(editor, {
+      blockType: "text",
+      columnId: third?.id,
+      index: 0,
+      type: "insertBlock",
+    });
+    const before = editor.getDocument();
+
+    send(editor, { layout: "100", rowId: "row", type: "setRowLayout" });
+
+    const { changed, redone, undone } = undoThenRedo(editor);
+
+    expect(undone).toStrictEqual(before);
+    expect(redone).toStrictEqual(changed);
+  });
+});
+
+describe(rowLayoutOf, () => {
+  it("names a Row's preset", () => {
+    const [row] = twoColumnEmail().rows;
+
+    expect(row && rowLayoutOf(row)).toBe("50/50");
+  });
+
+  it("names no preset for other widths a saved email may have", () => {
+    const [row] = twoColumnEmail().rows;
+    if (row?.columns[0] && row.columns[1]) {
+      row.columns[0].width = 40;
+      row.columns[1].width = 60;
+    }
+
+    expect(row && rowLayoutOf(row)).toBeUndefined();
+  });
+});
+
+describe("rejecting a Row Command", () => {
+  const rejected: [string, unknown, RegExp][] = [
+    [
+      "an unknown layout",
+      { layout: "60/40", rowId: "row", type: "setRowLayout" },
+      /layout/u,
+    ],
+    [
+      "a layout named after a built-in",
+      { layout: "constructor", rowId: "row", type: "setRowLayout" },
+      /layout/u,
+    ],
+    [
+      "the layout the Row already has",
+      { layout: "50/50", rowId: "row", type: "setRowLayout" },
+      /already/u,
+    ],
+    [
+      "a layout for a Row that doesn't exist",
+      { layout: "100", rowId: "missing", type: "setRowLayout" },
+      /no row.*missing/iu,
+    ],
+    [
+      "a new Row with an unknown layout",
+      { index: 0, layout: "60/40", type: "insertRow" },
+      /layout/u,
+    ],
+    [
+      "a new Row past the end of the email",
+      { index: 2, layout: "100", type: "insertRow" },
+      /index 2/iu,
+    ],
+    [
+      "a new Row at a negative index",
+      { index: -1, layout: "100", type: "insertRow" },
+      /index/u,
+    ],
+    [
+      "removing a Row that doesn't exist",
+      { rowId: "missing", type: "removeRow" },
+      /no row.*missing/iu,
+    ],
+  ];
+
+  it.each(rejected)(
+    "rejects %s and leaves the document and history unchanged",
+    (_name, command, reason) => {
+      const { document, editor, operations } = setup();
+
+      expect(send(editor, command)).toStrictEqual({
+        ok: false,
+        reason: expect.stringMatching(reason),
+      });
+
+      expect(editor.getDocument()).toStrictEqual(document);
+      expect(editor.undo()).toBeFalsy();
+      expect(operations).toStrictEqual([]);
+    }
+  );
+});

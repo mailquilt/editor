@@ -14,8 +14,11 @@ export type {
   RichTextNode,
   RichTextParagraph,
 } from "./rich-text.js";
-export type { ApplyOptions, ApplyResult, Command, Editor } from "./editor.js";
+export type { Command, RowLayout } from "./commands.js";
+export { ROW_LAYOUTS, rowLayoutOf } from "./commands.js";
+export type { ApplyOptions, ApplyResult, Editor } from "./editor.js";
 export { createEditor } from "./editor.js";
 export type { LoadResult } from "./load-document.js";
 export { isSameDocument, loadDocument } from "./load-document.js";
+export { findBlockPosition } from "./operations.js";
 export type { Operation } from "./operations.js";

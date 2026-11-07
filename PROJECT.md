@@ -89,7 +89,7 @@ Keyboard, drag and drop, and the document path are part of `0.1.0`. AI, MCP, CLI
 
 - **The document is the source of truth.** Block-based emails are stored as JSON, not HTML.
 - **All edits go through Commands.** A Command is a request that can be rejected. An accepted Command produces one or more Operations and counts as one undo step. Undo applies the reverse Operations.
-- **Operations are a small fixed set:** insert, remove, move and set properties. Move is its own Operation, so later collaboration does not treat it as a delete plus a new Block.
+- **Operations are a small fixed set:** insert, remove, move, set properties and set Column width. Move is its own Operation, so later collaboration does not treat it as a delete plus a new Block.
 - **There is one undo history.** Tiptap's history is off. Typing in one Block merges into one undo step until the user pauses or leaves that Block.
 - **The core is framework-free.** `core` and `renderer` must run without a browser DOM or UI framework.
 - **The UI is written once.** The editor is a Web Component, and framework wrappers stay thin.

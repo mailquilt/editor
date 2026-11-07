@@ -1,17 +1,23 @@
-import type { Block, BlocksDocument } from "./document.js";
+import type { Block, BlocksDocument, Column, Row } from "./document.js";
 
 interface BlockPosition {
   columnId: string;
   index: number;
 }
 
+/** What an insert or remove acts on, and where it goes in its list. */
+type Placement =
+  | ({ block: Block } & BlockPosition)
+  | { column: Column; index: number; rowId: string }
+  | { index: number; row: Row };
+
 /**
  * A recorded change that actually happened to an email. This is the fixed set
  * of Operations, and each one is plain JSON.
  */
 export type Operation =
-  | ({ type: "insert"; block: Block } & BlockPosition)
-  | ({ type: "remove"; block: Block } & BlockPosition)
+  | ({ type: "insert" } & Placement)
+  | ({ type: "remove" } & Placement)
   | {
       type: "move";
       blockId: string;
@@ -24,6 +30,12 @@ export type Operation =
       blockId: string;
       props: Record<string, unknown>;
       previousProps: Record<string, unknown>;
+    }
+  | {
+      type: "setColumnWidth";
+      columnId: string;
+      width: number;
+      previousWidth: number;
     };
 
 const columnsIn = (document: BlocksDocument) =>
@@ -34,12 +46,58 @@ export const findBlock = (document: BlocksDocument, blockId: string) =>
     .flatMap(({ blocks }) => blocks)
     .find(({ id }) => id === blockId);
 
+/** A Block and where it is, or undefined if it isn't in the document. */
+export const findBlockPosition = (
+  document: BlocksDocument,
+  blockId: string
+) => {
+  for (const [rowIndex, row] of document.rows.entries()) {
+    for (const column of row.columns) {
+      const index = column.blocks.findIndex(({ id }) => id === blockId);
+      const block = column.blocks[index];
+      if (block) {
+        return { block, columnId: column.id, index, rowIndex };
+      }
+    }
+  }
+};
+
+export const findColumn = (document: BlocksDocument, columnId: string) =>
+  columnsIn(document).find(({ id }) => id === columnId);
+
 const getColumn = (document: BlocksDocument, columnId: string) => {
-  const column = columnsIn(document).find(({ id }) => id === columnId);
+  const column = findColumn(document, columnId);
   if (!column) {
     throw new Error(`No Column with ID "${columnId}"`);
   }
   return column;
+};
+
+const getRow = (document: BlocksDocument, rowId: string) => {
+  const row = document.rows.find(({ id }) => id === rowId);
+  if (!row) {
+    throw new Error(`No Row with ID "${rowId}"`);
+  }
+  return row;
+};
+
+/** A Placement's item, and the list in the document that it belongs in. */
+const resolvePlacement = (
+  document: BlocksDocument,
+  placement: Placement
+): { item: Block | Column | Row; list: (Block | Column | Row)[] } => {
+  if ("row" in placement) {
+    return { item: placement.row, list: document.rows };
+  }
+  return "column" in placement
+    ? {
+        item: placement.column,
+        list: getRow(document, placement.rowId).columns,
+      }
+    : {
+        item: placement.block,
+        list: getColumn(document, placement.columnId).blocks,
+      };
 };
 
 /** Changes `document` in place. */
@@ -49,14 +107,13 @@ export const applyOperation = (
 ) => {
   switch (operation.type) {
     case "insert": {
-      const { blocks } = getColumn(document, operation.columnId);
-      // A copy, because later Operations change this Block in place.
-      blocks.splice(operation.index, 0, structuredClone(operation.block));
+      const { item, list } = resolvePlacement(document, operation);
+      // A copy, because later Operations change this item in place.
+      list.splice(operation.index, 0, structuredClone(item));
       break;
     }
     case "remove": {
-      const { blocks } = getColumn(document, operation.columnId);
-      blocks.splice(operation.index, 1);
+      resolvePlacement(document, operation).list.splice(operation.index, 1);
       break;
     }
     case "move": {
@@ -81,6 +138,10 @@ export const applyOperation = (
       block.props = operation.props;
       break;
     }
+    case "setColumnWidth": {
+      getColumn(document, operation.columnId).width = operation.width;
+      break;
+    }
     default: {
       throw new Error("Unknown Operation");
     }
@@ -103,6 +164,13 @@ export const reverseOperation = (operation: Operation): Operation => {
         ...operation,
         previousProps: operation.props,
         props: operation.previousProps,
+      };
+    }
+    case "setColumnWidth": {
+      return {
+        ...operation,
+        previousWidth: operation.width,
+        width: operation.previousWidth,
       };
     }
     default: {
