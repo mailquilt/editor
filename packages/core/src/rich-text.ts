@@ -31,18 +31,19 @@ export interface RichTextDocument {
 }
 
 /**
- * An allowlist, because email has no use for any other scheme or a relative URL.
- * Being anchored at the start also refuses what browsers would clean up into
- * `javascript:`, such as a leading space or a tab inside the scheme.
- *
  * A Merge Tag must come first and be complete. Whatever follows it can't have a
  * colon before the path, query or fragment, because the tag's value could be
  * empty or finish a scheme, as in `{{x}}javascript:alert(1)`.
  */
-const ALLOWED_LINK_HREF =
-  /^(?:https?:|mailto:|tel:|\{\{[^{}]+\}\}[^:/?#]*(?:[/?#]|$))/iu;
+const MERGE_TAG_URL = /^\{\{[^{}]+\}\}[^:/?#]*(?:[/?#]|$)/u;
 
-export const isAllowedLinkHref = (href: string) => ALLOWED_LINK_HREF.test(href);
+/**
+ * An allowlist, because email has no use for any other scheme or a relative URL.
+ * Being anchored at the start also refuses what browsers would clean up into
+ * `javascript:`, such as a leading space or a tab inside the scheme.
+ */
+export const isAllowedLinkHref = (href: string) =>
+  /^(?:https?:|mailto:|tel:)/iu.test(href) || MERGE_TAG_URL.test(href);
 
 export const INVALID_LINK =
   "Use a URL starting with https://, http://, mailto: or tel:, or a Merge Tag such as {{cta_url}}.";
@@ -52,6 +53,18 @@ export const linkHrefSchema = v.pipe(
   v.check(
     isAllowedLinkHref,
     "A link must start with http:, https:, mailto:, tel: or a Merge Tag"
+  )
+);
+
+export const INVALID_IMAGE_URL =
+  "Use a URL starting with https:// or http://, or a Merge Tag such as {{logo_url}}.";
+
+/** Its own allowlist, so that a scheme added for links doesn't reach images. */
+export const imageSrcSchema = v.pipe(
+  v.string(),
+  v.check(
+    (src) => /^https?:/iu.test(src) || MERGE_TAG_URL.test(src),
+    "An image URL must start with http:, https: or a Merge Tag"
   )
 );
 

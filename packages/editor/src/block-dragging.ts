@@ -267,10 +267,22 @@ export const createBlockDragging = ({
     trackPointer();
   });
 
+  // Lifting a Block takes it out of the page before its placeholder comes in. With
+  // a tall one, Firefox and WebKit would see a shorter page and scroll up to fit.
+  manager.monitor.addEventListener("beforedragstart", () => {
+    const email = root.querySelector<HTMLElement>(".email");
+    if (email) {
+      email.style.minHeight = `${email.getBoundingClientRect().height}px`;
+    }
+  });
+
   let syncTimer: ReturnType<typeof setTimeout> | undefined;
   manager.monitor.addEventListener("dragend", ({ canceled, nativeEvent }) => {
     cancelAnimationFrame(frame);
     showIndicator();
+    root
+      .querySelector<HTMLElement>(".email")
+      ?.style.removeProperty("min-height");
     const { position, source } = manager.dragOperation;
     // An undo during the drag can take away the Block being dragged.
     if (!canceled && source?.element?.isConnected) {

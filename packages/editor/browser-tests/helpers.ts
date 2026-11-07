@@ -1,5 +1,6 @@
+import { AxeBuilder } from "@axe-core/playwright";
 import { expect } from "@playwright/test";
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 
 import type { MailQuilt } from "../src/index.js";
 
@@ -84,4 +85,144 @@ export const focusStartOfTextBlock = async (page: Page) => {
   await page.keyboard.press(
     process.platform === "darwin" ? "Meta+ArrowLeft" : "Home"
   );
+};
+
+export const palette = (page: Page, name: string) =>
+  page
+    .getByRole("group", { name: "Add content" })
+    .getByRole("button", { exact: true, name });
+
+export const blockGroup = (page: Page, name: string) =>
+  canvas(page).getByRole("group", { name: `${name} Block` });
+
+export const panelBlock = (page: Page) =>
+  page
+    .getByRole("group", { name: "Settings" })
+    .getByRole("group", { exact: true, name: "Selected Block" });
+
+export const field = (page: Page, name: string) =>
+  panelBlock(page).getByLabel(name, { exact: true });
+
+export const change = async (control: Locator, text: string) => {
+  await control.fill(text);
+  await control.press("Enter");
+};
+
+export const undo = (page: Page) =>
+  page.getByRole("button", { name: "Undo" }).click();
+export const redo = (page: Page) =>
+  page.getByRole("button", { name: "Redo" }).click();
+
+export const blocks = async (page: Page, rowIndex = 0, columnIndex = 0) => {
+  const { rows } = await currentValue(page);
+  return rows[rowIndex]?.columns[columnIndex]?.blocks ?? [];
+};
+
+export const blockTypes = async (page: Page, rowIndex = 0, columnIndex = 0) => {
+  const found = await blocks(page, rowIndex, columnIndex);
+  return found.map(({ type }) => type);
+};
+
+/** An email whose only Row's Columns hold these Blocks, by type. */
+export const openBlocks = async (page: Page, ...columns: string[][]) => {
+  const email = emailWith([[[]]]);
+  const [row] = email.rows;
+  if (row) {
+    const props = {
+      button: { label: "Buy" },
+      divider: {},
+      heading: {
+        content: {
+          content: [
+            { content: [{ text: "Sale", type: "text" }], type: "paragraph" },
+          ],
+          type: "doc",
+        },
+        level: 2,
+      },
+      image: { src: "https://cdn.example/photo.png" },
+      spacer: {},
+      text: {
+        content: {
+          content: [
+            { content: [{ text: "Words", type: "text" }], type: "paragraph" },
+          ],
+          type: "doc",
+        },
+      },
+    };
+    row.columns = columns.map((types, columnIndex) => ({
+      blocks: types.map((type, blockIndex) => ({
+        id: `${type}-${columnIndex}-${blockIndex}`,
+        props: props[type as keyof typeof props],
+        type,
+      })),
+      id: `column-${columnIndex}`,
+      props: {},
+      width: 100 / columns.length,
+    }));
+  }
+  await page.goto("/");
+  await setValue(page, email);
+  await expect(canvas(page).locator(".block").first()).toBeVisible();
+  // An image that's still loading would go on to move what's below it.
+  for (const image of await canvas(page).locator("img").all()) {
+    // oxlint-disable-next-line no-await-in-loop -- Order doesn't matter, and there are few.
+    await expect(image).toHaveJSProperty("complete", true);
+  }
+};
+
+export const openExport = async (page: Page) => {
+  const html = await exportHtml(page);
+  const opened = await page.context().newPage();
+  await opened.setContent(html);
+  return { html, opened };
+};
+
+export const settle = (page: Page) =>
+  page.evaluate(
+    () =>
+      // oxlint-disable-next-line promise/avoid-new -- requestAnimationFrame only takes a callback.
+      new Promise((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(resolve));
+      })
+  );
+
+export const dragTo = async (
+  page: Page,
+  from: Locator,
+  to: Locator,
+  part = 0.75
+) => {
+  const start = await from.boundingBox();
+  const end = await to.boundingBox();
+  if (!(start && end)) {
+    throw new Error("The element has no box");
+  }
+  const startX = start.x + start.width / 2;
+  const startY = start.y + start.height / 2;
+  await page.mouse.move(startX, startY);
+  await page.mouse.down();
+  await page.mouse.move(startX + 8, startY + 8, { steps: 2 });
+  await settle(page);
+  await page.mouse.move(end.x + end.width / 2, end.y + end.height * part, {
+    steps: 8,
+  });
+  await settle(page);
+  await page.mouse.up();
+  await settle(page);
+};
+
+export const violations = async (
+  page: Page
+): Promise<{ id: string; targets: unknown[] }[]> => {
+  const { violations: found } = await new AxeBuilder({ page })
+    .include("mail-quilt")
+    .setLegacyMode()
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
+    .analyze();
+  return found.map(({ id, nodes }) => ({
+    id,
+    targets: nodes.map(({ target }) => target),
+  }));
 };

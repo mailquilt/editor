@@ -12,6 +12,8 @@ interface FieldBase {
   invalidMessage: string;
   /** What the control shows while the property isn't set. */
   default?: number | string;
+  /** Can't be used yet, with `description` saying why. */
+  disabled?: boolean;
 }
 
 /**

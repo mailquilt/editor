@@ -112,6 +112,11 @@ export const settingsPanelStyles = css`
     width: 100%;
   }
 
+  .settings input:disabled {
+    background: #f4f4f5;
+    color: #71717a;
+  }
+
   .settings [aria-invalid="true"] {
     border-color: #b91c1c;
   }
@@ -224,6 +229,7 @@ const renderField = (
       aria-invalid=${refused ? "true" : "false"}
       autocomplete="off"
       data-draft-key=${key}
+      ?disabled=${field.disabled ?? false}
       id=${id}
       max=${limits?.max ?? nothing}
       min=${limits?.min ?? nothing}
