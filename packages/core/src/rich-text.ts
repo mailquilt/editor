@@ -55,6 +55,18 @@ export const linkHrefSchema = v.pipe(
   )
 );
 
+export const INVALID_IMAGE_URL =
+  "Use a URL starting with https:// or http://, or a Merge Tag such as {{logo_url}}.";
+
+/** A link's rule, without the schemes that can't point at an image. */
+export const imageSrcSchema = v.pipe(
+  v.string(),
+  v.check(
+    (src) => isAllowedLinkHref(src) && !/^(?:mailto|tel):/iu.test(src),
+    "An image URL must start with http:, https: or a Merge Tag"
+  )
+);
+
 const marksSchema = v.pipe(
   v.array(
     v.variant("type", [

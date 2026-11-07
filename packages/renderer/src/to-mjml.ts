@@ -125,6 +125,29 @@ const blockToMjml = (block: Block, fontFamily: string) => {
       const link = href === undefined ? "" : ` href="${escapeAttribute(href)}"`;
       return `<mj-button${attributes}${link}>${escapeText(label)}</mj-button>`;
     }
+    case "image": {
+      const {
+        alt = "",
+        href,
+        src,
+      } = block.props as {
+        alt?: string;
+        href?: string;
+        src?: string;
+      };
+      // Until it has a URL, there's no image, and a link would have nothing in it.
+      if (src === undefined) {
+        return "";
+      }
+      const link = href === undefined ? "" : ` href="${escapeAttribute(href)}"`;
+      return `<mj-image${attributes} alt="${escapeAttribute(alt)}" src="${escapeAttribute(src)}"${link}></mj-image>`;
+    }
+    case "divider": {
+      return `<mj-divider${attributes}></mj-divider>`;
+    }
+    case "spacer": {
+      return `<mj-spacer${attributes}></mj-spacer>`;
+    }
     default: {
       throw new Error(`Can't render unknown Block type "${block.type}"`);
     }
@@ -158,6 +181,8 @@ export const toMjml = (document: BlocksDocument) => {
       <mj-section padding="0" />
       <mj-text line-height="${LINE_HEIGHT}" padding="16px" />
       <mj-button font-size="16px" line-height="${LINE_HEIGHT}" padding="16px" />
+      <mj-image padding="16px" />
+      <mj-divider padding="16px" />
     </mj-attributes>
   </mj-head>
   <mj-body background-color="${escapeAttribute(settings.backgroundColor)}" width="${settings.width}px">

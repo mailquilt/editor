@@ -161,6 +161,59 @@ const renderButton = (block: Block) => {
   `;
 };
 
+/**
+ * The picture, and no link, because a click on the canvas selects it. A URL with a
+ * Merge Tag has nothing to load until the email is sent. Nor does a browser get to
+ * drag the picture itself, which would take over from dragging the Block.
+ */
+const renderImage = (block: Block) => {
+  const { alt = "", src } = block.props as { alt?: string; src?: string };
+  const size = styleMap(blockStyles(block));
+  return html`
+    <div class="image-block">
+      ${
+        src === undefined || src.includes("{{")
+          ? html`
+              <div class="image-placeholder" style=${size}>
+                ${src ?? "No image URL yet"}
+              </div>
+            `
+          : html`<img alt=${alt} draggable="false" src=${src} style=${size} />`
+      }
+    </div>
+  `;
+};
+
+const renderDivider = (block: Block) => html`
+  <div class="divider-block">
+    <div class="divider" style=${styleMap(blockStyles(block))}></div>
+  </div>
+`;
+
+const renderSpacer = (block: Block) =>
+  html`<div class="spacer" style=${styleMap(blockStyles(block))}></div>`;
+
+/** What a Block without text draws on the canvas. */
+const renderBlockContent = (block: Block) => {
+  switch (block.type) {
+    case "button": {
+      return renderButton(block);
+    }
+    case "image": {
+      return renderImage(block);
+    }
+    case "divider": {
+      return renderDivider(block);
+    }
+    case "spacer": {
+      return renderSpacer(block);
+    }
+    default: {
+      return nothing;
+    }
+  }
+};
+
 export class MailQuilt extends LitElement {
   static override styles = [
     settingsPanelStyles,
@@ -325,8 +378,61 @@ export class MailQuilt extends LitElement {
       }
 
       /* The same space as a Text Block's padding, as in the email output. */
-      .button-block {
+      .button-block,
+      .image-block,
+      .divider-block {
         padding: 16px;
+      }
+
+      /* Like MJML: it fills the Column, and a width it's given stops at the Column. */
+      .image-block img,
+      .image-placeholder {
+        box-sizing: border-box;
+        display: block;
+        margin-inline: auto;
+        max-width: 100%;
+        width: 100%;
+      }
+
+      .image-block img {
+        height: auto;
+        -webkit-user-select: none;
+        user-select: none;
+      }
+
+      .image-placeholder {
+        align-items: center;
+        background: #f4f4f5;
+        border: 1px dashed #71717a;
+        color: #3f3f46;
+        display: flex;
+        font-size: 14px;
+        justify-content: center;
+        min-height: 96px;
+        overflow-wrap: anywhere;
+        padding: 8px;
+        text-align: center;
+        -webkit-user-select: none;
+        user-select: none;
+      }
+
+      /* The color and width come from the Block, for the top border alone. */
+      .divider {
+        border-style: solid none none;
+      }
+
+      /* Nothing shows in the email, but a person has to be able to find it. */
+      .spacer {
+        outline: 1px dashed #a1a1aa;
+        outline-offset: -1px;
+      }
+
+      /* A thin one can still be clicked, without changing the space it takes up. */
+      .spacer::before {
+        content: "";
+        inset-block: -6px;
+        inset-inline: 0;
+        position: absolute;
       }
 
       /* What MJML gives a button, so that the canvas looks like the email output. */
@@ -394,10 +500,11 @@ export class MailQuilt extends LitElement {
         gap: 2px;
       }
 
+      /* Takes a line of its own before it would squeeze, as the link form needs. */
       .formatting {
         align-items: center;
         display: flex;
-        flex: 1;
+        flex: 1 1 auto;
         flex-wrap: wrap;
         gap: 4px;
         min-width: 0;
@@ -852,7 +959,7 @@ export class MailQuilt extends LitElement {
                 ⋮⋮
               </div>
               ${hasRichText(block) ? this.#views.get(block.id)?.element : nothing}
-              ${block.type === "button" ? renderButton(block) : nothing}
+              ${renderBlockContent(block)}
             </div>
           `
         )}

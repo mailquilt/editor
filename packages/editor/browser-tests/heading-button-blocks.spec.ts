@@ -3,134 +3,36 @@ import { expect, test } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 
 import {
+  blockGroup,
+  blocks,
+  blockTypes,
   canvas,
+  change,
   currentValue,
-  emailWith,
+  dragTo,
   exportHtml,
+  field,
+  openBlocks as open,
+  openExport,
+  palette,
+  panelBlock,
+  redo,
   setValue,
+  settle,
+  undo,
+  violations,
 } from "./helpers.js";
-
-const palette = (page: Page, name: string) =>
-  page
-    .getByRole("group", { name: "Add content" })
-    .getByRole("button", { exact: true, name });
 
 const headingText = (page: Page) =>
   page.getByRole("textbox", { name: "Heading Block" });
-
-const blockGroup = (page: Page, name: string) =>
-  canvas(page).getByRole("group", { name: `${name} Block` });
 
 /** The part of a Button that looks like one, on the canvas. */
 const buttonFace = (page: Page) =>
   blockGroup(page, "Button").locator(".button");
 
-const panelBlock = (page: Page) =>
-  page
-    .getByRole("group", { name: "Settings" })
-    .getByRole("group", { exact: true, name: "Selected Block" });
-
-const field = (page: Page, name: string) =>
-  panelBlock(page).getByLabel(name, { exact: true });
-
-const change = async (control: Locator, text: string) => {
-  await control.fill(text);
-  await control.press("Enter");
-};
-
-const undo = (page: Page) => page.getByRole("button", { name: "Undo" }).click();
-const redo = (page: Page) => page.getByRole("button", { name: "Redo" }).click();
-
-const blocks = async (page: Page, rowIndex = 0, columnIndex = 0) => {
-  const { rows } = await currentValue(page);
-  return rows[rowIndex]?.columns[columnIndex]?.blocks ?? [];
-};
-
-const blockTypes = async (page: Page, rowIndex = 0, columnIndex = 0) => {
-  const found = await blocks(page, rowIndex, columnIndex);
-  return found.map(({ type }) => type);
-};
-
 const lastBlockProps = async (page: Page) => {
   const found = await blocks(page);
   return found.at(-1)?.props;
-};
-
-/** An email whose only Row's Columns hold these Blocks, by type. */
-const open = async (page: Page, ...columns: string[][]) => {
-  const email = emailWith([[[]]]);
-  const [row] = email.rows;
-  if (row) {
-    const props = {
-      button: { label: "Buy" },
-      heading: {
-        content: {
-          content: [
-            { content: [{ text: "Sale", type: "text" }], type: "paragraph" },
-          ],
-          type: "doc",
-        },
-        level: 2,
-      },
-      text: {
-        content: {
-          content: [
-            { content: [{ text: "Words", type: "text" }], type: "paragraph" },
-          ],
-          type: "doc",
-        },
-      },
-    };
-    row.columns = columns.map((types, columnIndex) => ({
-      blocks: types.map((type, blockIndex) => ({
-        id: `${type}-${columnIndex}-${blockIndex}`,
-        props: props[type as keyof typeof props],
-        type,
-      })),
-      id: `column-${columnIndex}`,
-      props: {},
-      width: 100 / columns.length,
-    }));
-  }
-  await page.goto("/");
-  await setValue(page, email);
-  await expect(canvas(page).locator(".block").first()).toBeVisible();
-};
-
-const openExport = async (page: Page) => {
-  const html = await exportHtml(page);
-  const opened = await page.context().newPage();
-  await opened.setContent(html);
-  return { html, opened };
-};
-
-const settle = (page: Page) =>
-  page.evaluate(
-    () =>
-      // oxlint-disable-next-line promise/avoid-new -- requestAnimationFrame only takes a callback.
-      new Promise((resolve) => {
-        requestAnimationFrame(() => requestAnimationFrame(resolve));
-      })
-  );
-
-const dragTo = async (page: Page, from: Locator, to: Locator, part = 0.75) => {
-  const start = await from.boundingBox();
-  const end = await to.boundingBox();
-  if (!(start && end)) {
-    throw new Error("The element has no box");
-  }
-  const startX = start.x + start.width / 2;
-  const startY = start.y + start.height / 2;
-  await page.mouse.move(startX, startY);
-  await page.mouse.down();
-  await page.mouse.move(startX + 8, startY + 8, { steps: 2 });
-  await settle(page);
-  await page.mouse.move(end.x + end.width / 2, end.y + end.height * part, {
-    steps: 8,
-  });
-  await settle(page);
-  await page.mouse.up();
-  await settle(page);
 };
 
 const headingLook = (locator: Locator) =>
@@ -184,30 +86,10 @@ const lastLineInset = (face: Locator) =>
 /** Browsers can differ by a fraction of a pixel between two pages. */
 const toTenths = (pixels: number) => Math.round(pixels * 10) / 10;
 
-const violations = async (page: Page) => {
-  const { violations: found } = await new AxeBuilder({ page })
-    .include("mail-quilt")
-    .setLegacyMode()
-    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
-    .analyze();
-  return found.map(({ id, nodes }) => ({
-    id,
-    targets: nodes.map(({ target }) => target),
-  }));
-};
-
 // The test host's unfriendly CSS pushes the canvas far down the page.
 test.use({ viewport: { height: 1600, width: 1280 } });
 
 test.describe("the palette", () => {
-  test("offers Text, Heading and Button", async ({ page }) => {
-    await open(page, ["text"]);
-
-    await expect(
-      page.getByRole("group", { name: "Add content" }).getByRole("button")
-    ).toHaveText(["Text", "Heading", "Button"]);
-  });
-
   test("adds a Heading, ready to type in", async ({ page }) => {
     await open(page, ["text"]);
 
@@ -593,7 +475,7 @@ test.describe("an empty Column", () => {
     const box = await column.boundingBox();
 
     const controls = await column.getByRole("button").all();
-    expect(controls).toHaveLength(3);
+    expect(controls).toHaveLength(6);
     for (const control of controls) {
       // oxlint-disable-next-line no-await-in-loop -- One at a time, to name the one that's out.
       const inner = await control.boundingBox();

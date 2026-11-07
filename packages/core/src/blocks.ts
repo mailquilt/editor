@@ -1,7 +1,13 @@
 import * as v from "valibot";
 
 import type { Block } from "./document.js";
-import { INVALID_LINK, linkHrefSchema, richTextSchema } from "./rich-text.js";
+import {
+  imageSrcSchema,
+  INVALID_IMAGE_URL,
+  INVALID_LINK,
+  linkHrefSchema,
+  richTextSchema,
+} from "./rich-text.js";
 import {
   colorSchema,
   INVALID_COLOR,
@@ -10,17 +16,15 @@ import {
 } from "./settings.js";
 import type { SettingsField } from "./settings.js";
 
-const MIN_FONT_SIZE = 1;
 const MAX_FONT_SIZE = 200;
 
 const alignSchema = v.picklist(["left", "center", "right"]);
 
-const fontSizeSchema = v.pipe(
-  v.number(),
-  v.safeInteger(),
-  v.minValue(MIN_FONT_SIZE),
-  v.maxValue(MAX_FONT_SIZE)
-);
+/** A whole number of pixels, from 1 up to `max`. */
+const pixelSchema = (max: number) =>
+  v.pipe(v.number(), v.safeInteger(), v.minValue(1), v.maxValue(max));
+
+const fontSizeSchema = pixelSchema(MAX_FONT_SIZE);
 
 const alignField = (fallback: string): SettingsField => ({
   default: fallback,
@@ -46,16 +50,24 @@ const colorField = (
   type: "color",
 });
 
-const fontSizeField = (fallback: number): SettingsField => ({
+const pixelField = (
+  key: string,
+  label: string,
+  fallback: number,
+  max: number
+): SettingsField => ({
   default: fallback,
-  invalidMessage: `Use a whole number from ${MIN_FONT_SIZE} to ${MAX_FONT_SIZE}.`,
-  key: "fontSize",
-  label: "Font size",
-  max: MAX_FONT_SIZE,
-  min: MIN_FONT_SIZE,
+  invalidMessage: `Use a whole number from 1 to ${max}.`,
+  key,
+  label,
+  max,
+  min: 1,
   type: "number",
   unit: "px",
 });
+
+const fontSizeField = (fallback: number) =>
+  pixelField("fontSize", "Font size", fallback, MAX_FONT_SIZE);
 
 /** One type of Block's part of the definition that lives in `core`. */
 interface BlockDefinition {
@@ -233,10 +245,127 @@ const buttonBlock = {
   },
 } satisfies BlockDefinition;
 
+const imageBlockSchema = v.strictObject({
+  alt: v.optional(v.string()),
+  href: v.optional(linkHrefSchema),
+  // Optional, because a new Image has no URL until a person gives it one.
+  src: v.optional(imageSrcSchema),
+  // No maximum, as MJML and the canvas both stop at the Column's width.
+  width: v.optional(pixelSchema(Number.MAX_SAFE_INTEGER)),
+});
+
+type ImageBlockProps = v.InferOutput<typeof imageBlockSchema>;
+
+const IMAGE_FIELDS: readonly SettingsField[] = [
+  {
+    description: "A URL, or a Merge Tag such as {{logo_url}}.",
+    invalidMessage: INVALID_IMAGE_URL,
+    key: "src",
+    label: "Image URL",
+    type: "text",
+  },
+  {
+    description: "What a screen reader says, and what shows if images are off.",
+    invalidMessage: "Use plain text.",
+    key: "alt",
+    label: "Alt text",
+    type: "text",
+  },
+  {
+    description: "Leave empty to fill the Column.",
+    invalidMessage: "Use a whole number of pixels, 1 or more.",
+    key: "width",
+    label: "Width",
+    min: 1,
+    type: "number",
+    unit: "px",
+  },
+  {
+    description: "A URL, or a Merge Tag such as {{cta_url}}.",
+    invalidMessage: INVALID_LINK,
+    key: "href",
+    label: "Link",
+    type: "text",
+  },
+];
+
+const imageBlock = {
+  defaults: {} satisfies ImageBlockProps,
+  fields: () => IMAGE_FIELDS,
+  label: "Image",
+  schema: imageBlockSchema,
+  styles: (props): Record<string, string> => {
+    const { width } = props as ImageBlockProps;
+    return width === undefined ? {} : { width: `${width}px` };
+  },
+} satisfies BlockDefinition;
+
+/** What a Divider looks like until a person changes it. */
+const DIVIDER_LOOK = { color: "#d4d4d8", thickness: 1 } as const;
+
+const MAX_DIVIDER_THICKNESS = 100;
+
+const dividerBlockSchema = v.strictObject({
+  color: v.optional(colorSchema),
+  thickness: v.optional(pixelSchema(MAX_DIVIDER_THICKNESS)),
+});
+
+type DividerBlockProps = v.InferOutput<typeof dividerBlockSchema>;
+
+const DIVIDER_FIELDS: readonly SettingsField[] = [
+  colorField(DIVIDER_LOOK.color),
+  pixelField(
+    "thickness",
+    "Thickness",
+    DIVIDER_LOOK.thickness,
+    MAX_DIVIDER_THICKNESS
+  ),
+];
+
+const dividerBlock = {
+  defaults: {} satisfies DividerBlockProps,
+  fields: () => DIVIDER_FIELDS,
+  label: "Divider",
+  schema: dividerBlockSchema,
+  styles: (props) => {
+    const { color = DIVIDER_LOOK.color, thickness = DIVIDER_LOOK.thickness } =
+      props as DividerBlockProps;
+    return { "border-color": color, "border-width": `${thickness}px` };
+  },
+} satisfies BlockDefinition;
+
+const DEFAULT_SPACER_HEIGHT = 24;
+
+const MAX_SPACER_HEIGHT = 1000;
+
+const spacerBlockSchema = v.strictObject({
+  height: v.optional(pixelSchema(MAX_SPACER_HEIGHT)),
+});
+
+type SpacerBlockProps = v.InferOutput<typeof spacerBlockSchema>;
+
+const SPACER_FIELDS: readonly SettingsField[] = [
+  pixelField("height", "Height", DEFAULT_SPACER_HEIGHT, MAX_SPACER_HEIGHT),
+];
+
+const spacerBlock = {
+  defaults: {} satisfies SpacerBlockProps,
+  fields: () => SPACER_FIELDS,
+  label: "Spacer",
+  schema: spacerBlockSchema,
+  styles: (props) => {
+    const { height = DEFAULT_SPACER_HEIGHT } = props as SpacerBlockProps;
+    return { height: `${height}px` };
+  },
+} satisfies BlockDefinition;
+
 export const blockDefinitions = new Map<string, BlockDefinition>([
   ["text", textBlock],
   ["heading", headingBlock],
+  ["image", imageBlock],
   ["button", buttonBlock],
+  ["divider", dividerBlock],
+  ["spacer", spacerBlock],
 ]);
 
 /** The types of Block a person can add, in the order the palette shows them. */

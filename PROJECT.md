@@ -219,7 +219,7 @@ Migrations add these only when their features are built:
 - Moving the last Block out of a Column leaves it empty. It stays until the user changes the layout.
 - Text and Heading Blocks store limited Tiptap JSON (see `docs/adr/0001-store-rich-text-as-limited-json.md`). A Heading also has a level from 1 to 3, and exports as one heading however many lines it has.
 - Button Blocks store a plain-text label and a link, which may be a Merge Tag such as `{{cta_url}}`. Links in any Block are limited to `http:`, `https:`, `mailto:`, `tel:` and Merge Tags, so an executable scheme can't load or export.
-- Image Blocks take a URL, which may be a Merge Tag such as `{{logo_url}}`. Uploads come later through an adapter.
+- Image Blocks take a URL, which may be a Merge Tag such as `{{logo_url}}`, limited to `http:`, `https:` and Merge Tags. Until it has a URL, an Image shows a placeholder on the canvas and leaves nothing in the export. On the canvas, a URL with a Merge Tag also shows a placeholder, as there's nothing to load. Uploads come later through an adapter.
 - `editor` and `renderer` refuse documents they cannot trust: malformed documents, unknown Block types, and versions newer than they support. They never repair or change them, so a host's auto-save cannot overwrite the original.
 - Anything that loads must also export, so values follow what MJML accepts. Colors are written as `#rgb`, `#rrggbb`, `rgb()` or `rgba()`, the email width is a whole number of pixels, and a Column is at least 1% wide. A language set through a Command must be a code such as `en` or `pt-BR`. A saved one loads whatever it is, so that its email can still be opened and fixed, and the renderer escapes it.
 
