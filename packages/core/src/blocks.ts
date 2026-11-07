@@ -20,9 +20,10 @@ const MAX_FONT_SIZE = 200;
 
 const alignSchema = v.picklist(["left", "center", "right"]);
 
-/** A whole number of pixels, from 1 up to `max`. */
-const pixelSchema = (max: number) =>
-  v.pipe(v.number(), v.safeInteger(), v.minValue(1), v.maxValue(max));
+/** A whole number of pixels, 1 or more. */
+const wholePixelsSchema = v.pipe(v.number(), v.safeInteger(), v.minValue(1));
+
+const pixelSchema = (max: number) => v.pipe(wholePixelsSchema, v.maxValue(max));
 
 const fontSizeSchema = pixelSchema(MAX_FONT_SIZE);
 
@@ -53,11 +54,14 @@ const colorField = (
 const pixelField = (
   key: string,
   label: string,
-  fallback: number,
-  max: number
+  fallback?: number,
+  max?: number
 ): SettingsField => ({
   default: fallback,
-  invalidMessage: `Use a whole number from 1 to ${max}.`,
+  invalidMessage:
+    max === undefined
+      ? "Use a whole number of pixels, 1 or more."
+      : `Use a whole number from 1 to ${max}.`,
   key,
   label,
   max,
@@ -68,6 +72,14 @@ const pixelField = (
 
 const fontSizeField = (fallback: number) =>
   pixelField("fontSize", "Font size", fallback, MAX_FONT_SIZE);
+
+const LINK_FIELD: SettingsField = {
+  description: "A URL, or a Merge Tag such as {{cta_url}}.",
+  invalidMessage: INVALID_LINK,
+  key: "href",
+  label: "Link",
+  type: "text",
+};
 
 /** One type of Block's part of the definition that lives in `core`. */
 interface BlockDefinition {
@@ -210,13 +222,7 @@ const BUTTON_FIELDS: readonly SettingsField[] = [
     label: "Label",
     type: "text",
   },
-  {
-    description: "A URL, or a Merge Tag such as {{cta_url}}.",
-    invalidMessage: INVALID_LINK,
-    key: "href",
-    label: "Link",
-    type: "text",
-  },
+  LINK_FIELD,
   colorField(BUTTON_LOOK.backgroundColor, {
     invalidMessage: INVALID_SOLID_COLOR,
     key: "backgroundColor",
@@ -245,18 +251,28 @@ const buttonBlock = {
   },
 } satisfies BlockDefinition;
 
-const imageBlockSchema = v.strictObject({
-  alt: v.optional(v.string()),
-  href: v.optional(linkHrefSchema),
-  // Optional, because a new Image has no URL until a person gives it one.
-  src: v.optional(imageSrcSchema),
-  // No maximum, as MJML and the canvas both stop at the Column's width.
-  width: v.optional(pixelSchema(Number.MAX_SAFE_INTEGER)),
-});
+const hasAltText = (alt: unknown) =>
+  typeof alt === "string" && alt.trim() !== "";
+
+const imageBlockSchema = v.pipe(
+  v.strictObject({
+    alt: v.optional(v.string()),
+    href: v.optional(linkHrefSchema),
+    // Optional, because a new Image has no URL until a person gives it one.
+    src: v.optional(imageSrcSchema),
+    // No maximum, as MJML and the canvas both stop at the Column's width.
+    width: v.optional(wholePixelsSchema),
+  }),
+  // Alt text is all that can name a link around an image.
+  v.check(
+    ({ alt, href }) => href === undefined || hasAltText(alt),
+    "A linked Image needs alt text"
+  )
+);
 
 type ImageBlockProps = v.InferOutput<typeof imageBlockSchema>;
 
-const IMAGE_FIELDS: readonly SettingsField[] = [
+const imageFields = (link: SettingsField): readonly SettingsField[] => [
   {
     description: "A URL, or a Merge Tag such as {{logo_url}}.",
     invalidMessage: INVALID_IMAGE_URL,
@@ -266,32 +282,31 @@ const IMAGE_FIELDS: readonly SettingsField[] = [
   },
   {
     description: "What a screen reader says, and what shows if images are off.",
-    invalidMessage: "Use plain text.",
+    invalidMessage:
+      "A linked Image needs alt text. To leave this empty, remove the link first.",
     key: "alt",
     label: "Alt text",
     type: "text",
   },
   {
+    ...pixelField("width", "Width"),
     description: "Leave empty to fill the Column.",
-    invalidMessage: "Use a whole number of pixels, 1 or more.",
-    key: "width",
-    label: "Width",
-    min: 1,
-    type: "number",
-    unit: "px",
   },
-  {
-    description: "A URL, or a Merge Tag such as {{cta_url}}.",
-    invalidMessage: INVALID_LINK,
-    key: "href",
-    label: "Link",
-    type: "text",
-  },
+  link,
 ];
+
+const IMAGE_FIELDS = imageFields(LINK_FIELD);
+
+const IMAGE_FIELDS_WITHOUT_ALT = imageFields({
+  ...LINK_FIELD,
+  description: "Add alt text first, as a screen reader says it for the link.",
+  disabled: true,
+});
 
 const imageBlock = {
   defaults: {} satisfies ImageBlockProps,
-  fields: () => IMAGE_FIELDS,
+  fields: ({ alt }) =>
+    hasAltText(alt) ? IMAGE_FIELDS : IMAGE_FIELDS_WITHOUT_ALT,
   label: "Image",
   schema: imageBlockSchema,
   styles: (props): Record<string, string> => {

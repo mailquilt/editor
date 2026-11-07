@@ -163,22 +163,36 @@ const renderButton = (block: Block) => {
 
 /**
  * The picture, and no link, because a click on the canvas selects it. A URL with a
- * Merge Tag has nothing to load until the email is sent. Nor does a browser get to
+ * Merge Tag has nothing to load until the email is sent, and a URL that failed
+ * would otherwise collapse to nothing without alt text. Nor does a browser get to
  * drag the picture itself, which would take over from dragging the Block.
  */
-const renderImage = (block: Block) => {
+const renderImage = (
+  block: Block,
+  failedImages: ReadonlySet<string>,
+  onImageError: (src: string) => void
+) => {
   const { alt = "", src } = block.props as { alt?: string; src?: string };
   const size = styleMap(blockStyles(block));
+  const failed = src !== undefined && failedImages.has(src);
   return html`
     <div class="image-block">
       ${
-        src === undefined || src.includes("{{")
+        src === undefined || src.includes("{{") || failed
           ? html`
               <div class="image-placeholder" style=${size}>
-                ${src ?? "No image URL yet"}
+                ${failed ? `Couldn't load ${src}` : (src ?? "No image URL yet")}
               </div>
             `
-          : html`<img alt=${alt} draggable="false" src=${src} style=${size} />`
+          : html`
+              <img
+                alt=${alt}
+                draggable="false"
+                src=${src}
+                style=${size}
+                @error=${() => onImageError(src)}
+              />
+            `
       }
     </div>
   `;
@@ -194,13 +208,17 @@ const renderSpacer = (block: Block) =>
   html`<div class="spacer" style=${styleMap(blockStyles(block))}></div>`;
 
 /** What a Block without text draws on the canvas. */
-const renderBlockContent = (block: Block) => {
+const renderBlockContent = (
+  block: Block,
+  failedImages: ReadonlySet<string>,
+  onImageError: (src: string) => void
+) => {
   switch (block.type) {
     case "button": {
       return renderButton(block);
     }
     case "image": {
-      return renderImage(block);
+      return renderImage(block, failedImages, onImageError);
     }
     case "divider": {
       return renderDivider(block);
@@ -369,6 +387,9 @@ export class MailQuilt extends LitElement {
         justify-content: space-between;
         line-height: 1.5;
         padding: 2px 4px;
+        /* Above what reaches past a thin Spacer, so that its buttons get clicks. */
+        position: relative;
+        z-index: 1;
       }
 
       .layouts {
@@ -423,14 +444,15 @@ export class MailQuilt extends LitElement {
 
       /* Nothing shows in the email, but a person has to be able to find it. */
       .spacer {
-        outline: 1px dashed #a1a1aa;
+        outline: 1px dashed #71717a;
         outline-offset: -1px;
       }
 
       /* A thin one can still be clicked, without changing the space it takes up. */
       .spacer::before {
         content: "";
-        inset-block: -6px;
+        /* Only as far as makes it 12px tall, so that a taller one takes nothing. */
+        inset-block: min(0px, calc((100% - 12px) / 2));
         inset-inline: 0;
         position: absolute;
       }
@@ -675,6 +697,8 @@ export class MailQuilt extends LitElement {
   #formats: TextFormats | undefined;
   /** Text in the settings panel that isn't the document's value. */
   readonly #drafts = new Map<string, FieldDraft>();
+  /** Image URLs that didn't load, which the canvas stops trying to show. */
+  readonly #failedImages = new Set<string>();
   /** Set while the link field is open. */
   #linkForm: { error: boolean } | undefined;
   /** Set while the Preview is open. */
@@ -959,7 +983,7 @@ export class MailQuilt extends LitElement {
                 ⋮⋮
               </div>
               ${hasRichText(block) ? this.#views.get(block.id)?.element : nothing}
-              ${renderBlockContent(block)}
+              ${renderBlockContent(block, this.#failedImages, this.#onImageError)}
             </div>
           `
         )}
@@ -970,7 +994,7 @@ export class MailQuilt extends LitElement {
                   <button
                     aria-label=${`Add ${label} Block here, ${place}`}
                     class="add-block"
-                    title=${`Add a ${label} Block here`}
+                    title=${`Add ${label} Block here`}
                     type="button"
                     @click=${() => this.#addBlock(type, { columnId: id, index: 0 })}
                   >
@@ -1000,7 +1024,7 @@ export class MailQuilt extends LitElement {
             ({ label, type }) => html`
               <button
                 data-block-type=${type}
-                title=${`Add a ${label} Block`}
+                title=${`Add ${label} Block`}
                 type="button"
                 @click=${() => this.#addBlock(type)}
               >
@@ -1335,6 +1359,11 @@ export class MailQuilt extends LitElement {
     }
   }
 
+  readonly #onImageError = (src: string) => {
+    this.#failedImages.add(src);
+    this.requestUpdate();
+  };
+
   /** The accepted result, leaving the caller to show and report the change. */
   #tryCommand(command: Command) {
     const result = this.#editor?.apply(command);
@@ -1381,8 +1410,22 @@ export class MailQuilt extends LitElement {
     }
     if (result?.ok) {
       this.#publishStructure();
+      this.#retryRefusedFields(section);
     } else {
       this.requestUpdate();
+    }
+  }
+
+  /** A change to one field can make what another was refused for fine. */
+  #retryRefusedFields(section: SettingsSection) {
+    for (const field of section.fields) {
+      const key = draftKey(section, field);
+      const control = this.renderRoot.querySelector<HTMLInputElement>(
+        `[data-draft-key="${CSS.escape(key)}"]`
+      );
+      if (control && this.#drafts.get(key)?.refused) {
+        this.#commitField(section, field, control);
+      }
     }
   }
 

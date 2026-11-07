@@ -85,6 +85,19 @@ const look = (locator: Locator) =>
 const exportedSpace = (opened: Page) =>
   opened.locator("td > div[style*='line-height']");
 
+/** Whether a click at this point inside an element would land in that element. */
+const takesClickAt = (locator: Locator, offsetX: number, offsetY: number) =>
+  locator.evaluate(
+    (element, [dx, dy]) => {
+      const { x, y } = element.getBoundingClientRect();
+      const root = element.getRootNode() as ShadowRoot;
+      return element.contains(
+        root.elementFromPoint(x + (dx ?? 0), y + (dy ?? 0))
+      );
+    },
+    [offsetX, offsetY]
+  );
+
 const NAMES = ["Image", "Divider", "Spacer"];
 
 const withArticle = (name: string) =>
@@ -98,6 +111,19 @@ test.describe("the palette", () => {
       page.getByRole("group", { name: "Add content" }).getByRole("button")
     ).toHaveText(["Text", "Heading", "Image", "Button", "Divider", "Spacer"]);
   });
+
+  for (const name of ["Text", ...NAMES]) {
+    test(`names ${withArticle(name)} correctly in its tooltip`, async ({
+      page,
+    }) => {
+      await open(page, ["text"]);
+
+      await expect(palette(page, name)).toHaveAttribute(
+        "title",
+        `Add ${name} Block`
+      );
+    });
+  }
 
   for (const name of NAMES) {
     const type = name.toLowerCase();
@@ -329,13 +355,96 @@ test.describe("an Image", () => {
     test(`refuses the link ${href}, and says so`, async ({ page }) => {
       await open(page, ["image"]);
       await blockGroup(page, "Image").focus();
+      await change(field(page, "Alt text"), "A red bicycle");
 
       await change(field(page, "Link"), href);
 
       await expect(field(page, "Link")).toHaveAttribute("aria-invalid", "true");
-      await expect(firstBlockProps(page)).resolves.toEqual({ src: PHOTO });
+      await expect(firstBlockProps(page)).resolves.toEqual({
+        alt: "A red bicycle",
+        src: PHOTO,
+      });
     });
   }
+
+  test("offers a link once it has alt text", async ({ page }) => {
+    await open(page, ["image"]);
+    await blockGroup(page, "Image").focus();
+
+    await expect(field(page, "Link")).toBeDisabled();
+
+    await change(field(page, "Alt text"), "A red bicycle");
+
+    await expect(field(page, "Link")).toBeEnabled();
+    await change(field(page, "Link"), "https://shop.example");
+    await expect(firstBlockProps(page)).resolves.toEqual({
+      alt: "A red bicycle",
+      href: "https://shop.example",
+      src: PHOTO,
+    });
+  });
+
+  test("keeps its alt text while it has a link, and says why", async ({
+    page,
+  }) => {
+    await open(page, ["image"]);
+    await blockGroup(page, "Image").focus();
+    await change(field(page, "Alt text"), "A red bicycle");
+    await change(field(page, "Link"), "https://shop.example");
+
+    await change(field(page, "Alt text"), "");
+
+    await expect(field(page, "Alt text")).toHaveAttribute(
+      "aria-invalid",
+      "true"
+    );
+    await expect(page.getByRole("alert")).toContainText("remove the link");
+    await expect(firstBlockProps(page)).resolves.toMatchObject({
+      alt: "A red bicycle",
+    });
+
+    // What was refused is fine now, with nothing more to do in its field.
+    await change(field(page, "Link"), "");
+
+    await expect(firstBlockProps(page)).resolves.toEqual({ src: PHOTO });
+    await expect(field(page, "Alt text")).toHaveAttribute(
+      "aria-invalid",
+      "false"
+    );
+    await expect(field(page, "Link")).toBeDisabled();
+
+    await undo(page);
+
+    await expect(firstBlockProps(page)).resolves.toEqual({
+      alt: "A red bicycle",
+      src: PHOTO,
+    });
+  });
+
+  test("says so when its URL can't be loaded, and recovers with a new one", async ({
+    context,
+    page,
+  }) => {
+    const missing = "https://cdn.example/missing.png";
+    await context.route(missing, (route) => route.abort());
+    await open(page, ["image"]);
+    await blockGroup(page, "Image").focus();
+
+    await change(field(page, "Image URL"), missing);
+
+    await expect(blockGroup(page, "Image")).toContainText(
+      `Couldn't load ${missing}`
+    );
+    await expect(image(page)).toHaveCount(0);
+    await expect(box(blockGroup(page, "Image"))).resolves.toMatchObject({
+      height: 128,
+    });
+    await expect(exportHtml(page)).resolves.toContain(`src="${missing}"`);
+
+    await change(field(page, "Image URL"), PHOTO);
+
+    await expect(image(page)).toHaveAttribute("src", PHOTO);
+  });
 
   test("takes a Merge Tag as its URL and link, as far as the export", async ({
     page,
@@ -344,6 +453,7 @@ test.describe("an Image", () => {
     await blockGroup(page, "Image").focus();
 
     await change(field(page, "Image URL"), "{{logo_url}}");
+    await change(field(page, "Alt text"), "{{company}} logo");
     await change(field(page, "Link"), "{{site_url}}");
 
     // There's nothing to load yet, and a request for it would only fail.
@@ -359,6 +469,7 @@ test.describe("an Image", () => {
   }) => {
     await open(page, ["text", "image"]);
     await blockGroup(page, "Image").focus();
+    await change(field(page, "Alt text"), "A red bicycle");
     await change(field(page, "Link"), "https://shop.example");
 
     await expect(blockGroup(page, "Image").locator("a")).toHaveCount(0);
@@ -619,6 +730,40 @@ test.describe("a Spacer", () => {
     await expect(blockGroup(page, "Spacer")).toBeFocused();
   });
 
+  test("leaves the Block next to it its clicks, once it's tall enough", async ({
+    page,
+  }) => {
+    await open(page, ["text", "spacer"]);
+    const { height, width } = await box(blockGroup(page, "Text"));
+
+    await expect(
+      takesClickAt(blockGroup(page, "Text"), width / 2, height - 3)
+    ).resolves.toBeTruthy();
+  });
+
+  for (const height of ["1", "24"]) {
+    test(`leaves Row controls their clicks at a height of ${height}`, async ({
+      page,
+    }) => {
+      await open(page, ["spacer"]);
+      await blockGroup(page, "Spacer").focus();
+      await change(field(page, "Height (px)"), height);
+      await page.getByRole("button", { name: "Add Row" }).click();
+      const layoutOf = (row: string) =>
+        page
+          .getByRole("group", { name: row })
+          .getByRole("button", { exact: true, name: "100" });
+      const above = await box(layoutOf("Row 1"));
+
+      // Row 1's controls are above it, under the part that reaches up.
+      await expect(
+        takesClickAt(layoutOf("Row 1"), above.width / 2, above.height - 3)
+      ).resolves.toBeTruthy();
+      // Row 2's are below it, under its drag handle as well.
+      await expect(takesClickAt(layoutOf("Row 2"), 6, 3)).resolves.toBeTruthy();
+    });
+  }
+
   for (const height of ["0", "1001"]) {
     test(`refuses a height of ${height}, and says so`, async ({ page }) => {
       await open(page, ["spacer"]);
@@ -666,6 +811,7 @@ test.describe("accessibility", () => {
     await open(page, ["image", "divider", "spacer"]);
     await canvas(page).locator(".block").first().focus();
     await change(field(page, "Alt text"), "A red bicycle");
+    await change(field(page, "Link"), "https://shop.example");
     const { opened } = await openExport(page);
 
     await expect(

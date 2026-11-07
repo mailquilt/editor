@@ -31,6 +31,11 @@ const setProps = (props: Record<string, unknown>) => {
   return { document: editor.getDocument(), result };
 };
 
+const linkField = (props: Record<string, unknown>) =>
+  blockSettingsFields({ props, type: "image" }).find(
+    ({ key }) => key === "href"
+  );
+
 describe("Image Block", () => {
   it("is added with nothing set, as there's no image to show yet", () => {
     const document = createEmail();
@@ -107,7 +112,9 @@ describe("Image Block", () => {
     ["tel:+15551234567"],
     ["{{cta_url}}"],
   ])("accepts the link %s", (href) => {
-    expect(setProps({ href }).result).toStrictEqual({ ok: true });
+    expect(setProps({ alt: "Our logo", href }).result).toStrictEqual({
+      ok: true,
+    });
   });
 
   it.each([
@@ -118,7 +125,7 @@ describe("Image Block", () => {
     ["{{x}}javascript:alert(1)"],
     ["/relative"],
   ])("refuses the link %j", (href) => {
-    expect(setProps({ href }).result).toStrictEqual({
+    expect(setProps({ alt: "Our logo", href }).result).toStrictEqual({
       ok: false,
       reason: expect.stringMatching(/href/u),
     });
@@ -136,6 +143,54 @@ describe("Image Block", () => {
       ok: false,
       reason: expect.stringMatching(reason),
     });
+  });
+
+  it.each([
+    ["no alt text", {}],
+    ["empty alt text", { alt: "" }],
+    ["alt text of only spaces", { alt: "   " }],
+  ])("refuses a link with %s, as nothing would name it", (_name, props) => {
+    const { document, result } = setProps({
+      ...props,
+      href: "https://shop.example",
+    });
+
+    expect(result).toStrictEqual({
+      ok: false,
+      reason: expect.stringMatching(/alt text/u),
+    });
+    expect(propsOf(document)).toStrictEqual({});
+  });
+
+  it("keeps its alt text while it has a link", () => {
+    const linked = { alt: "Logo", href: "https://shop.example" };
+    const editor = createEditor({ document: withImage(linked) });
+
+    expect(
+      editor.apply({
+        blockId: "image-1",
+        props: { alt: null },
+        type: "updateProps",
+      })
+    ).toStrictEqual({
+      ok: false,
+      reason: expect.stringMatching(/alt text/u),
+    });
+    expect(propsOf(editor.getDocument())).toStrictEqual(linked);
+  });
+
+  it("can lose its link and alt text together", () => {
+    const editor = createEditor({
+      document: withImage({ alt: "Logo", href: "https://shop.example" }),
+    });
+
+    expect(
+      editor.apply({
+        blockId: "image-1",
+        props: { alt: null, href: null },
+        type: "updateProps",
+      })
+    ).toStrictEqual({ ok: true });
   });
 
   it("can have its settings removed", () => {
@@ -186,7 +241,8 @@ describe("Image Block", () => {
     // oxlint-disable-next-line no-script-url -- What's being refused.
     ["an executable image URL", { src: "javascript:alert(1)" }],
     // oxlint-disable-next-line no-script-url -- What's being refused.
-    ["an executable link", { href: "javascript:alert(1)" }],
+    ["an executable link", { alt: "Logo", href: "javascript:alert(1)" }],
+    ["a link with no alt text", { href: "https://shop.example" }],
   ])("refuses a saved email with %s", (_name, props) => {
     expect(loadDocument(withImage(props))).toStrictEqual({
       ok: false,
@@ -199,6 +255,12 @@ describe("Image Block", () => {
     expect(blockStyles({ props: { width: 240 }, type: "image" })).toStrictEqual(
       { width: "240px" }
     );
+  });
+
+  it("doesn't offer a link until it has alt text", () => {
+    expect(linkField({})).toMatchObject({ disabled: true });
+    expect(linkField({ alt: "   " })).toMatchObject({ disabled: true });
+    expect(linkField({ alt: "Logo" })).not.toHaveProperty("disabled");
   });
 
   it("offers its URL, alt text, width and link as settings", () => {

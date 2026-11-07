@@ -111,6 +111,9 @@ const headingToHtml = (block: Block, fontFamily: string) => {
   return `<${tag} style="margin:0;white-space:pre-wrap;${styles}">${lines}${lastLine}</${tag}>`;
 };
 
+const linkAttribute = (href: string | undefined) =>
+  href === undefined ? "" : ` href="${escapeAttribute(href)}"`;
+
 const blockToMjml = (block: Block, fontFamily: string) => {
   const attributes = mjmlAttributes(blockStyles(block));
   switch (block.type) {
@@ -122,8 +125,7 @@ const blockToMjml = (block: Block, fontFamily: string) => {
     }
     case "button": {
       const { href, label } = block.props as { href?: string; label: string };
-      const link = href === undefined ? "" : ` href="${escapeAttribute(href)}"`;
-      return `<mj-button${attributes}${link}>${escapeText(label)}</mj-button>`;
+      return `<mj-button${attributes}${linkAttribute(href)}>${escapeText(label)}</mj-button>`;
     }
     case "image": {
       const {
@@ -139,8 +141,7 @@ const blockToMjml = (block: Block, fontFamily: string) => {
       if (src === undefined) {
         return "";
       }
-      const link = href === undefined ? "" : ` href="${escapeAttribute(href)}"`;
-      return `<mj-image${attributes} alt="${escapeAttribute(alt)}" src="${escapeAttribute(src)}"${link}></mj-image>`;
+      return `<mj-image${attributes} alt="${escapeAttribute(alt)}" src="${escapeAttribute(src)}"${linkAttribute(href)}></mj-image>`;
     }
     case "divider": {
       return `<mj-divider${attributes}></mj-divider>`;
