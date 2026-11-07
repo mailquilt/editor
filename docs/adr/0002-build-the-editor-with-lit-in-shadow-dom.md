@@ -7,4 +7,5 @@ The editor is a Lit Web Component that renders in Shadow DOM, with `@dnd-kit/dom
 - Dragging uses `Draggable` and `Droppable` with the drop position worked out when the drag ends, not `Sortable`, which has an open Shadow DOM issue (dnd-kit #1967) and was not tested.
 - Block elements are created once and moved between Columns rather than re-rendered, so each Tiptap editor survives a move.
 - ProseMirror's base styles are defined inside the Shadow DOM.
-- Not yet tested: Japanese input in real Safari and Firefox, touch, and auto-scrolling while dragging. If any of these fail, the fallbacks are custom pointer events for dragging and an iframe canvas for text editing, then light DOM.
+- dnd-kit's auto-scrolling stops looking for scroll containers at the Shadow DOM boundary, so the editor gives it the host element's scrollable ancestors. Browser tests cover this in Chromium, Firefox and WebKit.
+- Not yet tested: Japanese input in real Safari and Firefox, and touch. If any of these fail, the fallbacks are custom pointer events for dragging and an iframe canvas for text editing, then light DOM.

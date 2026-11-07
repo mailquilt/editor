@@ -59,6 +59,13 @@ const commandSchema = v.variant("type", [
     type: v.literal("removeBlock"),
   }),
   v.strictObject({
+    blockId: v.string(),
+    columnId: v.string(),
+    /** Where the Block goes once it has left its current place. */
+    index: indexSchema,
+    type: v.literal("moveBlock"),
+  }),
+  v.strictObject({
     index: indexSchema,
     layout: layoutSchema,
     type: v.literal("insertRow"),
@@ -153,6 +160,37 @@ const planRemoveBlock = (
   return {
     ok: true,
     operations: [{ block, columnId, index, type: "remove" }],
+  };
+};
+
+const planMoveBlock = (
+  document: BlocksDocument,
+  blockId: string,
+  columnId: string,
+  index: number
+): CommandPlan => {
+  const position = findBlockPosition(document, blockId);
+  if (!position) {
+    return rejected(`No Block with ID "${blockId}"`);
+  }
+  const column = findColumn(document, columnId);
+  if (!column) {
+    return rejected(`No Column with ID "${columnId}"`);
+  }
+  const from = { columnId: position.columnId, index: position.index };
+  const sameColumn = from.columnId === columnId;
+  const length = column.blocks.length - (sameColumn ? 1 : 0);
+  if (index > length) {
+    return rejected(
+      `Index ${index} is past the end of Column "${columnId}", which would have ${length} other Blocks`
+    );
+  }
+  if (sameColumn && from.index === index) {
+    return rejected(`Block "${blockId}" is already at index ${index}`);
+  }
+  return {
+    ok: true,
+    operations: [{ blockId, from, to: { columnId, index }, type: "move" }],
   };
 };
 
@@ -283,6 +321,14 @@ export const planCommand = (
     }
     case "removeBlock": {
       return planRemoveBlock(document, output.blockId);
+    }
+    case "moveBlock": {
+      return planMoveBlock(
+        document,
+        output.blockId,
+        output.columnId,
+        output.index
+      );
     }
     case "insertRow": {
       return planInsertRow(document, output.layout, output.index);

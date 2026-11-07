@@ -704,7 +704,7 @@ Planning and build flow: `grill-with-docs` → `to-spec` → `to-tickets` → `i
 ## 27. Unverified assumptions
 
 - Japanese and other IME input works inside Shadow DOM in real Safari and Firefox. It has only been simulated in Chromium.
-- Drag and drop works with touch and auto-scrolling inside Shadow DOM.
+- Drag and drop works with touch inside Shadow DOM.
 - MJML's output meets the project's needs in real email clients, and `mjml-browser` handles Merge Tags as `mjml` did in testing.
 - Blume hosts the editor well inside this monorepo, including on a real GitHub Pages deploy and across page navigation.
 - `tsdown` builds correctly with the repo's TypeScript 7.

@@ -22,6 +22,8 @@ import { css, html, LitElement, nothing } from "lit";
 import { repeat } from "lit/directives/repeat.js";
 import { styleMap } from "lit/directives/style-map.js";
 
+import { createBlockDragging } from "./block-dragging.js";
+import type { BlockDragging, DragSource, DropPlace } from "./block-dragging.js";
 import { createTextBlockView } from "./text-block-view.js";
 import type {
   TextBlockView,
@@ -77,6 +79,9 @@ const historyInput = (event: InputEvent) => {
   }
 };
 
+/** Leaves focus and the selection where they are when a handle is pressed. */
+const keepFocus = (event: MouseEvent) => event.preventDefault();
+
 /** One opening of the Preview. */
 interface Preview {
   /** Unset while the email renders. */
@@ -115,6 +120,16 @@ export class MailQuilt extends LitElement {
       line-height: 1.5;
       margin: 0 auto;
       max-width: 100%;
+      position: relative;
+    }
+
+    .drop-indicator {
+      background: #2563eb;
+      height: 3px;
+      margin-block-start: -1.5px;
+      pointer-events: none;
+      position: absolute;
+      z-index: 1;
     }
 
     .row {
@@ -134,9 +149,62 @@ export class MailQuilt extends LitElement {
       outline-offset: -1px;
     }
 
+    .block {
+      position: relative;
+    }
+
     .block[aria-current="true"] {
       outline: 2px solid #2563eb;
       outline-offset: -2px;
+    }
+
+    /* The Block that follows the pointer, which also shows what's under it. */
+    .block[data-dnd-dragging] {
+      background: #ffffff;
+      box-shadow: 0 4px 12px rgb(0 0 0 / 25%);
+      opacity: 0.8;
+    }
+
+    /*
+     * Narrower than a Text Block's padding, so that a press on any text selects it
+     * instead of dragging the Block.
+     */
+    .drag-handle {
+      align-items: center;
+      background: #e4e4e7;
+      border: 0;
+      border-end-end-radius: 4px;
+      color: #18181b;
+      cursor: grab;
+      display: flex;
+      font:
+        12px/1 system-ui,
+        sans-serif;
+      height: 24px;
+      inset-block-start: 0;
+      inset-inline-start: 0;
+      justify-content: center;
+      opacity: 0;
+      padding: 0;
+      position: absolute;
+      touch-action: none;
+      width: 16px;
+      z-index: 1;
+    }
+
+    .block:hover .drag-handle,
+    .block[aria-current="true"] .drag-handle {
+      opacity: 1;
+    }
+
+    @media (hover: none) {
+      .drag-handle {
+        opacity: 1;
+      }
+    }
+
+    [data-block-type] {
+      touch-action: none;
     }
 
     /* Like the canvas, this stops inherited values from the email's settings. */
@@ -202,7 +270,7 @@ export class MailQuilt extends LitElement {
       padding: 4px;
       position: sticky;
       top: 0;
-      z-index: 1;
+      z-index: 2;
     }
 
     .formatting {
@@ -382,6 +450,10 @@ export class MailQuilt extends LitElement {
   #preview: Preview | undefined;
   /** The current document's HTML, once the Preview has rendered it. */
   #previewHtml: string | undefined;
+  /** Set while the element is connected and has rendered. */
+  #dragging: BlockDragging | undefined;
+  /** Each drop is its own undo step, even straight after the last one. */
+  #dropCount = 0;
 
   get value() {
     return this.#editor?.getDocument();
@@ -428,6 +500,8 @@ export class MailQuilt extends LitElement {
 
   override disconnectedCallback() {
     super.disconnectedCallback();
+    this.#dragging?.destroy();
+    this.#dragging = undefined;
     this.#destroyViews();
   }
 
@@ -486,6 +560,13 @@ export class MailQuilt extends LitElement {
         : undefined;
       (view ?? this.renderRoot.querySelector<HTMLElement>(".toolbar"))?.focus();
     }
+    if (this.isConnected && this.shadowRoot) {
+      this.#dragging ??= createBlockDragging({
+        onDrop: (source, place) => this.#drop(source, place),
+        root: this.shadowRoot,
+      });
+      this.#dragging.sync();
+    }
   }
 
   protected override render() {
@@ -521,6 +602,7 @@ export class MailQuilt extends LitElement {
             </div>
           `
         )}
+        <div class="drop-indicator" hidden></div>
       </div>
     `;
   }
@@ -561,6 +643,7 @@ export class MailQuilt extends LitElement {
     return html`
       <div
         class=${blocks.length === 0 ? "column empty" : "column"}
+        data-column-id=${id}
         style=${styleMap({ width: `${width}%` })}
       >
         ${repeat(
@@ -570,7 +653,18 @@ export class MailQuilt extends LitElement {
             <div
               aria-current=${block.id === this.#activeBlockId ? "true" : nothing}
               class="block"
+              data-block-id=${block.id}
             >
+              <button
+                aria-label="Drag Block"
+                class="drag-handle"
+                tabindex="-1"
+                title="Drag Block"
+                type="button"
+                @mousedown=${keepFocus}
+              >
+                ⋮⋮
+              </button>
               ${this.#views.get(block.id)?.element}
             </div>
           `
@@ -605,6 +699,7 @@ export class MailQuilt extends LitElement {
       >
         <div aria-label="Add content" class="palette" role="group">
           <button
+            data-block-type="text"
             title="Add a Text Block"
             type="button"
             @click=${() => this.#addTextBlock()}
@@ -929,13 +1024,18 @@ export class MailQuilt extends LitElement {
         options
       );
 
-    if (block) {
-      this.#activeBlockId = block.createdId;
-    }
     if (row || block) {
-      this.#publishStructure();
+      await this.#showPlaced(block?.createdId);
     }
-    if (block) {
+  }
+
+  /** Reports a change that put a Block in place, then selects it to type in. */
+  async #showPlaced(blockId: string | undefined) {
+    if (blockId !== undefined) {
+      this.#activeBlockId = blockId;
+    }
+    this.#publishStructure();
+    if (blockId !== undefined) {
       await this.updateComplete;
       this.#activeView?.focus();
     }
@@ -949,6 +1049,50 @@ export class MailQuilt extends LitElement {
     }
     const column = document.rows.at(-1)?.columns.at(-1);
     return column && { columnId: column.id, index: column.blocks.length };
+  }
+
+  /** One undo step, with any new Row, unless the Block is already there. */
+  async #drop(source: DragSource, place: DropPlace) {
+    const document = this.#editor?.getDocument();
+    const moving = "blockId" in source ? source.blockId : undefined;
+    const from =
+      document && moving !== undefined
+        ? findBlockPosition(document, moving)
+        : undefined;
+    if (
+      from &&
+      "columnId" in place &&
+      from.columnId === place.columnId &&
+      from.index === place.index
+    ) {
+      return;
+    }
+
+    this.#dropCount += 1;
+    const options = { mergeKey: `drop-${this.#dropCount}` };
+    const target =
+      "columnId" in place ? place : this.#insertRowFor(place.rowIndex, options);
+    if (!target) {
+      return;
+    }
+    const result = this.#tryCommand(
+      "blockId" in source
+        ? { blockId: source.blockId, ...target, type: "moveBlock" }
+        : { blockType: source.blockType, ...target, type: "insertBlock" },
+      options
+    );
+    await this.#showPlaced(result && (moving ?? result.createdId));
+  }
+
+  /** Adds a single-Column Row, returning where a Block goes in it. */
+  #insertRowFor(index: number, options: ApplyOptions) {
+    const inserted = this.#tryCommand(
+      { index, layout: "100", type: "insertRow" },
+      options
+    );
+    const row = inserted && this.#editor?.getDocument().rows[index];
+    const column = row?.columns[0];
+    return column && { columnId: column.id, index: 0 };
   }
 
   #commitText(blockId: string, content: RichTextDocument) {
