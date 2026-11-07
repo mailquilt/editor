@@ -8,7 +8,6 @@ import {
   rowLayoutOf,
 } from "@mailquilt/core";
 import type {
-  ApplyOptions,
   BlocksDocument,
   Column,
   Command,
@@ -22,6 +21,8 @@ import { css, html, LitElement, nothing } from "lit";
 import { repeat } from "lit/directives/repeat.js";
 import { styleMap } from "lit/directives/style-map.js";
 
+import { createBlockDragging } from "./block-dragging.js";
+import type { BlockDragging, DragSource, DropPlace } from "./block-dragging.js";
 import { createTextBlockView } from "./text-block-view.js";
 import type {
   TextBlockView,
@@ -37,9 +38,6 @@ const MARK_BUTTONS: { label: string; mark: ToggleableMark; text: string }[] = [
   { label: "Italic", mark: "italic", text: "I" },
   { label: "Underline", mark: "underline", text: "U" },
 ];
-
-/** Joins the Row made for a Block in an email with no Rows to that Block's step. */
-const FIRST_BLOCK_MERGE_KEY = "first-block";
 
 const INVALID_LINK_MESSAGE =
   "Use a URL starting with https://, http://, mailto: or tel:, or a Merge Tag such as {{cta_url}}.";
@@ -75,6 +73,18 @@ const historyInput = (event: InputEvent) => {
   if (event.inputType === "historyRedo") {
     return "redo";
   }
+};
+
+/** The Command for a drop, which adds a Row if it landed outside any. */
+const dropCommand = (source: DragSource, place: DropPlace): Command => {
+  if ("blockId" in source) {
+    return "columnId" in place
+      ? { ...source, ...place, type: "moveBlock" }
+      : { ...source, ...place, type: "moveBlockToNewRow" };
+  }
+  return "columnId" in place
+    ? { ...source, ...place, type: "insertBlock" }
+    : { ...source, ...place, type: "insertBlockInNewRow" };
 };
 
 /** One opening of the Preview. */
@@ -115,6 +125,16 @@ export class MailQuilt extends LitElement {
       line-height: 1.5;
       margin: 0 auto;
       max-width: 100%;
+      position: relative;
+    }
+
+    .drop-indicator {
+      background: #2563eb;
+      height: 3px;
+      margin-block-start: -1.5px;
+      pointer-events: none;
+      position: absolute;
+      z-index: 1;
     }
 
     .row {
@@ -134,9 +154,61 @@ export class MailQuilt extends LitElement {
       outline-offset: -1px;
     }
 
+    .block {
+      position: relative;
+    }
+
     .block[aria-current="true"] {
       outline: 2px solid #2563eb;
       outline-offset: -2px;
+    }
+
+    /* The Block that follows the pointer, which also shows what's under it. */
+    .block[data-dnd-dragging] {
+      background: #ffffff;
+      box-shadow: 0 4px 12px rgb(0 0 0 / 25%);
+      opacity: 0.8;
+    }
+
+    /*
+     * Narrower than a Text Block's padding, so that a press on any text selects it
+     * instead of dragging the Block.
+     */
+    .drag-handle {
+      align-items: center;
+      background: #e4e4e7;
+      border-end-end-radius: 4px;
+      color: #18181b;
+      cursor: grab;
+      display: flex;
+      font:
+        12px/1 system-ui,
+        sans-serif;
+      height: 24px;
+      inset-block-start: 0;
+      inset-inline-start: 0;
+      justify-content: center;
+      opacity: 0;
+      position: absolute;
+      touch-action: none;
+      user-select: none;
+      width: 16px;
+      z-index: 1;
+    }
+
+    .block:hover .drag-handle,
+    .block[aria-current="true"] .drag-handle {
+      opacity: 1;
+    }
+
+    @media (hover: none) {
+      .drag-handle {
+        opacity: 1;
+      }
+    }
+
+    [data-block-type] {
+      touch-action: none;
     }
 
     /* Like the canvas, this stops inherited values from the email's settings. */
@@ -202,7 +274,7 @@ export class MailQuilt extends LitElement {
       padding: 4px;
       position: sticky;
       top: 0;
-      z-index: 1;
+      z-index: 2;
     }
 
     .formatting {
@@ -382,6 +454,8 @@ export class MailQuilt extends LitElement {
   #preview: Preview | undefined;
   /** The current document's HTML, once the Preview has rendered it. */
   #previewHtml: string | undefined;
+  /** Set while the element is connected and has rendered. */
+  #dragging: BlockDragging | undefined;
 
   get value() {
     return this.#editor?.getDocument();
@@ -428,6 +502,8 @@ export class MailQuilt extends LitElement {
 
   override disconnectedCallback() {
     super.disconnectedCallback();
+    this.#dragging?.destroy();
+    this.#dragging = undefined;
     this.#destroyViews();
   }
 
@@ -486,6 +562,13 @@ export class MailQuilt extends LitElement {
         : undefined;
       (view ?? this.renderRoot.querySelector<HTMLElement>(".toolbar"))?.focus();
     }
+    if (this.isConnected && this.shadowRoot) {
+      this.#dragging ??= createBlockDragging({
+        onDrop: (source, place) => this.#drop(source, place),
+        root: this.shadowRoot,
+      });
+      this.#dragging.sync();
+    }
   }
 
   protected override render() {
@@ -521,6 +604,7 @@ export class MailQuilt extends LitElement {
             </div>
           `
         )}
+        <div class="drop-indicator" hidden></div>
       </div>
     `;
   }
@@ -561,6 +645,7 @@ export class MailQuilt extends LitElement {
     return html`
       <div
         class=${blocks.length === 0 ? "column empty" : "column"}
+        data-column-id=${id}
         style=${styleMap({ width: `${width}%` })}
       >
         ${repeat(
@@ -570,7 +655,16 @@ export class MailQuilt extends LitElement {
             <div
               aria-current=${block.id === this.#activeBlockId ? "true" : nothing}
               class="block"
+              data-block-id=${block.id}
             >
+              <div
+                aria-hidden="true"
+                class="drag-handle"
+                title="Drag Block"
+                @mousedown=${this.#onHandleMousedown}
+              >
+                ⋮⋮
+              </div>
               ${this.#views.get(block.id)?.element}
             </div>
           `
@@ -605,6 +699,7 @@ export class MailQuilt extends LitElement {
       >
         <div aria-label="Add content" class="palette" role="group">
           <button
+            data-block-type="text"
             title="Add a Text Block"
             type="button"
             @click=${() => this.#addTextBlock()}
@@ -855,9 +950,9 @@ export class MailQuilt extends LitElement {
   }
 
   /** The accepted result, leaving the caller to show and report the change. */
-  #tryCommand(command: Command, options?: ApplyOptions) {
-    const result = this.#editor?.apply(command, options);
-    if (result && !result.ok) {
+  #tryCommand(command: Command) {
+    const result = this.#editor?.apply(command);
+    if (result && !result.ok && !result.unchanged) {
       // The controls only offer what's allowed, so this is a bug here.
       console.error(`<mail-quilt> rejected a Command: ${result.reason}`);
     }
@@ -916,29 +1011,23 @@ export class MailQuilt extends LitElement {
     if (!editor) {
       return;
     }
-    let target = place ?? this.#defaultBlockPlace(editor);
-    const options = target ? undefined : { mergeKey: FIRST_BLOCK_MERGE_KEY };
-    const row =
-      options &&
-      this.#tryCommand({ index: 0, layout: "100", type: "insertRow" }, options);
-    target ??= this.#defaultBlockPlace(editor);
-    const block =
-      target &&
-      this.#tryCommand(
-        { blockType: "text", ...target, type: "insertBlock" },
-        options
-      );
+    const target = place ?? this.#defaultBlockPlace(editor);
+    const block = this.#tryCommand(
+      target
+        ? { blockType: "text", ...target, type: "insertBlock" }
+        : { blockType: "text", rowIndex: 0, type: "insertBlockInNewRow" }
+    );
+    if (block) {
+      await this.#showPlaced(block.createdId);
+    }
+  }
 
-    if (block) {
-      this.#activeBlockId = block.createdId;
-    }
-    if (row || block) {
-      this.#publishStructure();
-    }
-    if (block) {
-      await this.updateComplete;
-      this.#activeView?.focus();
-    }
+  /** Reports a change that put a Block in place, then selects it to type in. */
+  async #showPlaced(blockId: string | undefined) {
+    this.#activeBlockId = blockId;
+    this.#publishStructure();
+    await this.updateComplete;
+    this.#activeView?.focus();
   }
 
   #defaultBlockPlace(editor: Editor) {
@@ -949,6 +1038,15 @@ export class MailQuilt extends LitElement {
     }
     const column = document.rows.at(-1)?.columns.at(-1);
     return column && { columnId: column.id, index: column.blocks.length };
+  }
+
+  async #drop(source: DragSource, place: DropPlace) {
+    const result = this.#tryCommand(dropCommand(source, place));
+    if (result) {
+      await this.#showPlaced(
+        "blockId" in source ? source.blockId : result.createdId
+      );
+    }
   }
 
   #commitText(blockId: string, content: RichTextDocument) {
@@ -1007,6 +1105,17 @@ export class MailQuilt extends LitElement {
     event.preventDefault();
     if (!this.shadowRoot?.activeElement && target instanceof Element) {
       target.closest("button")?.focus();
+    }
+  }
+
+  /**
+   * Leaves focus and the selection where they are. With no focus in the editor,
+   * the toolbar takes it, because keyboard undo only reaches the editor from inside.
+   */
+  #onHandleMousedown(event: MouseEvent) {
+    event.preventDefault();
+    if (!this.shadowRoot?.activeElement) {
+      this.renderRoot.querySelector<HTMLElement>(".toolbar")?.focus();
     }
   }
 

@@ -11,7 +11,12 @@ export type ApplyResult =
       /** The ID of what the Command added, if it added a Block or Row. */
       createdId?: string;
     }
-  | { ok: false; reason: string };
+  | {
+      ok: false;
+      reason: string;
+      /** The Block is already where the Command asks, so nothing went wrong. */
+      unchanged?: true;
+    };
 
 export interface ApplyOptions {
   /**

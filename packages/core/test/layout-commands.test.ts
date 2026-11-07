@@ -235,6 +235,225 @@ describe("the removeBlock Command", () => {
   });
 });
 
+const move = (blockId: string, columnId: string, index: number): Command => ({
+  blockId,
+  columnId,
+  index,
+  type: "moveBlock",
+});
+
+describe("the moveBlock Command", () => {
+  it("moves a Block later in its Column, counting the index once it has left", () => {
+    const { editor, operations } = setup();
+
+    expectAccepted(editor.apply(move("a", "left", 1)));
+
+    expect(columnsOf(editor.getDocument())).toStrictEqual([
+      [["b", "a"], ["c"]],
+    ]);
+    expect(operations).toStrictEqual([
+      [
+        {
+          blockId: "a",
+          from: { columnId: "left", index: 0 },
+          to: { columnId: "left", index: 1 },
+          type: "move",
+        },
+      ],
+    ]);
+    expectValid(editor.getDocument());
+  });
+
+  it("moves a Block to another Column", () => {
+    const { editor } = setup();
+
+    expectAccepted(editor.apply(move("b", "right", 0)));
+
+    expect(columnsOf(editor.getDocument())).toStrictEqual([
+      [["a"], ["b", "c"]],
+    ]);
+  });
+
+  it("moves a Block to the end of another Column", () => {
+    const { editor } = setup();
+
+    expectAccepted(editor.apply(move("a", "right", 1)));
+
+    expect(columnsOf(editor.getDocument())).toStrictEqual([
+      [["b"], ["c", "a"]],
+    ]);
+  });
+
+  it("keeps the Block's content", () => {
+    const { editor } = setup();
+    const content = {
+      content: [
+        { content: [{ text: "Keep me", type: "text" }], type: "paragraph" },
+      ],
+      type: "doc",
+    };
+    expectAccepted(
+      editor.apply({ blockId: "a", props: { content }, type: "updateProps" })
+    );
+
+    expectAccepted(editor.apply(move("a", "right", 0)));
+
+    expect(
+      editor.getDocument().rows[0]?.columns[1]?.blocks[0]?.props.content
+    ).toStrictEqual(content);
+  });
+
+  it("is one undo step that undo and redo reverse exactly", () => {
+    const { editor } = setup();
+
+    expectAccepted(editor.apply(move("a", "right", 1)));
+
+    const { changed, redone, undone } = undoThenRedo(editor);
+    expect(columnsOf(undone)).toStrictEqual([[["a", "b"], ["c"]]]);
+    expect(redone).toStrictEqual(changed);
+  });
+
+  it.each([
+    ["an unknown Block", move("nope", "right", 0), /No Block/u],
+    ["an unknown Column", move("a", "nope", 0), /No Column/u],
+    ["an index past the end", move("a", "right", 2), /past the end/u],
+    [
+      "an index past the end of its own Column",
+      move("a", "left", 2),
+      /past the end/u,
+    ],
+    ["the place it's already in", move("a", "left", 0), /already/u],
+  ])("rejects %s and leaves the email as it was", (_name, command, reason) => {
+    const { document, editor, operations } = setup();
+    const before = editor.getDocument();
+
+    const result = editor.apply(command);
+
+    expect(result).toMatchObject({ ok: false });
+    expect(result).toHaveProperty("reason", expect.stringMatching(reason));
+    expect(editor.getDocument()).toStrictEqual(before);
+    expect(operations).toStrictEqual([]);
+    expect(document).toStrictEqual(twoColumnEmail());
+  });
+
+  it("rejects an index that isn't a whole number from zero up", () => {
+    const { editor } = setup();
+
+    expect(send(editor, { ...move("a", "right", 0), index: -1 })).toMatchObject(
+      { ok: false }
+    );
+    expect(
+      send(editor, { ...move("a", "right", 0), index: 0.5 })
+    ).toMatchObject({ ok: false });
+  });
+});
+
+describe("the Commands that add a Row for a Block", () => {
+  it("moves a Block to a new single-Column Row", () => {
+    const { editor, operations } = setup();
+
+    expectAccepted(
+      editor.apply({ blockId: "b", rowIndex: 1, type: "moveBlockToNewRow" })
+    );
+
+    const document = editor.getDocument();
+    expect(columnsOf(document)).toStrictEqual([[["a"], ["c"]], [["b"]]]);
+    expect(
+      widthsOf({ ...document, rows: document.rows.slice(1) })
+    ).toStrictEqual([100]);
+    expect(operations).toHaveLength(1);
+    expect(operations[0]?.map(({ type }) => type)).toStrictEqual([
+      "insert",
+      "move",
+    ]);
+    expectValid(document);
+  });
+
+  it("adds a Block in a new single-Column Row, reporting the Block's ID", () => {
+    const { editor } = setup();
+
+    const result = editor.apply({
+      blockType: "text",
+      rowIndex: 0,
+      type: "insertBlockInNewRow",
+    });
+
+    const document = editor.getDocument();
+    expect(result).toStrictEqual({
+      createdId: document.rows[0]?.columns[0]?.blocks[0]?.id,
+      ok: true,
+    });
+    expect(document.rows).toHaveLength(2);
+    expectValid(document);
+  });
+
+  it("adds the first Row and Block to an email with none", () => {
+    const { editor } = setup({ ...createEmail(), rows: [] });
+
+    expectAccepted(
+      editor.apply({
+        blockType: "text",
+        rowIndex: 0,
+        type: "insertBlockInNewRow",
+      })
+    );
+
+    expect(editor.getDocument().rows).toHaveLength(1);
+  });
+
+  it("is one undo step that undo and redo reverse exactly", () => {
+    const { editor } = setup();
+
+    expectAccepted(
+      editor.apply({ blockId: "b", rowIndex: 0, type: "moveBlockToNewRow" })
+    );
+
+    const { changed, redone, undone } = undoThenRedo(editor);
+    expect(columnsOf(undone)).toStrictEqual([[["a", "b"], ["c"]]]);
+    expect(redone).toStrictEqual(changed);
+  });
+
+  it.each([
+    [
+      "an unknown Block",
+      { blockId: "nope", rowIndex: 0, type: "moveBlockToNewRow" },
+      /No Block/u,
+    ],
+    [
+      "an unknown Block type",
+      { blockType: "nope", rowIndex: 0, type: "insertBlockInNewRow" },
+      /Unknown Block type/u,
+    ],
+    [
+      "a Row index past the end",
+      { blockId: "a", rowIndex: 2, type: "moveBlockToNewRow" },
+      /past the end/u,
+    ],
+  ])("rejects %s, adding no Row", (_name, command, reason) => {
+    const { editor, operations } = setup();
+    const before = editor.getDocument();
+
+    const result = send(editor, command);
+
+    expect(result).toHaveProperty("reason", expect.stringMatching(reason));
+    expect(editor.getDocument()).toStrictEqual(before);
+    expect(operations).toStrictEqual([]);
+    expect(editor.undo()).toBeFalsy();
+  });
+});
+
+describe("a Command for what's already so", () => {
+  it("says so, unlike a Command that can't be done", () => {
+    const { editor } = setup();
+
+    expect(editor.apply(move("a", "left", 0))).toMatchObject({
+      ok: false,
+      unchanged: true,
+    });
+    expect(editor.apply(move("a", "nope", 0))).not.toHaveProperty("unchanged");
+  });
+});
+
 describe("rejecting a Block Command", () => {
   const rejected: [string, unknown, RegExp][] = [
     [
