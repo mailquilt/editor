@@ -1,18 +1,17 @@
 import { BLOCK_TYPES, loadDocument } from "@mailquilt/core";
 import { expect, test } from "@playwright/test";
 
-const BASE = "/mailquilt";
 const ROADMAP = "https://github.com/yourcodebuddy-in/mailquilt/issues";
 
 test("the home page links to the Playground and the roadmap", async ({
   page,
 }) => {
-  await page.goto(`${BASE}/`);
+  await page.goto("/");
   const content = page.getByRole("main");
 
   await expect(
     content.getByRole("link", { name: /playground/iu }).first()
-  ).toHaveAttribute("href", `${BASE}/playground`);
+  ).toHaveAttribute("href", "/playground");
   await expect(
     content.getByRole("link", { name: /roadmap/iu }).first()
   ).toHaveAttribute("href", ROADMAP);
@@ -21,7 +20,7 @@ test("the home page links to the Playground and the roadmap", async ({
 test("the document format reference's example is an email core loads", async ({
   page,
 }) => {
-  await page.goto(`${BASE}/document-format`);
+  await page.goto("/document-format");
   const example = await page
     .getByTestId("example-email")
     .locator("pre code")
@@ -44,7 +43,7 @@ test("the document format reference's example is an email core loads", async ({
 test("the email clients page says plainly that Outlook is untested", async ({
   page,
 }) => {
-  await page.goto(`${BASE}/email-clients`);
+  await page.goto("/email-clients");
 
   await expect(page.getByRole("main")).toContainText("Outlook is untested.");
 });
@@ -53,7 +52,7 @@ test("the email clients page says plainly that Outlook is untested", async ({
 const pagePath = (path: string) =>
   /\.\w+$/u.test(path) ? undefined : path.replace(/(?<=.)\/$/u, "");
 
-test("every page's links and assets resolve under the base path", async ({
+test("every page's links and assets resolve", async ({
   baseURL,
   context,
   request,
@@ -84,7 +83,7 @@ test("every page's links and assets resolve under the base path", async ({
   };
 
   // Every page has the sidebar, so the home page links to all of them.
-  const fromHome = await linksFrom(BASE);
+  const fromHome = await linksFrom("/");
   const pages = [...new Set(fromHome.flatMap((path) => pagePath(path) ?? []))];
   const fromPages = await Promise.all(pages.map(linksFrom));
   const linked = [...new Set([...fromHome, ...fromPages.flat()])];
@@ -95,18 +94,15 @@ test("every page's links and assets resolve under the base path", async ({
     })
   );
 
-  expect(
-    linked.filter((path) => path !== BASE && !path.startsWith(`${BASE}/`))
-  ).toStrictEqual([]);
   expect(statuses.filter(({ status }) => status >= 400)).toStrictEqual([]);
   expect(failedAssets).toStrictEqual([]);
   // So a crawl that finds nothing can't pass.
   expect(pages).toStrictEqual(
     expect.arrayContaining([
-      `${BASE}/quick-start`,
-      `${BASE}/document-format`,
-      `${BASE}/email-clients`,
-      `${BASE}/playground`,
+      "/quick-start",
+      "/document-format",
+      "/email-clients",
+      "/playground",
     ])
   );
 });

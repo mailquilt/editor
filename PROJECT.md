@@ -65,7 +65,7 @@ Mail Quilt should integrate with email providers rather than compete with them.
 | Repository | `github.com/yourcodebuddy-in/mailquilt` |
 | npm scope | `@mailquilt/*` |
 | Custom element | `<mail-quilt>` |
-| Docs | `yourcodebuddy-in.github.io/mailquilt` |
+| Docs | Deployed on Vercel at the site root, domain to be decided |
 | Custom domain | None; not buying one |
 
 Still to confirm: that the `@mailquilt` org can be created on npm (`@mailquilt/core` and `mailquilt` currently return 404, which does not prove the org is free) and that the name has no trademark conflict.
@@ -538,7 +538,7 @@ Conflict handling and the transport layer belong to the developer or their chose
 
 ### Docs and Playground (`apps/docs`)
 
-There is one app, built with Blume and deployed as a static site to GitHub Pages under `/mailquilt`.
+There is one app, built with Blume and deployed as a static site to Vercel at the site root, with no base path.
 
 `0.1.0` docs:
 
@@ -566,6 +566,8 @@ Included:
 - Preview showing the real exported HTML in a sandboxed iframe
 - HTML export tested in Gmail and Apple Mail, with Outlook relying on MJML and documented as untested
 - Working installs in fresh plain JS and React projects
+- An editor and Playground redesign in the style of established embedded email builders, with UI theme tokens a host can override (#33)
+- Starters and Templates: ready-made emails a person can start from (#34)
 - Docs and the Playground
 
 Before release:
@@ -583,7 +585,8 @@ No dates. Items can be reordered. The roadmap itself lives in GitHub Issues.
 
 1. One Text Block through `core`, `renderer`, `editor` and the Playground.
 2. The other Blocks, columns, the React wrapper and the docs.
-3. The `0.1.0` release.
+3. The editor and Playground redesign, and Starters and Templates.
+4. The `0.1.0` release.
 
 ### Next
 
@@ -603,7 +606,7 @@ No dates. Items can be reordered. The roadmap itself lives in GitHub Issues.
 - Mobile and dark-mode previews
 - HTML mode
 - React Email export
-- Templates, saved rows and MJML/HTML import
+- Saved rows and MJML/HTML import
 - Sending integrations
 - Translated emails
 - Collaboration primitives and example
@@ -708,7 +711,7 @@ Planning and build flow: `grill-with-docs` → `to-spec` → `to-tickets` → `i
 - Japanese and other IME input works inside Shadow DOM in real Safari and Firefox. It has only been simulated in Chromium.
 - Drag and drop works with touch inside Shadow DOM.
 - MJML's output meets the project's needs in real email clients, and `mjml-browser` handles Merge Tags as `mjml` did in testing.
-- Blume hosts the editor well inside this monorepo, including on a real GitHub Pages deploy and across page navigation.
+- Blume hosts the editor well inside this monorepo, including on a real Vercel deploy and across page navigation.
 - `tsdown` builds correctly with the repo's TypeScript 7.
 - Can I email data can be used under its license.
 - Sending provider APIs support the planned template integrations.

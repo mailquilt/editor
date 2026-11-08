@@ -1,14 +1,44 @@
 ---
-title: Mail Quilt
+title: Introduction
 description: Mail Quilt is a free, MIT-licensed drag-and-drop email builder you can embed in any web app, as a Web Component or a React component.
+seo:
+  title: Mail Quilt, a free email builder you can embed in any web app
 ---
 
-Mail Quilt is a free, MIT-licensed email builder that developers embed in their apps. It's a Web Component, `<mail-quilt>`, so it works in any framework, and it has a React wrapper.
+## What people can do with it
 
-- [Try the Playground](./playground) to design an email and export it, with nothing to install.
-- [Quick start](./quick-start): add the editor to a page with a bundler, from a CDN, or in React.
-- [Document format](./document-format): how an email is saved, and which values the editor accepts.
-- [Tested email clients](./email-clients): where the exported HTML has been checked. Outlook is untested.
-- [Roadmap](https://github.com/yourcodebuddy-in/mailquilt/issues): what's planned lives in GitHub Issues, where you can comment on it.
+Add `<mail-quilt>` to a page, and the people using your app can design emails without writing HTML:
 
-Mail Quilt is version `0.x`, so its API may still change between releases.
+- Build an email from Text, Heading, Image, Button, Divider and Spacer Blocks.
+- Lay it out in Rows of one to four Columns.
+- Drag Blocks in from the palette, and drag them to reorder them or move them to another Column. Everything they can do by dragging, they can also do with the keyboard.
+- Make text bold, italic or underlined, add links, and write Merge Tags such as `{{first_name}}`.
+- Change the settings of each Block and Row, and of the email as a whole.
+- Undo and redo every change.
+- Preview the exact HTML the email will be sent as.
+
+To see it for yourself, open the [Playground](./playground). There's nothing to install.
+
+## How it works
+
+Your app keeps the emails. The editor works on a JSON document, and after every change it hands you the new one. Save it wherever you like, such as in your database, and give it back to the editor to open the email again. The [document format](./document-format) page describes it.
+
+When an email is ready, the editor turns it into HTML with [MJML](https://mjml.io), which writes the table-based markup that email clients need. Merge Tags stay in the HTML as written, so the service that sends your email can fill them in.
+
+Mail Quilt doesn't send email, store emails for you, or run a server. It's a component that lives in your app.
+
+## Add it to your app
+
+- **Any framework, or none:** `@mailquilt/editor` registers the `<mail-quilt>` element. Load it through your bundler, or from a CDN on a page with no build step.
+- **React:** `@mailquilt/react` wraps it as a `MailQuilt` component, which also works with server rendering.
+
+The [quick start](./quick-start) has working code for each. Wrappers for Vue and Svelte are planned.
+
+## Before you rely on it
+
+- Mail Quilt is at version `0.x`, so its API can still change between releases.
+- The HTML it exports hasn't been checked in Outlook. The [tested email clients](./email-clients) page has the details.
+
+## Follow along
+
+The [roadmap](https://github.com/yourcodebuddy-in/mailquilt/issues) lives in GitHub Issues. Comment on what's planned there, or open an issue to report a problem.
