@@ -128,10 +128,18 @@ export class MailQuiltShell extends LitElement {
         flex-direction: column;
         min-height: 0;
         overflow: auto;
+        scrollbar-color: var(--mq-color-border) transparent;
+        scrollbar-width: thin;
       }
 
       mail-quilt {
         flex: 1 0 auto;
+      }
+
+      /* The Shell's frame is the editor's, so the editor doesn't draw its own. */
+      mail-quilt::part(frame) {
+        border-radius: 0;
+        box-shadow: none;
       }
     `,
   ];
@@ -206,14 +214,15 @@ export class MailQuiltShell extends LitElement {
 
     return html`
       <div class="ui shell">
-        <div class="header">
-          <h2 class="heading">${this.heading}</h2>
-          <div class="actions">
+        <div class="header" part="header">
+          <h2 class="heading" part="heading">${this.heading}</h2>
+          <div class="actions" part="actions">
             ${
               advanced
                 ? html`
                     <button
                       class="text-button"
+                      part="import-json"
                       type="button"
                       @click=${this.#chooseFile}
                     >
@@ -221,6 +230,7 @@ export class MailQuiltShell extends LitElement {
                     </button>
                     <button
                       class="text-button"
+                      part="export-json"
                       type="button"
                       @click=${this.#exportJson}
                     >
@@ -237,6 +247,7 @@ export class MailQuiltShell extends LitElement {
             }
             <button
               class="text-button primary"
+              part="export-html"
               type="button"
               @click=${this.#exportHtmlFile}
             >
@@ -244,8 +255,10 @@ export class MailQuiltShell extends LitElement {
             </button>
           </div>
         </div>
-        <div class="messages">
-          ${messages.map((message) => html`<p role="alert">${message}</p>`)}
+        <div class="messages" part="messages">
+          ${messages.map(
+            (message) => html`<p part="message" role="alert">${message}</p>`
+          )}
         </div>
         <div class="body">${this.#editor}</div>
       </div>

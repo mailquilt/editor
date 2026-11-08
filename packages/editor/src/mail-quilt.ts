@@ -1786,6 +1786,7 @@ export class MailQuilt extends LitElement {
       ${this.#narrow ? this.#renderNarrowNotice() : nothing}
       <div
         class="ui editor"
+        part="frame"
         ?data-collapsed=${this.#narrow}
         style=${styleMap({ "--email-width": `${settings.width}px` })}
       >

@@ -70,10 +70,41 @@ Without `save-key`, the Shell stores nothing. Save the email yourself from `mq-c
 
 In React, these are the `value`, `variant`, `heading`, `saveKey`, `onChange` and `onError` props, and `exportHtml()` on the `ref`.
 
+## Customizing it
+
+Set `heading` to name what's being edited, such as `heading="Welcome email"`. Pick the buttons with `variant`: Simple has only Export HTML, and Advanced adds the JSON buttons.
+
 The Shell draws its header and messages from the same [theme tokens](./theme-tokens) as the editor. Set them on `<mail-quilt-shell>`, and the editor inside uses them too.
+
+For anything else, each piece of the header and the message bar is a CSS part. Style it from your own stylesheet with `::part()`:
+
+| Part          | What it is                                       |
+| ------------- | ------------------------------------------------ |
+| `header`      | The bar above the editor.                        |
+| `heading`     | The heading's text.                              |
+| `actions`     | The group of buttons on the right of the header. |
+| `import-json` | The Import JSON button, in the Advanced variant. |
+| `export-json` | The Export JSON button, in the Advanced variant. |
+| `export-html` | The Export HTML button.                          |
+| `messages`    | The message bar, below the header.               |
+| `message`     | Each message in the bar.                         |
+
+```css title="styles.css"
+/* Only the JSON buttons, with no heading. */
+mail-quilt-shell::part(export-html),
+mail-quilt-shell::part(heading) {
+  display: none;
+}
+
+mail-quilt-shell::part(header) {
+  background: #f8fafc;
+}
+```
+
+A part you hide is gone for everyone, including people using a screen reader or a keyboard. If you hide Export HTML, call `exportHtml()` from a control of your own so people can still get the HTML.
 
 ## Shell or `<mail-quilt>`?
 
 Use the Shell when the editor is a page of its own and its header can be the page's controls. It gets an editor page working with a few lines, and a refused email or a failed save always reaches the person.
 
-Use `<mail-quilt>` on its own when the editor sits inside a page your app already lays out, such as beside a form with the email's subject and recipients, or when you want your own buttons and messages. The Shell's header has no room for buttons of your own.
+Use `<mail-quilt>` on its own when the editor sits inside a page your app already lays out, such as beside a form with the email's subject and recipients, or when you want buttons of your own in the header. You can hide or restyle the Shell's buttons, but you can't add to them.

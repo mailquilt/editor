@@ -417,3 +417,84 @@ test.describe("accessibility", () => {
     }
   });
 });
+
+test.describe("parts", () => {
+  test("name each piece of the header and the messages", async ({ page }) => {
+    await page.goto("/shell.html?variant=advanced&refused-first");
+    await expect(shell(page).getByRole("alert")).toBeVisible();
+
+    const parts = await shell(page).evaluate((element) =>
+      [...(element.shadowRoot?.querySelectorAll("[part]") ?? [])].map((each) =>
+        each.getAttribute("part")
+      )
+    );
+
+    expect(parts).toStrictEqual([
+      "header",
+      "heading",
+      "actions",
+      "import-json",
+      "export-json",
+      "export-html",
+      "messages",
+      "message",
+    ]);
+  });
+
+  test("let a host hide a button or the heading with CSS", async ({ page }) => {
+    await openShell(page, "?variant=advanced");
+
+    await page.addStyleTag({
+      content: `
+        mail-quilt-shell::part(export-html),
+        mail-quilt-shell::part(heading) {
+          display: none;
+        }
+      `,
+    });
+
+    await expect(
+      shell(page).getByRole("button", { name: "Export HTML" })
+    ).toBeHidden();
+    await expect(shell(page).getByRole("heading")).toBeHidden();
+    await expect(
+      shell(page).getByRole("button", { name: "Export JSON" })
+    ).toBeVisible();
+  });
+
+  test("let a host restyle a button", async ({ page }) => {
+    await openShell(page);
+
+    await page.addStyleTag({
+      content:
+        "mail-quilt-shell::part(export-html) { background: rgb(1, 2, 3); }",
+    });
+
+    await expect(
+      shell(page).getByRole("button", { name: "Export HTML" })
+    ).toHaveCSS("background-color", "rgb(1, 2, 3)");
+  });
+});
+
+test.describe("the frame", () => {
+  test("is the Shell's, rounded and ringed as the editor is on its own", async ({
+    page,
+  }) => {
+    await openShell(page);
+
+    const frame = shell(page).locator(".shell");
+    await expect(frame).toHaveCSS("border-radius", "10px");
+    await expect(frame).toHaveCSS(
+      "box-shadow",
+      "rgb(228, 230, 234) 0px 0px 0px 1px"
+    );
+  });
+
+  test("isn't drawn again by the editor inside it", async ({ page }) => {
+    await openShell(page);
+
+    const editorFrame = shell(page).locator("mail-quilt").locator(".editor");
+    await expect(editorFrame).toHaveCSS("border-radius", "0px");
+    await expect(editorFrame).toHaveCSS("box-shadow", "none");
+  });
+});

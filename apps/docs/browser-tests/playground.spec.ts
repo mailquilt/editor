@@ -310,6 +310,22 @@ test("runs on the Advanced Shell, below the page's title", async ({ page }) => {
   expect(box?.height).toBeLessThanOrEqual(page.viewportSize()?.height ?? 0);
 });
 
+test("the starter email fits without scrolling, even in a short window", async ({
+  page,
+}) => {
+  await page.setViewportSize({ height: 600, width: 1280 });
+  await page.goto(PLAYGROUND);
+  await expect(textBlock(page)).toBeVisible();
+
+  const body = page.locator("mail-quilt-shell").locator(".body");
+  const { clientHeight, scrollHeight } = await body.evaluate((element) => ({
+    clientHeight: element.clientHeight,
+    scrollHeight: element.scrollHeight,
+  }));
+
+  expect(scrollHeight).toBe(clientHeight);
+});
+
 test("opens an email saved before the Playground used the Shell", async ({
   page,
 }) => {
