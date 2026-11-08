@@ -117,26 +117,31 @@ export const settingsPanelStyles = css`
     color: var(--mq-color-danger);
   }
 
+  /* White fields with a defined edge, so an empty one still reads as a field. */
   .settings input,
   .settings select {
-    background-color: var(--mq-color-surface-muted);
-    border: 1px solid transparent;
-    border-radius: var(--mq-radius);
-    box-shadow: inset 0 0 0 1px var(--mq-color-border);
+    background-color: var(--mq-color-surface);
+    border: 1px solid
+      color-mix(
+        in srgb,
+        var(--mq-color-border-strong) 45%,
+        var(--mq-color-border)
+      );
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgb(22 24 29 / 4%);
     color: var(--mq-color-text);
-    height: 34px;
+    height: 32px;
     min-width: 0;
-    padding: 0 12px;
+    padding: 0 10px;
     transition:
-      background-color 120ms,
+      border-color 120ms,
       box-shadow 120ms;
     width: 100%;
   }
 
   .settings input:hover:not(:disabled, :focus),
   .settings select:hover:not(:focus) {
-    background-color: var(--mq-color-surface);
-    box-shadow: inset 0 0 0 1px var(--mq-color-border-strong);
+    border-color: var(--mq-color-border-strong);
   }
 
   .settings input::placeholder {
@@ -145,15 +150,17 @@ export const settingsPanelStyles = css`
   }
 
   .settings input:disabled {
+    background-color: var(--mq-color-surface-muted);
+    border-color: var(--mq-color-border);
+    box-shadow: none;
     color: var(--mq-color-text-muted);
     cursor: not-allowed;
-    opacity: 0.7;
   }
 
   .settings select {
     appearance: none;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%235f6570' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.75' viewBox='0 0 24 24'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E");
-    background-position: right 10px center;
+    background-position: right 8px center;
     background-repeat: no-repeat;
     cursor: pointer;
     padding-inline-end: 32px;
@@ -161,16 +168,16 @@ export const settingsPanelStyles = css`
   }
 
   .settings [aria-invalid="true"] {
-    box-shadow: inset 0 0 0 1px var(--mq-color-danger);
+    border-color: var(--mq-color-danger);
   }
 
   /* Not :focus-visible, which browsers leave off a select pressed with a mouse. */
   .settings input:focus,
   .settings select:focus {
-    background-color: var(--mq-color-surface);
+    border-color: transparent;
     box-shadow: 0 0 0 4px var(--mq-color-accent-soft);
     outline: 2px solid var(--mq-color-accent);
-    outline-offset: -2px;
+    outline-offset: -1px;
   }
 
   .settings .unit-field {
@@ -192,8 +199,8 @@ export const settingsPanelStyles = css`
     color: var(--mq-color-text-muted);
     font-size: var(--mq-font-size-small);
     inset-block: 0;
-    inset-inline-end: 12px;
-    line-height: 34px;
+    inset-inline-end: 10px;
+    line-height: 32px;
     pointer-events: none;
     position: absolute;
   }
@@ -204,17 +211,18 @@ export const settingsPanelStyles = css`
   }
 
   .settings .color input[type="text"] {
-    padding-inline-start: 40px;
+    padding-inline-start: 38px;
   }
 
   .settings input[type="color"] {
     background: none;
+    border: 0;
     border-radius: 6px;
     box-shadow: none;
     cursor: pointer;
     height: 24px;
-    inset-block-start: 5px;
-    inset-inline-start: 7px;
+    inset-block-start: 4px;
+    inset-inline-start: 5px;
     padding: 0;
     position: absolute;
     width: 26px;

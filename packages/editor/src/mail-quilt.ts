@@ -741,6 +741,11 @@ export class MailQuilt extends LitElement {
         pointer-events: auto;
       }
 
+      /* An open layout picker is on top of everything else on the canvas. */
+      .row-toolbar[data-open] {
+        z-index: 9;
+      }
+
       .row-toolbar > .bar {
         flex-direction: column;
       }
@@ -898,10 +903,12 @@ export class MailQuilt extends LitElement {
       }
 
       /* Undo, Redo and Preview, at the bottom left of the canvas while it shows. */
+      /* As far from the canvas's left edge as from the window's bottom. */
       .floating-toolbar {
         align-self: flex-start;
         bottom: var(--mq-space-4);
         margin-block-start: auto;
+        margin-inline-start: calc(var(--mq-space-4) - 40px);
         position: sticky;
         z-index: 7;
       }
@@ -955,6 +962,8 @@ export class MailQuilt extends LitElement {
         flex: 1;
         min-height: 0;
         overflow-y: auto;
+        scrollbar-color: var(--mq-color-border) transparent;
+        scrollbar-width: thin;
       }
 
       .panel-scroll.padded {
@@ -1080,10 +1089,12 @@ export class MailQuilt extends LitElement {
       .tile,
       .layout-tile {
         align-items: center;
-        background: var(--mq-color-surface-muted);
+        background: var(--mq-color-surface);
         border: 0;
         border-radius: var(--mq-radius);
-        box-shadow: inset 0 0 0 1px var(--mq-color-border);
+        box-shadow:
+          inset 0 0 0 1px var(--mq-color-border),
+          0 1px 2px rgb(22 24 29 / 4%);
         color: var(--mq-color-text);
         cursor: pointer;
         display: flex;
@@ -1100,15 +1111,15 @@ export class MailQuilt extends LitElement {
 
       .tile {
         cursor: grab;
-        min-height: 92px;
+        min-height: 84px;
         -webkit-user-select: none;
         user-select: none;
       }
 
       .tile .icon {
         color: var(--mq-color-text);
-        height: 22px;
-        width: 22px;
+        height: 20px;
+        width: 20px;
       }
 
       .tile:hover,
@@ -2056,7 +2067,6 @@ export class MailQuilt extends LitElement {
           class="tabs"
           role="tablist"
           @keydown=${onToolbarArrowKeys}
-          @mousedown=${this.#onControlMousedown}
         >
           ${PANEL_TABS.map(
             ({ icon, id, label }) => html`
@@ -2925,7 +2935,8 @@ export class MailQuilt extends LitElement {
     event.preventDefault();
     this.#commitFocusedField();
     if (!this.shadowRoot?.activeElement && target instanceof Element) {
-      target.closest("button")?.focus();
+      // Without a ring, as for any other press with the pointer.
+      target.closest("button")?.focus({ focusVisible: false } as FocusOptions);
     }
   }
 
