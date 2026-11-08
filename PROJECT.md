@@ -65,7 +65,7 @@ Mail Quilt should integrate with email providers rather than compete with them.
 | Repository | `github.com/yourcodebuddy-in/mailquilt` |
 | npm scope | `@mailquilt/*` |
 | Custom element | `<mail-quilt>` |
-| Docs | Deployed on Vercel at the site root, domain to be decided |
+| Docs | A static site served from its root. Host and domain to be decided |
 | Custom domain | None; not buying one |
 
 Still to confirm: that the `@mailquilt` org can be created on npm (`@mailquilt/core` and `mailquilt` currently return 404, which does not prove the org is free) and that the name has no trademark conflict.
@@ -538,7 +538,7 @@ Conflict handling and the transport layer belong to the developer or their chose
 
 ### Docs and Playground (`apps/docs`)
 
-There is one app, built with Blume and deployed as a static site to Vercel at the site root, with no base path.
+There is one app, built with Blume as a static site served from its root, with no base path. It doesn't depend on any one host.
 
 `0.1.0` docs:
 
@@ -711,7 +711,7 @@ Planning and build flow: `grill-with-docs` → `to-spec` → `to-tickets` → `i
 - Japanese and other IME input works inside Shadow DOM in real Safari and Firefox. It has only been simulated in Chromium.
 - Drag and drop works with touch inside Shadow DOM.
 - MJML's output meets the project's needs in real email clients, and `mjml-browser` handles Merge Tags as `mjml` did in testing.
-- Blume hosts the editor well inside this monorepo, including on a real Vercel deploy and across page navigation.
+- Blume hosts the editor well inside this monorepo, including on a real deploy and across page navigation.
 - `tsdown` builds correctly with the repo's TypeScript 7.
 - Can I email data can be used under its license.
 - Sending provider APIs support the planned template integrations.
