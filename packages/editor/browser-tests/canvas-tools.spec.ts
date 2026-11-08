@@ -541,3 +541,52 @@ test.describe("on a screen too narrow to edit in", () => {
     await expect(textBlock(page)).toHaveText("Hello");
   });
 });
+
+test.describe("a click on the workspace, outside the email", () => {
+  test("clears the selection, and undo still works from the keyboard", async ({
+    page,
+  }) => {
+    await openBlocks(page, ["text", "button"]);
+    await textBlock(page).click();
+    await page.keyboard.type("!");
+    await expect(blockTools(page)).toBeVisible();
+
+    const area = await canvas(page).locator(".canvas-area").boundingBox();
+    if (!area) {
+      throw new Error("No canvas");
+    }
+    await page.mouse.click(area.x + 10, area.y + 10);
+
+    await expect(blockTools(page)).toHaveCount(0);
+    await expect(canvas(page).locator('[aria-current="true"]')).toHaveCount(0);
+    await expect(
+      canvas(page).getByRole("tab", { name: "Content" })
+    ).toBeVisible();
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(textBlock(page)).toHaveText("Words");
+  });
+
+  test("leaves the selection after a drag that ends there", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ height: 1600, width: 1280 });
+    await page.goto("/");
+    await setValue(page, emailWith([[["A", "B"]]]));
+    await blockGroup(page, "Text").first().focus();
+    const handle = await blockTools(page).locator(".drag-handle").boundingBox();
+    const area = await canvas(page).locator(".canvas-area").boundingBox();
+    if (!(handle && area)) {
+      throw new Error("Nothing to drag");
+    }
+
+    await page.mouse.move(handle.x + 10, handle.y + 10);
+    await page.mouse.down();
+    await page.mouse.move(handle.x + 20, handle.y + 20, { steps: 3 });
+    await page.mouse.move(area.x + 10, area.y + 10, { steps: 6 });
+    await settle(page);
+    await page.mouse.up();
+    await settle(page);
+
+    await expect(canvas(page).locator('[aria-current="true"]')).toHaveCount(1);
+  });
+});

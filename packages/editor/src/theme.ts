@@ -37,7 +37,6 @@ export const themeTokens = css`
 
     --mq-radius-small: 6px;
     --mq-radius: 10px;
-    --mq-radius-large: 16px;
     --mq-shadow-small: 0 1px 2px rgb(22 24 29 / 8%);
     --mq-shadow:
       0 0 0 1px rgb(22 24 29 / 4%), 0 2px 4px rgb(22 24 29 / 4%),

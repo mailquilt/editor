@@ -448,21 +448,22 @@ export class MailQuilt extends LitElement {
         padding: var(--mq-space-2);
       }
 
-      /* Quiet until the pointer or focus comes to it. */
+      /*
+       * Quiet until the pointer or focus comes to it. The label and the buttons
+       * share one spot, so whichever shows is centred: the buttons on hover or
+       * keyboard focus, and the label otherwise.
+       */
       .placeholder {
-        align-items: center;
         background: var(--mq-color-surface);
         border: 1.5px dashed var(--mq-color-border-strong);
         border-radius: var(--mq-radius-small);
         color: var(--mq-color-text-muted);
-        display: flex;
+        display: grid;
         flex: 1;
-        flex-direction: column;
         font-size: var(--mq-font-size-small);
         font-weight: 500;
-        gap: var(--mq-space-1);
-        justify-content: center;
         min-width: 0;
+        place-items: center;
         padding: var(--mq-space-3) var(--mq-space-2);
         text-align: center;
         transition:
@@ -482,6 +483,32 @@ export class MailQuilt extends LitElement {
         margin: 0;
       }
 
+      .placeholder-label,
+      .placeholder .add-blocks {
+        grid-area: 1 / 1;
+        transition: opacity 120ms;
+      }
+
+      .placeholder-label {
+        align-items: center;
+        display: flex;
+        flex-direction: column;
+        gap: var(--mq-space-1);
+      }
+
+      .column.empty:hover .placeholder-label,
+      .placeholder:focus-within .placeholder-label {
+        opacity: 0;
+      }
+
+      .email[data-dragging] .placeholder-label {
+        opacity: 1;
+      }
+
+      .email[data-dragging] .placeholder .add-blocks {
+        opacity: 0;
+      }
+
       .placeholder-icon {
         align-items: center;
         background: var(--mq-color-surface-muted);
@@ -497,9 +524,7 @@ export class MailQuilt extends LitElement {
         flex-wrap: wrap;
         gap: var(--mq-space-1);
         justify-content: center;
-        margin-block-start: var(--mq-space-1);
         opacity: 0;
-        transition: opacity 120ms;
       }
 
       .column.empty:hover .add-blocks,
@@ -913,25 +938,15 @@ export class MailQuilt extends LitElement {
         z-index: 7;
       }
 
-      .floating-toolbar {
-        border-radius: var(--mq-radius-large);
-        padding: 4px;
-      }
-
-      .floating-toolbar .icon-button {
-        border-radius: var(--mq-radius);
-        height: 36px;
-        width: 36px;
-      }
-
       .floating-toolbar:focus-visible {
         outline: 2px solid var(--mq-color-accent);
         outline-offset: 1px;
       }
 
-      /* A floating island on the workspace, as tall as the window allows. */
+      /* A sidebar, flush on the right, as tall as the editor. */
       .side-panel {
-        background: var(--mq-color-workspace);
+        background: var(--mq-color-surface);
+        border-inline-start: 1px solid var(--mq-color-border);
         display: flex;
         flex: 1 0 320px;
         /*
@@ -940,22 +955,18 @@ export class MailQuilt extends LitElement {
          */
         max-width: max(320px, (800px - 100%) * 9999);
         min-width: 0;
-        padding: var(--mq-space-3);
       }
 
       .side-panel-inner {
         background: var(--mq-color-surface);
-        border: 1px solid var(--mq-color-border);
-        border-radius: var(--mq-radius-large);
-        box-shadow: var(--mq-shadow);
         display: flex;
         flex: 1;
         flex-direction: column;
-        max-height: calc(100dvh - 2 * var(--mq-space-3));
+        max-height: 100dvh;
         min-width: 0;
         overflow: hidden;
         position: sticky;
-        top: var(--mq-space-3);
+        top: 0;
       }
 
       .panel-scroll {
@@ -1171,7 +1182,7 @@ export class MailQuilt extends LitElement {
       .narrow-notice .notice-icon {
         align-items: center;
         background: var(--mq-color-surface);
-        border-radius: var(--mq-radius-large);
+        border-radius: var(--mq-radius);
         box-shadow: var(--mq-shadow);
         display: flex;
         height: 56px;
@@ -1436,6 +1447,8 @@ export class MailQuilt extends LitElement {
   #announcementId = 0;
   /** Where the Enter key now held down was pressed. */
   #enterPressedOn: EventTarget | undefined;
+  /** The last press began on the workspace itself, not after a drag from a Block. */
+  #pressedOnWorkspace = false;
   /** Too narrow to edit in, as on a phone. */
   #narrow = false;
   readonly #resizeObserver = new ResizeObserver(([entry]) => {
@@ -1622,7 +1635,11 @@ export class MailQuilt extends LitElement {
       </p>
       ${this.#narrow ? this.#renderNarrowNotice() : nothing}
       <div class="ui editor" ?hidden=${this.#narrow}>
-        <div class="canvas-area">
+        <div
+          class="canvas-area"
+          @click=${this.#onWorkspaceClick}
+          @pointerdown=${this.#onWorkspacePointerdown}
+        >
           <div
             class="email"
             lang=${settings.language ?? nothing}
@@ -1777,8 +1794,10 @@ export class MailQuilt extends LitElement {
           blocks.length === 0
             ? html`
                 <div class="ui placeholder">
-                  <span class="placeholder-icon">${ICONS.plus}</span>
-                  <p>Drop a Block here</p>
+                  <div class="placeholder-label">
+                    <span class="placeholder-icon">${ICONS.plus}</span>
+                    <p>Drop a Block here</p>
+                  </div>
                   <div class="add-blocks">
                     ${BLOCK_TYPES.map(
                       ({ label, type }) => html`
@@ -2656,6 +2675,30 @@ export class MailQuilt extends LitElement {
       this.requestUpdate();
     }
   };
+
+  #onWorkspacePointerdown({ currentTarget, target }: PointerEvent) {
+    this.#pressedOnWorkspace = target === currentTarget;
+  }
+
+  /**
+   * A click on the workspace around the email clears the selection, as in any
+   * design tool. The floating toolbar takes focus, so keyboard undo still works.
+   */
+  #onWorkspaceClick({ currentTarget, target }: MouseEvent) {
+    if (
+      target !== currentTarget ||
+      !this.#pressedOnWorkspace ||
+      this.#activeBlockId === undefined
+    ) {
+      return;
+    }
+    this.#activeBlockId = undefined;
+    this.#editingText = false;
+    this.#formats = undefined;
+    this.#linkForm = undefined;
+    this.#floatingToolbar?.focus({ focusVisible: false } as FocusOptions);
+    this.requestUpdate();
+  }
 
   /** Back to the tabs, with the Block still selected for what's added next. */
   async #showTabs() {
