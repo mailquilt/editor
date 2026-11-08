@@ -110,6 +110,12 @@ const commandSchema = v.variant("type", [
     type: v.literal("removeRow"),
   }),
   v.strictObject({
+    /** Where the Row goes once it has left its current place. */
+    index: indexSchema,
+    rowId: v.string(),
+    type: v.literal("moveRow"),
+  }),
+  v.strictObject({
     layout: layoutSchema,
     rowId: v.string(),
     type: v.literal("setRowLayout"),
@@ -346,6 +352,34 @@ const planRemoveRow = (
     : rejected(`No Row with ID "${rowId}"`);
 };
 
+const planMoveRow = (
+  document: BlocksDocument,
+  rowId: string,
+  index: number
+): CommandPlan => {
+  const from = document.rows.findIndex(({ id }) => id === rowId);
+  if (from === -1) {
+    return rejected(`No Row with ID "${rowId}"`);
+  }
+  const length = document.rows.length - 1;
+  if (index > length) {
+    return rejected(
+      `Index ${index} is past the end of the email, which would have ${length} other Rows`
+    );
+  }
+  if (from === index) {
+    return {
+      ok: false,
+      reason: `Row "${rowId}" is already at index ${index}`,
+      unchanged: true,
+    };
+  }
+  return {
+    ok: true,
+    operations: [{ from: { index: from }, rowId, to: { index }, type: "move" }],
+  };
+};
+
 /**
  * Empties each removed Column into the last one that stays, so no content is
  * lost. Undo runs these in reverse, so each Block returns to where it was.
@@ -463,6 +497,9 @@ export const planCommand = (
     }
     case "removeRow": {
       return planRemoveRow(document, output.rowId);
+    }
+    case "moveRow": {
+      return planMoveRow(document, output.rowId, output.index);
     }
     case "setRowLayout": {
       return planSetRowLayout(document, output.layout, output.rowId);

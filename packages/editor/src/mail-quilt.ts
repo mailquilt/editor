@@ -21,6 +21,7 @@ import type {
   Column,
   Command,
   Editor,
+  Operation,
   RichTextDocument,
   Row,
   RowLayout,
@@ -97,6 +98,15 @@ const MOVE_BUTTONS: { direction: Direction; keys: string; shortcut: string }[] =
     { direction: "right", keys: "Alt+→", shortcut: "Alt+ArrowRight" },
   ];
 
+const ROW_MOVE_BUTTONS: {
+  direction: "down" | "up";
+  keys: string;
+  shortcut: string;
+}[] = [
+  { direction: "up", keys: "Alt+↑", shortcut: "Alt+ArrowUp" },
+  { direction: "down", keys: "Alt+↓", shortcut: "Alt+ArrowDown" },
+];
+
 type PanelTab = "content" | "rows" | "settings";
 
 const PANEL_TABS: { icon: unknown; id: PanelTab; label: string }[] = [
@@ -117,11 +127,14 @@ const renderThumbnail = (layout: RowLayout) => html`
 `;
 
 /** Only a pointer drags, so this isn't offered to assistive technology. */
-const renderDragHandle = (onMousedown: (event: MouseEvent) => void) => html`
+const renderDragHandle = (
+  onMousedown: (event: MouseEvent) => void,
+  tooltip = "Drag Block"
+) => html`
   <div
     aria-hidden="true"
     class="drag-handle"
-    data-tooltip="Drag Block"
+    data-tooltip=${tooltip}
     @mousedown=${onMousedown}
   >
     ${ICONS.grip}
@@ -216,6 +229,13 @@ const historyInput = (event: InputEvent) => {
 
 /** The Command for a drop, which adds a Row if it landed outside any. */
 const dropCommand = (source: DragSource, place: DropPlace): Command => {
+  if ("rowId" in source) {
+    return {
+      index: "rowIndex" in place ? place.rowIndex : 0,
+      rowId: source.rowId,
+      type: "moveRow",
+    };
+  }
   if ("rowLayout" in source) {
     return {
       index: "rowIndex" in place ? place.rowIndex : 0,
@@ -232,6 +252,8 @@ const dropCommand = (source: DragSource, place: DropPlace): Command => {
     ? { ...source, ...place, type: "insertBlock" }
     : { ...source, ...place, type: "insertBlockInNewRow" };
 };
+
+type MoveOperation = Extract<Operation, { type: "move" }>;
 
 /** One opening of the Preview. */
 interface Preview {
@@ -881,6 +903,29 @@ export class MailQuilt extends LitElement {
 
       .row-toolbar > .bar {
         flex-direction: column;
+      }
+
+      .row-toolbar .drag-handle {
+        background: none;
+        border: 0;
+        border-radius: var(--mq-radius-small);
+        box-shadow: none;
+        height: 22px;
+        opacity: 1;
+        position: static;
+        width: 28px;
+      }
+
+      .row-toolbar .drag-handle:hover {
+        background: var(--mq-color-surface-hover);
+        color: var(--mq-color-text);
+      }
+
+      /* The Row that follows the pointer, which also shows what's under it. */
+      .row-frame[data-dnd-dragging] {
+        background: #ffffff;
+        box-shadow: var(--mq-shadow);
+        opacity: 0.85;
       }
 
       .layout-option {
@@ -1719,7 +1764,19 @@ export class MailQuilt extends LitElement {
       const view = before.closest(".block, .format-bar, .link-form")
         ? this.#activeView
         : undefined;
-      (tool ?? block ?? view ?? this.#floatingToolbar)?.focus();
+      // A Row that moved keeps its tools. At either end, one of them is disabled.
+      const rowTools = before.isConnected
+        ? before.closest(".row-toolbar")
+        : undefined;
+      const rowTool = rowTools
+        ? (
+            [
+              before,
+              ...rowTools.querySelectorAll("button"),
+            ] as HTMLButtonElement[]
+          ).find((button) => !button.disabled)
+        : undefined;
+      (tool ?? block ?? view ?? rowTool ?? this.#floatingToolbar)?.focus();
     }
     if (this.isConnected && this.shadowRoot) {
       this.#dragging ??= createBlockDragging({
@@ -1784,6 +1841,7 @@ export class MailQuilt extends LitElement {
               (row, rowIndex) => html`
                 <div
                   class="row-frame"
+                  data-row-id=${row.id}
                   ?data-row-selected=${row.id === this.#selectedRowId}
                   ?data-selected=${row.id === activeRowId}
                 >
@@ -1791,11 +1849,11 @@ export class MailQuilt extends LitElement {
                     aria-hidden="true"
                     class="ui row-tag"
                     @click=${() => this.#selectRow(row.id)}
-                    @mousedown=${this.#onControlMousedown}
+                    @mousedown=${this.#onHandleMousedown}
                   >
                     Row
                   </div>
-                  ${this.#renderRowToolbar(row, rowIndex)}
+                  ${this.#renderRowToolbar(row, rowIndex, rows.length)}
                   <div class="row" style=${styleMap(rowStyles(row))}>
                     ${repeat(
                       row.columns,
@@ -1845,17 +1903,23 @@ export class MailQuilt extends LitElement {
     `;
   }
 
-  /** Beside the Row, on hover, on focus, and while one of its Blocks is selected. */
-  #renderRowToolbar(row: Row, index: number) {
+  /**
+   * Beside the Row, on hover, on focus, and while one of its Blocks is selected.
+   * Alt+↑ and Alt+↓ move the Row from here, as the Move buttons say.
+   */
+  #renderRowToolbar(row: Row, index: number, count: number) {
     return html`
       <div
         aria-label=${`Row ${index + 1}`}
         class="ui row-toolbar"
         lang=${UI_LANG}
         role="group"
+        @keydown=${(event: KeyboardEvent) =>
+          this.#onRowToolbarKeydown(event, row.id)}
         @mousedown=${this.#onControlMousedown}
       >
         <div class="bar">
+          ${renderDragHandle(this.#onHandleMousedown, "Drag Row")}
           <button
             aria-label="Select Row"
             aria-pressed=${row.id === this.#selectedRowId ? "true" : "false"}
@@ -1866,6 +1930,21 @@ export class MailQuilt extends LitElement {
           >
             ${ICONS.rows}
           </button>
+          ${ROW_MOVE_BUTTONS.map(
+            ({ direction, keys, shortcut }) => html`
+              <button
+                aria-keyshortcuts=${shortcut}
+                aria-label=${`Move Row ${direction}`}
+                class="icon-button"
+                data-tooltip=${`Move Row ${direction} (${keys})`}
+                ?disabled=${direction === "up" ? index === 0 : index === count - 1}
+                type="button"
+                @click=${() => this.#moveRow(row.id, direction)}
+              >
+                ${ICONS[direction]}
+              </button>
+            `
+          )}
           <button
             aria-label="Delete Row"
             class="icon-button danger"
@@ -2915,6 +2994,23 @@ export class MailQuilt extends LitElement {
     if (!result) {
       return;
     }
+    if ("rowId" in source) {
+      this.#announceRowMove(source.rowId);
+      this.#publishStructure();
+      await this.updateComplete;
+      // dnd-kit puts the dragged Row back in the page, which takes focus from
+      // anything in it. The selection stays, so it gets focus back, in its text
+      // if that's where it was.
+      if (!this.shadowRoot?.activeElement) {
+        const block =
+          this.#activeBlockId === undefined
+            ? undefined
+            : this.#blockElement(this.#activeBlockId);
+        const view = this.#editingText ? this.#activeView : undefined;
+        (view ?? block ?? this.#floatingToolbar)?.focus();
+      }
+      return;
+    }
     if ("rowLayout" in source) {
       this.#publishStructure();
       if (result.createdId !== undefined) {
@@ -3098,6 +3194,45 @@ export class MailQuilt extends LitElement {
     this.requestUpdate();
   }
 
+  #onRowToolbarKeydown(event: KeyboardEvent, rowId: string) {
+    const direction = arrowDirection(event);
+    if (event.altKey && (direction === "up" || direction === "down")) {
+      event.preventDefault();
+      this.#moveRow(rowId, direction);
+    }
+  }
+
+  /** One step, keeping the selection, and focus on the Row's tools if it was there. */
+  #moveRow(rowId: string, direction: "down" | "up") {
+    const rows = this.#editor?.getDocument().rows ?? [];
+    const index = rows.findIndex(({ id }) => id === rowId);
+    const to = index + (direction === "up" ? -1 : 1);
+    if (index === -1 || to < 0 || to >= rows.length) {
+      this.#announce(`The Row can't move ${direction}.`);
+      return;
+    }
+    if (this.#tryCommand({ index: to, rowId, type: "moveRow" })) {
+      this.#announceRowMove(rowId);
+      this.#publishStructure();
+      this.#revealRow(rowId);
+    }
+  }
+
+  #announceRowMove(rowId: string, prefix = "Row moved to") {
+    const rows = this.#editor?.getDocument().rows ?? [];
+    const index = rows.findIndex(({ id }) => id === rowId);
+    if (index !== -1) {
+      this.#announce(`${prefix} ${positionLabel(index, rows.length)}.`);
+    }
+  }
+
+  async #revealRow(rowId: string) {
+    await this.updateComplete;
+    this.renderRoot
+      .querySelector(`.row-frame[data-row-id="${CSS.escape(rowId)}"]`)
+      ?.scrollIntoView({ block: "nearest" });
+  }
+
   /**
    * Focus alone doesn't do this. A Block keeps focus if its neighbour is what moves
    * in the DOM, and focusing its text doesn't scroll.
@@ -3197,10 +3332,10 @@ export class MailQuilt extends LitElement {
     if (!editor) {
       return;
     }
-    let moved: string[] = [];
+    let moved: MoveOperation[] = [];
     const stopListening = editor.subscribe((operations) => {
-      moved = operations.flatMap((operation) =>
-        operation.type === "move" ? [operation.blockId] : []
+      moved = operations.filter(
+        (operation): operation is MoveOperation => operation.type === "move"
       );
     });
     const changed = editor[step]();
@@ -3228,17 +3363,20 @@ export class MailQuilt extends LitElement {
     this.#emitChange(document);
   }
 
-  /** One Block moved, or nothing to say. A layout can move many at once. */
-  #announceHistoryStep(step: "redo" | "undo", moved: string[]) {
-    const [blockId] = moved;
-    if (blockId === undefined || moved.length > 1) {
+  /** One Block or Row moved, or nothing to say. A layout can move many at once. */
+  #announceHistoryStep(step: "redo" | "undo", moved: MoveOperation[]) {
+    const [operation] = moved;
+    if (operation === undefined || moved.length > 1) {
       this.#announce("");
       return;
     }
-    this.#announceMove(
-      blockId,
-      `${step === "undo" ? "Undo" : "Redo"} moved a Block to`
-    );
+    const prefix = step === "undo" ? "Undo moved" : "Redo moved";
+    if ("rowId" in operation) {
+      this.#announceRowMove(operation.rowId, `${prefix} a Row to`);
+      return;
+    }
+    const { blockId } = operation;
+    this.#announceMove(blockId, `${prefix} a Block to`);
     if (blockId === this.#activeBlockId) {
       this.#revealBlock(blockId);
     }

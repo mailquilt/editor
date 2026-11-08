@@ -273,3 +273,22 @@ test("a failed HTML export's reason goes away once one works", async ({
   expect(name).toBe("email.html");
   await expect(page.getByRole("alert")).toHaveCount(0);
 });
+
+test("starts with several Rows, so moving one can be tried straight away", async ({
+  page,
+}) => {
+  await page.goto(PLAYGROUND);
+  await expect(textBlock(page)).toBeVisible();
+  const rows = page.locator("mail-quilt .row");
+  await expect(rows).toHaveCount(3);
+  const textBlockPlace = page.getByRole("group", { name: /^Text Block, Row/u });
+  await expect(textBlockPlace).toHaveAccessibleName(/^Text Block, Row 2,/u);
+
+  await rows.first().hover({ position: { x: 4, y: 4 } });
+  await page
+    .getByRole("group", { exact: true, name: "Row 1" })
+    .getByRole("button", { name: "Move Row down" })
+    .click();
+
+  await expect(textBlockPlace).toHaveAccessibleName(/^Text Block, Row 1,/u);
+});

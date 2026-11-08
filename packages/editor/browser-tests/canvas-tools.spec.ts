@@ -155,12 +155,19 @@ test.describe("a Row on the canvas", () => {
     await expect(rowTools(page, 1)).toHaveCSS("opacity", "0");
   });
 
-  test("has only Select Row and Delete Row", async ({ page }) => {
+  test("has Select Row, the Move Row buttons and Delete Row", async ({
+    page,
+  }) => {
     await openBlocks(page, ["button"]);
 
     await expect(
       namesOf(rowTools(page, 1).getByRole("button"))
-    ).resolves.toEqual(["Select Row", "Delete Row"]);
+    ).resolves.toEqual([
+      "Select Row",
+      "Move Row up",
+      "Move Row down",
+      "Delete Row",
+    ]);
   });
 
   test("an empty Row is selected and deleted from the keyboard", async ({
@@ -178,6 +185,8 @@ test.describe("a Row on the canvas", () => {
     await expect(select).toHaveAttribute("aria-pressed", "true");
     await expect(select).toBeFocused();
 
+    // Past Move Row up. Move Row down is disabled on the last Row.
+    await page.keyboard.press("Tab");
     await page.keyboard.press("Tab");
     await expect(
       rowTools(page, 2).getByRole("button", { name: "Delete Row" })

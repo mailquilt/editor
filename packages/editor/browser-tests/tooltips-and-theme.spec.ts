@@ -94,9 +94,9 @@ test.describe("a tooltip", () => {
 
     const buttons = await iconButtons(page);
 
-    // Undo, Redo, Preview, Back, the Row's two, five to move or delete the
+    // Undo, Redo, Preview, Back, the Row's four, five to move or delete the
     // Block, five to format text and six in the empty Column.
-    expect(buttons.length).toBe(22);
+    expect(buttons.length).toBe(24);
     for (const { name, tooltip: text } of buttons) {
       // The tooltip can leave out where the button is, and add its shortcut.
       expect(name).toMatch(/\w/u);

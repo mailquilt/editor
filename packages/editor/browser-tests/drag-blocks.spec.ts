@@ -546,9 +546,10 @@ test.describe("dropping outside any Row", () => {
       page.getByRole("group", { exact: true, name: "Row 1" })
     );
 
+    // Its top, which is above the middle of the Row.
     await drag(page, handleOf(page, "Two"), {
       x: controls.x + controls.width / 2,
-      y: controls.y + controls.height / 2,
+      y: controls.y + 4,
     });
 
     expect(await structure(page)).toStrictEqual([[["Two"]], [["One"]]]);
