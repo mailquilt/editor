@@ -860,3 +860,128 @@ describe("rejecting a Row Command", () => {
     }
   );
 });
+
+const threeRowEmail = (): BlocksDocument => ({
+  ...createEmail(),
+  rows: ["first", "second", "third"].map((id) => ({
+    columns: [
+      {
+        blocks: [block(`${id}-block`)],
+        id: `${id}-column`,
+        props: {},
+        width: 100,
+      },
+    ],
+    id,
+    props: { backgroundColor: `#${id.length}${id.length}0000` },
+  })),
+});
+
+const rowOrder = (document: BlocksDocument) =>
+  document.rows.map(({ id }) => id);
+
+const moveRow = (rowId: string, index: number): Command => ({
+  index,
+  rowId,
+  type: "moveRow",
+});
+
+describe("the moveRow Command", () => {
+  it("moves a Row later, counting the index once it has left", () => {
+    const { editor } = setup(threeRowEmail());
+
+    expectAccepted(editor.apply(moveRow("first", 1)));
+
+    expect(rowOrder(editor.getDocument())).toStrictEqual([
+      "second",
+      "first",
+      "third",
+    ]);
+    expectValid(editor.getDocument());
+  });
+
+  it("moves a Row earlier", () => {
+    const { editor } = setup(threeRowEmail());
+
+    expectAccepted(editor.apply(moveRow("third", 0)));
+
+    expect(rowOrder(editor.getDocument())).toStrictEqual([
+      "third",
+      "first",
+      "second",
+    ]);
+  });
+
+  it("keeps the Row's ID, Columns, Blocks and settings", () => {
+    const { document, editor } = setup(threeRowEmail());
+
+    editor.apply(moveRow("first", 2));
+
+    expect(editor.getDocument().rows[2]).toStrictEqual(document.rows[0]);
+  });
+
+  it("records one move Operation, not a remove and an insert", () => {
+    const { editor, operations } = setup(threeRowEmail());
+
+    editor.apply(moveRow("first", 2));
+
+    expect(operations).toStrictEqual([
+      [
+        {
+          from: { index: 0 },
+          rowId: "first",
+          to: { index: 2 },
+          type: "move",
+        },
+      ],
+    ]);
+  });
+
+  it("is one undo step that undo and redo reverse exactly", () => {
+    const { document, editor } = setup(threeRowEmail());
+
+    editor.apply(moveRow("first", 2));
+
+    const { changed, redone, undone } = undoThenRedo(editor);
+    expect(undone).toStrictEqual(document);
+    expect(redone).toStrictEqual(changed);
+    expect(rowOrder(changed)).toStrictEqual(["second", "third", "first"]);
+  });
+
+  it.each([
+    ["an unknown Row", moveRow("nope", 0), /No Row.*nope/u],
+    [
+      "an index past the end, counted once the Row has left",
+      moveRow("first", 3),
+      /index 3.*past the end.*2 other Rows/iu,
+    ],
+  ])("rejects %s and leaves the email as it was", (_name, command, reason) => {
+    const { document, editor, operations } = setup(threeRowEmail());
+
+    expect(editor.apply(command)).toStrictEqual({
+      ok: false,
+      reason: expect.stringMatching(reason),
+    });
+
+    expect(editor.getDocument()).toStrictEqual(document);
+    expect(operations).toStrictEqual([]);
+    expect(editor.undo()).toBeFalsy();
+  });
+
+  it("rejects an index that isn't a whole number from zero up", () => {
+    const { editor } = setup(threeRowEmail());
+
+    expect(send(editor, moveRow("first", -1))).toMatchObject({ ok: false });
+    expect(send(editor, moveRow("first", 0.5))).toMatchObject({ ok: false });
+  });
+
+  it("says a Row is already where it's asked to go", () => {
+    const { editor, operations } = setup(threeRowEmail());
+
+    expect(editor.apply(moveRow("second", 1))).toMatchObject({
+      ok: false,
+      unchanged: true,
+    });
+    expect(operations).toStrictEqual([]);
+  });
+});

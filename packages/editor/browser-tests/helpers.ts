@@ -125,16 +125,23 @@ export const addRow = async (page: Page, layout = "100") => {
 export const rowTools = (page: Page, position: number) =>
   canvas(page).getByRole("group", { exact: true, name: `Row ${position}` });
 
-/** A Row's toolbar shows on hover, so the pointer goes there first. */
-const hoverRow = (page: Page, position: number) =>
-  canvas(page)
-    .locator(".row")
-    .nth(position - 1)
-    .hover({ position: { x: 4, y: 4 } });
+/**
+ * A Row's toolbar shows on hover, so the pointer goes there first. While one of
+ * its Blocks is selected, it only shows once its tag has selected the Row.
+ */
+const showRowTools = async (page: Page, position: number) => {
+  const frame = canvas(page)
+    .locator(".row-frame")
+    .nth(position - 1);
+  await frame.locator(".row").hover({ position: { x: 4, y: 4 } });
+  if ((await frame.locator('[aria-current="true"]').count()) > 0) {
+    await frame.locator(".row-tag").click();
+  }
+};
 
 /** Selects a Row from its toolbar, with the mouse, to show it in the side panel. */
 export const selectRow = async (page: Page, position: number) => {
-  await hoverRow(page, position);
+  await showRowTools(page, position);
   await rowTools(page, position)
     .getByRole("button", { name: "Select Row" })
     .click();
@@ -159,7 +166,7 @@ export const chooseLayout = async (
 
 /** Deletes a Row from its toolbar, with the mouse. */
 export const deleteRow = async (page: Page, position: number) => {
-  await hoverRow(page, position);
+  await showRowTools(page, position);
   await rowTools(page, position)
     .getByRole("button", { name: "Delete Row" })
     .click();

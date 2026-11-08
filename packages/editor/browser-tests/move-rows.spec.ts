@@ -1,0 +1,416 @@
+import { expect, test } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
+
+import {
+  canvas,
+  emailWith,
+  exportHtml,
+  moveCursorToLineEnd,
+  rowTools,
+  selectRow,
+  setValue,
+  settle,
+  structure,
+  textBlock,
+} from "./helpers.js";
+
+// The test host's unfriendly CSS pushes the canvas far down the page.
+test.use({ viewport: { height: 1600, width: 1280 } });
+
+const announcement = (page: Page) => canvas(page).getByRole("status");
+
+const tooltip = (page: Page) => canvas(page).getByRole("tooltip");
+
+const selectRowButton = (page: Page, position: number) =>
+  rowTools(page, position).getByRole("button", { name: "Select Row" });
+
+const open = async (page: Page, rows: string[][][]) => {
+  await page.goto("/");
+  await setValue(page, emailWith(rows));
+  await expect(textBlock(page).first()).toBeVisible();
+};
+
+/** A Row's toolbar shows on hover, so the pointer goes there first. */
+const hoverRow = (page: Page, position: number) =>
+  canvas(page)
+    .locator(".row")
+    .nth(position - 1)
+    .hover({ position: { x: 4, y: 4 } });
+
+const rowTool = (page: Page, position: number, name: string) =>
+  rowTools(page, position).getByRole("button", { exact: true, name });
+
+/** Clicks a tool in a Row's toolbar, with the mouse. */
+const clickRowTool = async (page: Page, position: number, name: string) => {
+  await hoverRow(page, position);
+  await rowTool(page, position, name).click();
+};
+
+test.describe("the Move Row buttons", () => {
+  test("move a Row up and down", async ({ page }) => {
+    await open(page, [[["One"]], [["Two"]], [["Three"]]]);
+
+    await clickRowTool(page, 1, "Move Row down");
+    await expect(structure(page)).resolves.toEqual([
+      [["Two"]],
+      [["One"]],
+      [["Three"]],
+    ]);
+
+    await clickRowTool(page, 3, "Move Row up");
+    await expect(structure(page)).resolves.toEqual([
+      [["Two"]],
+      [["Three"]],
+      [["One"]],
+    ]);
+  });
+
+  test("are disabled on the first and last Row", async ({ page }) => {
+    await open(page, [[["One"]], [["Two"]], [["Three"]]]);
+
+    await expect(rowTool(page, 1, "Move Row up")).toBeDisabled();
+    await expect(rowTool(page, 1, "Move Row down")).toBeEnabled();
+    await expect(rowTool(page, 2, "Move Row up")).toBeEnabled();
+    await expect(rowTool(page, 2, "Move Row down")).toBeEnabled();
+    await expect(rowTool(page, 3, "Move Row down")).toBeDisabled();
+  });
+
+  test("name their shortcuts in their tooltips", async ({ page }) => {
+    await open(page, [[["One"]], [["Two"]]]);
+
+    await hoverRow(page, 2);
+    await rowTool(page, 2, "Move Row up").hover();
+    await expect(tooltip(page)).toHaveText("Move Row up (Alt+↑)");
+
+    await hoverRow(page, 1);
+    await rowTool(page, 1, "Move Row down").hover();
+    await expect(tooltip(page)).toHaveText("Move Row down (Alt+↓)");
+  });
+
+  test("move the Row with its Blocks, as one undo step", async ({ page }) => {
+    await open(page, [[["One"], ["Two"]], [["Three"]]]);
+
+    await clickRowTool(page, 1, "Move Row down");
+    await expect(structure(page)).resolves.toEqual([
+      [["Three"]],
+      [["One"], ["Two"]],
+    ]);
+    await expect(announcement(page)).toHaveText(
+      "Row moved to position 2 of 2."
+    );
+
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(structure(page)).resolves.toEqual([
+      [["One"], ["Two"]],
+      [["Three"]],
+    ]);
+    await expect(announcement(page)).toHaveText(
+      "Undo moved a Row to position 1 of 2."
+    );
+  });
+});
+
+test.describe("moving a selected Row from the keyboard", () => {
+  test("Alt+↓ and Alt+↑ move it, and say where it went", async ({ page }) => {
+    await open(page, [[["One"]], [["Two"]], [["Three"]]]);
+    await selectRow(page, 1);
+
+    await page.keyboard.press("Alt+ArrowDown");
+    await expect(structure(page)).resolves.toEqual([
+      [["Two"]],
+      [["One"]],
+      [["Three"]],
+    ]);
+    await expect(announcement(page)).toHaveText(
+      "Row moved to position 2 of 3."
+    );
+
+    await page.keyboard.press("Alt+ArrowDown");
+    await page.keyboard.press("Alt+ArrowUp");
+    await page.keyboard.press("Alt+ArrowUp");
+    await expect(structure(page)).resolves.toEqual([
+      [["One"]],
+      [["Two"]],
+      [["Three"]],
+    ]);
+    await expect(announcement(page)).toHaveText(
+      "Row moved to position 1 of 3."
+    );
+  });
+
+  test("keeps it selected, with focus on its toolbar", async ({ page }) => {
+    await open(page, [[["One"]], [["Two"]], [["Three"]]]);
+    await selectRow(page, 2);
+
+    await page.keyboard.press("Alt+ArrowUp");
+
+    await expect(selectRowButton(page, 1)).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+    await expect(selectRowButton(page, 1)).toBeFocused();
+    await expect(textBlock(page).first()).toHaveText("Two");
+  });
+
+  test("works from its Move buttons, whose focus stays in the toolbar", async ({
+    page,
+  }) => {
+    await open(page, [[["One"]], [["Two"]], [["Three"]]]);
+    await selectRow(page, 2);
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Tab");
+    await expect(
+      rowTools(page, 2).getByRole("button", { name: "Move Row down" })
+    ).toBeFocused();
+
+    await page.keyboard.press("Enter");
+    await expect(structure(page)).resolves.toEqual([
+      [["One"]],
+      [["Three"]],
+      [["Two"]],
+    ]);
+    // Disabled now, on the last Row, so focus goes to another of its tools.
+    await expect(
+      rowTools(page, 3).getByRole("button", { name: "Select Row" })
+    ).toBeFocused();
+
+    await page.keyboard.press("Alt+ArrowUp");
+    await expect(structure(page)).resolves.toEqual([
+      [["One"]],
+      [["Two"]],
+      [["Three"]],
+    ]);
+    await expect(selectRowButton(page, 2)).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+  });
+
+  test("says when it can't go further", async ({ page }) => {
+    await open(page, [[["One"]], [["Two"]]]);
+    await selectRow(page, 1);
+
+    await page.keyboard.press("Alt+ArrowUp");
+
+    await expect(announcement(page)).toHaveText("The Row can't move up.");
+    await expect(structure(page)).resolves.toEqual([[["One"]], [["Two"]]]);
+    await expect(selectRowButton(page, 1)).toBeFocused();
+  });
+});
+
+const rowFrame = (page: Page, position: number) =>
+  canvas(page)
+    .locator(".row-frame:not([data-dnd-placeholder])")
+    .nth(position - 1);
+
+const boxOf = async (locator: Locator) => {
+  const box = await locator.boundingBox();
+  if (!box) {
+    throw new Error("The element has no box");
+  }
+  return box;
+};
+
+/** Shows the Row's tools and tag, then the handle or tag to drag it by. */
+const grip = async (page: Page, position: number, by: "handle" | "tag") => {
+  await canvas(page)
+    .locator(".row")
+    .nth(position - 1)
+    .hover({ position: { x: 4, y: 4 } });
+  return by === "handle"
+    ? rowTools(page, position).locator(".drag-handle")
+    : rowFrame(page, position).locator(".row-tag");
+};
+
+const pickUp = async (page: Page, from: Locator) => {
+  const { height, width, x, y } = await boxOf(from);
+  await page.mouse.move(x + width / 2, y + height / 2);
+  await page.mouse.down();
+  await page.mouse.move(x + width / 2 + 8, y + height / 2 + 8, { steps: 2 });
+  await settle(page);
+};
+
+const moveTo = async (page: Page, x: number, y: number) => {
+  await page.mouse.move(x, y, { steps: 8 });
+  await settle(page);
+};
+
+const letGo = async (page: Page) => {
+  await page.mouse.up();
+  await settle(page);
+};
+
+/**
+ * Into the lower part of a Row, so a drop there lands after it. Measured before a
+ * drag, which adds a copy of the dragged Row.
+ */
+const belowMiddleOf = async (page: Page, position: number) => {
+  const { height, width, x, y } = await boxOf(
+    canvas(page)
+      .locator(".row")
+      .nth(position - 1)
+  );
+  return [x + width / 2, y + height * 0.75] as const;
+};
+
+const changeCount = (page: Page) => page.getByTestId("change-count");
+
+test.describe("dragging a Row", () => {
+  for (const by of ["handle", "tag"] as const) {
+    test(`by its ${by} moves it between Rows, as one undo step`, async ({
+      page,
+    }) => {
+      await open(page, [[["One"]], [["Two"]], [["Three"]]]);
+
+      const to = await belowMiddleOf(page, 2);
+      await pickUp(page, await grip(page, 1, by));
+      await moveTo(page, ...to);
+      await expect(canvas(page).locator(".drop-indicator")).toBeVisible();
+      // A Row only ever lands between Rows, never in a Column.
+      await expect(canvas(page).locator("[data-drop-target]")).toHaveCount(0);
+      await letGo(page);
+
+      await expect(structure(page)).resolves.toEqual([
+        [["Two"]],
+        [["One"]],
+        [["Three"]],
+      ]);
+      await expect(announcement(page)).toHaveText(
+        "Row moved to position 2 of 3."
+      );
+      await page.keyboard.press("ControlOrMeta+z");
+      await expect(structure(page)).resolves.toEqual([
+        [["One"]],
+        [["Two"]],
+        [["Three"]],
+      ]);
+    });
+  }
+
+  test("shows the line between Rows where it will land", async ({ page }) => {
+    await open(page, [[["One"]], [["Two"]], [["Three"]]]);
+    const third = await boxOf(canvas(page).locator(".row").nth(2));
+
+    const to = await belowMiddleOf(page, 3);
+    await pickUp(page, await grip(page, 1, "handle"));
+    await moveTo(page, ...to);
+
+    const line = await boxOf(canvas(page).locator(".drop-indicator"));
+    expect(line.y + line.height / 2).toBeCloseTo(third.y + third.height, 0);
+    expect(line.x).toBeCloseTo(third.x, 0);
+    expect(line.width).toBeCloseTo(third.width, 0);
+    await letGo(page);
+
+    await expect(structure(page)).resolves.toEqual([
+      [["Two"]],
+      [["Three"]],
+      [["One"]],
+    ]);
+  });
+
+  test("letting go where it started moves nothing", async ({ page }) => {
+    await open(page, [[["One"]], [["Two"]], [["Three"]]]);
+    const changes = await changeCount(page).textContent();
+    const tag = await grip(page, 2, "tag");
+    const { height, width, x, y } = await boxOf(tag);
+
+    await pickUp(page, tag);
+    await moveTo(page, x + width / 2, y + height / 2);
+    await letGo(page);
+
+    await expect(structure(page)).resolves.toEqual([
+      [["One"]],
+      [["Two"]],
+      [["Three"]],
+    ]);
+    await expect(changeCount(page)).toHaveText(changes as string);
+  });
+
+  test("letting go far from the email moves nothing", async ({ page }) => {
+    await open(page, [[["One"]], [["Two"]]]);
+    const changes = await changeCount(page).textContent();
+    const editor = await boxOf(canvas(page));
+
+    await pickUp(page, await grip(page, 1, "handle"));
+    await moveTo(page, 10, editor.y - 200);
+    await expect(canvas(page).locator(".drop-indicator")).toBeHidden();
+    await letGo(page);
+
+    await expect(structure(page)).resolves.toEqual([[["One"]], [["Two"]]]);
+    await expect(changeCount(page)).toHaveText(changes as string);
+  });
+
+  test("keeps its text's editor, cursor and undo history", async ({ page }) => {
+    await open(page, [[["One"]], [["Two"]]]);
+    const one = textBlock(page).first();
+    await one.click();
+    await moveCursorToLineEnd(page);
+    await page.keyboard.type("A");
+    await one.evaluate((element) => {
+      element.dataset.kept = "";
+    });
+
+    const to = await belowMiddleOf(page, 2);
+    // Its toolbar is hidden while its Block is selected, so by its tag.
+    await pickUp(page, await grip(page, 1, "tag"));
+    await moveTo(page, ...to);
+    await letGo(page);
+    await expect(structure(page)).resolves.toEqual([[["Two"]], [["OneA"]]]);
+    await page.keyboard.type("B");
+
+    await expect(textBlock(page).last()).toHaveAttribute("data-kept", "");
+    await expect(structure(page)).resolves.toEqual([[["Two"]], [["OneAB"]]]);
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(structure(page)).resolves.toEqual([[["Two"]], [["OneA"]]]);
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(structure(page)).resolves.toEqual([[["OneA"]], [["Two"]]]);
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(structure(page)).resolves.toEqual([[["One"]], [["Two"]]]);
+  });
+
+  test("leaves focus on a selected Row's tools", async ({ page }) => {
+    await open(page, [[["One"]], [["Two"]], [["Three"]]]);
+    await selectRow(page, 1);
+    const to = await belowMiddleOf(page, 2);
+
+    await pickUp(page, await grip(page, 1, "handle"));
+    await moveTo(page, ...to);
+    await letGo(page);
+
+    await expect(selectRowButton(page, 2)).toBeFocused();
+    await page.keyboard.press("Alt+ArrowDown");
+    await expect(structure(page)).resolves.toEqual([
+      [["Two"]],
+      [["Three"]],
+      [["One"]],
+    ]);
+  });
+
+  test("Alt+↓ does nothing while it's being dragged", async ({ page }) => {
+    await open(page, [[["One"]], [["Two"]]]);
+    await selectRow(page, 1);
+
+    await pickUp(page, await grip(page, 1, "handle"));
+    await page.keyboard.press("Alt+ArrowDown");
+    await page.keyboard.press("Escape");
+    await letGo(page);
+
+    await expect(structure(page)).resolves.toEqual([[["One"]], [["Two"]]]);
+  });
+
+  test("its tag takes a touch for a drag, not a scroll", async ({ page }) => {
+    await open(page, [[["One"]]]);
+
+    await expect(await grip(page, 1, "tag")).toHaveCSS("touch-action", "none");
+  });
+});
+
+test("the exported HTML follows the new order", async ({ page }) => {
+  await open(page, [[["One"]], [["Two"]]]);
+
+  await clickRowTool(page, 1, "Move Row down");
+
+  const html = await exportHtml(page);
+  expect(html.indexOf("Two")).toBeGreaterThan(-1);
+  expect(html.indexOf("Two")).toBeLessThan(html.indexOf("One"));
+});

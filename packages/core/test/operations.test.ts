@@ -78,6 +78,19 @@ const removeRow: Operation = {
   type: "remove",
 };
 
+const twoRows = () => {
+  const document = email();
+  document.rows.push({ columns: [], id: "second-row", props: {} });
+  return document;
+};
+
+const moveRow: Operation = {
+  from: { index: 0 },
+  rowId: "row",
+  to: { index: 1 },
+  type: "move",
+};
+
 const newColumn = { blocks: [], id: "middle", props: {}, width: 20 };
 
 const insertColumn: Operation = {
@@ -137,6 +150,22 @@ describe("applying an Operation", () => {
 
   it("removes a Row with everything in it", () => {
     expect(applied(removeRow).rows).toStrictEqual([]);
+  });
+
+  it("moves a Row, with everything in it", () => {
+    const document = twoRows();
+    const [row] = document.rows;
+
+    applyOperation(document, moveRow);
+
+    expect(rowIds(document)).toStrictEqual(["second-row", "row"]);
+    expect(document.rows[1]).toBe(row);
+  });
+
+  it("throws for a move of a Row that isn't at its index", () => {
+    expect(() =>
+      applyOperation(twoRows(), { ...moveRow, rowId: "second-row" })
+    ).toThrow(/second-row.*index 0/u);
   });
 
   it("inserts a Column at an index in a Row", () => {
@@ -233,13 +262,15 @@ describe.each([
   ["insert Column", insertColumn],
   ["remove Column", removeColumn],
   ["set Column width", setColumnWidth],
+  ["move Row", moveRow],
 ] as [string, Operation][])("the %s Operation", (_name, operation) => {
   it("is undone by its reverse", () => {
-    const document = applied(operation);
+    const document = twoRows();
+    applyOperation(document, operation);
 
     applyOperation(document, reverseOperation(operation));
 
-    expect(document).toStrictEqual(email());
+    expect(document).toStrictEqual(twoRows());
   });
 
   it("survives a JSON round trip", () => {

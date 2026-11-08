@@ -15,12 +15,13 @@ import { getScrollableAncestors } from "@dnd-kit/dom/utilities";
 import { contains } from "./geometry.js";
 
 /**
- * What a drag brings: a Block on the canvas, a new Block from the palette, or a
- * new Row from the Rows tab.
+ * What a drag brings: a Block or Row on the canvas, a new Block from the palette,
+ * or a new Row from the Rows tab.
  */
 export type DragSource =
   | { blockId: string }
   | { blockType: string }
+  | { rowId: string }
   | { rowLayout: string };
 
 /** Where a drop lands: in a Column, or in a new Row of its own. */
@@ -38,9 +39,13 @@ export interface BlockDragging {
 /** The copy that dnd-kit leaves behind while dragging has the same attributes. */
 const NOT_PLACEHOLDER = ":not([data-dnd-placeholder])";
 export const BLOCKS = `.block${NOT_PLACEHOLDER}`;
+const ROWS = `.row-frame${NOT_PLACEHOLDER}`;
 
+/** A Row, new or on the canvas, which only ever lands between Rows. */
 const isRowSource = (data: unknown) =>
-  typeof data === "object" && data !== null && "rowLayout" in data;
+  typeof data === "object" &&
+  data !== null &&
+  ("rowLayout" in data || "rowId" in data);
 
 const midpointY = (element: Element) => {
   const { bottom, top } = element.getBoundingClientRect();
@@ -86,6 +91,11 @@ export const createBlockDragging = ({
         activationConstraints: () => [
           new PointerActivationConstraints.Distance({ value: 5 }),
         ],
+        // A Row drags by its tag as well as its handle.
+        activatorElements: (source) => [
+          source.handle ?? source.element,
+          source.element?.querySelector(":scope > .row-tag") ?? undefined,
+        ],
       }),
     ],
   });
@@ -123,13 +133,12 @@ export const createBlockDragging = ({
     const [collision] = manager.collisionObserver.computeCollisions();
     const droppable =
       collision && manager.registry.droppables.get(collision.id);
-    // A new Row only ever lands between Rows.
     const column =
       droppable?.element?.isConnected && !isRowSource(source?.data)
         ? droppable.element
         : undefined;
     const parent = column ?? email;
-    const items = [...parent.querySelectorAll(column ? BLOCKS : ".row")].filter(
+    const items = [...parent.querySelectorAll(column ? BLOCKS : ROWS)].filter(
       (element) => element !== source?.element
     );
     const index = items.filter(
@@ -239,6 +248,17 @@ export const createBlockDragging = ({
       draggableIds.add(id);
       syncDraggable(id, element, { blockType });
     }
+    for (const element of root.querySelectorAll<HTMLElement>(ROWS)) {
+      const rowId = element.dataset.rowId as string;
+      const id = `row:${rowId}`;
+      draggableIds.add(id);
+      syncDraggable(
+        id,
+        element,
+        { rowId },
+        element.querySelector(":scope > .row-toolbar .drag-handle") as Element
+      );
+    }
     for (const element of root.querySelectorAll<HTMLElement>(
       `[data-row-layout]${NOT_PLACEHOLDER}`
     )) {
@@ -318,7 +338,7 @@ export const createBlockDragging = ({
     // Before the Block is lifted, which takes its toolbar along.
     const { source } = manager.dragOperation;
     startedOn = (source as Draggable | null)?.handle
-      ?.closest(".block-toolbar")
+      ?.closest(".block-toolbar, .row-toolbar")
       ?.getBoundingClientRect();
   });
 

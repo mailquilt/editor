@@ -37,6 +37,13 @@ export type Operation =
       /** The index once the Block has left `from`. */
       to: BlockPosition;
     }
+  | {
+      type: "move";
+      rowId: string;
+      from: { index: number };
+      /** The index once the Row has left `from`. */
+      to: { index: number };
+    }
   | ({
       type: "setProps";
       props: Record<string, unknown>;
@@ -128,6 +135,15 @@ export const applyOperation = (
       break;
     }
     case "move": {
+      if ("rowId" in operation) {
+        const { from, rowId, to } = operation;
+        if (document.rows[from.index]?.id !== rowId) {
+          throw new Error(`No Row "${rowId}" at index ${from.index}`);
+        }
+        const [row] = document.rows.splice(from.index, 1) as [Row];
+        document.rows.splice(to.index, 0, row);
+        break;
+      }
       const { from, to } = operation;
       const [block] = getColumn(document, from.columnId).blocks.splice(
         from.index,
@@ -174,7 +190,10 @@ export const reverseOperation = (operation: Operation): Operation => {
       return { ...operation, type: "insert" };
     }
     case "move": {
-      return { ...operation, from: operation.to, to: operation.from };
+      // Each kind on its own, so that `from` and `to` keep their types.
+      return "rowId" in operation
+        ? { ...operation, from: operation.to, to: operation.from }
+        : { ...operation, from: operation.to, to: operation.from };
     }
     case "setProps": {
       return {

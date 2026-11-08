@@ -358,7 +358,7 @@ test.describe("adding and deleting Rows", () => {
     expect(await structure(page)).toStrictEqual([[[]]]);
   });
 
-  test("deleting the Row with the focused Block moves focus to the toolbar", async ({
+  test("deleting the Row that has focus moves focus to the toolbar", async ({
     page,
   }) => {
     await textBlock(page).click();
