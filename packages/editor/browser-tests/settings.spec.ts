@@ -84,7 +84,7 @@ const expectNamedWithFocusRing = async (control: Locator) => {
   await control.focus();
   await expect(control).toBeFocused();
   await expect(control).toHaveCSS("outline-style", "solid");
-  await expect(control).toHaveCSS("outline-color", "rgb(37, 99, 235)");
+  await expect(control).toHaveCSS("outline-color", "rgb(51, 85, 255)");
   const named = await control.evaluate((element) => {
     const { labels } = element as HTMLInputElement;
     return (labels?.length ?? 0) > 0 || element.hasAttribute("aria-label");

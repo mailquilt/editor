@@ -45,10 +45,10 @@ export const settingsPanelStyles = css`
     flex-direction: column;
   }
 
-  /* One group of fields, set off from the next by a rule. */
+  /* One group of fields, set off from the next by a hairline. */
   .settings .section {
     border-bottom: 1px solid var(--mq-color-border);
-    padding: var(--mq-space-4);
+    padding: var(--mq-space-4) var(--mq-space-4) 20px;
   }
 
   .settings .section:last-child {
@@ -59,7 +59,7 @@ export const settingsPanelStyles = css`
     border: 0;
     display: flex;
     flex-direction: column;
-    gap: var(--mq-space-4);
+    gap: 14px;
     margin: 0;
     min-width: 0;
     padding: 0;
@@ -68,8 +68,10 @@ export const settingsPanelStyles = css`
   /* Floated, so the legend lays out in the fieldset like any other heading. */
   .settings legend {
     float: left;
+    font-size: var(--mq-font-size);
     font-weight: 600;
-    padding: 0;
+    letter-spacing: -0.005em;
+    padding: 0 0 2px;
     width: 100%;
   }
 
@@ -83,11 +85,22 @@ export const settingsPanelStyles = css`
     gap: 6px;
   }
 
+  /* The label on the left and the control on the right, as a settings row. */
+  .settings .field.inline {
+    align-items: center;
+    display: grid;
+    gap: 6px var(--mq-space-3);
+    grid-template-columns: minmax(0, 1fr) 136px;
+  }
+
+  .settings .field.inline > p {
+    grid-column: 1 / -1;
+  }
+
   .settings label {
     color: var(--mq-color-text-muted);
     display: block;
-    font-size: var(--mq-font-size-small);
-    font-weight: 500;
+    font-size: var(--mq-font-size);
   }
 
   .settings .field p {
@@ -106,55 +119,58 @@ export const settingsPanelStyles = css`
 
   .settings input,
   .settings select {
-    background-color: var(--mq-color-surface);
-    border: 1px solid var(--mq-color-border-strong);
-    border-radius: var(--mq-radius-small);
+    background-color: var(--mq-color-surface-muted);
+    border: 1px solid transparent;
+    border-radius: var(--mq-radius);
+    box-shadow: inset 0 0 0 1px var(--mq-color-border);
     color: var(--mq-color-text);
-    height: 32px;
+    height: 34px;
     min-width: 0;
-    padding: 0 10px;
+    padding: 0 12px;
     transition:
-      border-color 120ms,
+      background-color 120ms,
       box-shadow 120ms;
     width: 100%;
   }
 
-  .settings input:hover:not(:disabled),
-  .settings select:hover {
-    border-color: var(--mq-color-text-muted);
+  .settings input:hover:not(:disabled, :focus),
+  .settings select:hover:not(:focus) {
+    background-color: var(--mq-color-surface);
+    box-shadow: inset 0 0 0 1px var(--mq-color-border-strong);
   }
 
   .settings input::placeholder {
     color: var(--mq-color-text-muted);
+    opacity: 1;
   }
 
   .settings input:disabled {
-    background-color: var(--mq-color-surface-muted);
-    border-color: var(--mq-color-border);
     color: var(--mq-color-text-muted);
     cursor: not-allowed;
+    opacity: 0.7;
   }
 
   .settings select {
     appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%2371717a' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.75' viewBox='0 0 24 24'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-    background-position: right 8px center;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%235f6570' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.75' viewBox='0 0 24 24'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E");
+    background-position: right 10px center;
     background-repeat: no-repeat;
     cursor: pointer;
-    padding-inline-end: 30px;
+    padding-inline-end: 32px;
+    text-overflow: ellipsis;
   }
 
   .settings [aria-invalid="true"] {
-    border-color: var(--mq-color-danger);
+    box-shadow: inset 0 0 0 1px var(--mq-color-danger);
   }
 
   /* Not :focus-visible, which browsers leave off a select pressed with a mouse. */
   .settings input:focus,
   .settings select:focus {
-    border-color: var(--mq-color-accent);
-    box-shadow: 0 0 0 3px var(--mq-color-accent-soft);
+    background-color: var(--mq-color-surface);
+    box-shadow: 0 0 0 4px var(--mq-color-accent-soft);
     outline: 2px solid var(--mq-color-accent);
-    outline-offset: -1px;
+    outline-offset: -2px;
   }
 
   .settings .unit-field {
@@ -176,22 +192,33 @@ export const settingsPanelStyles = css`
     color: var(--mq-color-text-muted);
     font-size: var(--mq-font-size-small);
     inset-block: 0;
-    inset-inline-end: 10px;
-    line-height: 32px;
+    inset-inline-end: 12px;
+    line-height: 34px;
     pointer-events: none;
     position: absolute;
   }
 
+  /* The swatch sits inside the start of the field, as one control. */
   .settings .color {
-    display: flex;
-    gap: 6px;
+    position: relative;
+  }
+
+  .settings .color input[type="text"] {
+    padding-inline-start: 40px;
   }
 
   .settings input[type="color"] {
+    background: none;
+    border-radius: 6px;
+    box-shadow: none;
     cursor: pointer;
-    flex: none;
-    padding: 3px;
-    width: 32px;
+    height: 24px;
+    inset-block-start: 5px;
+    inset-inline-start: 7px;
+    padding: 0;
+    position: absolute;
+    width: 26px;
+    z-index: 1;
   }
 
   .settings input[type="color"]::-webkit-color-swatch-wrapper {
@@ -199,17 +226,22 @@ export const settingsPanelStyles = css`
   }
 
   .settings input[type="color"]::-webkit-color-swatch {
-    border: 1px solid rgb(0 0 0 / 10%);
-    border-radius: 3px;
+    border: 0;
+    border-radius: 5px;
+    box-shadow: inset 0 0 0 1px rgb(0 0 0 / 12%);
   }
 
   .settings input[type="color"]::-moz-color-swatch {
-    border: 1px solid rgb(0 0 0 / 10%);
-    border-radius: 3px;
+    border: 0;
+    border-radius: 5px;
+    box-shadow: inset 0 0 0 1px rgb(0 0 0 / 12%);
   }
 `;
 
 const NO_COLOR = "#ffffff";
+
+/** Short controls sit beside their label. Text that runs long gets the row. */
+const INLINE_TYPES = new Set<string>(["color", "number", "select"]);
 
 /** A color input only takes #rrggbb, and the text field shows what was saved. */
 const hexColor = (color: string) => {
@@ -302,6 +334,7 @@ const renderField = (
       id=${id}
       max=${limits?.max ?? nothing}
       min=${limits?.min ?? nothing}
+      placeholder=${field.type === "color" ? "None" : nothing}
       spellcheck="false"
       step=${limits ? "1" : nothing}
       type=${type}
@@ -368,7 +401,7 @@ const renderField = (
   };
 
   return html`
-    <div class="field">
+    <div class=${INLINE_TYPES.has(field.type) ? "field inline" : "field"}>
       <label for=${id}>
         ${field.label}${
           field.type === "number"

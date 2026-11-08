@@ -62,6 +62,9 @@ import { themeTokens, uiStyles } from "./theme.js";
 import { createTooltips } from "./tooltips.js";
 import type { Tooltips } from "./tooltips.js";
 
+/** Narrower than this, there's no room to edit, and a notice shows instead. */
+const MIN_EDITOR_WIDTH = 640;
+
 /** Typing after a gap this long starts a new undo step. */
 const TYPING_PAUSE_MS = 1000;
 
@@ -338,18 +341,14 @@ export class MailQuilt extends LitElement {
         min-height: 600px;
       }
 
-      /* A faint dot grid, as on a design tool's canvas. */
       .canvas-area {
         background-color: var(--mq-color-workspace);
-        background-image: radial-gradient(
-          color-mix(in srgb, var(--mq-color-text) 9%, transparent) 1px,
-          transparent 1px
-        );
-        background-size: 18px 18px;
         display: flex;
         flex: 999 1 480px;
         flex-direction: column;
         gap: var(--mq-space-5);
+        /* Room for a selected Block's tools when the panel has gone below. */
+        min-height: 480px;
         min-width: 0;
         /* Room for a Row's toolbar beside the email, and a Block's tag above. */
         padding: 56px 40px var(--mq-space-4);
@@ -535,7 +534,9 @@ export class MailQuilt extends LitElement {
         outline-offset: -1px;
       }
 
+      /* A white inner ring keeps it visible on a dark email background. */
       .block[aria-current="true"] {
+        box-shadow: inset 0 0 0 3px rgb(255 255 255 / 55%);
         outline: 2px solid var(--mq-color-accent);
         outline-offset: -2px;
       }
@@ -559,7 +560,7 @@ export class MailQuilt extends LitElement {
         color: var(--mq-color-on-accent);
         content: attr(data-label);
         font:
-          600 11px/18px var(--mq-font-family),
+          600 11px/20px var(--mq-font-family),
           sans-serif;
         inset-inline-start: 0;
         letter-spacing: 0.01em;
@@ -571,7 +572,8 @@ export class MailQuilt extends LitElement {
       }
 
       .block[aria-current="true"]::after {
-        background: var(--mq-color-accent);
+        background: var(--mq-color-text);
+        border-radius: var(--mq-radius-small) var(--mq-radius-small) 0 0;
       }
 
       .email[data-dragging] .block::after {
@@ -649,6 +651,9 @@ export class MailQuilt extends LitElement {
        * no Block keeps its handle.
        */
       .block-toolbar {
+        background: var(--mq-color-text);
+        border-color: transparent;
+        color: var(--mq-color-surface);
         flex-direction: column;
         inset-block-start: 0;
         inset-inline-end: calc(100% + 4px);
@@ -656,7 +661,34 @@ export class MailQuilt extends LitElement {
         z-index: 5;
       }
 
+      .block-toolbar .icon-button {
+        color: color-mix(in srgb, var(--mq-color-surface) 78%, transparent);
+      }
+
+      .block-toolbar .icon-button:hover {
+        background: color-mix(
+          in srgb,
+          var(--mq-color-surface) 14%,
+          transparent
+        );
+        color: var(--mq-color-surface);
+      }
+
+      .block-toolbar .icon-button.danger:hover {
+        background: var(--mq-color-danger);
+        color: var(--mq-color-on-accent);
+      }
+
+      .block-toolbar .icon-button:focus-visible {
+        outline-color: var(--mq-color-surface);
+      }
+
       .block-toolbar .separator {
+        background: color-mix(
+          in srgb,
+          var(--mq-color-surface) 18%,
+          transparent
+        );
         height: 1px;
         margin: 2px 4px;
         width: auto;
@@ -673,9 +705,17 @@ export class MailQuilt extends LitElement {
         width: 28px;
       }
 
+      .block-toolbar .drag-handle {
+        color: color-mix(in srgb, var(--mq-color-surface) 60%, transparent);
+      }
+
       .block-toolbar .drag-handle:hover {
-        background: var(--mq-color-surface-hover);
-        color: var(--mq-color-text);
+        background: color-mix(
+          in srgb,
+          var(--mq-color-surface) 14%,
+          transparent
+        );
+        color: var(--mq-color-surface);
       }
 
       /*
@@ -866,9 +906,15 @@ export class MailQuilt extends LitElement {
         z-index: 7;
       }
 
+      .floating-toolbar {
+        border-radius: var(--mq-radius-large);
+        padding: 4px;
+      }
+
       .floating-toolbar .icon-button {
-        height: 32px;
-        width: 32px;
+        border-radius: var(--mq-radius);
+        height: 36px;
+        width: 36px;
       }
 
       .floating-toolbar:focus-visible {
@@ -876,9 +922,10 @@ export class MailQuilt extends LitElement {
         outline-offset: 1px;
       }
 
+      /* A floating island on the workspace, as tall as the window allows. */
       .side-panel {
-        background: var(--mq-color-surface);
-        border-inline-start: 1px solid var(--mq-color-border);
+        background: var(--mq-color-workspace);
+        display: flex;
         flex: 1 0 320px;
         /*
          * 320px beside the canvas, from 800px wide, and the whole width once it
@@ -886,14 +933,22 @@ export class MailQuilt extends LitElement {
          */
         max-width: max(320px, (800px - 100%) * 9999);
         min-width: 0;
+        padding: var(--mq-space-3);
       }
 
       .side-panel-inner {
+        background: var(--mq-color-surface);
+        border: 1px solid var(--mq-color-border);
+        border-radius: var(--mq-radius-large);
+        box-shadow: var(--mq-shadow);
         display: flex;
+        flex: 1;
         flex-direction: column;
-        max-height: 100dvh;
+        max-height: calc(100dvh - 2 * var(--mq-space-3));
+        min-width: 0;
+        overflow: hidden;
         position: sticky;
-        top: 0;
+        top: var(--mq-space-3);
       }
 
       .panel-scroll {
@@ -910,15 +965,14 @@ export class MailQuilt extends LitElement {
       }
 
       .panel-top {
-        border-bottom: 1px solid var(--mq-color-border);
-        padding: var(--mq-space-3);
+        padding: var(--mq-space-3) var(--mq-space-3) 0;
       }
 
-      /* A segmented control: the selected tab is raised out of the track. */
+      /* A segmented control: the selected tab is a raised chip in the track. */
       .tabs {
-        background: var(--mq-color-surface-muted);
-        border: 1px solid var(--mq-color-border);
+        background: var(--mq-color-surface-hover);
         border-radius: var(--mq-radius);
+        box-shadow: inset 0 0 0 1px var(--mq-color-border);
         display: flex;
         gap: 2px;
         padding: 3px;
@@ -928,14 +982,14 @@ export class MailQuilt extends LitElement {
         align-items: center;
         background: transparent;
         border: 0;
-        border-radius: calc(var(--mq-radius) - 3px);
+        border-radius: 8px;
         color: var(--mq-color-text-muted);
         cursor: pointer;
         display: flex;
         flex: 1;
         font-weight: 500;
         gap: 6px;
-        height: 30px;
+        height: 32px;
         justify-content: center;
         padding: 0 var(--mq-space-2);
         transition:
@@ -950,8 +1004,8 @@ export class MailQuilt extends LitElement {
       .tab[aria-selected="true"] {
         background: var(--mq-color-surface);
         box-shadow:
-          var(--mq-shadow-small),
-          0 0 0 1px var(--mq-color-border);
+          0 0 0 1px var(--mq-color-border),
+          0 1px 3px rgb(22 24 29 / 10%);
         color: var(--mq-color-text);
       }
 
@@ -963,21 +1017,20 @@ export class MailQuilt extends LitElement {
         align-items: center;
         border-bottom: 1px solid var(--mq-color-border);
         display: flex;
-        gap: 10px;
-        min-height: 63px;
-        padding: var(--mq-space-3);
+        gap: var(--mq-space-2);
+        padding: 10px var(--mq-space-3);
       }
 
       .type-badge {
         align-items: center;
-        background: var(--mq-color-accent-soft);
-        border-radius: var(--mq-radius-small);
-        color: var(--mq-color-accent-strong);
+        background: var(--mq-color-text);
+        border-radius: var(--mq-radius);
+        color: var(--mq-color-surface);
         display: flex;
         flex: none;
-        height: 32px;
+        height: 36px;
         justify-content: center;
-        width: 32px;
+        width: 36px;
       }
 
       .panel-heading {
@@ -985,9 +1038,10 @@ export class MailQuilt extends LitElement {
       }
 
       .panel-title {
-        font-size: 14px;
+        font-size: 15px;
         font-weight: 600;
-        line-height: 1.3;
+        letter-spacing: -0.01em;
+        line-height: 1.25;
         margin: 0;
       }
 
@@ -1004,7 +1058,9 @@ export class MailQuilt extends LitElement {
       }
 
       .panel-section-title {
+        font-size: 15px;
         font-weight: 600;
+        letter-spacing: -0.01em;
         margin: 0;
       }
 
@@ -1024,65 +1080,47 @@ export class MailQuilt extends LitElement {
       .tile,
       .layout-tile {
         align-items: center;
-        background: var(--mq-color-surface);
-        border: 1px solid var(--mq-color-border);
+        background: var(--mq-color-surface-muted);
+        border: 0;
         border-radius: var(--mq-radius);
+        box-shadow: inset 0 0 0 1px var(--mq-color-border);
         color: var(--mq-color-text);
         cursor: pointer;
         display: flex;
         flex-direction: column;
         font-size: var(--mq-font-size-small);
         font-weight: 500;
-        gap: var(--mq-space-2);
+        gap: 10px;
         justify-content: center;
         padding: var(--mq-space-3) var(--mq-space-2);
         transition:
-          border-color 120ms,
-          box-shadow 120ms,
-          transform 120ms;
+          background-color 120ms,
+          box-shadow 120ms;
       }
 
       .tile {
         cursor: grab;
-        min-height: 88px;
+        min-height: 92px;
         -webkit-user-select: none;
         user-select: none;
       }
 
-      .tile-icon {
-        align-items: center;
-        background: var(--mq-color-surface-muted);
-        border-radius: var(--mq-radius-small);
-        color: var(--mq-color-text-muted);
-        display: flex;
-        height: 36px;
-        justify-content: center;
-        transition:
-          background-color 120ms,
-          color 120ms;
-        width: 36px;
-      }
-
-      .tile-icon .icon {
-        height: 18px;
-        width: 18px;
+      .tile .icon {
+        color: var(--mq-color-text);
+        height: 22px;
+        width: 22px;
       }
 
       .tile:hover,
       .layout-tile:hover {
-        border-color: var(--mq-color-accent);
-        box-shadow: var(--mq-shadow);
-        transform: translateY(-1px);
+        background: var(--mq-color-surface);
+        box-shadow:
+          inset 0 0 0 1px var(--mq-color-text),
+          var(--mq-shadow-small);
       }
 
-      .tile:hover .tile-icon {
-        background: var(--mq-color-accent-soft);
-        color: var(--mq-color-accent-strong);
-      }
-
-      .tile:active,
-      .layout-tile:active {
-        transform: none;
+      .tile:active {
+        cursor: grabbing;
       }
 
       .layout-tiles {
@@ -1094,6 +1132,8 @@ export class MailQuilt extends LitElement {
       .layout-tile {
         align-items: stretch;
         color: var(--mq-color-text-muted);
+        gap: var(--mq-space-2);
+        padding: var(--mq-space-3);
       }
 
       .layout-tile:hover {
@@ -1101,18 +1141,66 @@ export class MailQuilt extends LitElement {
       }
 
       .layout-tile .thumbnail {
-        height: 36px;
+        height: 40px;
+      }
+
+      /* Shown in place of the editor where there's no room to edit. */
+      .narrow-notice {
+        align-items: center;
+        background: var(--mq-color-workspace);
+        display: flex;
+        flex-direction: column;
+        gap: var(--mq-space-3);
+        justify-content: center;
+        min-height: 360px;
+        padding: 40px var(--mq-space-5);
+        text-align: center;
+      }
+
+      .narrow-notice .notice-icon {
+        align-items: center;
+        background: var(--mq-color-surface);
+        border-radius: var(--mq-radius-large);
+        box-shadow: var(--mq-shadow);
+        display: flex;
+        height: 56px;
+        justify-content: center;
+        margin-block-end: var(--mq-space-2);
+        width: 56px;
+      }
+
+      .narrow-notice .notice-icon .icon {
+        height: 24px;
+        width: 24px;
+      }
+
+      .narrow-notice .notice-title {
+        font-size: 17px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        margin: 0;
+      }
+
+      .narrow-notice .notice-body {
+        color: var(--mq-color-text-muted);
+        line-height: 1.5;
+        margin: 0;
+        max-width: 34ch;
+      }
+
+      .narrow-notice .text-button {
+        align-items: center;
+        display: inline-flex;
+        gap: var(--mq-space-2);
+        height: 40px;
+        margin-block-start: var(--mq-space-2);
+        padding: 0 var(--mq-space-4);
       }
 
       @media (prefers-reduced-motion: reduce) {
-        .tile,
-        .layout-tile {
-          transition: none;
-        }
-
-        .tile:hover,
-        .layout-tile:hover {
-          transform: none;
+        .ui *,
+        .row-toolbar {
+          transition: none !important;
         }
       }
 
@@ -1337,6 +1425,15 @@ export class MailQuilt extends LitElement {
   #announcementId = 0;
   /** Where the Enter key now held down was pressed. */
   #enterPressedOn: EventTarget | undefined;
+  /** Too narrow to edit in, as on a phone. */
+  #narrow = false;
+  readonly #resizeObserver = new ResizeObserver(([entry]) => {
+    const narrow = (entry?.contentRect.width ?? 0) < MIN_EDITOR_WIDTH;
+    if (narrow !== this.#narrow) {
+      this.#narrow = narrow;
+      this.requestUpdate();
+    }
+  });
 
   constructor() {
     super();
@@ -1387,6 +1484,7 @@ export class MailQuilt extends LitElement {
     window.addEventListener("pointerdown", this.#onWindowPointerdown, {
       capture: true,
     });
+    this.#resizeObserver.observe(this);
     this.requestUpdate();
   }
 
@@ -1395,6 +1493,7 @@ export class MailQuilt extends LitElement {
     window.removeEventListener("pointerdown", this.#onWindowPointerdown, {
       capture: true,
     });
+    this.#resizeObserver.disconnect();
     this.#dragging?.destroy();
     this.#dragging = undefined;
     this.#tooltips?.tooltips.destroy();
@@ -1510,7 +1609,8 @@ export class MailQuilt extends LitElement {
         Use arrow keys to select another Block, and Alt with arrow keys to move
         this one.
       </p>
-      <div class="ui editor">
+      ${this.#narrow ? this.#renderNarrowNotice() : nothing}
+      <div class="ui editor" ?hidden=${this.#narrow}>
         <div class="canvas-area">
           <div
             class="email"
@@ -1552,6 +1652,30 @@ export class MailQuilt extends LitElement {
         </div>
         ${this.#renderSidePanel(document, selected)}
         <div class="ui tooltip" hidden role="tooltip"></div>
+      </div>
+    `;
+  }
+
+  /**
+   * On a phone there's no room for the canvas and the side panel. The editor
+   * stays as it is, so nothing is lost, and the email can still be previewed.
+   */
+  #renderNarrowNotice() {
+    return html`
+      <div class="ui narrow-notice">
+        <span class="notice-icon">${ICONS.monitor}</span>
+        <p class="notice-title">Editing needs a wider screen</p>
+        <p class="notice-body">
+          Open this email on a tablet or computer to change it. You can still
+          preview it here.
+        </p>
+        <button
+          class="text-button primary"
+          type="button"
+          @click=${this.#openPreview}
+        >
+          ${ICONS.preview}<span>Preview email</span>
+        </button>
       </div>
     `;
   }
@@ -1989,7 +2113,7 @@ export class MailQuilt extends LitElement {
                   type="button"
                   @click=${() => this.#addBlock(type)}
                 >
-                  <span class="tile-icon">${blockIcon(type)}</span>
+                  ${blockIcon(type)}
                   <span>${label}</span>
                 </button>
               `

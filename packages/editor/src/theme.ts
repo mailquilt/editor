@@ -12,22 +12,22 @@ export const themeTokens = css`
     --mq-font-size: 13px;
     --mq-font-size-small: 12px;
 
-    --mq-color-workspace: #f1f2f5;
+    --mq-color-workspace: #eeeff1;
     --mq-color-surface: #ffffff;
-    --mq-color-surface-muted: #f6f7f9;
-    --mq-color-surface-hover: #eef0f3;
-    --mq-color-text: #18181b;
-    --mq-color-text-muted: #5b606a;
-    --mq-color-border: #e6e8ec;
-    --mq-color-border-strong: #8c939d;
-    --mq-color-accent: #2563eb;
-    --mq-color-accent-strong: #1d4ed8;
-    --mq-color-accent-soft: rgb(37 99 235 / 10%);
-    --mq-color-outline-hover: rgb(37 99 235 / 45%);
+    --mq-color-surface-muted: #f5f6f7;
+    --mq-color-surface-hover: #eceef0;
+    --mq-color-text: #16181d;
+    --mq-color-text-muted: #5f6570;
+    --mq-color-border: #e4e6ea;
+    --mq-color-border-strong: #8b919b;
+    --mq-color-accent: #3355ff;
+    --mq-color-accent-strong: #2340d6;
+    --mq-color-accent-soft: rgb(51 85 255 / 10%);
+    --mq-color-outline-hover: rgb(51 85 255 / 45%);
     --mq-color-on-accent: #ffffff;
-    --mq-color-danger: #b91c1c;
-    --mq-color-tooltip: #18181b;
-    --mq-color-on-tooltip: #fafafa;
+    --mq-color-danger: #c42b1c;
+    --mq-color-tooltip: #16181d;
+    --mq-color-on-tooltip: #f7f7f8;
 
     --mq-space-1: 4px;
     --mq-space-2: 8px;
@@ -37,9 +37,11 @@ export const themeTokens = css`
 
     --mq-radius-small: 6px;
     --mq-radius: 10px;
-    --mq-shadow-small: 0 1px 2px rgb(16 24 40 / 8%);
+    --mq-radius-large: 16px;
+    --mq-shadow-small: 0 1px 2px rgb(22 24 29 / 8%);
     --mq-shadow:
-      0 1px 2px rgb(16 24 40 / 6%), 0 8px 24px -6px rgb(16 24 40 / 16%);
+      0 0 0 1px rgb(22 24 29 / 4%), 0 2px 4px rgb(22 24 29 / 4%),
+      0 12px 32px -8px rgb(22 24 29 / 14%);
   }
 `;
 

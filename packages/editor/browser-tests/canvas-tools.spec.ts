@@ -500,3 +500,44 @@ test.describe("review fixes", () => {
     await expect(rowTools(page, 1).getByRole("group")).toHaveCount(0);
   });
 });
+
+const notice = (page: Page) =>
+  canvas(page).getByText("Editing needs a wider screen");
+
+test.describe("on a screen too narrow to edit in", () => {
+  test.use({ viewport: { height: 800, width: 390 } });
+
+  test("says so in place of the editor, and still previews the email", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await page.addStyleTag({
+      content:
+        "main { padding: 0 !important } * { font-size: 16px !important }",
+    });
+
+    await expect(notice(page)).toBeVisible();
+    await expect(canvas(page).getByRole("tab")).toHaveCount(0);
+    await expect(textBlock(page)).toBeHidden();
+
+    await canvas(page).getByRole("button", { name: "Preview email" }).click();
+    await expect(
+      page
+        .getByRole("dialog", { name: "Preview" })
+        .frameLocator("iframe")
+        .getByText("Hello")
+    ).toBeVisible();
+  });
+
+  test("gives the editor back, with the same email, once there's room", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await expect(notice(page)).toBeVisible();
+
+    await page.setViewportSize({ height: 800, width: 1280 });
+
+    await expect(notice(page)).toHaveCount(0);
+    await expect(textBlock(page)).toHaveText("Hello");
+  });
+});

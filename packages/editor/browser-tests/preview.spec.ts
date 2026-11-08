@@ -612,7 +612,7 @@ test("host CSS doesn't reach the Preview", async ({ page }) => {
   await expect(email).toHaveCSS("text-transform", "none");
   const heading = previewDialog(page).getByRole("heading", { name: "Preview" });
   await expect(heading).toHaveCSS("font-size", "14px");
-  await expect(heading).toHaveCSS("color", "rgb(24, 24, 27)");
+  await expect(heading).toHaveCSS("color", "rgb(22, 24, 29)");
   await expect(heading).toHaveCSS("text-transform", "none");
   const { height, width } = (await previewFrame(page).boundingBox()) ?? {
     height: 0,

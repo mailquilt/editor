@@ -712,7 +712,7 @@ test.describe("structure changes and the rest of the editor", () => {
       "font-family",
       /system-ui|sans-serif/u
     );
-    await expect(rowControls(page, 1)).toHaveCSS("color", "rgb(24, 24, 27)");
+    await expect(rowControls(page, 1)).toHaveCSS("color", "rgb(22, 24, 29)");
   });
 
   test("the button in an empty Column doesn't use the email's font", async ({

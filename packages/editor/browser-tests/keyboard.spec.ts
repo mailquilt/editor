@@ -920,7 +920,9 @@ test.describe("labels and focus states", () => {
 
   const TWELVE = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"];
 
-  for (const width of [1000, 420]) {
+  // 900px wide, the test host's padding leaves the editor too narrow for the
+  // side panel beside the canvas, so it goes below.
+  for (const width of [1000, 900]) {
     test(`a selected Block and its toolbar stay in view at ${width}px wide`, async ({
       page,
     }) => {

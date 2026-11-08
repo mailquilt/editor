@@ -115,7 +115,7 @@ test.describe("theme tokens", () => {
   test("a host overrides them on the element", async ({ page }) => {
     await openBlocks(page, ["text"]);
     const workspace = canvas(page).locator(".canvas-area");
-    await expect(workspace).toHaveCSS("background-color", "rgb(241, 242, 245)");
+    await expect(workspace).toHaveCSS("background-color", "rgb(238, 239, 241)");
 
     await canvas(page).evaluate((element) => {
       element.style.setProperty("--mq-color-workspace", "rgb(1, 2, 3)");
@@ -176,7 +176,7 @@ test.describe("on a dark host page", () => {
         blockTools: style(".block-toolbar"),
         floating: style(".floating-toolbar"),
         formatBar: style(".format-bar"),
-        panel: style(".side-panel"),
+        panel: style(".side-panel-inner"),
         placeholder: style(".placeholder"),
         rowTools: style(".row-toolbar .bar"),
         tooltip: style(".tooltip"),
@@ -185,25 +185,25 @@ test.describe("on a dark host page", () => {
     });
 
     const white = "rgb(255, 255, 255)";
-    const text = "rgb(24, 24, 27)";
+    const text = "rgb(22, 24, 29)";
     expect(surfaces).toEqual({
-      blockTools: { backgroundColor: white, color: text, serif: false },
+      blockTools: { backgroundColor: text, color: white, serif: false },
       floating: { backgroundColor: white, color: text, serif: false },
       formatBar: { backgroundColor: white, color: text, serif: false },
       panel: { backgroundColor: white, color: text, serif: false },
       placeholder: {
         backgroundColor: white,
-        color: "rgb(91, 96, 106)",
+        color: "rgb(95, 101, 112)",
         serif: false,
       },
       rowTools: { backgroundColor: white, color: text, serif: false },
       tooltip: {
         backgroundColor: text,
-        color: "rgb(250, 250, 250)",
+        color: "rgb(247, 247, 248)",
         serif: false,
       },
       workspace: {
-        backgroundColor: "rgb(241, 242, 245)",
+        backgroundColor: "rgb(238, 239, 241)",
         color: text,
         serif: false,
       },
