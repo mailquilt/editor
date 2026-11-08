@@ -465,7 +465,11 @@ test.describe("closing", () => {
         ...(element.shadowRoot?.querySelectorAll("button") ?? []),
       ];
       const named = (name: string) =>
-        buttons.find((button) => button.textContent?.trim() === name);
+        buttons.find(
+          (button) =>
+            (button.getAttribute("aria-label") ??
+              button.textContent?.trim()) === name
+        );
       named("Close")?.click();
       named("Preview")?.click();
     });

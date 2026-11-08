@@ -43,6 +43,7 @@ import {
   positionLabel,
 } from "./block-keyboard.js";
 import type { Direction } from "./block-keyboard.js";
+import { blockIcon, ICONS } from "./icons.js";
 import {
   draftKey,
   fieldText,
@@ -57,24 +58,101 @@ import type {
   TextFormats,
   ToggleableMark,
 } from "./text-block-view.js";
+import { themeTokens, uiStyles } from "./theme.js";
+import { createTooltips } from "./tooltips.js";
+import type { Tooltips } from "./tooltips.js";
 
 /** Typing after a gap this long starts a new undo step. */
 const TYPING_PAUSE_MS = 1000;
 
-const MARK_BUTTONS: { label: string; mark: ToggleableMark; text: string }[] = [
-  { label: "Bold", mark: "bold", text: "B" },
-  { label: "Italic", mark: "italic", text: "I" },
-  { label: "Underline", mark: "underline", text: "U" },
+const IS_MAC = /Mac|iPhone|iPad/u.test(navigator.userAgent);
+/** How a shortcut with Ctrl, or Command on Apple devices, is written. */
+const MOD_KEY = IS_MAC ? "⌘" : "Ctrl+";
+const UNDO_KEYS = `${MOD_KEY}Z`;
+const REDO_KEYS = IS_MAC ? "⇧⌘Z" : "Ctrl+Y";
+const UNDO_SHORTCUTS = "Control+Z Meta+Z";
+const REDO_SHORTCUTS = "Control+Y Control+Shift+Z Meta+Shift+Z";
+
+const MARK_BUTTONS: { keys: string; label: string; mark: ToggleableMark }[] = [
+  { keys: `${MOD_KEY}B`, label: "Bold", mark: "bold" },
+  { keys: `${MOD_KEY}I`, label: "Italic", mark: "italic" },
+  { keys: `${MOD_KEY}U`, label: "Underline", mark: "underline" },
 ];
 
-const MOVE_BUTTONS: { direction: Direction; keys: string; text: string }[] = [
-  { direction: "up", keys: "Alt+↑", text: "↑" },
-  { direction: "down", keys: "Alt+↓", text: "↓" },
-  { direction: "left", keys: "Alt+←", text: "←" },
-  { direction: "right", keys: "Alt+→", text: "→" },
+const MOVE_BUTTONS: { direction: Direction; keys: string; shortcut: string }[] =
+  [
+    { direction: "up", keys: "Alt+↑", shortcut: "Alt+ArrowUp" },
+    { direction: "down", keys: "Alt+↓", shortcut: "Alt+ArrowDown" },
+    { direction: "left", keys: "Alt+←", shortcut: "Alt+ArrowLeft" },
+    { direction: "right", keys: "Alt+→", shortcut: "Alt+ArrowRight" },
+  ];
+
+type PanelTab = "content" | "rows" | "settings";
+
+const PANEL_TABS: { icon: unknown; id: PanelTab; label: string }[] = [
+  { icon: ICONS.content, id: "content", label: "Content" },
+  { icon: ICONS.rows, id: "rows", label: "Rows" },
+  { icon: ICONS.settings, id: "settings", label: "Settings" },
 ];
 
-const NO_SELECTION_HINT = "Select a Block to change it and its Row.";
+/** A layout as its Column widths, for a picker that names it beside this. */
+const renderThumbnail = (layout: RowLayout) => html`
+  <span aria-hidden="true" class="thumbnail">
+    ${layout
+      .split("/")
+      .map(
+        (width) => html`<span style=${styleMap({ "flex-grow": width })}></span>`
+      )}
+  </span>
+`;
+
+/** Only a pointer drags, so this isn't offered to assistive technology. */
+const renderDragHandle = (onMousedown: (event: MouseEvent) => void) => html`
+  <div
+    aria-hidden="true"
+    class="drag-handle"
+    data-tooltip="Drag Block"
+    @mousedown=${onMousedown}
+  >
+    ${ICONS.grip}
+  </div>
+`;
+
+const TOOLBAR_KEYS = new Set([
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+  "ArrowUp",
+  "End",
+  "Home",
+]);
+
+/** Arrow keys, Home and End go along a toolbar's own buttons, either way up. */
+const onToolbarArrowKeys = (event: KeyboardEvent) => {
+  const toolbar = event.currentTarget as HTMLElement;
+  const buttons = [
+    ...toolbar.querySelectorAll<HTMLButtonElement>(
+      ":scope > button:not(:disabled)"
+    ),
+  ];
+  const index = buttons.indexOf(event.target as HTMLButtonElement);
+  if (!TOOLBAR_KEYS.has(event.key) || index === -1) {
+    return;
+  }
+  event.preventDefault();
+  const last = buttons.length - 1;
+  const previous = index === 0 ? last : index - 1;
+  const following = index === last ? 0 : index + 1;
+  const next = {
+    ArrowDown: following,
+    ArrowLeft: previous,
+    ArrowRight: following,
+    ArrowUp: previous,
+    End: last,
+    Home: 0,
+  }[event.key];
+  buttons[next ?? index]?.focus();
+};
 
 /** Whether a Block has text to edit on the canvas, and so a TextBlockView. */
 const hasRichText = ({ type }: Pick<Block, "type">) =>
@@ -234,31 +312,41 @@ const renderBlockContent = (
 
 export class MailQuilt extends LitElement {
   static override styles = [
+    themeTokens,
+    uiStyles,
     settingsPanelStyles,
     css`
       :host {
         display: block;
       }
 
-      /* Wraps the panel below the canvas once they don't both fit. */
-      .workspace {
-        all: initial;
-        align-items: flex-start;
+      /* The canvas, then the side panel docked on its right. */
+      .editor {
+        align-items: stretch;
+        background: var(--mq-color-workspace);
         display: flex;
-        flex-wrap: wrap;
+        min-height: 560px;
       }
 
       .canvas-area {
-        flex-grow: 999;
+        background: var(--mq-color-workspace);
+        display: flex;
+        flex: 1 1 0;
+        flex-direction: column;
+        gap: var(--mq-space-5);
         min-width: 0;
+        /* Room for each Row's toolbar beside the email, and a Block's above it. */
+        padding: 48px 40px var(--mq-space-4);
       }
 
       /*
-     * Inherited properties cross the Shadow DOM boundary, so hostile values on
-     * the host element stop here.
-     */
+       * The email card: the email's own settings, never the editor's tokens.
+       * Inherited properties cross the Shadow DOM boundary, so hostile values on
+       * the host element stop here.
+       */
       .email {
         all: initial;
+        box-shadow: var(--mq-shadow);
         box-sizing: border-box;
         color: #000000;
         display: block;
@@ -270,56 +358,126 @@ export class MailQuilt extends LitElement {
       }
 
       .drop-indicator {
-        background: #2563eb;
+        background: var(--mq-color-accent);
+        border-radius: 2px;
         height: 3px;
         margin-block-start: -1.5px;
         pointer-events: none;
         position: absolute;
-        z-index: 1;
+        z-index: 6;
+      }
+
+      .drop-indicator::before,
+      .drop-indicator::after {
+        background: var(--mq-color-accent);
+        border-radius: 50%;
+        content: "";
+        height: 9px;
+        position: absolute;
+        top: -3px;
+        width: 9px;
+      }
+
+      .drop-indicator::before {
+        left: -4px;
+      }
+
+      .drop-indicator::after {
+        right: -4px;
+      }
+
+      .row-frame {
+        position: relative;
       }
 
       .row {
         display: flex;
       }
 
+      .row-frame:hover > .row {
+        outline: 1px dashed var(--mq-color-outline-hover);
+        outline-offset: -1px;
+      }
+
       .column {
         min-width: 0;
       }
 
+      /* While a Block is dragged, where it can land, and where it will. */
+      .email[data-dragging] .column {
+        outline: 1px dashed var(--mq-color-outline-hover);
+        outline-offset: -1px;
+      }
+
+      .email[data-dragging] .column[data-drop-target] {
+        background-image: linear-gradient(
+          var(--mq-color-accent-soft),
+          var(--mq-color-accent-soft)
+        );
+        outline: 2px solid var(--mq-color-accent);
+        outline-offset: -2px;
+      }
+
       .column.empty {
-        align-content: center;
-        align-items: center;
         /* So that the padding doesn't add to a width that matches the export's. */
         box-sizing: border-box;
         display: flex;
-        flex-wrap: wrap;
-        gap: 4px;
+        min-height: 96px;
+        padding: var(--mq-space-2);
+      }
+
+      .placeholder {
+        align-items: center;
+        background: var(--mq-color-surface);
+        border: 1px dashed var(--mq-color-border-strong);
+        border-radius: var(--mq-radius-small);
+        color: var(--mq-color-text-muted);
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        font-size: var(--mq-font-size-small);
+        gap: var(--mq-space-1);
         justify-content: center;
-        min-height: 56px;
-        outline: 1px dashed #71717a;
-        outline-offset: -1px;
-        padding: 8px;
+        min-width: 0;
+        padding: var(--mq-space-2);
+        text-align: center;
+      }
+
+      .placeholder p {
+        margin: 0;
+      }
+
+      .placeholder .add-blocks {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2px;
+        justify-content: center;
       }
 
       .block {
         position: relative;
       }
 
-      /* Where a browser scrolls a focused Block to, clear of the sticky toolbar. */
+      /* Where a browser scrolls a focused Block to, clear of its toolbar above. */
       .block,
       .ProseMirror {
-        scroll-margin-block-start: calc(var(--toolbar-height, 0px) + 8px);
+        scroll-margin-block: 48px 72px;
+      }
+
+      .block:hover {
+        outline: 1px solid var(--mq-color-outline-hover);
+        outline-offset: -1px;
       }
 
       .block[aria-current="true"] {
-        outline: 2px solid #2563eb;
+        outline: 2px solid var(--mq-color-accent);
         outline-offset: -2px;
       }
 
       /* Stands out from a Block that's only selected, or whose text has focus. */
       .block:focus-visible {
-        background-color: rgb(37 99 235 / 10%);
-        outline: 3px solid #1d4ed8;
+        background-color: var(--mq-color-accent-soft);
+        outline: 3px solid var(--mq-color-accent-strong);
         outline-offset: -3px;
       }
 
@@ -331,19 +489,18 @@ export class MailQuilt extends LitElement {
       }
 
       /*
-     * Narrower than a Text Block's padding, so that a press on any text selects it
-     * instead of dragging the Block.
-     */
+       * Narrower than a Text Block's padding, so that a press on any text selects it
+       * instead of dragging the Block.
+       */
       .drag-handle {
         align-items: center;
-        background: #e4e4e7;
-        border-end-end-radius: 4px;
-        color: #18181b;
+        background: var(--mq-color-surface);
+        border: 1px solid var(--mq-color-border);
+        border-end-end-radius: var(--mq-radius-small);
+        box-sizing: border-box;
+        color: var(--mq-color-text-muted);
         cursor: grab;
         display: flex;
-        font:
-          12px/1 system-ui,
-          sans-serif;
         height: 24px;
         inset-block-start: 0;
         inset-inline-start: 0;
@@ -355,6 +512,11 @@ export class MailQuilt extends LitElement {
         user-select: none;
         width: 16px;
         z-index: 1;
+      }
+
+      .drag-handle .icon {
+        height: 14px;
+        width: 14px;
       }
 
       .block:hover .drag-handle,
@@ -383,30 +545,352 @@ export class MailQuilt extends LitElement {
         touch-action: none;
       }
 
-      /* Like the canvas, this stops inherited values from the email's settings. */
-      .row-controls {
-        all: initial;
-        align-items: center;
-        background: #f4f4f5;
-        box-sizing: border-box;
-        color: #18181b;
-        display: flex;
-        flex-wrap: wrap;
-        font-family: system-ui, sans-serif;
-        font-size: 12px;
-        gap: 4px;
-        justify-content: space-between;
-        line-height: 1.5;
-        padding: 2px 4px;
-        /* Above a thin Spacer's click area, so that its buttons get clicks. */
-        position: relative;
-        z-index: 1;
+      /*
+       * Down the selected Block's start side, outside it: in the gutter for the
+       * first Column, and over the end of the Column before for the others, where
+       * no Block keeps its handle.
+       */
+      .block-toolbar {
+        flex-direction: column;
+        inset-block-start: 0;
+        inset-inline-end: calc(100% + 4px);
+        position: absolute;
+        z-index: 5;
       }
 
-      .layouts {
+      .block-toolbar .separator {
+        height: 1px;
+        margin: 2px 4px;
+        width: auto;
+      }
+
+      .block-toolbar .drag-handle {
+        background: none;
+        border: 0;
+        border-radius: var(--mq-radius-small);
+        height: 20px;
+        opacity: 1;
+        position: static;
+        width: 28px;
+      }
+
+      .block-toolbar .drag-handle:hover {
+        background: var(--mq-color-surface-hover);
+        color: var(--mq-color-text);
+      }
+
+      /*
+       * A Row's tools, beside it on the right. The padding bridges the gap, so the
+       * pointer can get there without leaving the Row. Hidden, it takes no clicks.
+       */
+      .row-toolbar {
+        inset-block-start: 0;
+        inset-inline-start: 100%;
+        opacity: 0;
+        padding-inline-start: var(--mq-space-2);
+        pointer-events: none;
+        position: absolute;
+        transition: opacity 120ms;
+        z-index: 4;
+      }
+
+      .row-frame:hover > .row-toolbar,
+      .row-frame[data-selected] > .row-toolbar,
+      .row-toolbar:focus-within,
+      .row-toolbar[data-open] {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .row-toolbar > .bar {
+        flex-direction: column;
+      }
+
+      .layout-picker {
+        display: grid;
+        gap: var(--mq-space-1);
+        grid-template-columns: repeat(3, 84px);
+        inset-block-start: 0;
+        inset-inline-end: calc(100% + var(--mq-space-1) - var(--mq-space-2));
+        padding: var(--mq-space-1);
+        position: absolute;
+      }
+
+      .layout-option {
+        align-items: center;
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: var(--mq-radius-small);
+        color: var(--mq-color-text-muted);
+        cursor: pointer;
         display: flex;
-        flex-wrap: wrap;
+        flex-direction: column;
+        font-size: var(--mq-font-size-small);
         gap: 2px;
+        padding: var(--mq-space-1);
+        white-space: nowrap;
+      }
+
+      .layout-option:hover {
+        background: var(--mq-color-surface-hover);
+        color: var(--mq-color-text);
+      }
+
+      .layout-option[aria-pressed="true"] {
+        border-color: var(--mq-color-accent);
+        color: var(--mq-color-accent-strong);
+      }
+
+      /* A layout as its Column widths. */
+      .thumbnail {
+        display: flex;
+        gap: 3px;
+        height: 24px;
+        width: 100%;
+      }
+
+      .thumbnail > span {
+        background: var(--mq-color-accent-soft);
+        border: 1px solid var(--mq-color-outline-hover);
+        border-radius: 3px;
+        flex-basis: 0;
+      }
+
+      /*
+       * Below the text being edited, at its end: clear of where the next Block's
+       * text starts, and of its drag handle.
+       */
+      .format-bar {
+        flex-wrap: wrap;
+        inset-block-start: calc(100% + 4px);
+        inset-inline-end: 0;
+        max-width: min(360px, calc(100vw - 32px));
+        position: absolute;
+        width: max-content;
+        z-index: 5;
+      }
+
+      .link-form {
+        align-items: center;
+        border-top: 1px solid var(--mq-color-border);
+        display: flex;
+        flex-basis: 100%;
+        flex-wrap: wrap;
+        gap: var(--mq-space-1);
+        padding: var(--mq-space-1);
+      }
+
+      .link-form label {
+        align-items: center;
+        color: var(--mq-color-text-muted);
+        display: flex;
+        flex: 1 1 100%;
+        font-size: var(--mq-font-size-small);
+        gap: var(--mq-space-2);
+      }
+
+      .link-form input {
+        background: var(--mq-color-surface);
+        border: 1px solid var(--mq-color-border-strong);
+        border-radius: var(--mq-radius-small);
+        color: var(--mq-color-text);
+        flex: 1;
+        min-height: 28px;
+        min-width: 0;
+        padding: 0 6px;
+      }
+
+      .link-form p {
+        color: var(--mq-color-danger);
+        flex-basis: 100%;
+        font-size: var(--mq-font-size-small);
+        margin: 0;
+      }
+
+      .text-button {
+        background: var(--mq-color-surface);
+        border: 1px solid var(--mq-color-border);
+        border-radius: var(--mq-radius-small);
+        cursor: pointer;
+        min-height: 28px;
+        padding: 0 var(--mq-space-3);
+      }
+
+      .text-button:hover {
+        background: var(--mq-color-surface-hover);
+      }
+
+      .text-button.primary {
+        background: var(--mq-color-accent);
+        border-color: var(--mq-color-accent);
+        color: var(--mq-color-on-accent);
+      }
+
+      .text-button.primary:hover {
+        background: var(--mq-color-accent-strong);
+      }
+
+      /* Undo, Redo and Preview, at the bottom left of the canvas while it shows. */
+      .floating-toolbar {
+        align-self: flex-start;
+        bottom: var(--mq-space-4);
+        margin-block-start: auto;
+        position: sticky;
+        z-index: 7;
+      }
+
+      .floating-toolbar:focus-visible {
+        outline: 2px solid var(--mq-color-accent);
+        outline-offset: 1px;
+      }
+
+      .side-panel {
+        background: var(--mq-color-surface);
+        border-inline-start: 1px solid var(--mq-color-border);
+        flex: 0 0 320px;
+        min-width: 0;
+      }
+
+      .side-panel-inner {
+        display: flex;
+        flex-direction: column;
+        max-height: 100dvh;
+        overflow-y: auto;
+        position: sticky;
+        top: 0;
+      }
+
+      .tabs {
+        border-bottom: 1px solid var(--mq-color-border);
+        display: flex;
+        gap: var(--mq-space-1);
+        padding: 0 var(--mq-space-2);
+      }
+
+      .tab {
+        align-items: center;
+        background: transparent;
+        border: 0;
+        border-bottom: 2px solid transparent;
+        color: var(--mq-color-text-muted);
+        cursor: pointer;
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        font-size: var(--mq-font-size-small);
+        font-weight: 500;
+        gap: 2px;
+        margin-bottom: -1px;
+        padding: 10px var(--mq-space-1) var(--mq-space-2);
+      }
+
+      .tab:hover {
+        color: var(--mq-color-text);
+      }
+
+      .tab[aria-selected="true"] {
+        border-bottom-color: var(--mq-color-accent);
+        color: var(--mq-color-accent-strong);
+      }
+
+      .panel-header {
+        align-items: center;
+        border-bottom: 1px solid var(--mq-color-border);
+        display: flex;
+        gap: var(--mq-space-2);
+        min-height: 57px;
+        padding: var(--mq-space-2) var(--mq-space-3);
+      }
+
+      .back-button {
+        align-items: center;
+        background: transparent;
+        border: 0;
+        border-radius: var(--mq-radius-small);
+        color: var(--mq-color-text-muted);
+        cursor: pointer;
+        display: inline-flex;
+        font-weight: 500;
+        gap: var(--mq-space-1);
+        min-height: 28px;
+        padding: 0 var(--mq-space-2) 0 var(--mq-space-1);
+      }
+
+      .back-button:hover {
+        background: var(--mq-color-surface-hover);
+        color: var(--mq-color-text);
+      }
+
+      .panel-title {
+        font-weight: 600;
+        margin: 0;
+      }
+
+      .panel-body {
+        display: flex;
+        flex-direction: column;
+        gap: var(--mq-space-4);
+        padding: var(--mq-space-4);
+      }
+
+      .panel-hint {
+        color: var(--mq-color-text-muted);
+        font-size: var(--mq-font-size-small);
+        margin: 0;
+      }
+
+      .tiles {
+        display: grid;
+        gap: var(--mq-space-2);
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .tile,
+      .layout-tile {
+        align-items: center;
+        background: var(--mq-color-surface);
+        border: 1px solid var(--mq-color-border);
+        border-radius: var(--mq-radius);
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        font-size: var(--mq-font-size-small);
+        font-weight: 500;
+        gap: 6px;
+        justify-content: center;
+        padding: var(--mq-space-3) var(--mq-space-2);
+        transition:
+          border-color 120ms,
+          box-shadow 120ms;
+      }
+
+      .tile {
+        cursor: grab;
+        min-height: 76px;
+        -webkit-user-select: none;
+        user-select: none;
+      }
+
+      .tile .icon {
+        height: 20px;
+        width: 20px;
+      }
+
+      .tile:hover,
+      .layout-tile:hover {
+        border-color: var(--mq-color-accent);
+        box-shadow: var(--mq-shadow);
+        color: var(--mq-color-accent-strong);
+      }
+
+      .layout-tiles {
+        display: grid;
+        gap: var(--mq-space-2);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .layout-tile .thumbnail {
+        height: 32px;
       }
 
       /* The same space as a Text Block's padding, as in the email output. */
@@ -491,7 +975,7 @@ export class MailQuilt extends LitElement {
       }
 
       .ProseMirror:focus-visible {
-        outline: 2px solid #2563eb;
+        outline: 2px solid var(--mq-color-accent);
         outline-offset: -2px;
       }
 
@@ -508,136 +992,12 @@ export class MailQuilt extends LitElement {
         width: 1px;
       }
 
-      /* Like the canvas, this stops inherited values from the host element. */
-      .toolbar {
-        all: initial;
-        align-items: center;
-        background: #ffffff;
-        border-bottom: 1px solid #d4d4d8;
-        box-sizing: border-box;
-        color: #18181b;
-        display: flex;
-        flex-wrap: wrap;
-        font-family: system-ui, sans-serif;
-        font-size: 14px;
-        gap: 4px;
-        line-height: 1.5;
-        padding: 4px;
-        position: sticky;
-        top: 0;
-        z-index: 3;
-      }
-
-      .move-block {
-        display: flex;
-        gap: 2px;
-      }
-
-      /* Takes a line of its own before it would squeeze, as the link form needs. */
-      .formatting {
-        align-items: center;
-        display: flex;
-        flex: 1 1 auto;
-        flex-wrap: wrap;
-        gap: 4px;
-        min-width: 0;
-      }
-
-      .toolbar button,
-      .row-controls button,
-      .add-block,
-      .preview-header button {
-        background: transparent;
-        border: 1px solid transparent;
-        border-radius: 4px;
-        color: inherit;
-        cursor: pointer;
-        font: inherit;
-        min-height: 28px;
-        min-width: 28px;
-        padding: 0 6px;
-      }
-
-      .toolbar button:hover:not(:disabled),
-      .add-block:hover,
-      .preview-header button:hover {
-        background: #f4f4f5;
-      }
-
-      .row-controls button:hover {
-        background: #e4e4e7;
-      }
-
-      .toolbar:focus-visible,
-      .toolbar button:focus-visible,
-      .toolbar input:focus-visible,
-      .row-controls button:focus-visible,
-      .add-block:focus-visible,
-      .preview-header button:focus-visible {
-        outline: 2px solid #2563eb;
-        outline-offset: 1px;
-      }
-
-      .add-block {
-        border-color: #71717a;
-        font-family: system-ui, sans-serif;
-        font-size: 12px;
-      }
-
-      .toolbar button[aria-pressed="true"],
-      .row-controls button[aria-pressed="true"] {
-        background: #e4e4e7;
-        border-color: #71717a;
-      }
-
-      .toolbar button:disabled {
-        color: #71717a;
-        cursor: default;
-      }
-
-      .toolbar .bold {
-        font-weight: 700;
-      }
-
-      .toolbar .italic {
-        font-style: italic;
-      }
-
-      .toolbar .underline {
-        text-decoration: underline;
-      }
-
-      .link-form {
-        align-items: center;
-        display: flex;
-        flex-basis: 100%;
-        flex-wrap: wrap;
-        gap: 4px;
-      }
-
-      .link-form input {
-        border: 1px solid #71717a;
-        border-radius: 4px;
-        box-sizing: border-box;
-        color: inherit;
-        font: inherit;
-        margin-inline-start: 4px;
-        min-height: 28px;
-        padding: 0 6px;
-        width: 20em;
-      }
-
-      .link-form p {
-        color: #b91c1c;
-        flex-basis: 100%;
-        margin: 0;
-      }
-
       /* A closed dialog relies on the browser's display: none, so no all: initial. */
       .preview {
-        background: #ffffff;
+        background: var(--mq-color-surface);
         border: 0;
-        border-radius: 8px;
+        border-radius: var(--mq-radius);
+        box-shadow: var(--mq-shadow);
         height: calc(100dvh - 32px);
         max-height: none;
         max-width: none;
@@ -649,25 +1009,19 @@ export class MailQuilt extends LitElement {
         background: rgb(0 0 0 / 50%);
       }
 
-      /* Like the canvas, this stops inherited values from the host element. */
       .preview-panel {
-        all: initial;
-        box-sizing: border-box;
-        color: #18181b;
         display: flex;
         flex-direction: column;
-        font-family: system-ui, sans-serif;
-        font-size: 14px;
         height: 100%;
-        line-height: 1.5;
       }
 
       .preview-header {
         align-items: center;
-        border-bottom: 1px solid #d4d4d8;
+        border-bottom: 1px solid var(--mq-color-border);
         display: flex;
         justify-content: space-between;
-        padding: 4px 4px 4px 12px;
+        padding: var(--mq-space-2) var(--mq-space-2) var(--mq-space-2)
+          var(--mq-space-4);
       }
 
       .preview-header h2 {
@@ -685,11 +1039,11 @@ export class MailQuilt extends LitElement {
 
       .preview-panel > p {
         margin: 0;
-        padding: 16px;
+        padding: var(--mq-space-4);
       }
 
       .preview-panel > p[role="alert"] {
-        color: #b91c1c;
+        color: var(--mq-color-danger);
       }
     `,
   ];
@@ -701,8 +1055,15 @@ export class MailQuilt extends LitElement {
   /** Edits in the same typing session merge into one undo step. */
   #typingSession = 0;
   #lastTypedAt = 0;
-  /** The selected Block, which the toolbar acts on: the last one to have focus. */
+  /** The selected Block, which the toolbars act on: the last one to have focus. */
   #activeBlockId: string | undefined;
+  /** Whether focus is in the selected Block's text or its format bar. */
+  #editingText = false;
+  /** Whether the side panel shows the selected Block's settings, not its tabs. */
+  #showProperties = false;
+  #panelTab: PanelTab = "content";
+  /** The Row whose layout picker is open. */
+  #layoutPickerRowId: string | undefined;
   /** What had focus in the editor when the current update began. */
   #focusedBeforeUpdate: Element | null | undefined;
   #formats: TextFormats | undefined;
@@ -718,21 +1079,13 @@ export class MailQuilt extends LitElement {
   #previewHtml: string | undefined;
   /** Set while the element is connected and has rendered. */
   #dragging: BlockDragging | undefined;
+  #tooltips: { element: HTMLElement; tooltips: Tooltips } | undefined;
   /** What the screen reader last heard about a move. */
   #announcement = "";
   /** Each announcement gets a new element, so the same words are read again. */
   #announcementId = 0;
   /** Where the Enter key now held down was pressed. */
   #enterPressedOn: EventTarget | undefined;
-  #toolbarHeight = 0;
-  /** The toolbar wraps at any width, and a Block has to scroll clear of it. */
-  readonly #toolbarObserver = new ResizeObserver(([entry]) => {
-    if (entry) {
-      this.#toolbarHeight = entry.target.getBoundingClientRect().height;
-      this.requestUpdate();
-    }
-  });
-  #observedToolbar: Element | null = null;
 
   constructor() {
     super();
@@ -780,15 +1133,21 @@ export class MailQuilt extends LitElement {
 
   override connectedCallback() {
     super.connectedCallback();
+    window.addEventListener("pointerdown", this.#onWindowPointerdown, {
+      capture: true,
+    });
     this.requestUpdate();
   }
 
   override disconnectedCallback() {
     super.disconnectedCallback();
+    window.removeEventListener("pointerdown", this.#onWindowPointerdown, {
+      capture: true,
+    });
     this.#dragging?.destroy();
     this.#dragging = undefined;
-    this.#toolbarObserver.disconnect();
-    this.#observedToolbar = null;
+    this.#tooltips?.tooltips.destroy();
+    this.#tooltips = undefined;
     this.#destroyViews();
   }
 
@@ -800,7 +1159,8 @@ export class MailQuilt extends LitElement {
       return;
     }
     const blockIds = new Set<string>();
-    for (const row of this.value?.rows ?? []) {
+    const rows = this.value?.rows ?? [];
+    for (const row of rows) {
       for (const column of row.columns) {
         for (const block of column.blocks) {
           blockIds.add(block.id);
@@ -813,7 +1173,10 @@ export class MailQuilt extends LitElement {
                 content: block.props.content as RichTextDocument,
                 label: `${blockLabel(block.type)} Block`,
                 onChange: (next) => this.#commitText(block.id, next),
-                onFocus: () => this.#selectBlock(block.id),
+                onFocus: () => {
+                  this.#editingText = true;
+                  this.#selectBlock(block.id);
+                },
                 onStateChange: () => this.#syncFormats(),
                 onTypingBreak: () => {
                   this.#typingSession += 1;
@@ -825,14 +1188,18 @@ export class MailQuilt extends LitElement {
       }
     }
     this.#removeViewsExcept(blockIds);
+    if (!rows.some(({ id }) => id === this.#layoutPickerRowId)) {
+      this.#layoutPickerRowId = undefined;
+    }
   }
 
   /**
    * A change can remove the element with focus, or disable it. Focus stays in the
    * editor, where undo still works. A Block that just moved, or whose link field
-   * just closed, gets it back, on the Block itself if that's where it was, so that
-   * the next move works. Otherwise the toolbar takes it, because it does nothing
-   * when a key that activated a button is pressed again or held down.
+   * just closed, gets it back, on the Block itself or the same tool if that's
+   * where it was, so that the next move works. Otherwise the floating toolbar
+   * takes it, because it does nothing when a key that activated a button is
+   * pressed again or held down.
    */
   protected override updated() {
     const before = this.#focusedBeforeUpdate;
@@ -841,26 +1208,31 @@ export class MailQuilt extends LitElement {
       | null
       | undefined;
     if (before && (!active || active.disabled)) {
-      const block =
-        before.matches(".block") && this.#activeBlockId !== undefined
-          ? this.#blockElement(this.#activeBlockId)
-          : undefined;
-      const view = before.closest(".block, .link-form")
+      const selected =
+        this.#activeBlockId === undefined
+          ? undefined
+          : this.#blockElement(this.#activeBlockId);
+      const { action } = (before as HTMLElement).dataset;
+      const tool =
+        action === undefined
+          ? undefined
+          : selected?.querySelector<HTMLElement>(
+              `.block-toolbar [data-action="${action}"]`
+            );
+      const block = before.matches(".block") ? selected : undefined;
+      // What was removed is detached by now, without the Block around it.
+      const view = before.closest(".block, .format-bar, .link-form")
         ? this.#activeView
         : undefined;
-      (
-        block ??
-        view ??
-        this.renderRoot.querySelector<HTMLElement>(".toolbar")
-      )?.focus();
+      (tool ?? block ?? view ?? this.#floatingToolbar)?.focus();
     }
-    this.#observeToolbar();
     if (this.isConnected && this.shadowRoot) {
       this.#dragging ??= createBlockDragging({
         onDrop: (source, place) => this.#drop(source, place),
         root: this.shadowRoot,
       });
       this.#dragging.sync();
+      this.#syncTooltips(this.shadowRoot);
     }
   }
 
@@ -870,28 +1242,26 @@ export class MailQuilt extends LitElement {
       return nothing;
     }
     const { rows, settings } = document;
+    const selectedRowId =
+      this.#selectedPosition(document) &&
+      rows[this.#selectedPosition(document)?.rowIndex ?? -1]?.id;
 
     return html`
-      ${this.#renderToolbar()} ${this.#renderPreview()}
+      ${this.#renderPreview()}
       <div class="announcement" role="status">
         ${keyed(this.#announcementId, html`<span>${this.#announcement}</span>`)}
       </div>
       <p hidden id="block-keys">
-        Press Enter to edit the text, and Escape to come back. Use arrow keys to
-        select another Block, and Alt with arrow keys to move this one.
+        Press Enter to edit the text, and Escape to come back. In the text,
+        press Alt+F10 to reach its formatting. Use arrow keys to select another
+        Block, and Alt with arrow keys to move this one.
       </p>
       <p hidden id="block-keys-no-text">
         Use arrow keys to select another Block, and Alt with arrow keys to move
         this one.
       </p>
-      <div
-        class="workspace"
-        style=${styleMap({ "--toolbar-height": `${this.#toolbarHeight}px` })}
-      >
-        <div
-          class="canvas-area"
-          style=${styleMap({ "flex-basis": `${settings.width}px` })}
-        >
+      <div class="ui editor">
+        <div class="canvas-area">
           <div
             class="email"
             lang=${settings.language ?? nothing}
@@ -907,56 +1277,97 @@ export class MailQuilt extends LitElement {
               rows,
               (row) => row.id,
               (row, rowIndex) => html`
-                ${this.#renderRowControls(row, rowIndex)}
-                <div class="row" style=${styleMap(rowStyles(row))}>
-                  ${repeat(
-                    row.columns,
-                    (column) => column.id,
-                    (column, columnIndex) =>
-                      this.#renderColumn(
-                        column,
-                        columnLabel(rowIndex, columnIndex)
-                      )
-                  )}
+                <div
+                  class="row-frame"
+                  ?data-selected=${row.id === selectedRowId}
+                >
+                  ${this.#renderRowToolbar(row, rowIndex)}
+                  <div class="row" style=${styleMap(rowStyles(row))}>
+                    ${repeat(
+                      row.columns,
+                      (column) => column.id,
+                      (column, columnIndex) =>
+                        this.#renderColumn(
+                          column,
+                          columnLabel(rowIndex, columnIndex)
+                        )
+                    )}
+                  </div>
                 </div>
               `
             )}
             <div class="drop-indicator" hidden></div>
           </div>
+          ${this.#renderFloatingToolbar()}
         </div>
-        ${this.#renderSettings(document)}
+        ${this.#renderSidePanel(document)}
+        <div class="ui tooltip" hidden role="tooltip"></div>
       </div>
     `;
   }
 
-  #renderRowControls(row: Row, index: number) {
+  /** Beside the Row, on hover, on focus, and while one of its Blocks is selected. */
+  #renderRowToolbar(row: Row, index: number) {
     const current = rowLayoutOf(row);
+    const open = this.#layoutPickerRowId === row.id;
+    const pickerId = `layout-picker-${row.id}`;
     return html`
       <div
         aria-label=${`Row ${index + 1}`}
-        class="row-controls"
+        class="ui row-toolbar"
+        ?data-open=${open}
         role="group"
+        @focusout=${this.#onRowToolbarFocusout}
+        @keydown=${this.#onRowToolbarKeydown}
         @mousedown=${this.#onControlMousedown}
       >
-        <div aria-label="Layout" class="layouts" role="group">
-          ${ROW_LAYOUTS.map(
-            (layout) => html`
-              <button
-                aria-pressed=${layout === current ? "true" : "false"}
-                type="button"
-                @click=${() => this.#chooseLayout(row.id, layout, current)}
-              >
-                ${layout}
-              </button>
-            `
-          )}
+        <div class="bar">
+          <button
+            aria-controls=${open ? pickerId : nothing}
+            aria-expanded=${open ? "true" : "false"}
+            aria-label="Change layout"
+            class="icon-button layout-trigger"
+            data-tooltip="Change layout"
+            type="button"
+            @click=${() => this.#toggleLayoutPicker(row.id)}
+          >
+            ${ICONS.layout}
+          </button>
+          ${
+            open
+              ? html`
+                  <div
+                    aria-label="Layout"
+                    class="bar layout-picker"
+                    id=${pickerId}
+                    role="group"
+                  >
+                    ${ROW_LAYOUTS.map(
+                      (layout) => html`
+                        <button
+                          aria-pressed=${layout === current ? "true" : "false"}
+                          class="layout-option"
+                          type="button"
+                          @click=${() => this.#pickLayout(row.id, layout, current)}
+                        >
+                          ${renderThumbnail(layout)}<span>${layout}</span>
+                        </button>
+                      `
+                    )}
+                  </div>
+                `
+              : nothing
+          }
+          <button
+            aria-label="Delete Row"
+            class="icon-button danger"
+            data-tooltip="Delete Row"
+            type="button"
+            @click=${() => this.#apply({ rowId: row.id, type: "removeRow" })}
+          >
+            ${ICONS.delete}
+          </button>
         </div>
-        <button
-          type="button"
-          @click=${() => this.#apply({ rowId: row.id, type: "removeRow" })}
-        >
-          Delete Row
-        </button>
       </div>
     `;
   }
@@ -971,200 +1382,394 @@ export class MailQuilt extends LitElement {
         ${repeat(
           blocks,
           (block) => block.id,
-          (block, blockIndex) => html`
-            <div
-              aria-current=${block.id === this.#activeBlockId ? "true" : nothing}
-              aria-describedby=${hasRichText(block) ? "block-keys" : "block-keys-no-text"}
-              aria-label=${`${blockLabel(block.type)} Block, ${place}, ${positionLabel(blockIndex, blocks.length)}`}
-              class="block"
-              data-block-id=${block.id}
-              role="group"
-              style=${styleMap(hasRichText(block) ? blockStyles(block) : {})}
-              tabindex="0"
-              @focus=${(event: FocusEvent) =>
-                this.#onBlockFocus(event, block.id)}
-              @keydown=${this.#onBlockKeydown}
-            >
-              <div
-                aria-hidden="true"
-                class="drag-handle"
-                title="Drag Block"
-                @mousedown=${this.#onHandleMousedown}
-              >
-                ⋮⋮
-              </div>
-              ${hasRichText(block) ? this.#views.get(block.id)?.element : nothing}
-              ${renderBlockContent(block, this.#failedImages, this.#onImageError)}
-            </div>
-          `
+          (block, blockIndex) =>
+            this.#renderBlock(
+              block,
+              `${place}, ${positionLabel(blockIndex, blocks.length)}`
+            )
         )}
         ${
           blocks.length === 0
-            ? BLOCK_TYPES.map(
-                ({ label, type }) => html`
-                  <button
-                    aria-label=${`Add ${label} Block here, ${place}`}
-                    class="add-block"
-                    title=${`Add ${label} Block here`}
-                    type="button"
-                    @click=${() => this.#addBlock(type, { columnId: id, index: 0 })}
-                  >
-                    + ${label}
-                  </button>
-                `
-              )
+            ? html`
+                <div class="ui placeholder">
+                  <p>Drop a Block here</p>
+                  <div class="add-blocks">
+                    ${BLOCK_TYPES.map(
+                      ({ label, type }) => html`
+                        <button
+                          aria-label=${`Add ${label} Block here, ${place}`}
+                          class="icon-button"
+                          data-tooltip=${`Add ${label} Block here`}
+                          type="button"
+                          @click=${() => this.#addBlock(type, { columnId: id, index: 0 })}
+                        >
+                          ${blockIcon(type)}
+                        </button>
+                      `
+                    )}
+                  </div>
+                </div>
+              `
             : nothing
         }
       </div>
     `;
   }
 
-  #renderToolbar() {
+  #renderBlock(block: Block, place: string) {
+    const selected = block.id === this.#activeBlockId;
+    const rich = hasRichText(block);
+    return html`
+      <div
+        aria-current=${selected ? "true" : nothing}
+        aria-describedby=${rich ? "block-keys" : "block-keys-no-text"}
+        aria-label=${`${blockLabel(block.type)} Block, ${place}`}
+        class="block"
+        data-block-id=${block.id}
+        role="group"
+        style=${styleMap(rich ? blockStyles(block) : {})}
+        tabindex="0"
+        @click=${this.#onBlockClick}
+        @focus=${(event: FocusEvent) => this.#onBlockFocus(event, block.id)}
+        @focusout=${this.#onBlockFocusout}
+        @keydown=${this.#onBlockKeydown}
+      >
+        ${selected ? nothing : renderDragHandle(this.#onHandleMousedown)}
+        ${rich ? this.#views.get(block.id)?.element : nothing}
+        ${renderBlockContent(block, this.#failedImages, this.#onImageError)}
+        ${selected ? this.#renderBlockToolbar() : nothing}
+        ${selected && rich && this.#editingText ? this.#renderFormatBar() : nothing}
+      </div>
+    `;
+  }
+
+  /** The selected Block's tools. One stop for Tab, then arrow keys go along. */
+  #renderBlockToolbar() {
+    return html`
+      <div
+        aria-label="Block tools"
+        aria-orientation="vertical"
+        class="ui bar block-toolbar"
+        role="toolbar"
+        @keydown=${onToolbarArrowKeys}
+        @mousedown=${this.#onControlMousedown}
+      >
+        ${renderDragHandle(this.#onHandleMousedown)}
+        <span class="separator"></span>
+        ${MOVE_BUTTONS.map(
+          ({ direction, keys, shortcut }, index) => html`
+            <button
+              aria-keyshortcuts=${shortcut}
+              aria-label=${`Move Block ${direction}`}
+              class="icon-button"
+              data-action=${`move-${direction}`}
+              data-tooltip=${`Move Block ${direction} (${keys})`}
+              tabindex=${index === 0 ? "0" : "-1"}
+              type="button"
+              @click=${() => this.#moveSelectedBlock(direction)}
+            >
+              ${ICONS[direction]}
+            </button>
+          `
+        )}
+        <span class="separator"></span>
+        <button
+          aria-label="Delete Block"
+          class="icon-button danger"
+          data-action="delete"
+          data-tooltip="Delete Block"
+          tabindex="-1"
+          type="button"
+          @click=${this.#deleteSelectedBlock}
+        >
+          ${ICONS.delete}
+        </button>
+      </div>
+    `;
+  }
+
+  /**
+   * Next to the text being edited. Alt+F10 reaches it from the text and Escape
+   * goes back, so it takes no stop of its own from Tab.
+   */
+  #renderFormatBar() {
     const formats = this.#formats;
     return html`
       <div
+        aria-label="Text formatting"
+        class="ui bar format-bar"
+        role="toolbar"
+        @keydown=${this.#onFormatBarKeydown}
+        @mousedown=${this.#onControlMousedown}
+      >
+        ${MARK_BUTTONS.map(
+          ({ keys, label, mark }) => html`
+            <button
+              aria-label=${label}
+              aria-pressed=${formats?.[mark] ? "true" : "false"}
+              class="icon-button"
+              data-tooltip=${`${label} (${keys})`}
+              ?disabled=${!formats || (mark === "bold" && !formats.canBold)}
+              tabindex="-1"
+              type="button"
+              @click=${() => this.#activeView?.toggleMark(mark)}
+            >
+              ${ICONS[mark]}
+            </button>
+          `
+        )}
+        <span class="separator"></span>
+        <button
+          aria-label="Link"
+          aria-pressed=${formats?.linkHref === undefined ? "false" : "true"}
+          class="icon-button"
+          data-tooltip=${`Link (${MOD_KEY}K)`}
+          ?disabled=${!formats}
+          tabindex="-1"
+          type="button"
+          @click=${this.#openLinkForm}
+        >
+          ${ICONS.link}
+        </button>
+        <button
+          aria-label="Line break"
+          class="icon-button"
+          data-tooltip="Line break (Shift+Enter)"
+          ?disabled=${!formats}
+          tabindex="-1"
+          type="button"
+          @click=${() => this.#activeView?.insertLineBreak()}
+        >
+          ${ICONS.lineBreak}
+        </button>
+        ${this.#linkForm ? this.#renderLinkForm(this.#linkForm.error) : nothing}
+      </div>
+    `;
+  }
+
+  /** Away from the side panel, so it never covers the settings. */
+  #renderFloatingToolbar() {
+    return html`
+      <div
         aria-label="Email tools"
-        class="toolbar"
+        class="ui bar floating-toolbar"
         role="group"
         tabindex="-1"
         @keydown=${this.#onToolbarKeydown}
         @mousedown=${this.#onControlMousedown}
       >
-        <div aria-label="Add content" class="palette" role="group">
-          ${BLOCK_TYPES.map(
-            ({ label, type }) => html`
-              <button
-                data-block-type=${type}
-                title=${`Add ${label} Block`}
-                type="button"
-                @click=${() => this.#addBlock(type)}
-              >
-                ${label}
-              </button>
-            `
-          )}
-        </div>
-        <button type="button" @click=${this.#addRow}>Add Row</button>
         <button
-          ?disabled=${this.#activeBlockId === undefined}
+          aria-keyshortcuts=${UNDO_SHORTCUTS}
+          aria-label="Undo"
+          class="icon-button"
+          data-tooltip=${`Undo (${UNDO_KEYS})`}
           type="button"
-          @click=${this.#deleteSelectedBlock}
+          @click=${() => this.#stepHistory("undo")}
         >
-          Delete Block
+          ${ICONS.undo}
         </button>
-        <div aria-label="Move Block" class="move-block" role="group">
-          ${MOVE_BUTTONS.map(
-            ({ direction, keys, text }) => html`
-              <button
-                aria-label=${`Move Block ${direction}`}
-                ?disabled=${this.#activeBlockId === undefined}
-                title=${`Move Block ${direction} (${keys})`}
-                type="button"
-                @click=${() => this.#moveSelectedBlock(direction)}
-              >
-                ${text}
-              </button>
-            `
-          )}
-        </div>
-        <div aria-label="Text formatting" class="formatting" role="group">
-          ${MARK_BUTTONS.map(
-            ({ label, mark, text }) => html`
-              <button
-                aria-label=${label}
-                aria-pressed=${formats?.[mark] ? "true" : "false"}
-                class=${mark}
-                ?disabled=${!formats || (mark === "bold" && !formats.canBold)}
-                title=${label}
-                type="button"
-                @click=${() => this.#activeView?.toggleMark(mark)}
-              >
-                ${text}
-              </button>
-            `
-          )}
-          <button
-            aria-pressed=${formats?.linkHref === undefined ? "false" : "true"}
-            ?disabled=${!formats}
-            type="button"
-            @click=${this.#openLinkForm}
-          >
-            Link
-          </button>
-          <button
-            ?disabled=${!formats}
-            type="button"
-            @click=${() => this.#activeView?.insertLineBreak()}
-          >
-            Line break
-          </button>
-          ${this.#linkForm ? this.#renderLinkForm(this.#linkForm.error) : nothing}
-        </div>
-        <button type="button" @click=${() => this.#stepHistory("undo")}>
-          Undo
+        <button
+          aria-keyshortcuts=${REDO_SHORTCUTS}
+          aria-label="Redo"
+          class="icon-button"
+          data-tooltip=${`Redo (${REDO_KEYS})`}
+          type="button"
+          @click=${() => this.#stepHistory("redo")}
+        >
+          ${ICONS.redo}
         </button>
-        <button type="button" @click=${() => this.#stepHistory("redo")}>
-          Redo
+        <span class="separator"></span>
+        <button
+          aria-label="Preview"
+          class="icon-button"
+          data-tooltip="Preview"
+          type="button"
+          @click=${this.#openPreview}
+        >
+          ${ICONS.preview}
         </button>
-        <button type="button" @click=${this.#openPreview}>Preview</button>
       </div>
     `;
   }
 
-  #renderSettings(document: BlocksDocument) {
+  #renderSidePanel(document: BlocksDocument) {
     const selected = this.#selectedPosition(document);
-    const row = selected && document.rows[selected.rowIndex];
-    const sections: SettingsSection[] = [];
-    if (selected && row) {
-      const { block } = selected;
-      sections.push(
-        {
-          command: (props) => ({
-            blockId: block.id,
-            props,
-            type: "updateProps",
-          }),
-          fields: blockSettingsFields(block),
-          id: "block",
-          legend: "Selected Block",
-          targetId: block.id,
-          values: block.props,
-        },
-        {
-          command: (props) => ({
-            props,
-            rowId: row.id,
-            type: "updateRowProps",
-          }),
-          fields: ROW_SETTINGS_FIELDS,
-          id: "row",
-          legend: "Row",
-          targetId: row.id,
-          unsetColor: document.settings.backgroundColor,
-          values: row.props,
-        }
-      );
-    }
-    sections.push({
-      command: (settings) => ({ settings, type: "updateEmailSettings" }),
-      fields: EMAIL_SETTINGS_FIELDS,
-      id: "email",
-      legend: "Email",
-      targetId: "",
-      values: { ...document.settings },
-    });
-    return renderSettingsPanel(
-      sections,
-      selected ? undefined : NO_SELECTION_HINT,
+    return html`
+      <div class="side-panel">
+        <div class="side-panel-inner" @keydown=${this.#onPanelKeydown}>
+          ${
+            selected && this.#showProperties
+              ? this.#renderProperties(document, selected)
+              : this.#renderTabs(document)
+          }
+        </div>
+      </div>
+    `;
+  }
+
+  /** The selected Block's fields, then its Row's. */
+  #renderProperties(
+    document: BlocksDocument,
+    { block, rowIndex }: NonNullable<ReturnType<typeof findBlockPosition>>
+  ) {
+    const row = document.rows[rowIndex];
+    const sections: SettingsSection[] = [
       {
-        draftOf: (key) => this.#drafts.get(key),
-        onCommit: (section, field, control) =>
-          this.#commitField(section, field, control),
-        onInput: (section, field, { value }) =>
-          this.#draftField(section, field, value),
-        onKeydown: (event) => this.#onSettingsKeydown(event),
+        command: (props) => ({
+          blockId: block.id,
+          props,
+          type: "updateProps",
+        }),
+        fields: blockSettingsFields(block),
+        id: "block",
+        legend: "Block",
+        targetId: block.id,
+        values: block.props,
+      },
+    ];
+    if (row) {
+      sections.push({
+        command: (props) => ({
+          props,
+          rowId: row.id,
+          type: "updateRowProps",
+        }),
+        fields: ROW_SETTINGS_FIELDS,
+        id: "row",
+        legend: "Row",
+        targetId: row.id,
+        unsetColor: document.settings.backgroundColor,
+        values: row.props,
+      });
+    }
+    return html`
+      <div class="panel-header" @mousedown=${this.#onControlMousedown}>
+        <button class="back-button" type="button" @click=${this.#showTabs}>
+          ${ICONS.back}<span>Back</span>
+        </button>
+        <p class="panel-title">${blockLabel(block.type)} Block</p>
+      </div>
+      <div class="panel-body">${this.#renderSettings(sections)}</div>
+    `;
+  }
+
+  #renderTabs(document: BlocksDocument) {
+    const current = this.#panelTab;
+    return html`
+      <div
+        aria-label="Side panel"
+        class="tabs"
+        role="tablist"
+        @keydown=${this.#onTabsKeydown}
+        @mousedown=${this.#onControlMousedown}
+      >
+        ${PANEL_TABS.map(
+          ({ icon, id, label }) => html`
+            <button
+              aria-controls=${id === current ? `tabpanel-${id}` : nothing}
+              aria-selected=${id === current ? "true" : "false"}
+              class="tab"
+              id=${`tab-${id}`}
+              role="tab"
+              tabindex=${id === current ? "0" : "-1"}
+              type="button"
+              @click=${() => this.#selectTab(id)}
+            >
+              ${icon}<span>${label}</span>
+            </button>
+          `
+        )}
+      </div>
+      <div
+        aria-labelledby=${`tab-${current}`}
+        class="panel-body"
+        id=${`tabpanel-${current}`}
+        role="tabpanel"
+      >
+        ${this.#renderTabPanel(current, document)}
+      </div>
+    `;
+  }
+
+  #renderTabPanel(tab: PanelTab, document: BlocksDocument) {
+    switch (tab) {
+      case "content": {
+        return html`
+          <p class="panel-hint">
+            Drag a Block onto the email, or choose one to add it after the
+            selected Block.
+          </p>
+          <div
+            aria-label="Add content"
+            class="tiles"
+            role="group"
+            @mousedown=${this.#onControlMousedown}
+          >
+            ${BLOCK_TYPES.map(
+              ({ label, type }) => html`
+                <button
+                  class="tile"
+                  data-block-type=${type}
+                  type="button"
+                  @click=${() => this.#addBlock(type)}
+                >
+                  ${blockIcon(type)}<span>${label}</span>
+                </button>
+              `
+            )}
+          </div>
+        `;
       }
-    );
+      case "rows": {
+        return html`
+          <p class="panel-hint">
+            Choose a layout to add a Row after the selected Block's Row, or at
+            the end of the email.
+          </p>
+          <div
+            aria-label="Add a Row"
+            class="layout-tiles"
+            role="group"
+            @mousedown=${this.#onControlMousedown}
+          >
+            ${ROW_LAYOUTS.map(
+              (layout) => html`
+                <button
+                  class="layout-tile"
+                  type="button"
+                  @click=${() => this.#addRow(layout)}
+                >
+                  ${renderThumbnail(layout)}<span>${layout}</span>
+                </button>
+              `
+            )}
+          </div>
+        `;
+      }
+      default: {
+        return this.#renderSettings([
+          {
+            command: (settings) => ({ settings, type: "updateEmailSettings" }),
+            fields: EMAIL_SETTINGS_FIELDS,
+            id: "email",
+            legend: "Email",
+            targetId: "",
+            values: { ...document.settings },
+          },
+        ]);
+      }
+    }
+  }
+
+  #renderSettings(sections: SettingsSection[]) {
+    return renderSettingsPanel(sections, {
+      draftOf: (key) => this.#drafts.get(key),
+      onCommit: (section, field, control) =>
+        this.#commitField(section, field, control),
+      onInput: (section, field, { value }) =>
+        this.#draftField(section, field, value),
+      onKeydown: (event) => this.#onSettingsKeydown(event),
+    });
   }
 
   /**
@@ -1180,10 +1785,16 @@ export class MailQuilt extends LitElement {
         class="preview"
         @close=${this.#onPreviewClose}
       >
-        <div class="preview-panel">
+        <div class="ui preview-panel">
           <div class="preview-header">
             <h2 id="preview-title">Preview</h2>
-            <button type="button" @click=${this.#closePreview}>Close</button>
+            <button
+              class="text-button"
+              type="button"
+              @click=${this.#closePreview}
+            >
+              Close
+            </button>
           </div>
           ${preview ? renderPreviewContent(preview) : nothing}
         </div>
@@ -1212,17 +1823,27 @@ export class MailQuilt extends LitElement {
             value=${href ?? ""}
           />
         </label>
-        <button type="submit">Apply</button>
+        <button class="text-button primary" type="submit">Apply</button>
         ${
           href === undefined
             ? nothing
             : html`
-                <button type="button" @click=${this.#removeLink}>
+                <button
+                  class="text-button"
+                  type="button"
+                  @click=${this.#removeLink}
+                >
                   Remove link
                 </button>
               `
         }
-        <button type="button" @click=${this.#cancelLinkForm}>Cancel</button>
+        <button
+          class="text-button"
+          type="button"
+          @click=${this.#cancelLinkForm}
+        >
+          Cancel
+        </button>
         ${
           error
             ? html`<p id="link-error" role="alert">${INVALID_LINK}</p>`
@@ -1240,12 +1861,51 @@ export class MailQuilt extends LitElement {
 
   /** Firefox's scroll on focus leaves a Block that's partly in view where it is. */
   #onBlockFocus({ currentTarget }: FocusEvent, blockId: string) {
+    this.#editingText = false;
     this.#selectBlock(blockId);
     (currentTarget as HTMLElement).scrollIntoView({ block: "nearest" });
   }
 
+  /**
+   * Shows the selected Block's settings again after Back, when its text still has
+   * focus and so gets no new focus event. Its own toolbars leave the panel be.
+   */
+  #onBlockClick({ target }: MouseEvent) {
+    if (
+      !this.#showProperties &&
+      !(target as Element).closest(".block-toolbar, .format-bar")
+    ) {
+      this.#showProperties = true;
+      this.requestUpdate();
+    }
+  }
+
+  /**
+   * The text stops being edited once focus leaves it and its format bar. State
+   * rather than CSS, which would hide the bar while focus is on its way there.
+   * Checked once focus has landed: the Preview opening over the text, or the
+   * window losing focus while a URL is copied elsewhere, leave the bar as it is.
+   */
+  #onBlockFocusout() {
+    if (!this.#editingText) {
+      return;
+    }
+    setTimeout(() => {
+      const active = this.shadowRoot?.activeElement;
+      if (
+        this.#editingText &&
+        document.hasFocus() &&
+        !active?.closest(".ProseMirror, .format-bar, .preview")
+      ) {
+        this.#editingText = false;
+        this.requestUpdate();
+      }
+    }, 0);
+  }
+
   #selectBlock(blockId: string) {
     this.#activeBlockId = blockId;
+    this.#showProperties = true;
     this.#closeLinkForm();
     this.#syncFormats();
     this.requestUpdate();
@@ -1293,8 +1953,24 @@ export class MailQuilt extends LitElement {
   #onLinkFormKeydown(event: KeyboardEvent) {
     if (event.key === "Escape") {
       event.preventDefault();
+      // Not for the format bar or the Block, which would take focus elsewhere.
+      event.stopPropagation();
       this.#cancelLinkForm();
     }
+  }
+
+  /** Escape goes back to the text, as from the link field. */
+  #onFormatBarKeydown(event: KeyboardEvent) {
+    if (event.target instanceof HTMLInputElement) {
+      return;
+    }
+    if (event.key === "Escape" && !isComposing(event)) {
+      event.preventDefault();
+      event.stopPropagation();
+      this.#activeView?.focus();
+      return;
+    }
+    onToolbarArrowKeys(event);
   }
 
   #onLinkFormSubmit(event: SubmitEvent) {
@@ -1475,7 +2151,8 @@ export class MailQuilt extends LitElement {
       : findBlockPosition(document, this.#activeBlockId);
   }
 
-  #addRow() {
+  /** After the selected Block's Row, or else at the end. */
+  #addRow(layout: RowLayout) {
     const document = this.#editor?.getDocument();
     if (!document) {
       return;
@@ -1483,9 +2160,121 @@ export class MailQuilt extends LitElement {
     const selected = this.#selectedPosition(document);
     this.#apply({
       index: selected ? selected.rowIndex + 1 : document.rows.length,
-      layout: "100",
+      layout,
       type: "insertRow",
     });
+  }
+
+  #toggleLayoutPicker(rowId: string) {
+    this.#layoutPickerRowId =
+      this.#layoutPickerRowId === rowId ? undefined : rowId;
+    this.requestUpdate();
+  }
+
+  /** Focus goes back to the button that opened the picker, if it was inside. */
+  async #closeLayoutPicker() {
+    if (this.#layoutPickerRowId === undefined) {
+      return;
+    }
+    const toolbar = this.shadowRoot?.activeElement?.closest(".row-toolbar");
+    this.#layoutPickerRowId = undefined;
+    this.requestUpdate();
+    if (toolbar) {
+      await this.updateComplete;
+      toolbar.querySelector<HTMLElement>(".layout-trigger")?.focus();
+    }
+  }
+
+  #pickLayout(
+    rowId: string,
+    layout: RowLayout,
+    current: RowLayout | undefined
+  ) {
+    this.#chooseLayout(rowId, layout, current);
+    this.#closeLayoutPicker();
+  }
+
+  #onRowToolbarKeydown(event: KeyboardEvent) {
+    if (
+      event.key === "Escape" &&
+      this.#layoutPickerRowId !== undefined &&
+      !isComposing(event)
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+      this.#closeLayoutPicker();
+    }
+  }
+
+  #onRowToolbarFocusout({ currentTarget, relatedTarget }: FocusEvent) {
+    if (
+      this.#layoutPickerRowId !== undefined &&
+      !(currentTarget as Element).contains(relatedTarget as Node | null)
+    ) {
+      this.#layoutPickerRowId = undefined;
+      this.requestUpdate();
+    }
+  }
+
+  /**
+   * A press anywhere else, on the page too, closes the layout picker, as focus
+   * leaving it does.
+   */
+  readonly #onWindowPointerdown = (event: PointerEvent) => {
+    if (
+      this.#layoutPickerRowId !== undefined &&
+      !event
+        .composedPath()
+        .some(
+          (target) =>
+            target instanceof Element && target.matches(".row-toolbar")
+        )
+    ) {
+      this.#layoutPickerRowId = undefined;
+      this.requestUpdate();
+    }
+  };
+
+  /** Back to the tabs, with the Block still selected for what's added next. */
+  async #showTabs() {
+    const fromKeyboard =
+      this.shadowRoot?.activeElement?.matches(".back-button") ?? false;
+    this.#showProperties = false;
+    this.requestUpdate();
+    if (fromKeyboard) {
+      await this.updateComplete;
+      this.#tabButton(this.#panelTab)?.focus();
+    }
+  }
+
+  async #selectTab(tab: PanelTab, focus = false) {
+    this.#panelTab = tab;
+    this.requestUpdate();
+    if (focus) {
+      await this.updateComplete;
+      this.#tabButton(tab)?.focus();
+    }
+  }
+
+  #tabButton(tab: PanelTab) {
+    return this.renderRoot.querySelector<HTMLElement>(`#tab-${tab}`);
+  }
+
+  /** The ARIA tabs pattern, where moving to a tab also shows it. */
+  #onTabsKeydown(event: KeyboardEvent) {
+    const index = PANEL_TABS.findIndex(({ id }) => id === this.#panelTab);
+    const last = PANEL_TABS.length - 1;
+    const next = {
+      ArrowLeft: index === 0 ? last : index - 1,
+      ArrowRight: index === last ? 0 : index + 1,
+      End: last,
+      Home: 0,
+    }[event.key];
+    const tab = next === undefined ? undefined : PANEL_TABS[next];
+    if (tab) {
+      event.preventDefault();
+      this.#selectTab(tab.id, true);
+    }
   }
 
   #deleteSelectedBlock() {
@@ -1580,6 +2369,10 @@ export class MailQuilt extends LitElement {
   }
 
   #onBeforeInput(event: InputEvent) {
+    // The link field is on the canvas, and has its own typing and undo.
+    if (event.target instanceof HTMLInputElement) {
+      return;
+    }
     // WebKit types into a Block's selection, and undoes there too, even with focus
     // on the dialog, a control, the link field or the Block itself.
     const active = this.shadowRoot?.activeElement;
@@ -1594,6 +2387,21 @@ export class MailQuilt extends LitElement {
   }
 
   #onKeydown(event: KeyboardEvent) {
+    // The link field has its own undo for what's being typed in it.
+    if (event.target instanceof HTMLInputElement) {
+      return;
+    }
+    if (
+      event.altKey &&
+      event.key === "F10" &&
+      (event.target as Element).closest(".ProseMirror")
+    ) {
+      event.preventDefault();
+      this.renderRoot
+        .querySelector<HTMLElement>(".format-bar > button:not(:disabled)")
+        ?.focus();
+      return;
+    }
     if (isLinkShortcut(event)) {
       // Browsers use this one to focus their search or address bar.
       event.preventDefault();
@@ -1712,19 +2520,6 @@ export class MailQuilt extends LitElement {
     this.#blockElement(blockId)?.scrollIntoView({ block: "nearest" });
   }
 
-  #observeToolbar() {
-    const toolbar = this.isConnected
-      ? this.renderRoot.querySelector(".toolbar")
-      : null;
-    if (toolbar !== this.#observedToolbar) {
-      this.#toolbarObserver.disconnect();
-      if (toolbar) {
-        this.#toolbarObserver.observe(toolbar);
-      }
-      this.#observedToolbar = toolbar;
-    }
-  }
-
   #blockElement(blockId: string) {
     return this.renderRoot.querySelector<HTMLElement>(
       `${BLOCKS}[data-block-id="${CSS.escape(blockId)}"]`
@@ -1750,14 +2545,31 @@ export class MailQuilt extends LitElement {
 
   /**
    * Leaves focus and the selection where they are. With no focus in the editor,
-   * the toolbar takes it, because keyboard undo only reaches the editor from inside.
+   * the floating toolbar takes it, because keyboard undo only reaches the editor
+   * from inside.
    */
-  #onHandleMousedown(event: MouseEvent) {
+  readonly #onHandleMousedown = (event: MouseEvent) => {
     event.preventDefault();
     this.#commitFocusedField();
     if (!this.shadowRoot?.activeElement) {
-      this.renderRoot.querySelector<HTMLElement>(".toolbar")?.focus();
+      this.#floatingToolbar?.focus();
     }
+  };
+
+  get #floatingToolbar() {
+    return this.renderRoot.querySelector<HTMLElement>(".floating-toolbar");
+  }
+
+  /** A new render can replace the tooltip, along with everything else. */
+  #syncTooltips(root: ShadowRoot) {
+    const element = root.querySelector<HTMLElement>(".tooltip");
+    if (element !== this.#tooltips?.element) {
+      this.#tooltips?.tooltips.destroy();
+      this.#tooltips = element
+        ? { element, tooltips: createTooltips(root, element) }
+        : undefined;
+    }
+    this.#tooltips?.tooltips.sync();
   }
 
   /**
@@ -1771,12 +2583,16 @@ export class MailQuilt extends LitElement {
     }
   }
 
-  /** Undo and redo from a toolbar button, where a Block may no longer have focus. */
-  #onToolbarKeydown(event: KeyboardEvent) {
-    // The link field has its own undo for what's being typed in it.
-    if (!(event.target instanceof HTMLInputElement)) {
+  /** Undo and redo from the tabs and tiles. The settings fields have their own. */
+  #onPanelKeydown(event: KeyboardEvent) {
+    if (!(event.target as Element).closest(".settings")) {
       this.#runHistoryStep(event, historyShortcut(event));
     }
+  }
+
+  /** Undo and redo from a toolbar button, where a Block may no longer have focus. */
+  #onToolbarKeydown(event: KeyboardEvent) {
+    this.#runHistoryStep(event, historyShortcut(event));
   }
 
   #runHistoryStep(event: Event, step: "redo" | "undo" | undefined) {
@@ -1889,6 +2705,7 @@ export class MailQuilt extends LitElement {
       !blockIds.has(this.#activeBlockId)
     ) {
       this.#activeBlockId = undefined;
+      this.#editingText = false;
       this.#formats = undefined;
       this.#linkForm = undefined;
     }
@@ -1901,6 +2718,7 @@ export class MailQuilt extends LitElement {
     this.#views.clear();
     // The toolbar's state describes those views and their selections.
     this.#activeBlockId = undefined;
+    this.#editingText = false;
     this.#formats = undefined;
     this.#linkForm = undefined;
     // The Preview shows the old document. A removed dialog also stays `open`, so

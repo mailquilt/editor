@@ -14,6 +14,7 @@ import {
   field,
   openBlocks as open,
   openExport,
+  openTab,
   palette,
   panelBlock,
   redo,
@@ -133,6 +134,7 @@ test.describe("the palette", () => {
     }) => {
       await open(page, ["text", "text"]);
       await blockGroup(page, "Text").first().focus();
+      await openTab(page, "Content");
       await palette(page, name).focus();
 
       await page.keyboard.press("Enter");
@@ -529,8 +531,8 @@ test.describe("a Button", () => {
     await open(page, ["button"]);
     await blockGroup(page, "Button").click();
 
-    await expect(page.getByRole("button", { name: "Bold" })).toBeDisabled();
-    await expect(page.getByRole("button", { name: "Link" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Bold" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Link" })).toHaveCount(0);
   });
 
   test("is selected by a click on it, without going anywhere", async ({

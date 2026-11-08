@@ -40,103 +40,92 @@ export interface SettingsPanelEvents {
 }
 
 export const settingsPanelStyles = css`
-  /* Like the canvas, this stops inherited values from the host element. */
   .settings {
-    all: initial;
-    background: #ffffff;
-    border-inline-start: 1px solid #d4d4d8;
-    box-sizing: border-box;
-    color: #18181b;
     display: flex;
-    flex: 1 1 280px;
     flex-direction: column;
-    font-family: system-ui, sans-serif;
-    font-size: 14px;
-    gap: 16px;
-    line-height: 1.5;
-    max-height: calc(100dvh - var(--toolbar-height, 0px));
-    overflow-y: auto;
-    padding: 12px;
-    position: sticky;
-    top: var(--toolbar-height, 0px);
+    gap: var(--mq-space-5);
   }
 
   .settings fieldset {
     border: 0;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--mq-space-3);
     margin: 0;
     min-width: 0;
     padding: 0;
   }
 
   .settings legend {
+    color: var(--mq-color-text-muted);
+    font-size: var(--mq-font-size-small);
     font-weight: 600;
-    margin-block-end: 4px;
+    letter-spacing: 0.04em;
+    margin-block-end: var(--mq-space-2);
     padding: 0;
+    text-transform: uppercase;
   }
 
-  .settings > p,
+  .settings .field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--mq-space-1);
+  }
+
   .settings .field p {
+    font-size: var(--mq-font-size-small);
     margin: 0;
   }
 
-  .settings .field p {
-    font-size: 12px;
-  }
-
   .settings .description {
-    color: #52525b;
+    color: var(--mq-color-text-muted);
   }
 
   .settings .error {
-    color: #b91c1c;
+    color: var(--mq-color-danger);
   }
 
   .settings label {
     display: block;
+    font-weight: 500;
   }
 
   .settings input,
   .settings select {
-    background: #ffffff;
-    border: 1px solid #71717a;
-    border-radius: 4px;
-    box-sizing: border-box;
-    color: inherit;
-    font: inherit;
-    min-height: 28px;
+    background: var(--mq-color-surface);
+    border: 1px solid var(--mq-color-border-strong);
+    border-radius: var(--mq-radius-small);
+    min-height: 32px;
     min-width: 0;
-    padding: 0 6px;
+    padding: 0 var(--mq-space-2);
     width: 100%;
   }
 
   .settings input:disabled {
-    background: #f4f4f5;
-    color: #71717a;
+    background: var(--mq-color-surface-hover);
+    color: var(--mq-color-text-muted);
   }
 
   .settings [aria-invalid="true"] {
-    border-color: #b91c1c;
+    border-color: var(--mq-color-danger);
   }
 
   /* Not :focus-visible, which browsers leave off a select pressed with a mouse. */
   .settings input:focus,
   .settings select:focus {
-    outline: 2px solid #2563eb;
+    outline: 2px solid var(--mq-color-accent);
     outline-offset: 1px;
   }
 
   .settings .color {
     display: flex;
-    gap: 4px;
+    gap: var(--mq-space-1);
   }
 
   .settings input[type="color"] {
     flex: none;
     padding: 2px;
-    width: 32px;
+    width: 36px;
   }
 `;
 
@@ -323,7 +312,6 @@ const renderField = (
 /** The one settings panel: every control in it comes from fields that are data. */
 export const renderSettingsPanel = (
   sections: SettingsSection[],
-  hint: string | undefined,
   events: SettingsPanelEvents
 ) => html`
   <div
@@ -332,7 +320,6 @@ export const renderSettingsPanel = (
     role="group"
     @keydown=${events.onKeydown}
   >
-    ${hint ? html`<p>${hint}</p>` : nothing}
     ${repeat(
       sections,
       // Keyed, so that a field with focus survives the others coming and going.

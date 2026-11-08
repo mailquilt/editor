@@ -2,30 +2,39 @@ import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
 import type { MailQuilt } from "../src/index.js";
-import { canvas, exportHtml, setValue, textBlock } from "./helpers.js";
+import {
+  addRow,
+  blockTool,
+  canvas,
+  chooseLayout,
+  deleteRow,
+  exportHtml,
+  layoutOption,
+  openLayoutPicker,
+  rowTools,
+  setValue,
+  showPalette,
+  textBlock,
+} from "./helpers.js";
 
 type Document = NonNullable<MailQuilt["value"]>;
 
-const paletteText = (page: Page) =>
-  page
-    .getByRole("group", { name: "Add content" })
-    .getByRole("button", { name: "Text" });
+const addText = async (page: Page) => {
+  const text = await showPalette(page, "Text");
+  await text.click();
+};
 
-const addRow = (page: Page) => page.getByRole("button", { name: "Add Row" });
+const deleteBlock = (page: Page) => blockTool(page, "Delete Block");
 
-const deleteBlock = (page: Page) =>
-  page.getByRole("button", { name: "Delete Block" });
+const rowControls = rowTools;
 
-const rowControls = (page: Page, position: number) =>
-  page.getByRole("group", { exact: true, name: `Row ${position}` });
+/** Opens the Row's layout picker, then gives the option there. */
+const shownLayout = async (page: Page, position: number, layout: string) => {
+  await openLayoutPicker(page, position);
+  return layoutOption(page, position, layout);
+};
 
-const layoutButton = (page: Page, position: number, layout: string) =>
-  rowControls(page, position).getByRole("button", {
-    exact: true,
-    name: layout,
-  });
-
-const deleteRow = (page: Page, position: number) =>
+const deleteRowButton = (page: Page, position: number) =>
   rowControls(page, position).getByRole("button", { name: "Delete Row" });
 
 const addToColumn = (page: Page) =>
@@ -101,19 +110,19 @@ test.beforeEach(async ({ page }) => {
 test.describe("selecting a Block", () => {
   test("nothing is selected at first", async ({ page }) => {
     await expect(selectedBlock(page)).toHaveCount(0);
-    await expect(deleteBlock(page)).toBeDisabled();
+    await expect(deleteBlock(page)).toHaveCount(0);
   });
 
   test("clicking a Block selects it", async ({ page }) => {
     await textBlock(page).click();
 
     await expect(selectedBlock(page)).toHaveText("Hello");
-    await expect(deleteBlock(page)).toBeEnabled();
+    await expect(deleteBlock(page)).toBeVisible();
   });
 
   test("clicking another Block moves the selection", async ({ page }) => {
     await textBlock(page).click();
-    await paletteText(page).click();
+    await addText(page);
     await page.keyboard.type("Second");
     await expect(selectedBlock(page)).toHaveText("Second");
 
@@ -129,11 +138,11 @@ test.describe("the palette", () => {
     page,
   }) => {
     await textBlock(page).click();
-    await paletteText(page).click();
+    await addText(page);
     await page.keyboard.type("Second");
     await textBlock(page).first().click();
 
-    await paletteText(page).click();
+    await addText(page);
     await page.keyboard.type("Between");
 
     await expect(selectedBlock(page)).toHaveText("Between");
@@ -145,7 +154,7 @@ test.describe("the palette", () => {
   test("adds to the end of the last Column when nothing is selected", async ({
     page,
   }) => {
-    await paletteText(page).click();
+    await addText(page);
     await expect(textBlock(page)).toHaveCount(2);
     await page.keyboard.type("New");
 
@@ -155,10 +164,10 @@ test.describe("the palette", () => {
   test("adds a Row for the Block when the email has no Rows, as one undo step", async ({
     page,
   }) => {
-    await deleteRow(page, 1).click();
+    await deleteRow(page, 1);
     await expect(textBlock(page)).toHaveCount(0);
 
-    await paletteText(page).click();
+    await addText(page);
     await expect(textBlock(page)).toHaveCount(1);
     await page.keyboard.type("A");
     await expect(textBlock(page)).toHaveText("A");
@@ -173,14 +182,14 @@ test.describe("the palette", () => {
   });
 
   test("fires one mq-change for each addition", async ({ page }) => {
-    await paletteText(page).click();
+    await addText(page);
 
     await expect(textBlock(page)).toHaveCount(2);
     await expect(page.getByTestId("change-count")).toHaveText("1");
   });
 
   test("is one undo step, and redo brings the Block back", async ({ page }) => {
-    await paletteText(page).click();
+    await addText(page);
     await expect(textBlock(page)).toHaveCount(2);
 
     await undo(page);
@@ -201,7 +210,7 @@ test.describe("deleting a Block", () => {
     await deleteBlock(page).click();
 
     await expect(textBlock(page)).toHaveCount(0);
-    await expect(deleteBlock(page)).toBeDisabled();
+    await expect(deleteBlock(page)).toHaveCount(0);
     expect(await structure(page)).toStrictEqual([[[]]]);
     await expect(addToColumn(page)).toBeVisible();
   });
@@ -221,15 +230,13 @@ test.describe("deleting a Block", () => {
     await expect(textBlock(page)).toHaveText("Hello!?");
   });
 
-  test("turns off the formatting buttons with the selection", async ({
-    page,
-  }) => {
+  test("takes the formatting buttons with the selection", async ({ page }) => {
     await textBlock(page).click();
     await expect(page.getByRole("button", { name: "Bold" })).toBeEnabled();
 
     await deleteBlock(page).click();
 
-    await expect(page.getByRole("button", { name: "Bold" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Bold" })).toHaveCount(0);
   });
 
   test("from the keyboard, leaves focus where undo still works", async ({
@@ -262,7 +269,7 @@ test.describe("deleting a Block", () => {
 
 test.describe("an empty Column", () => {
   test("stays, and can be given a Text Block", async ({ page }) => {
-    await layoutButton(page, 1, "50/50").click();
+    await chooseLayout(page, 1, "50/50");
     await expect(addToColumn(page)).toHaveCount(1);
 
     await addToColumn(page).click();
@@ -274,7 +281,7 @@ test.describe("an empty Column", () => {
   });
 
   test("stays after its last Block is deleted", async ({ page }) => {
-    await layoutButton(page, 1, "50/50").click();
+    await chooseLayout(page, 1, "50/50");
     await addToColumn(page).click();
     await expect(selectedBlock(page)).toHaveCount(1);
 
@@ -285,7 +292,7 @@ test.describe("an empty Column", () => {
   });
 
   test("its button isn't exported", async ({ page }) => {
-    await layoutButton(page, 1, "50/50").click();
+    await chooseLayout(page, 1, "50/50");
     await expect(addToColumn(page)).toBeVisible();
 
     expect(await exportHtml(page)).not.toContain("Add Text Block");
@@ -293,22 +300,24 @@ test.describe("an empty Column", () => {
 });
 
 test.describe("adding and deleting Rows", () => {
-  test("Add Row adds an empty full-width Row at the end", async ({ page }) => {
-    await addRow(page).click();
+  test("the Rows tab adds an empty full-width Row at the end", async ({
+    page,
+  }) => {
+    await addRow(page);
 
     await expect(rowControls(page, 2)).toBeVisible();
     expect(await structure(page)).toStrictEqual([[["Hello"]], [[]]]);
     expect(await widths(page, 1)).toStrictEqual([100]);
   });
 
-  test("Add Row goes after the selected Block's Row", async ({ page }) => {
-    await addRow(page).click();
+  test("the Rows tab adds after the selected Block's Row", async ({ page }) => {
+    await addRow(page);
     await addToColumn(page).click();
     await page.keyboard.type("Last");
     await expect(selectedBlock(page)).toHaveText("Last");
     await textBlock(page).first().click();
 
-    await addRow(page).click();
+    await addRow(page);
 
     await expect(rowControls(page, 3)).toBeVisible();
     expect(await structure(page)).toStrictEqual([
@@ -319,21 +328,21 @@ test.describe("adding and deleting Rows", () => {
   });
 
   test("Delete Row removes the right Row with its Blocks", async ({ page }) => {
-    await addRow(page).click();
+    await addRow(page);
     await addToColumn(page).click();
     await page.keyboard.type("Second");
     await expect(textBlock(page).last()).toHaveText("Second");
 
-    await deleteRow(page, 1).click();
+    await deleteRow(page, 1);
 
     await expect(textBlock(page)).toHaveText("Second");
     expect(await structure(page)).toStrictEqual([[["Second"]]]);
   });
 
   test("each is one undo step", async ({ page }) => {
-    await addRow(page).click();
+    await addRow(page);
     await expect(rowControls(page, 2)).toBeVisible();
-    await deleteRow(page, 1).click();
+    await deleteRow(page, 1);
     await expect(textBlock(page)).toHaveCount(0);
 
     await page.getByRole("button", { name: "Undo" }).click();
@@ -354,7 +363,7 @@ test.describe("adding and deleting Rows", () => {
   }) => {
     await textBlock(page).click();
 
-    await deleteRow(page, 1).click();
+    await deleteRow(page, 1);
 
     await expect(toolbar(page)).toBeFocused();
     await undo(page);
@@ -364,7 +373,7 @@ test.describe("adding and deleting Rows", () => {
   test("deleting a Row from the keyboard keeps focus in the editor", async ({
     page,
   }) => {
-    await deleteRow(page, 1).focus();
+    await deleteRowButton(page, 1).focus();
 
     await page.keyboard.press("Enter");
 
@@ -374,10 +383,10 @@ test.describe("adding and deleting Rows", () => {
   test("deleting another Row from the keyboard leaves the selected Block alone", async ({
     page,
   }) => {
-    await addRow(page).click();
+    await addRow(page);
     await expect(rowControls(page, 2)).toBeVisible();
     await textBlock(page).click();
-    await deleteRow(page, 2).focus();
+    await deleteRowButton(page, 2).focus();
 
     await page.keyboard.press("Enter");
     await expect(rowControls(page, 2)).toHaveCount(0);
@@ -390,7 +399,7 @@ test.describe("adding and deleting Rows", () => {
   test("controlled host keeps undo after a structural change", async ({
     page,
   }) => {
-    await addRow(page).click();
+    await addRow(page);
     await expect(page.getByTestId("change-count")).toHaveText("1");
     await expect
       .poll(
@@ -422,13 +431,13 @@ test.describe("choosing a layout", () => {
       page,
     }) => {
       if (layout === "100") {
-        await layoutButton(page, 1, "50/50").click();
+        await chooseLayout(page, 1, "50/50");
         await expect(addToColumn(page)).toHaveCount(1);
       }
 
-      await layoutButton(page, 1, layout).click();
+      await chooseLayout(page, 1, layout);
 
-      await expect(layoutButton(page, 1, layout)).toHaveAttribute(
+      await expect(await shownLayout(page, 1, layout)).toHaveAttribute(
         "aria-pressed",
         "true"
       );
@@ -442,11 +451,11 @@ test.describe("choosing a layout", () => {
   }
 
   test("shows the Row's current layout and no other", async ({ page }) => {
-    await expect(layoutButton(page, 1, "100")).toHaveAttribute(
+    await expect(await shownLayout(page, 1, "100")).toHaveAttribute(
       "aria-pressed",
       "true"
     );
-    await expect(layoutButton(page, 1, "50/50")).toHaveAttribute(
+    await expect(await shownLayout(page, 1, "50/50")).toHaveAttribute(
       "aria-pressed",
       "false"
     );
@@ -464,15 +473,17 @@ test.describe("choosing a layout", () => {
     await setValue(page, document);
     await expect(addToColumn(page)).toHaveCount(1);
 
+    await openLayoutPicker(page, 1);
     await expect(
       rowControls(page, 1).locator('[aria-pressed="true"]')
     ).toHaveCount(0);
+    await expect(rowControls(page, 1).getByRole("group")).toBeVisible();
   });
 
   test("switching to fewer Columns keeps every Block, ending in the last Column left", async ({
     page,
   }) => {
-    await layoutButton(page, 1, "33/33/33").click();
+    await chooseLayout(page, 1, "33/33/33");
     await addToColumn(page).first().click();
     await page.keyboard.type("Two");
     await expect(selectedBlock(page)).toHaveText("Two");
@@ -480,7 +491,7 @@ test.describe("choosing a layout", () => {
     await page.keyboard.type("Three");
     await expect(selectedBlock(page)).toHaveText("Three");
 
-    await layoutButton(page, 1, "50/50").click();
+    await chooseLayout(page, 1, "50/50");
 
     expect(await structure(page)).toStrictEqual([
       [["Hello"], ["Two", "Three"]],
@@ -489,12 +500,12 @@ test.describe("choosing a layout", () => {
   });
 
   test("keeps the moved Block's editor, focus and cursor", async ({ page }) => {
-    await layoutButton(page, 1, "50/50").click();
+    await chooseLayout(page, 1, "50/50");
     await addToColumn(page).click();
     await page.keyboard.type("abc");
     await expect(selectedBlock(page)).toHaveText("abc");
 
-    await layoutButton(page, 1, "100").click();
+    await chooseLayout(page, 1, "100");
 
     await expect(selectedBlock(page)).toHaveText("abc");
     await expect(selectedBlock(page)).toBeFocused();
@@ -506,27 +517,29 @@ test.describe("choosing a layout", () => {
   test("undo puts Blocks back in their Columns, still editable", async ({
     page,
   }) => {
-    await layoutButton(page, 1, "50/50").click();
+    await chooseLayout(page, 1, "50/50");
     await addToColumn(page).click();
     await page.keyboard.type("Right");
     await expect(selectedBlock(page)).toHaveText("Right");
-    await layoutButton(page, 1, "100").click();
+    await chooseLayout(page, 1, "100");
     expect(await structure(page)).toStrictEqual([[["Hello", "Right"]]]);
 
     await page.getByRole("button", { name: "Undo" }).click();
 
-    await expect(layoutButton(page, 1, "50/50")).toHaveAttribute(
+    await expect(await shownLayout(page, 1, "50/50")).toHaveAttribute(
       "aria-pressed",
       "true"
     );
     expect(await structure(page)).toStrictEqual([[["Hello"], ["Right"]]]);
+    // A press elsewhere closes the picker, which covers the text.
+    await page.mouse.click(5, 5);
     await textBlock(page).last().click();
     await page.keyboard.type("!");
     await expect(textBlock(page).last()).toHaveText("Right!");
   });
 
   test("is one undo step that also removes added Columns", async ({ page }) => {
-    await layoutButton(page, 1, "25/25/25/25").click();
+    await chooseLayout(page, 1, "25/25/25/25");
     await expect(addToColumn(page)).toHaveCount(3);
 
     await page.getByRole("button", { name: "Undo" }).click();
@@ -539,7 +552,7 @@ test.describe("choosing a layout", () => {
   test("choosing the current layout changes nothing and adds no undo step", async ({
     page,
   }) => {
-    await layoutButton(page, 1, "100").click();
+    await chooseLayout(page, 1, "100");
 
     await expect(page.getByTestId("change-count")).toHaveText("0");
     await page.getByRole("button", { name: "Undo" }).click();
@@ -547,9 +560,9 @@ test.describe("choosing a layout", () => {
   });
 
   test("gives each Row its own layout", async ({ page }) => {
-    await addRow(page).click();
+    await addRow(page);
 
-    await layoutButton(page, 2, "67/33").click();
+    await chooseLayout(page, 2, "67/33");
 
     expect(await widths(page, 0)).toStrictEqual([100]);
     expect(await widths(page, 1)).toStrictEqual([67, 33]);
@@ -558,11 +571,11 @@ test.describe("choosing a layout", () => {
 
 test.describe("structure changes and the rest of the editor", () => {
   test("the formatting toolbar acts on the moved Block", async ({ page }) => {
-    await layoutButton(page, 1, "50/50").click();
+    await chooseLayout(page, 1, "50/50");
     await addToColumn(page).click();
     await page.keyboard.type("x");
     await expect(selectedBlock(page)).toHaveText("x");
-    await layoutButton(page, 1, "100").click();
+    await chooseLayout(page, 1, "100");
     await expect(selectedBlock(page)).toBeFocused();
 
     await page.keyboard.press("ControlOrMeta+a");
@@ -585,22 +598,25 @@ test.describe("structure changes and the rest of the editor", () => {
     await expect(textBlock(page)).toHaveText("Hellox");
   });
 
-  test("a keyboard undo works with focus on a toolbar button", async ({
+  test("a keyboard undo works with focus on a Rows tab thumbnail", async ({
     page,
   }) => {
-    await addRow(page).click();
+    await addRow(page);
     await expect(rowControls(page, 2)).toBeVisible();
-    await addRow(page).focus();
+    await canvas(page)
+      .getByRole("group", { name: "Add a Row" })
+      .getByRole("button", { exact: true, name: "100" })
+      .focus();
 
     await undo(page);
 
     await expect(rowControls(page, 2)).toHaveCount(0);
   });
 
-  test("a keyboard undo works after clicking Add Row with nothing focused", async ({
+  test("a keyboard undo works after adding a Row with nothing focused", async ({
     page,
   }) => {
-    await addRow(page).click();
+    await addRow(page);
     await expect(rowControls(page, 2)).toBeVisible();
 
     await undo(page);
@@ -611,7 +627,7 @@ test.describe("structure changes and the rest of the editor", () => {
   test("a keyboard undo works after clicking a layout with nothing focused", async ({
     page,
   }) => {
-    await layoutButton(page, 1, "50/50").click();
+    await chooseLayout(page, 1, "50/50");
     await expect(addToColumn(page)).toHaveCount(1);
 
     await undo(page);
@@ -622,7 +638,7 @@ test.describe("structure changes and the rest of the editor", () => {
   test("a keyboard undo works after clicking Delete Row with nothing focused", async ({
     page,
   }) => {
-    await deleteRow(page, 1).click();
+    await deleteRow(page, 1);
     await expect(textBlock(page)).toHaveCount(0);
 
     await undo(page);
@@ -664,9 +680,9 @@ test.describe("structure changes and the rest of the editor", () => {
   test("a keyboard undo works with focus on a Row's controls", async ({
     page,
   }) => {
-    await addRow(page).click();
+    await addRow(page);
     await expect(rowControls(page, 2)).toBeVisible();
-    await layoutButton(page, 1, "50/50").focus();
+    await deleteRowButton(page, 1).focus();
 
     await undo(page);
 
@@ -692,7 +708,7 @@ test.describe("structure changes and the rest of the editor", () => {
   });
 
   test("host CSS doesn't reach the new controls", async ({ page }) => {
-    await expect(deleteRow(page, 1)).toHaveCSS(
+    await expect(deleteRowButton(page, 1)).toHaveCSS(
       "font-family",
       /system-ui|sans-serif/u
     );
@@ -702,7 +718,7 @@ test.describe("structure changes and the rest of the editor", () => {
   test("the button in an empty Column doesn't use the email's font", async ({
     page,
   }) => {
-    await layoutButton(page, 1, "50/50").click();
+    await chooseLayout(page, 1, "50/50");
 
     await expect(addToColumn(page)).toHaveCSS("font-size", "12px");
     await expect(addToColumn(page)).toHaveCSS(

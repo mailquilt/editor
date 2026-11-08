@@ -98,14 +98,15 @@ export const createBlockDragging = ({
   /**
    * Where a drop would land now, and the line that shows it. Blocks are counted
    * without the dragged one, as a move's index is. There's no landing far from the
-   * editor, which is how to abandon a drag, or on the toolbar, so that letting go
-   * of a palette item that barely moved adds nothing, or on the settings panel.
+   * editor, which is how to abandon a drag, or on the side panel, so that letting
+   * go of a palette item that barely moved adds nothing, or on the floating
+   * toolbar.
    */
   const landing = () => {
     const { position, source } = manager.dragOperation;
     const pointer = position.current;
     const email = root.querySelector(".email");
-    const controls = root.querySelectorAll(".toolbar, .settings");
+    const controls = root.querySelectorAll(".side-panel, .floating-toolbar");
     if (
       !email ||
       [...controls].some((element) => contains(element, pointer)) ||
@@ -128,15 +129,14 @@ export const createBlockDragging = ({
       (element) => midpointY(element) < pointer.y
     ).length;
     const next = items[index];
-    // A Row's controls come before it, and a new Row goes above those.
-    const nextEdge = column ? next : next?.previousElementSibling;
     const box = parent.getBoundingClientRect();
     return {
+      column,
       line: {
         left: box.left,
         width: box.width,
         y:
-          nextEdge?.getBoundingClientRect().top ??
+          next?.getBoundingClientRect().top ??
           items.at(-1)?.getBoundingClientRect().bottom ??
           box.top,
       },
@@ -146,12 +146,25 @@ export const createBlockDragging = ({
     };
   };
 
-  const showIndicator = (line?: { left: number; width: number; y: number }) => {
+  /** The line where a drop would land, and the Column it would land in. */
+  const showIndicator = (target?: ReturnType<typeof landing>) => {
     const email = root.querySelector(".email");
     const indicator = root.querySelector<HTMLElement>(".drop-indicator");
     if (!(email && indicator)) {
       return;
     }
+    const landsIn = target?.column as HTMLElement | undefined;
+    for (const column of email.querySelectorAll<HTMLElement>(
+      "[data-drop-target]"
+    )) {
+      if (column !== landsIn) {
+        delete column.dataset.dropTarget;
+      }
+    }
+    if (landsIn) {
+      landsIn.dataset.dropTarget = "";
+    }
+    const line = target?.line;
     indicator.hidden = !line;
     if (line) {
       const origin = email.getBoundingClientRect();
@@ -256,10 +269,14 @@ export const createBlockDragging = ({
   // Every frame, because scrolling moves what's under a pointer that keeps still.
   let frame = 0;
   const trackPointer = () => {
-    showIndicator(landing()?.line);
+    showIndicator(landing());
     frame = requestAnimationFrame(trackPointer);
   };
   manager.monitor.addEventListener("dragstart", () => {
+    const email = root.querySelector<HTMLElement>(".email");
+    if (email) {
+      email.dataset.dragging = "";
+    }
     scrollable = getScrollableAncestors(root.host, {
       escapeShadowDOM: true,
       excludeElement: false,
@@ -280,9 +297,11 @@ export const createBlockDragging = ({
   manager.monitor.addEventListener("dragend", ({ canceled, nativeEvent }) => {
     cancelAnimationFrame(frame);
     showIndicator();
-    root
-      .querySelector<HTMLElement>(".email")
-      ?.style.removeProperty("min-height");
+    const email = root.querySelector<HTMLElement>(".email");
+    if (email) {
+      delete email.dataset.dragging;
+      email.style.removeProperty("min-height");
+    }
     const { position, source } = manager.dragOperation;
     // An undo during the drag can take away the Block being dragged.
     if (!canceled && source?.element?.isConnected) {

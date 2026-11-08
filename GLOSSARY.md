@@ -34,6 +34,16 @@ _Avoid_: Action
 A recorded change that actually happened to an email. One Command produces one or more Operations.
 _Avoid_: Patch, event
 
+**Canvas**:
+The part of the editor that shows the email as a card at its own width, on a workspace background, where Blocks are selected, dragged and edited.
+
+**Side panel**:
+The panel docked on the right of the Canvas, with Content, Rows and Settings tabs, which shows the selected Block's and its Row's settings in their place.
+_Avoid_: Sidebar, inspector
+
+**Theme token**:
+A CSS custom property starting with `--mq-` that sets one of the editor's own colors, spaces, corners or fonts, and that a host can override on the element. It never changes the email.
+
 ### Product
 
 **Playground**:

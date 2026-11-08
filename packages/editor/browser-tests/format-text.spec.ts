@@ -8,8 +8,9 @@ const textBlock = (page: Page) =>
   page.getByRole("textbox", { name: "Text Block" }).first();
 const secondTextBlock = (page: Page) =>
   page.getByRole("textbox", { name: "Text Block" }).nth(1);
+/** The format bar shows while a Block's text is being edited. */
 const toolbarButton = (page: Page, name: string) =>
-  page.getByRole("group", { name: "Text formatting" }).getByRole("button", {
+  page.getByRole("toolbar", { name: "Text formatting" }).getByRole("button", {
     exact: true,
     name,
   });
@@ -206,12 +207,14 @@ test.describe("bold, italic and underline", () => {
 });
 
 test.describe("the toolbar", () => {
-  test("is disabled until a Block has been focused", async ({ page }) => {
-    await expect(toolbarButton(page, "Bold")).toBeDisabled();
+  test("shows only while a Block's text is being edited", async ({ page }) => {
+    await expect(toolbarButton(page, "Bold")).toHaveCount(0);
 
     await textBlock(page).click();
-
     await expect(toolbarButton(page, "Bold")).toBeEnabled();
+
+    await page.keyboard.press("Escape");
+    await expect(toolbarButton(page, "Bold")).toHaveCount(0);
   });
 
   test("keeps the selection and focus in the Block", async ({ page }) => {
@@ -293,6 +296,7 @@ test.describe("the toolbar", () => {
     await canvas(page).evaluate((element) => {
       element.setAttribute("style", "color: red; font-size: 50px");
     });
+    await textBlock(page).click();
 
     const button = toolbarButton(page, "Bold");
     await expect(button).toHaveCSS("font-size", "14px");
@@ -493,7 +497,7 @@ test.describe("links", () => {
 
     await expect(textBlock(page)).toHaveText("Hello");
     await expect(linkInput(page)).toBeHidden();
-    await expect(toolbarButton(page, "Bold")).toBeDisabled();
+    await expect(toolbarButton(page, "Bold")).toHaveCount(0);
   });
 
   test("clicking back into the Block closes the field", async ({ page }) => {

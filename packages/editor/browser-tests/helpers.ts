@@ -92,13 +92,103 @@ export const palette = (page: Page, name: string) =>
     .getByRole("group", { name: "Add content" })
     .getByRole("button", { exact: true, name });
 
+/**
+ * Shows a side panel tab. A selected Block's settings take the tabs' place, so
+ * this goes back to them first, and the Block stays selected.
+ */
+export const openTab = async (page: Page, name: string) => {
+  const back = canvas(page).getByRole("button", { exact: true, name: "Back" });
+  if (await back.isVisible()) {
+    await back.click();
+  }
+  const tab = canvas(page).getByRole("tab", { exact: true, name });
+  if ((await tab.getAttribute("aria-selected")) !== "true") {
+    await tab.click();
+  }
+};
+
+/** The Content tab's tile for a type of Block, with the tab showing. */
+export const showPalette = async (page: Page, name: string) => {
+  await openTab(page, "Content");
+  return palette(page, name);
+};
+
+/** Adds a Row with this layout from the Rows tab. */
+export const addRow = async (page: Page, layout = "100") => {
+  await openTab(page, "Rows");
+  await canvas(page)
+    .getByRole("group", { name: "Add a Row" })
+    .getByRole("button", { exact: true, name: layout })
+    .click();
+};
+
+export const rowTools = (page: Page, position: number) =>
+  canvas(page).getByRole("group", { exact: true, name: `Row ${position}` });
+
+/** A Row's toolbar shows on hover, so the pointer goes there first. */
+const hoverRow = (page: Page, position: number) =>
+  canvas(page)
+    .locator(".row")
+    .nth(position - 1)
+    .hover({ position: { x: 4, y: 4 } });
+
+/** An option in a Row's open layout picker. */
+export const layoutOption = (page: Page, position: number, layout: string) =>
+  rowTools(page, position)
+    .getByRole("group", { name: "Layout" })
+    .getByRole("button", { exact: true, name: layout });
+
+/** Chooses a Row's layout from its toolbar, with the mouse. */
+export const chooseLayout = async (
+  page: Page,
+  position: number,
+  layout: string
+) => {
+  await hoverRow(page, position);
+  await rowTools(page, position)
+    .getByRole("button", { name: "Change layout" })
+    .click();
+  await layoutOption(page, position, layout).click();
+};
+
+/** Opens a Row's layout picker, to see which layout it shows as current. */
+export const openLayoutPicker = async (page: Page, position: number) => {
+  const trigger = rowTools(page, position).getByRole("button", {
+    name: "Change layout",
+  });
+  if ((await trigger.getAttribute("aria-expanded")) !== "true") {
+    await hoverRow(page, position);
+    await trigger.click();
+  }
+};
+
+/** Deletes a Row from its toolbar, with the mouse. */
+export const deleteRow = async (page: Page, position: number) => {
+  await hoverRow(page, position);
+  await rowTools(page, position)
+    .getByRole("button", { name: "Delete Row" })
+    .click();
+};
+
+/** The selected Block's toolbar, on the canvas. */
+export const blockTool = (page: Page, name: string) =>
+  canvas(page)
+    .getByRole("toolbar", { name: "Block tools" })
+    .getByRole("button", { exact: true, name });
+
+/** The format bar, which shows while a Block's text is being edited. */
+export const formatButton = (page: Page, name: string) =>
+  canvas(page)
+    .getByRole("toolbar", { name: "Text formatting" })
+    .getByRole("button", { exact: true, name });
+
 export const blockGroup = (page: Page, name: string) =>
   canvas(page).getByRole("group", { name: `${name} Block` });
 
 export const panelBlock = (page: Page) =>
   page
     .getByRole("group", { name: "Settings" })
-    .getByRole("group", { exact: true, name: "Selected Block" });
+    .getByRole("group", { exact: true, name: "Block" });
 
 export const field = (page: Page, name: string) =>
   panelBlock(page).getByLabel(name, { exact: true });

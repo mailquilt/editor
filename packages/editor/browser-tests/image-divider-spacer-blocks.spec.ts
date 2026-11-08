@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 import type { BrowserContext, Locator, Page } from "@playwright/test";
 
 import {
+  addRow,
   blockGroup,
   blocks,
   blockTypes,
@@ -13,8 +14,10 @@ import {
   field,
   openBlocks as open,
   openExport,
+  openTab,
   palette,
   redo,
+  rowTools,
   settle,
   undo,
   violations,
@@ -98,19 +101,6 @@ const takesClickAt = (locator: Locator, offsetX: number, offsetY: number) =>
     [offsetX, offsetY]
   );
 
-/** A Spacer alone in Row 1, right between Row 1's and Row 2's controls. */
-const spacerBetweenRowControls = async (page: Page, height: string) => {
-  await open(page, ["spacer"]);
-  await blockGroup(page, "Spacer").focus();
-  await change(field(page, "Height (px)"), height);
-  await page.getByRole("button", { name: "Add Row" }).click();
-};
-
-const layoutOf = (page: Page, row: string) =>
-  page
-    .getByRole("group", { name: row })
-    .getByRole("button", { exact: true, name: "100" });
-
 const spacerHandle = (page: Page) =>
   blockGroup(page, "Spacer").locator(".drag-handle");
 
@@ -134,14 +124,19 @@ test.describe("the palette", () => {
   });
 
   for (const name of ["Text", ...NAMES]) {
-    test(`names ${withArticle(name)} correctly in its tooltip`, async ({
+    test(`names ${withArticle(name)} correctly in an empty Column's tooltip`, async ({
       page,
     }) => {
-      await open(page, ["text"]);
+      await open(page, ["text"], []);
 
-      await expect(palette(page, name)).toHaveAttribute(
-        "title",
-        `Add ${name} Block`
+      await page
+        .getByRole("button", {
+          name: `Add ${name} Block here, Row 1, Column 2`,
+        })
+        .hover();
+
+      await expect(canvas(page).getByRole("tooltip")).toHaveText(
+        `Add ${name} Block here`
       );
     });
   }
@@ -171,6 +166,7 @@ test.describe("the palette", () => {
     }) => {
       await open(page, ["text", "text"]);
       await blockGroup(page, "Text").first().focus();
+      await openTab(page, "Content");
       await palette(page, name).focus();
 
       await page.keyboard.press("Enter");
@@ -762,47 +758,31 @@ test.describe("a Spacer", () => {
     ).resolves.toBeTruthy();
   });
 
-  for (const height of ["1", "24"]) {
-    test(`leaves Row controls their clicks at a height of ${height}`, async ({
-      page,
-    }) => {
-      await spacerBetweenRowControls(page, height);
-      // Selects something else, as a selected Spacer's handle shows on top.
-      await page
-        .getByRole("button", { name: /^Add Text Block here, Row 2/u })
-        .click();
-      await expect(blockGroup(page, "Spacer")).not.toHaveAttribute(
-        "aria-current",
-        "true"
-      );
-      const above = await box(layoutOf(page, "Row 1"));
-
-      // Row 1's controls are above it, under the part that reaches up.
-      await expect(
-        takesClickAt(layoutOf(page, "Row 1"), above.width / 2, above.height - 3)
-      ).resolves.toBeTruthy();
-      // Row 2's are below it, under its hidden drag handle as well.
-      await expect(
-        takesClickAt(layoutOf(page, "Row 2"), 6, 3)
-      ).resolves.toBeTruthy();
-    });
-  }
-
-  test("covers a Row's control with its handle only as far as the handle goes", async ({
+  test("leaves its Row's toolbar its clicks, as thin as it gets", async ({
     page,
   }) => {
-    await spacerBetweenRowControls(page, "1");
+    await open(page, ["spacer"]);
+    await makeThin(page);
+    await addRow(page);
+    await blockGroup(page, "Spacer").focus();
 
-    await expect(blockGroup(page, "Spacer")).toHaveAttribute(
-      "aria-current",
-      "true"
-    );
-    await expect(
-      takesClickAt(layoutOf(page, "Row 2"), 6, 3)
-    ).resolves.toBeFalsy();
-    await expect(
-      takesClickAt(layoutOf(page, "Row 2"), 14, 12)
-    ).resolves.toBeTruthy();
+    for (const position of [1, 2]) {
+      const layout = rowTools(page, position).getByRole("button", {
+        name: "Change layout",
+      });
+      // A Row's toolbar takes clicks once it shows, on hover.
+      // oxlint-disable-next-line no-await-in-loop -- Each Row in turn.
+      await canvas(page)
+        .locator(".row")
+        .nth(position - 1)
+        .hover({ position: { x: 300, y: 0 } });
+      // oxlint-disable-next-line no-await-in-loop -- See above.
+      const { height, width } = await box(layout);
+      // oxlint-disable-next-line no-await-in-loop -- See above.
+      await expect(
+        takesClickAt(layout, width / 2, height / 2)
+      ).resolves.toBeTruthy();
+    }
   });
 
   test.describe("as thin as it gets", () => {
@@ -826,7 +806,7 @@ test.describe("a Spacer", () => {
     }) => {
       await open(page, ["spacer"]);
       await makeThin(page);
-      await page.getByRole("button", { name: "Add Row" }).click();
+      await addRow(page);
       await blockGroup(page, "Spacer").focus();
 
       await dragTo(
@@ -903,25 +883,45 @@ test.describe("a Spacer", () => {
   }
 });
 
-test.describe("a selected Block's drag handle", () => {
-  test("goes under the toolbar when the page scrolls", async ({ page }) => {
-    await open(page, ["text"]);
-    await page.setViewportSize({ height: 300, width: 1280 });
-    await blockGroup(page, "Text").focus();
+test.describe("the floating toolbar", () => {
+  test("stays above the email when the page scrolls it underneath", async ({
+    page,
+  }) => {
+    await open(page, [
+      "text",
+      "spacer",
+      "text",
+      "spacer",
+      "text",
+      "spacer",
+      "text",
+      "spacer",
+      "text",
+      "spacer",
+    ]);
+    await page.setViewportSize({ height: 400, width: 1000 });
+    await page.addStyleTag({
+      content:
+        "main { padding: 0 !important } mail-quilt { width: 1000px !important }",
+    });
+    await blockGroup(page, "Text").first().focus();
 
-    const onTop = await blockGroup(page, "Text")
-      .locator(".drag-handle")
-      .evaluate((handle) => {
-        const root = handle.getRootNode() as ShadowRoot;
-        const toolbar = root.querySelector(".toolbar") as Element;
-        // To the top of the window, where the toolbar sticks.
-        window.scrollBy(0, handle.getBoundingClientRect().y);
-        const { height, width, x, y } = handle.getBoundingClientRect();
-        const hit = root.elementFromPoint(x + width / 2, y + height / 2);
-        return { handle: hit === handle, toolbar: toolbar.contains(hit) };
-      });
+    const onTop = await canvas(page).evaluate((host) => {
+      const root = host.shadowRoot as ShadowRoot;
+      const toolbar = root.querySelector(".floating-toolbar") as Element;
+      const email = root.querySelector(".email") as Element;
+      // Halfway down the email, which goes on below the window.
+      window.scrollBy(0, email.getBoundingClientRect().y);
+      const { height, width, x, y } = toolbar.getBoundingClientRect();
+      const under = email.getBoundingClientRect();
+      const hit = root.elementFromPoint(x + width / 2, y + height / 2);
+      return {
+        emailUnder: under.left < x + width && under.bottom > y,
+        toolbar: toolbar.contains(hit),
+      };
+    });
 
-    expect(onTop).toEqual({ handle: false, toolbar: true });
+    expect(onTop).toEqual({ emailUnder: true, toolbar: true });
   });
 });
 

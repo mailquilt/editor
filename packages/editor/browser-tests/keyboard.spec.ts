@@ -3,6 +3,8 @@ import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
 import {
+  addRow,
+  blockTool,
   canvas,
   emailWith,
   setValue,
@@ -16,8 +18,16 @@ const blockWith = (page: Page, text: string) =>
     .getByRole("group", { name: "Text Block" })
     .filter({ hasText: text });
 
-const deleteBlock = (page: Page) =>
-  page.getByRole("button", { name: "Delete Block" });
+const deleteBlock = (page: Page) => blockTool(page, "Delete Block");
+
+/** Back to the side panel's tabs from the keyboard, the Block still selected. */
+const backToTabs = async (page: Page) => {
+  await canvas(page).getByRole("button", { exact: true, name: "Back" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(
+    canvas(page).getByRole("tab", { name: "Content" })
+  ).toBeFocused();
+};
 
 const open = async (page: Page, rows: string[][][]) => {
   await page.goto("/");
@@ -77,13 +87,16 @@ const violations = async (page: Page) => {
   }));
 };
 
-/** How far below the sticky toolbar an element starts; negative if behind it. */
-const gapBelowToolbar = async (page: Page, text: string) => {
+/**
+ * How far below the top of the window a Block and its toolbar start, and so
+ * negative if they're cut off there.
+ */
+const gapBelowTop = async (page: Page, text: string) => {
   const block = await blockWith(page, text).boundingBox();
-  const toolbar = await page
-    .getByRole("group", { name: "Email tools" })
+  const toolbar = await blockWith(page, text)
+    .getByRole("toolbar", { name: "Block tools" })
     .boundingBox();
-  return (block?.y ?? 0) - ((toolbar?.y ?? 0) + (toolbar?.height ?? 0));
+  return Math.min(block?.y ?? 0, toolbar?.y ?? 0);
 };
 
 /** Where the Block "L" is in the only Column of the only Row. */
@@ -113,7 +126,7 @@ test.describe("selecting a Block", () => {
     page,
   }) => {
     await open(page, [[["First"], ["Second"]]]);
-    await expect(deleteBlock(page)).toBeDisabled();
+    await expect(deleteBlock(page)).toHaveCount(0);
 
     await canvas(page).getByRole("button", { name: "Delete Row" }).focus();
     await page.keyboard.press("Tab");
@@ -123,13 +136,17 @@ test.describe("selecting a Block", () => {
       "aria-current",
       "true"
     );
-    await expect(deleteBlock(page)).toBeEnabled();
+    await expect(deleteBlock(page)).toBeVisible();
     await expect(structure(page)).resolves.toEqual([[["First"], ["Second"]]]);
 
     await page.keyboard.press("Tab");
     await expect(
       blockWith(page, "First").getByRole("textbox", { name: "Text Block" })
     ).toBeFocused();
+
+    // The selected Block's toolbar is one stop.
+    await page.keyboard.press("Tab");
+    await expect(blockTool(page, "Move Block up")).toBeFocused();
 
     await page.keyboard.press("Tab");
     await expect(blockWith(page, "Second")).toBeFocused();
@@ -358,18 +375,22 @@ const moveButton = (page: Page, direction: string) =>
   page.getByRole("button", { name: `Move Block ${direction}` });
 
 test.describe("moving a Block with toolbar buttons", () => {
-  test("they need a selected Block", async ({ page }) => {
+  test("only the selected Block has them", async ({ page }) => {
     await open(page, [[["A"]]]);
     await Promise.all(
       DIRECTIONS.map((direction) =>
-        expect(moveButton(page, direction)).toBeDisabled()
+        expect(moveButton(page, direction)).toHaveCount(0)
       )
     );
 
     await blockWith(page, "A").focus();
     await Promise.all(
       DIRECTIONS.map((direction) =>
-        expect(moveButton(page, direction)).toBeEnabled()
+        expect(
+          blockWith(page, "A").getByRole("button", {
+            name: `Move Block ${direction}`,
+          })
+        ).toBeEnabled()
       )
     );
   });
@@ -533,7 +554,7 @@ test.describe("announcing a move", () => {
     await open(page, [[["A", "B"]]]);
     await blockWith(page, "A").focus();
     await page.keyboard.press("Alt+ArrowDown");
-    await page.getByRole("button", { name: "Add Row" }).click();
+    await addRow(page);
     await expect(announcement(page)).not.toBeEmpty();
 
     await page.getByRole("button", { name: "Undo" }).click();
@@ -760,6 +781,7 @@ test.describe("Enter on a palette item", () => {
   }) => {
     await open(page, [[["A", "B"], ["C"]]]);
     await blockWith(page, "A").focus();
+    await backToTabs(page);
     await paletteText(page).focus();
 
     await page.keyboard.press("Enter");
@@ -845,9 +867,14 @@ test.describe("labels and focus states", () => {
 
   test("the toolbar's move buttons name their shortcut", async ({ page }) => {
     await open(page, [[["A"]]]);
+    await blockWith(page, "A").focus();
 
     await expect(moveButton(page, "up")).toHaveAttribute(
-      "title",
+      "aria-keyshortcuts",
+      "Alt+ArrowUp"
+    );
+    await moveButton(page, "up").hover();
+    await expect(canvas(page).getByRole("tooltip")).toHaveText(
       "Move Block up (Alt+↑)"
     );
   });
@@ -894,7 +921,7 @@ test.describe("labels and focus states", () => {
   const TWELVE = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"];
 
   for (const width of [1000, 420]) {
-    test(`a selected Block isn't hidden behind the toolbar at ${width}px wide`, async ({
+    test(`a selected Block and its toolbar stay in view at ${width}px wide`, async ({
       page,
     }) => {
       await page.setViewportSize({ height: 600, width });
@@ -906,14 +933,14 @@ test.describe("labels and focus states", () => {
         await page.keyboard.press("ArrowUp");
         await expect(blockWith(page, text)).toBeFocused();
         await expect
-          .poll(() => gapBelowToolbar(page, text))
+          .poll(() => gapBelowTop(page, text))
           .toBeGreaterThanOrEqual(0);
       }
       // oxlint-enable no-await-in-loop
     });
   }
 
-  test("a Block moved from the keyboard stays clear of the toolbar", async ({
+  test("a Block moved from the keyboard stays in view with its toolbar", async ({
     page,
   }) => {
     await page.setViewportSize({ height: 500, width: 1000 });
@@ -924,9 +951,7 @@ test.describe("labels and focus states", () => {
     for (const expected of [10, 9, 8, 7, 6, 5, 4, 3, 2, 1]) {
       await page.keyboard.press("Alt+ArrowUp");
       await expect.poll(() => positionOfL(page)).toBe(expected);
-      await expect
-        .poll(() => gapBelowToolbar(page, "L"))
-        .toBeGreaterThanOrEqual(0);
+      await expect.poll(() => gapBelowTop(page, "L")).toBeGreaterThanOrEqual(0);
     }
     // oxlint-enable no-await-in-loop
     await expect(blockWith(page, "L")).toBeFocused();
@@ -947,9 +972,7 @@ test.describe("labels and focus states", () => {
       await expect.poll(() => positionOfL(page)).toBe(expected);
     }
     // oxlint-enable no-await-in-loop
-    await expect
-      .poll(() => gapBelowToolbar(page, "L"))
-      .toBeGreaterThanOrEqual(0);
+    await expect.poll(() => gapBelowTop(page, "L")).toBeGreaterThanOrEqual(0);
     await expect(blockWith(page, "L")).toBeInViewport();
   });
 
@@ -983,9 +1006,8 @@ test.describe("automated accessibility checks", () => {
   test("reach inside the Shadow DOM", async ({ page }) => {
     await open(page, [[["A"]]]);
     await canvas(page).evaluate((host) => {
-      const undo = host.shadowRoot?.querySelector(".toolbar button");
-      undo?.replaceChildren();
-      undo?.removeAttribute("title");
+      const undo = host.shadowRoot?.querySelector(".floating-toolbar button");
+      undo?.removeAttribute("aria-label");
     });
 
     expect(await violations(page)).toEqual([
