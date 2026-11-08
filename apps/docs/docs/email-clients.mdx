@@ -1,0 +1,19 @@
+---
+title: Tested email clients
+description: Which email clients the HTML that Mail Quilt exports has been checked in. Gmail and Apple Mail will be checked before 0.1.0, and Outlook is untested.
+sidebar:
+  order: 3
+---
+
+Mail Quilt builds an email's HTML with [MJML](https://mjml.io), which is made for the layouts email clients can render. Each client still renders email in its own way, so this page says where the exported HTML has been checked.
+
+| Client           | Status                                                    |
+| ---------------- | --------------------------------------------------------- |
+| Gmail            | To be checked with real emails before the `0.1.0` release |
+| Apple Mail       | To be checked with real emails before the `0.1.0` release |
+| Outlook          | Untested                                                  |
+| Any other client | Untested                                                  |
+
+**Outlook is untested.** No email from Mail Quilt has been checked in any version of Outlook. The HTML relies on MJML's Outlook support alone, so if your emails go to Outlook users, send yourself a test there before you rely on it.
+
+Testing in more clients can come later. To ask for one, or to report how an email looks in a client, open an issue on [GitHub](https://github.com/yourcodebuddy-in/mailquilt/issues).

@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
-const PLAYGROUND = "/mailquilt/playground";
+const PLAYGROUND = "/playground";
 const SAVED_EMAIL_KEY = "mailquilt:playground:email";
 
 const textBlock = (page: Page) =>

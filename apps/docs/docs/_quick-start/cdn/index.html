@@ -2,16 +2,15 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Mail Quilt CDN install check</title>
+    <title>Email editor</title>
   </head>
   <body>
     <mail-quilt></mail-quilt>
     <button id="export" type="button">Export HTML</button>
-    <output data-testid="exported-html"></output>
-    <output data-testid="load-error"></output>
+    <output id="exported-html"></output>
+    <output id="load-error"></output>
     <script type="module">
-      // prepare.ts fills in the port.
-      import "http://localhost:CDN_PORT/dist/cdn/index.js";
+      import "https://cdn.jsdelivr.net/npm/@mailquilt/editor@0.1.0/dist/cdn/index.js";
 
       import { starterEmail } from "./starter-email.js";
 
@@ -22,13 +21,12 @@
         localStorage.setItem("email", JSON.stringify(event.detail.document));
       });
       editor.addEventListener("mq-error", (event) => {
-        document.querySelector("[data-testid=load-error]").textContent =
-          event.detail.reason;
+        document.querySelector("#load-error").textContent = event.detail.reason;
       });
       editor.value = saved ? JSON.parse(saved) : starterEmail;
 
       document.querySelector("#export").addEventListener("click", async () => {
-        document.querySelector("[data-testid=exported-html]").textContent =
+        document.querySelector("#exported-html").textContent =
           await editor.exportHtml();
       });
     </script>

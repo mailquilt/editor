@@ -1,0 +1,176 @@
+---
+title: Document format
+description: "The JSON format Mail Quilt saves emails in: Rows, Columns and Blocks, every Block's props, and which colors, links and sizes the editor accepts."
+sidebar:
+  order: 2
+---
+
+Mail Quilt saves an email as a JSON document: Rows hold Columns, and Columns hold Blocks. This is the document `mq-change` gives you and `value` takes, so you can store it anywhere JSON goes.
+
+The editor never repairs a document. If one doesn't match this format, the editor refuses it, keeps the email it had, and fires `mq-error` with the reason. A field the editor doesn't know is refused too, rather than dropped, so your next save can't lose it.
+
+## Example
+
+<div data-testid="example-email">
+
+<include meta='title="email.json"'>
+  ./_document-format/example-email.json
+</include>
+
+</div>
+
+## Document
+
+| Field | Value |
+| --- | --- |
+| `kind` | Always `"blocks"`. |
+| `version` | The format version, a whole number. The current version is `1`, and a newer one is refused. When the format changes, documents saved in an older version will be upgraded as they load. |
+| `settings` | The [email settings](#email-settings). |
+| `rows` | A list of [Rows](#row), top to bottom. It can be empty. |
+
+## Email settings
+
+| Field | Value |
+| --- | --- |
+| `width` | Required. The email's width, a whole number of pixels, 1 or more. |
+| `backgroundColor` | Required. A [color](#colors). |
+| `fontFamily` | Required. A CSS font list, such as `"Arial, Helvetica, sans-serif"`. The settings panel offers Arial, Courier New, Georgia, Tahoma, Times New Roman and Verdana. |
+| `preheader` | Optional. The short text inboxes show after the subject. |
+| `language` | Optional. The email's language. The settings panel only accepts a language code such as `en` or `pt-BR`, but a saved document loads with any text here, so an email with a bad value can still be opened and fixed. |
+
+## Row
+
+| Field | Value |
+| --- | --- |
+| `id` | An [ID](#ids). |
+| `props` | An object with one optional field, `backgroundColor`, a [color](#colors). |
+| `columns` | A list of 1 to 4 [Columns](#column), left to right. |
+
+## Column
+
+| Field | Value |
+| --- | --- |
+| `id` | An [ID](#ids). |
+| `width` | A percentage of the Row, from 1 to 100, so a Column is at least 1% wide. The widths of a Row's Columns add up to 100. The editor's layouts use `100`, `50`/`50`, `33`/`67`, `67`/`33`, `33.33`/`33.33`/`33.34` and four Columns of `25`. Other widths load, but the layout picker shows none of its layouts as chosen. |
+| `props` | Always an empty object, `{}`. |
+| `blocks` | A list of [Blocks](#blocks), top to bottom. It can be empty. |
+
+## Blocks
+
+Every Block has an `id`, which is an [ID](#ids), a `type` from the list below, and `props` for that type. A field marked optional can be left out, and the default is what the email shows without it.
+
+### Text
+
+`"type": "text"`
+
+| Prop | Value |
+| --- | --- |
+| `content` | Required. [Rich text](#rich-text). |
+| `align` | Optional. `"left"`, `"center"` or `"right"`. Defaults to `"left"`. |
+| `color` | Optional. A [color](#colors). Defaults to `#000000`. |
+| `fontSize` | Optional. A whole number of pixels from 1 to 200. Defaults to `16`. |
+
+### Heading
+
+`"type": "heading"`
+
+| Prop | Value |
+| --- | --- |
+| `level` | Required. `1`, `2` or `3`. |
+| `content` | Required. [Rich text](#rich-text). A Heading exports as one heading, however many lines it has. |
+| `align` | Optional. `"left"`, `"center"` or `"right"`. Defaults to `"left"`. |
+| `color` | Optional. A [color](#colors). Defaults to `#000000`. |
+| `fontSize` | Optional. A whole number of pixels from 1 to 200. Defaults to `32`, `24` or `20` for levels 1, 2 and 3. |
+
+### Image
+
+`"type": "image"`
+
+| Prop | Value |
+| --- | --- |
+| `src` | Optional. The image's URL, starting with `https:` or `http:`, or a [Merge Tag](#merge-tags) such as `{{logo_url}}`. A new Image has none until someone adds one. |
+| `alt` | Optional. What a screen reader says, and what shows if images are off. |
+| `width` | Optional. A whole number of pixels, 1 or more. Without it, the image fills the Column, and it never grows wider than the Column. |
+| `href` | Optional. A [link](#links). A linked Image needs `alt` text that isn't blank, because the alt text is all that names the link. |
+
+### Button
+
+`"type": "button"`
+
+| Prop | Value |
+| --- | --- |
+| `label` | Required. The Button's text, as plain text that isn't blank. |
+| `href` | Optional. A [link](#links). |
+| `backgroundColor` | Optional. A [color](#colors) that isn't `rgba()`, because a see-through one would come out darker than it should. Defaults to `#2563eb`. |
+| `color` | Optional. The text's [color](#colors). Defaults to `#ffffff`. |
+| `align` | Optional. `"left"`, `"center"` or `"right"`. Defaults to `"left"`. |
+
+### Divider
+
+`"type": "divider"`
+
+| Prop | Value |
+| --- | --- |
+| `color` | Optional. A [color](#colors). Defaults to `#d4d4d8`. |
+| `thickness` | Optional. A whole number of pixels from 1 to 100. Defaults to `1`. |
+
+### Spacer
+
+`"type": "spacer"`
+
+| Prop | Value |
+| --- | --- |
+| `height` | Optional. A whole number of pixels from 1 to 1000. Defaults to `24`. |
+
+## Rich text
+
+Text and Heading Blocks store their text as a limited form of [Tiptap](https://tiptap.dev) JSON:
+
+```json
+{
+  "type": "doc",
+  "content": [
+    {
+      "type": "paragraph",
+      "content": [
+        { "type": "text", "text": "Hello, " },
+        { "type": "text", "text": "world", "marks": [{ "type": "bold" }] },
+        { "type": "hardBreak" },
+        {
+          "type": "text",
+          "text": "Visit us",
+          "marks": [
+            { "type": "link", "attrs": { "href": "https://example.com" } }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+- `doc` holds one or more paragraphs.
+- A `paragraph` has an optional `content` list, which leaves it empty when it's missing.
+- A `text` item has `text`, which can't be empty, and optional `marks`.
+- A `hardBreak` is a line break inside a paragraph. It can have `marks` too.
+- The marks are `bold`, `italic`, `underline` and `link`. A link mark has `attrs.href`, which is a [link](#links). A piece of text can't have the same mark twice.
+
+Nothing else is accepted, such as lists, headings inside text, colors or other marks.
+
+## Values
+
+### IDs
+
+An ID is a string that isn't empty. Every Row, Column and Block in a document needs a different one. The editor creates random IDs for what it adds.
+
+### Colors
+
+A color is written as `#rgb`, `#rrggbb`, `rgb()` or `rgba()`, such as `#f00`, `#ff0000`, `rgb(255, 0, 0)` or `rgba(255, 0, 0, 0.5)`. Named colors such as `red` are refused. These are the formats MJML accepts, so every email that opens can also be exported.
+
+### Links
+
+A link starts with `https:`, `http:`, `mailto:` or `tel:`, or with a [Merge Tag](#merge-tags) such as `{{cta_url}}`. Other schemes, such as `javascript:`, and relative URLs are refused.
+
+### Merge Tags
+
+A Merge Tag such as `{{first_name}}` can go anywhere in text, and at the start of a link or image URL. Mail Quilt keeps it as written in the exported HTML, so your sending tool can fill it in. In a URL that starts with a Merge Tag, no colon can come between the tag and the first `/`, `?` or `#`, so `{{base}}/path` is a link but `{{x}}javascript:` isn't.

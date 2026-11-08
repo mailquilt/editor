@@ -9,8 +9,8 @@ import type { ChangeEvent } from "react";
 // server-rendered.
 export const client = "only";
 
-// The prefix, because every project page of a GitHub organization shares one
-// origin, and so one localStorage.
+// The prefix, because other apps on the same origin, such as other projects on
+// localhost, share its localStorage.
 const SAVED_EMAIL_KEY = "mailquilt:playground:email";
 
 const createStarterEmail = () => {

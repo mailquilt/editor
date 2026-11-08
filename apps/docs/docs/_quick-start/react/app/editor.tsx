@@ -4,45 +4,7 @@ import { MailQuilt } from "@mailquilt/react";
 import type { BlocksDocument, MailQuiltElement } from "@mailquilt/react";
 import { useRef, useState } from "react";
 
-const starterEmail: BlocksDocument = {
-  kind: "blocks",
-  rows: [
-    {
-      columns: [
-        {
-          blocks: [
-            {
-              id: "block-1",
-              props: {
-                content: {
-                  content: [
-                    {
-                      content: [{ text: "Hello", type: "text" }],
-                      type: "paragraph",
-                    },
-                  ],
-                  type: "doc",
-                },
-              },
-              type: "text",
-            },
-          ],
-          id: "column-1",
-          props: {},
-          width: 100,
-        },
-      ],
-      id: "row-1",
-      props: {},
-    },
-  ],
-  settings: {
-    backgroundColor: "#ffffff",
-    fontFamily: "Arial, Helvetica, sans-serif",
-    width: 600,
-  },
-  version: 1,
-};
+import { starterEmail } from "./starter-email";
 
 /** Nothing on the page shows the email until the browser has it, so this can't mismatch. */
 const savedEmail = (): BlocksDocument | undefined => {
@@ -57,6 +19,7 @@ export const Editor = () => {
   const editor = useRef<MailQuiltElement>(null);
   const [email, setEmail] = useState(savedEmail);
   const [html, setHtml] = useState("");
+  const [loadError, setLoadError] = useState("");
 
   return (
     <main>
@@ -65,6 +28,7 @@ export const Editor = () => {
           localStorage.setItem("email", JSON.stringify(next));
           setEmail(next);
         }}
+        onError={({ reason }) => setLoadError(reason)}
         ref={editor}
         value={email}
       />
@@ -76,7 +40,8 @@ export const Editor = () => {
       >
         Export HTML
       </button>
-      <output data-testid="exported-html">{html}</output>
+      <output id="exported-html">{html}</output>
+      <output id="load-error">{loadError}</output>
     </main>
   );
 };

@@ -1,56 +1,44 @@
 ---
-title: Mail Quilt
-description: A free, MIT-licensed email builder you can embed in any framework.
+title: Introduction
+description: Mail Quilt is a free, MIT-licensed drag-and-drop email builder you can embed in any web app, as a Web Component or a React component.
+seo:
+  title: Mail Quilt, a free email builder you can embed in any web app
 ---
 
-Mail Quilt is an email builder that developers embed in their apps.
+## What people can do with it
 
-[Try the Playground](./playground)
+Add `<mail-quilt>` to a page, and the people using your app can design emails without writing HTML:
 
-## Use it without a bundler
+- Build an email from Text, Heading, Image, Button, Divider and Spacer Blocks.
+- Lay it out in Rows of one to four Columns.
+- Drag Blocks in from the palette, and drag them to reorder them or move them to another Column. Everything they can do by dragging, they can also do with the keyboard.
+- Make text bold, italic or underlined, add links, and write Merge Tags such as `{{first_name}}`.
+- Change the settings of each Block and Row, and of the email as a whole.
+- Undo and redo every change.
+- Preview the exact HTML the email will be sent as.
 
-On a page with no build step, such as in Rails, Laravel or plain HTML, load the CDN build from a `<script type="module">`:
+To see it for yourself, open the [Playground](./playground). There's nothing to install.
 
-```html
-<mail-quilt></mail-quilt>
-<button id="export" type="button">Export</button>
-<script type="module">
-  import "https://cdn.jsdelivr.net/npm/@mailquilt/editor@0.1.0/dist/cdn/index.js";
+## How it works
 
-  const editor = document.querySelector("mail-quilt");
-  editor.addEventListener("mq-change", (event) => {
-    save(event.detail.document);
-  });
-  editor.addEventListener("mq-error", (event) => {
-    showLoadError(event.detail.reason);
-  });
-  editor.value = savedDocument;
+Your app keeps the emails. The editor works on a JSON document, and after every change it hands you the new one. Save it wherever you like, such as in your database, and give it back to the editor to open the email again. The [document format](./document-format) page describes it.
 
-  document.querySelector("#export").addEventListener("click", async () => {
-    send(await editor.exportHtml());
-  });
-</script>
-```
+When an email is ready, the editor turns it into HTML with [MJML](https://mjml.io), which writes the table-based markup that email clients need. Merge Tags stay in the HTML as written, so the service that sends your email can fill them in.
 
-MJML loads from a file beside the build the first time Preview or `exportHtml()` needs it.
+Mail Quilt doesn't send email, store emails for you, or run a server. It's a component that lives in your app.
 
-- **Use the full path to `dist/cdn/index.js`.** A shortened URL, such as `https://cdn.jsdelivr.net/npm/@mailquilt/editor`, doesn't point at this build.
-- **Pin the version.** Each release can rename the MJML file, so an unpinned URL can ask for a file the latest release no longer has.
+## Add it to your app
 
-## Content Security Policy
+- **Any framework, or none:** `@mailquilt/editor` registers the `<mail-quilt>` element. Load it through your bundler, or from a CDN on a page with no build step.
+- **React:** `@mailquilt/react` wraps it as a `MailQuilt` component, which also works with server rendering.
 
-Preview shows the email in a sandboxed iframe, and that iframe inherits your page's Content Security Policy. Emails rely on inline styles, so Preview needs `'unsafe-inline'` in `style-src`:
+The [quick start](./quick-start) has working code for each. Wrappers for Vue and Svelte are planned.
 
-```text
-Content-Security-Policy: style-src 'self' 'unsafe-inline'
-```
+## Before you rely on it
 
-Without it, Preview shows the email without its styling. The editor and `exportHtml()` aren't affected, and the exported HTML is unchanged.
+- Mail Quilt is at version `0.x`, so its API can still change between releases.
+- The HTML it exports hasn't been checked in Outlook. The [tested email clients](./email-clients) page has the details.
 
-A page using the CDN build also needs `script-src` to allow the folder holding the build, because the build is several files. The path must end in `/`:
+## Follow along
 
-```text
-Content-Security-Policy: script-src 'self' https://cdn.jsdelivr.net/npm/@mailquilt/editor@0.1.0/dist/cdn/
-```
-
-If that allows only `dist/cdn/index.js`, the editor doesn't load. An inline script like the one above also needs a nonce or hash, or you can move it to a file of your own.
+The [roadmap](https://github.com/yourcodebuddy-in/mailquilt/issues) lives in GitHub Issues. Comment on what's planned there, or open an issue to report a problem.
