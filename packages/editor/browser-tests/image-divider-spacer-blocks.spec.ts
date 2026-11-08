@@ -765,24 +765,27 @@ test.describe("a Spacer", () => {
     await makeThin(page);
     await addRow(page);
     await blockGroup(page, "Spacer").focus();
+    const selectRowIn = (position: number) =>
+      rowTools(page, position).getByRole("button", { name: "Select Row" });
+    const takesClicks = async (position: number) => {
+      const { height, width } = await box(selectRowIn(position));
+      return takesClickAt(selectRowIn(position), width / 2, height / 2);
+    };
 
-    for (const position of [1, 2]) {
-      const layout = rowTools(page, position).getByRole("button", {
-        name: "Select Row",
-      });
-      // A Row's toolbar takes clicks once it shows, on hover.
-      // oxlint-disable-next-line no-await-in-loop -- Each Row in turn.
-      await canvas(page)
-        .locator(".row")
-        .nth(position - 1)
-        .hover({ position: { x: 300, y: 0 } });
-      // oxlint-disable-next-line no-await-in-loop -- See above.
-      const { height, width } = await box(layout);
-      // oxlint-disable-next-line no-await-in-loop -- See above.
-      await expect(
-        takesClickAt(layout, width / 2, height / 2)
-      ).resolves.toBeTruthy();
-    }
+    // A Row's toolbar takes clicks once it shows, on hover.
+    await canvas(page)
+      .locator(".row")
+      .nth(1)
+      .hover({ position: { x: 300, y: 0 } });
+    await expect(takesClicks(2)).resolves.toBeTruthy();
+
+    // The Spacer's own Row shows its toolbar once its tag selects the Row.
+    await canvas(page)
+      .locator(".row")
+      .first()
+      .hover({ position: { x: 300, y: 0 } });
+    await canvas(page).locator(".row-tag").first().click();
+    await expect(takesClicks(1)).resolves.toBeTruthy();
   });
 
   test.describe("as thin as it gets", () => {

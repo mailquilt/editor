@@ -351,7 +351,8 @@ test.describe("dragging a Row", () => {
     });
 
     const to = await belowMiddleOf(page, 2);
-    await pickUp(page, await grip(page, 1, "handle"));
+    // Its toolbar is hidden while its Block is selected, so by its tag.
+    await pickUp(page, await grip(page, 1, "tag"));
     await moveTo(page, ...to);
     await letGo(page);
     await expect(structure(page)).resolves.toEqual([[["Two"]], [["OneA"]]]);
@@ -365,6 +366,42 @@ test.describe("dragging a Row", () => {
     await expect(structure(page)).resolves.toEqual([[["OneA"]], [["Two"]]]);
     await page.keyboard.press("ControlOrMeta+z");
     await expect(structure(page)).resolves.toEqual([[["One"]], [["Two"]]]);
+  });
+
+  test("leaves focus on a selected Row's tools", async ({ page }) => {
+    await open(page, [[["One"]], [["Two"]], [["Three"]]]);
+    await selectRow(page, 1);
+    const to = await belowMiddleOf(page, 2);
+
+    await pickUp(page, await grip(page, 1, "handle"));
+    await moveTo(page, ...to);
+    await letGo(page);
+
+    await expect(selectRowButton(page, 2)).toBeFocused();
+    await page.keyboard.press("Alt+ArrowDown");
+    await expect(structure(page)).resolves.toEqual([
+      [["Two"]],
+      [["Three"]],
+      [["One"]],
+    ]);
+  });
+
+  test("Alt+↓ does nothing while it's being dragged", async ({ page }) => {
+    await open(page, [[["One"]], [["Two"]]]);
+    await selectRow(page, 1);
+
+    await pickUp(page, await grip(page, 1, "handle"));
+    await page.keyboard.press("Alt+ArrowDown");
+    await page.keyboard.press("Escape");
+    await letGo(page);
+
+    await expect(structure(page)).resolves.toEqual([[["One"]], [["Two"]]]);
+  });
+
+  test("its tag takes a touch for a drag, not a scroll", async ({ page }) => {
+    await open(page, [[["One"]]]);
+
+    await expect(await grip(page, 1, "tag")).toHaveCSS("touch-action", "none");
   });
 });
 

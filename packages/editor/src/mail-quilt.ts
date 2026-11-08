@@ -98,14 +98,13 @@ const MOVE_BUTTONS: { direction: Direction; keys: string; shortcut: string }[] =
     { direction: "right", keys: "Alt+→", shortcut: "Alt+ArrowRight" },
   ];
 
-const ROW_MOVE_BUTTONS: {
-  direction: "down" | "up";
-  keys: string;
-  shortcut: string;
-}[] = [
-  { direction: "up", keys: "Alt+↑", shortcut: "Alt+ArrowUp" },
-  { direction: "down", keys: "Alt+↓", shortcut: "Alt+ArrowDown" },
-];
+type MoveButton = (typeof MOVE_BUTTONS)[number];
+
+/** A Block's up and down, which also move a Row. */
+const ROW_MOVE_BUTTONS = MOVE_BUTTONS.filter(
+  (button): button is MoveButton & { direction: "down" | "up" } =>
+    button.direction === "up" || button.direction === "down"
+);
 
 type PanelTab = "content" | "rows" | "settings";
 
@@ -517,6 +516,8 @@ export class MailQuilt extends LitElement {
         padding: 0 8px;
         pointer-events: none;
         position: absolute;
+        /* It drags the Row, which a touch would otherwise scroll the page for. */
+        touch-action: none;
         z-index: 4;
       }
 
@@ -844,7 +845,8 @@ export class MailQuilt extends LitElement {
         width: auto;
       }
 
-      .block-toolbar .drag-handle {
+      .block-toolbar .drag-handle,
+      .row-toolbar .drag-handle {
         background: none;
         border: 0;
         border-radius: var(--mq-radius-small);
@@ -883,8 +885,12 @@ export class MailQuilt extends LitElement {
         z-index: 4;
       }
 
-      .row-frame:hover > .row-toolbar,
-      .row-frame[data-selected] > .row-toolbar,
+      /*
+       * Not while one of its Blocks is selected, which has tools of its own. Its
+       * tag still shows on hover, and selects the Row.
+       */
+      .row-frame:hover:not(:has([aria-current="true"])) > .row-toolbar,
+      .row-frame[data-row-selected] > .row-toolbar,
       .row-toolbar:focus-within {
         opacity: 1;
         pointer-events: auto;
@@ -903,17 +909,6 @@ export class MailQuilt extends LitElement {
 
       .row-toolbar > .bar {
         flex-direction: column;
-      }
-
-      .row-toolbar .drag-handle {
-        background: none;
-        border: 0;
-        border-radius: var(--mq-radius-small);
-        box-shadow: none;
-        height: 22px;
-        opacity: 1;
-        position: static;
-        width: 28px;
       }
 
       .row-toolbar .drag-handle:hover {
@@ -1795,9 +1790,6 @@ export class MailQuilt extends LitElement {
     }
     const { rows, settings } = document;
     const selected = this.#selectedPosition(document);
-    // The Row with tools showing: the selected Row, or the selected Block's.
-    const activeRowId =
-      this.#selectedRowId ?? (selected && rows[selected.rowIndex]?.id);
 
     return html`
       ${this.#renderPreview()}
@@ -1843,7 +1835,6 @@ export class MailQuilt extends LitElement {
                   class="row-frame"
                   data-row-id=${row.id}
                   ?data-row-selected=${row.id === this.#selectedRowId}
-                  ?data-selected=${row.id === activeRowId}
                 >
                   <div
                     aria-hidden="true"
@@ -1904,7 +1895,7 @@ export class MailQuilt extends LitElement {
   }
 
   /**
-   * Beside the Row, on hover, on focus, and while one of its Blocks is selected.
+   * Beside the Row, on hover, on focus, and while the Row is selected.
    * Alt+↑ and Alt+↓ move the Row from here, as the Move buttons say.
    */
   #renderRowToolbar(row: Row, index: number, count: number) {
@@ -1928,7 +1919,7 @@ export class MailQuilt extends LitElement {
             type="button"
             @click=${() => this.#selectRow(row.id)}
           >
-            ${ICONS.rows}
+            ${ICONS.select}
           </button>
           ${ROW_MOVE_BUTTONS.map(
             ({ direction, keys, shortcut }) => html`
@@ -2999,15 +2990,18 @@ export class MailQuilt extends LitElement {
       this.#publishStructure();
       await this.updateComplete;
       // dnd-kit puts the dragged Row back in the page, which takes focus from
-      // anything in it. The selection stays, so it gets focus back, in its text
-      // if that's where it was.
+      // anything in it. The selection stays, so it gets focus back: in its text if
+      // that's where it was, or on the selected Row's tools.
       if (!this.shadowRoot?.activeElement) {
         const block =
           this.#activeBlockId === undefined
             ? undefined
             : this.#blockElement(this.#activeBlockId);
         const view = this.#editingText ? this.#activeView : undefined;
-        (view ?? block ?? this.#floatingToolbar)?.focus();
+        const rowTool = this.renderRoot.querySelector<HTMLElement>(
+          ".row-frame[data-row-selected] .row-toolbar button"
+        );
+        (view ?? block ?? rowTool ?? this.#floatingToolbar)?.focus();
       }
       return;
     }
@@ -3195,6 +3189,10 @@ export class MailQuilt extends LitElement {
   }
 
   #onRowToolbarKeydown(event: KeyboardEvent, rowId: string) {
+    // The Rows would change under a drag that's still going.
+    if (this.#dragging?.isDragging()) {
+      return;
+    }
     const direction = arrowDirection(event);
     if (event.altKey && (direction === "up" || direction === "down")) {
       event.preventDefault();
