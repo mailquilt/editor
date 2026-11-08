@@ -7,7 +7,12 @@ import {
   canvas,
   currentValue,
   emailWith,
+  addRow,
+  chooseLayout,
   exportHtml,
+  selectRow,
+  openTab,
+  showPalette,
   setValue,
   structure,
   textBlock,
@@ -20,7 +25,7 @@ const section = (page: Page, name: string) =>
 
 const email = (page: Page) => section(page, "Email");
 const row = (page: Page) => section(page, "Row");
-const block = (page: Page) => section(page, "Selected Block");
+const block = (page: Page) => section(page, "Block");
 
 const field = (page: Page, name: string, within = email(page)) =>
   within.getByLabel(name, { exact: true });
@@ -80,7 +85,7 @@ const expectNamedWithFocusRing = async (control: Locator) => {
   await control.focus();
   await expect(control).toBeFocused();
   await expect(control).toHaveCSS("outline-style", "solid");
-  await expect(control).toHaveCSS("outline-color", "rgb(37, 99, 235)");
+  await expect(control).toHaveCSS("outline-color", "rgb(51, 85, 255)");
   const named = await control.evaluate((element) => {
     const { labels } = element as HTMLInputElement;
     return (labels?.length ?? 0) > 0 || element.hasAttribute("aria-label");
@@ -94,11 +99,10 @@ const typeFontSize = async (page: Page, size: string) => {
   await field(page, "Font size (px)", block(page)).fill(size);
 };
 
-const addText = (page: Page) =>
-  page
-    .getByRole("group", { name: "Add content" })
-    .getByRole("button", { name: "Text" })
-    .click();
+const addText = async (page: Page) => {
+  const text = await showPalette(page, "Text");
+  await text.click();
+};
 
 const inHostOf = async (page: Page, width: number) => {
   await page.addStyleTag({
@@ -109,6 +113,7 @@ const inHostOf = async (page: Page, width: number) => {
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
   await expect(textBlock(page)).toBeVisible();
+  await openTab(page, "Settings");
 });
 
 test.describe("the panel", () => {
@@ -122,23 +127,24 @@ test.describe("the panel", () => {
     await expect(field(page, "Language")).toHaveValue("");
     await expect(block(page)).toHaveCount(0);
     await expect(row(page)).toHaveCount(0);
-    await expect(
-      page.getByText("Select a Block to change it and its Row.")
-    ).toBeVisible();
   });
 
-  test("shows the settings of the selected Block and its Row", async ({
-    page,
-  }) => {
+  test("shows the settings of the selected Block alone", async ({ page }) => {
     await textBlock(page).click();
 
     await expect(field(page, "Alignment", block(page))).toHaveValue("left");
     await expect(field(page, "Color", block(page))).toHaveValue("#000000");
     await expect(field(page, "Font size (px)", block(page))).toHaveValue("16");
+    await expect(row(page)).toHaveCount(0);
+    await expect(email(page)).toHaveCount(0);
+  });
+
+  test("shows the settings of the selected Row", async ({ page }) => {
+    await selectRow(page, 1);
+
     await expect(field(page, "Background color", row(page))).toHaveValue("");
-    await expect(
-      page.getByText("Select a Block to change it and its Row.")
-    ).toHaveCount(0);
+    await expect(block(page)).toHaveCount(0);
+    await expect(email(page)).toHaveCount(0);
   });
 
   test("follows the selection", async ({ page }) => {
@@ -255,7 +261,7 @@ test.describe("Text settings", () => {
 test.describe("Row settings", () => {
   test("look the same on the canvas and in the export", async ({ page }) => {
     await setValue(page, emailWith([[["In"]], [["Out"]]]));
-    await canvas(page).getByText("In", { exact: true }).click();
+    await selectRow(page, 1);
 
     await change(field(page, "Background color", row(page)), "#00ff00");
 
@@ -277,7 +283,7 @@ test.describe("Row settings", () => {
   });
 
   test("lose the color when emptied", async ({ page }) => {
-    await textBlock(page).click();
+    await selectRow(page, 1);
     await change(field(page, "Background color", row(page)), "#00ff00");
 
     await change(field(page, "Background color", row(page)), "");
@@ -366,13 +372,18 @@ test.describe("undo", () => {
     await textBlock(page).click();
     await change(field(page, "Color", block(page)), "#ff0000");
     await field(page, "Alignment", block(page)).selectOption("right");
+    await selectRow(page, 1);
     await change(field(page, "Background color", row(page)), "#00ff00");
+    await openTab(page, "Settings");
     await change(field(page, "Width (px)"), "500");
 
     await undo(page);
     await expect(field(page, "Width (px)")).toHaveValue("600");
+    await selectRow(page, 1);
     await undo(page);
     await expect(field(page, "Background color", row(page))).toHaveValue("");
+    // A click on the Block shows its settings again.
+    await textBlock(page).click();
     await undo(page);
     await expect(field(page, "Alignment", block(page))).toHaveValue("left");
     await expect(field(page, "Color", block(page))).toHaveValue("#ff0000");
@@ -549,6 +560,7 @@ test.describe("typing in a field", () => {
     await textBlock(page).click();
     await page.keyboard.type("Hi");
     const before = await structure(page);
+    await openTab(page, "Settings");
 
     await field(page, "Preheader").click();
     await page.keyboard.type("Typed here");
@@ -560,12 +572,11 @@ test.describe("typing in a field", () => {
 });
 
 test.describe("text that hasn't been committed", () => {
-  test("is committed when a toolbar button is pressed", async ({ page }) => {
+  test("is committed when Back is pressed", async ({ page }) => {
     await typeFontSize(page, "24");
 
-    await page
-      .getByRole("group", { name: "Add content" })
-      .getByRole("button", { name: "Text" })
+    await canvas(page)
+      .getByRole("button", { exact: true, name: "Back" })
       .click();
 
     expect(await blockProps(page)).toMatchObject({ fontSize: 24 });
@@ -577,7 +588,7 @@ test.describe("text that hasn't been committed", () => {
   test("is one undo step apart from the button's own", async ({ page }) => {
     await typeFontSize(page, "24");
 
-    await page.getByRole("button", { exact: true, name: "Add Row" }).click();
+    await addRow(page);
     await undo(page);
 
     expect(await structure(page)).toHaveLength(1);
@@ -589,7 +600,7 @@ test.describe("text that hasn't been committed", () => {
   test("is committed when a Row control is pressed", async ({ page }) => {
     await typeFontSize(page, "24");
 
-    await page.getByRole("button", { exact: true, name: "50/50" }).click();
+    await chooseLayout(page, 1, "50/50");
 
     expect(await blockProps(page)).toMatchObject({ fontSize: 24 });
   });
@@ -627,7 +638,8 @@ test.describe("text that hasn't been committed", () => {
   test("still shows why when a button is pressed", async ({ page }) => {
     await field(page, "Language").fill("English");
 
-    await page.getByRole("button", { exact: true, name: "Add Row" }).click();
+    await addRow(page);
+    await openTab(page, "Settings");
 
     await expect(email(page).getByRole("alert")).toHaveCount(1);
     await expect(field(page, "Language")).toHaveValue("English");
@@ -643,13 +655,14 @@ test.describe("focus", () => {
     await canvas(page)
       .getByRole("button", { name: /Add Text Block/u })
       .click();
+    await expect(block(page)).toBeVisible();
+    await openTab(page, "Settings");
     const width = field(page, "Width (px)");
     await width.click();
-    await expect(block(page)).toBeVisible();
 
     await undo(page);
 
-    await expect(block(page)).toHaveCount(0);
+    await expect(textBlock(page)).toHaveCount(0);
     await expect(width).toBeFocused();
   });
 
@@ -658,12 +671,15 @@ test.describe("focus", () => {
   }) => {
     await setValue(page, emailWith([[[]]]));
     await addText(page);
+    await openTab(page, "Settings");
     const language = field(page, "Language");
     await language.click();
     await undo(page);
-    await expect(block(page)).toHaveCount(0);
+    await expect(textBlock(page)).toHaveCount(0);
 
     await redo(page);
+
+    await expect(textBlock(page)).toHaveCount(1);
 
     await expect(language).toBeFocused();
     await page.keyboard.type("en");
@@ -727,7 +743,7 @@ test.describe("the color picker", () => {
     const document = emailWith([[["Hi"]]]);
     document.settings.backgroundColor = "#123456";
     await setValue(page, document);
-    await canvas(page).getByText("Hi", { exact: true }).click();
+    await selectRow(page, 1);
 
     await expect(field(page, "Background color", row(page))).toHaveValue("");
     await expect(field(page, "Background color picker", row(page))).toHaveValue(
@@ -739,7 +755,7 @@ test.describe("the color picker", () => {
     const document = emailWith([[["Hi"]]]);
     document.settings.backgroundColor = "#000000";
     await setValue(page, document);
-    await canvas(page).getByText("Hi", { exact: true }).click();
+    await selectRow(page, 1);
 
     await field(page, "Background color picker", row(page)).fill("#ffffff");
 
@@ -752,34 +768,66 @@ test.describe("layout", () => {
   test("puts the panel below rather than squeeze the email", async ({
     page,
   }) => {
-    await inHostOf(page, 800);
+    for (const width of [700, 900]) {
+      // oxlint-disable-next-line no-await-in-loop -- Each width in turn.
+      await inHostOf(page, width);
+      const onCanvas = canvas(page).locator(".email");
+      // oxlint-disable-next-line no-await-in-loop -- See above.
+      await expect(onCanvas).toHaveCSS("width", "600px");
+      // oxlint-disable-next-line no-await-in-loop -- See above.
+      const emailBox = await onCanvas.boundingBox();
+      // oxlint-disable-next-line no-await-in-loop -- See above.
+      const panelBox = await canvas(page).locator(".side-panel").boundingBox();
+      // oxlint-disable-next-line no-await-in-loop -- See above.
+      const hostBox = await canvas(page).boundingBox();
+      expect(panelBox?.y).toBeGreaterThanOrEqual(
+        (emailBox?.y ?? 0) + (emailBox?.height ?? 0)
+      );
+      // Below, it takes the editor's whole width.
+      expect(panelBox?.width).toBe(hostBox?.width);
+    }
+  });
 
-    const onCanvas = canvas(page).locator(".email");
-    await expect(onCanvas).toHaveCSS("width", "600px");
-    const emailBox = await onCanvas.boundingBox();
-    const panelBox = await page
-      .getByRole("group", { name: "Settings" })
-      .boundingBox();
+  test("keeps the panel docked on the right when the email fits beside it", async ({
+    page,
+  }) => {
+    await inHostOf(page, 1100);
+
+    const emailBox = await canvas(page).locator(".email").boundingBox();
+    const panelBox = await canvas(page).locator(".side-panel").boundingBox();
+    const hostBox = await canvas(page).boundingBox();
+    expect(panelBox?.y).toBe(hostBox?.y);
+    expect(panelBox?.x).toBeGreaterThanOrEqual(
+      (emailBox?.x ?? 0) + (emailBox?.width ?? 0)
+    );
+    expect((panelBox?.x ?? 0) + (panelBox?.width ?? 0)).toBe(
+      (hostBox?.x ?? 0) + (hostBox?.width ?? 0)
+    );
+  });
+
+  test("puts the panel below for a wider email that no longer fits", async ({
+    page,
+  }) => {
+    await inHostOf(page, 1100);
+
+    await change(field(page, "Width (px)"), "800");
+
+    await expect(canvas(page).locator(".email")).toHaveCSS("width", "800px");
+    const emailBox = await canvas(page).locator(".email").boundingBox();
+    const panelBox = await canvas(page).locator(".side-panel").boundingBox();
     expect(panelBox?.y).toBeGreaterThanOrEqual(
       (emailBox?.y ?? 0) + (emailBox?.height ?? 0)
     );
   });
 
-  test("keeps them side by side when both fit", async ({ page }) => {
+  test("shows the email at its width when there's room", async ({ page }) => {
     await inHostOf(page, 1000);
 
-    const emailBox = await canvas(page).locator(".email").boundingBox();
-    const panelBox = await page
-      .getByRole("group", { name: "Settings" })
-      .boundingBox();
-    expect(panelBox?.y).toBe(emailBox?.y);
-    expect(panelBox?.x).toBeGreaterThanOrEqual(
-      (emailBox?.x ?? 0) + (emailBox?.width ?? 0)
-    );
+    await expect(canvas(page).locator(".email")).toHaveCSS("width", "600px");
   });
 
   test("follows the email's width", async ({ page }) => {
-    await inHostOf(page, 1000);
+    await inHostOf(page, 1400);
 
     await change(field(page, "Width (px)"), "900");
 
@@ -789,12 +837,15 @@ test.describe("layout", () => {
 
 test.describe("dragging", () => {
   test("adds nothing when dropped on the panel", async ({ page }) => {
+    await openTab(page, "Content");
     const before = await structure(page);
     const palette = page
       .getByRole("group", { name: "Add content" })
       .getByRole("button", { name: "Text" });
     const from = await palette.boundingBox();
-    const to = await field(page, "Preheader").boundingBox();
+    const to = await canvas(page)
+      .getByRole("tab", { name: "Settings" })
+      .boundingBox();
     if (!(from && to)) {
       throw new Error("Nothing to drag");
     }
@@ -818,20 +869,39 @@ test.describe("accessibility", () => {
   test("has no violations while showing a refused value", async ({ page }) => {
     await textBlock(page).click();
     await change(field(page, "Color", block(page)), "red");
+    expect(await violations(page)).toStrictEqual([]);
+    await openTab(page, "Settings");
     await change(field(page, "Language"), "English");
 
     expect(await violations(page)).toStrictEqual([]);
   });
 
   test("names every control and shows where focus is", async ({ page }) => {
-    await textBlock(page).click();
     const controls = page
       .getByRole("group", { name: "Settings" })
       .locator("input, select");
-    await expect(controls).toHaveCount(12);
+    await expect(controls).toHaveCount(6);
+    await textBlock(page).click();
+    await expect(controls).toHaveCount(4);
+    const blockControls = await controls.all();
+    await selectRow(page, 1);
+    await expect(controls).toHaveCount(2);
+    const rowControls = await controls.all();
+    await openTab(page, "Settings");
+    const emailControls = await controls.all();
 
     // One at a time, because each one takes focus from the last.
-    for (const control of await controls.all()) {
+    for (const control of emailControls) {
+      // oxlint-disable-next-line no-await-in-loop -- See above.
+      await expectNamedWithFocusRing(control);
+    }
+    await selectRow(page, 1);
+    for (const control of rowControls) {
+      // oxlint-disable-next-line no-await-in-loop -- See above.
+      await expectNamedWithFocusRing(control);
+    }
+    await textBlock(page).click();
+    for (const control of blockControls) {
       // oxlint-disable-next-line no-await-in-loop -- See above.
       await expectNamedWithFocusRing(control);
     }

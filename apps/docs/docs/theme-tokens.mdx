@@ -1,0 +1,73 @@
+---
+title: Theme tokens
+description: Match the editor to your app by changing its colors, spacing, corners and font with CSS custom properties on the mail-quilt element.
+sidebar:
+  order: 3
+---
+
+The editor draws everything it owns from tokens: the workspace around the email, the side panel, the toolbars on the canvas and the tooltips. Each token is a CSS custom property whose name starts with `--mq-`. Set one on the `<mail-quilt>` element, and the editor uses your value instead of its default.
+
+```css title="styles.css"
+mail-quilt {
+  --mq-font-family: "Inter", system-ui, sans-serif;
+  --mq-color-accent: #7c3aed;
+  --mq-color-accent-strong: #6d28d9;
+  --mq-color-accent-soft: rgb(124 58 237 / 10%);
+  --mq-color-outline-hover: rgb(124 58 237 / 45%);
+  --mq-radius: 12px;
+}
+```
+
+The React component renders the same `<mail-quilt>` element, so the same selector works there.
+
+The editor doesn't take its color, font or background from your page, so it looks the same on a light page and a dark one until you change a token. The defaults below are a light theme. If you set darker colors, check that text stays readable against them.
+
+The email itself never uses these tokens. The card in the middle of the canvas shows the email's own background color, font and width, which people change in the side panel's Settings tab, so it looks the way it will when it's sent.
+
+## Font
+
+| Token | Default | What it changes |
+| --- | --- | --- |
+| `--mq-font-family` | `system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif` | The font of every control, label and tooltip. |
+| `--mq-font-size` | `13px` | The size of text in the panel, the fields and the buttons. |
+| `--mq-font-size-small` | `12px` | Hints, field descriptions, a Block's place under its name, an empty Column's placeholder, the names on tiles and thumbnails, and tooltips. |
+
+## Colors
+
+| Token | Default | What it changes |
+| --- | --- | --- |
+| `--mq-color-workspace` | `#eeeff1` | The background around the email card. |
+| `--mq-color-surface` | `#ffffff` | The side panel, the toolbars, the selected tab, fields, tiles and an empty Column's placeholder. |
+| `--mq-color-surface-muted` | `#f5f6f7` | Disabled fields, layout thumbnails and the circle behind an empty Column's plus. |
+| `--mq-color-surface-hover` | `#eceef0` | The track behind the tabs, and a button under the pointer. |
+| `--mq-color-text` | `#16181d` | Text and icons, the tag of the selected Block or Row, the selected Block's toolbar, and the badge in the side panel. |
+| `--mq-color-text-muted` | `#5f6570` | Field labels, hints, descriptions, units, icons at rest and tabs that aren't selected. |
+| `--mq-color-border` | `#e4e6ea` | The frame around the editor, borders around toolbars, tiles and tabs, the rules between groups of settings, and a lighter mix with `--mq-color-border-strong` for the side panel's edge. |
+| `--mq-color-border-strong` | `#8b919b` | Field borders, mixed lighter at rest and in full under the pointer, an empty Column's placeholder, and a lighter mix around layout thumbnails. |
+| `--mq-color-accent` | `#3355ff` | The outline of the selected Block or Row, the tag of one under the pointer, focus rings, the selected tab's icon, the drop line and highlighted drop targets. |
+| `--mq-color-accent-strong` | `#2340d6` | The outline of a Block with keyboard focus, and the text and icons of pressed controls. |
+| `--mq-color-accent-soft` | `rgb(51 85 255 / 10%)` | The background of pressed buttons, of a Block with keyboard focus and of the Column a drop will land in, the ring around a focused field, and layout thumbnails under the pointer. |
+| `--mq-color-outline-hover` | `rgb(51 85 255 / 45%)` | The outline of a Block or Row under the pointer, and of Columns while a Block is dragged. |
+| `--mq-color-on-accent` | `#ffffff` | Text on an accent background, such as a Block's tag and the link field's Apply button. |
+| `--mq-color-danger` | `#c42b1c` | Error messages, refused fields, and delete buttons under the pointer. |
+| `--mq-color-tooltip` | `#16181d` | The tooltip's background. |
+| `--mq-color-on-tooltip` | `#f7f7f8` | The tooltip's text. |
+
+## Spacing
+
+| Token | Default | What it changes |
+| --- | --- | --- |
+| `--mq-space-1` | `4px` | The space between an empty Column's buttons, and other small gaps. |
+| `--mq-space-2` | `8px` | The space between tiles, beside a Row and inside an empty Column. |
+| `--mq-space-3` | `12px` | The padding around the side panel's tabs and header, and inside tiles. |
+| `--mq-space-4` | `16px` | The padding of each group of settings, and how far the floating toolbar sits from the bottom of the window. |
+| `--mq-space-5` | `24px` | The space between the email and the floating toolbar. |
+
+## Corners and shadows
+
+| Token | Default | What it changes |
+| --- | --- | --- |
+| `--mq-radius-small` | `6px` | The corners of icon buttons, tags and tooltips. |
+| `--mq-radius` | `10px` | The corners of tiles, toolbars, the tabs, the type badge and the Preview. |
+| `--mq-shadow-small` | `0 1px 2px rgb(22 24 29 / 8%)` | The shadow under a Block's drag handle, text buttons and a tile under the pointer. |
+| `--mq-shadow` | `0 0 0 1px rgb(22 24 29 / 4%), 0 2px 4px rgb(22 24 29 / 4%), 0 12px 32px -8px rgb(22 24 29 / 14%)` | The shadow under toolbars, tooltips and the Preview. |

@@ -149,7 +149,8 @@ const Playground = () => {
   };
 
   return (
-    <div style={{ display: "grid", gap: "1rem", padding: "1rem" }}>
+    // No side padding, so the editor lines up with the page's title.
+    <div style={{ display: "grid", gap: "1rem", padding: "1rem 0" }}>
       {cantSave && <p role="alert">{CANT_SAVE}</p>}
       {notice && <p role="alert">{notice}</p>}
       <MailQuilt onChange={keepEmail} ref={canvas} value={document} />

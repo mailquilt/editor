@@ -106,3 +106,67 @@ test("every page's links and assets resolve", async ({
     ])
   );
 });
+
+test("the header offers the Playground on every page but the Playground", async ({
+  page,
+}) => {
+  const cta = () =>
+    page.getByRole("banner").getByRole("link", { name: "Try the Playground" });
+
+  for (const path of ["/", "/quick-start", "/theme-tokens"]) {
+    // oxlint-disable-next-line no-await-in-loop -- One page at a time.
+    await page.goto(path);
+    // oxlint-disable-next-line no-await-in-loop -- See above.
+    await expect(cta()).toHaveAttribute("href", "/playground");
+  }
+
+  await page.goto("/playground");
+  await expect(page.getByRole("banner")).toBeVisible();
+  await expect(cta()).toHaveCount(0);
+});
+
+const collapse = (text: string) => text.replaceAll(/\s+/gu, " ").trim();
+
+test("the theme tokens page lists every token, with its default", async ({
+  page,
+}) => {
+  await page.goto("/playground");
+  await expect(page.getByRole("textbox", { name: "Text Block" })).toBeVisible();
+  /** The editor's own tokens, from its stylesheet: name, then default. */
+  const tokens = await page.locator("mail-quilt").evaluate((host) => {
+    const root = host.shadowRoot as ShadowRoot;
+    const sheets = [
+      ...root.adoptedStyleSheets,
+      ...[...root.querySelectorAll("style")].flatMap(({ sheet }) =>
+        sheet ? [sheet] : []
+      ),
+    ];
+    return sheets.flatMap((sheet) =>
+      [...sheet.cssRules].flatMap((rule) =>
+        rule instanceof CSSStyleRule && rule.selectorText === ":host"
+          ? [...rule.style]
+              .filter((name) => name.startsWith("--mq-"))
+              .map((name) => [name, rule.style.getPropertyValue(name)])
+          : []
+      )
+    );
+  });
+
+  await page.goto("/theme-tokens");
+  const rows = page.getByRole("main").getByRole("row");
+
+  // So a stylesheet the test can't read can't pass.
+  expect(tokens.length).toBeGreaterThan(20);
+  for (const [name, value] of tokens) {
+    const row = rows.filter({
+      has: page.getByRole("cell", { exact: true, name }),
+    });
+    // oxlint-disable-next-line no-await-in-loop -- One token at a time.
+    await expect(row).toHaveCount(1);
+    // oxlint-disable-next-line no-await-in-loop -- See above.
+    expect(collapse((await row.textContent()) ?? "")).toContain(
+      collapse(value ?? "")
+    );
+  }
+  await expect(rows).toHaveCount(tokens.length + 4);
+});

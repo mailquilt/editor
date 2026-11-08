@@ -40,107 +40,216 @@ export interface SettingsPanelEvents {
 }
 
 export const settingsPanelStyles = css`
-  /* Like the canvas, this stops inherited values from the host element. */
   .settings {
-    all: initial;
-    background: #ffffff;
-    border-inline-start: 1px solid #d4d4d8;
-    box-sizing: border-box;
-    color: #18181b;
     display: flex;
-    flex: 1 1 280px;
     flex-direction: column;
-    font-family: system-ui, sans-serif;
-    font-size: 14px;
-    gap: 16px;
-    line-height: 1.5;
-    max-height: calc(100dvh - var(--toolbar-height, 0px));
-    overflow-y: auto;
-    padding: 12px;
-    position: sticky;
-    top: var(--toolbar-height, 0px);
+  }
+
+  /* One group of fields, set off from the next by a hairline. */
+  .settings .section {
+    border-bottom: 1px solid var(--mq-color-border);
+    padding: var(--mq-space-4) var(--mq-space-4) 20px;
+  }
+
+  .settings .section:last-child {
+    border-bottom: 0;
   }
 
   .settings fieldset {
     border: 0;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 14px;
     margin: 0;
     min-width: 0;
     padding: 0;
   }
 
+  /* Floated, so the legend lays out in the fieldset like any other heading. */
   .settings legend {
+    float: left;
+    font-size: var(--mq-font-size);
     font-weight: 600;
-    margin-block-end: 4px;
-    padding: 0;
-  }
-
-  .settings > p,
-  .settings .field p {
-    margin: 0;
-  }
-
-  .settings .field p {
-    font-size: 12px;
-  }
-
-  .settings .description {
-    color: #52525b;
-  }
-
-  .settings .error {
-    color: #b91c1c;
-  }
-
-  .settings label {
-    display: block;
-  }
-
-  .settings input,
-  .settings select {
-    background: #ffffff;
-    border: 1px solid #71717a;
-    border-radius: 4px;
-    box-sizing: border-box;
-    color: inherit;
-    font: inherit;
-    min-height: 28px;
-    min-width: 0;
-    padding: 0 6px;
+    letter-spacing: -0.005em;
+    padding: 0 0 2px;
     width: 100%;
   }
 
+  .settings legend + * {
+    clear: both;
+  }
+
+  .settings .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  /* The label on the left and the control on the right, as a settings row. */
+  .settings .field.inline {
+    align-items: center;
+    display: grid;
+    gap: 6px var(--mq-space-3);
+    grid-template-columns: minmax(0, 1fr) 136px;
+  }
+
+  .settings .field.inline > p {
+    grid-column: 1 / -1;
+  }
+
+  .settings label {
+    color: var(--mq-color-text-muted);
+    display: block;
+    font-size: var(--mq-font-size);
+  }
+
+  .settings .field p {
+    font-size: var(--mq-font-size-small);
+    line-height: 1.4;
+    margin: 0;
+  }
+
+  .settings .description {
+    color: var(--mq-color-text-muted);
+  }
+
+  .settings .error {
+    color: var(--mq-color-danger);
+  }
+
+  /* White fields with a defined edge, so an empty one still reads as a field. */
+  .settings input,
+  .settings select {
+    background-color: var(--mq-color-surface);
+    border: 1px solid
+      color-mix(
+        in srgb,
+        var(--mq-color-border-strong) 45%,
+        var(--mq-color-border)
+      );
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgb(22 24 29 / 4%);
+    color: var(--mq-color-text);
+    height: 32px;
+    min-width: 0;
+    padding: 0 10px;
+    transition:
+      border-color 120ms,
+      box-shadow 120ms;
+    width: 100%;
+  }
+
+  .settings input:hover:not(:disabled, :focus),
+  .settings select:hover:not(:focus) {
+    border-color: var(--mq-color-border-strong);
+  }
+
+  .settings input::placeholder {
+    color: var(--mq-color-text-muted);
+    opacity: 1;
+  }
+
   .settings input:disabled {
-    background: #f4f4f5;
-    color: #71717a;
+    background-color: var(--mq-color-surface-muted);
+    border-color: var(--mq-color-border);
+    box-shadow: none;
+    color: var(--mq-color-text-muted);
+    cursor: not-allowed;
+  }
+
+  .settings select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%235f6570' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.75' viewBox='0 0 24 24'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E");
+    background-position: right 8px center;
+    background-repeat: no-repeat;
+    cursor: pointer;
+    padding-inline-end: 32px;
+    text-overflow: ellipsis;
   }
 
   .settings [aria-invalid="true"] {
-    border-color: #b91c1c;
+    border-color: var(--mq-color-danger);
   }
 
   /* Not :focus-visible, which browsers leave off a select pressed with a mouse. */
   .settings input:focus,
   .settings select:focus {
-    outline: 2px solid #2563eb;
-    outline-offset: 1px;
+    border-color: transparent;
+    box-shadow: 0 0 0 4px var(--mq-color-accent-soft);
+    outline: 2px solid var(--mq-color-accent);
+    outline-offset: -1px;
   }
 
+  .settings .unit-field {
+    position: relative;
+  }
+
+  .settings .unit-field input {
+    -moz-appearance: textfield;
+    padding-inline-end: 34px;
+  }
+
+  .settings .unit-field input::-webkit-inner-spin-button,
+  .settings .unit-field input::-webkit-outer-spin-button {
+    appearance: none;
+    margin: 0;
+  }
+
+  .settings .unit {
+    color: var(--mq-color-text-muted);
+    font-size: var(--mq-font-size-small);
+    inset-block: 0;
+    inset-inline-end: 10px;
+    line-height: 32px;
+    pointer-events: none;
+    position: absolute;
+  }
+
+  /* The swatch sits inside the start of the field, as one control. */
   .settings .color {
-    display: flex;
-    gap: 4px;
+    position: relative;
+  }
+
+  .settings .color input[type="text"] {
+    padding-inline-start: 38px;
   }
 
   .settings input[type="color"] {
-    flex: none;
-    padding: 2px;
-    width: 32px;
+    background: none;
+    border: 0;
+    border-radius: 6px;
+    box-shadow: none;
+    cursor: pointer;
+    height: 24px;
+    inset-block-start: 4px;
+    inset-inline-start: 5px;
+    padding: 0;
+    position: absolute;
+    width: 26px;
+    z-index: 1;
+  }
+
+  .settings input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+  }
+
+  .settings input[type="color"]::-webkit-color-swatch {
+    border: 0;
+    border-radius: 5px;
+    box-shadow: inset 0 0 0 1px rgb(0 0 0 / 12%);
+  }
+
+  .settings input[type="color"]::-moz-color-swatch {
+    border: 0;
+    border-radius: 5px;
+    box-shadow: inset 0 0 0 1px rgb(0 0 0 / 12%);
   }
 `;
 
 const NO_COLOR = "#ffffff";
+
+/** Short controls sit beside their label. Text that runs long gets the row. */
+const INLINE_TYPES = new Set<string>(["color", "number", "select"]);
 
 /** A color input only takes #rrggbb, and the text field shows what was saved. */
 const hexColor = (color: string) => {
@@ -233,6 +342,7 @@ const renderField = (
       id=${id}
       max=${limits?.max ?? nothing}
       min=${limits?.min ?? nothing}
+      placeholder=${field.type === "color" ? "None" : nothing}
       spellcheck="false"
       step=${limits ? "1" : nothing}
       type=${type}
@@ -257,8 +367,14 @@ const renderField = (
           </div>
         `;
       }
+      // The unit shows inside the field, and is part of its name.
       case "number": {
-        return textControl("number", field);
+        return html`
+          <div class="unit-field">
+            ${textControl("number", field)}
+            <span aria-hidden="true" class="unit">${field.unit}</span>
+          </div>
+        `;
       }
       case "select": {
         // A saved email can have what the list doesn't.
@@ -293,9 +409,13 @@ const renderField = (
   };
 
   return html`
-    <div class="field">
+    <div class=${INLINE_TYPES.has(field.type) ? "field inline" : "field"}>
       <label for=${id}>
-        ${field.type === "number" ? `${field.label} (${field.unit})` : field.label}
+        ${field.label}${
+          field.type === "number"
+            ? html`<span class="visually-hidden"> (${field.unit})</span>`
+            : nothing
+        }
       </label>
       ${control()}
       ${
@@ -323,7 +443,6 @@ const renderField = (
 /** The one settings panel: every control in it comes from fields that are data. */
 export const renderSettingsPanel = (
   sections: SettingsSection[],
-  hint: string | undefined,
   events: SettingsPanelEvents
 ) => html`
   <div
@@ -332,16 +451,17 @@ export const renderSettingsPanel = (
     role="group"
     @keydown=${events.onKeydown}
   >
-    ${hint ? html`<p>${hint}</p>` : nothing}
     ${repeat(
       sections,
       // Keyed, so that a field with focus survives the others coming and going.
       ({ id }) => id,
       (section) => html`
-        <fieldset>
-          <legend>${section.legend}</legend>
-          ${section.fields.map((field) => renderField(section, field, events))}
-        </fieldset>
+        <div class="section">
+          <fieldset>
+            <legend>${section.legend}</legend>
+            ${section.fields.map((field) => renderField(section, field, events))}
+          </fieldset>
+        </div>
       `
     )}
   </div>

@@ -3,6 +3,9 @@ import type { Locator, Page } from "@playwright/test";
 
 import {
   canvas,
+  chooseLayout,
+  deleteRow,
+  openTab,
   currentValue,
   emailWith,
   moveCursorToLineEnd,
@@ -373,6 +376,7 @@ test.describe("the text cursor during a drag", () => {
   test("stays put when the palette drops on the toolbar", async ({ page }) => {
     await load(page, [[["One", "Two"]]]);
     await placeCursorAfterTwo(page);
+    await openTab(page, "Content");
     const start = await centerOf(paletteText(page));
 
     await pickUp(page, paletteText(page));
@@ -550,7 +554,7 @@ test.describe("dropping outside any Row", () => {
     expect(await structure(page)).toStrictEqual([[["Two"]], [["One"]]]);
   });
 
-  test("on the controls between two Rows adds a Row there", async ({
+  test("beside a Row, on its toolbar, adds a Row before it", async ({
     page,
   }) => {
     await load(page, [[["One", "Two"]], [["Three"]]]);
@@ -559,8 +563,8 @@ test.describe("dropping outside any Row", () => {
     );
 
     await drag(page, handleOf(page, "Two"), {
-      x: controls.x + 300,
-      y: controls.y + controls.height / 2,
+      x: controls.x + controls.width / 2,
+      y: controls.y + 4,
     });
 
     expect(await structure(page)).toStrictEqual([
@@ -714,13 +718,13 @@ test.describe("dragging from the palette", () => {
 
   test("into an email with no Rows", async ({ page }) => {
     await load(page, [[["One"]]]);
-    await page.getByRole("button", { name: "Delete Row" }).click();
+    await deleteRow(page, 1);
     await expect(textBlock(page)).toHaveCount(0);
-    const canvasBox = await boxOf(canvas(page));
+    const email = await boxOf(canvas(page).locator(".email"));
 
     await drag(page, paletteText(page), {
-      x: canvasBox.x + 300,
-      y: canvasBox.y + canvasBox.height + 20,
+      x: email.x + 300,
+      y: email.y + 20,
     });
 
     expect(await structure(page)).toStrictEqual([[[""]]]);
@@ -738,6 +742,8 @@ test.describe("dragging from the palette", () => {
     await page.mouse.up();
     await settle(page);
 
+    // The new Block's settings show in place of the tabs.
+    await openTab(page, "Content");
     expect(await boxOf(paletteText(page))).toStrictEqual(before);
     await expect(
       canvas(page).locator("[data-dnd-placeholder], [data-dnd-dragging]")
@@ -781,6 +787,8 @@ test.describe("dragging from the palette", () => {
       paletteText(page),
       await bottomOf(blockElement(page, "One"))
     );
+    // The new Block's settings show in place of the tabs.
+    await openTab(page, "Content");
     await paletteText(page).click();
 
     expect(await structure(page)).toStrictEqual([[["One", "", ""]]]);
@@ -862,7 +870,10 @@ test.describe("text after a move", () => {
       handleOf(page, "Two"),
       await topOf(blockElement(page, "Three"))
     );
-    await blockElement(page, "Three").getByRole("textbox").click();
+    // Where its text starts, as Two's format bar covers its top end.
+    await blockElement(page, "Three")
+      .getByRole("textbox")
+      .click({ position: { x: 24, y: 8 } });
     await blockElement(page, "Two").getByRole("textbox").click();
     await moveCursorToLineEnd(page);
     await page.keyboard.type("!");
@@ -1161,7 +1172,7 @@ test.describe("a Block that's removed or replaced", () => {
     page,
   }) => {
     await load(page, [[["One"], ["Two"]]]);
-    await page.getByRole("button", { exact: true, name: "100" }).click();
+    await chooseLayout(page, 1, "100");
     expect(await structure(page)).toStrictEqual([[["One", "Two"]]]);
 
     await pickUp(page, handleOf(page, "One"));
