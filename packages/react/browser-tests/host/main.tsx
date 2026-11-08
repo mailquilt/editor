@@ -140,7 +140,8 @@ const ShellHost = () => {
   const [errors, setErrors] = useState<string[]>([]);
   const [html, setHtml] = useState("");
   const shell = useRef<MailQuiltShellElement>(null);
-  const save = new URLSearchParams(window.location.search).has("save");
+  const params = new URLSearchParams(window.location.search);
+  const save = params.has("save");
 
   return (
     <main style={{ display: "grid", gridTemplateRows: "auto 700px" }}>
@@ -160,6 +161,7 @@ const ShellHost = () => {
         </output>
       </div>
       <MailQuiltShell
+        actions={params.has("only-html") ? ["export-html"] : undefined}
         heading="Campaign"
         onChange={(next) => setDocument(next)}
         onError={({ reason }) => setErrors((all) => [...all, reason])}

@@ -4,6 +4,7 @@ import type {
   BlocksDocument,
   MailQuilt as MailQuiltElement,
   MailQuiltShell as MailQuiltShellElement,
+  ShellAction,
 } from "@mailquilt/editor";
 import {
   createElement,
@@ -18,6 +19,7 @@ export type {
   BlocksDocument,
   MailQuilt as MailQuiltElement,
   MailQuiltShell as MailQuiltShellElement,
+  ShellAction,
 } from "@mailquilt/editor";
 
 interface EditorProps<Element> {
@@ -31,6 +33,8 @@ interface EditorProps<Element> {
 export type MailQuiltProps = EditorProps<MailQuiltElement>;
 
 export interface MailQuiltShellProps extends EditorProps<MailQuiltShellElement> {
+  /** The Shell's buttons to show. All of them when left out, none when empty. */
+  actions?: readonly ShellAction[];
   /** The text in the Shell's header. "Email" when left out. */
   heading?: string;
   /** Where the Shell keeps the email in the browser. Without it, nothing is stored. */
@@ -111,12 +115,14 @@ export const MailQuilt = (props: MailQuiltProps) =>
  * when it starts in the browser.
  */
 export const MailQuiltShell = ({
+  actions,
   heading,
   saveKey,
   ...props
 }: MailQuiltShellProps) => {
   // React's types only know the attributes of built-in elements.
   const attributes: Record<string, unknown> = {
+    actions: actions?.join(" "),
     heading,
     "save-key": saveKey,
   };

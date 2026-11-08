@@ -66,6 +66,62 @@ test("shows the heading, the Import and Export buttons, and the editor", async (
   await expect(shell(page)).not.toHaveAttribute("variant");
 });
 
+test.describe("choosing the buttons with actions", () => {
+  test("shows only the ones it names, in the Shell's own order", async ({
+    page,
+  }) => {
+    await openShell(page, "?actions=export-html%20import-json");
+
+    await expect(header(page).getByRole("button")).toHaveText([
+      "Import JSON",
+      "Export HTML",
+    ]);
+  });
+
+  test("shows none when empty, and ignores names it doesn't know", async ({
+    page,
+  }) => {
+    await openShell(page, "?actions=");
+    await expect(header(page).getByRole("button")).toHaveCount(0);
+    await expect(header(page)).toContainText("Email");
+
+    await shell(page).evaluate((element) =>
+      element.setAttribute("actions", "export-json send-test")
+    );
+
+    await expect(header(page).getByRole("button")).toHaveText(["Export JSON"]);
+  });
+
+  test("is a property too", async ({ page }) => {
+    await openShell(page);
+
+    await shell(page).evaluate((element) => {
+      (element as MailQuiltShell).actions = "export-html";
+    });
+
+    await expect(shell(page)).toHaveAttribute("actions", "export-html");
+    await expect(header(page).getByRole("button")).toHaveText(["Export HTML"]);
+  });
+
+  test("the can't-save message only suggests Export JSON when it shows", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      Storage.prototype.setItem = () => {
+        throw new DOMException("Full", "QuotaExceededError");
+      };
+    });
+    await openShell(page, "?actions=export-html&save-key=test:email");
+
+    await focusStartOfTextBlock(page);
+    await page.keyboard.type("Unsaved ");
+
+    await expect(shell(page).getByRole("alert")).toHaveText(
+      "This browser can't save your email here."
+    );
+  });
+});
+
 test.describe("moving an email with JSON", () => {
   test("an exported email comes back when imported", async ({ page }) => {
     await openShell(page);

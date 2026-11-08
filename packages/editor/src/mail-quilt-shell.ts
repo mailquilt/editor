@@ -1,10 +1,13 @@
 import { loadDocument } from "@mailquilt/core";
 import type { BlocksDocument, LoadResult } from "@mailquilt/core";
-import { css, html, LitElement, unsafeCSS } from "lit";
+import { css, html, LitElement, nothing, unsafeCSS } from "lit";
 
 import "./mail-quilt.js";
 import type { MailQuilt } from "./mail-quilt.js";
 import { themeTokens, uiStyles } from "./theme.js";
+
+/** The Shell's own buttons, in the order the header shows them. */
+export type ShellAction = "export-html" | "export-json" | "import-json";
 
 /** Every theme token's name, from the one place they're defined. */
 const TOKEN_NAMES = themeTokens.cssText.match(/--mq-[\w-]+(?=\s*:)/gu) ?? [];
@@ -45,6 +48,7 @@ const downloadFile = (name: string, type: string, text: string) => {
  */
 export class MailQuiltShell extends LitElement {
   static override properties = {
+    actions: { reflect: true },
     heading: {},
     saveKey: { attribute: "save-key" },
   };
@@ -141,6 +145,11 @@ export class MailQuiltShell extends LitElement {
     `,
   ];
 
+  /**
+   * The buttons to show, by name and separated by spaces. Without it, all of
+   * them show. Names the Shell doesn't know are ignored.
+   */
+  declare actions: string | null | undefined;
   declare heading: string;
   /** Where the email is kept in the browser. Without it, nothing is stored. */
   declare saveKey: string | undefined;
@@ -198,9 +207,13 @@ export class MailQuiltShell extends LitElement {
   }
 
   protected override render() {
+    const named = this.actions?.split(/\s+/u);
+    const shows = (action: ShellAction) => named?.includes(action) ?? true;
     const messages = [
       this.#cantSave &&
-        "This browser can't save your email here. Export it as JSON to keep it.",
+        (shows("export-json")
+          ? "This browser can't save your email here. Export it as JSON to keep it."
+          : "This browser can't save your email here."),
       this.#notice,
     ].filter(Boolean);
 
@@ -209,36 +222,54 @@ export class MailQuiltShell extends LitElement {
         <div class="header" part="header">
           <h2 class="heading" part="heading">${this.heading}</h2>
           <div class="actions" part="actions">
-            <button
-              class="text-button"
-              part="import-json"
-              type="button"
-              @click=${this.#chooseFile}
-            >
-              Import JSON
-            </button>
-            <button
-              class="text-button"
-              part="export-json"
-              type="button"
-              @click=${this.#exportJson}
-            >
-              Export JSON
-            </button>
-            <input
-              accept=".json,application/json"
-              hidden
-              type="file"
-              @change=${this.#importJson}
-            />
-            <button
-              class="text-button primary"
-              part="export-html"
-              type="button"
-              @click=${this.#exportHtmlFile}
-            >
-              Export HTML
-            </button>
+            ${
+              shows("import-json")
+                ? html`
+                    <button
+                      class="text-button"
+                      part="import-json"
+                      type="button"
+                      @click=${this.#chooseFile}
+                    >
+                      Import JSON
+                    </button>
+                    <input
+                      accept=".json,application/json"
+                      hidden
+                      type="file"
+                      @change=${this.#importJson}
+                    />
+                  `
+                : nothing
+            }
+            ${
+              shows("export-json")
+                ? html`
+                    <button
+                      class="text-button"
+                      part="export-json"
+                      type="button"
+                      @click=${this.#exportJson}
+                    >
+                      Export JSON
+                    </button>
+                  `
+                : nothing
+            }
+            ${
+              shows("export-html")
+                ? html`
+                    <button
+                      class="text-button primary"
+                      part="export-html"
+                      type="button"
+                      @click=${this.#exportHtmlFile}
+                    >
+                      Export HTML
+                    </button>
+                  `
+                : nothing
+            }
           </div>
         </div>
         <div class="messages" part="messages">

@@ -55,7 +55,8 @@ test("rendering on a server doesn't register the element", async () => {
   expect(JSON.parse(stdout)).toStrictEqual({
     customElements: "undefined",
     html: "<mail-quilt></mail-quilt>",
-    shellHtml: '<mail-quilt-shell save-key="my-app:email"></mail-quilt-shell>',
+    shellHtml:
+      '<mail-quilt-shell actions="export-html" save-key="my-app:email"></mail-quilt-shell>',
   });
 });
 

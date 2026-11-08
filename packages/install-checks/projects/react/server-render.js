@@ -6,6 +6,7 @@ import { renderToString } from "react-dom/server";
 const html = renderToString(createElement(MailQuilt));
 const shellHtml = renderToString(
   createElement(MailQuiltShell, {
+    actions: ["export-html"],
     saveKey: "my-app:email",
   })
 );

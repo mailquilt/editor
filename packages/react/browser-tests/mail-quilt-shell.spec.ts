@@ -64,3 +64,13 @@ test("with saveKey, a reload reopens the saved email rather than value", async (
   await page.waitForTimeout(300);
   await expect(textBlock(page)).toHaveText("Saved Hello");
 });
+
+test("actions picks the Shell's buttons", async ({ page }) => {
+  await page.goto("/?shell&only-html");
+  await expect(textBlock(page)).toHaveText("Hello");
+
+  await expect(shell(page)).toHaveAttribute("actions", "export-html");
+  await expect(shell(page).locator(".header").getByRole("button")).toHaveText([
+    "Export HTML",
+  ]);
+});
