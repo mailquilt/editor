@@ -49,3 +49,7 @@ A CSS custom property starting with `--mq-` that sets one of the editor's own co
 **Playground**:
 A public page in the docs site where anyone can try the email editor.
 _Avoid_: Demo, hosted editor
+
+**Shell**:
+A ready-made editor page: the editor plus a header, Import and Export, and messages, in a Simple or Advanced variant.
+_Avoid_: Template, Kit

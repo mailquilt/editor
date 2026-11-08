@@ -366,8 +366,10 @@ export class MailQuilt extends LitElement {
     uiStyles,
     settingsPanelStyles,
     css`
+      /* A column, so the editor fills any height the host gives the element. */
       :host {
-        display: block;
+        display: flex;
+        flex-direction: column;
       }
 
       /*
@@ -391,6 +393,7 @@ export class MailQuilt extends LitElement {
         box-shadow: 0 0 0 1px var(--mq-color-border);
         display: flex;
         overflow: clip;
+        flex-grow: 1;
         flex-wrap: wrap;
         min-height: 600px;
       }
@@ -403,6 +406,7 @@ export class MailQuilt extends LitElement {
        * again, and so none of them takes focus.
        */
       .editor[data-collapsed] {
+        flex-grow: 0;
         height: 0;
         min-height: 0;
       }
@@ -1037,32 +1041,6 @@ export class MailQuilt extends LitElement {
         flex-basis: 100%;
         font-size: var(--mq-font-size-small);
         margin: 0;
-      }
-
-      .text-button {
-        background: var(--mq-color-surface);
-        border: 1px solid var(--mq-color-border);
-        border-radius: var(--mq-radius-small);
-        box-shadow: var(--mq-shadow-small);
-        cursor: pointer;
-        font-weight: 500;
-        height: 28px;
-        padding: 0 var(--mq-space-3);
-        transition: background-color 120ms;
-      }
-
-      .text-button:hover {
-        background: var(--mq-color-surface-hover);
-      }
-
-      .text-button.primary {
-        background: var(--mq-color-accent);
-        border-color: var(--mq-color-accent);
-        color: var(--mq-color-on-accent);
-      }
-
-      .text-button.primary:hover {
-        background: var(--mq-color-accent-strong);
       }
 
       /*

@@ -30,6 +30,12 @@ const quickStart = path.join(
 /** The CDN build's URL in the quick start, served from this machine instead. */
 const cdnBuildUrl =
   /https:\/\/cdn\.jsdelivr\.net\/npm\/@mailquilt\/editor@[^/]+\//gu;
+/** The Shell's examples, each copied into a fresh project as a page of its own. */
+const shellExamples = path.join(quickStart, "..", "_shell");
+const shellPages = {
+  "plain-js": "shell",
+  react: path.join("app", "shell"),
+} as const;
 const tarballs = path.join(freshProjectsDir, "tarballs");
 
 const pnpm = (cwd: string, ...args: string[]) => {
@@ -62,6 +68,13 @@ for (const name of Object.keys(
     path.join(here, "projects", "starter-email.js"),
     path.join(dir, "starter-email.js")
   );
+  if (name in shellPages) {
+    cpSync(
+      path.join(shellExamples, name),
+      path.join(dir, shellPages[name as keyof typeof shellPages]),
+      { recursive: true }
+    );
+  }
   writeFileSync(
     path.join(dir, "pnpm-workspace.yaml"),
     `overrides:\n${overrides}\n`

@@ -3,10 +3,11 @@
   "extends": ["//"],
   "tasks": {
     "test": {
-      // The fresh projects are built from the quick-start code in the docs.
+      // The fresh projects are built from the quick-start and Shell code in the docs.
       "inputs": [
         "$TURBO_DEFAULT$",
-        "$TURBO_ROOT$/apps/docs/docs/_quick-start/**"
+        "$TURBO_ROOT$/apps/docs/docs/_quick-start/**",
+        "$TURBO_ROOT$/apps/docs/docs/_shell/**"
       ]
     }
   }

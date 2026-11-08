@@ -132,6 +132,33 @@ export const uiStyles = css`
     color: var(--mq-color-danger);
   }
 
+  /* A button with words on it, which need no tooltip. */
+  .text-button {
+    background: var(--mq-color-surface);
+    border: 1px solid var(--mq-color-border);
+    border-radius: var(--mq-radius-small);
+    box-shadow: var(--mq-shadow-small);
+    cursor: pointer;
+    font-weight: 500;
+    height: 28px;
+    padding: 0 var(--mq-space-3);
+    transition: background-color 120ms;
+  }
+
+  .text-button:hover {
+    background: var(--mq-color-surface-hover);
+  }
+
+  .text-button.primary {
+    background: var(--mq-color-accent);
+    border-color: var(--mq-color-accent);
+    color: var(--mq-color-on-accent);
+  }
+
+  .text-button.primary:hover {
+    background: var(--mq-color-accent-strong);
+  }
+
   .ui button:focus-visible,
   .ui input:focus-visible {
     outline: 2px solid var(--mq-color-accent);

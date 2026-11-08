@@ -292,3 +292,76 @@ test("starts with several Rows, so moving one can be tried straight away", async
 
   await expect(textBlockPlace).toHaveAccessibleName(/^Text Block, Row 1,/u);
 });
+
+test("runs on the Advanced Shell, filling the window below the header", async ({
+  page,
+}) => {
+  await page.goto(PLAYGROUND);
+  await expect(textBlock(page)).toBeVisible();
+  const shell = page.locator("mail-quilt-shell");
+  await expect(shell).toHaveAttribute("variant", "advanced");
+
+  const header = await page.getByRole("banner").boundingBox();
+  const box = await shell.boundingBox();
+  const viewport = page.viewportSize();
+
+  expect(box).toStrictEqual({
+    height: (viewport?.height ?? 0) - (header?.height ?? 0),
+    width: viewport?.width,
+    x: 0,
+    y: header?.height,
+  });
+});
+
+test("opens an email saved before the Playground used the Shell", async ({
+  page,
+}) => {
+  const saved = JSON.stringify({
+    kind: "blocks",
+    rows: [
+      {
+        columns: [
+          {
+            blocks: [
+              {
+                id: "block-1",
+                props: {
+                  content: {
+                    content: [
+                      {
+                        content: [{ text: "Kept from before", type: "text" }],
+                        type: "paragraph",
+                      },
+                    ],
+                    type: "doc",
+                  },
+                },
+                type: "text",
+              },
+            ],
+            id: "column-1",
+            props: {},
+            width: 100,
+          },
+        ],
+        id: "row-1",
+        props: {},
+      },
+    ],
+    settings: {
+      backgroundColor: "#ffffff",
+      fontFamily: "Arial, Helvetica, sans-serif",
+      width: 600,
+    },
+    version: 1,
+  });
+  await page.addInitScript(
+    ({ key, value }) => localStorage.setItem(key, value),
+    { key: SAVED_EMAIL_KEY, value: saved }
+  );
+
+  await page.goto(PLAYGROUND);
+
+  await expect(textBlock(page)).toHaveText("Kept from before");
+  await expect(page.getByRole("alert")).toHaveCount(0);
+});

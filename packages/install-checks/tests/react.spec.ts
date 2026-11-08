@@ -7,6 +7,7 @@ import { freshProjectDir, freshProjects } from "../fresh-projects.ts";
 import {
   checkLoadSaveExport,
   checkRefusedDocument,
+  checkShell,
 } from "./load-save-export.ts";
 
 const url = `http://localhost:${freshProjects.react.port}/`;
@@ -54,5 +55,22 @@ test("rendering on a server doesn't register the element", async () => {
   expect(JSON.parse(stdout)).toStrictEqual({
     customElements: "undefined",
     html: "<mail-quilt></mail-quilt>",
+    shellHtml:
+      '<mail-quilt-shell save-key="my-app:email" variant="advanced"></mail-quilt-shell>',
   });
+});
+
+test("a Server Component's Shell opens, saves, exports and refuses", async ({
+  page,
+}) => {
+  await checkShell(page, `${url}shell`);
+});
+
+test("a server-rendered Shell sends its attributes", async ({ request }) => {
+  const response = await request.get(`${url}shell`);
+
+  expect(response.status()).toBe(200);
+  expect(await response.text()).toContain(
+    '<mail-quilt-shell save-key="my-app:email" variant="advanced"></mail-quilt-shell>'
+  );
 });
