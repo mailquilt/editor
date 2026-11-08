@@ -5,6 +5,7 @@ import type { Locator, Page } from "@playwright/test";
 
 import type { MailQuiltShell } from "../src/index.js";
 import { focusStartOfTextBlock, textBlock, violations } from "./helpers.js";
+import { emailWith } from "./host/email.js";
 
 const shell = (page: Page) => page.locator("mail-quilt-shell");
 
@@ -45,6 +46,11 @@ const box = async (target: Locator) => {
   }
   return { ...found, bottom: found.y + found.height, top: found.y };
 };
+
+const setShellValue = (page: Page, email: unknown) =>
+  shell(page).evaluate((element, next) => {
+    (element as MailQuiltShell).value = next as MailQuiltShell["value"];
+  }, email);
 
 const openShell = async (page: Page, query = "") => {
   await page.goto(`/shell.html${query}`);
@@ -344,6 +350,77 @@ test.describe("saving in the browser", () => {
   });
 });
 
+test.describe("a saved email standing in for the host's", () => {
+  const key = "test:email";
+  const saveFirst = async (page: Page) => {
+    await page.addInitScript(
+      ({ each, email }) => localStorage.setItem(each, JSON.stringify(email)),
+      { each: key, email: emailWith("Saved") }
+    );
+  };
+
+  test("stays when the host passes its first email again", async ({ page }) => {
+    await saveFirst(page);
+    await page.goto(`/shell.html?save-key=${key}`);
+    await expect(textBlock(page)).toHaveText("Saved");
+
+    // A copy, as a re-render that builds the email again would pass.
+    await setShellValue(page, emailWith("Hello"));
+
+    await expect(textBlock(page)).toHaveText("Saved");
+  });
+
+  test("stays when the host sets nothing before its first email", async ({
+    page,
+  }) => {
+    await saveFirst(page);
+    await page.goto(`/shell.html?save-key=${key}&late-value`);
+    await expect(textBlock(page)).toHaveText("Saved");
+
+    await setShellValue(page, undefined);
+    await setShellValue(page, emailWith("Hello"));
+
+    await expect(textBlock(page)).toHaveText("Saved");
+  });
+
+  test("gives way to a different email from the host", async ({ page }) => {
+    await saveFirst(page);
+    await page.goto(`/shell.html?save-key=${key}`);
+    await expect(textBlock(page)).toHaveText("Saved");
+
+    await setShellValue(page, emailWith("Other"));
+    await expect(textBlock(page)).toHaveText("Other");
+    // The host can go back to its first email once it has opened another.
+    await setShellValue(page, emailWith("Hello"));
+
+    await expect(textBlock(page)).toHaveText("Hello");
+  });
+});
+
+test("removing save-key stops saving", async ({ page }) => {
+  await openShell(page, "?save-key=test:email");
+  await shell(page).evaluate((element) => element.removeAttribute("save-key"));
+
+  await focusStartOfTextBlock(page);
+  await page.keyboard.type("Oh ");
+  await expect(page.locator("#change-count")).toHaveText("3");
+
+  expect(
+    await page.evaluate(() => Object.keys({ ...localStorage }))
+  ).toStrictEqual([]);
+});
+
+test("the heading falls back to Email when unset", async ({ page }) => {
+  await openShell(page);
+
+  await shell(page).evaluate((element) => {
+    element.setAttribute("heading", "Campaign");
+    element.removeAttribute("heading");
+  });
+
+  await expect(header(page).getByRole("heading")).toHaveText("Email");
+});
+
 test.describe("look", () => {
   test("fills the space the host gives it, the editor below the header", async ({
     page,
@@ -364,6 +441,18 @@ test.describe("look", () => {
     expect(boxes.editor.top).toBe(boxes.header.bottom);
     expect(boxes.editor.bottom).toBe(boxes.frame.bottom);
     expect(boxes.panel.bottom).toBe(boxes.frame.bottom);
+  });
+
+  test("a long email keeps the whole side panel in view", async ({ page }) => {
+    await page.goto("/shell.html?long");
+    await expect(textBlock(page).first()).toBeVisible();
+
+    const panel = await box(
+      shell(page).locator("mail-quilt").locator(".side-panel-inner")
+    );
+    const frameBox = await box(page.locator("#frame"));
+
+    expect(panel.bottom).toBeLessThanOrEqual(frameBox.bottom);
   });
 
   test("a token set on the Shell restyles its header and the editor", async ({

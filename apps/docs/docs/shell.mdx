@@ -42,10 +42,13 @@ npm install @mailquilt/react
 With `save-key`, the Shell keeps the email in the browser's `localStorage` under that key:
 
 - When the Shell opens, an email saved under the key opens instead of `value`. `value` is the email to start from when nothing is saved yet.
+- While the saved email is open, setting `value` to nothing, or to that same starting email again, leaves it open. A React component that renders again, or gets its starting email after the Shell opens, doesn't replace the person's work. Setting a different email opens it as usual.
 - If the saved email can't be opened, the message bar says why and `value` opens instead. The saved email stays as it is until the person changes something, so nothing is lost by opening the page.
-- Each change is saved under the key. If the browser can't save, because storage is blocked or full, the message bar says so, and suggests Export JSON instead.
+- Each change is saved under the key. If the browser can't save, because storage is blocked or full, the message bar says so, and suggests Export JSON while that button shows.
 
-Pick a key no other app on the same origin uses, such as one starting with your app's name.
+Pick a key no other app on the same origin uses, such as one starting with your app's name. The Shell reads the key once, when it opens, so set it before then, as the examples do. Removing it later stops the saving.
+
+Opening the saved email doesn't fire `mq-change`, because the person hasn't changed anything. If your app keeps its own copy of the email, read `value` from the element once it has loaded, such as from the `ref` in React, rather than assuming it's the email you passed.
 
 Without `save-key`, the Shell stores nothing. Save the email yourself from `mq-change`, as the [quick start](./quick-start) does. `mq-change` fires with or without `save-key`, so you can keep the email in the browser and on your server too.
 
@@ -54,7 +57,7 @@ Without `save-key`, the Shell stores nothing. Save the email yourself from `mq-c
 | Name | What it does |
 | --- | --- |
 | `value` | The email the Shell shows, as on `<mail-quilt>`. With `save-key`, a saved email opens instead of the first one you set. |
-| `heading` | The text in the header. It defaults to "Email". |
+| `heading` | The text in the header. It's "Email" when unset. |
 | `actions` | The buttons to show, by name and separated by spaces: `import-json`, `export-json` and `export-html`. Leave it out to show all three. |
 | `save-key` | Where the email is kept in the browser, as the `saveKey` property. Leave it out to store nothing. |
 | `mq-change` | Fired after every change, including an import. The new email is in `event.detail.document`. |

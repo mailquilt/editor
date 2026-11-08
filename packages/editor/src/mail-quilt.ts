@@ -393,7 +393,8 @@ export class MailQuilt extends LitElement {
         box-shadow: 0 0 0 1px var(--mq-color-border);
         display: flex;
         overflow: clip;
-        flex-grow: 1;
+        /* Fills any height the host gives, but never shrinks below the email. */
+        flex: 1 0 auto;
         flex-wrap: wrap;
         min-height: 600px;
       }
@@ -1086,7 +1087,11 @@ export class MailQuilt extends LitElement {
         display: flex;
         flex: 1;
         flex-direction: column;
-        max-height: 100dvh;
+        /*
+         * No taller than the window, or than the part of a Shell the email
+         * scrolls in, which the Shell gives as --mq-visible-height.
+         */
+        max-height: min(100dvh, var(--mq-visible-height, 100dvh));
         min-width: 0;
         overflow: hidden;
         position: sticky;

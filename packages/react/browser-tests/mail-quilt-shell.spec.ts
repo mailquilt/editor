@@ -58,10 +58,26 @@ test("with saveKey, a reload reopens the saved email rather than value", async (
   await expect(textBlock(page)).toHaveText("Saved Hello");
 
   await page.reload();
+  // Only once React has set `value`, after the Shell has opened.
+  await expect(page.getByTestId("ready")).toHaveText("yes");
 
   await expect(textBlock(page)).toHaveText("Saved Hello");
-  // React sets `value` after the Shell has started, and it mustn't win.
-  await page.waitForTimeout(300);
+});
+
+test("with saveKey, passing the first email again keeps the saved one", async ({
+  page,
+}) => {
+  await page.goto("/?shell&save");
+  await typeAtStart(page, "Saved ");
+  await expect(textBlock(page)).toHaveText("Saved Hello");
+  await page.reload();
+  await expect(page.getByTestId("ready")).toHaveText("yes");
+
+  // A new object with the same email, as a re-render that builds it again.
+  await page
+    .getByRole("button", { name: "Load the first email again" })
+    .click();
+
   await expect(textBlock(page)).toHaveText("Saved Hello");
 });
 

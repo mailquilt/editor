@@ -22,8 +22,39 @@ if (params.has("narrow")) {
 }
 frame?.append(shell);
 
-// The listener straight after `value`, as the quick start does.
-shell.value = params.has("refused-first") ? refusedEmail : emailWith("Hello");
+/** Many Rows, so the email is taller than the Shell and scrolls inside it. */
+const longEmail = () => {
+  const email = emailWith("Hello");
+  const [row] = email.rows;
+  if (row) {
+    email.rows = Array.from({ length: 30 }, (_, index) => ({
+      ...structuredClone(row),
+      columns: row.columns.map((column) => ({
+        ...structuredClone(column),
+        blocks: column.blocks.map((block) => ({
+          ...structuredClone(block),
+          id: `block-${index}`,
+        })),
+        id: `column-${index}`,
+      })),
+      id: `row-${index}`,
+    }));
+  }
+  return email;
+};
+
+const firstEmail = () => {
+  if (params.has("refused-first")) {
+    return refusedEmail;
+  }
+  return params.has("long") ? longEmail() : emailWith("Hello");
+};
+
+// The listener straight after `value`, as the quick start does. A host that
+// sets `value` only later, as React does, leaves it out.
+if (!params.has("late-value")) {
+  shell.value = firstEmail();
+}
 shell.addEventListener("mq-error", ({ detail }) => {
   const errors = document.querySelector("#errors");
   if (errors) {

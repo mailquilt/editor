@@ -1,4 +1,4 @@
-import { loadDocument } from "@mailquilt/core";
+import { isSameDocument, loadDocument } from "@mailquilt/core";
 import type { BlocksDocument, LoadResult } from "@mailquilt/core";
 import { css, html, LitElement, nothing, unsafeCSS } from "lit";
 
@@ -150,18 +150,28 @@ export class MailQuiltShell extends LitElement {
    * them show. Names the Shell doesn't know are ignored.
    */
   declare actions: string | null | undefined;
-  declare heading: string;
+  /** "Email" when unset. */
+  declare heading: string | null | undefined;
   /** Where the email is kept in the browser. Without it, nothing is stored. */
-  declare saveKey: string | undefined;
+  declare saveKey: string | null | undefined;
 
   readonly #editor: MailQuilt = document.createElement("mail-quilt");
   /** Whether the email to open has been chosen, which waits for the first update. */
   #started = false;
   /** The `value` set before then. */
   #pendingValue: BlocksDocument | undefined;
-  /** Whether a `value` has been set yet. A saved email stands in for the first. */
-  #hasValue = false;
-  #openedSavedEmail = false;
+  /**
+   * Set while the saved email stands in for the host's first email, which it
+   * holds once the host has set one. See the `value` setter.
+   */
+  #savedStandsIn: { replaced: BlocksDocument | undefined } | undefined;
+  /** Gives the editor the height the email scrolls in, for its side panel. */
+  readonly #bodyObserver = new ResizeObserver(([entry]) => {
+    this.#editor.style.setProperty(
+      "--mq-visible-height",
+      `${entry?.target.clientHeight ?? 0}px`
+    );
+  });
   /** Set while the browser can't save the email. */
   #cantSave = false;
   /** The latest refused email or failed export, until the next change. */
@@ -182,17 +192,22 @@ export class MailQuiltShell extends LitElement {
     return this.#started ? this.#editor.value : this.#pendingValue;
   }
 
-  /** As on `<mail-quilt>`. With `save-key`, a saved email opens instead of the first. */
+  /**
+   * As on `<mail-quilt>`. With `save-key`, a saved email opens instead of the
+   * host's first email. Until the host sets a different one, setting nothing
+   * or that first email again leaves the saved email open, as a host that
+   * renders again, or sets its email late, does.
+   */
   set value(document: BlocksDocument | undefined) {
-    const first = !this.#hasValue;
-    this.#hasValue = true;
     if (!this.#started) {
       this.#pendingValue = document;
       return;
     }
-    if (!(first && this.#openedSavedEmail)) {
-      this.#editor.value = document;
+    if (this.#savedStandsInFor(document)) {
+      return;
     }
+    this.#savedStandsIn = undefined;
+    this.#editor.value = document;
   }
 
   /** As on `<mail-quilt>`. */
@@ -200,10 +215,24 @@ export class MailQuiltShell extends LitElement {
     return await this.#editor.exportHtml();
   }
 
+  override connectedCallback() {
+    super.connectedCallback();
+    this.#observeBody();
+  }
+
+  override disconnectedCallback() {
+    super.disconnectedCallback();
+    this.#bodyObserver.disconnect();
+  }
+
   protected override willUpdate() {
-    if (!this.#started && this.isConnected) {
+    if (!this.#started) {
       this.#start();
     }
+  }
+
+  protected override firstUpdated() {
+    this.#observeBody();
   }
 
   protected override render() {
@@ -220,7 +249,7 @@ export class MailQuiltShell extends LitElement {
     return html`
       <div class="ui shell">
         <div class="header" part="header">
-          <h2 class="heading" part="heading">${this.heading}</h2>
+          <h2 class="heading" part="heading">${this.heading ?? "Email"}</h2>
           <div class="actions" part="actions">
             ${
               shows("import-json")
@@ -285,51 +314,80 @@ export class MailQuiltShell extends LitElement {
   /** The email saved under `save-key` opens instead of `value`, if it can be. */
   #start() {
     this.#started = true;
-    if (this.saveKey !== undefined) {
-      this.#openSavedEmail(this.saveKey);
-    }
-    if (!this.#openedSavedEmail) {
+    if (this.saveKey && this.#openSavedEmail(this.saveKey)) {
+      this.#savedStandsIn = { replaced: this.#pendingValue };
+    } else {
       this.#editor.value = this.#pendingValue;
     }
     this.#pendingValue = undefined;
   }
 
+  /** Whether the saved email stays open in place of this `value`. */
+  #savedStandsInFor(document: BlocksDocument | undefined) {
+    const standIn = this.#savedStandsIn;
+    if (!standIn) {
+      return false;
+    }
+    if (standIn.replaced === undefined) {
+      // The host's first email, or nothing yet.
+      standIn.replaced = document;
+      return true;
+    }
+    return isSameDocument(document, standIn.replaced);
+  }
+
+  /** Once rendered, and again whenever the Shell is put back on the page. */
+  #observeBody() {
+    const body = this.renderRoot.querySelector(".body");
+    if (body) {
+      this.#bodyObserver.observe(body);
+    }
+  }
+
+  /** Returns whether it opened. */
   #openSavedEmail(key: string) {
     let saved: string | null;
     try {
       saved = localStorage.getItem(key);
     } catch {
       this.#cantSave = true;
-      return;
+      return false;
     }
     if (saved === null) {
-      return;
+      return false;
     }
     const loaded = parseEmail(saved);
-    if (loaded.ok) {
-      this.#editor.value = loaded.document;
-      this.#openedSavedEmail = true;
-    } else {
+    if (!loaded.ok) {
       this.#notice = `Your saved email couldn't be opened: ${loaded.reason}`;
+      return false;
     }
+    this.#editor.value = loaded.document;
+    return true;
   }
 
   /** Saves a changed email, which also answers whatever went wrong before it. */
   #keep(document: BlocksDocument) {
-    if (this.saveKey !== undefined) {
+    if (this.saveKey) {
+      let cantSave = false;
       try {
         localStorage.setItem(this.saveKey, JSON.stringify(document));
-        this.#cantSave = false;
       } catch {
-        this.#cantSave = true;
+        cantSave = true;
+      }
+      if (cantSave !== this.#cantSave) {
+        this.#cantSave = cantSave;
+        this.requestUpdate();
       }
     }
     this.#showNotice(undefined);
   }
 
+  /** Renders only when the message changes, as this runs on every keystroke. */
   #showNotice(notice: string | undefined) {
-    this.#notice = notice;
-    this.requestUpdate();
+    if (notice !== this.#notice) {
+      this.#notice = notice;
+      this.requestUpdate();
+    }
   }
 
   readonly #exportHtmlFile = async () => {
