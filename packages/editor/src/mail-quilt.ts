@@ -1310,8 +1310,10 @@ export class MailQuilt extends LitElement {
       }
 
       /* Shown in place of the editor where there's no room to edit. */
+      /* In the editor's place, so it fills any height the host gives too. */
       .narrow-notice {
         align-items: center;
+        flex-grow: 1;
         background: var(--mq-color-workspace);
         border-radius: var(--mq-radius);
         box-shadow: 0 0 0 1px var(--mq-color-border);
@@ -1858,7 +1860,7 @@ export class MailQuilt extends LitElement {
    */
   #renderNarrowNotice() {
     return html`
-      <div class="ui narrow-notice">
+      <div class="ui narrow-notice" part="frame">
         <span class="notice-icon">${ICONS.monitor}</span>
         <p class="notice-title">Editing needs more room</p>
         <p class="notice-body">

@@ -15,7 +15,12 @@ const saveKey = params.get("save-key");
 if (saveKey) {
   shell.setAttribute("save-key", saveKey);
 }
-document.querySelector("#frame")?.append(shell);
+const frame = document.querySelector<HTMLElement>("#frame");
+// Narrower than the editor needs, as on a phone.
+if (params.has("narrow")) {
+  frame?.style.setProperty("width", "500px");
+}
+frame?.append(shell);
 
 // The listener straight after `value`, as the quick start does.
 shell.value = params.has("refused-first") ? refusedEmail : emailWith("Hello");

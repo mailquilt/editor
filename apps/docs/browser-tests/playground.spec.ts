@@ -328,6 +328,33 @@ test("the starter email fits without scrolling, even in a short window", async (
   expect(scrollHeight).toBe(clientHeight);
 });
 
+test("on a phone, the Shell is only as tall as its notice", async ({
+  page,
+}) => {
+  await page.setViewportSize({ height: 900, width: 420 });
+  await page.goto(PLAYGROUND);
+  const shell = page.locator("mail-quilt-shell");
+  const notice = shell.locator("mail-quilt").locator(".narrow-notice");
+  await expect(notice).toBeVisible();
+
+  const shellBox = await shell.boundingBox();
+  const noticeBox = await notice.boundingBox();
+
+  expect((noticeBox?.y ?? 0) + (noticeBox?.height ?? 0)).toBe(
+    (shellBox?.y ?? 0) + (shellBox?.height ?? 0)
+  );
+  // The notice's own height, not a window's worth of empty space below it.
+  expect(noticeBox?.height).toBe(360);
+});
+
+test("names the email in the Shell's header", async ({ page }) => {
+  await page.goto(PLAYGROUND);
+
+  await expect(
+    page.locator("mail-quilt-shell").getByRole("heading")
+  ).toHaveText("Your email");
+});
+
 test("opens an email saved before the Playground used the Shell", async ({
   page,
 }) => {

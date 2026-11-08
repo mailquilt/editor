@@ -440,6 +440,25 @@ test.describe("accessibility", () => {
   });
 });
 
+test.describe("too narrow to edit in", () => {
+  test("the notice fills the space below the header, in the Shell's frame", async ({
+    page,
+  }) => {
+    await page.goto("/shell.html?narrow");
+    const notice = shell(page).locator("mail-quilt").locator(".narrow-notice");
+    await expect(notice).toBeVisible();
+
+    const noticeBox = await box(notice);
+    const frameBox = await box(page.locator("#frame"));
+    const headerBox = await box(header(page));
+
+    expect(noticeBox.top).toBe(headerBox.bottom);
+    expect(noticeBox.bottom).toBe(frameBox.bottom);
+    await expect(notice).toHaveCSS("border-radius", "0px");
+    await expect(notice).toHaveCSS("box-shadow", "none");
+  });
+});
+
 test.describe("parts", () => {
   test("name each piece of the header and the messages", async ({ page }) => {
     await page.goto("/shell.html?refused-first");

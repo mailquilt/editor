@@ -52,19 +52,42 @@ const createStarterEmail = () => {
 const STARTER_EMAIL = createStarterEmail();
 
 /**
- * The Shell where the editor always was, below the page's title. Its
- * height leaves room for the 4rem docs header and the space around it, so it
- * fits the window once scrolled to, and the email scrolls inside it. Never
- * shorter than the editor's own 600px and the Shell's 48px header, or the
- * Shell would scroll by a few pixels.
+ * The Shell's height leaves room for the 4rem docs header and the space around
+ * it, so it fits the window once scrolled to, and the email scrolls inside it.
+ * Never shorter than the editor's own 600px and the Shell's 48px header, or the
+ * Shell would scroll by a few pixels. Narrower than the 640px the editor needs,
+ * as on a phone, it only shows a notice, so it takes that notice's height.
  */
+const SIZE = `
+  .playground {
+    container-type: inline-size;
+    padding: 1rem 0;
+  }
+
+  .playground-shell {
+    height: calc(100dvh - 6rem);
+    min-height: calc(600px + 48px);
+  }
+
+  @container (width < 640px) {
+    .playground-shell {
+      height: auto;
+      min-height: 0;
+    }
+  }
+`;
+
+/** The Shell where the editor always was, below the page's title. */
 const Playground = () => (
   // No side padding, so the editor lines up with the page's title.
-  <div style={{ padding: "1rem 0" }}>
-    <div
-      style={{ height: "calc(100dvh - 6rem)", minHeight: "calc(600px + 48px)" }}
-    >
-      <MailQuiltShell saveKey={SAVED_EMAIL_KEY} value={STARTER_EMAIL} />
+  <div className="playground">
+    <style>{SIZE}</style>
+    <div className="playground-shell">
+      <MailQuiltShell
+        heading="Your email"
+        saveKey={SAVED_EMAIL_KEY}
+        value={STARTER_EMAIL}
+      />
     </div>
   </div>
 );
