@@ -1,6 +1,8 @@
 import { defineConfig } from "blume";
 
 export default defineConfig({
+  // With no analytics to send them to, readers' answers would go nowhere.
+  feedback: false,
   github: {
     dir: "apps/docs",
     owner: "yourcodebuddy-in",
