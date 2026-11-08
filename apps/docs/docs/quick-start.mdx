@@ -1,0 +1,76 @@
+---
+title: Quick start
+description: Add the Mail Quilt email editor to a page with a bundler, from a CDN, or in React.
+sidebar:
+  order: 1
+---
+
+Each example below opens a saved email, saves every change in the browser, and exports the email as HTML. Each one is the code of a test project that installs the built packages and runs in a browser, so the examples are checked against every change to Mail Quilt.
+
+`starterEmail` stands for wherever your app keeps its emails. It's the email the editor opens when nothing is saved yet, which can be the example in the [document format reference](./document-format#example). Each example imports it from a `starter-email` module beside it, and in TypeScript it has the `BlocksDocument` type.
+
+## Plain JavaScript with a bundler
+
+```bash
+npm install @mailquilt/editor
+```
+
+<include meta='title="index.html"'>./_quick-start/plain-js/index.html</include>
+
+<include meta='title="main.js"'>./_quick-start/plain-js/main.js</include>
+
+Importing `@mailquilt/editor` registers the `<mail-quilt>` element. MJML, which turns the email into HTML, loads the first time Preview or `exportHtml()` needs it. The test project builds this with Vite.
+
+## Without a bundler
+
+On a page with no build step, such as in Rails, Laravel or plain HTML, load the CDN build from a `<script type="module">`:
+
+<include meta='title="index.html"'>./_quick-start/cdn/index.html</include>
+
+MJML loads from a file beside the build the first time Preview or `exportHtml()` needs it.
+
+- **Use the full path to `dist/cdn/index.js`.** A shortened URL, such as `https://cdn.jsdelivr.net/npm/@mailquilt/editor`, doesn't point at this build.
+- **Pin the version.** Each release can rename the MJML file, so an unpinned URL can ask for a file the latest release no longer has.
+
+## React
+
+```bash
+npm install @mailquilt/react
+```
+
+`@mailquilt/react` needs React 19. The test project is a Next.js app:
+
+<include meta='title="app/editor.tsx"'>
+  ./_quick-start/react/app/editor.tsx
+</include>
+
+- `onChange` receives each new document, and `onError` receives `{ reason }` when the editor refuses one.
+- `ref` gives you the `<mail-quilt>` element once the editor has loaded in the browser, for calling `exportHtml()`.
+- `MailQuilt` sends an empty `<mail-quilt>` from the server and loads the editor in the browser, so a Server Component can render it too.
+
+## Saving and loading
+
+- **`value`** sets the document. Setting the document the editor last received or sent out changes nothing, even if you cloned it or its keys come back in another order, so you can pass each change straight back. Any other document loads and clears undo history. Setting `undefined` empties the editor.
+- **Only pass back the latest document.** An earlier document counts as a different one, so it loads and clears undo history. If you save each change to a server, don't set `value` from each response, because a late response would replace newer typing.
+- **`mq-change`** fires after each change, with the new document in `event.detail.document`.
+- **`mq-error`** fires when the editor refuses a document, with the reason in `event.detail.reason`. Nothing changes in the editor. The [document format reference](./document-format) says what it accepts.
+- **Add the `mq-error` listener in time.** `mq-error` fires just after the code that set `value` finishes, and it isn't replayed. A listener added straight after setting `value` hears it. A listener added later, such as in a React `useEffect`, misses a refused first document, and your users see a blank editor with no error. The React wrapper's `onError` is added in time for you.
+- **`exportHtml()`** returns the email's HTML, ready to send. It throws if the editor has no email.
+
+## Content Security Policy
+
+Preview shows the email in a sandboxed iframe, and that iframe inherits your page's Content Security Policy. Emails rely on inline styles, so Preview needs `'unsafe-inline'` in `style-src`:
+
+```text
+Content-Security-Policy: style-src 'self' 'unsafe-inline'
+```
+
+Without it, Preview shows the email without its styling. The editor and `exportHtml()` aren't affected, and the exported HTML is unchanged.
+
+A page using the CDN build also needs `script-src` to allow the folder holding the build, because the build is several files. The path must end in `/`:
+
+```text
+Content-Security-Policy: script-src 'self' https://cdn.jsdelivr.net/npm/@mailquilt/editor@0.1.0/dist/cdn/
+```
+
+If that allows only `dist/cdn/index.js`, the editor doesn't load. An inline script like the one in the [CDN example](#without-a-bundler) also needs a nonce or hash, or you can move it to a file of your own.

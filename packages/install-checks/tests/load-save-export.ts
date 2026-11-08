@@ -35,3 +35,22 @@ export const checkLoadSaveExport = async (page: Page, url: string) => {
 
   expect(problems).toStrictEqual([]);
 };
+
+/** Each fresh project shows why the editor refused a document in its `load-error` output. */
+export const checkRefusedDocument = async (page: Page, url: string) => {
+  await page.goto(url);
+  const text = page.getByRole("textbox", { name: "Text Block" });
+  await expect(text).toHaveText("Hello");
+
+  await page.evaluate(() => {
+    const editor = document.querySelector("mail-quilt") as unknown as {
+      value: unknown;
+    };
+    editor.value = { kind: "blocks", rows: [], version: 2 };
+  });
+
+  await expect(page.getByTestId("load-error")).toContainText(
+    /version 2 is newer/iu
+  );
+  await expect(text).toHaveText("Hello");
+};

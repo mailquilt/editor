@@ -4,12 +4,19 @@ import { promisify } from "node:util";
 import { expect, test } from "@playwright/test";
 
 import { freshProjectDir, freshProjects } from "../fresh-projects.ts";
-import { checkLoadSaveExport } from "./load-save-export.ts";
+import {
+  checkLoadSaveExport,
+  checkRefusedDocument,
+} from "./load-save-export.ts";
 
 const url = `http://localhost:${freshProjects.react.port}/`;
 
 test("a React project loads, saves and exports an email", async ({ page }) => {
   await checkLoadSaveExport(page, url);
+});
+
+test("a refused document reaches onError", async ({ page }) => {
+  await checkRefusedDocument(page, url);
 });
 
 test("a server-rendered page sends the empty element", async ({ request }) => {

@@ -8,6 +8,9 @@ export default defineConfig({
   // other browsers.
   projects: [{ name: "chromium", use: devices["Desktop Chrome"] }],
   testDir: "tests",
+  // The fresh projects are the quick-start code the docs show, which marks its
+  // outputs with ids rather than test-only attributes.
+  use: { testIdAttribute: "id" },
   // Each runs directly, because Playwright's stop signal doesn't get past `pnpm`.
   webServer: [
     {

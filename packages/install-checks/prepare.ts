@@ -17,6 +17,19 @@ import {
 
 const packages = ["core", "renderer", "editor", "react"];
 const here = import.meta.dirname;
+/** The code the quick start shows, which each fresh project is built from. */
+const quickStart = path.join(
+  here,
+  "..",
+  "..",
+  "apps",
+  "docs",
+  "docs",
+  "_quick-start"
+);
+/** The CDN build's URL in the quick start, served from this machine instead. */
+const cdnBuildUrl =
+  /https:\/\/cdn\.jsdelivr\.net\/npm\/@mailquilt\/editor@[^/]+\//gu;
 const tarballs = path.join(freshProjectsDir, "tarballs");
 
 const pnpm = (cwd: string, ...args: string[]) => {
@@ -44,6 +57,7 @@ for (const name of Object.keys(
 ) as (keyof typeof freshProjects)[]) {
   const dir = freshProjectDir(name);
   cpSync(path.join(here, "projects", name), dir, { recursive: true });
+  cpSync(path.join(quickStart, name), dir, { recursive: true });
   cpSync(
     path.join(here, "projects", "starter-email.js"),
     path.join(dir, "starter-email.js")
@@ -60,7 +74,13 @@ for (const name of Object.keys(
 }
 
 const cdnPage = path.join(freshProjectDir("cdn"), "index.html");
-writeFileSync(
-  cdnPage,
-  readFileSync(cdnPage, "utf-8").replaceAll("CDN_PORT", String(cdnPort))
+const cdnPageHtml = readFileSync(cdnPage, "utf-8");
+const localCdnPageHtml = cdnPageHtml.replaceAll(
+  cdnBuildUrl,
+  `http://localhost:${cdnPort}/`
 );
+// Otherwise the check would pass without loading what the quick start shows.
+if (localCdnPageHtml === cdnPageHtml) {
+  throw new Error(`The CDN quick start doesn't load ${cdnBuildUrl}`);
+}
+writeFileSync(cdnPage, localCdnPageHtml);

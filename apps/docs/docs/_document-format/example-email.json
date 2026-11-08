@@ -1,0 +1,169 @@
+{
+  "kind": "blocks",
+  "version": 1,
+  "settings": {
+    "width": 600,
+    "backgroundColor": "#f4f4f5",
+    "fontFamily": "Arial, Helvetica, sans-serif",
+    "preheader": "Your order is on its way",
+    "language": "en"
+  },
+  "rows": [
+    {
+      "id": "row-header",
+      "props": { "backgroundColor": "#ffffff" },
+      "columns": [
+        {
+          "id": "column-header",
+          "width": 100,
+          "props": {},
+          "blocks": [
+            {
+              "id": "logo",
+              "type": "image",
+              "props": {
+                "src": "https://example.com/logo.png",
+                "alt": "Acme",
+                "width": 120,
+                "href": "https://example.com"
+              }
+            },
+            {
+              "id": "title",
+              "type": "heading",
+              "props": {
+                "level": 1,
+                "align": "center",
+                "content": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        { "type": "text", "text": "Thanks, {{first_name}}" }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "row-body",
+      "props": { "backgroundColor": "#ffffff" },
+      "columns": [
+        {
+          "id": "column-message",
+          "width": 67,
+          "props": {},
+          "blocks": [
+            {
+              "id": "message",
+              "type": "text",
+              "props": {
+                "color": "rgb(39, 39, 42)",
+                "fontSize": 16,
+                "content": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        { "type": "text", "text": "Your order " },
+                        {
+                          "type": "text",
+                          "text": "#{{order_id}}",
+                          "marks": [{ "type": "bold" }]
+                        },
+                        { "type": "text", "text": " has shipped." },
+                        { "type": "hardBreak" },
+                        {
+                          "type": "text",
+                          "text": "Track it",
+                          "marks": [
+                            {
+                              "type": "link",
+                              "attrs": { "href": "{{tracking_url}}" }
+                            }
+                          ]
+                        },
+                        { "type": "text", "text": " any time." }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "column-action",
+          "width": 33,
+          "props": {},
+          "blocks": [
+            {
+              "id": "track",
+              "type": "button",
+              "props": {
+                "label": "Track order",
+                "href": "{{tracking_url}}",
+                "backgroundColor": "#2563eb",
+                "color": "#ffffff",
+                "align": "center"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "row-footer",
+      "props": {},
+      "columns": [
+        {
+          "id": "column-footer",
+          "width": 100,
+          "props": {},
+          "blocks": [
+            {
+              "id": "gap",
+              "type": "spacer",
+              "props": { "height": 16 }
+            },
+            {
+              "id": "rule",
+              "type": "divider",
+              "props": { "color": "#d4d4d8", "thickness": 1 }
+            },
+            {
+              "id": "footer",
+              "type": "text",
+              "props": {
+                "align": "center",
+                "color": "#71717a",
+                "fontSize": 12,
+                "content": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Acme, 1 Main Street, Springfield"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

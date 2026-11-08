@@ -1,0 +1,13 @@
+{
+  "$schema": "https://turborepo.dev/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "test": {
+      // The fresh projects are built from the quick-start code in the docs.
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/apps/docs/docs/_quick-start/**"
+      ]
+    }
+  }
+}

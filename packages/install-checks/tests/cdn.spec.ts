@@ -2,7 +2,10 @@ import { expect, test } from "@playwright/test";
 import type { Page, Response } from "@playwright/test";
 
 import { cdnPort, freshProjects } from "../fresh-projects.ts";
-import { checkLoadSaveExport } from "./load-save-export.ts";
+import {
+  checkLoadSaveExport,
+  checkRefusedDocument,
+} from "./load-save-export.ts";
 
 const pageUrl = `http://localhost:${freshProjects.cdn.port}/`;
 const cdnBuildUrl = `http://localhost:${cdnPort}/dist/cdn/`;
@@ -45,21 +48,7 @@ test("a page with no bundler loads, saves and exports an email", async ({
 });
 
 test("a refused document fires mq-error", async ({ page }) => {
-  await page.goto(pageUrl);
-  const text = page.getByRole("textbox", { name: "Text Block" });
-  await expect(text).toHaveText("Hello");
-
-  await page.evaluate(() => {
-    const editor = document.querySelector("mail-quilt") as unknown as {
-      value: unknown;
-    };
-    editor.value = { kind: "blocks", rows: [], version: 2 };
-  });
-
-  await expect(page.getByTestId("load-error")).toContainText(
-    /version 2 is newer/iu
-  );
-  await expect(text).toHaveText("Hello");
+  await checkRefusedDocument(page, pageUrl);
 });
 
 test("MJML loads from beside the CDN build, only for export", async ({
