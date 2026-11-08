@@ -203,6 +203,13 @@ const historyInput = (event: InputEvent) => {
 
 /** The Command for a drop, which adds a Row if it landed outside any. */
 const dropCommand = (source: DragSource, place: DropPlace): Command => {
+  if ("rowLayout" in source) {
+    return {
+      index: "rowIndex" in place ? place.rowIndex : 0,
+      layout: source.rowLayout as RowLayout,
+      type: "insertRow",
+    };
+  }
   if ("blockId" in source) {
     return "columnId" in place
       ? { ...source, ...place, type: "moveBlock" }
@@ -331,12 +338,18 @@ export class MailQuilt extends LitElement {
 
       /*
        * The canvas, then the side panel docked on its right. In a host too narrow
-       * for both, the panel goes below rather than squeeze the email.
+       * for both, the panel goes below rather than squeeze the email. Framed,
+       * so it reads as one component on the host's page. Clipped rather than
+       * hidden, which would stop the panel and toolbar sticking.
        */
       .editor {
         align-items: stretch;
         background: var(--mq-color-workspace);
+        border-radius: var(--mq-radius);
+        /* A ring rather than a border, so it takes no room from the email. */
+        box-shadow: 0 0 0 1px var(--mq-color-border);
         display: flex;
+        overflow: clip;
         flex-wrap: wrap;
         min-height: 600px;
       }
@@ -420,18 +433,59 @@ export class MailQuilt extends LitElement {
         outline-offset: -1px;
       }
 
+      .row-frame[data-row-selected] > .row {
+        box-shadow: inset 0 0 0 3px rgb(255 255 255 / 55%);
+        outline: 2px solid var(--mq-color-accent);
+        outline-offset: -2px;
+      }
+
+      /*
+       * A Row's tag, above its top end corner, away from its Blocks' tags. A
+       * press on it selects the Row.
+       */
+      .row-tag {
+        background: var(--mq-color-accent);
+        border-radius: var(--mq-radius-small) var(--mq-radius-small) 0 0;
+        bottom: 100%;
+        color: var(--mq-color-on-accent);
+        cursor: pointer;
+        font-size: 11px;
+        font-weight: 600;
+        inset-inline-end: 0;
+        line-height: 20px;
+        opacity: 0;
+        padding: 0 8px;
+        pointer-events: none;
+        position: absolute;
+        z-index: 4;
+      }
+
+      .row-frame:hover > .row-tag,
+      .row-frame[data-row-selected] > .row-tag {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .row-frame[data-row-selected] > .row-tag {
+        background: var(--mq-color-text);
+      }
+
+      .email[data-dragging] .row-tag {
+        display: none;
+      }
+
       .column {
         min-width: 0;
         transition: background-color 120ms;
       }
 
       /* While a Block is dragged, where it can land, and where it will. */
-      .email[data-dragging] .column {
+      .email[data-dragging="block"] .column {
         outline: 1px dashed var(--mq-color-outline-hover);
         outline-offset: -1px;
       }
 
-      .email[data-dragging] .column[data-drop-target] {
+      .email[data-dragging="block"] .column[data-drop-target] {
         background-image: linear-gradient(
           var(--mq-color-accent-soft),
           var(--mq-color-accent-soft)
@@ -579,7 +633,7 @@ export class MailQuilt extends LitElement {
        */
       .block:hover::after,
       .block[aria-current="true"]::after {
-        background: var(--mq-color-outline-hover);
+        background: var(--mq-color-accent);
         border-radius: 4px 4px 0 0;
         bottom: 100%;
         color: var(--mq-color-on-accent);
@@ -666,7 +720,8 @@ export class MailQuilt extends LitElement {
         }
       }
 
-      [data-block-type] {
+      [data-block-type],
+      [data-row-layout] {
         touch-action: none;
       }
 
@@ -764,6 +819,17 @@ export class MailQuilt extends LitElement {
       .row-toolbar[data-open] {
         opacity: 1;
         pointer-events: auto;
+      }
+
+      /*
+       * While the pointer is on a Row, only its toolbar shows, so a short Row's
+       * toolbar never sits over another's buttons.
+       */
+      .email:has(.row-frame:hover)
+        .row-frame:not(:hover)
+        > .row-toolbar:not(:focus-within, [data-open]) {
+        opacity: 0;
+        pointer-events: none;
       }
 
       /* An open layout picker is on top of everything else on the canvas. */
@@ -946,7 +1012,12 @@ export class MailQuilt extends LitElement {
       /* A sidebar, flush on the right, as tall as the editor. */
       .side-panel {
         background: var(--mq-color-surface);
-        border-inline-start: 1px solid var(--mq-color-border);
+        border-inline-start: 1px solid
+          color-mix(
+            in srgb,
+            var(--mq-color-border-strong) 40%,
+            var(--mq-color-border)
+          );
         display: flex;
         flex: 1 0 320px;
         /*
@@ -1071,6 +1142,24 @@ export class MailQuilt extends LitElement {
         margin: 0;
       }
 
+      .panel-section {
+        border-bottom: 1px solid var(--mq-color-border);
+        display: flex;
+        flex-direction: column;
+        gap: var(--mq-space-3);
+        padding: var(--mq-space-4);
+      }
+
+      .panel-section .panel-section-title {
+        font-size: var(--mq-font-size);
+      }
+
+      .layout-choices {
+        display: grid;
+        gap: var(--mq-space-1);
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
       .panel-intro {
         display: flex;
         flex-direction: column;
@@ -1154,6 +1243,7 @@ export class MailQuilt extends LitElement {
       .layout-tile {
         align-items: stretch;
         color: var(--mq-color-text-muted);
+        cursor: grab;
         gap: var(--mq-space-2);
         padding: var(--mq-space-3);
       }
@@ -1170,6 +1260,8 @@ export class MailQuilt extends LitElement {
       .narrow-notice {
         align-items: center;
         background: var(--mq-color-workspace);
+        border-radius: var(--mq-radius);
+        box-shadow: 0 0 0 1px var(--mq-color-border);
         display: flex;
         flex-direction: column;
         gap: var(--mq-space-3);
@@ -1420,7 +1512,9 @@ export class MailQuilt extends LitElement {
   #activeBlockId: string | undefined;
   /** Whether focus is in the selected Block's text or its format bar. */
   #editingText = false;
-  /** Whether the side panel shows the selected Block's settings, not its tabs. */
+  /** The selected Row, when a Row rather than a Block is selected. */
+  #selectedRowId: string | undefined;
+  /** Whether the side panel shows the selected Block's or Row's settings, not its tabs. */
   #showProperties = false;
   #panelTab: PanelTab = "content";
   /** The Row whose layout picker is open. */
@@ -1565,6 +1659,9 @@ export class MailQuilt extends LitElement {
     if (!rows.some(({ id }) => id === this.#layoutPickerRowId)) {
       this.#layoutPickerRowId = undefined;
     }
+    if (!rows.some(({ id }) => id === this.#selectedRowId)) {
+      this.#selectedRowId = undefined;
+    }
   }
 
   /**
@@ -1617,7 +1714,9 @@ export class MailQuilt extends LitElement {
     }
     const { rows, settings } = document;
     const selected = this.#selectedPosition(document);
-    const selectedRowId = selected && rows[selected.rowIndex]?.id;
+    // The Row with tools showing: the selected Row, or the selected Block's.
+    const activeRowId =
+      this.#selectedRowId ?? (selected && rows[selected.rowIndex]?.id);
 
     return html`
       ${this.#renderPreview()}
@@ -1657,8 +1756,17 @@ export class MailQuilt extends LitElement {
               (row, rowIndex) => html`
                 <div
                   class="row-frame"
-                  ?data-selected=${row.id === selectedRowId}
+                  ?data-row-selected=${row.id === this.#selectedRowId}
+                  ?data-selected=${row.id === activeRowId}
                 >
+                  <div
+                    aria-hidden="true"
+                    class="ui row-tag"
+                    @click=${() => this.#selectRow(row.id)}
+                    @mousedown=${this.#onControlMousedown}
+                  >
+                    Row
+                  </div>
                   ${this.#renderRowToolbar(row, rowIndex)}
                   <div class="row" style=${styleMap(rowStyles(row))}>
                     ${repeat(
@@ -1724,6 +1832,16 @@ export class MailQuilt extends LitElement {
         @mousedown=${this.#onControlMousedown}
       >
         <div class="bar">
+          <button
+            aria-label="Select Row"
+            aria-pressed=${row.id === this.#selectedRowId ? "true" : "false"}
+            class="icon-button"
+            data-tooltip="Select Row"
+            type="button"
+            @click=${() => this.#selectRow(row.id)}
+          >
+            ${ICONS.rows}
+          </button>
           <button
             aria-controls=${open ? pickerId : nothing}
             aria-expanded=${open ? "true" : "false"}
@@ -2005,12 +2123,86 @@ export class MailQuilt extends LitElement {
     return html`
       <div class="side-panel">
         <div class="side-panel-inner" @keydown=${this.#onPanelKeydown}>
-          ${
-            selected && this.#showProperties
-              ? this.#renderProperties(document, selected)
-              : this.#renderTabs(document)
-          }
+          ${this.#renderPanelView(document, selected)}
         </div>
+      </div>
+    `;
+  }
+
+  #renderPanelView(
+    document: BlocksDocument,
+    selected: ReturnType<typeof findBlockPosition>
+  ) {
+    if (this.#showProperties) {
+      const rowIndex = document.rows.findIndex(
+        ({ id }) => id === this.#selectedRowId
+      );
+      const row = document.rows[rowIndex];
+      if (row) {
+        return this.#renderRowProperties(document, row, rowIndex);
+      }
+      if (selected) {
+        return this.#renderProperties(document, selected);
+      }
+    }
+    return this.#renderTabs(document);
+  }
+
+  /** A selected Row: its layout, then its settings. Empty Rows too. */
+  #renderRowProperties(document: BlocksDocument, row: Row, rowIndex: number) {
+    const current = rowLayoutOf(row);
+    const section: SettingsSection = {
+      command: (props) => ({ props, rowId: row.id, type: "updateRowProps" }),
+      fields: ROW_SETTINGS_FIELDS,
+      id: "row",
+      legend: "Row",
+      targetId: row.id,
+      unsetColor: document.settings.backgroundColor,
+      values: row.props,
+    };
+    return html`
+      <div class="panel-header" @mousedown=${this.#onControlMousedown}>
+        <button
+          aria-label="Back"
+          class="icon-button back-button"
+          data-tooltip="Back"
+          type="button"
+          @click=${this.#showTabs}
+        >
+          ${ICONS.left}
+        </button>
+        <span class="type-badge">${ICONS.rows}</span>
+        <div class="panel-heading">
+          <p class="panel-title">Row ${rowIndex + 1}</p>
+          <p class="panel-subtitle">
+            ${current ? `${current} layout` : "Custom layout"}
+          </p>
+        </div>
+      </div>
+      <div class="panel-scroll">
+        <div class="panel-section">
+          <p class="panel-section-title" id="row-layout-title">Layout</p>
+          <div
+            aria-labelledby="row-layout-title"
+            class="layout-choices"
+            role="group"
+            @mousedown=${this.#onControlMousedown}
+          >
+            ${ROW_LAYOUTS.map(
+              (layout) => html`
+                <button
+                  aria-pressed=${layout === current ? "true" : "false"}
+                  class="layout-option"
+                  type="button"
+                  @click=${() => this.#chooseLayout(row.id, layout, current)}
+                >
+                  ${renderThumbnail(layout)}<span>${layout}</span>
+                </button>
+              `
+            )}
+          </div>
+        </div>
+        ${this.#renderSettings([section])}
       </div>
     `;
   }
@@ -2155,8 +2347,8 @@ export class MailQuilt extends LitElement {
           <div class="panel-intro">
             <p class="panel-section-title">Layouts</p>
             <p class="panel-hint">
-              Choose one to add a Row after the selected Block's Row, or at the
-              end of the email.
+              Drag one between Rows, or choose one to add it after the selected
+              Row, or at the end of the email.
             </p>
           </div>
           <div
@@ -2169,6 +2361,7 @@ export class MailQuilt extends LitElement {
               (layout) => html`
                 <button
                   class="layout-tile"
+                  data-row-layout=${layout}
                   type="button"
                   @click=${() => this.#addRow(layout)}
                 >
@@ -2340,10 +2533,32 @@ export class MailQuilt extends LitElement {
 
   #selectBlock(blockId: string) {
     this.#activeBlockId = blockId;
+    this.#selectedRowId = undefined;
     this.#showProperties = true;
     this.#closeLinkForm();
     this.#syncFormats();
     this.requestUpdate();
+  }
+
+  /**
+   * Selects a Row in place of any Block, and shows its settings. Its toolbar's
+   * button takes focus, so typing can't go on in a Block's text.
+   */
+  async #selectRow(rowId: string) {
+    this.#selectedRowId = rowId;
+    this.#activeBlockId = undefined;
+    this.#editingText = false;
+    this.#formats = undefined;
+    this.#linkForm = undefined;
+    this.#showProperties = true;
+    this.requestUpdate();
+    await this.updateComplete;
+    const button = this.renderRoot
+      .querySelector(`.row-frame[data-row-selected] .row-toolbar`)
+      ?.querySelector<HTMLElement>('[aria-label="Select Row"]');
+    if (button && this.shadowRoot?.activeElement !== button) {
+      button.focus({ focusVisible: false } as FocusOptions);
+    }
   }
 
   /** Re-renders only on a change, because this runs on every transaction. */
@@ -2597,9 +2812,15 @@ export class MailQuilt extends LitElement {
     if (!document) {
       return;
     }
-    const selected = this.#selectedPosition(document);
+    const selectedRow = document.rows.findIndex(
+      ({ id }) => id === this.#selectedRowId
+    );
+    const rowIndex =
+      selectedRow === -1
+        ? this.#selectedPosition(document)?.rowIndex
+        : selectedRow;
     this.#apply({
-      index: selected ? selected.rowIndex + 1 : document.rows.length,
+      index: rowIndex === undefined ? document.rows.length : rowIndex + 1,
       layout,
       type: "insertRow",
     });
@@ -2688,11 +2909,12 @@ export class MailQuilt extends LitElement {
     if (
       target !== currentTarget ||
       !this.#pressedOnWorkspace ||
-      this.#activeBlockId === undefined
+      (this.#activeBlockId === undefined && this.#selectedRowId === undefined)
     ) {
       return;
     }
     this.#activeBlockId = undefined;
+    this.#selectedRowId = undefined;
     this.#editingText = false;
     this.#formats = undefined;
     this.#linkForm = undefined;
@@ -2781,6 +3003,13 @@ export class MailQuilt extends LitElement {
   async #drop(source: DragSource, place: DropPlace) {
     const result = this.#tryCommand(dropCommand(source, place));
     if (!result) {
+      return;
+    }
+    if ("rowLayout" in source) {
+      this.#publishStructure();
+      if (result.createdId !== undefined) {
+        await this.#selectRow(result.createdId);
+      }
       return;
     }
     if ("blockId" in source) {

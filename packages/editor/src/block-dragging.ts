@@ -12,8 +12,14 @@ import {
 } from "@dnd-kit/dom";
 import { getScrollableAncestors } from "@dnd-kit/dom/utilities";
 
-/** What a drag brings: a Block on the canvas, or a new Block from the palette. */
-export type DragSource = { blockId: string } | { blockType: string };
+/**
+ * What a drag brings: a Block on the canvas, a new Block from the palette, or a
+ * new Row from the Rows tab.
+ */
+export type DragSource =
+  | { blockId: string }
+  | { blockType: string }
+  | { rowLayout: string };
 
 /** Where a drop lands: in a Column, or in a new Row of its own. */
 export type DropPlace =
@@ -30,6 +36,9 @@ export interface BlockDragging {
 /** The copy that dnd-kit leaves behind while dragging has the same attributes. */
 const NOT_PLACEHOLDER = ":not([data-dnd-placeholder])";
 export const BLOCKS = `.block${NOT_PLACEHOLDER}`;
+
+const isRowSource = (data: unknown) =>
+  typeof data === "object" && data !== null && "rowLayout" in data;
 
 const midpointY = (element: Element) => {
   const { bottom, top } = element.getBoundingClientRect();
@@ -125,9 +134,11 @@ export const createBlockDragging = ({
     const [collision] = manager.collisionObserver.computeCollisions();
     const droppable =
       collision && manager.registry.droppables.get(collision.id);
-    const column = droppable?.element?.isConnected
-      ? droppable.element
-      : undefined;
+    // A new Row only ever lands between Rows.
+    const column =
+      droppable?.element?.isConnected && !isRowSource(source?.data)
+        ? droppable.element
+        : undefined;
     const parent = column ?? email;
     const items = [...parent.querySelectorAll(column ? BLOCKS : ".row")].filter(
       (element) => element !== source?.element
@@ -239,6 +250,14 @@ export const createBlockDragging = ({
       draggableIds.add(id);
       syncDraggable(id, element, { blockType });
     }
+    for (const element of root.querySelectorAll<HTMLElement>(
+      `[data-row-layout]${NOT_PLACEHOLDER}`
+    )) {
+      const rowLayout = element.dataset.rowLayout as string;
+      const id = `layout:${rowLayout}`;
+      draggableIds.add(id);
+      syncDraggable(id, element, { rowLayout });
+    }
     const { source } = manager.dragOperation;
     if (source) {
       draggableIds.add(String(source.id));
@@ -282,7 +301,10 @@ export const createBlockDragging = ({
   manager.monitor.addEventListener("dragstart", () => {
     const email = root.querySelector<HTMLElement>(".email");
     if (email) {
-      email.dataset.dragging = "";
+      // Which, so that only a Block's drag highlights the Columns.
+      email.dataset.dragging = isRowSource(manager.dragOperation.source?.data)
+        ? "row"
+        : "block";
     }
     scrollable = getScrollableAncestors(root.host, {
       escapeShadowDOM: true,
