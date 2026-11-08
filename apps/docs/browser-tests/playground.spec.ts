@@ -293,24 +293,21 @@ test("starts with several Rows, so moving one can be tried straight away", async
   await expect(textBlockPlace).toHaveAccessibleName(/^Text Block, Row 1,/u);
 });
 
-test("runs on the Advanced Shell, filling the window below the header", async ({
-  page,
-}) => {
+test("runs on the Advanced Shell, below the page's title", async ({ page }) => {
   await page.goto(PLAYGROUND);
   await expect(textBlock(page)).toBeVisible();
   const shell = page.locator("mail-quilt-shell");
   await expect(shell).toHaveAttribute("variant", "advanced");
 
-  const header = await page.getByRole("banner").boundingBox();
+  const title = await page.getByRole("heading", { level: 1 }).boundingBox();
   const box = await shell.boundingBox();
-  const viewport = page.viewportSize();
 
-  expect(box).toStrictEqual({
-    height: (viewport?.height ?? 0) - (header?.height ?? 0),
-    width: viewport?.width,
-    x: 0,
-    y: header?.height,
-  });
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "Playground"
+  );
+  expect(box?.y).toBeGreaterThan((title?.y ?? 0) + (title?.height ?? 0));
+  // So the whole editor fits the window once scrolled to.
+  expect(box?.height).toBeLessThanOrEqual(page.viewportSize()?.height ?? 0);
 });
 
 test("opens an email saved before the Playground used the Shell", async ({

@@ -62,9 +62,14 @@ export class MailQuiltShell extends LitElement {
         height: 100%;
       }
 
+      /* Framed as the editor is, so it reads as one component on the page. */
       .shell {
         background: var(--mq-color-workspace);
+        border-radius: var(--mq-radius);
+        /* A ring rather than a border, so it takes no room from the space given. */
+        box-shadow: 0 0 0 1px var(--mq-color-border);
         display: flex;
+        overflow: clip;
         flex-direction: column;
         height: 100%;
         min-height: 0;

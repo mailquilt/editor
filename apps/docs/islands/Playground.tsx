@@ -52,16 +52,21 @@ const createStarterEmail = () => {
 const STARTER_EMAIL = createStarterEmail();
 
 /**
- * The Advanced Shell, filling the window below the docs header, which is 4rem
- * tall. Fixed, so the page's padding around its content doesn't apply.
+ * The Advanced Shell where the editor always was, below the page's title. Its
+ * height leaves room for the 4rem docs header and the space around it, so it
+ * fits the window once scrolled to, and the email scrolls inside it. Never
+ * shorter than the editor's own 600px, with the Shell's header above.
  */
 const Playground = () => (
-  <div style={{ inset: "4rem 0 0", position: "fixed" }}>
-    <MailQuiltShell
-      saveKey={SAVED_EMAIL_KEY}
-      value={STARTER_EMAIL}
-      variant="advanced"
-    />
+  // No side padding, so the editor lines up with the page's title.
+  <div style={{ padding: "1rem 0" }}>
+    <div style={{ height: "calc(100dvh - 6rem)", minHeight: "40rem" }}>
+      <MailQuiltShell
+        saveKey={SAVED_EMAIL_KEY}
+        value={STARTER_EMAIL}
+        variant="advanced"
+      />
+    </div>
   </div>
 );
 
