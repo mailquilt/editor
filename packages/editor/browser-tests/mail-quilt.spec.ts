@@ -4,6 +4,7 @@ import type { Page } from "@playwright/test";
 import type { MailQuilt } from "../src/index.js";
 import {
   canvas,
+  emailWith,
   exportHtml,
   focusStartOfTextBlock,
   setValue,
@@ -870,4 +871,23 @@ test.describe("refusing a document", () => {
 
     expect(result).toStrictEqual({ editors: 0, value: null });
   });
+});
+
+test("a host's fixed height never cuts the email short", async ({ page }) => {
+  await setValue(
+    page,
+    emailWith(Array.from({ length: 20 }, (_, index) => [[`Row ${index}`]]))
+  );
+  await expect(textBlock(page)).toHaveCount(20);
+
+  await canvas(page).evaluate((element) => {
+    (element as HTMLElement).style.setProperty("height", "800px");
+  });
+
+  // The whole email shows, overflowing the host as it always has.
+  const editor = await canvas(page).locator(".editor").boundingBox();
+  const lastRow = await canvas(page).locator(".row-frame").last().boundingBox();
+  expect((lastRow?.y ?? 0) + (lastRow?.height ?? 0)).toBeLessThanOrEqual(
+    (editor?.y ?? 0) + (editor?.height ?? 0)
+  );
 });

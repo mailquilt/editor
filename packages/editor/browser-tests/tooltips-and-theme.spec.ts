@@ -150,6 +150,21 @@ test.describe("theme tokens", () => {
   });
 });
 
+test("a host restyles the editor's frame through its part", async ({
+  page,
+}) => {
+  await openBlocks(page, ["text"]);
+  const frame = canvas(page).locator(".editor");
+  await expect(frame).toHaveCSS("border-radius", "10px");
+
+  await page.addStyleTag({
+    content: "mail-quilt::part(frame) { border-radius: 0; box-shadow: none; }",
+  });
+
+  await expect(frame).toHaveCSS("border-radius", "0px");
+  await expect(frame).toHaveCSS("box-shadow", "none");
+});
+
 test.describe("on a dark host page", () => {
   test("every surface keeps the editor's own colors", async ({ page }) => {
     await openBlocks(page, ["text"], []);

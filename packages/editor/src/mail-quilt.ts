@@ -366,8 +366,10 @@ export class MailQuilt extends LitElement {
     uiStyles,
     settingsPanelStyles,
     css`
+      /* A column, so the editor fills any height the host gives the element. */
       :host {
-        display: block;
+        display: flex;
+        flex-direction: column;
       }
 
       /*
@@ -391,6 +393,8 @@ export class MailQuilt extends LitElement {
         box-shadow: 0 0 0 1px var(--mq-color-border);
         display: flex;
         overflow: clip;
+        /* Fills any height the host gives, but never shrinks below the email. */
+        flex: 1 0 auto;
         flex-wrap: wrap;
         min-height: 600px;
       }
@@ -403,6 +407,7 @@ export class MailQuilt extends LitElement {
        * again, and so none of them takes focus.
        */
       .editor[data-collapsed] {
+        flex-grow: 0;
         height: 0;
         min-height: 0;
       }
@@ -1039,32 +1044,6 @@ export class MailQuilt extends LitElement {
         margin: 0;
       }
 
-      .text-button {
-        background: var(--mq-color-surface);
-        border: 1px solid var(--mq-color-border);
-        border-radius: var(--mq-radius-small);
-        box-shadow: var(--mq-shadow-small);
-        cursor: pointer;
-        font-weight: 500;
-        height: 28px;
-        padding: 0 var(--mq-space-3);
-        transition: background-color 120ms;
-      }
-
-      .text-button:hover {
-        background: var(--mq-color-surface-hover);
-      }
-
-      .text-button.primary {
-        background: var(--mq-color-accent);
-        border-color: var(--mq-color-accent);
-        color: var(--mq-color-on-accent);
-      }
-
-      .text-button.primary:hover {
-        background: var(--mq-color-accent-strong);
-      }
-
       /*
        * Undo, Redo and Preview, at the bottom left of the canvas while it shows,
        * as far from the canvas's left edge as from the window's bottom.
@@ -1108,7 +1087,11 @@ export class MailQuilt extends LitElement {
         display: flex;
         flex: 1;
         flex-direction: column;
-        max-height: 100dvh;
+        /*
+         * No taller than the window, or than the part of a Shell the email
+         * scrolls in, which the Shell gives as --mq-visible-height.
+         */
+        max-height: min(100dvh, var(--mq-visible-height, 100dvh));
         min-width: 0;
         overflow: hidden;
         position: sticky;
@@ -1332,8 +1315,10 @@ export class MailQuilt extends LitElement {
       }
 
       /* Shown in place of the editor where there's no room to edit. */
+      /* In the editor's place, so it fills any height the host gives too. */
       .narrow-notice {
         align-items: center;
+        flex-grow: 1;
         background: var(--mq-color-workspace);
         border-radius: var(--mq-radius);
         box-shadow: 0 0 0 1px var(--mq-color-border);
@@ -1522,9 +1507,13 @@ export class MailQuilt extends LitElement {
         border: 0;
         border-radius: var(--mq-radius);
         box-shadow: var(--mq-shadow);
+        /*
+         * The window less a gap, up to a size that still reads as a dialog. A
+         * wider email scrolls inside it.
+         */
         height: calc(100dvh - 32px);
-        max-height: none;
-        max-width: none;
+        max-height: 880px;
+        max-width: 960px;
         overflow: hidden;
         padding: 0;
         width: calc(100vw - 32px);
@@ -1808,6 +1797,7 @@ export class MailQuilt extends LitElement {
       ${this.#narrow ? this.#renderNarrowNotice() : nothing}
       <div
         class="ui editor"
+        part="frame"
         ?data-collapsed=${this.#narrow}
         style=${styleMap({ "--email-width": `${settings.width}px` })}
       >
@@ -1875,7 +1865,7 @@ export class MailQuilt extends LitElement {
    */
   #renderNarrowNotice() {
     return html`
-      <div class="ui narrow-notice">
+      <div class="ui narrow-notice" part="frame">
         <span class="notice-icon">${ICONS.monitor}</span>
         <p class="notice-title">Editing needs more room</p>
         <p class="notice-body">

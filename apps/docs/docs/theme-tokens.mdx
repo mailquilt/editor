@@ -2,7 +2,7 @@
 title: Theme tokens
 description: Match the editor to your app by changing its colors, spacing, corners and font with CSS custom properties on the mail-quilt element.
 sidebar:
-  order: 3
+  order: 4
 ---
 
 The editor draws everything it owns from tokens: the workspace around the email, the side panel, the toolbars on the canvas and the tooltips. Each token is a CSS custom property whose name starts with `--mq-`. Set one on the `<mail-quilt>` element, and the editor uses your value instead of its default.
@@ -18,7 +18,9 @@ mail-quilt {
 }
 ```
 
-The React component renders the same `<mail-quilt>` element, so the same selector works there.
+The React component renders the same `<mail-quilt>` element, so the same selector works there. On a [Shell](./shell), set them on `<mail-quilt-shell>` instead. Its header and messages use them, and so does the editor inside it.
+
+The frame around the editor, with its corners and its 1px ring, is the `frame` part. To change it beyond the tokens, style `mail-quilt::part(frame)`, such as `border-radius: 0` for an editor that fills a panel edge to edge.
 
 The editor doesn't take its color, font or background from your page, so it looks the same on a light page and a dark one until you change a token. The defaults below are a light theme. If you set darker colors, check that text stays readable against them.
 

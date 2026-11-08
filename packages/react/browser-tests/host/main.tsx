@@ -2,8 +2,11 @@ import type { ComponentProps } from "react";
 import { useCallback, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 
-import { MailQuilt } from "../../src/index.js";
-import type { MailQuiltElement } from "../../src/index.js";
+import { MailQuilt, MailQuiltShell } from "../../src/index.js";
+import type {
+  MailQuiltElement,
+  MailQuiltShellElement,
+} from "../../src/index.js";
 
 type Document = NonNullable<ComponentProps<typeof MailQuilt>["value"]>;
 
@@ -131,13 +134,61 @@ const CallbackRefHost = () => {
   );
 };
 
+/** A controlled host of the Shell. */
+const ShellHost = () => {
+  const [document, setDocument] = useState(firstEmail);
+  const [errors, setErrors] = useState<string[]>([]);
+  const [html, setHtml] = useState("");
+  const [ready, setReady] = useState(false);
+  const shell = useRef<MailQuiltShellElement | null>(null);
+  // The wrapper hands over the element only after it has set `value`.
+  const attach = useCallback((element: MailQuiltShellElement | null) => {
+    shell.current = element;
+    setReady(element !== null);
+  }, []);
+  const params = new URLSearchParams(window.location.search);
+  const save = params.has("save");
+
+  return (
+    <main style={{ display: "grid", gridTemplateRows: "auto 700px" }}>
+      <div>
+        <button
+          onClick={async () =>
+            setHtml((await shell.current?.exportHtml()) ?? "")
+          }
+          type="button"
+        >
+          Export with ref
+        </button>
+        <button onClick={() => setDocument(firstEmail())} type="button">
+          Load the first email again
+        </button>
+        <output data-testid="ready">{ready ? "yes" : "no"}</output>
+        <output data-testid="html">{html}</output>
+        <output data-testid="errors">{errors.join("\n")}</output>
+        <output data-testid="latest-document">
+          {JSON.stringify(document)}
+        </output>
+      </div>
+      <MailQuiltShell
+        actions={params.has("only-html") ? ["export-html"] : undefined}
+        heading="Campaign"
+        onChange={(next) => setDocument(next)}
+        onError={({ reason }) => setErrors((all) => [...all, reason])}
+        ref={attach}
+        saveKey={save ? "react-test:email" : undefined}
+        value={document}
+      />
+    </main>
+  );
+};
+
+const hosts = { "callback-ref": CallbackRefHost, shell: ShellHost };
+const params = new URLSearchParams(window.location.search);
+const Chosen =
+  Object.entries(hosts).find(([name]) => params.has(name))?.[1] ?? Host;
+
 const root = window.document.querySelector("#root");
 if (root) {
-  createRoot(root).render(
-    new URLSearchParams(window.location.search).has("callback-ref") ? (
-      <CallbackRefHost />
-    ) : (
-      <Host />
-    )
-  );
+  createRoot(root).render(<Chosen />);
 }

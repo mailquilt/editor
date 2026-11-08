@@ -306,10 +306,11 @@ export const dragTo = async (
 };
 
 export const violations = async (
-  page: Page
+  page: Page,
+  element = "mail-quilt"
 ): Promise<{ id: string; targets: unknown[] }[]> => {
   const { violations: found } = await new AxeBuilder({ page })
-    .include("mail-quilt")
+    .include(element)
     .setLegacyMode()
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
     .analyze();

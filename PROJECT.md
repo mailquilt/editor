@@ -567,7 +567,7 @@ Included:
 - HTML export tested in Gmail and Apple Mail, with Outlook relying on MJML and documented as untested
 - Working installs in fresh plain JS and React projects
 - An editor and Playground redesign in the style of established embedded email builders, with UI theme tokens a host can override (#33)
-- Starters and Templates: ready-made emails a person can start from (#34)
+- The Shell: a ready-made editor page, with Import, Export and messages (#34)
 - Docs and the Playground
 
 Before release:
@@ -585,7 +585,7 @@ No dates. Items can be reordered. The roadmap itself lives in GitHub Issues.
 
 1. One Text Block through `core`, `renderer`, `editor` and the Playground.
 2. The other Blocks, columns, the React wrapper and the docs.
-3. The editor and Playground redesign, and Starters and Templates.
+3. The editor and Playground redesign, and the Shell.
 4. The `0.1.0` release.
 
 ### Next

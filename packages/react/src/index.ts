@@ -3,6 +3,8 @@
 import type {
   BlocksDocument,
   MailQuilt as MailQuiltElement,
+  MailQuiltShell as MailQuiltShellElement,
+  ShellAction,
 } from "@mailquilt/editor";
 import {
   createElement,
@@ -16,26 +18,45 @@ import type { Ref } from "react";
 export type {
   BlocksDocument,
   MailQuilt as MailQuiltElement,
+  MailQuiltShell as MailQuiltShellElement,
+  ShellAction,
 } from "@mailquilt/editor";
 
-export interface MailQuiltProps {
+interface EditorProps<Element> {
   onChange?: (document: BlocksDocument) => void;
   onError?: (error: { reason: string }) => void;
-  /** The `<mail-quilt>` element, once the editor has loaded in the browser. */
-  ref?: Ref<MailQuiltElement>;
+  /** The element, once the editor has loaded in the browser. */
+  ref?: Ref<Element>;
   value?: BlocksDocument;
+}
+
+export type MailQuiltProps = EditorProps<MailQuiltElement>;
+
+export interface MailQuiltShellProps extends EditorProps<MailQuiltShellElement> {
+  /** The Shell's buttons to show. All of them when left out, none when empty. */
+  actions?: readonly ShellAction[];
+  /** The text in the Shell's header. "Email" when left out. */
+  heading?: string;
+  /** Where the Shell keeps the email in the browser. Without it, nothing is stored. */
+  saveKey?: string;
 }
 
 /** Only called from an effect, so a server never runs the editor. */
 const loadEditor = () => import("@mailquilt/editor");
 
-export const MailQuilt = ({
+/**
+ * Connects `<mail-quilt>` or `<mail-quilt-shell>` to the props they share, once
+ * the editor has loaded. Returns the ref for the rendered element.
+ */
+const useEditorElement = <
+  Element extends MailQuiltElement | MailQuiltShellElement,
+>({
   onChange,
   onError,
   ref,
   value,
-}: MailQuiltProps) => {
-  const [element, setElement] = useState<MailQuiltElement | null>(null);
+}: EditorProps<Element>) => {
+  const [element, setElement] = useState<Element | null>(null);
   const [loaded, setLoaded] = useState(false);
   const editor = loaded ? element : null;
 
@@ -76,11 +97,37 @@ export const MailQuilt = ({
 
   // Last, so a callback ref gets an element that already has its email, and with
   // nothing until then, because a ref is otherwise never called with `null` first.
-  useImperativeHandle<MailQuiltElement | null, MailQuiltElement | null>(
+  useImperativeHandle<Element | null, Element | null>(
     editor ? ref : undefined,
     () => editor,
     [editor]
   );
 
-  return createElement("mail-quilt", { ref: setElement });
+  return setElement;
+};
+
+export const MailQuilt = (props: MailQuiltProps) =>
+  createElement("mail-quilt", { ref: useEditorElement(props) });
+
+/**
+ * A ready-made editor page: the editor with a header, Import and Export, and
+ * messages. Its attributes are on the server's HTML, so the Shell has them
+ * when it starts in the browser.
+ */
+export const MailQuiltShell = ({
+  actions,
+  heading,
+  saveKey,
+  ...props
+}: MailQuiltShellProps) => {
+  // React's types only know the attributes of built-in elements.
+  const attributes: Record<string, unknown> = {
+    actions: actions?.join(" "),
+    heading,
+    "save-key": saveKey,
+  };
+  return createElement("mail-quilt-shell", {
+    ...attributes,
+    ref: useEditorElement(props),
+  });
 };

@@ -51,6 +51,16 @@ test("a refused document fires mq-error", async ({ page }) => {
   await checkRefusedDocument(page, pageUrl);
 });
 
+test("the CDN build registers the Shell too", async ({ page }) => {
+  await page.goto(pageUrl);
+
+  await expect
+    .poll(() =>
+      page.evaluate(() => customElements.get("mail-quilt-shell") !== undefined)
+    )
+    .toBe(true);
+});
+
 test("MJML loads from beside the CDN build, only for export", async ({
   page,
 }) => {
