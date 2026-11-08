@@ -51,5 +51,5 @@ A public page in the docs site where anyone can try the email editor.
 _Avoid_: Demo, hosted editor
 
 **Shell**:
-A ready-made editor page: the editor plus a header, Import and Export, and messages, in a Simple or Advanced variant.
+A ready-made editor page: the editor plus a header, Import and Export, and messages.
 _Avoid_: Template, Kit

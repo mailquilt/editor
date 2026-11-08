@@ -1500,9 +1500,13 @@ export class MailQuilt extends LitElement {
         border: 0;
         border-radius: var(--mq-radius);
         box-shadow: var(--mq-shadow);
+        /*
+         * The window less a gap, up to a size that still reads as a dialog. A
+         * wider email scrolls inside it.
+         */
         height: calc(100dvh - 32px);
-        max-height: none;
-        max-width: none;
+        max-height: 880px;
+        max-width: 960px;
         overflow: hidden;
         padding: 0;
         width: calc(100vw - 32px);

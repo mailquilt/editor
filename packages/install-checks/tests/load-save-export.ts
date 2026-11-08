@@ -58,7 +58,7 @@ export const checkRefusedDocument = async (page: Page, url: string) => {
 };
 
 /**
- * Each fresh project's Shell page is the Advanced Shell, saving under
+ * Each fresh project's Shell page saves under
  * `my-app:email` and opening an email saying "Hello" when nothing is saved.
  */
 export const checkShell = async (page: Page, url: string) => {

@@ -1,22 +1,17 @@
 ---
 title: Shell
-description: Put a ready-made email editor page in your app, with a header, Export and Import buttons, messages and saving in the browser, in a Simple or Advanced variant.
+description: Put a ready-made email editor page in your app, with a header, Export and Import buttons, messages and saving in the browser.
 sidebar:
   order: 2
 ---
 
 `<mail-quilt>` is only the editor. Around it, your app still needs somewhere to export the email, somewhere to show why an email was refused, and a way to keep the person's work. `<mail-quilt-shell>` is all of that in one element: the editor, with a header above it and a message bar between them.
 
-## Variants
+## What it has
 
-| Variant | What the header has |
-| --- | --- |
-| `simple`, the default | The heading and an **Export HTML** button. |
-| `advanced` | Everything in Simple, plus **Import JSON** and **Export JSON**. |
+The header has the heading and three buttons. **Export HTML** downloads the email as `email.html`, ready to send. **Export JSON** downloads it as `email.json`, the [document format](./document-format) the editor saves. **Import JSON** opens a `.json` file. If the editor refuses it, the message bar says why and the current email stays.
 
-**Export HTML** downloads the email as `email.html`, ready to send. **Export JSON** downloads it as `email.json`, the [document format](./document-format) the editor saves. **Import JSON** opens a `.json` file. If the editor refuses it, the message bar says why and the current email stays.
-
-The message bar shows emails the editor refuses, exports that fail and saves that fail. Screen readers announce each message. The [Playground](./playground) is the Advanced variant.
+The message bar shows emails the editor refuses, exports that fail and saves that fail. Screen readers announce each message. The [Playground](./playground) is a Shell.
 
 ## With a bundler
 
@@ -48,7 +43,7 @@ With `save-key`, the Shell keeps the email in the browser's `localStorage` under
 
 - When the Shell opens, an email saved under the key opens instead of `value`. `value` is the email to start from when nothing is saved yet.
 - If the saved email can't be opened, the message bar says why and `value` opens instead. The saved email stays as it is until the person changes something, so nothing is lost by opening the page.
-- Each change is saved under the key. If the browser can't save, because storage is blocked or full, the message bar says so. In the Advanced variant, it suggests Export JSON instead.
+- Each change is saved under the key. If the browser can't save, because storage is blocked or full, the message bar says so, and suggests Export JSON instead.
 
 Pick a key no other app on the same origin uses, such as one starting with your app's name.
 
@@ -59,7 +54,6 @@ Without `save-key`, the Shell stores nothing. Save the email yourself from `mq-c
 | Name | What it does |
 | --- | --- |
 | `value` | The email the Shell shows, as on `<mail-quilt>`. With `save-key`, a saved email opens instead of the first one you set. |
-| `variant` | `"simple"`, the default, or `"advanced"`. The attribute shows the current variant. |
 | `heading` | The text in the header. It defaults to "Email". |
 | `save-key` | Where the email is kept in the browser, as the `saveKey` property. Leave it out to store nothing. |
 | `mq-change` | Fired after every change, including an import. The new email is in `event.detail.document`. |
@@ -68,11 +62,11 @@ Without `save-key`, the Shell stores nothing. Save the email yourself from `mq-c
 
 `value`, `mq-change`, `mq-error` and `exportHtml()` follow the rules the [quick start](./quick-start#the-editors-api) describes, including when to listen for `mq-error`.
 
-In React, these are the `value`, `variant`, `heading`, `saveKey`, `onChange` and `onError` props, and `exportHtml()` on the `ref`.
+In React, these are the `value`, `heading`, `saveKey`, `onChange` and `onError` props, and `exportHtml()` on the `ref`.
 
 ## Customizing it
 
-Set `heading` to name what's being edited, such as `heading="Welcome email"`. Pick the buttons with `variant`: Simple has only Export HTML, and Advanced adds the JSON buttons.
+Set `heading` to name what's being edited, such as `heading="Welcome email"`.
 
 The Shell draws its header and messages from the same [theme tokens](./theme-tokens) as the editor. Set them on `<mail-quilt-shell>`, and the editor inside uses them too.
 
@@ -83,16 +77,16 @@ For anything else, each piece of the header and the message bar is a CSS part. S
 | `header`      | The bar above the editor.                        |
 | `heading`     | The heading's text.                              |
 | `actions`     | The group of buttons on the right of the header. |
-| `import-json` | The Import JSON button, in the Advanced variant. |
-| `export-json` | The Export JSON button, in the Advanced variant. |
+| `import-json` | The Import JSON button.                          |
+| `export-json` | The Export JSON button.                          |
 | `export-html` | The Export HTML button.                          |
 | `messages`    | The message bar, below the header.               |
 | `message`     | Each message in the bar.                         |
 
 ```css title="styles.css"
-/* Only the JSON buttons, with no heading. */
-mail-quilt-shell::part(export-html),
-mail-quilt-shell::part(heading) {
+/* Only Export HTML, for an app that keeps the emails itself. */
+mail-quilt-shell::part(import-json),
+mail-quilt-shell::part(export-json) {
   display: none;
 }
 
@@ -101,7 +95,7 @@ mail-quilt-shell::part(header) {
 }
 ```
 
-A part you hide is gone for everyone, including people using a screen reader or a keyboard. If you hide Export HTML, call `exportHtml()` from a control of your own so people can still get the HTML.
+A part you hide is gone for everyone, including people using a screen reader or a keyboard. If you hide Export HTML, call `exportHtml()` from a control of your own so people can still get the HTML. If you hide Export JSON while using `save-key`, the message about a failed save still suggests it, so save the email from `mq-change` too.
 
 ## Shell or `<mail-quilt>`?
 

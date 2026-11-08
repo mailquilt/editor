@@ -51,36 +51,24 @@ const openShell = async (page: Page, query = "") => {
   await expect(textBlock(page)).toHaveText("Hello");
 };
 
-test.describe("the Simple variant", () => {
-  test("is the default: the heading, Export HTML and the editor", async ({
-    page,
-  }) => {
-    await openShell(page);
+test("shows the heading, the Import and Export buttons, and the editor", async ({
+  page,
+}) => {
+  await openShell(page);
 
-    await expect(shell(page)).toHaveAttribute("variant", "simple");
-    await expect(header(page)).toContainText("Email");
-    await expect(
-      shell(page).getByRole("button", { name: "Export HTML" })
-    ).toBeVisible();
-    await expect(
-      shell(page).getByRole("button", { name: /JSON/u })
-    ).toHaveCount(0);
-    await expect(shell(page).locator("mail-quilt")).toBeVisible();
-  });
+  await expect(header(page)).toContainText("Email");
+  for (const name of ["Import JSON", "Export JSON", "Export HTML"]) {
+    // oxlint-disable-next-line no-await-in-loop -- One button at a time.
+    await expect(shell(page).getByRole("button", { name })).toBeVisible();
+  }
+  await expect(shell(page).locator("mail-quilt")).toBeVisible();
+  // There's one Shell, with no variants to choose from.
+  await expect(shell(page)).not.toHaveAttribute("variant");
 });
 
-test.describe("the Advanced variant", () => {
-  test("adds Import JSON and Export JSON", async ({ page }) => {
-    await openShell(page, "?variant=advanced");
-
-    for (const name of ["Import JSON", "Export JSON", "Export HTML"]) {
-      // oxlint-disable-next-line no-await-in-loop -- One button at a time.
-      await expect(shell(page).getByRole("button", { name })).toBeVisible();
-    }
-  });
-
+test.describe("moving an email with JSON", () => {
   test("an exported email comes back when imported", async ({ page }) => {
-    await openShell(page, "?variant=advanced");
+    await openShell(page);
     await focusStartOfTextBlock(page);
     await page.keyboard.type("Exported ");
     const { name, text } = await exportFile(page, "Export JSON");
@@ -106,7 +94,7 @@ test.describe("the Advanced variant", () => {
   test("a refused import shows its reason and keeps the current email", async ({
     page,
   }) => {
-    await openShell(page, "?variant=advanced");
+    await openShell(page);
 
     await importFile(
       page,
@@ -121,7 +109,7 @@ test.describe("the Advanced variant", () => {
   });
 
   test("the same file, once fixed, can be chosen again", async ({ page }) => {
-    await openShell(page, "?variant=advanced");
+    await openShell(page);
     await importFile(page, "{not json");
     await expect(shell(page).getByRole("alert")).toContainText("valid JSON");
 
@@ -265,28 +253,12 @@ test.describe("saving in the browser", () => {
       await page.keyboard.type("Unsaved ");
 
       await expect(shell(page).getByRole("alert")).toContainText("can't save");
-      await expect(shell(page).getByRole("alert")).not.toContainText("JSON");
+      await expect(shell(page).getByRole("alert")).toContainText(
+        "Export it as JSON"
+      );
       await expect(textBlock(page)).toHaveText("Unsaved Hello");
     });
   }
-
-  test("the Advanced variant suggests Export JSON instead", async ({
-    page,
-  }) => {
-    await page.addInitScript(() => {
-      Storage.prototype.setItem = () => {
-        throw new DOMException("Full", "QuotaExceededError");
-      };
-    });
-    await openShell(page, `?variant=advanced&save-key=${key}`);
-
-    await focusStartOfTextBlock(page);
-    await page.keyboard.type("Unsaved ");
-
-    await expect(shell(page).getByRole("alert")).toContainText(
-      "Export it as JSON"
-    );
-  });
 
   test("without a save key, nothing is stored", async ({ page }) => {
     await page.addInitScript(() => {
@@ -302,7 +274,7 @@ test.describe("saving in the browser", () => {
         realSetItem.call(this, name, value);
       };
     });
-    await openShell(page, "?variant=advanced");
+    await openShell(page);
 
     await focusStartOfTextBlock(page);
     await page.keyboard.type("Oh ");
@@ -382,7 +354,7 @@ test.describe("look", () => {
 
 test.describe("accessibility", () => {
   test("the keyboard reaches every header control", async ({ page }) => {
-    await openShell(page, "?variant=advanced");
+    await openShell(page);
     await page.locator("body").click({ position: { x: 1, y: 1 } });
 
     const reached: string[] = [];
@@ -404,23 +376,17 @@ test.describe("accessibility", () => {
     ]);
   });
 
-  test("meets WCAG 2.2 AA in both variants, with a message showing", async ({
-    page,
-  }) => {
-    for (const variant of ["simple", "advanced"]) {
-      // oxlint-disable-next-line no-await-in-loop -- One page at a time.
-      await page.goto(`/shell.html?variant=${variant}&refused-first`);
-      // oxlint-disable-next-line no-await-in-loop -- See above.
-      await expect(shell(page).getByRole("alert")).toBeVisible();
-      // oxlint-disable-next-line no-await-in-loop -- See above.
-      expect(await violations(page, "mail-quilt-shell")).toStrictEqual([]);
-    }
+  test("meets WCAG 2.2 AA, with a message showing", async ({ page }) => {
+    await page.goto("/shell.html?refused-first");
+    await expect(shell(page).getByRole("alert")).toBeVisible();
+
+    expect(await violations(page, "mail-quilt-shell")).toStrictEqual([]);
   });
 });
 
 test.describe("parts", () => {
   test("name each piece of the header and the messages", async ({ page }) => {
-    await page.goto("/shell.html?variant=advanced&refused-first");
+    await page.goto("/shell.html?refused-first");
     await expect(shell(page).getByRole("alert")).toBeVisible();
 
     const parts = await shell(page).evaluate((element) =>
@@ -442,7 +408,7 @@ test.describe("parts", () => {
   });
 
   test("let a host hide a button or the heading with CSS", async ({ page }) => {
-    await openShell(page, "?variant=advanced");
+    await openShell(page);
 
     await page.addStyleTag({
       content: `

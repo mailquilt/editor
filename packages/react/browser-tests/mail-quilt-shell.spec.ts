@@ -15,13 +15,10 @@ const typeAtStart = async (page: Page, text: string) => {
   await page.keyboard.type(text);
 };
 
-test("shows the email in value, with the heading and variant", async ({
-  page,
-}) => {
+test("shows the email in value, with the heading", async ({ page }) => {
   await page.goto("/?shell");
 
   await expect(textBlock(page)).toHaveText("Hello");
-  await expect(shell(page)).toHaveAttribute("variant", "advanced");
   await expect(shell(page).getByRole("heading")).toHaveText("Campaign");
   await expect(
     shell(page).getByRole("button", { name: "Import JSON" })

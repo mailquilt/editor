@@ -134,7 +134,7 @@ const CallbackRefHost = () => {
   );
 };
 
-/** A controlled host of the Advanced Shell. */
+/** A controlled host of the Shell. */
 const ShellHost = () => {
   const [document, setDocument] = useState(firstEmail);
   const [errors, setErrors] = useState<string[]>([]);
@@ -166,7 +166,6 @@ const ShellHost = () => {
         ref={shell}
         saveKey={save ? "react-test:email" : undefined}
         value={document}
-        variant="advanced"
       />
     </main>
   );

@@ -52,7 +52,7 @@ const createStarterEmail = () => {
 const STARTER_EMAIL = createStarterEmail();
 
 /**
- * The Advanced Shell where the editor always was, below the page's title. Its
+ * The Shell where the editor always was, below the page's title. Its
  * height leaves room for the 4rem docs header and the space around it, so it
  * fits the window once scrolled to, and the email scrolls inside it. Never
  * shorter than the editor's own 600px and the Shell's 48px header, or the
@@ -64,11 +64,7 @@ const Playground = () => (
     <div
       style={{ height: "calc(100dvh - 6rem)", minHeight: "calc(600px + 48px)" }}
     >
-      <MailQuiltShell
-        saveKey={SAVED_EMAIL_KEY}
-        value={STARTER_EMAIL}
-        variant="advanced"
-      />
+      <MailQuiltShell saveKey={SAVED_EMAIL_KEY} value={STARTER_EMAIL} />
     </div>
   </div>
 );

@@ -7,7 +7,6 @@ const html = renderToString(createElement(MailQuilt));
 const shellHtml = renderToString(
   createElement(MailQuiltShell, {
     saveKey: "my-app:email",
-    variant: "advanced",
   })
 );
 console.log(

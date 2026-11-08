@@ -621,3 +621,29 @@ test("host CSS doesn't reach the Preview", async ({ page }) => {
   expect(height).toBeGreaterThan(200);
   expect(width).toBeGreaterThan(600);
 });
+
+test("stays a readable size in a large window, in its middle", async ({
+  page,
+}) => {
+  await page.setViewportSize({ height: 1400, width: 2400 });
+  await previewButton(page).click();
+  await expect(previewEmail(page)).toContainText("Hello");
+
+  const box = await previewDialog(page).boundingBox();
+
+  expect(box?.width).toBe(960);
+  expect(box?.height).toBe(880);
+  expect((box?.x ?? 0) + (box?.width ?? 0) / 2).toBe(1200);
+  expect((box?.y ?? 0) + (box?.height ?? 0) / 2).toBe(700);
+});
+
+test("leaves a gap around it in a small window", async ({ page }) => {
+  await page.setViewportSize({ height: 700, width: 900 });
+  await previewButton(page).click();
+  await expect(previewEmail(page)).toContainText("Hello");
+
+  const box = await previewDialog(page).boundingBox();
+
+  expect(box?.width).toBe(900 - 32);
+  expect(box?.height).toBe(700 - 32);
+});

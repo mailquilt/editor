@@ -55,8 +55,7 @@ test("rendering on a server doesn't register the element", async () => {
   expect(JSON.parse(stdout)).toStrictEqual({
     customElements: "undefined",
     html: "<mail-quilt></mail-quilt>",
-    shellHtml:
-      '<mail-quilt-shell save-key="my-app:email" variant="advanced"></mail-quilt-shell>',
+    shellHtml: '<mail-quilt-shell save-key="my-app:email"></mail-quilt-shell>',
   });
 });
 
@@ -71,6 +70,6 @@ test("a server-rendered Shell sends its attributes", async ({ request }) => {
 
   expect(response.status()).toBe(200);
   expect(await response.text()).toContain(
-    '<mail-quilt-shell save-key="my-app:email" variant="advanced"></mail-quilt-shell>'
+    '<mail-quilt-shell save-key="my-app:email"></mail-quilt-shell>'
   );
 });

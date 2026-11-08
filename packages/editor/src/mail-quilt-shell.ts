@@ -1,12 +1,10 @@
 import { loadDocument } from "@mailquilt/core";
 import type { BlocksDocument, LoadResult } from "@mailquilt/core";
-import { css, html, LitElement, nothing, unsafeCSS } from "lit";
+import { css, html, LitElement, unsafeCSS } from "lit";
 
 import "./mail-quilt.js";
 import type { MailQuilt } from "./mail-quilt.js";
 import { themeTokens, uiStyles } from "./theme.js";
-
-export type ShellVariant = "advanced" | "simple";
 
 /** Every theme token's name, from the one place they're defined. */
 const TOKEN_NAMES = themeTokens.cssText.match(/--mq-[\w-]+(?=\s*:)/gu) ?? [];
@@ -49,7 +47,6 @@ export class MailQuiltShell extends LitElement {
   static override properties = {
     heading: {},
     saveKey: { attribute: "save-key" },
-    variant: { reflect: true },
   };
 
   static override styles = [
@@ -147,7 +144,6 @@ export class MailQuiltShell extends LitElement {
   declare heading: string;
   /** Where the email is kept in the browser. Without it, nothing is stored. */
   declare saveKey: string | undefined;
-  declare variant: ShellVariant;
 
   readonly #editor: MailQuilt = document.createElement("mail-quilt");
   /** Whether the email to open has been chosen, which waits for the first update. */
@@ -165,7 +161,6 @@ export class MailQuiltShell extends LitElement {
   constructor() {
     super();
     this.heading = "Email";
-    this.variant = "simple";
     this.#editor.addEventListener("mq-change", ({ detail }) => {
       this.#keep(detail.document);
     });
@@ -203,12 +198,9 @@ export class MailQuiltShell extends LitElement {
   }
 
   protected override render() {
-    const advanced = this.variant === "advanced";
     const messages = [
       this.#cantSave &&
-        (advanced
-          ? "This browser can't save your email here. Export it as JSON to keep it."
-          : "This browser can't save your email here."),
+        "This browser can't save your email here. Export it as JSON to keep it.",
       this.#notice,
     ].filter(Boolean);
 
@@ -217,34 +209,28 @@ export class MailQuiltShell extends LitElement {
         <div class="header" part="header">
           <h2 class="heading" part="heading">${this.heading}</h2>
           <div class="actions" part="actions">
-            ${
-              advanced
-                ? html`
-                    <button
-                      class="text-button"
-                      part="import-json"
-                      type="button"
-                      @click=${this.#chooseFile}
-                    >
-                      Import JSON
-                    </button>
-                    <button
-                      class="text-button"
-                      part="export-json"
-                      type="button"
-                      @click=${this.#exportJson}
-                    >
-                      Export JSON
-                    </button>
-                    <input
-                      accept=".json,application/json"
-                      hidden
-                      type="file"
-                      @change=${this.#importJson}
-                    />
-                  `
-                : nothing
-            }
+            <button
+              class="text-button"
+              part="import-json"
+              type="button"
+              @click=${this.#chooseFile}
+            >
+              Import JSON
+            </button>
+            <button
+              class="text-button"
+              part="export-json"
+              type="button"
+              @click=${this.#exportJson}
+            >
+              Export JSON
+            </button>
+            <input
+              accept=".json,application/json"
+              hidden
+              type="file"
+              @change=${this.#importJson}
+            />
             <button
               class="text-button primary"
               part="export-html"

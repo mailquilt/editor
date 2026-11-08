@@ -293,11 +293,13 @@ test("starts with several Rows, so moving one can be tried straight away", async
   await expect(textBlockPlace).toHaveAccessibleName(/^Text Block, Row 1,/u);
 });
 
-test("runs on the Advanced Shell, below the page's title", async ({ page }) => {
+test("runs on the Shell, below the page's title", async ({ page }) => {
   await page.goto(PLAYGROUND);
   await expect(textBlock(page)).toBeVisible();
   const shell = page.locator("mail-quilt-shell");
-  await expect(shell).toHaveAttribute("variant", "advanced");
+  await expect(
+    shell.getByRole("button", { name: "Import JSON" })
+  ).toBeVisible();
 
   const title = await page.getByRole("heading", { level: 1 }).boundingBox();
   const box = await shell.boundingBox();

@@ -4,7 +4,6 @@ import type {
   BlocksDocument,
   MailQuilt as MailQuiltElement,
   MailQuiltShell as MailQuiltShellElement,
-  ShellVariant,
 } from "@mailquilt/editor";
 import {
   createElement,
@@ -19,7 +18,6 @@ export type {
   BlocksDocument,
   MailQuilt as MailQuiltElement,
   MailQuiltShell as MailQuiltShellElement,
-  ShellVariant,
 } from "@mailquilt/editor";
 
 interface EditorProps<Element> {
@@ -37,8 +35,6 @@ export interface MailQuiltShellProps extends EditorProps<MailQuiltShellElement> 
   heading?: string;
   /** Where the Shell keeps the email in the browser. Without it, nothing is stored. */
   saveKey?: string;
-  /** "simple" when left out. */
-  variant?: ShellVariant;
 }
 
 /** Only called from an effect, so a server never runs the editor. */
@@ -117,14 +113,12 @@ export const MailQuilt = (props: MailQuiltProps) =>
 export const MailQuiltShell = ({
   heading,
   saveKey,
-  variant,
   ...props
 }: MailQuiltShellProps) => {
   // React's types only know the attributes of built-in elements.
   const attributes: Record<string, unknown> = {
     heading,
     "save-key": saveKey,
-    variant,
   };
   return createElement("mail-quilt-shell", {
     ...attributes,

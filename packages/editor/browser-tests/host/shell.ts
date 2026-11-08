@@ -7,10 +7,6 @@ const params = new URLSearchParams(window.location.search);
 const refusedEmail = { ...emailWith("Refused"), version: 999 };
 
 const shell = document.createElement("mail-quilt-shell");
-const variant = params.get("variant");
-if (variant) {
-  shell.setAttribute("variant", variant);
-}
 const saveKey = params.get("save-key");
 if (saveKey) {
   shell.setAttribute("save-key", saveKey);
