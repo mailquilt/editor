@@ -108,9 +108,7 @@ test.describe("the side panel's tabs", () => {
 });
 
 test.describe("a selected Block's properties", () => {
-  test("replace the tabs: the Block's fields, then its Row's", async ({
-    page,
-  }) => {
+  test("replace the tabs with the Block's fields alone", async ({ page }) => {
     await openBlocks(page, ["text"]);
 
     await textBlock(page).click();
@@ -118,7 +116,7 @@ test.describe("a selected Block's properties", () => {
     await expect(canvas(page).getByRole("tablist")).toHaveCount(0);
     await expect(
       canvas(page).getByRole("group", { name: "Settings" }).locator("legend")
-    ).toHaveText(["Block", "Row"]);
+    ).toHaveText(["Block"]);
     await expect(
       fieldset(page, "Block").getByLabel("Font size (px)")
     ).toBeVisible();

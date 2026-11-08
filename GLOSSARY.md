@@ -38,7 +38,7 @@ _Avoid_: Patch, event
 The part of the editor that shows the email as a card at its own width, on a workspace background, where Blocks are selected, dragged and edited.
 
 **Side panel**:
-The panel docked on the right of the Canvas, with Content, Rows and Settings tabs, which shows the selected Block's and its Row's settings in their place.
+The panel docked on the right of the Canvas, with Content, Rows and Settings tabs, which shows the selected Block's or Row's settings in their place.
 _Avoid_: Sidebar, inspector
 
 **Theme token**:

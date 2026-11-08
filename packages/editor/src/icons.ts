@@ -33,9 +33,6 @@ export const ICONS = {
     svg`<g fill="currentColor" stroke="none"><circle cx="9" cy="6" r="1.5" /><circle cx="15" cy="6" r="1.5" /><circle cx="9" cy="12" r="1.5" /><circle cx="15" cy="12" r="1.5" /><circle cx="9" cy="18" r="1.5" /><circle cx="15" cy="18" r="1.5" /></g>`
   ),
   italic: icon(svg`<path d="M10 5h8M6 19h8M14 5l-4 14" />`),
-  layout: icon(
-    svg`<rect height="16" rx="2" width="18" x="3" y="4" /><path d="M12 4v16" />`
-  ),
   left: icon(svg`<path d="M19 12H5M11 6l-6 6 6 6" />`),
   lineBreak: icon(svg`<path d="M20 5v7a4 4 0 0 1-4 4H5M9 12l-4 4 4 4" />`),
   link: icon(

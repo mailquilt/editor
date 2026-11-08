@@ -543,11 +543,16 @@ export class MailQuilt extends LitElement {
         transition: opacity 120ms;
       }
 
+      /*
+       * Faded out, it still paints over the buttons in its spot, so it never
+       * takes the pointer from them.
+       */
       .placeholder-label {
         align-items: center;
         display: flex;
         flex-direction: column;
         gap: var(--mq-space-1);
+        pointer-events: none;
       }
 
       .column.empty:hover .placeholder-label,
@@ -815,8 +820,7 @@ export class MailQuilt extends LitElement {
 
       .row-frame:hover > .row-toolbar,
       .row-frame[data-selected] > .row-toolbar,
-      .row-toolbar:focus-within,
-      .row-toolbar[data-open] {
+      .row-toolbar:focus-within {
         opacity: 1;
         pointer-events: auto;
       }
@@ -827,28 +831,13 @@ export class MailQuilt extends LitElement {
        */
       .email:has(.row-frame:hover)
         .row-frame:not(:hover)
-        > .row-toolbar:not(:focus-within, [data-open]) {
+        > .row-toolbar:not(:focus-within) {
         opacity: 0;
         pointer-events: none;
       }
 
-      /* An open layout picker is on top of everything else on the canvas. */
-      .row-toolbar[data-open] {
-        z-index: 9;
-      }
-
       .row-toolbar > .bar {
         flex-direction: column;
-      }
-
-      .layout-picker {
-        display: grid;
-        gap: 2px;
-        grid-template-columns: repeat(3, 84px);
-        inset-block-start: 0;
-        inset-inline-end: calc(100% - var(--mq-space-1));
-        padding: var(--mq-space-1);
-        position: absolute;
       }
 
       .layout-option {
@@ -1517,8 +1506,6 @@ export class MailQuilt extends LitElement {
   /** Whether the side panel shows the selected Block's or Row's settings, not its tabs. */
   #showProperties = false;
   #panelTab: PanelTab = "content";
-  /** The Row whose layout picker is open. */
-  #layoutPickerRowId: string | undefined;
   /** What had focus in the editor when the current update began. */
   #focusedBeforeUpdate: Element | null | undefined;
   #formats: TextFormats | undefined;
@@ -1599,18 +1586,12 @@ export class MailQuilt extends LitElement {
 
   override connectedCallback() {
     super.connectedCallback();
-    window.addEventListener("pointerdown", this.#onWindowPointerdown, {
-      capture: true,
-    });
     this.#resizeObserver.observe(this);
     this.requestUpdate();
   }
 
   override disconnectedCallback() {
     super.disconnectedCallback();
-    window.removeEventListener("pointerdown", this.#onWindowPointerdown, {
-      capture: true,
-    });
     this.#resizeObserver.disconnect();
     this.#dragging?.destroy();
     this.#dragging = undefined;
@@ -1656,9 +1637,6 @@ export class MailQuilt extends LitElement {
       }
     }
     this.#removeViewsExcept(blockIds);
-    if (!rows.some(({ id }) => id === this.#layoutPickerRowId)) {
-      this.#layoutPickerRowId = undefined;
-    }
     if (!rows.some(({ id }) => id === this.#selectedRowId)) {
       this.#selectedRowId = undefined;
     }
@@ -1818,17 +1796,11 @@ export class MailQuilt extends LitElement {
 
   /** Beside the Row, on hover, on focus, and while one of its Blocks is selected. */
   #renderRowToolbar(row: Row, index: number) {
-    const current = rowLayoutOf(row);
-    const open = this.#layoutPickerRowId === row.id;
-    const pickerId = `layout-picker-${row.id}`;
     return html`
       <div
         aria-label=${`Row ${index + 1}`}
         class="ui row-toolbar"
-        ?data-open=${open}
         role="group"
-        @focusout=${this.#onRowToolbarFocusout}
-        @keydown=${this.#onRowToolbarKeydown}
         @mousedown=${this.#onControlMousedown}
       >
         <div class="bar">
@@ -1842,42 +1814,6 @@ export class MailQuilt extends LitElement {
           >
             ${ICONS.rows}
           </button>
-          <button
-            aria-controls=${open ? pickerId : nothing}
-            aria-expanded=${open ? "true" : "false"}
-            aria-label="Change layout"
-            class="icon-button layout-trigger"
-            data-tooltip="Change layout"
-            type="button"
-            @click=${() => this.#toggleLayoutPicker(row.id)}
-          >
-            ${ICONS.layout}
-          </button>
-          ${
-            open
-              ? html`
-                  <div
-                    aria-label="Layout"
-                    class="bar layout-picker"
-                    id=${pickerId}
-                    role="group"
-                  >
-                    ${ROW_LAYOUTS.map(
-                      (layout) => html`
-                        <button
-                          aria-pressed=${layout === current ? "true" : "false"}
-                          class="layout-option"
-                          type="button"
-                          @click=${() => this.#pickLayout(row.id, layout, current)}
-                        >
-                          ${renderThumbnail(layout)}<span>${layout}</span>
-                        </button>
-                      `
-                    )}
-                  </div>
-                `
-              : nothing
-          }
           <button
             aria-label="Delete Row"
             class="icon-button danger"
@@ -2207,7 +2143,7 @@ export class MailQuilt extends LitElement {
     `;
   }
 
-  /** The selected Block's fields, then its Row's. */
+  /** The selected Block's fields. A Row's show when the Row is selected. */
   #renderProperties(
     document: BlocksDocument,
     {
@@ -2233,21 +2169,6 @@ export class MailQuilt extends LitElement {
         values: block.props,
       },
     ];
-    if (row) {
-      sections.push({
-        command: (props) => ({
-          props,
-          rowId: row.id,
-          type: "updateRowProps",
-        }),
-        fields: ROW_SETTINGS_FIELDS,
-        id: "row",
-        legend: "Row",
-        targetId: row.id,
-        unsetColor: document.settings.backgroundColor,
-        values: row.props,
-      });
-    }
     return html`
       <div class="panel-header" @mousedown=${this.#onControlMousedown}>
         <button
@@ -2825,77 +2746,6 @@ export class MailQuilt extends LitElement {
       type: "insertRow",
     });
   }
-
-  #toggleLayoutPicker(rowId: string) {
-    this.#layoutPickerRowId =
-      this.#layoutPickerRowId === rowId ? undefined : rowId;
-    this.requestUpdate();
-  }
-
-  /** Focus goes back to the button that opened the picker, if it was inside. */
-  async #closeLayoutPicker() {
-    if (this.#layoutPickerRowId === undefined) {
-      return;
-    }
-    const toolbar = this.shadowRoot?.activeElement?.closest(".row-toolbar");
-    this.#layoutPickerRowId = undefined;
-    this.requestUpdate();
-    if (toolbar) {
-      await this.updateComplete;
-      toolbar.querySelector<HTMLElement>(".layout-trigger")?.focus();
-    }
-  }
-
-  #pickLayout(
-    rowId: string,
-    layout: RowLayout,
-    current: RowLayout | undefined
-  ) {
-    this.#chooseLayout(rowId, layout, current);
-    this.#closeLayoutPicker();
-  }
-
-  #onRowToolbarKeydown(event: KeyboardEvent) {
-    if (
-      event.key === "Escape" &&
-      this.#layoutPickerRowId !== undefined &&
-      !isComposing(event)
-    ) {
-      event.preventDefault();
-      event.stopPropagation();
-      this.#closeLayoutPicker();
-    }
-  }
-
-  #onRowToolbarFocusout({ currentTarget, relatedTarget }: FocusEvent) {
-    if (
-      this.#layoutPickerRowId !== undefined &&
-      !(currentTarget as Element).contains(relatedTarget as Node | null)
-    ) {
-      this.#layoutPickerRowId = undefined;
-      this.requestUpdate();
-    }
-  }
-
-  /**
-   * A press anywhere else, on the page too, closes the layout picker, as focus
-   * leaving it does.
-   */
-  readonly #onWindowPointerdown = (event: PointerEvent) => {
-    if (
-      this.#layoutPickerRowId !== undefined &&
-      !event
-        .composedPath()
-        .some(
-          (target) =>
-            target instanceof Element &&
-            target.matches(".row-toolbar[data-open]")
-        )
-    ) {
-      this.#layoutPickerRowId = undefined;
-      this.requestUpdate();
-    }
-  };
 
   #onWorkspacePointerdown({ currentTarget, target }: PointerEvent) {
     this.#pressedOnWorkspace = target === currentTarget;

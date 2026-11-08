@@ -136,33 +136,28 @@ test.describe("a Row on the canvas", () => {
     await expect(rowTools(page, 1)).toHaveCSS("opacity", "0");
   });
 
-  test("an empty Row changes layout and is deleted from the keyboard", async ({
+  test("has only Select Row and Delete Row", async ({ page }) => {
+    await openBlocks(page, ["button"]);
+
+    await expect(
+      namesOf(rowTools(page, 1).getByRole("button"))
+    ).resolves.toEqual(["Select Row", "Delete Row"]);
+  });
+
+  test("an empty Row is selected and deleted from the keyboard", async ({
     page,
   }) => {
     await page.goto("/");
     await setValue(page, emailWith([[["A"]], [[]]]));
-    const trigger = rowTools(page, 2).getByRole("button", {
-      name: "Change layout",
+    const select = rowTools(page, 2).getByRole("button", {
+      name: "Select Row",
     });
 
-    await trigger.focus();
+    await select.focus();
     await expect(rowTools(page, 2)).toHaveCSS("opacity", "1");
     await page.keyboard.press("Enter");
-    await expect(trigger).toHaveAttribute("aria-expanded", "true");
-    const picker = rowTools(page, 2).getByRole("group", { name: "Layout" });
-    await expect(
-      picker.getByRole("button", { exact: true, name: "100" })
-    ).toHaveAttribute("aria-pressed", "true");
-    await page.keyboard.press("Tab");
-    await page.keyboard.press("Tab");
-    await expect(
-      picker.getByRole("button", { exact: true, name: "50/50" })
-    ).toBeFocused();
-    await page.keyboard.press("Enter");
-
-    await expect(picker).toHaveCount(0);
-    await expect(trigger).toBeFocused();
-    await expect(structure(page)).resolves.toEqual([[["A"]], [[], []]]);
+    await expect(select).toHaveAttribute("aria-pressed", "true");
+    await expect(select).toBeFocused();
 
     await page.keyboard.press("Tab");
     await expect(
@@ -170,46 +165,6 @@ test.describe("a Row on the canvas", () => {
     ).toBeFocused();
     await page.keyboard.press("Enter");
     await expect(structure(page)).resolves.toEqual([[["A"]]]);
-  });
-
-  test("Escape closes the layout picker, back on its button", async ({
-    page,
-  }) => {
-    await openBlocks(page, ["button"]);
-    const trigger = rowTools(page, 1).getByRole("button", {
-      name: "Change layout",
-    });
-    await trigger.focus();
-    await page.keyboard.press("Enter");
-    await page.keyboard.press("Tab");
-
-    await page.keyboard.press("Escape");
-
-    await expect(rowTools(page, 1).getByRole("group")).toHaveCount(0);
-    await expect(trigger).toBeFocused();
-  });
-
-  test("the layout picker works with the mouse, and closes on a press elsewhere", async ({
-    page,
-  }) => {
-    await openBlocks(page, ["button"]);
-    await canvas(page).locator(".row").hover();
-    await rowTools(page, 1)
-      .getByRole("button", { name: "Change layout" })
-      .click();
-    const picker = rowTools(page, 1).getByRole("group", { name: "Layout" });
-
-    await picker.getByRole("button", { exact: true, name: "33/67" }).click();
-    await expect(picker).toHaveCount(0);
-    const { rows } = await currentValue(page);
-    expect(rows[0]?.columns.map(({ width }) => width)).toEqual([33, 67]);
-
-    await rowTools(page, 1)
-      .getByRole("button", { name: "Change layout" })
-      .click();
-    await expect(picker).toBeVisible();
-    await page.mouse.click(5, 5);
-    await expect(picker).toHaveCount(0);
   });
 });
 
@@ -227,6 +182,35 @@ test.describe("an empty Column", () => {
         name: "Add Text Block here, Row 1, Column 2",
       })
     ).toBeVisible();
+  });
+
+  test("every add button takes the pointer's click", async ({ page }) => {
+    await openBlocks(page, ["button"], []);
+    const column = canvas(page).locator(".column").nth(1);
+    await column.hover();
+    // Once the buttons have faded in, over the label that has faded out.
+    await expect(column.locator(".add-blocks")).toHaveCSS("opacity", "1");
+    await expect(column.locator(".placeholder-label")).toHaveCSS(
+      "opacity",
+      "0"
+    );
+
+    // A plain press where the button shows, as a person's pointer makes.
+    const button = await column
+      .getByRole("button", { name: /^Add Image Block here/u })
+      .boundingBox();
+    if (!button) {
+      throw new Error("No button to press");
+    }
+    await page.mouse.click(
+      button.x + button.width / 2,
+      button.y + button.height / 2
+    );
+
+    const { rows } = await currentValue(page);
+    expect(rows[0]?.columns[1]?.blocks.map(({ type }) => type)).toEqual([
+      "image",
+    ]);
   });
 });
 
@@ -480,24 +464,6 @@ test.describe("review fixes", () => {
     await expect(
       canvas(page).getByRole("tab", { name: "Content" })
     ).toBeVisible();
-  });
-
-  test("pressing another Row's toolbar closes the open layout picker", async ({
-    page,
-  }) => {
-    await page.goto("/");
-    await setValue(page, emailWith([[["A"]], [["B"]], [["C"]]]));
-    await canvas(page).locator(".row").first().hover();
-    await rowTools(page, 1)
-      .getByRole("button", { name: "Change layout" })
-      .click();
-    await expect(rowTools(page, 1).getByRole("group")).toBeVisible();
-
-    await canvas(page).locator(".row").nth(2).hover();
-    await rowTools(page, 3).getByRole("button", { name: "Delete Row" }).click();
-
-    await expect(structure(page)).resolves.toEqual([[["A"]], [["B"]]]);
-    await expect(rowTools(page, 1).getByRole("group")).toHaveCount(0);
   });
 });
 

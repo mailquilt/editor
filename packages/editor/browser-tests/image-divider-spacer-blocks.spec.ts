@@ -768,7 +768,7 @@ test.describe("a Spacer", () => {
 
     for (const position of [1, 2]) {
       const layout = rowTools(page, position).getByRole("button", {
-        name: "Change layout",
+        name: "Select Row",
       });
       // A Row's toolbar takes clicks once it shows, on hover.
       // oxlint-disable-next-line no-await-in-loop -- Each Row in turn.

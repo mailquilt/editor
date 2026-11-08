@@ -10,6 +10,7 @@ import {
   addRow,
   chooseLayout,
   exportHtml,
+  selectRow,
   openTab,
   showPalette,
   setValue,
@@ -128,15 +129,21 @@ test.describe("the panel", () => {
     await expect(row(page)).toHaveCount(0);
   });
 
-  test("shows the settings of the selected Block and its Row", async ({
-    page,
-  }) => {
+  test("shows the settings of the selected Block alone", async ({ page }) => {
     await textBlock(page).click();
 
     await expect(field(page, "Alignment", block(page))).toHaveValue("left");
     await expect(field(page, "Color", block(page))).toHaveValue("#000000");
     await expect(field(page, "Font size (px)", block(page))).toHaveValue("16");
+    await expect(row(page)).toHaveCount(0);
+    await expect(email(page)).toHaveCount(0);
+  });
+
+  test("shows the settings of the selected Row", async ({ page }) => {
+    await selectRow(page, 1);
+
     await expect(field(page, "Background color", row(page))).toHaveValue("");
+    await expect(block(page)).toHaveCount(0);
     await expect(email(page)).toHaveCount(0);
   });
 
@@ -254,7 +261,7 @@ test.describe("Text settings", () => {
 test.describe("Row settings", () => {
   test("look the same on the canvas and in the export", async ({ page }) => {
     await setValue(page, emailWith([[["In"]], [["Out"]]]));
-    await canvas(page).getByText("In", { exact: true }).click();
+    await selectRow(page, 1);
 
     await change(field(page, "Background color", row(page)), "#00ff00");
 
@@ -276,7 +283,7 @@ test.describe("Row settings", () => {
   });
 
   test("lose the color when emptied", async ({ page }) => {
-    await textBlock(page).click();
+    await selectRow(page, 1);
     await change(field(page, "Background color", row(page)), "#00ff00");
 
     await change(field(page, "Background color", row(page)), "");
@@ -365,16 +372,18 @@ test.describe("undo", () => {
     await textBlock(page).click();
     await change(field(page, "Color", block(page)), "#ff0000");
     await field(page, "Alignment", block(page)).selectOption("right");
+    await selectRow(page, 1);
     await change(field(page, "Background color", row(page)), "#00ff00");
     await openTab(page, "Settings");
     await change(field(page, "Width (px)"), "500");
 
     await undo(page);
     await expect(field(page, "Width (px)")).toHaveValue("600");
-    // A click on the Block shows its settings again.
-    await textBlock(page).click();
+    await selectRow(page, 1);
     await undo(page);
     await expect(field(page, "Background color", row(page))).toHaveValue("");
+    // A click on the Block shows its settings again.
+    await textBlock(page).click();
     await undo(page);
     await expect(field(page, "Alignment", block(page))).toHaveValue("left");
     await expect(field(page, "Color", block(page))).toHaveValue("#ff0000");
@@ -734,7 +743,7 @@ test.describe("the color picker", () => {
     const document = emailWith([[["Hi"]]]);
     document.settings.backgroundColor = "#123456";
     await setValue(page, document);
-    await canvas(page).getByText("Hi", { exact: true }).click();
+    await selectRow(page, 1);
 
     await expect(field(page, "Background color", row(page))).toHaveValue("");
     await expect(field(page, "Background color picker", row(page))).toHaveValue(
@@ -746,7 +755,7 @@ test.describe("the color picker", () => {
     const document = emailWith([[["Hi"]]]);
     document.settings.backgroundColor = "#000000";
     await setValue(page, document);
-    await canvas(page).getByText("Hi", { exact: true }).click();
+    await selectRow(page, 1);
 
     await field(page, "Background color picker", row(page)).fill("#ffffff");
 
@@ -840,8 +849,11 @@ test.describe("accessibility", () => {
       .locator("input, select");
     await expect(controls).toHaveCount(6);
     await textBlock(page).click();
-    await expect(controls).toHaveCount(6);
-    const blockAndRow = await controls.all();
+    await expect(controls).toHaveCount(4);
+    const blockControls = await controls.all();
+    await selectRow(page, 1);
+    await expect(controls).toHaveCount(2);
+    const rowControls = await controls.all();
     await openTab(page, "Settings");
     const emailControls = await controls.all();
 
@@ -850,8 +862,13 @@ test.describe("accessibility", () => {
       // oxlint-disable-next-line no-await-in-loop -- See above.
       await expectNamedWithFocusRing(control);
     }
+    await selectRow(page, 1);
+    for (const control of rowControls) {
+      // oxlint-disable-next-line no-await-in-loop -- See above.
+      await expectNamedWithFocusRing(control);
+    }
     await textBlock(page).click();
-    for (const control of blockAndRow) {
+    for (const control of blockControls) {
       // oxlint-disable-next-line no-await-in-loop -- See above.
       await expectNamedWithFocusRing(control);
     }

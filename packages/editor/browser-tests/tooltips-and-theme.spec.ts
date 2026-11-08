@@ -91,16 +91,12 @@ test.describe("a tooltip", () => {
     await openBlocks(page, ["text"], []);
     await textBlock(page).click();
     await canvas(page).locator(".row").hover();
-    await canvas(page)
-      .getByRole("group", { name: "Row 1" })
-      .getByRole("button", { name: "Change layout" })
-      .click();
 
     const buttons = await iconButtons(page);
 
-    // Undo, Redo, Preview, Back, the Row's three, five to move or delete the
+    // Undo, Redo, Preview, Back, the Row's two, five to move or delete the
     // Block, five to format text and six in the empty Column.
-    expect(buttons.length).toBe(23);
+    expect(buttons.length).toBe(22);
     for (const { name, tooltip: text } of buttons) {
       // The tooltip can leave out where the button is, and add its shortcut.
       expect(name).toMatch(/\w/u);

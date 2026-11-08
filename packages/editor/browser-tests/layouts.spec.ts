@@ -10,7 +10,7 @@ import {
   deleteRow,
   exportHtml,
   layoutOption,
-  openLayoutPicker,
+  selectRow,
   rowTools,
   setValue,
   showPalette,
@@ -28,10 +28,10 @@ const deleteBlock = (page: Page) => blockTool(page, "Delete Block");
 
 const rowControls = rowTools;
 
-/** Opens the Row's layout picker, then gives the option there. */
+/** Selects the Row, then gives the layout in its side panel. */
 const shownLayout = async (page: Page, position: number, layout: string) => {
-  await openLayoutPicker(page, position);
-  return layoutOption(page, position, layout);
+  await selectRow(page, position);
+  return layoutOption(page, layout);
 };
 
 const deleteRowButton = (page: Page, position: number) =>
@@ -473,11 +473,13 @@ test.describe("choosing a layout", () => {
     await setValue(page, document);
     await expect(addToColumn(page)).toHaveCount(1);
 
-    await openLayoutPicker(page, 1);
-    await expect(
-      rowControls(page, 1).locator('[aria-pressed="true"]')
-    ).toHaveCount(0);
-    await expect(rowControls(page, 1).getByRole("group")).toBeVisible();
+    await selectRow(page, 1);
+    const layouts = canvas(page)
+      .locator(".side-panel")
+      .getByRole("group", { name: "Layout" });
+    await expect(layouts).toBeVisible();
+    await expect(layouts.locator('[aria-pressed="true"]')).toHaveCount(0);
+    await expect(canvas(page).getByText("Custom layout")).toBeVisible();
   });
 
   test("switching to fewer Columns keeps every Block, ending in the last Column left", async ({
@@ -499,16 +501,21 @@ test.describe("choosing a layout", () => {
     await expect(textBlock(page)).toHaveCount(3);
   });
 
-  test("keeps the moved Block's editor, focus and cursor", async ({ page }) => {
+  test("keeps the moved Block's editor", async ({ page }) => {
     await chooseLayout(page, 1, "50/50");
     await addToColumn(page).click();
     await page.keyboard.type("abc");
     await expect(selectedBlock(page)).toHaveText("abc");
+    await selectedBlock(page).evaluate((element) => {
+      element.dataset.kept = "";
+    });
 
     await chooseLayout(page, 1, "100");
 
-    await expect(selectedBlock(page)).toHaveText("abc");
-    await expect(selectedBlock(page)).toBeFocused();
+    const moved = textBlock(page).last();
+    await expect(moved).toHaveAttribute("data-kept", "");
+    await moved.click();
+    await page.keyboard.press("End");
     await page.keyboard.type("d");
     await expect(selectedBlock(page)).toHaveText("abcd");
     expect(await structure(page)).toStrictEqual([[["Hello", "abcd"]]]);
@@ -576,6 +583,7 @@ test.describe("structure changes and the rest of the editor", () => {
     await page.keyboard.type("x");
     await expect(selectedBlock(page)).toHaveText("x");
     await chooseLayout(page, 1, "100");
+    await textBlock(page).last().click();
     await expect(selectedBlock(page)).toBeFocused();
 
     await page.keyboard.press("ControlOrMeta+a");

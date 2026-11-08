@@ -132,34 +132,29 @@ const hoverRow = (page: Page, position: number) =>
     .nth(position - 1)
     .hover({ position: { x: 4, y: 4 } });
 
-/** An option in a Row's open layout picker. */
-export const layoutOption = (page: Page, position: number, layout: string) =>
-  rowTools(page, position)
+/** Selects a Row from its toolbar, with the mouse, to show it in the side panel. */
+export const selectRow = async (page: Page, position: number) => {
+  await hoverRow(page, position);
+  await rowTools(page, position)
+    .getByRole("button", { name: "Select Row" })
+    .click();
+};
+
+/** A layout in the selected Row's side panel. */
+export const layoutOption = (page: Page, layout: string) =>
+  canvas(page)
+    .locator(".side-panel")
     .getByRole("group", { name: "Layout" })
     .getByRole("button", { exact: true, name: layout });
 
-/** Chooses a Row's layout from its toolbar, with the mouse. */
+/** Chooses a Row's layout in the side panel, with the mouse. */
 export const chooseLayout = async (
   page: Page,
   position: number,
   layout: string
 ) => {
-  await hoverRow(page, position);
-  await rowTools(page, position)
-    .getByRole("button", { name: "Change layout" })
-    .click();
-  await layoutOption(page, position, layout).click();
-};
-
-/** Opens a Row's layout picker, to see which layout it shows as current. */
-export const openLayoutPicker = async (page: Page, position: number) => {
-  const trigger = rowTools(page, position).getByRole("button", {
-    name: "Change layout",
-  });
-  if ((await trigger.getAttribute("aria-expanded")) !== "true") {
-    await hoverRow(page, position);
-    await trigger.click();
-  }
+  await selectRow(page, position);
+  await layoutOption(page, layout).click();
 };
 
 /** Deletes a Row from its toolbar, with the mouse. */
