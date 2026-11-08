@@ -101,6 +101,25 @@ test.describe("a Block on the canvas", () => {
     await expect(blockGroup(page, "Divider")).toBeFocused();
   });
 
+  test("Alt+↑ in its toolbar moves the Block, as its tooltip says", async ({
+    page,
+  }) => {
+    await openBlocks(page, ["button", "divider"]);
+    await blockGroup(page, "Divider").focus();
+    await page.keyboard.press("Tab");
+    await expect(
+      blockTools(page).getByRole("button", { name: "Move Block up" })
+    ).toBeFocused();
+
+    await page.keyboard.press("Alt+ArrowUp");
+
+    const { rows } = await currentValue(page);
+    expect(rows[0]?.columns[0]?.blocks.map(({ type }) => type)).toEqual([
+      "divider",
+      "button",
+    ]);
+  });
+
   test("Escape in its toolbar goes back to the Block", async ({ page }) => {
     await openBlocks(page, ["button"]);
     await blockGroup(page, "Button").focus();
@@ -211,6 +230,61 @@ test.describe("an empty Column", () => {
     expect(rows[0]?.columns[1]?.blocks.map(({ type }) => type)).toEqual([
       "image",
     ]);
+  });
+});
+
+test.describe("the email's language", () => {
+  test("stays with the email, not the tools on it", async ({ page }) => {
+    await page.goto("/");
+    const document = emailWith([[["A"]], [[]]]);
+    document.settings.language = "de";
+    await setValue(page, document);
+    await textBlock(page).click();
+
+    const langs = await canvas(page).evaluate((host) => {
+      const root = host.shadowRoot as ShadowRoot;
+      const langOf = (selector: string) =>
+        root.querySelector(selector)?.closest("[lang]")?.getAttribute("lang");
+      return {
+        blockTools: langOf(".block-toolbar"),
+        formatBar: langOf(".format-bar"),
+        placeholder: langOf(".placeholder"),
+        rowTools: langOf(".row-toolbar"),
+        text: langOf(".ProseMirror"),
+      };
+    });
+
+    expect(langs).toEqual({
+      blockTools: "en",
+      formatBar: "en",
+      placeholder: "en",
+      rowTools: "en",
+      text: "de",
+    });
+  });
+});
+
+test.describe("an empty Column on a touch screen", () => {
+  // Only Chromium emulates a device with no hover.
+  test.skip(({ browserName }) => browserName !== "chromium", "Chromium only");
+  test.use({
+    hasTouch: true,
+    isMobile: true,
+    viewport: { height: 900, width: 1280 },
+  });
+
+  test("shows its add buttons alone, not under its label", async ({ page }) => {
+    await openBlocks(page, ["button"], []);
+    const column = canvas(page).locator(".column").nth(1);
+    expect(await page.evaluate(() => matchMedia("(hover: none)").matches)).toBe(
+      true
+    );
+
+    await expect(column.locator(".add-blocks")).toHaveCSS("opacity", "1");
+    await expect(column.locator(".placeholder-label")).toHaveCSS(
+      "opacity",
+      "0"
+    );
   });
 });
 
@@ -434,6 +508,31 @@ test.describe("review fixes", () => {
     await expect(structure(page)).resolves.toEqual([[["A"], ["B"]]]);
   });
 
+  test("a drag that left the toolbar lands where the toolbar was", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await setValue(page, emailWith([[["A"], ["B"]]]));
+    await blockGroup(page, "Text").last().focus();
+    const handle = await blockTools(page).locator(".drag-handle").boundingBox();
+    if (!handle) {
+      throw new Error("No handle");
+    }
+
+    // Away from the toolbar, then back over where it was, in the first Column.
+    await page.mouse.move(handle.x + 10, handle.y + 10);
+    await page.mouse.down();
+    await page.mouse.move(handle.x - 120, handle.y + 120, { steps: 8 });
+    await page.mouse.move(handle.x + 10, handle.y + 20, { steps: 8 });
+    await settle(page);
+    await expect(canvas(page).locator(".drop-indicator")).toBeVisible();
+    await page.mouse.up();
+    await settle(page);
+
+    // Above A, whose top half the toolbar sat beside.
+    await expect(structure(page)).resolves.toEqual([[["B", "A"], []]]);
+  });
+
   test("Control or Command+K on the Block opens the link field in its text", async ({
     page,
   }) => {
@@ -468,7 +567,7 @@ test.describe("review fixes", () => {
 });
 
 const notice = (page: Page) =>
-  canvas(page).getByText("Editing needs a wider screen");
+  canvas(page).getByText("Editing needs more room");
 
 test.describe("on a screen too narrow to edit in", () => {
   test.use({ viewport: { height: 800, width: 390 } });
@@ -499,6 +598,24 @@ test.describe("on a screen too narrow to edit in", () => {
     page,
   }) => {
     await page.goto("/");
+    await expect(notice(page)).toBeVisible();
+
+    await page.setViewportSize({ height: 800, width: 1280 });
+
+    await expect(notice(page)).toHaveCount(0);
+    await expect(textBlock(page)).toHaveText("Hello");
+  });
+
+  test("gives the editor back in a host sized to fit its content", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    // As a flex item that isn't stretched takes the width of what's inside, up
+    // to the width there is.
+    await page.addStyleTag({
+      content:
+        "mail-quilt { align-self: flex-start !important; max-width: 100% !important }",
+    });
     await expect(notice(page)).toBeVisible();
 
     await page.setViewportSize({ height: 800, width: 1280 });

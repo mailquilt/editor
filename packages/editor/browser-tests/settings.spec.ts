@@ -765,26 +765,59 @@ test.describe("the color picker", () => {
 });
 
 test.describe("layout", () => {
-  test("keeps the panel docked on the right, however narrow", async ({
+  test("puts the panel below rather than squeeze the email", async ({
     page,
   }) => {
-    for (const width of [800, 1000]) {
+    for (const width of [700, 900]) {
       // oxlint-disable-next-line no-await-in-loop -- Each width in turn.
       await inHostOf(page, width);
+      const onCanvas = canvas(page).locator(".email");
       // oxlint-disable-next-line no-await-in-loop -- See above.
-      const emailBox = await canvas(page).locator(".email").boundingBox();
+      await expect(onCanvas).toHaveCSS("width", "600px");
+      // oxlint-disable-next-line no-await-in-loop -- See above.
+      const emailBox = await onCanvas.boundingBox();
       // oxlint-disable-next-line no-await-in-loop -- See above.
       const panelBox = await canvas(page).locator(".side-panel").boundingBox();
       // oxlint-disable-next-line no-await-in-loop -- See above.
       const hostBox = await canvas(page).boundingBox();
-      expect(panelBox?.y).toBe(hostBox?.y);
-      expect(panelBox?.x).toBeGreaterThanOrEqual(
-        (emailBox?.x ?? 0) + (emailBox?.width ?? 0)
+      expect(panelBox?.y).toBeGreaterThanOrEqual(
+        (emailBox?.y ?? 0) + (emailBox?.height ?? 0)
       );
-      expect((panelBox?.x ?? 0) + (panelBox?.width ?? 0)).toBe(
-        (hostBox?.x ?? 0) + (hostBox?.width ?? 0)
-      );
+      // Below, it takes the editor's whole width.
+      expect(panelBox?.width).toBe(hostBox?.width);
     }
+  });
+
+  test("keeps the panel docked on the right when the email fits beside it", async ({
+    page,
+  }) => {
+    await inHostOf(page, 1100);
+
+    const emailBox = await canvas(page).locator(".email").boundingBox();
+    const panelBox = await canvas(page).locator(".side-panel").boundingBox();
+    const hostBox = await canvas(page).boundingBox();
+    expect(panelBox?.y).toBe(hostBox?.y);
+    expect(panelBox?.x).toBeGreaterThanOrEqual(
+      (emailBox?.x ?? 0) + (emailBox?.width ?? 0)
+    );
+    expect((panelBox?.x ?? 0) + (panelBox?.width ?? 0)).toBe(
+      (hostBox?.x ?? 0) + (hostBox?.width ?? 0)
+    );
+  });
+
+  test("puts the panel below for a wider email that no longer fits", async ({
+    page,
+  }) => {
+    await inHostOf(page, 1100);
+
+    await change(field(page, "Width (px)"), "800");
+
+    await expect(canvas(page).locator(".email")).toHaveCSS("width", "800px");
+    const emailBox = await canvas(page).locator(".email").boundingBox();
+    const panelBox = await canvas(page).locator(".side-panel").boundingBox();
+    expect(panelBox?.y).toBeGreaterThanOrEqual(
+      (emailBox?.y ?? 0) + (emailBox?.height ?? 0)
+    );
   });
 
   test("shows the email at its width when there's room", async ({ page }) => {

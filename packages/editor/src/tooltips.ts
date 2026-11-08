@@ -1,3 +1,5 @@
+import { contains } from "./geometry.js";
+
 /** What has a tooltip: the attribute holds its words. */
 export const TOOLTIP_TRIGGERS = "[data-tooltip]";
 
@@ -14,12 +16,6 @@ const triggerOf = (target: EventTarget | null) =>
   target instanceof Element
     ? (target.closest<HTMLElement>(TOOLTIP_TRIGGERS) ?? undefined)
     : undefined;
-
-const contains = (box: DOMRect, x: number, y: number, margin = 0) =>
-  x >= box.left - margin &&
-  x <= box.right + margin &&
-  y >= box.top - margin &&
-  y <= box.bottom + margin;
 
 /**
  * One tooltip for every control under `root` with `data-tooltip`, meeting WCAG
@@ -78,15 +74,9 @@ export const createTooltips = (
     if (!hovered) {
       return;
     }
-    const overTrigger = contains(
-      hovered.getBoundingClientRect(),
-      clientX,
-      clientY
-    );
-    const overTooltip =
-      !tooltip.hidden &&
-      contains(tooltip.getBoundingClientRect(), clientX, clientY, GAP_PX);
-    if (!(overTrigger || overTooltip)) {
+    const pointer = { x: clientX, y: clientY };
+    const overTooltip = !tooltip.hidden && contains(tooltip, pointer, GAP_PX);
+    if (!(contains(hovered, pointer) || overTooltip)) {
       hovered = undefined;
       update();
     }

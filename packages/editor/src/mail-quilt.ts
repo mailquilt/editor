@@ -28,6 +28,7 @@ import type {
 } from "@mailquilt/core";
 import { renderEmail } from "@mailquilt/renderer";
 import { css, html, LitElement, nothing } from "lit";
+import type { TemplateResult } from "lit";
 import { keyed } from "lit/directives/keyed.js";
 import { repeat } from "lit/directives/repeat.js";
 import { styleMap } from "lit/directives/style-map.js";
@@ -64,6 +65,12 @@ import type { Tooltips } from "./tooltips.js";
 
 /** Narrower than this, there's no room to edit, and a notice shows instead. */
 const MIN_EDITOR_WIDTH = 640;
+
+/**
+ * The language of the editor's own words, for its tools inside the email, which
+ * would otherwise take the email's language.
+ */
+const UI_LANG = "en";
 
 /** Typing after a gap this long starts a new undo step. */
 const TYPING_PAUSE_MS = 1000;
@@ -133,8 +140,14 @@ const TOOLBAR_KEYS = new Set([
   "Home",
 ]);
 
-/** Arrow keys, Home and End go along a toolbar's own buttons, either way up. */
+/**
+ * Arrow keys, Home and End go along a toolbar's own buttons, either way up. With
+ * a modifier they're left alone, as Alt+↑ is a shortcut to move a Block.
+ */
 const onToolbarArrowKeys = (event: KeyboardEvent) => {
+  if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
+    return;
+  }
   const toolbar = event.currentTarget as HTMLElement;
   const buttons = [
     ...toolbar.querySelectorAll<HTMLButtonElement>(
@@ -343,6 +356,13 @@ export class MailQuilt extends LitElement {
        * hidden, which would stop the panel and toolbar sticking.
        */
       .editor {
+        /* Beside the email, room for a Block's tools and a Row's. */
+        --gutter: 40px;
+        --panel-width: 320px;
+        /* Where the email and the panel stop fitting side by side. */
+        --side-by-side: calc(
+          var(--email-width) + 2 * var(--gutter) + var(--panel-width)
+        );
         align-items: stretch;
         background: var(--mq-color-workspace);
         border-radius: var(--mq-radius);
@@ -354,17 +374,35 @@ export class MailQuilt extends LitElement {
         min-height: 600px;
       }
 
+      /*
+       * Behind the notice for a host too narrow to edit in. Out of sight, but
+       * still in the layout, so a host that takes the width of its content
+       * keeps the width the editor gives it, and grows again with the window.
+       * Every part hides, as the email card and the tools start their styles
+       * again, and so none of them takes focus.
+       */
+      .editor[data-collapsed] {
+        height: 0;
+        min-height: 0;
+      }
+
+      .editor[data-collapsed],
+      .editor[data-collapsed] * {
+        visibility: hidden !important;
+      }
+
       .canvas-area {
         background-color: var(--mq-color-workspace);
         display: flex;
-        flex: 999 1 480px;
+        /* The email's own width, so the panel wraps before the email shrinks. */
+        flex: 999 1 calc(var(--email-width) + 2 * var(--gutter));
         flex-direction: column;
         gap: var(--mq-space-5);
         /* Room for a selected Block's tools when the panel has gone below. */
         min-height: 480px;
         min-width: 0;
         /* Room for a Row's toolbar beside the email, and a Block's tag above. */
-        padding: 56px 40px var(--mq-space-4);
+        padding: 56px var(--gutter) var(--mq-space-4);
       }
 
       /*
@@ -591,9 +629,14 @@ export class MailQuilt extends LitElement {
         opacity: 1;
       }
 
+      /* With no hover to bring them out, the buttons show, in the label's place. */
       @media (hover: none) {
         .placeholder .add-blocks {
           opacity: 1;
+        }
+
+        .placeholder-label {
+          opacity: 0;
         }
       }
 
@@ -982,13 +1025,15 @@ export class MailQuilt extends LitElement {
         background: var(--mq-color-accent-strong);
       }
 
-      /* Undo, Redo and Preview, at the bottom left of the canvas while it shows. */
-      /* As far from the canvas's left edge as from the window's bottom. */
+      /*
+       * Undo, Redo and Preview, at the bottom left of the canvas while it shows,
+       * as far from the canvas's left edge as from the window's bottom.
+       */
       .floating-toolbar {
         align-self: flex-start;
         bottom: var(--mq-space-4);
         margin-block-start: auto;
-        margin-inline-start: calc(var(--mq-space-4) - 40px);
+        margin-inline-start: calc(var(--mq-space-4) - var(--gutter));
         position: sticky;
         z-index: 7;
       }
@@ -1007,13 +1052,14 @@ export class MailQuilt extends LitElement {
             var(--mq-color-border-strong) 40%,
             var(--mq-color-border)
           );
+        box-sizing: border-box;
         display: flex;
-        flex: 1 0 320px;
+        flex: 1 0 var(--panel-width);
         /*
-         * 320px beside the canvas, from 800px wide, and the whole width once it
-         * has wrapped below it.
+         * Its own width beside the canvas, and the whole width once it has
+         * wrapped below it.
          */
-        max-width: max(320px, (800px - 100%) * 9999);
+        max-width: max(var(--panel-width), (var(--side-by-side) - 100%) * 9999);
         min-width: 0;
       }
 
@@ -1530,7 +1576,7 @@ export class MailQuilt extends LitElement {
   #enterPressedOn: EventTarget | undefined;
   /** The last press began on the workspace itself, not after a drag from a Block. */
   #pressedOnWorkspace = false;
-  /** Too narrow to edit in, as on a phone. */
+  /** Too narrow to edit in, as on a phone or in a narrow part of a page. */
   #narrow = false;
   readonly #resizeObserver = new ResizeObserver(([entry]) => {
     const narrow = (entry?.contentRect.width ?? 0) < MIN_EDITOR_WIDTH;
@@ -1711,7 +1757,11 @@ export class MailQuilt extends LitElement {
         this one.
       </p>
       ${this.#narrow ? this.#renderNarrowNotice() : nothing}
-      <div class="ui editor" ?hidden=${this.#narrow}>
+      <div
+        class="ui editor"
+        ?data-collapsed=${this.#narrow}
+        style=${styleMap({ "--email-width": `${settings.width}px` })}
+      >
         <div
           class="canvas-area"
           @click=${this.#onWorkspaceClick}
@@ -1778,10 +1828,11 @@ export class MailQuilt extends LitElement {
     return html`
       <div class="ui narrow-notice">
         <span class="notice-icon">${ICONS.monitor}</span>
-        <p class="notice-title">Editing needs a wider screen</p>
+        <p class="notice-title">Editing needs more room</p>
         <p class="notice-body">
-          Open this email on a tablet or computer to change it. You can still
-          preview it here.
+          Make the editor at least ${MIN_EDITOR_WIDTH}px wide, such as by
+          widening the window, to change this email. You can still preview it
+          here.
         </p>
         <button
           class="text-button primary"
@@ -1800,6 +1851,7 @@ export class MailQuilt extends LitElement {
       <div
         aria-label=${`Row ${index + 1}`}
         class="ui row-toolbar"
+        lang=${UI_LANG}
         role="group"
         @mousedown=${this.#onControlMousedown}
       >
@@ -1847,7 +1899,7 @@ export class MailQuilt extends LitElement {
         ${
           blocks.length === 0
             ? html`
-                <div class="ui placeholder">
+                <div class="ui placeholder" lang=${UI_LANG}>
                   <div class="placeholder-label">
                     <span class="placeholder-icon">${ICONS.plus}</span>
                     <p>Drop a Block here</p>
@@ -1910,6 +1962,7 @@ export class MailQuilt extends LitElement {
         aria-label="Block tools"
         aria-orientation="vertical"
         class="ui bar block-toolbar"
+        lang=${UI_LANG}
         role="toolbar"
         @keydown=${onToolbarArrowKeys}
         @mousedown=${this.#onControlMousedown}
@@ -1958,6 +2011,7 @@ export class MailQuilt extends LitElement {
       <div
         aria-label="Text formatting"
         class="ui bar format-bar"
+        lang=${UI_LANG}
         role="toolbar"
         @keydown=${this.#onFormatBarKeydown}
         @mousedown=${this.#onControlMousedown}
@@ -2097,24 +2151,11 @@ export class MailQuilt extends LitElement {
       values: row.props,
     };
     return html`
-      <div class="panel-header" @mousedown=${this.#onControlMousedown}>
-        <button
-          aria-label="Back"
-          class="icon-button back-button"
-          data-tooltip="Back"
-          type="button"
-          @click=${this.#showTabs}
-        >
-          ${ICONS.left}
-        </button>
-        <span class="type-badge">${ICONS.rows}</span>
-        <div class="panel-heading">
-          <p class="panel-title">Row ${rowIndex + 1}</p>
-          <p class="panel-subtitle">
-            ${current ? `${current} layout` : "Custom layout"}
-          </p>
-        </div>
-      </div>
+      ${this.#renderPanelHeader(
+        ICONS.rows,
+        `Row ${rowIndex + 1}`,
+        current ? `${current} layout` : "Custom layout"
+      )}
       <div class="panel-scroll">
         <div class="panel-section">
           <p class="panel-section-title" id="row-layout-title">Layout</p>
@@ -2170,6 +2211,18 @@ export class MailQuilt extends LitElement {
       },
     ];
     return html`
+      ${this.#renderPanelHeader(
+        blockIcon(block.type),
+        blockLabel(block.type),
+        columnLabel(rowIndex, columnIndex)
+      )}
+      <div class="panel-scroll">${this.#renderSettings(sections)}</div>
+    `;
+  }
+
+  /** What the side panel shows, with a way Back to its tabs. */
+  #renderPanelHeader(icon: TemplateResult, title: string, subtitle: string) {
+    return html`
       <div class="panel-header" @mousedown=${this.#onControlMousedown}>
         <button
           aria-label="Back"
@@ -2180,13 +2233,12 @@ export class MailQuilt extends LitElement {
         >
           ${ICONS.left}
         </button>
-        <span class="type-badge">${blockIcon(block.type)}</span>
+        <span class="type-badge">${icon}</span>
         <div class="panel-heading">
-          <p class="panel-title">${blockLabel(block.type)}</p>
-          <p class="panel-subtitle">${columnLabel(rowIndex, columnIndex)}</p>
+          <p class="panel-title">${title}</p>
+          <p class="panel-subtitle">${subtitle}</p>
         </div>
       </div>
-      <div class="panel-scroll">${this.#renderSettings(sections)}</div>
     `;
   }
 
@@ -2238,7 +2290,7 @@ export class MailQuilt extends LitElement {
             <p class="panel-section-title">Blocks</p>
             <p class="panel-hint">
               Drag one onto the email, or choose one to add it after the
-              selected Block.
+              selected Block, into the selected Row, or at the end.
             </p>
           </div>
           <div
@@ -2466,11 +2518,8 @@ export class MailQuilt extends LitElement {
    * button takes focus, so typing can't go on in a Block's text.
    */
   async #selectRow(rowId: string) {
+    this.#clearBlockSelection();
     this.#selectedRowId = rowId;
-    this.#activeBlockId = undefined;
-    this.#editingText = false;
-    this.#formats = undefined;
-    this.#linkForm = undefined;
     this.#showProperties = true;
     this.requestUpdate();
     await this.updateComplete;
@@ -2480,6 +2529,14 @@ export class MailQuilt extends LitElement {
     if (button && this.shadowRoot?.activeElement !== button) {
       button.focus({ focusVisible: false } as FocusOptions);
     }
+  }
+
+  /** No Block selected, nor its text, format bar or link field. */
+  #clearBlockSelection() {
+    this.#activeBlockId = undefined;
+    this.#editingText = false;
+    this.#formats = undefined;
+    this.#linkForm = undefined;
   }
 
   /** Re-renders only on a change, because this runs on every transaction. */
@@ -2763,11 +2820,8 @@ export class MailQuilt extends LitElement {
     ) {
       return;
     }
-    this.#activeBlockId = undefined;
+    this.#clearBlockSelection();
     this.#selectedRowId = undefined;
-    this.#editingText = false;
-    this.#formats = undefined;
-    this.#linkForm = undefined;
     this.#floatingToolbar?.focus({ focusVisible: false } as FocusOptions);
     this.requestUpdate();
   }
@@ -2840,13 +2894,19 @@ export class MailQuilt extends LitElement {
     }
   }
 
+  /**
+   * After the selected Block, at the end of the selected Row's first Column, or
+   * else at the end of the email.
+   */
   #defaultBlockPlace(editor: Editor) {
     const document = editor.getDocument();
     const selected = this.#selectedPosition(document);
     if (selected) {
       return { columnId: selected.columnId, index: selected.index + 1 };
     }
-    const column = document.rows.at(-1)?.columns.at(-1);
+    const column =
+      document.rows.find(({ id }) => id === this.#selectedRowId)?.columns[0] ??
+      document.rows.at(-1)?.columns.at(-1);
     return column && { columnId: column.id, index: column.blocks.length };
   }
 
@@ -2947,8 +3007,10 @@ export class MailQuilt extends LitElement {
   };
 
   /**
-   * These act only with focus on the Block itself. In its text, the same keys move
-   * the cursor, by word with Alt on macOS, and Enter starts a new paragraph.
+   * These act only with focus on the Block itself, apart from the Move buttons'
+   * Alt+arrow shortcuts, which also work in its toolbar. In its text, the same
+   * keys move the cursor, by word with Alt on macOS, and Enter starts a new
+   * paragraph.
    */
   #onBlockKeydown(event: KeyboardEvent) {
     // Escape cancels a drag, and the cursor stays where it was.
@@ -2956,7 +3018,15 @@ export class MailQuilt extends LitElement {
       return;
     }
     const block = event.currentTarget as HTMLElement;
-    if (event.target !== block) {
+    const target = event.target as Element;
+    const direction = arrowDirection(event);
+    if (event.altKey && direction && target.closest(".block-toolbar")) {
+      // Alt+Left would go back in history.
+      event.preventDefault();
+      this.#moveSelectedBlock(direction);
+      return;
+    }
+    if (target !== block) {
       if (event.key === "Escape" && !isComposing(event)) {
         event.preventDefault();
         // This one is used up, so a host's dialog stays open. Pressed again on the
@@ -2972,7 +3042,6 @@ export class MailQuilt extends LitElement {
       this.#activeView?.focus();
       return;
     }
-    const direction = arrowDirection(event);
     if (!direction) {
       return;
     }
@@ -3223,10 +3292,7 @@ export class MailQuilt extends LitElement {
       this.#activeBlockId !== undefined &&
       !blockIds.has(this.#activeBlockId)
     ) {
-      this.#activeBlockId = undefined;
-      this.#editingText = false;
-      this.#formats = undefined;
-      this.#linkForm = undefined;
+      this.#clearBlockSelection();
     }
   }
 
@@ -3236,10 +3302,7 @@ export class MailQuilt extends LitElement {
     }
     this.#views.clear();
     // The toolbar's state describes those views and their selections.
-    this.#activeBlockId = undefined;
-    this.#editingText = false;
-    this.#formats = undefined;
-    this.#linkForm = undefined;
+    this.#clearBlockSelection();
     // The Preview shows the old document. A removed dialog also stays `open`, so
     // it would come back without being modal.
     if (this.#preview) {

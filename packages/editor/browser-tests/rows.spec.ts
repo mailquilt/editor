@@ -117,6 +117,25 @@ test.describe("selecting a Row", () => {
     ).toBeVisible();
   });
 
+  test("a Content tile adds into the selected Row's first Column, at its end", async ({
+    page,
+  }) => {
+    await open(page, [[["A"], ["B"]], [["C"]]]);
+    await selectRowButton(page, 1).focus();
+    await page.keyboard.press("Enter");
+    await openTab(page, "Content");
+
+    await canvas(page)
+      .getByRole("group", { name: "Add content" })
+      .getByRole("button", { exact: true, name: "Text" })
+      .click();
+
+    await expect(structure(page)).resolves.toEqual([
+      [["A", ""], ["B"]],
+      [["C"]],
+    ]);
+  });
+
   test("the Rows tab adds after the selected Row", async ({ page }) => {
     await open(page, [[["A"]], [["B"]]]);
     await selectRowButton(page, 1).focus();

@@ -12,6 +12,8 @@ import {
 } from "@dnd-kit/dom";
 import { getScrollableAncestors } from "@dnd-kit/dom/utilities";
 
+import { contains } from "./geometry.js";
+
 /**
  * What a drag brings: a Block on the canvas, a new Block from the palette, or a
  * new Row from the Rows tab.
@@ -47,21 +49,6 @@ const midpointY = (element: Element) => {
 
 /** How far outside the editor a drop still counts, as space below the email. */
 const DROP_MARGIN_PX = 40;
-
-const contains = (
-  element: Element | DOMRect,
-  { x, y }: { x: number; y: number },
-  margin = 0
-) => {
-  const { bottom, left, right, top } =
-    element instanceof Element ? element.getBoundingClientRect() : element;
-  return (
-    x >= left - margin &&
-    x <= right + margin &&
-    y >= top - margin &&
-    y <= bottom + margin
-  );
-};
 
 const removeExcept = (
   entities: Map<string, Draggable | Droppable>,
@@ -104,8 +91,10 @@ export const createBlockDragging = ({
   });
   const draggables = new Map<string, Draggable>();
   /**
-   * The selected Block's toolbar, where its handle is. It's outside the Block, so
-   * letting go there after a short drag would otherwise land somewhere else.
+   * The selected Block's toolbar, where its handle is, until the pointer first
+   * leaves it. It's outside the Block, so letting go there after a short drag
+   * would otherwise land somewhere else. Once the drag has gone further, it
+   * lands there like anywhere else.
    */
   let startedOn: DOMRect | undefined;
   const droppables = new Map<string, Droppable>();
@@ -295,6 +284,12 @@ export const createBlockDragging = ({
   // Every frame, because scrolling moves what's under a pointer that keeps still.
   let frame = 0;
   const trackPointer = () => {
+    if (
+      startedOn &&
+      !contains(startedOn, manager.dragOperation.position.current)
+    ) {
+      startedOn = undefined;
+    }
     showIndicator(landing());
     frame = requestAnimationFrame(trackPointer);
   };
