@@ -424,3 +424,79 @@ test.describe("the side panel", () => {
     );
   });
 });
+
+test.describe("review fixes", () => {
+  // The test host's unfriendly CSS pushes the canvas far down the page.
+  test.use({ viewport: { height: 1600, width: 1280 } });
+
+  test("a short drag let go over the toolbar it started from moves nothing", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await setValue(page, emailWith([[["A"], ["B"]]]));
+    await blockGroup(page, "Text").last().focus();
+    const handle = await blockTools(page).locator(".drag-handle").boundingBox();
+    if (!handle) {
+      throw new Error("No handle");
+    }
+
+    await page.mouse.move(handle.x + 10, handle.y + 10);
+    await page.mouse.down();
+    await page.mouse.move(handle.x + 16, handle.y + 18, { steps: 4 });
+    await settle(page);
+    await page.mouse.up();
+    await settle(page);
+
+    await expect(structure(page)).resolves.toEqual([[["A"], ["B"]]]);
+  });
+
+  test("Control or Command+K on the Block opens the link field in its text", async ({
+    page,
+  }) => {
+    await openBlocks(page, ["text"]);
+    await blockGroup(page, "Text").focus();
+
+    await page.keyboard.press("ControlOrMeta+k");
+
+    await expect(
+      canvas(page).getByRole("textbox", { name: "Link URL" })
+    ).toBeFocused();
+  });
+
+  test("a click on another Block's handle leaves the tabs showing", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await setValue(page, emailWith([[["A", "B"]]]));
+    await blockGroup(page, "Text").first().focus();
+    await canvas(page)
+      .getByRole("button", { exact: true, name: "Back" })
+      .click();
+
+    const b = canvas(page).locator(".block").last();
+    await b.hover();
+    await b.locator(".drag-handle").click();
+
+    await expect(
+      canvas(page).getByRole("tab", { name: "Content" })
+    ).toBeVisible();
+  });
+
+  test("pressing another Row's toolbar closes the open layout picker", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await setValue(page, emailWith([[["A"]], [["B"]], [["C"]]]));
+    await canvas(page).locator(".row").first().hover();
+    await rowTools(page, 1)
+      .getByRole("button", { name: "Change layout" })
+      .click();
+    await expect(rowTools(page, 1).getByRole("group")).toBeVisible();
+
+    await canvas(page).locator(".row").nth(2).hover();
+    await rowTools(page, 3).getByRole("button", { name: "Delete Row" }).click();
+
+    await expect(structure(page)).resolves.toEqual([[["A"]], [["B"]]]);
+    await expect(rowTools(page, 1).getByRole("group")).toHaveCount(0);
+  });
+});

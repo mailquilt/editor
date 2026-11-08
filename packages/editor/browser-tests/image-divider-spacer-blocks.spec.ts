@@ -454,7 +454,7 @@ test.describe("an Image", () => {
     );
     await expect(image(page)).toHaveCount(0);
     await expect(box(blockGroup(page, "Image"))).resolves.toMatchObject({
-      height: 128,
+      height: 152,
     });
     await expect(exportHtml(page)).resolves.toContain(`src="${missing}"`);
 

@@ -9,16 +9,17 @@ export const themeTokens = css`
   :host {
     --mq-font-family:
       system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-    --mq-font-size: 14px;
+    --mq-font-size: 13px;
     --mq-font-size-small: 12px;
 
-    --mq-color-workspace: #eef0f3;
+    --mq-color-workspace: #f1f2f5;
     --mq-color-surface: #ffffff;
-    --mq-color-surface-hover: #f4f4f5;
+    --mq-color-surface-muted: #f6f7f9;
+    --mq-color-surface-hover: #eef0f3;
     --mq-color-text: #18181b;
-    --mq-color-text-muted: #52525b;
-    --mq-color-border: #e4e4e7;
-    --mq-color-border-strong: #71717a;
+    --mq-color-text-muted: #5b606a;
+    --mq-color-border: #e6e8ec;
+    --mq-color-border-strong: #8c939d;
     --mq-color-accent: #2563eb;
     --mq-color-accent-strong: #1d4ed8;
     --mq-color-accent-soft: rgb(37 99 235 / 10%);
@@ -34,9 +35,11 @@ export const themeTokens = css`
     --mq-space-4: 16px;
     --mq-space-5: 24px;
 
-    --mq-radius-small: 4px;
-    --mq-radius: 8px;
-    --mq-shadow: 0 1px 2px rgb(24 24 27 / 8%), 0 4px 12px rgb(24 24 27 / 8%);
+    --mq-radius-small: 6px;
+    --mq-radius: 10px;
+    --mq-shadow-small: 0 1px 2px rgb(16 24 40 / 8%);
+    --mq-shadow:
+      0 1px 2px rgb(16 24 40 / 6%), 0 8px 24px -6px rgb(16 24 40 / 16%);
   }
 `;
 
@@ -53,6 +56,7 @@ export const uiStyles = css`
    */
   .ui {
     all: initial;
+    -webkit-font-smoothing: antialiased;
     box-sizing: border-box;
     color: var(--mq-color-text);
     font-family: var(--mq-font-family);
@@ -73,6 +77,15 @@ export const uiStyles = css`
     font: inherit;
   }
 
+  .visually-hidden {
+    clip-path: inset(50%);
+    height: 1px;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+  }
+
   .icon {
     display: block;
     flex: none;
@@ -85,17 +98,22 @@ export const uiStyles = css`
     background: transparent;
     border: 0;
     border-radius: var(--mq-radius-small);
+    color: var(--mq-color-text-muted);
     cursor: pointer;
     display: inline-flex;
     flex: none;
     height: 28px;
     justify-content: center;
     padding: 0;
+    transition:
+      background-color 120ms,
+      color 120ms;
     width: 28px;
   }
 
   .icon-button:hover:not(:disabled) {
     background: var(--mq-color-surface-hover);
+    color: var(--mq-color-text);
   }
 
   .icon-button[aria-pressed="true"],
@@ -105,8 +123,8 @@ export const uiStyles = css`
   }
 
   .icon-button:disabled {
-    color: var(--mq-color-border-strong);
     cursor: default;
+    opacity: 0.45;
   }
 
   .icon-button.danger:hover {
@@ -128,7 +146,7 @@ export const uiStyles = css`
     box-shadow: var(--mq-shadow);
     display: flex;
     gap: 2px;
-    padding: 2px;
+    padding: 3px;
   }
 
   .bar .separator {
@@ -142,11 +160,13 @@ export const uiStyles = css`
   .tooltip {
     background: var(--mq-color-tooltip);
     border-radius: var(--mq-radius-small);
+    box-shadow: var(--mq-shadow);
     color: var(--mq-color-on-tooltip);
     font-size: var(--mq-font-size-small);
+    font-weight: 500;
     left: 0;
     max-width: 240px;
-    padding: 4px 8px;
+    padding: 5px 8px;
     /* So it never covers a control that's pressed. See tooltips.ts. */
     pointer-events: none;
     position: fixed;

@@ -98,9 +98,9 @@ test.describe("a tooltip", () => {
 
     const buttons = await iconButtons(page);
 
-    // Undo, Redo, Preview, the Row's two, five to move or delete the Block, five
-    // to format text and six in the empty Column.
-    expect(buttons.length).toBe(21);
+    // Undo, Redo, Preview, Back, the Row's two, five to move or delete the
+    // Block, five to format text and six in the empty Column.
+    expect(buttons.length).toBe(22);
     for (const { name, tooltip: text } of buttons) {
       // The tooltip can leave out where the button is, and add its shortcut.
       expect(name).toMatch(/\w/u);
@@ -115,7 +115,7 @@ test.describe("theme tokens", () => {
   test("a host overrides them on the element", async ({ page }) => {
     await openBlocks(page, ["text"]);
     const workspace = canvas(page).locator(".canvas-area");
-    await expect(workspace).toHaveCSS("background-color", "rgb(238, 240, 243)");
+    await expect(workspace).toHaveCSS("background-color", "rgb(241, 242, 245)");
 
     await canvas(page).evaluate((element) => {
       element.style.setProperty("--mq-color-workspace", "rgb(1, 2, 3)");
@@ -124,10 +124,9 @@ test.describe("theme tokens", () => {
     });
 
     await expect(workspace).toHaveCSS("background-color", "rgb(1, 2, 3)");
-    await expect(canvas(page).getByRole("tab", { name: "Content" })).toHaveCSS(
-      "border-bottom-color",
-      "rgb(200, 0, 100)"
-    );
+    await expect(
+      canvas(page).getByRole("tab", { name: "Content" }).locator("svg")
+    ).toHaveCSS("color", "rgb(200, 0, 100)");
     await expect(canvas(page).getByRole("tab", { name: "Content" })).toHaveCSS(
       "font-family",
       "Georgia, serif"
@@ -194,7 +193,7 @@ test.describe("on a dark host page", () => {
       panel: { backgroundColor: white, color: text, serif: false },
       placeholder: {
         backgroundColor: white,
-        color: "rgb(82, 82, 91)",
+        color: "rgb(91, 96, 106)",
         serif: false,
       },
       rowTools: { backgroundColor: white, color: text, serif: false },
@@ -204,7 +203,7 @@ test.describe("on a dark host page", () => {
         serif: false,
       },
       workspace: {
-        backgroundColor: "rgb(238, 240, 243)",
+        backgroundColor: "rgb(241, 242, 245)",
         color: text,
         serif: false,
       },

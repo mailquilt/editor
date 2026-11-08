@@ -19,7 +19,6 @@ const icon = (content: SVGTemplateResult) => html`
 `;
 
 export const ICONS = {
-  back: icon(svg`<path d="M19 12H5M11 6l-6 6 6 6" />`),
   bold: icon(
     svg`<path d="M7 5h6a3.5 3.5 0 0 1 0 7H7zM7 12h7a3.5 3.5 0 0 1 0 7H7z" stroke-width="2.25" />`
   ),
@@ -42,6 +41,7 @@ export const ICONS = {
   link: icon(
     svg`<path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1" />`
   ),
+  plus: icon(svg`<path d="M12 5v14M5 12h14" />`),
   preview: icon(
     svg`<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" />`
   ),

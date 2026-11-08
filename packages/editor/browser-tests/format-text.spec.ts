@@ -299,7 +299,7 @@ test.describe("the toolbar", () => {
     await textBlock(page).click();
 
     const button = toolbarButton(page, "Bold");
-    await expect(button).toHaveCSS("font-size", "14px");
+    await expect(button).toHaveCSS("font-size", "13px");
     await expect(button).not.toHaveCSS("color", "rgb(255, 0, 0)");
   });
 });

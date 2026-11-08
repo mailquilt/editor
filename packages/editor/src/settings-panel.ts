@@ -43,37 +43,56 @@ export const settingsPanelStyles = css`
   .settings {
     display: flex;
     flex-direction: column;
-    gap: var(--mq-space-5);
+  }
+
+  /* One group of fields, set off from the next by a rule. */
+  .settings .section {
+    border-bottom: 1px solid var(--mq-color-border);
+    padding: var(--mq-space-4);
+  }
+
+  .settings .section:last-child {
+    border-bottom: 0;
   }
 
   .settings fieldset {
     border: 0;
     display: flex;
     flex-direction: column;
-    gap: var(--mq-space-3);
+    gap: var(--mq-space-4);
     margin: 0;
     min-width: 0;
     padding: 0;
   }
 
+  /* Floated, so the legend lays out in the fieldset like any other heading. */
   .settings legend {
-    color: var(--mq-color-text-muted);
-    font-size: var(--mq-font-size-small);
+    float: left;
     font-weight: 600;
-    letter-spacing: 0.04em;
-    margin-block-end: var(--mq-space-2);
     padding: 0;
-    text-transform: uppercase;
+    width: 100%;
+  }
+
+  .settings legend + * {
+    clear: both;
   }
 
   .settings .field {
     display: flex;
     flex-direction: column;
-    gap: var(--mq-space-1);
+    gap: 6px;
+  }
+
+  .settings label {
+    color: var(--mq-color-text-muted);
+    display: block;
+    font-size: var(--mq-font-size-small);
+    font-weight: 500;
   }
 
   .settings .field p {
     font-size: var(--mq-font-size-small);
+    line-height: 1.4;
     margin: 0;
   }
 
@@ -85,25 +104,44 @@ export const settingsPanelStyles = css`
     color: var(--mq-color-danger);
   }
 
-  .settings label {
-    display: block;
-    font-weight: 500;
-  }
-
   .settings input,
   .settings select {
-    background: var(--mq-color-surface);
+    background-color: var(--mq-color-surface);
     border: 1px solid var(--mq-color-border-strong);
     border-radius: var(--mq-radius-small);
-    min-height: 32px;
+    color: var(--mq-color-text);
+    height: 32px;
     min-width: 0;
-    padding: 0 var(--mq-space-2);
+    padding: 0 10px;
+    transition:
+      border-color 120ms,
+      box-shadow 120ms;
     width: 100%;
   }
 
-  .settings input:disabled {
-    background: var(--mq-color-surface-hover);
+  .settings input:hover:not(:disabled),
+  .settings select:hover {
+    border-color: var(--mq-color-text-muted);
+  }
+
+  .settings input::placeholder {
     color: var(--mq-color-text-muted);
+  }
+
+  .settings input:disabled {
+    background-color: var(--mq-color-surface-muted);
+    border-color: var(--mq-color-border);
+    color: var(--mq-color-text-muted);
+    cursor: not-allowed;
+  }
+
+  .settings select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%2371717a' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.75' viewBox='0 0 24 24'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-position: right 8px center;
+    background-repeat: no-repeat;
+    cursor: pointer;
+    padding-inline-end: 30px;
   }
 
   .settings [aria-invalid="true"] {
@@ -113,19 +151,61 @@ export const settingsPanelStyles = css`
   /* Not :focus-visible, which browsers leave off a select pressed with a mouse. */
   .settings input:focus,
   .settings select:focus {
+    border-color: var(--mq-color-accent);
+    box-shadow: 0 0 0 3px var(--mq-color-accent-soft);
     outline: 2px solid var(--mq-color-accent);
-    outline-offset: 1px;
+    outline-offset: -1px;
+  }
+
+  .settings .unit-field {
+    position: relative;
+  }
+
+  .settings .unit-field input {
+    -moz-appearance: textfield;
+    padding-inline-end: 34px;
+  }
+
+  .settings .unit-field input::-webkit-inner-spin-button,
+  .settings .unit-field input::-webkit-outer-spin-button {
+    appearance: none;
+    margin: 0;
+  }
+
+  .settings .unit {
+    color: var(--mq-color-text-muted);
+    font-size: var(--mq-font-size-small);
+    inset-block: 0;
+    inset-inline-end: 10px;
+    line-height: 32px;
+    pointer-events: none;
+    position: absolute;
   }
 
   .settings .color {
     display: flex;
-    gap: var(--mq-space-1);
+    gap: 6px;
   }
 
   .settings input[type="color"] {
+    cursor: pointer;
     flex: none;
-    padding: 2px;
-    width: 36px;
+    padding: 3px;
+    width: 32px;
+  }
+
+  .settings input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+  }
+
+  .settings input[type="color"]::-webkit-color-swatch {
+    border: 1px solid rgb(0 0 0 / 10%);
+    border-radius: 3px;
+  }
+
+  .settings input[type="color"]::-moz-color-swatch {
+    border: 1px solid rgb(0 0 0 / 10%);
+    border-radius: 3px;
   }
 `;
 
@@ -246,8 +326,14 @@ const renderField = (
           </div>
         `;
       }
+      // The unit shows inside the field, and is part of its name.
       case "number": {
-        return textControl("number", field);
+        return html`
+          <div class="unit-field">
+            ${textControl("number", field)}
+            <span aria-hidden="true" class="unit">${field.unit}</span>
+          </div>
+        `;
       }
       case "select": {
         // A saved email can have what the list doesn't.
@@ -284,7 +370,11 @@ const renderField = (
   return html`
     <div class="field">
       <label for=${id}>
-        ${field.type === "number" ? `${field.label} (${field.unit})` : field.label}
+        ${field.label}${
+          field.type === "number"
+            ? html`<span class="visually-hidden"> (${field.unit})</span>`
+            : nothing
+        }
       </label>
       ${control()}
       ${
@@ -325,10 +415,12 @@ export const renderSettingsPanel = (
       // Keyed, so that a field with focus survives the others coming and going.
       ({ id }) => id,
       (section) => html`
-        <fieldset>
-          <legend>${section.legend}</legend>
-          ${section.fields.map((field) => renderField(section, field, events))}
-        </fieldset>
+        <div class="section">
+          <fieldset>
+            <legend>${section.legend}</legend>
+            ${section.fields.map((field) => renderField(section, field, events))}
+          </fieldset>
+        </div>
       `
     )}
   </div>

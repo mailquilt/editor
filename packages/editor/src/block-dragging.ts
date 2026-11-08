@@ -40,11 +40,12 @@ const midpointY = (element: Element) => {
 const DROP_MARGIN_PX = 40;
 
 const contains = (
-  element: Element,
+  element: Element | DOMRect,
   { x, y }: { x: number; y: number },
   margin = 0
 ) => {
-  const { bottom, left, right, top } = element.getBoundingClientRect();
+  const { bottom, left, right, top } =
+    element instanceof Element ? element.getBoundingClientRect() : element;
   return (
     x >= left - margin &&
     x <= right + margin &&
@@ -93,6 +94,11 @@ export const createBlockDragging = ({
     ],
   });
   const draggables = new Map<string, Draggable>();
+  /**
+   * The selected Block's toolbar, where its handle is. It's outside the Block, so
+   * letting go there after a short drag would otherwise land somewhere else.
+   */
+  let startedOn: DOMRect | undefined;
   const droppables = new Map<string, Droppable>();
 
   /**
@@ -109,6 +115,7 @@ export const createBlockDragging = ({
     const controls = root.querySelectorAll(".side-panel, .floating-toolbar");
     if (
       !email ||
+      (startedOn && contains(startedOn, pointer)) ||
       [...controls].some((element) => contains(element, pointer)) ||
       !contains(root.host, pointer, DROP_MARGIN_PX)
     ) {
@@ -291,6 +298,11 @@ export const createBlockDragging = ({
     if (email) {
       email.style.minHeight = `${email.getBoundingClientRect().height}px`;
     }
+    // Before the Block is lifted, which takes its toolbar along.
+    const { source } = manager.dragOperation;
+    startedOn = (source as Draggable | null)?.handle
+      ?.closest(".block-toolbar")
+      ?.getBoundingClientRect();
   });
 
   let syncTimer: ReturnType<typeof setTimeout> | undefined;
