@@ -1,0 +1,107 @@
+---
+// What's being built now, next and later. The detail lives in GitHub Issues.
+import SitePage from "../components/site-page.astro";
+import { ISSUES } from "../site/project.ts";
+
+const stages = [
+  {
+    items: [
+      "The editor, as a Web Component and a React component",
+      "Text, Heading, Image, Button, Divider and Spacer Blocks",
+      "Rows of one to four Columns",
+      "Drag and drop, with a keyboard path for all of it",
+      "Undo and redo, and a preview of the exported HTML",
+      "HTML checked in Gmail and Apple Mail",
+      "The Shell, a ready-made editor page",
+    ],
+    name: "Now",
+    planned: false,
+    text: "The first release, 0.1.0.",
+  },
+  {
+    items: [
+      "Vue and Svelte components",
+      "More Blocks and more settings for each",
+      "An MCP server, so coding tools can build and edit emails",
+      "Writing and editing emails with AI, using your own provider",
+    ],
+    name: "Next",
+    planned: true,
+    text: "Planned for after the first release.",
+  },
+  {
+    items: [
+      "Copy, paste and duplicate",
+      "Light and dark themes for the editor",
+      "Brand styles, a Merge Tag picker and display rules",
+      "An email checker",
+      "Mobile and dark-mode previews",
+      "An HTML mode, and a read-only view of the generated code",
+      "Export to React Email",
+      "Saved Rows, and import from MJML and HTML",
+      "A command-line tool and a local mode",
+      "Integrations with sending services",
+      "Translated emails",
+      "The pieces for editing an email together",
+    ],
+    name: "Later",
+    planned: true,
+    text: "Wanted, with no order yet.",
+  },
+];
+---
+
+<SitePage
+  description="What Mail Quilt is building now, next and later. There are no dates, and the roadmap itself lives in GitHub Issues."
+  title="Roadmap - Mail Quilt"
+>
+  <header class="site-intro">
+    <div class="site-wrap">
+      <h1 class="site-h1">Roadmap</h1>
+      <p class="site-lead">
+        One person builds Mail Quilt, so nothing here has a date and the order can
+        change. A solid outline is being built. A dashed one is a plan, not a
+        feature.
+      </p>
+    </div>
+  </header>
+
+  <section class="site-section">
+    <div class="site-wrap">
+      <div class="site-grid">
+        {
+          stages.map(({ items, name, planned, text }) => (
+            // What isn't built yet is a slot, drawn dashed.
+            <div class="site-card site-card-body" data-slot={planned ? "" : undefined}>
+              <h2 class="site-h3">{name}</h2>
+              <p class="site-small site-muted">{text}</p>
+              <ul class="site-list site-small stage">
+                {items.map((item) => <li>{item}</li>)}
+              </ul>
+            </div>
+          ))
+        }
+      </div>
+      <p class="site-measure more">
+        The roadmap itself is kept in{" "}
+        <a class="site-link" href={ISSUES}>GitHub Issues</a>. Comment on what's
+        planned there, or open an issue to ask for something that isn't.
+      </p>
+    </div>
+  </section>
+</SitePage>
+
+<style>
+  .stage {
+    margin-top: 1.25rem;
+  }
+
+  .stage > li:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+
+  .more {
+    margin-top: 2.5rem;
+  }
+</style>

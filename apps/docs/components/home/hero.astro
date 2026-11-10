@@ -1,0 +1,108 @@
+---
+// The top of the landing page: what Mail Quilt is, and its ready-made editor.
+import { withBase } from "blume/components/islands/base-path.ts";
+
+const facts = [
+  { name: "License", value: "MIT, with no paid tier" },
+  { name: "Packages", value: "Four, each built on the last" },
+  { name: "Works with", value: "Any framework, with a React component" },
+  { name: "You keep", value: "Each email, as JSON" },
+  { name: "You send", value: "HTML, written by MJML" },
+  { name: "Status", value: "0.x, before its first release" },
+];
+
+/**
+ * The editor's accent tokens, as a host would set them. The first matches this
+ * site, and the second is what the editor uses when nobody sets any.
+ */
+const themes = [
+  { accent: "#d4380f", name: "Orange, to match this site", on: "#ffffff", soft: "212 56 15", strong: "#b5300c" },
+  { accent: "#3355ff", name: "Blue, the editor's default", on: "#ffffff", soft: "51 85 255", strong: "#2340d6" },
+  { accent: "#7c3aed", name: "Violet", on: "#ffffff", soft: "124 58 237", strong: "#6d28d9" },
+  { accent: "#16181d", name: "Graphite", on: "#ffffff", soft: "22 24 29", strong: "#000000" },
+];
+---
+
+<section class="site-section home-hero">
+  <div class="site-wrap">
+    <h1 class="site-h1">
+      Build an email editor into your app<span
+        aria-hidden="true"
+        class="site-period"></span>
+    </h1>
+
+    <div class="home-hero-row">
+      <div>
+        <p class="site-lead">
+          Mail Quilt is a set of free, open-source packages. Drop in the
+          ready-made editor, build your own page around it, or build your own
+          editor on the document model underneath.
+        </p>
+        <div class="site-actions">
+          <a
+            class="site-button"
+            data-tone="accent"
+            href={withBase("/playground")}>Try the Playground</a
+          >
+          <a
+            class="site-button"
+            data-tone="quiet"
+            href={withBase("/docs/quick-start")}>Read the quick start</a
+          >
+        </div>
+      </div>
+      <dl class="site-facts home-facts">
+        {
+          facts.map(({ name, value }) => (
+            <div>
+              <dt>{name}</dt>
+              <dd>{value}</dd>
+            </div>
+          ))
+        }
+      </dl>
+    </div>
+
+    <!-- The editor sits lifted out of a dashed slot, as the envelope does in the logo. -->
+    <div class="home-slot">
+      <div class="home-editor" data-home-editor>
+        <img
+          alt="The Mail Quilt editor. An email sits on a canvas, with a side panel of Blocks to drag onto it."
+          height="1202"
+          sizes="(min-width: 81rem) 71rem, 100vw"
+          src={withBase("/editor.webp")}
+          srcset={`${withBase("/editor-small.webp")} 1136w, ${withBase("/editor.webp")} 2272w`}
+          width="2272"
+        />
+      </div>
+    </div>
+    <p class="home-phone-note site-small site-muted">
+      This is a picture. The editor needs more room than this, so open the
+      page in a wider window to try it.
+    </p>
+    <div class="home-themes site-small" data-home-themes>
+      <span id="themes-label"
+        >This is the ready-made editor, one of the four packages, recolored with
+        theme tokens. Try another:</span
+      >
+      <div aria-labelledby="themes-label" class="home-swatches" role="group">
+        {
+          themes.map(({ accent, name, on, soft, strong }, index) => (
+            <button
+              aria-label={name}
+              aria-pressed={index === 0 ? "true" : "false"}
+              data-accent={accent}
+              data-on={on}
+              data-soft={soft}
+              data-strong={strong}
+              style={`--swatch:${accent}`}
+              title={name}
+              type="button"
+            />
+          ))
+        }
+      </div>
+      <code data-home-token>--mq-color-accent: {themes[0]?.accent}</code>
+    </div>
+  </div>
+</section>

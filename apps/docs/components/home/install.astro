@@ -1,0 +1,62 @@
+---
+// The few lines it takes to add the editor, as the quick start has them.
+import { codeBlockHtml } from "blume/components/content/code-block.ts";
+import Tab from "blume/components/content/Tab.astro";
+import Tabs from "blume/components/content/Tabs.astro";
+import data from "blume:data";
+
+import cdnExample from "../../docs/_quick-start/cdn/index.html?raw";
+// oxlint-disable-next-line import/default -- "?raw" gives the file's text as its default export.
+import bundlerExample from "../../docs/_quick-start/plain-js/main.js?raw";
+// oxlint-disable-next-line import/default -- As above.
+import reactExample from "../../docs/_quick-start/react/app/editor.tsx?raw";
+
+const INSTALL = "npm install @mailquilt/editor";
+
+/** The quick start's files, highlighted as the docs' own code blocks are. */
+const examples = await Promise.all(
+  [
+    { code: bundlerExample, lang: "js", tab: "With a bundler", title: "main.js" },
+    { code: cdnExample, lang: "html", tab: "From a CDN", title: "index.html" },
+    { code: reactExample, lang: "tsx", tab: "React", title: "app/editor.tsx" },
+  ].map(async ({ tab, ...source }) => ({
+    html: await codeBlockHtml(source, data.config.codeThemes),
+    tab,
+  }))
+);
+---
+
+<section class="site-section">
+  <div class="site-wrap site-split">
+    <div>
+      <h2 class="site-h2">A few lines to add it.</h2>
+      <p>
+        Set <code>value</code> to open an email, and listen for{" "}
+        <code>mq-change</code> to save it and <code>mq-error</code> in case
+        it's refused. Call <code>exportHtml()</code> when it's ready to send.
+        That's the whole API.
+      </p>
+      <div class="site-actions">
+        <div class="site-command">
+          <code>{INSTALL}</code>
+          <button data-copy={INSTALL} type="button">Copy</button>
+        </div>
+      </div>
+      <p class="site-small site-muted home-code-note">
+        These are the quick start's own files. The project's tests install
+        each one in a fresh project and run it in a browser.
+      </p>
+    </div>
+    <div class="prose max-w-none home-code-tabs">
+      <Tabs hash={false}>
+        {
+          examples.map(({ html, tab }) => (
+            <Tab title={tab}>
+              <Fragment set:html={html} />
+            </Tab>
+          ))
+        }
+      </Tabs>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,427 @@
+/*
+ * The site's look comes from the logo, which says three things:
+ *
+ *   a grid     Blocks sit in rows and columns.
+ *   a slot     A dashed outline is a place something can go, or isn't yet.
+ *   a lift     The orange piece is the one being picked up or placed.
+ *
+ * So pages are drawn on a visible grid, anything planned or untested is
+ * dashed, and whatever the pointer picks up lifts out of its slot. The orange
+ * marks one thing at a time.
+ *
+ * Blume inlines this file last, so these rules win over its own.
+ */
+
+:root {
+  /* The logo's orange. White text is readable on it, and so is it on white. */
+  --site-accent: #d4380f;
+  --site-accent-hover: #b5300c;
+  --site-accent-text: var(--site-accent);
+  --site-body: #3f3f46;
+  --site-surface: #fafafa;
+  --site-dash: #a1a1aa;
+  /* The outline of a slot: somewhere a thing can go, or isn't yet. */
+  --site-slot: 1.5px dashed var(--site-dash);
+  --site-lift: 0.3125rem;
+  --site-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  --blume-background: #ffffff;
+  --blume-foreground: #111113;
+  --blume-muted: #f4f4f5;
+  --blume-muted-foreground: #63636b;
+  --blume-border: #e4e4e7;
+  --blume-code-background: #fafafa;
+  --blume-content-width: 44rem;
+}
+
+:root[data-theme="dark"] {
+  /* On the dark background the orange is too dim to read as text. */
+  --site-accent-text: #ff8a6b;
+  --site-body: #c4c4cc;
+  --site-surface: #131316;
+  --site-dash: #5c5c66;
+
+  --blume-background: #0c0c0e;
+  --blume-foreground: #f4f4f5;
+  --blume-muted: #1a1a1e;
+  --blume-muted-foreground: #a1a1aa;
+  --blume-border: #27272a;
+  --blume-code-background: #131316;
+}
+
+/* Blume tracks every heading at -0.05em, the logo's own. Small ones need less. */
+h3,
+h4,
+h5,
+h6 {
+  letter-spacing: -0.03em;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--site-accent) 30%, transparent);
+}
+
+/* Focus is the orange outline a selected Block has in the editor. */
+:focus-visible {
+  outline: 2px solid var(--site-accent);
+  outline-offset: 2px;
+}
+
+kbd {
+  display: inline-block;
+  min-width: 1.625em;
+  padding: 0.0625rem 0.4375rem;
+  border: 1px solid var(--blume-border);
+  border-bottom-width: 2px;
+  border-radius: 0.375rem;
+  background: var(--blume-background);
+  color: var(--blume-foreground);
+  font-family: var(--blume-font-mono);
+  font-size: 0.8125em;
+  line-height: 1.5;
+  text-align: center;
+  box-shadow: none;
+}
+
+/* ---------- Header ---------- */
+
+[data-blume-header] {
+  border-bottom: 1px solid var(--blume-border);
+}
+
+[data-blume-header] > div:first-child > a img {
+  height: 1.625rem;
+}
+
+[data-blume-header] nav a {
+  border-radius: 0.5rem;
+}
+
+[data-blume-header] nav a[aria-current="page"] {
+  color: var(--blume-foreground);
+  font-weight: 600;
+}
+
+/* The one filled button. */
+[data-blume-header] a.bg-accent {
+  border-radius: 0.625rem;
+  padding: 0.4375rem 0.875rem;
+  transition:
+    scale 120ms var(--site-ease),
+    opacity 120ms;
+}
+
+[data-blume-header] a.bg-accent:active {
+  scale: 0.97;
+}
+
+/* On a page drawn on the grid, the header's ends line up with the grid's. */
+@media (min-width: 48rem) {
+  body:has(.site-page > .site-frame) [data-blume-header] {
+    padding-inline: max(1.5rem, calc((100% - 78rem) / 2 + 2rem));
+  }
+}
+
+@media (min-width: 60rem) {
+  body:has(.site-page > .site-frame) [data-blume-header] {
+    padding-inline: max(1.5rem, calc((100% - 78rem) / 2 + 3rem));
+  }
+}
+
+/* ---------- Docs sidebar ---------- */
+
+/* The docs sit between two rails, as the other pages do. */
+@media (min-width: 64rem) {
+  [data-blume-nav-drawer] {
+    padding-top: 1.75rem;
+    border-inline-end: 1px solid var(--blume-border) !important;
+  }
+}
+
+@media (min-width: 80rem) {
+  [data-blume-toc] {
+    border-inline-start: 1px solid var(--blume-border);
+    padding-inline-start: 1.5rem;
+  }
+}
+
+[data-blume-nav-tree] .blume-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 0.5rem;
+}
+
+[data-blume-nav-tree] .blume-nav-link[aria-current="page"] {
+  font-weight: 600;
+}
+
+/* The open page gets the dot from the logo's "i". */
+[data-blume-nav-tree] .blume-nav-link[aria-current="page"]::before {
+  content: "";
+  flex: none;
+  width: 0.5rem;
+  height: 0.375rem;
+  border-radius: 0.09375rem;
+  background: var(--site-accent);
+}
+
+[data-blume-nav-tree] .blume-nav-heading {
+  font-family: var(--blume-font-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+[data-blume-nav-tree] > ul > li + li {
+  margin-top: 1.5rem;
+}
+
+/* ---------- Docs article ---------- */
+
+.prose {
+  color: var(--site-body);
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.prose :where(h1, h2, h3, h4) {
+  color: var(--blume-foreground);
+  font-weight: 700;
+}
+
+.prose :where(h1) {
+  font-size: 2.75rem;
+  line-height: 1.05;
+}
+
+.prose :where(h2) {
+  font-size: 1.625rem;
+  margin-top: 3.5rem;
+}
+
+.prose :where(h3) {
+  font-size: 1.1875rem;
+}
+
+.prose > p.text-lg {
+  max-width: 34em;
+  font-size: 1.1875rem;
+  line-height: 1.55;
+  text-wrap: pretty;
+}
+
+.prose :where(strong) {
+  color: var(--blume-foreground);
+  font-weight: 600;
+}
+
+/* Links are ink, underlined in the logo's orange. */
+.prose :where(a):not(.blume-heading-anchor, [class*="rounded"]) {
+  color: var(--blume-foreground);
+  font-weight: 500;
+  text-decoration: underline 1.5px var(--site-accent);
+  text-underline-offset: 0.22em;
+  transition: color 120ms;
+}
+
+.prose :where(a):not(.blume-heading-anchor, [class*="rounded"]):hover {
+  color: var(--site-accent-text);
+}
+
+.prose :where(code):not(pre code) {
+  color: var(--blume-foreground);
+  font-size: 0.875em;
+  font-weight: 400;
+}
+
+.prose :where(pre) {
+  font-size: 0.875rem;
+  line-height: 1.7;
+}
+
+.prose :where(ul > li)::marker {
+  color: var(--site-dash);
+}
+
+.prose .blume-table-scroll table {
+  font-size: 0.9375rem;
+  line-height: 1.55;
+}
+
+/* A name in a table's first column stays in one piece. */
+.prose .blume-table-scroll td:first-child > code {
+  white-space: nowrap;
+}
+
+.prose .blume-table-scroll thead th {
+  color: var(--blume-foreground);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+/* A swatch beside a color written in a table of defaults. */
+.site-swatch {
+  display: inline-block;
+  width: 0.875rem;
+  height: 0.875rem;
+  margin-inline-end: 0.5rem;
+  border-radius: 0.25rem;
+  vertical-align: -0.125rem;
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--blume-foreground) 18%, transparent);
+}
+
+/* ---------- Docs rails ---------- */
+
+[data-blume-toc] ul a {
+  position: relative;
+  padding-inline-start: 0.875rem;
+  border-inline-start: 1px solid var(--blume-border);
+}
+
+[data-blume-toc] ul a[aria-current="location"] {
+  border-inline-start-color: var(--blume-foreground);
+  color: var(--blume-foreground);
+  font-weight: 600;
+}
+
+/* ---------- Lifting ---------- */
+
+/*
+ * A thing that can be picked up. Under the pointer it lifts out of a dashed
+ * slot, as the envelope does in the logo. The element becomes the slot, its
+ * ::before becomes the lifted surface, and its children ride on that surface.
+ */
+/* Things that lift: the site's own, and Blume's cards and page-end links. */
+:is([data-blume-page-end] nav > a, a[data-blume-card][href]) {
+  position: relative;
+  overflow: visible;
+}
+
+:is([data-blume-page-end] nav > a, a[data-blume-card][href])::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border: 1px solid var(--blume-foreground);
+  border-radius: inherit;
+  background: var(--blume-background);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 120ms,
+    translate 260ms var(--site-ease);
+}
+
+:is([data-blume-page-end] nav > a, a[data-blume-card][href]) > * {
+  position: relative;
+  transition: translate 260ms var(--site-ease);
+}
+
+@media (hover: hover) {
+  :is([data-blume-page-end] nav > a, a[data-blume-card][href]):hover {
+    border-style: dashed;
+    border-color: var(--site-dash);
+  }
+
+  :is([data-blume-page-end] nav > a, a[data-blume-card][href]):hover::before {
+    opacity: 1;
+    translate: var(--site-lift) calc(var(--site-lift) * -1);
+  }
+
+  :is([data-blume-page-end] nav > a, a[data-blume-card][href]):hover > * {
+    translate: var(--site-lift) calc(var(--site-lift) * -1);
+  }
+}
+
+/* ---------- Footer ---------- */
+
+.site-footer {
+  border-top: 1px solid var(--blume-border);
+  color: var(--blume-muted-foreground);
+  font-size: 0.9375rem;
+}
+
+/* Under a page on the grid, the rails run on through the footer. */
+body:has(.site-page > .site-frame) .site-footer {
+  border-top: 0;
+}
+
+@media (min-width: 81rem) {
+  body:has(.site-page > .site-frame) .site-footer-grid {
+    border-inline: 1px solid var(--blume-border);
+  }
+}
+
+/* As wide as the grid the pages are drawn on, with the same margins. */
+.site-footer-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2.5rem 2rem;
+  max-width: 78rem;
+  margin-inline: auto;
+  padding: 3.5rem 1.25rem;
+}
+
+@media (min-width: 48rem) {
+  .site-footer-grid {
+    padding-inline: 2rem;
+  }
+}
+
+.site-footer-grid > :first-child {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 60rem) {
+  .site-footer-grid {
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    padding: 4rem 3rem;
+  }
+
+  .site-footer-grid > :first-child {
+    grid-column: auto;
+  }
+}
+
+.site-footer img {
+  width: auto;
+  height: 1.625rem;
+}
+
+.site-footer-grid > :first-child p {
+  max-width: 22em;
+  margin-top: 1rem;
+}
+
+.site-footer-title {
+  margin-bottom: 0.75rem;
+  color: var(--blume-foreground);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.site-footer ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-footer li a {
+  display: inline-block;
+  padding: 0.25rem 0;
+  transition: color 120ms;
+}
+
+.site-footer li a:hover {
+  color: var(--blume-foreground);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after,
+  details::details-content {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}

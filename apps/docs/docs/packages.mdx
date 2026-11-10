@@ -1,0 +1,56 @@
+---
+title: Packages
+description: The four Mail Quilt packages, what each one is for and which one to install.
+---
+
+Most apps install one package. Which one depends on whether you want the editor, the HTML, or the email as data.
+
+| Package | What it gives you | Install it when |
+| --- | --- | --- |
+| `@mailquilt/editor` | The `<mail-quilt>` and `<mail-quilt-shell>` elements, and a build to load from a CDN. | Your app isn't a React app, or your page has no build step. |
+| `@mailquilt/react` | The `MailQuilt` and `MailQuiltShell` components. | Your app uses React 19. It installs the editor for you. |
+| `@mailquilt/renderer` | `renderEmail()`, which turns a saved email into HTML. | You want the HTML on your server, such as just before you send. |
+| `@mailquilt/core` | The document's types, `createEmail()`, `loadDocument()` and the Commands that change an email. | You create, check or change emails in code. |
+
+## How they fit together
+
+`core` knows what an email is. `renderer` turns one into HTML. `editor` lets a person change one, and `react` wraps the editor.
+
+| Package               | What it brings with it                        |
+| --------------------- | --------------------------------------------- |
+| `@mailquilt/react`    | The editor, and so the renderer and the core. |
+| `@mailquilt/editor`   | The renderer and the core.                    |
+| `@mailquilt/renderer` | The core.                                     |
+| `@mailquilt/core`     | Nothing else from Mail Quilt.                 |
+
+`core` and `renderer` need no DOM, so they run in Node as well as in a browser. Installing `renderer` on a server doesn't bring the editor with it.
+
+## The editor in your app
+
+Install `@mailquilt/editor`, or `@mailquilt/react` in a React app. The [quick start](./quick-start) has working code for a bundler, a CDN and React.
+
+```bash
+npm install @mailquilt/editor
+```
+
+If the editor is a page of its own, the [Shell](./shell) is that page ready-made, and it comes in the same two packages.
+
+## HTML on your server
+
+The editor's `exportHtml()` gives you HTML in the browser. To make it on your server from the JSON you saved, install the renderer there:
+
+```bash
+npm install @mailquilt/renderer
+```
+
+[Render on a server](./render-on-a-server) shows how, and when you'd choose it over exporting in the browser.
+
+## Emails as data
+
+To create an email without the editor, or to check one before you save it, install the core:
+
+```bash
+npm install @mailquilt/core
+```
+
+[Change emails in code](./change-emails-in-code) covers creating an email, applying Commands to it and checking one that came from somewhere you don't control.

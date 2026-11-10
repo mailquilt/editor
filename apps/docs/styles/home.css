@@ -1,0 +1,693 @@
+/* The landing page. Shared pieces are in site.css, and tokens in theme.css. */
+
+/* ---------- Hero ---------- */
+
+.home-hero {
+  padding-top: 3.5rem;
+}
+
+@media (min-width: 60rem) {
+  .home-hero {
+    padding-top: 6rem;
+    padding-bottom: 5rem;
+  }
+}
+
+.home-hero-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 3rem;
+  margin-top: 2.25rem;
+}
+
+@media (min-width: 60rem) {
+  .home-hero-row {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 4fr);
+    gap: 5rem;
+    align-items: start;
+    margin-top: 3rem;
+  }
+}
+
+/* The hero's facts put each value at the far end of its line. */
+.home-facts {
+  line-height: 1.4;
+}
+
+.home-facts > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 0.5625rem 0;
+}
+
+.home-facts dt {
+  flex: none;
+}
+
+.home-facts dd {
+  font-weight: 500;
+  text-align: end;
+}
+
+.home-slot {
+  margin-top: 3.5rem;
+}
+
+.home-editor img {
+  width: 100%;
+  height: auto;
+  border-radius: 0.75rem;
+  box-shadow: 0 0 0 1px var(--blume-border);
+}
+
+.home-phone-note {
+  margin-top: 0.875rem;
+}
+
+.home-themes {
+  display: none;
+}
+
+/* Wide enough to edit in. */
+@media (min-width: 44rem) {
+  .home-slot {
+    position: relative;
+    margin: 5.25rem 0.875rem 0 0;
+  }
+
+  .home-slot::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border: var(--site-slot);
+    border-radius: 0.875rem;
+  }
+
+  /*
+   * Lifted with offsets, never a transform. The editor places its tooltips
+   * against the window, and a transformed parent would move them all.
+   */
+  .home-editor {
+    position: relative;
+    top: -0.875rem;
+    left: 0.875rem;
+    /* At least this tall. The editor grows with its email, and this with it. */
+    display: flex;
+    flex-direction: column;
+    min-height: 37.5rem;
+    border-radius: 0.75rem;
+    background: var(--blume-background);
+    box-shadow:
+      0 0 0 1px var(--blume-border),
+      0 2rem 3.5rem -2rem rgb(17 17 19 / 30%);
+    animation: settle 800ms var(--site-ease) 120ms both;
+  }
+
+  /* The picture holds the editor's place, then leaves. */
+  .home-editor img {
+    height: 37.5rem;
+    object-fit: cover;
+    object-position: top left;
+    box-shadow: none;
+  }
+
+  .home-editor mail-quilt {
+    flex: 1;
+  }
+
+  .home-phone-note {
+    display: none;
+  }
+}
+
+/* Only once the editor is really there, since this row says it is. */
+.home-slot:has([data-live]) ~ .home-themes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  margin-top: 1.5rem;
+  color: var(--blume-muted-foreground);
+}
+
+/* The editor arrives held high, and is set down just above its slot. */
+@keyframes settle {
+  from {
+    top: -2.25rem;
+    left: 2.25rem;
+    opacity: 0;
+  }
+}
+
+.home-swatches {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.home-swatches button {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 0.375rem;
+  background: var(--swatch);
+  cursor: pointer;
+  transition: scale 120ms var(--site-ease);
+}
+
+.home-swatches button:hover {
+  scale: 1.12;
+}
+
+.home-swatches button[aria-pressed="true"] {
+  outline: 2px solid var(--blume-foreground);
+  outline-offset: 2px;
+}
+
+.home-themes code[data-home-token] {
+  margin-inline-start: auto;
+  color: var(--blume-muted-foreground);
+  font-size: 0.8125rem;
+}
+
+/* ---------- The document and its export ---------- */
+
+.home-flow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  margin-top: 3.5rem;
+}
+
+.home-flow .site-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* What turns the first into the second, named on the line that joins them. */
+.home-pipe {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 3.5rem;
+  background: linear-gradient(var(--site-dash), var(--site-dash)) center / 1px
+    100% no-repeat;
+}
+
+.home-pipe span {
+  padding: 0.125rem 0.625rem;
+  border: 1px solid var(--blume-border);
+  border-radius: 999px;
+  background: var(--blume-background);
+  color: var(--blume-foreground);
+  font-family: var(--blume-font-mono);
+  font-size: 0.75rem;
+  line-height: 1.6;
+}
+
+@media (min-width: 60rem) {
+  .home-flow {
+    grid-template-columns: minmax(0, 1fr) 8rem minmax(0, 1fr);
+  }
+
+  .home-pipe {
+    height: auto;
+    background-size: 100% 1px;
+  }
+}
+
+.home-output {
+  flex: 1 1 23rem;
+  min-height: 0;
+  padding: 1.125rem;
+  background: var(--site-surface);
+}
+
+/* MJML's lines are long. Wrapped, the Merge Tag in them stays in view. */
+.home-output[data-home-html] {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.home-output-note {
+  padding: 0.75rem 1.125rem;
+  border-top: 1px solid var(--blume-border);
+  color: var(--blume-muted-foreground);
+}
+
+.home-output-note button {
+  cursor: pointer;
+}
+
+/* ---------- The code ---------- */
+
+.home-code-note {
+  margin-top: 1.5rem;
+}
+
+.home-code-tabs pre {
+  max-height: 27rem;
+}
+
+/* ---------- Packages ---------- */
+
+.home-packages {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 3rem;
+  margin-top: 3.5rem;
+}
+
+@media (min-width: 60rem) {
+  .home-packages {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 5rem;
+    align-items: center;
+  }
+}
+
+.home-pieces {
+  /* On a phone the grid takes most of the width, so its pieces keep their shape. */
+  --piece: clamp(7rem, 36vw, 10.5rem);
+  --gap: 0.875rem;
+  display: grid;
+  grid-template-columns: repeat(2, var(--piece));
+  gap: var(--gap);
+  position: relative;
+  width: max-content;
+  /* Room for the envelope, which is held above the grid. */
+  margin-top: calc(var(--piece) * 0.2);
+}
+
+/* The slot the editor's piece is held above. */
+.home-pieces::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: var(--piece);
+  height: var(--piece);
+  border: var(--site-slot);
+  border-radius: 1.375rem;
+}
+
+.home-piece {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  height: var(--piece);
+  padding: 0.875rem 1rem;
+  border-radius: 1.375rem;
+  background: var(--blume-foreground);
+  color: var(--blume-background);
+  font-family: var(--blume-font-mono);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition:
+    translate 260ms var(--site-ease),
+    scale 120ms var(--site-ease);
+}
+
+.home-piece:active {
+  scale: 0.98;
+}
+
+@media (hover: hover) {
+  .home-piece:hover {
+    translate: 0.1875rem -0.1875rem;
+  }
+}
+
+/* The chosen package is outlined the way the editor outlines a chosen Block. */
+.home-piece[aria-selected="true"] {
+  outline: 2px solid var(--blume-foreground);
+  outline-offset: 4px;
+}
+
+.home-piece:focus-visible {
+  outline: 2px solid var(--site-accent);
+  outline-offset: 4px;
+}
+
+/*
+ * The editor is the logo's envelope: a block like the others, held up and to
+ * the right of its slot by as much as the logo holds it.
+ */
+.home-piece[data-package="editor"] {
+  background: var(--site-accent);
+  color: #fff;
+  translate: calc(var(--piece) * 0.2) calc(var(--piece) * -0.2);
+  /* The gap the logo leaves between the envelope and the slot under it. */
+  box-shadow: 0 0 0 calc(var(--piece) * 0.055) var(--blume-background);
+}
+
+.home-piece svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: #fff;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  /* Lighter than the logo draws it, as here it shares the piece with a label. */
+  stroke-width: 3.25;
+  pointer-events: none;
+}
+
+.home-piece span {
+  position: relative;
+}
+
+@media (hover: hover) {
+  .home-piece[data-package="editor"]:hover {
+    translate: calc(var(--piece) * 0.2 + 0.1875rem)
+      calc(var(--piece) * -0.2 - 0.1875rem);
+  }
+}
+
+.home-panel > h3 {
+  color: var(--blume-foreground);
+  font-size: 1.375rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.home-panel > p {
+  max-width: 34em;
+  margin-top: 0.875rem;
+}
+
+.home-panel .site-facts {
+  --site-facts-label: 8.5rem;
+  margin-top: 1.75rem;
+}
+
+.home-panel-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 1.5rem;
+  margin-top: 1.75rem;
+}
+
+.home-panel:focus-visible {
+  outline-offset: 0.75rem;
+  border-radius: 0.25rem;
+}
+
+/* ---------- What people do in the editor ---------- */
+
+.home-layouts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  margin-top: 3.5rem;
+  overflow: hidden;
+}
+
+.home-layouts-copy {
+  padding: 1.75rem;
+}
+
+.home-row-demo {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 2.75rem 1.75rem 2rem;
+  border-top: 1px solid var(--blume-border);
+  background: var(--site-surface);
+}
+
+@media (min-width: 60rem) {
+  .home-layouts {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  }
+
+  .home-layouts-copy {
+    padding: 2.5rem;
+  }
+
+  .home-row-demo {
+    padding: 2.5rem;
+    border-top: 0;
+    border-inline-start: 1px solid var(--blume-border);
+  }
+}
+
+.home-layout-picker {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  max-width: 22rem;
+  margin-top: 1.75rem;
+}
+
+.home-layout-picker button {
+  padding: 0.5rem;
+  border: 1px solid var(--blume-border);
+  border-radius: 0.625rem;
+  cursor: pointer;
+  transition:
+    border-color 120ms,
+    scale 120ms var(--site-ease);
+}
+
+.home-layout-picker button:hover {
+  border-color: var(--blume-foreground);
+}
+
+.home-layout-picker button:active {
+  scale: 0.97;
+}
+
+.home-layout-picker button[aria-pressed="true"] {
+  border-color: var(--site-accent);
+  box-shadow: 0 0 0 1px var(--site-accent);
+}
+
+.home-mini {
+  display: flex;
+  gap: 0.1875rem;
+  height: 1.375rem;
+}
+
+.home-mini span {
+  border-radius: 0.1875rem;
+  background: var(--blume-foreground);
+}
+
+/* The Row, outlined and tagged as the editor does a selected one. */
+.home-row-columns {
+  position: relative;
+  display: flex;
+  width: 100%;
+  padding: 0.5rem 0.25rem;
+  border-radius: 0.875rem;
+  outline: var(--site-slot);
+}
+
+.home-row-tag {
+  position: absolute;
+  bottom: calc(100% + 1.5px);
+  left: 0.75rem;
+  padding: 0.0625rem 0.5rem;
+  border-radius: 0.3125rem 0.3125rem 0 0;
+  background: var(--site-accent);
+  color: #fff;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.home-column {
+  display: flex;
+  min-width: 0;
+  height: 8rem;
+  overflow: hidden;
+  transition: flex 520ms var(--site-ease);
+}
+
+.home-column > span {
+  display: flex;
+  flex: 1;
+  align-items: flex-end;
+  min-width: 0;
+  margin-inline: 0.25rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.625rem;
+  background: var(--blume-foreground);
+  color: var(--blume-background);
+  font-family: var(--blume-font-mono);
+  font-size: 0.8125rem;
+}
+
+.home-column > span::after {
+  content: "%";
+}
+
+.site-columns .site-link {
+  display: inline-block;
+  margin-top: 0.875rem;
+}
+
+.site-columns .site-muted {
+  margin-top: 0.5rem;
+}
+
+/* A piece of the editor itself, above the words about it. */
+.home-specimen {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: 2.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.home-specimen kbd {
+  padding: 0.1875rem 0.5625rem;
+  font-size: 0.8125rem;
+}
+
+.home-specimen kbd:last-child {
+  border-color: var(--site-accent);
+}
+
+.home-specimen .site-code {
+  font-size: 0.875rem;
+}
+
+.home-tools {
+  display: inline-flex;
+  gap: 0.125rem;
+  padding: 0.25rem;
+  border: 1px solid var(--blume-border);
+  border-radius: 0.625rem;
+  background: var(--blume-background);
+  box-shadow: 0 0.25rem 0.75rem -0.25rem rgb(17 17 19 / 18%);
+}
+
+.home-tools svg {
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0.375rem;
+  border-radius: 0.375rem;
+  fill: none;
+  stroke: var(--blume-foreground);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.75;
+}
+
+.home-tools svg:last-child {
+  background: color-mix(in srgb, var(--site-accent) 16%, transparent);
+  stroke: var(--site-accent-text);
+}
+
+/* ---------- Before you rely on it ---------- */
+
+.home-clients-title {
+  margin-top: 3rem;
+}
+
+.home-clients {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.5rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 40rem) {
+  .home-clients {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* None is checked yet, so each is a slot. A checked one will be solid. */
+.home-clients li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding: 0.875rem 1rem;
+  border: var(--site-slot);
+  border-radius: 0.75rem;
+}
+
+.home-client {
+  color: var(--blume-foreground);
+  font-weight: 500;
+}
+
+/* ---------- Questions ---------- */
+
+.home-faq details {
+  border-top: 1px solid var(--blume-border);
+}
+
+.home-faq details:last-child {
+  border-bottom: 1px solid var(--blume-border);
+}
+
+.home-faq summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.0625rem 0;
+  color: var(--blume-foreground);
+  font-weight: 500;
+  cursor: pointer;
+  list-style: none;
+}
+
+.home-faq summary::-webkit-details-marker {
+  display: none;
+}
+
+/* A plus that turns into a minus. */
+.home-faq summary::after {
+  content: "";
+  flex: none;
+  width: 0.8125rem;
+  height: 0.8125rem;
+  background:
+    linear-gradient(currentColor, currentColor) center / 100% 1.5px no-repeat,
+    linear-gradient(currentColor, currentColor) center / 1.5px 100% no-repeat;
+  color: var(--blume-muted-foreground);
+  transition:
+    rotate 260ms var(--site-ease),
+    background-size 260ms var(--site-ease);
+}
+
+.home-faq details[open] summary::after {
+  background-size:
+    100% 1.5px,
+    1.5px 0;
+  rotate: 180deg;
+}
+
+.home-faq summary:hover span {
+  text-decoration: underline 1.5px var(--site-accent);
+  text-underline-offset: 0.22em;
+}
+
+.home-faq details p {
+  padding-bottom: 1.375rem;
+}
+
+.home-faq details::details-content {
+  height: 0;
+  overflow: clip;
+  transition:
+    height 320ms var(--site-ease),
+    content-visibility 320ms allow-discrete;
+}
+
+.home-faq details[open]::details-content {
+  height: auto;
+}
+
+.home-faq {
+  interpolate-size: allow-keywords;
+}

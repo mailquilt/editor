@@ -1,8 +1,6 @@
 ---
 title: Shell
 description: Put a ready-made email editor page in your app, with a header, Export and Import buttons, messages and saving in the browser.
-sidebar:
-  order: 2
 ---
 
 `<mail-quilt>` is only the editor. Around it, your app still needs somewhere to export the email, somewhere to show why an email was refused, and a way to keep the person's work. `<mail-quilt-shell>` is all of that in one element: the editor, with a header above it and a message bar between them.
@@ -11,7 +9,7 @@ sidebar:
 
 The header has the heading and up to three buttons. **Export HTML** downloads the email as `email.html`, ready to send. **Export JSON** downloads it as `email.json`, the [document format](./document-format) the editor saves. **Import JSON** opens a `.json` file. If the editor refuses it, the message bar says why and the current email stays.
 
-The message bar shows emails the editor refuses, exports that fail and saves that fail. Screen readers announce each message. The [Playground](./playground) is a Shell.
+The message bar shows emails the editor refuses, exports that fail and saves that fail. Screen readers announce each message. The [Playground](/playground) is a Shell.
 
 ## With a bundler
 

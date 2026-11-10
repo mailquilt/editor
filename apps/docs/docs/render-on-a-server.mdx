@@ -1,0 +1,42 @@
+---
+title: Render on a server
+description: Turn a saved Mail Quilt email into HTML on your server with the renderer package, without loading the editor.
+---
+
+The editor's `exportHtml()` makes an email's HTML in the browser. `@mailquilt/renderer` makes it on your server, from the JSON document your app saved. It's the renderer the editor itself uses, and it needs no DOM.
+
+```bash
+npm install @mailquilt/renderer
+```
+
+## Render an email
+
+`renderEmail()` takes the document and returns a promise of its HTML:
+
+<include meta='title="render.js"'>./_code/render.js</include>
+
+The HTML is ready to send. Merge Tags such as `{{first_name}}` are in it exactly as they were typed, so the service that sends your email can fill them in.
+
+[MJML](https://mjml.io), the library that writes the HTML, loads the first time you call `renderEmail()`. A server that never renders an email never loads it.
+
+## When the renderer refuses an email
+
+The renderer accepts what the editor accepts. If the document is malformed, has a Block type this version doesn't know, or was saved by a newer version, the promise rejects, and the error's message says what was wrong:
+
+```text
+rows: Invalid key: Expected "rows" but received undefined
+```
+
+It never repairs an email to make it render. An email your app saved from `mq-change` always renders in the version that saved it, so a refusal usually means the JSON was changed on the way, or came from somewhere else. The [document format](./document-format) page lists what's accepted.
+
+## Server or browser?
+
+Export in the browser when a person is there to press a button and your app is happy to store the HTML it's given.
+
+Render on the server when you'd rather store only the JSON, and make the HTML at the moment you send. This way an email is rendered by the version of the renderer you have installed today, and your server never trusts HTML that came from a browser.
+
+You can do both: keep the JSON as the email, and treat any HTML as something you can make again.
+
+## In a browser
+
+The package also has a build for browsers, and a bundler picks it for you. You only need it if you're rendering without the editor, since `<mail-quilt>` already has `exportHtml()`.

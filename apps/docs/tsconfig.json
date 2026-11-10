@@ -8,6 +8,7 @@
   },
   "include": [
     "islands",
+    "site",
     "browser-tests",
     "blume.config.ts",
     "playwright.config.ts"

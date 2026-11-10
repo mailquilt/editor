@@ -1,0 +1,78 @@
+---
+// The email as the app keeps it, and as it's sent.
+import { loadDocument } from "@mailquilt/core";
+import { renderEmail } from "@mailquilt/renderer";
+import { withBase } from "blume/components/islands/base-path.ts";
+
+import { homeEmail } from "../../site/home-email.ts";
+import { emailShape, htmlSize } from "../../site/measure.ts";
+import { paintHtml, paintJson } from "../../site/paint.ts";
+
+const loaded = loadDocument(homeEmail);
+if (!loaded.ok) {
+  throw new Error(`The landing page's email doesn't load: ${loaded.reason}`);
+}
+// The same HTML the editor's exportHtml() gives, made here by the renderer.
+const exportedHtml = await renderEmail(homeEmail);
+---
+
+<section class="site-section">
+  <div class="site-wrap">
+    <div class="site-split">
+      <h2 class="site-h2">Your app keeps the emails.</h2>
+      <div>
+        <p class="site-lead">
+          After every change, the editor hands you the email as a JSON
+          document. Save it wherever you like and pass it back to open the
+          email again. Mail Quilt stores nothing and runs no server.
+        </p>
+        <div class="site-actions">
+          <a class="site-link" href={withBase("/docs/document-format")}
+            >Read the document format</a
+          >
+        </div>
+      </div>
+    </div>
+
+    <div class="home-flow">
+      <div class="site-card">
+        <div class="site-card-head">
+          <span>The document your app saves</span>
+          <span data-home-json-meta>{emailShape(homeEmail)}</span>
+        </div>
+        <pre
+          aria-label="The email as JSON"
+          class="site-code home-output"
+          role="region"
+          data-home-json
+          set:html={paintJson(homeEmail)}
+          tabindex="0"
+        />
+      </div>
+      <div aria-hidden="true" class="home-pipe"><span>exportHtml()</span></div>
+      <div class="site-card">
+        <div class="site-card-head">
+          <span>The HTML you send</span>
+          <span data-home-html-meta>{htmlSize(exportedHtml)}</span>
+        </div>
+        <pre
+          aria-label="The email as HTML"
+          class="site-code home-output"
+          role="region"
+          data-home-html
+          set:html={paintHtml(exportedHtml)}
+          tabindex="0"
+        />
+        <p class="site-small home-output-note">
+          <span data-home-html-note
+            >Merge Tags stay as written, so the service that sends your email
+            fills them in.</span
+          >{" "}
+          <button class="site-link" data-home-export hidden type="button"
+            >Export it again</button
+          >
+        </p>
+      </div>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,106 @@
+---
+title: Change emails in code
+description: Create, check and change Mail Quilt emails without the editor, using the core package's Commands, undo history and document loader.
+---
+
+`@mailquilt/core` is the part of Mail Quilt that knows what an email is. The editor is built on it: every drag, key press and setting in the editor becomes one of the Commands on this page. Your code can send the same Commands, in a browser or in Node.
+
+```bash
+npm install @mailquilt/core
+```
+
+## Build an email
+
+`createEmail()` makes a new email. `createEditor()` wraps an email so you can change it with Commands and undo what you did. What it returns has no screen: it's the email and its history, which is what `<mail-quilt>` keeps inside it.
+
+<include meta='title="build-an-email.js"'>./_code/build-an-email.js</include>
+
+The last Command sets a color that isn't one, so it's refused. `refused.ok` is `false`, and `refused.reason` reads:
+
+```text
+Invalid props for Block "8f5b928cfc0fd74ae8": color: Must be a color written as #rgb, #rrggbb, rgb() or rgba()
+```
+
+`getDocument()` returns the email as it stands. Save it, pass it to `<mail-quilt>` as `value`, or [render it](./render-on-a-server).
+
+## Commands
+
+A Command is a plain object with a `type`. `apply()` returns `{ ok: true }` when the email changed, with a `createdId` if the Command added a Block or a Row. Otherwise it returns `{ ok: false, reason }` and the email is unchanged. If the email was already as the Command asked, the result also has `unchanged: true`.
+
+| `type` | Other fields | What it does |
+| --- | --- | --- |
+| `insertBlock` | `blockType`, `columnId`, `index` | Adds a Block to a Column. |
+| `insertBlockInNewRow` | `blockType`, `rowIndex` | Adds a Row with one Column, holding a new Block. |
+| `updateProps` | `blockId`, `props` | Changes a Block's content or settings. |
+| `moveBlock` | `blockId`, `columnId`, `index` | Moves a Block within its Column or to another. |
+| `moveBlockToNewRow` | `blockId`, `rowIndex` | Moves a Block into a new Row of its own. |
+| `removeBlock` | `blockId` | Removes a Block. |
+| `insertRow` | `index`, `layout` | Adds an empty Row with a layout, such as `"50/50"`. |
+| `setRowLayout` | `rowId`, `layout` | Changes a Row's layout. |
+| `updateRowProps` | `rowId`, `props` | Changes a Row's settings. |
+| `moveRow` | `rowId`, `index` | Moves a Row, with its Blocks. |
+| `removeRow` | `rowId` | Removes a Row. |
+| `updateEmailSettings` | `settings` | Changes the email's width, background, font, preheader or language. |
+
+A Block's type is one of `text`, `heading`, `image`, `button`, `divider` and `spacer`. A layout is one of `100`, `50/50`, `33/67`, `67/33`, `33/33/33` and `25/25/25/25`, written as a string. Both lists are exported. `ROW_LAYOUTS` is the layouts as strings, and `BLOCK_TYPES` is an array of `{ type, label }` objects.
+
+`props` and `settings` hold only what you're changing. The rest stays as it is. To remove an optional property, set it to `null`:
+
+```js
+editor.apply({
+  settings: { preheader: null, width: 640 },
+  type: "updateEmailSettings",
+});
+```
+
+The [document format](./document-format) page lists each Block's properties and what they accept.
+
+## Undo and redo
+
+Each Command that's accepted is one step. `undo()` and `redo()` return `false` when there's nothing to undo or redo.
+
+```js
+editor.undo();
+editor.redo();
+```
+
+To make several Commands one step, give them the same `mergeKey`. The editor does this while someone types, so that a word is undone at once rather than a letter at a time.
+
+```js
+editor.apply(first, { mergeKey: "import" });
+editor.apply(second, { mergeKey: "import" });
+```
+
+## Listening for changes
+
+`subscribe()` calls you after every change, including undo and redo, with what changed. It returns a function that stops the calls.
+
+```js
+const stop = editor.subscribe((operations) => {
+  save(editor.getDocument());
+});
+```
+
+Each Operation is a record of one thing that happened to the email: an insert, a removal, a move, or a change of properties. One Command can produce several.
+
+## Checking an email
+
+`loadDocument()` checks a value that's meant to be an email, such as one that arrived in a request. It returns the email, brought up to the current version of the format if it was saved by an older one, or the reason it was refused.
+
+```js
+import { loadDocument } from "@mailquilt/core";
+
+const loaded = loadDocument(JSON.parse(body));
+if (!loaded.ok) {
+  return new Response(loaded.reason, { status: 400 });
+}
+await saveEmail(loaded.document);
+```
+
+`createEditor()` runs the same check and throws if the email fails it.
+
+`isSameDocument(first, second)` tells you whether two emails are the same, whatever order their keys are in. The editor uses it to tell an email you pass back from one that's new.
+
+## Before you rely on it
+
+Mail Quilt is at version `0.x`, so Commands may gain fields or change names between releases. Saved emails are different: each has a `version`, and a newer Mail Quilt brings an older email up to date when it loads it.

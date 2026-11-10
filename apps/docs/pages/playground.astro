@@ -1,0 +1,74 @@
+---
+// The Playground: the Shell on a page of its own, with nothing to install.
+import SitePage from "../components/site-page.astro";
+import Playground from "../islands/Playground.tsx";
+---
+
+<SitePage
+  description="Try the Mail Quilt email editor in your browser with nothing to install. Your email saves in this browser, and you can export it as JSON or HTML."
+  frame={false}
+  hideCta
+  title="Playground - Mail Quilt"
+>
+  <div class="intro">
+    <h1 class="site-h2">Playground</h1>
+    <p class="site-muted">
+      This is the Shell, the ready-made editor page. Your email saves in this
+      browser, and you can export it as JSON or HTML.
+    </p>
+  </div>
+  <div class="editor">
+    <Playground client:only="react" />
+  </div>
+</SitePage>
+
+<style>
+  .intro {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 1.5rem;
+    padding: 1.25rem 1rem 0;
+  }
+
+  /* The site's own editor wears the site's color, set with theme tokens. */
+  .editor :global(mail-quilt-shell) {
+    --mq-color-accent: var(--site-accent);
+    --mq-color-accent-strong: var(--site-accent-hover);
+    --mq-color-accent-soft: color-mix(
+      in srgb,
+      var(--site-accent) 10%,
+      transparent
+    );
+    --mq-color-outline-hover: color-mix(
+      in srgb,
+      var(--site-accent) 45%,
+      transparent
+    );
+  }
+
+  /* Whole pixels, so the editor below starts on one. Its tests measure it. */
+  .intro h1 {
+    font-size: 2rem;
+    line-height: 2.5rem;
+  }
+
+  .intro p {
+    font-size: 1rem;
+    line-height: 1.75rem;
+  }
+
+  .editor {
+    padding: 0 1rem 1.5rem;
+  }
+
+  @media (min-width: 60rem) {
+    .intro {
+      padding: 1.5rem 1.5rem 0;
+    }
+
+    .editor {
+      padding: 0 1.5rem 2rem;
+    }
+  }
+</style>

@@ -1,0 +1,185 @@
+---
+// The four packages, laid out as the logo's grid, and the three ways to use them.
+import { withBase } from "blume/components/islands/base-path.ts";
+
+/** In the order of the logo's grid: top left, top right, bottom left, bottom right. */
+const packages = [
+  {
+    href: "/docs/quick-start#react",
+    id: "react",
+    link: "Read the React quick start",
+    needs: "Installs the editor for you.",
+    when: "Your app uses React 19.",
+  },
+  {
+    href: "/docs/quick-start",
+    id: "editor",
+    link: "Read the quick start",
+    needs: "Brings the core and the renderer with it.",
+    when: "Your app isn't a React app, or your page has no build step.",
+  },
+  {
+    href: "/docs/change-emails-in-code",
+    id: "core",
+    link: "Read how to change emails in code",
+    needs: "Needs no DOM, and nothing else from Mail Quilt.",
+    when: "You create, check or change emails in code, or build an interface of your own.",
+  },
+  {
+    href: "/docs/render-on-a-server",
+    id: "renderer",
+    link: "Read how to render on a server",
+    needs: "Needs no DOM. It brings the core, and no editor code.",
+    when: "You want the HTML on your server, such as just before you send.",
+  },
+];
+const FIRST_PACKAGE = "editor";
+
+/** How much of Mail Quilt an app can take, from all of it to the least. */
+const levels = [
+  {
+    build: "You build nothing.",
+    href: "/docs/shell",
+    link: "Read about the Shell",
+    take: "A whole editor page, ready-made: the editor, a header, Import and Export, messages, and saving in the browser.",
+    title: "Take the Shell",
+  },
+  {
+    build: "You build the page around it: your own header, your own buttons, your own way of saving.",
+    href: "/docs/quick-start",
+    link: "Read the quick start",
+    take: "The canvas and the side panel, as one element you set an email on and listen to.",
+    title: "Take the editor",
+  },
+  {
+    build: "You build your own interface, or none. The docs cover changing emails in code. Building a whole interface this way isn't documented yet.",
+    href: "/docs/change-emails-in-code",
+    link: "Read how to change emails in code",
+    take: "The email as data, the Commands that change it, and the HTML. The editor is built on these, and you can build on them too.",
+    title: "Take the core and the renderer",
+  },
+];
+---
+
+<section class="site-section">
+  <div class="site-wrap">
+    <div class="site-split">
+      <h2 class="site-h2">Four packages. Take as much as you need.</h2>
+      <p class="site-lead">
+        The editor above is the top layer. Under it are the document model and
+        the renderer, and you can use those without it. Choose a package to
+        see what it's for.
+      </p>
+    </div>
+
+    <div class="home-packages">
+      <!-- The logo's own grid, with a package in each place. -->
+      <div
+        aria-label="The four packages"
+        class="home-pieces"
+        data-home-packages
+        role="tablist"
+      >
+        {
+          packages.map(({ id }) => (
+            <button
+              aria-controls={`package-${id}`}
+              aria-selected={id === FIRST_PACKAGE ? "true" : "false"}
+              class="home-piece"
+              data-package={id}
+              id={`package-tab-${id}`}
+              role="tab"
+              tabindex={id === FIRST_PACKAGE ? 0 : -1}
+              type="button"
+            >
+              {id === "editor" && (
+                // The envelope's flap, in the logo's own proportions.
+                <svg aria-hidden="true" viewBox="0 0 44 44">
+                  <polyline points="7,8 22,21 37,8" />
+                </svg>
+              )}
+              <span>{id}</span>
+            </button>
+          ))
+        }
+      </div>
+
+      <div class="home-panels">
+        {
+          packages.map(({ href, id, link, needs, when }) => (
+            <div
+              aria-labelledby={`package-tab-${id}`}
+              class="home-panel"
+              id={`package-${id}`}
+              role="tabpanel"
+              tabindex="0"
+            >
+              <h3 class="site-mono">@mailquilt/{id}</h3>
+              {id === "editor" && (
+                <p>
+                  The <code>&lt;mail-quilt&gt;</code> element, and{" "}
+                  <code>&lt;mail-quilt-shell&gt;</code>, an editor page
+                  ready-made. It works in any framework, or from a CDN on a
+                  page with no build step.
+                </p>
+              )}
+              {id === "react" && (
+                <p>
+                  The <code>MailQuilt</code> and <code>MailQuiltShell</code>{" "}
+                  components. They render on the server, and load the editor
+                  in the browser.
+                </p>
+              )}
+              {id === "core" && (
+                <p>
+                  What an email is: the document's types,{" "}
+                  <code>createEmail()</code>, <code>loadDocument()</code> and
+                  the Commands that change one. The editor is built on it.
+                </p>
+              )}
+              {id === "renderer" && (
+                <p>
+                  <code>renderEmail()</code> turns a saved email into HTML.
+                  It's what the editor's <code>exportHtml()</code> runs.
+                </p>
+              )}
+              <dl class="site-facts">
+                <div>
+                  <dt>Install it when</dt>
+                  <dd>{when}</dd>
+                </div>
+                <div>
+                  <dt>It comes with</dt>
+                  <dd>{needs}</dd>
+                </div>
+              </dl>
+              <div class="home-panel-foot">
+                <div class="site-command">
+                  <code>npm install @mailquilt/{id}</code>
+                  <button
+                    data-copy={`npm install @mailquilt/${id}`}
+                    type="button">Copy</button
+                  >
+                </div>
+                <a class="site-link site-small" href={withBase(href)}>{link}</a>
+              </div>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </div>
+
+  <div class="site-columns">
+    {
+      levels.map(({ build, href, link, take, title }) => (
+        <div>
+          <h3 class="site-h3">{title}</h3>
+          <p class="site-small">{take}</p>
+          <p class="site-small site-muted">{build}</p>
+          <a class="site-link site-small" href={withBase(href)}>{link}</a>
+        </div>
+      ))
+    }
+  </div>
+</section>

@@ -1,0 +1,59 @@
+---
+// What to know before relying on it, and which email clients are checked.
+import { withBase } from "blume/components/islands/base-path.ts";
+
+const clients = [
+  { name: "Gmail", status: "To be checked before 0.1.0" },
+  { name: "Apple Mail", status: "To be checked before 0.1.0" },
+  { name: "Outlook", status: "Untested" },
+  { name: "Any other client", status: "Untested" },
+];
+---
+
+<section class="site-section">
+  <div class="site-wrap site-split">
+    <div>
+      <h2 class="site-h2">Before you rely on it</h2>
+      <p>
+        Mail Quilt is young, and it's better you read that here than find it
+        out later.
+      </p>
+    </div>
+    <div>
+      <ul class="site-list">
+        <li>
+          It's at version 0.x, so the API can still change between releases.
+        </li>
+        <li>
+          It doesn't send email, store emails or host anything. It's a
+          component in your app.
+        </li>
+        <li>
+          Editing needs a screen at least 640 pixels wide. On a phone, people
+          can still preview an email.
+        </li>
+        <li>
+          Images are added by URL. There's no upload yet, and no library of
+          templates.
+        </li>
+      </ul>
+
+      <h3 class="site-h3 home-clients-title">Tested email clients</h3>
+      <ul class="home-clients">
+        {
+          clients.map(({ name, status }) => (
+            <li>
+              <span class="home-client">{name}</span>
+              <span class="site-small site-muted">{status}</span>
+            </li>
+          ))
+        }
+      </ul>
+      <div class="site-actions">
+        <a class="site-link" href={withBase("/docs/email-clients")}
+          >Read about email client testing</a
+        >
+      </div>
+    </div>
+  </div>
+</section>
