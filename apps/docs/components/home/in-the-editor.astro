@@ -1,0 +1,119 @@
+---
+// What people do in the editor: its layouts, its keys, its text and its preview.
+import { ROW_LAYOUTS } from "@mailquilt/core";
+import { withBase } from "blume/components/islands/base-path.ts";
+
+/** The layout the Row starts with. */
+const FIRST_LAYOUT = "33/67";
+
+const widthsOf = (layout: string) => layout.split("/");
+---
+
+<section class="site-section">
+  <div class="site-wrap">
+    <div class="site-split">
+      <h2 class="site-h2">What people do in the editor</h2>
+      <p class="site-lead">
+        They build an email from six Blocks: Text, Heading, Image, Button,
+        Divider and Spacer. Every Block and Row has settings, and so does the
+        email as a whole.
+      </p>
+    </div>
+
+    <div class="site-card home-layouts" data-home-layouts>
+      <div class="home-layouts-copy">
+        <h3 class="site-h3">Rows of one to four Columns</h3>
+        <p class="site-small">
+          A Row takes one of six layouts, and that's the whole grid. Each is
+          a layout MJML knows how to build for email clients.
+        </p>
+        <div aria-label="Row layout" class="home-layout-picker" role="group">
+          {
+            ROW_LAYOUTS.map((layout) => (
+              <button
+                aria-label={`${layout.replaceAll("/", ", ")} percent`}
+                aria-pressed={layout === FIRST_LAYOUT ? "true" : "false"}
+                data-layout={layout}
+                type="button"
+              >
+                <span aria-hidden="true" class="home-mini">
+                  {widthsOf(layout).map((width) => (
+                    <span style={`flex:${width}`} />
+                  ))}
+                </span>
+              </button>
+            ))
+          }
+        </div>
+      </div>
+      <div aria-hidden="true" class="home-row-demo">
+        <div class="home-row-columns">
+          <span class="home-row-tag">Row</span>
+          {
+            [0, 1, 2, 3].map((index) => {
+              const width = widthsOf(FIRST_LAYOUT)[index];
+              return (
+                <span class="home-column" style={`flex:${width ?? 0}`}>
+                  <span>{width ?? ""}</span>
+                </span>
+              );
+            })
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="site-columns">
+    <div>
+      <p aria-hidden="true" class="home-specimen">
+        <kbd>Tab</kbd><kbd>Alt</kbd><kbd>Up</kbd>
+      </p>
+      <h3 class="site-h3">All of it from the keyboard</h3>
+      <p class="site-small">
+        Whatever can be dragged can be moved with keys. Tab reaches a Block,
+        the arrow keys select the next one, and Alt with an arrow key moves
+        it. A screen reader hears where it landed.
+      </p>
+      <a class="site-link site-small" href={withBase("/docs/keyboard")}
+        >See every key</a
+      >
+    </div>
+    <div>
+      <p aria-hidden="true" class="home-specimen">
+        <code class="site-code"><span class="t">{"{{first_name}}"}</span></code>
+      </p>
+      <h3 class="site-h3">Text that keeps its Merge Tags</h3>
+      <p class="site-small">
+        People make text bold, italic or underlined and add links. A Merge Tag
+        is typed like any other text, and comes out of the export exactly as
+        it went in.
+      </p>
+    </div>
+    <div>
+      <p aria-hidden="true" class="home-specimen">
+        <span class="home-tools">
+          <svg viewBox="0 0 24 24"
+            ><path d="M9 14 4 9l5-5"></path><path
+              d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"></path></svg
+          >
+          <svg viewBox="0 0 24 24"
+            ><path d="m15 14 5-5-5-5"></path><path
+              d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"></path></svg
+          >
+          <svg viewBox="0 0 24 24"
+            ><path
+              d="M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0"
+            ></path><circle cx="12" cy="12" r="3"></circle></svg
+          >
+        </span>
+      </p>
+      <h3 class="site-h3">A preview of what will be sent</h3>
+      <p class="site-small">
+        Preview shows the exported HTML itself, in a sandboxed frame, so
+        nobody is guessing from the canvas. Every change can be undone and
+        redone.
+      </p>
+    </div>
+  </div>
+</section>

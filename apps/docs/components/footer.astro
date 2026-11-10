@@ -1,0 +1,76 @@
+---
+// The site's footer, on the docs pages and the pages under pages/ alike.
+import { withBase } from "blume/components/islands/base-path.ts";
+
+import { ISSUES, REPO } from "../site/project.ts";
+
+const groups = [
+  {
+    links: [
+      { href: "/docs/quick-start", label: "Quick start" },
+      { href: "/docs/packages", label: "Packages" },
+      { href: "/docs/document-format", label: "Document format" },
+      { href: "/docs/theme-tokens", label: "Theme tokens" },
+      { href: "/playground", label: "Playground" },
+    ],
+    title: "Build",
+  },
+  {
+    links: [
+      { href: "/why", label: "Why it exists" },
+      { href: "/compare", label: "Compare" },
+      { href: "/examples", label: "Examples" },
+      { href: "/roadmap", label: "Roadmap" },
+    ],
+    title: "Project",
+  },
+  {
+    links: [
+      { href: REPO, label: "GitHub" },
+      { href: "https://www.npmjs.com/org/mailquilt", label: "npm" },
+      { href: ISSUES, label: "Report a problem" },
+    ],
+    title: "Elsewhere",
+  },
+];
+
+const hrefOf = (href: string) => (href.startsWith("/") ? withBase(href) : href);
+---
+
+<footer class="site-footer" data-blume-footer>
+  <div class="site-footer-grid">
+    <div>
+      <a aria-label="Mail Quilt home" href={withBase("/")}>
+        <img
+          alt=""
+          class="dark:hidden"
+          height="131"
+          src={withBase("/logo.svg")}
+          width="584"
+        />
+        <img
+          alt=""
+          class="hidden dark:block"
+          height="131"
+          src={withBase("/logo-dark.svg")}
+          width="584"
+        />
+      </a>
+      <p>MIT licensed. No paid tier and no hosted service.</p>
+    </div>
+    {
+      groups.map(({ links, title }) => (
+        <nav aria-label={title}>
+          <p class="site-footer-title">{title}</p>
+          <ul>
+            {links.map(({ href, label }) => (
+              <li>
+                <a href={hrefOf(href)}>{label}</a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      ))
+    }
+  </div>
+</footer>

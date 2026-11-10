@@ -1,0 +1,27 @@
+---
+// Shown for any address the site doesn't have.
+import { withBase } from "blume/components/islands/base-path.ts";
+
+import Finale from "../components/finale.astro";
+import SitePage from "../components/site-page.astro";
+---
+
+<SitePage
+  description="This page doesn't exist."
+  noindex
+  title="Page not found - Mail Quilt"
+>
+  <Finale>
+    <h1 class="site-h1">Nothing has been dropped here.</h1>
+    <p class="site-lead">There's no page at this address.</p>
+    <div class="site-actions">
+      <a class="site-button" href={withBase("/docs")}>Read the docs</a>
+      <a class="site-button" data-tone="quiet" href={withBase("/playground")}
+        >Try the Playground</a
+      >
+      <a class="site-button" data-tone="quiet" href={withBase("/")}
+        >Go to the home page</a
+      >
+    </div>
+  </Finale>
+</SitePage>

@@ -1,0 +1,55 @@
+---
+// The frame of every page under pages/: Blume's header, the page, the footer.
+import PageLayout from "blume/components/layout/PageLayout.astro";
+import data from "blume:data";
+
+import { SOCIAL_IMAGE } from "../site/project.ts";
+import Footer from "./footer.astro";
+import "../styles/site.css";
+
+interface Props {
+  description: string;
+  /** False for a page that fills the window, without the grid's rails. */
+  frame?: boolean;
+  /** Leaves "Try the Playground" out of the header, as on the Playground itself. */
+  hideCta?: boolean;
+  noindex?: boolean;
+  /** The whole document title, as Blume adds nothing to it. */
+  title: string;
+}
+
+const {
+  description,
+  frame = true,
+  hideCta = false,
+  noindex = false,
+  title,
+} = Astro.props;
+const { config, navigation } = data;
+---
+
+<PageLayout
+  analytics={config.analytics}
+  appleIcon={config.appleIcon}
+  banner={config.banner}
+  favicon={config.favicon}
+  fontCssVars={data.fontCssVars}
+  logo={config.logo}
+  navigation={hideCta ? { ...navigation, cta: undefined } : navigation}
+  noindex={noindex}
+  ogEnabled={config.og.enabled}
+  ogImage={SOCIAL_IMAGE.path}
+  ogImageAlt={SOCIAL_IMAGE.alt}
+  ogImageSize={SOCIAL_IMAGE.size}
+  page={{ description, title }}
+  searchEnabled={config.search.enabled}
+  site={{ description: config.description, title: config.title }}
+  siteUrl={config.site}
+  structuredDataEnabled={config.structuredData}
+  themeMode={config.theme.mode}
+>
+  <div class="site-page">
+    <div class={frame ? "site-frame" : undefined}><slot /></div>
+  </div>
+  <Footer slot="footer" />
+</PageLayout>

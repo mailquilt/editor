@@ -1,0 +1,83 @@
+---
+title: Keyboard and screen readers
+description: Every key the Mail Quilt editor answers to, what a screen reader announces, and how the editor's accessibility is tested.
+---
+
+Anything a person can do in the editor by dragging, they can also do from the keyboard. This page lists the keys, so you can pass them on to the people using your app.
+
+## Selecting a Block
+
+Tab moves into the email and selects a Block. The arrow keys then go from Block to Block.
+
+| Key | What it does |
+| --- | --- |
+| <kbd>Tab</kbd> | Reaches a Block and selects it. |
+| <kbd>Up</kbd> <kbd>Down</kbd> | Selects the Block before or after this one, in reading order. This reaches every Block in the email. |
+| <kbd>Left</kbd> <kbd>Right</kbd> | Selects a Block in the next Column that has one, as close as it can get to the same position. |
+| <kbd>Enter</kbd> | Goes into the Block's text to edit it. |
+| <kbd>Escape</kbd> | Comes back out of the text to the Block. |
+
+Selecting a Block changes nothing in the email, so it doesn't fire `mq-change`.
+
+## Moving a Block
+
+Hold Alt and press an arrow key to move the selected Block. The same keys work while focus is in the Block's toolbar.
+
+| Key | What it does |
+| --- | --- |
+| <kbd>Alt</kbd> + <kbd>Up</kbd> <kbd>Down</kbd> | Moves the Block up or down its Column. Past the end of the Column, it moves into the next Row. Past the top or bottom of the email, it gets a Row of its own. |
+| <kbd>Alt</kbd> + <kbd>Left</kbd> <kbd>Right</kbd> | Moves the Block into the next Column, including an empty one. It stops at the edge of its Row. |
+
+Each move is one step for undo, and focus stays on the Block, so the next press moves it again.
+
+Inside a Block's text, the arrow keys move the cursor instead, and Alt with an arrow key moves it by a word on macOS. Press Escape first to move the Block.
+
+## The Block's toolbar
+
+A selected Block has a toolbar with a drag handle, four move buttons and a delete button. It's one stop for Tab, and the arrow keys go across its buttons. Escape goes back to the Block.
+
+## Rows
+
+A Row's toolbar comes just before the Row's Blocks, so Shift+Tab from the Row's first Block reaches it. It has Select Row, the two Move Row buttons and Delete Row.
+
+| Key | What it does |
+| --- | --- |
+| <kbd>Alt</kbd> + <kbd>Up</kbd> <kbd>Down</kbd> | In the Row's toolbar, moves the Row up or down with its Blocks, as one step for undo. |
+
+## Adding a Block
+
+In the side panel's Content tab, press Enter on a Block to add it after the selected Block, in the same Column. With a Row selected instead, it goes to the end of that Row's first Column. With nothing selected, it goes to the end of the email's last Column.
+
+## Editing text
+
+| Key | What it does |
+| --- | --- |
+| <kbd>Enter</kbd> | Starts a new paragraph. |
+| <kbd>Shift</kbd> + <kbd>Enter</kbd> | Adds a line break in the same paragraph. |
+| <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>K</kbd> | Opens the link field. Escape closes it and leaves the text as it was. |
+| <kbd>Alt</kbd> + <kbd>F10</kbd> | Goes to the formatting toolbar, for bold, italic, underline, links and line breaks. Escape goes back to the text. |
+
+## Undo and redo
+
+| Key | What it does |
+| --- | --- |
+| <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>Z</kbd> | Undoes the last change. |
+| <kbd>Shift</kbd> + <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>Z</kbd> | Redoes it. |
+| <kbd>Ctrl</kbd> + <kbd>Y</kbd> | Also redoes it. |
+
+## Preview
+
+Opening Preview moves focus to its Close button. Escape closes it, and focus returns to where it was.
+
+## What a screen reader announces
+
+- **A Block's place.** Each Block's name says where it is, such as "Text Block, Row 1, Column 2, position 1 of 3".
+- **Every move.** After a Block or Row moves, the editor says where it went. When one can't go further, it says that instead.
+- **Undo and redo of a move.** These say where the Block went back to.
+- **Messages in the Shell.** The [Shell](./shell) announces each message in its bar, such as an email it couldn't open.
+
+## How it's tested
+
+The editor's browser tests press these keys in Chromium, Firefox and WebKit. They also run [axe-core](https://github.com/dequelabs/axe-core) with its WCAG 2.2 AA rules against the editor in several states: with Columns and empty Columns, with a Block selected, with the link field showing an error, and with Preview open.
+
+Automated checks don't find everything. If a screen reader or another tool has trouble with the editor, please [open an issue](https://github.com/yourcodebuddy-in/mailquilt/issues).

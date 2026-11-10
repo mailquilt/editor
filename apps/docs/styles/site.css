@@ -1,0 +1,643 @@
+/*
+ * The pieces the pages under pages/ are built from. Tokens, and everything the
+ * docs pages also use, are in theme.css.
+ */
+
+.site-page {
+  color: var(--site-body);
+  font-size: 1.0625rem;
+  line-height: 1.65;
+}
+
+/*
+ * The grid a page is drawn on: a rail down each side, a line under each
+ * section, and a mark where they cross.
+ */
+.site-frame {
+  width: 100%;
+  max-width: 78rem;
+  margin-inline: auto;
+}
+
+/* Rails only where there's room beside them. In a narrower window they'd sit on its edges. */
+@media (min-width: 81rem) {
+  .site-frame {
+    border-inline: 1px solid var(--blume-border);
+  }
+}
+
+.site-section,
+.site-intro {
+  position: relative;
+  padding-block: 4rem;
+  border-bottom: 1px solid var(--blume-border);
+}
+
+.site-intro {
+  padding-block: 4rem 3.5rem;
+}
+
+@media (min-width: 60rem) {
+  .site-section {
+    padding-block: 6.5rem;
+  }
+
+  .site-intro {
+    padding-block: 6rem 4.5rem;
+  }
+}
+
+@media (min-width: 81rem) {
+  .site-section::before,
+  .site-section::after,
+  .site-intro::before,
+  .site-intro::after {
+    content: "";
+    position: absolute;
+    bottom: -0.34375rem;
+    z-index: 1;
+    width: 0.6875rem;
+    height: 0.6875rem;
+    background:
+      linear-gradient(var(--site-dash), var(--site-dash)) center / 1px 100%
+        no-repeat,
+      linear-gradient(var(--site-dash), var(--site-dash)) center / 100% 1px
+        no-repeat;
+  }
+
+  .site-section::before,
+  .site-intro::before {
+    left: -0.375rem;
+  }
+
+  .site-section::after,
+  .site-intro::after {
+    right: -0.375rem;
+  }
+}
+
+.site-wrap {
+  padding-inline: 1.25rem;
+}
+
+@media (min-width: 48rem) {
+  .site-wrap {
+    padding-inline: 2rem;
+  }
+}
+
+@media (min-width: 60rem) {
+  .site-wrap {
+    padding-inline: 3rem;
+  }
+}
+
+/* Copy on one side, the thing it describes on the other. */
+.site-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2.5rem;
+}
+
+@media (min-width: 60rem) {
+  .site-split {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: 4rem;
+  }
+}
+
+.site-h1,
+.site-h2,
+.site-h3 {
+  color: var(--blume-foreground);
+  font-family: var(--blume-font-display);
+  font-weight: 700;
+  text-wrap: balance;
+}
+
+.site-h1 {
+  font-size: clamp(2.625rem, 1.2rem + 6vw, 5.75rem);
+  letter-spacing: -0.055em;
+  line-height: 0.94;
+}
+
+.site-h2 {
+  font-size: clamp(1.875rem, 1.3rem + 2.2vw, 2.875rem);
+  letter-spacing: -0.05em;
+  line-height: 1.02;
+}
+
+.site-h3 {
+  font-size: 1.25rem;
+  letter-spacing: -0.035em;
+  line-height: 1.2;
+}
+
+.site-lead {
+  max-width: 34em;
+  font-size: 1.25rem;
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+.site-h1 + .site-lead {
+  margin-top: 1.75rem;
+}
+
+.site-h2 + p,
+.site-h2 + .site-lead {
+  margin-top: 1.25rem;
+}
+
+.site-h3 + p {
+  margin-top: 0.5rem;
+}
+
+.site-page p + p {
+  margin-top: 1em;
+}
+
+.site-page p {
+  text-wrap: pretty;
+}
+
+.site-measure {
+  max-width: 38em;
+}
+
+.site-muted {
+  color: var(--blume-muted-foreground);
+}
+
+.site-small {
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+
+.site-page code,
+.site-page pre,
+.site-mono {
+  font-family: var(--blume-font-mono);
+}
+
+.site-page :not(pre) > code {
+  color: var(--blume-foreground);
+  font-size: 0.875em;
+}
+
+.site-link {
+  color: var(--blume-foreground);
+  font-weight: 500;
+  text-decoration: underline 1.5px var(--site-accent);
+  text-underline-offset: 0.22em;
+  transition: color 120ms;
+}
+
+.site-link:hover {
+  color: var(--site-accent-text);
+}
+
+.site-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 2rem;
+}
+
+.site-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border: 1px solid var(--blume-foreground);
+  border-radius: 0.75rem;
+  background: var(--blume-foreground);
+  color: var(--blume-background);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1.4;
+  cursor: pointer;
+  transition:
+    scale 120ms var(--site-ease),
+    background-color 120ms,
+    border-color 120ms;
+}
+
+.site-button:active {
+  scale: 0.97;
+}
+
+/* The page's one hot spot. */
+.site-button[data-tone="accent"] {
+  border-color: var(--site-accent);
+  background: var(--site-accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.site-button[data-tone="accent"]:hover {
+  border-color: var(--site-accent-hover);
+  background: var(--site-accent-hover);
+}
+
+.site-button[data-tone="accent"]:focus-visible {
+  outline-color: var(--blume-foreground);
+}
+
+.site-button[data-tone="quiet"] {
+  border-color: var(--blume-border);
+  background: var(--blume-background);
+  color: var(--blume-foreground);
+}
+
+.site-button[data-tone="quiet"]:hover {
+  border-color: var(--blume-foreground);
+}
+
+/* A command to copy. */
+.site-command {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 100%;
+  padding: 0.5rem 0.5rem 0.5rem 0.875rem;
+  border: 1px solid var(--blume-border);
+  border-radius: 0.75rem;
+  background: var(--site-surface);
+  font-family: var(--blume-font-mono);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.site-command code {
+  overflow-x: auto;
+  color: var(--blume-foreground);
+  font-size: inherit;
+  white-space: nowrap;
+}
+
+.site-command code::before {
+  content: "$ ";
+  color: var(--site-dash);
+}
+
+.site-command button {
+  flex: none;
+  min-width: 4.25rem;
+  padding: 0.1875rem 0.625rem;
+  border: 1px solid var(--blume-border);
+  border-radius: 0.5rem;
+  background: var(--blume-background);
+  color: var(--blume-foreground);
+  font-family: var(--blume-font-body);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 120ms;
+}
+
+.site-command button:hover {
+  border-color: var(--blume-foreground);
+}
+
+/* A bordered box: a set of facts, a panel of code. */
+.site-card {
+  border: 1px solid var(--blume-border);
+  border-radius: 0.875rem;
+  background: var(--blume-background);
+}
+
+/* Something planned or unchecked is a slot, not a block. */
+.site-card[data-slot] {
+  border-style: dashed;
+  border-color: var(--site-dash);
+  background: none;
+}
+
+.site-card-body {
+  padding: 1.5rem;
+}
+
+.site-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1.125rem;
+  border-bottom: 1px solid var(--blume-border);
+  color: var(--blume-foreground);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.site-card-head > :last-child:not(:first-child) {
+  color: var(--blume-muted-foreground);
+  font-family: var(--blume-font-mono);
+  font-size: 0.8125rem;
+  font-weight: 400;
+}
+
+.site-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+}
+
+@media (min-width: 60rem) {
+  .site-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/*
+ * Columns that share the page's grid: a line between each, running the full
+ * height of the section they close.
+ */
+.site-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  margin-top: 3.5rem;
+  border-top: 1px solid var(--blume-border);
+}
+
+.site-columns > * {
+  padding: 2rem 1.25rem;
+  border-bottom: 1px solid var(--blume-border);
+}
+
+.site-columns > :last-child {
+  border-bottom: 0;
+}
+
+@media (min-width: 48rem) {
+  .site-columns > * {
+    padding: 2.25rem 2rem;
+  }
+}
+
+@media (min-width: 60rem) {
+  .site-columns {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .site-columns > * {
+    padding: 2.75rem 3rem 3rem;
+    border-bottom: 0;
+    border-inline-start: 1px solid var(--blume-border);
+  }
+
+  .site-columns > :nth-child(3n + 1) {
+    border-inline-start: 0;
+  }
+
+  .site-columns > :nth-child(n + 4) {
+    border-top: 1px solid var(--blume-border);
+  }
+}
+
+/* A section that ends in columns gives its bottom padding to them. */
+.site-section:has(> .site-columns:last-child) {
+  padding-bottom: 0;
+}
+
+/* Labels and their values, a line each. */
+.site-facts {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.site-facts > div {
+  display: grid;
+  grid-template-columns: var(--site-facts-label, 6.5rem) minmax(0, 1fr);
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--blume-border);
+}
+
+.site-facts > div:last-child {
+  border-bottom: 1px solid var(--blume-border);
+}
+
+.site-facts dt {
+  color: var(--blume-muted-foreground);
+}
+
+.site-facts dd {
+  margin: 0;
+}
+
+/* Ink, unless the value says otherwise with a class of its own. */
+:where(.site-facts) dd {
+  color: var(--blume-foreground);
+}
+
+.site-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-list > li {
+  padding: 0.9375rem 0;
+  border-top: 1px solid var(--blume-border);
+}
+
+.site-list > li:last-child {
+  border-bottom: 1px solid var(--blume-border);
+}
+
+.site-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.site-table th {
+  padding: 0.875rem 1rem 0.875rem 0;
+  border-bottom: 1px solid var(--blume-border);
+  color: var(--blume-foreground);
+  font-weight: 500;
+  text-align: start;
+  vertical-align: top;
+}
+
+.site-table thead th {
+  color: var(--blume-muted-foreground);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.site-table td {
+  padding: 0.875rem 1rem 0.875rem 0;
+  border-bottom: 1px solid var(--blume-border);
+  vertical-align: top;
+}
+
+.site-table :is(th, td):last-child {
+  padding-inline-end: 0;
+}
+
+.site-table tbody tr:last-child :is(th, td) {
+  border-bottom: 0;
+}
+
+.site-scroll {
+  overflow-x: auto;
+}
+
+/* Code the site colors itself: an email's JSON and its HTML. */
+.site-code {
+  overflow: auto;
+  color: var(--site-body);
+  font-size: 0.8125rem;
+  line-height: 1.75;
+  white-space: pre;
+  tab-size: 2;
+  scrollbar-width: thin;
+  scrollbar-color: var(--blume-border) transparent;
+}
+
+.site-code .k {
+  color: var(--blume-foreground);
+}
+
+.site-code .s {
+  color: var(--site-accent-text);
+}
+
+.site-code .t {
+  padding: 0.0625rem 0.25rem;
+  border-radius: 0.25rem;
+  background: color-mix(in srgb, var(--site-accent) 22%, transparent);
+  color: var(--blume-foreground);
+}
+
+/*
+ * How a page ends: what to do next on one side of the grid, and the logo's
+ * symbol on the other.
+ */
+.site-finale {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  padding: 0;
+}
+
+.site-finale-copy {
+  padding: 4rem 1.25rem;
+}
+
+/* Only where there's room for it beside the words. */
+.site-finale-art {
+  display: none;
+}
+
+@media (min-width: 48rem) {
+  .site-finale-copy {
+    padding-inline: 2rem;
+  }
+}
+
+@media (min-width: 60rem) {
+  .site-finale {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  }
+
+  .site-finale-copy {
+    padding: 6.5rem 3rem;
+  }
+
+  .site-finale-art {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3.5rem 1.25rem;
+    border-inline-start: 1px solid var(--blume-border);
+    background: var(--site-surface);
+  }
+}
+
+.site-finale .site-h1 {
+  font-size: clamp(2.5rem, 1.4rem + 4.4vw, 4.5rem);
+  line-height: 0.96;
+}
+
+.site-finale-copy > .site-small {
+  max-width: 34em;
+  margin-top: 2.5rem;
+}
+
+/* The dot on the logo's "i", as a sentence's full stop. */
+.site-period {
+  display: inline-block;
+  width: 0.2em;
+  height: 0.15em;
+  margin-inline-start: 0.07em;
+  border-radius: 0.028em;
+  background: var(--site-accent);
+}
+
+.site-mark {
+  display: block;
+  width: clamp(9rem, 22vw, 15rem);
+  height: clamp(9rem, 22vw, 15rem);
+  overflow: visible;
+}
+
+.site-mark-block {
+  fill: var(--blume-foreground);
+}
+
+.site-mark-slot {
+  stroke: var(--site-dash);
+}
+
+/* The surface's color, so the envelope cuts a gap in the slot beneath it. */
+.site-mark-gap {
+  fill: var(--site-mark-surface, var(--blume-background));
+}
+
+.site-finale-art {
+  --site-mark-surface: var(--site-surface);
+}
+
+/* A short page still fills the window, so the grid's rails reach the footer. */
+body:has(.site-page > .site-frame) {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+body:has(.site-page > .site-frame) > main,
+body:has(.site-page > .site-frame) .site-page {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+/* The last section takes whatever height is left over. */
+.site-page > .site-frame {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.site-page > .site-frame > :last-child {
+  flex: 1;
+}
+
+/* ---------- The top of a page that isn't the landing page ---------- */
+
+.site-intro .site-h1 {
+  max-width: 14em;
+  font-size: clamp(2.375rem, 1.5rem + 3.6vw, 4.25rem);
+  line-height: 0.98;
+}
+
+.site-prose > * + * {
+  margin-top: 1em;
+}

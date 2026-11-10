@@ -1,0 +1,58 @@
+---
+// The landing page. Each section is a component under components/home, its
+// styles are in styles/home.css, and what it does in the browser is in
+// site/home-page.ts.
+import { withBase } from "blume/components/islands/base-path.ts";
+
+import Finale from "../components/finale.astro";
+import Document from "../components/home/document.astro";
+import Hero from "../components/home/hero.astro";
+import InTheEditor from "../components/home/in-the-editor.astro";
+import Install from "../components/home/install.astro";
+import Limits from "../components/home/limits.astro";
+import Packages from "../components/home/packages.astro";
+import Questions from "../components/home/questions.astro";
+import SitePage from "../components/site-page.astro";
+import { editorSize } from "../site/editor-size.ts";
+import { DESCRIPTION, REPO } from "../site/project.ts";
+import "../styles/home.css";
+
+const size = editorSize();
+---
+
+<SitePage
+  description={`Mail Quilt is ${DESCRIPTION.charAt(0).toLowerCase()}${DESCRIPTION.slice(1)}`}
+  title="Mail Quilt, open-source packages for building an email editor into your app"
+>
+  <Hero />
+  <Packages />
+  <Document />
+  <Install />
+  <InTheEditor />
+  <Limits />
+  <Questions size={size} />
+  <Finale>
+    <h2 class="site-h1">
+      Drop it into your app<span aria-hidden="true" class="site-period"></span>
+    </h2>
+    <p class="site-lead">
+      Or try it first. The Playground is the ready-made editor page, with
+      nothing to install.
+    </p>
+    <div class="site-actions">
+      <a class="site-button" data-tone="accent" href={withBase("/playground")}
+        >Try the Playground</a
+      >
+      <a class="site-button" data-tone="quiet" href={REPO}>Star it on GitHub</a>
+    </div>
+    <p class="site-small site-muted">
+      Planned next: Vue and Svelte components, more Blocks, and an MCP server
+      so coding tools can build emails.{" "}
+      <a class="site-link" href={withBase("/roadmap")}>Read the roadmap</a>
+    </p>
+  </Finale>
+</SitePage>
+
+<script>
+  import "../site/home-page.ts";
+</script>

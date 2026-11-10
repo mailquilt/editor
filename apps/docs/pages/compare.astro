@@ -1,0 +1,222 @@
+---
+// Mail Quilt beside the other ways to get an email editor into an app.
+// Every line about another project was read from its own site or repository
+// on the date below. Check them again before changing that date.
+import { withBase } from "blume/components/islands/base-path.ts";
+
+import SitePage from "../components/site-page.astro";
+import { ISSUES } from "../site/project.ts";
+
+const CHECKED = "10 November 2026";
+
+const tools = [
+  {
+    cost: "MIT. Free, with no paid plan.",
+    kind: "Packages for building an email editor into an app: a ready-made drag-and-drop editor, and the document model under it. Emails are saved as JSON.",
+    name: "Mail Quilt",
+    works: "Any framework, as a Web Component. React component.",
+  },
+  {
+    cost: "Commercial. A free plan, then paid plans from $250 a month.",
+    href: "https://unlayer.com",
+    kind: "A drag-and-drop editor you embed, for emails, pages and more.",
+    name: "Unlayer",
+    works: "React, Angular and Vue components.",
+  },
+  {
+    cost: "Commercial. Free to sign up, with paid plans.",
+    href: "https://developers.beefree.io",
+    kind: "A drag-and-drop editor you embed.",
+    name: "Beefree SDK",
+    works: "React, Angular and Vue.",
+  },
+  {
+    cost: "Open-source core under BSD-3. A paid SDK is built on it.",
+    href: "https://grapesjs.com",
+    kind: "A framework for building visual editors, with a plugin for MJML emails.",
+    name: "GrapesJS",
+    works: "Plain JavaScript, with a React wrapper.",
+  },
+  {
+    cost: "An MIT version, which doesn't support React 19, and a Pro version from $99 a month.",
+    href: "https://easyemail.pro",
+    kind: "A drag-and-drop editor you embed.",
+    name: "Easy Email",
+    works: "React.",
+  },
+  {
+    cost: "MIT. Free.",
+    href: "https://maily.to",
+    kind: "An editor that works like writing a document, built on Tiptap.",
+    name: "Maily",
+    works: "React.",
+  },
+  {
+    cost: "MIT. Free.",
+    href: "https://www.usewaypoint.com/open-source/emailbuilderjs",
+    kind: "A block editor that saves JSON or HTML.",
+    name: "EmailBuilder.js",
+    works: "React.",
+  },
+];
+
+const elsewhere = [
+  {
+    text: "Unlayer, Beefree, Stripo and Topol are companies with support teams, and you can sign a contract with them. Mail Quilt is one person and a public issue tracker.",
+    title: "You need someone to call",
+  },
+  {
+    text: "Nobody has checked a Mail Quilt email in Outlook. Topol says it tests there, and Beefree and Unlayer say they support it. If Outlook is where your readers are, use one of those, or test Mail Quilt's output yourself first.",
+    title: "Your emails must work in Outlook today",
+  },
+  {
+    text: "Mail Quilt has six Blocks, no template library and no image upload. The commercial editors have many more Blocks and ready-made templates.",
+    title: "You want templates and a large set of Blocks",
+  },
+  {
+    text: "If developers write your emails and nobody else edits them, you don't need a visual editor. React Email, MJML and Maizzle are built for writing email as code.",
+    title: "Your emails are written in code",
+  },
+  {
+    text: "Mail Quilt only makes emails. GrapesJS, Unlayer and Beefree also build web pages.",
+    title: "You're building pages as well",
+  },
+  {
+    text: "Maily feels like writing in a document rather than arranging Blocks, which suits emails that are mostly text.",
+    title: "You'd rather write than lay out",
+  },
+];
+
+const reasons = [
+  "You want the editor inside your product, with no fee and no other company's servers involved.",
+  "Your app isn't a React app, or you don't want the choice of editor to depend on your framework.",
+  "You want each email saved as a documented JSON format that you can check, change and render on your own server.",
+  "You want everything that can be dragged to work from the keyboard too.",
+  "A small set of Blocks is enough for the emails you send.",
+];
+---
+
+<SitePage
+  description="How Mail Quilt compares with Unlayer, Beefree, GrapesJS, Easy Email, Maily and EmailBuilder.js, and when one of them is the better choice."
+  title="Mail Quilt compared with Unlayer, Beefree, GrapesJS and others"
+>
+  <header class="site-intro">
+    <div class="site-wrap">
+      <h1 class="site-h1">Mail Quilt and the alternatives</h1>
+      <p class="site-lead">
+        There are good email editors you can embed, and some will suit you better
+        than this one. This page says which, and when.
+      </p>
+    </div>
+  </header>
+
+  <section class="site-section">
+    <div class="site-wrap">
+      <h2 class="site-h2">At a glance</h2>
+      <div class="site-scroll glance">
+        <table class="site-table">
+          <thead>
+            <tr>
+              <th scope="col">Editor</th>
+              <th scope="col">What it is</th>
+              <th scope="col">License and cost</th>
+              <th scope="col">Works with</th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              tools.map(({ cost, href, kind, name, works }) => (
+                <tr>
+                  <th scope="row">
+                    {href ? (
+                      <a class="site-link" href={href}>
+                        {name}
+                      </a>
+                    ) : (
+                      <span class="ours">{name}</span>
+                    )}
+                  </th>
+                  <td>{kind}</td>
+                  <td>{cost}</td>
+                  <td>{works}</td>
+                </tr>
+              ))
+            }
+          </tbody>
+        </table>
+      </div>
+      <p class="site-small site-muted site-measure checked">
+        Each line about another project was read from its own site or repository
+        on {CHECKED}. Prices and features change, so check theirs before you
+        decide. If a line here is wrong,{" "}
+        <a class="site-link" href={ISSUES}>open an issue</a> and it will be
+        fixed.
+      </p>
+    </div>
+  </section>
+
+  <section class="site-section">
+    <div class="site-wrap">
+      <h2 class="site-h2">Choose something else when</h2>
+    </div>
+    <div class="site-columns">
+      {
+        elsewhere.map(({ text, title }) => (
+          <div>
+            <h3 class="site-h3">{title}</h3>
+            <p class="site-small">{text}</p>
+          </div>
+        ))
+      }
+    </div>
+  </section>
+
+  <section class="site-section">
+    <div class="site-wrap site-split">
+      <div>
+        <h2 class="site-h2">Choose Mail Quilt when</h2>
+        <div class="site-actions">
+          <a class="site-button" data-tone="accent" href={withBase("/playground")}
+            >Try the Playground</a
+          >
+          <a class="site-button" data-tone="quiet" href={withBase("/why")}
+            >Read why it exists</a
+          >
+        </div>
+      </div>
+      <ul class="site-list">
+        {reasons.map((reason) => <li>{reason}</li>)}
+      </ul>
+    </div>
+  </section>
+</SitePage>
+
+<style>
+  .glance {
+    margin-top: 2rem;
+  }
+
+  .glance table {
+    min-width: 44rem;
+  }
+
+  .glance tbody th {
+    white-space: nowrap;
+  }
+
+  .checked {
+    margin-top: 1.5rem;
+  }
+
+  /* The dot from the logo's "i" marks this project's own row. */
+  .ours::before {
+    content: "";
+    display: inline-block;
+    width: 0.5rem;
+    height: 0.375rem;
+    margin-inline-end: 0.5rem;
+    border-radius: 0.09375rem;
+    background: var(--site-accent);
+    vertical-align: 0.125rem;
+  }
+</style>

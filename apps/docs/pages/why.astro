@@ -1,0 +1,138 @@
+---
+// Why the project exists, how it's built and what it will never do.
+import { withBase } from "blume/components/islands/base-path.ts";
+
+import SitePage from "../components/site-page.astro";
+import { ISSUES } from "../site/project.ts";
+
+const principles = [
+  {
+    text: "A saved email is a JSON document, not HTML. HTML is something the document can be turned into at any time, so your app is never left holding markup it can't edit again.",
+    title: "The document is the email",
+  },
+  {
+    text: "A drag, a key press and a line of your own code all send the same kind of request, called a Command. The email accepts it or refuses it. Because there's one way in, undo works the same for all of them.",
+    title: "Every change goes one way in",
+  },
+  {
+    text: "An email is Rows, Rows hold one to four Columns, and Columns hold Blocks. Nothing can be dragged to an arbitrary position, because email clients can't render arbitrary positions.",
+    title: "The grid is small on purpose",
+  },
+  {
+    text: "Given a document it doesn't understand, the editor refuses it, tells your app why, and changes nothing. It never repairs an email quietly, so an auto-save in your app can't overwrite the original with a guess.",
+    title: "It refuses what it can't trust",
+  },
+  {
+    text: "The document model and the renderer run without a DOM. A server can check an email, change it or turn it into HTML without loading any editor code.",
+    title: "The editor is optional",
+  },
+  {
+    text: "The editor is a Web Component, written once. The React component is a thin wrapper around it, and the Vue and Svelte ones will be too, so no framework gets a lesser version.",
+    title: "One editor for every framework",
+  },
+];
+
+const never = [
+  "Send email, or manage the people you send it to",
+  "Track opens and clicks, or run A/B tests",
+  "Charge for a feature, or keep one back for a paid plan",
+  "Host your emails, or need an account",
+];
+---
+
+<SitePage
+  description="Why Mail Quilt exists, the ideas it's built on, what it will never do and who maintains it."
+  title="Why it exists - Mail Quilt"
+>
+  <header class="site-intro">
+    <div class="site-wrap">
+      <h1 class="site-h1">An email editor should be a library, not a subscription.</h1>
+      <p class="site-lead">
+        Sooner or later, an app that sends email needs a way for the people using
+        it to design that email. Mail Quilt is the packages to build that with:
+        a ready-made editor, and the document model and renderer under it, all
+        yours to install and own.
+      </p>
+    </div>
+  </header>
+
+  <section class="site-section">
+    <div class="site-wrap site-split">
+      <h2 class="site-h2">The gap it fills</h2>
+      <div class="site-prose site-measure">
+        <p>
+          The polished editors you can embed are mostly products you rent. They
+          charge by the month, load from someone else's servers, and keep the
+          features you'll want next on a higher plan.
+        </p>
+        <p>
+          The open-source ones are often tied to one framework, or leave you with
+          HTML as the only saved form of an email, which is hard to check and
+          harder to change later.
+        </p>
+        <p>
+          Mail Quilt is MIT licensed, works in any framework, and saves each
+          email as a documented JSON format that belongs to your app. The{" "}
+          <a class="site-link" href={withBase("/compare")}>comparison</a> sets
+          it beside the alternatives, including where they're the better choice.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="site-section">
+    <div class="site-wrap">
+      <h2 class="site-h2">Six ideas it's built on</h2>
+    </div>
+    <div class="site-columns">
+      {
+        principles.map(({ text, title }) => (
+          <div>
+            <h3 class="site-h3">{title}</h3>
+            <p class="site-small">{text}</p>
+          </div>
+        ))
+      }
+    </div>
+  </section>
+
+  <section class="site-section">
+    <div class="site-wrap site-split">
+      <div>
+        <h2 class="site-h2">What it will never do</h2>
+        <p>
+          Mail Quilt is an editor. It's meant to sit beside the email service you
+          already use, not to replace it.
+        </p>
+      </div>
+      <ul class="site-list">
+        {never.map((item) => <li>{item}</li>)}
+      </ul>
+    </div>
+  </section>
+
+  <section class="site-section">
+    <div class="site-wrap site-split">
+      <h2 class="site-h2">Who makes it</h2>
+      <div class="site-prose site-measure">
+        <p>
+          One person builds Mail Quilt, in the open. That's why the{" "}
+          <a class="site-link" href={withBase("/roadmap")}>roadmap</a> has no
+          dates on it, and why the first release is small: six Blocks, one
+          framework component, and no testing in Outlook.
+        </p>
+        <p>
+          Everything is free and stays free. If the project ever takes money, it
+          will be through sponsorship, and sponsors won't get features that
+          others don't.
+        </p>
+        <p>
+          Bug reports, questions and requests all go to{" "}
+          <a class="site-link" href={ISSUES}>GitHub Issues</a>, which
+          is also where the roadmap lives.
+        </p>
+      </div>
+    </div>
+  </section>
+</SitePage>
+

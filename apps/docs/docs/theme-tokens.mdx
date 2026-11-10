@@ -1,8 +1,6 @@
 ---
 title: Theme tokens
 description: Match the editor to your app by changing its colors, spacing, corners and font with CSS custom properties on the mail-quilt element.
-sidebar:
-  order: 4
 ---
 
 The editor draws everything it owns from tokens: the workspace around the email, the side panel, the toolbars on the canvas and the tooltips. Each token is a CSS custom property whose name starts with `--mq-`. Set one on the `<mail-quilt>` element, and the editor uses your value instead of its default.
@@ -38,22 +36,22 @@ The email itself never uses these tokens. The card in the middle of the canvas s
 
 | Token | Default | What it changes |
 | --- | --- | --- |
-| `--mq-color-workspace` | `#eeeff1` | The background around the email card. |
-| `--mq-color-surface` | `#ffffff` | The side panel, the toolbars, the selected tab, fields, tiles and an empty Column's placeholder. |
-| `--mq-color-surface-muted` | `#f5f6f7` | Disabled fields, layout thumbnails and the circle behind an empty Column's plus. |
-| `--mq-color-surface-hover` | `#eceef0` | The track behind the tabs, and a button under the pointer. |
-| `--mq-color-text` | `#16181d` | Text and icons, the tag of the selected Block or Row, the selected Block's toolbar, and the badge in the side panel. |
-| `--mq-color-text-muted` | `#5f6570` | Field labels, hints, descriptions, units, icons at rest and tabs that aren't selected. |
-| `--mq-color-border` | `#e4e6ea` | The frame around the editor, borders around toolbars, tiles and tabs, the rules between groups of settings, and a lighter mix with `--mq-color-border-strong` for the side panel's edge. |
-| `--mq-color-border-strong` | `#8b919b` | Field borders, mixed lighter at rest and in full under the pointer, an empty Column's placeholder, and a lighter mix around layout thumbnails. |
-| `--mq-color-accent` | `#3355ff` | The outline of the selected Block or Row, the tag of one under the pointer, focus rings, the selected tab's icon, the drop line and highlighted drop targets. |
-| `--mq-color-accent-strong` | `#2340d6` | The outline of a Block with keyboard focus, and the text and icons of pressed controls. |
-| `--mq-color-accent-soft` | `rgb(51 85 255 / 10%)` | The background of pressed buttons, of a Block with keyboard focus and of the Column a drop will land in, the ring around a focused field, and layout thumbnails under the pointer. |
-| `--mq-color-outline-hover` | `rgb(51 85 255 / 45%)` | The outline of a Block or Row under the pointer, and of Columns while a Block is dragged. |
-| `--mq-color-on-accent` | `#ffffff` | Text on an accent background, such as a Block's tag and the link field's Apply button. |
-| `--mq-color-danger` | `#c42b1c` | Error messages, refused fields, and delete buttons under the pointer. |
-| `--mq-color-tooltip` | `#16181d` | The tooltip's background. |
-| `--mq-color-on-tooltip` | `#f7f7f8` | The tooltip's text. |
+| `--mq-color-workspace` | <span class="site-swatch" style={{ background: "#eeeff1" }} />`#eeeff1` | The background around the email card. |
+| `--mq-color-surface` | <span class="site-swatch" style={{ background: "#ffffff" }} />`#ffffff` | The side panel, the toolbars, the selected tab, fields, tiles and an empty Column's placeholder. |
+| `--mq-color-surface-muted` | <span class="site-swatch" style={{ background: "#f5f6f7" }} />`#f5f6f7` | Disabled fields, layout thumbnails and the circle behind an empty Column's plus. |
+| `--mq-color-surface-hover` | <span class="site-swatch" style={{ background: "#eceef0" }} />`#eceef0` | The track behind the tabs, and a button under the pointer. |
+| `--mq-color-text` | <span class="site-swatch" style={{ background: "#16181d" }} />`#16181d` | Text and icons, the tag of the selected Block or Row, the selected Block's toolbar, and the badge in the side panel. |
+| `--mq-color-text-muted` | <span class="site-swatch" style={{ background: "#5f6570" }} />`#5f6570` | Field labels, hints, descriptions, units, icons at rest and tabs that aren't selected. |
+| `--mq-color-border` | <span class="site-swatch" style={{ background: "#e4e6ea" }} />`#e4e6ea` | The frame around the editor, borders around toolbars, tiles and tabs, the rules between groups of settings, and a lighter mix with `--mq-color-border-strong` for the side panel's edge. |
+| `--mq-color-border-strong` | <span class="site-swatch" style={{ background: "#8b919b" }} />`#8b919b` | Field borders, mixed lighter at rest and in full under the pointer, an empty Column's placeholder, and a lighter mix around layout thumbnails. |
+| `--mq-color-accent` | <span class="site-swatch" style={{ background: "#3355ff" }} />`#3355ff` | The outline of the selected Block or Row, the tag of one under the pointer, focus rings, the selected tab's icon, the drop line and highlighted drop targets. |
+| `--mq-color-accent-strong` | <span class="site-swatch" style={{ background: "#2340d6" }} />`#2340d6` | The outline of a Block with keyboard focus, and the text and icons of pressed controls. |
+| `--mq-color-accent-soft` | <span class="site-swatch" style={{ background: "rgb(51 85 255 / 10%)" }} />`rgb(51 85 255 / 10%)` | The background of pressed buttons, of a Block with keyboard focus and of the Column a drop will land in, the ring around a focused field, and layout thumbnails under the pointer. |
+| `--mq-color-outline-hover` | <span class="site-swatch" style={{ background: "rgb(51 85 255 / 45%)" }} />`rgb(51 85 255 / 45%)` | The outline of a Block or Row under the pointer, and of Columns while a Block is dragged. |
+| `--mq-color-on-accent` | <span class="site-swatch" style={{ background: "#ffffff" }} />`#ffffff` | Text on an accent background, such as a Block's tag and the link field's Apply button. |
+| `--mq-color-danger` | <span class="site-swatch" style={{ background: "#c42b1c" }} />`#c42b1c` | Error messages, refused fields, and delete buttons under the pointer. |
+| `--mq-color-tooltip` | <span class="site-swatch" style={{ background: "#16181d" }} />`#16181d` | The tooltip's background. |
+| `--mq-color-on-tooltip` | <span class="site-swatch" style={{ background: "#f7f7f8" }} />`#f7f7f8` | The tooltip's text. |
 
 ## Spacing
 

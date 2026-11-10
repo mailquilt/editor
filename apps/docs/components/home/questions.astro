@@ -1,0 +1,78 @@
+---
+// The questions people ask first.
+import { kilobytes } from "../../site/measure.ts";
+import { ISSUES } from "../../site/project.ts";
+
+interface Props {
+  /** What a page downloads for the editor and for MJML, gzipped, in bytes. */
+  size: { editor: number; mjml: number };
+}
+
+const { size } = Astro.props;
+
+const questions = [
+  {
+    answer:
+      "Yes. Every package is MIT licensed, and every feature is in it. There's no paid tier and no hosted version to move you onto.",
+    question: "Is it free?",
+  },
+  {
+    answer:
+      "No. It gives you the email's HTML, and you send it with the service you already use. Merge Tags such as {{first_name}} stay in the HTML as written, so that service can fill them in.",
+    question: "Does it send email?",
+  },
+  {
+    answer:
+      "In your app. After every change the editor hands you the email as a JSON document. Save it where you save everything else, and pass it back to open the email again.",
+    question: "Where are the emails stored?",
+  },
+  {
+    answer:
+      "Nobody has checked. The HTML is written by MJML, which is built to support Outlook, but no email from Mail Quilt has been opened there. If your emails go to Outlook users, send yourself a test first.",
+    question: "Do the emails work in Outlook?",
+  },
+  {
+    answer:
+      "Yes, in two ways. You can put the editor on a page you lay out yourself, with your own header and buttons around it. Or you can skip the editor and build on the core package, which holds the email and the Commands that change it. The editor itself is built that way, though there's no guide to it yet.",
+    question: "Can I build my own editor with it?",
+  },
+  {
+    answer:
+      "Any of them, or none. The editor is a Web Component, so it's an HTML element like any other. There's a React component today, and Vue and Svelte ones are planned.",
+    question: "Which frameworks does it work with?",
+  },
+  {
+    answer:
+      "Yes. Dragging is one way to work, and the keyboard is another: Tab and the arrow keys select a Block, Alt with an arrow key moves it, and a screen reader hears where it went.",
+    question: "Can people use it without a mouse?",
+  },
+  {
+    answer: `From a CDN the editor is ${kilobytes(size.editor)} gzipped, with everything it needs inside. MJML is another ${kilobytes(size.mjml)}, and it only loads the first time someone opens Preview or exports. Both numbers are measured from the build this page was made with.`,
+    question: "How big is it?",
+  },
+];
+---
+
+<section class="site-section">
+  <div class="site-wrap site-split">
+    <div>
+      <h2 class="site-h2">Questions people ask first</h2>
+      <p>
+        If yours isn't here,{" "}
+        <a class="site-link" href={ISSUES}>ask it on GitHub</a>.
+      </p>
+    </div>
+    <div class="home-faq">
+      {
+        questions.map(({ answer, question }) => (
+          <details>
+            <summary>
+              <span>{question}</span>
+            </summary>
+            <p class="site-measure">{answer}</p>
+          </details>
+        ))
+      }
+    </div>
+  </div>
+</section>

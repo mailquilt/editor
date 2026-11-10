@@ -1,0 +1,15 @@
+{
+  "$schema": "https://turborepo.dev/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    // The site's address changes what's built, and Turborepo hides any variable
+    // a task doesn't name. See .env.example.
+    "build": {
+      "env": ["SITE_URL"]
+    },
+    // The tests build the site themselves.
+    "test": {
+      "env": ["CI", "SITE_URL"]
+    }
+  }
+}
