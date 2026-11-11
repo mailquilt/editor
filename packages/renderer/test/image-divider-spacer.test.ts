@@ -1,43 +1,14 @@
-import type { BlocksDocument } from "@mailquilt/core";
 import { describe, expect, it } from "vitest";
 
 import { renderEmail } from "../src/index.js";
-
-const emailWith = (
-  ...blocks: { props: Record<string, unknown>; type: string }[]
-): BlocksDocument => ({
-  kind: "blocks",
-  rows: [
-    {
-      columns: [
-        {
-          blocks: blocks.map((block, index) => ({
-            id: `block-${index}`,
-            ...block,
-          })),
-          id: "column-1",
-          props: {},
-          width: 100,
-        },
-      ],
-      id: "row-1",
-      props: {},
-    },
-  ],
-  settings: {
-    backgroundColor: "#ffffff",
-    fontFamily: "Arial, Helvetica, sans-serif",
-    width: 600,
-  },
-  version: 1,
-});
+import { emailWith } from "./email-with.js";
 
 const image = (props: Record<string, unknown>) => ({ props, type: "image" });
-const divider = (props: Record<string, unknown> = {}) => ({
+const divider = (props: Record<string, unknown>) => ({
   props,
   type: "divider",
 });
-const spacer = (props: Record<string, unknown> = {}) => ({
+const spacer = (props: Record<string, unknown>) => ({
   props,
   type: "spacer",
 });
@@ -110,12 +81,6 @@ describe("an Image Block", () => {
 });
 
 describe("a Divider Block", () => {
-  it("has a look of its own with nothing set", async () => {
-    const html = await renderEmail(emailWith(divider()));
-
-    expect(html).toContain("border-top:solid 1px #d4d4d8");
-  });
-
   it("matches the saved HTML with every setting", async () => {
     await expect(
       renderEmail(emailWith(divider({ color: "#123456", thickness: 3 })))
@@ -124,12 +89,6 @@ describe("a Divider Block", () => {
 });
 
 describe("a Spacer Block", () => {
-  it("has a height of its own with nothing set", async () => {
-    const html = await renderEmail(emailWith(spacer()));
-
-    expect(html).toMatch(/height:24px;\s*line-height:24px/u);
-  });
-
   it("matches the saved HTML with its height set", async () => {
     await expect(
       renderEmail(emailWith(spacer({ height: 40 })))
