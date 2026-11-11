@@ -88,7 +88,7 @@ test("in a narrow window, the landing page shows a picture of the editor", async
   ).toBeVisible();
   await expect(page.locator("mail-quilt")).toHaveCount(0);
   await expect(
-    page.getByText("This is the ready-made editor", { exact: false })
+    page.getByText("This is the editor, one of the four packages", { exact: false })
   ).toBeHidden();
 });
 
