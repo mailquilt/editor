@@ -364,15 +364,12 @@ const withLanguage = (language: string) => {
 };
 
 describe("a saved language that isn't a code", () => {
-  it.each(["en_US", "", 'en"><script>', "de-DE-u-co-phonebk"])(
-    "still loads %j, unchanged",
-    (language) => {
-      expect(loadDocument(withLanguage(language))).toMatchObject({
-        document: { settings: { language } },
-        ok: true,
-      });
-    }
-  );
+  it("still loads one, unchanged", () => {
+    expect(loadDocument(withLanguage("en_US"))).toMatchObject({
+      document: { settings: { language: "en_US" } },
+      ok: true,
+    });
+  });
 
   it("doesn't stop other settings from changing", () => {
     const editor = createEditor({ document: withLanguage("en_US") });

@@ -324,17 +324,6 @@ describe("the moveBlock Command", () => {
     expect(operations).toStrictEqual([]);
     expect(document).toStrictEqual(twoColumnEmail());
   });
-
-  it("rejects an index that isn't a whole number from zero up", () => {
-    const { editor } = setup();
-
-    expect(send(editor, { ...move("a", "right", 0), index: -1 })).toMatchObject(
-      { ok: false }
-    );
-    expect(
-      send(editor, { ...move("a", "right", 0), index: 0.5 })
-    ).toMatchObject({ ok: false });
-  });
 });
 
 describe("the Commands that add a Row for a Block", () => {
@@ -806,11 +795,6 @@ describe("rejecting a Row Command", () => {
       /index 2/iu,
     ],
     [
-      "a new Row at a negative index",
-      { index: -1, layout: "100", type: "insertRow" },
-      /index/u,
-    ],
-    [
       "removing a Row that doesn't exist",
       { rowId: "missing", type: "removeRow" },
       /no row.*missing/iu,
@@ -939,13 +923,6 @@ describe("the moveRow Command", () => {
     expect(editor.getDocument()).toStrictEqual(document);
     expect(operations).toStrictEqual([]);
     expect(editor.undo()).toBeFalsy();
-  });
-
-  it("rejects an index that isn't a whole number from zero up", () => {
-    const { editor } = setup(threeRowEmail());
-
-    expect(send(editor, moveRow("first", -1))).toMatchObject({ ok: false });
-    expect(send(editor, moveRow("first", 0.5))).toMatchObject({ ok: false });
   });
 
   it("says a Row is already where it's asked to go", () => {

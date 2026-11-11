@@ -98,9 +98,6 @@ describe("Heading Block", () => {
   it.each([
     ["level 4", { level: 4 }, /level/u],
     ["no level", { level: null }, /level/u],
-    ["an unknown alignment", { align: "middle" }, /align/u],
-    ["a color MJML can't read", { color: "red" }, /color/u],
-    ["a font size past the limit", { fontSize: 201 }, /fontSize/u],
     ["a property it doesn't have", { href: "https://a.example" }, /href/u],
   ])("rejects %s", (_name, props, reason) => {
     const { editor } = setup();

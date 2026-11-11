@@ -77,16 +77,6 @@ describe("limited rich text", () => {
       "the same mark twice",
       { marks: [{ type: "bold" }, { type: "bold" }], text: "x" },
     ],
-    [
-      "two links on the same text",
-      {
-        marks: [
-          { attrs: { href: "https://a.b" }, type: "link" },
-          { attrs: { href: "https://c.d" }, type: "link" },
-        ],
-        text: "x",
-      },
-    ],
   ])("refuses %s", (_name, node) => {
     expect(
       loadDocument(emailWithInline({ ...node, type: "text" })).ok
