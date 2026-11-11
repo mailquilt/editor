@@ -2,11 +2,28 @@
   "name": "@mailquilt/react",
   "version": "0.0.0",
   "description": "The Mail Quilt email editor as a React component.",
+  "keywords": [
+    "email",
+    "email-builder",
+    "email-editor",
+    "react"
+  ],
+  "homepage": "https://github.com/yourcodebuddy-in/mailquilt#readme",
+  "bugs": {
+    "url": "https://github.com/yourcodebuddy-in/mailquilt/issues"
+  },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourcodebuddy-in/mailquilt.git",
+    "directory": "packages/react"
+  },
   "files": [
-    "dist"
+    "dist",
+    "src"
   ],
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -19,7 +36,7 @@
     "test": "playwright test"
   },
   "dependencies": {
-    "@mailquilt/editor": "workspace:*"
+    "@mailquilt/editor": "workspace:^"
   },
   "devDependencies": {
     "@playwright/test": "^1.65.0",

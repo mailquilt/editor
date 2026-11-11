@@ -2,6 +2,15 @@
 
 Free, MIT-licensed packages for building email design into any web app: a ready-made drag-and-drop editor, and the document model and renderer it's built on.
 
+## Install
+
+```sh
+npm install @mailquilt/editor   # the <mail-quilt> element, for any framework
+npm install @mailquilt/react    # or the React components
+```
+
+The docs, with a quick start for a bundler, a CDN and React, are in [`apps/docs/docs`](apps/docs/docs).
+
 ## Packages
 
 | Package | What it is |
@@ -33,3 +42,7 @@ Run one package's task with a filter, such as `pnpm --filter @mailquilt/core tes
 - `docs/agents/testing.md` says how tests are written here.
 
 Issues and plans are in [GitHub Issues](https://github.com/yourcodebuddy-in/mailquilt/issues).
+
+## License
+
+MIT. See [LICENSE](LICENSE).
