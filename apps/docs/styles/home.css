@@ -249,6 +249,12 @@
   max-height: 27rem;
 }
 
+/* A tab's install command sits in a strip of its own, above the file. */
+.home-code-tabs [data-blume-tab-panel] > pre + pre {
+  margin-top: 0;
+  border-top: 1px solid var(--blume-border);
+}
+
 /* ---------- Packages ---------- */
 
 .home-packages {
