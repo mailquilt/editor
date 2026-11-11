@@ -30,7 +30,13 @@ jobs:
       - run: pnpm build
       - run: pnpm check-types
       # The install checks run in Chromium only.
-      - run: pnpm --filter @mailquilt/editor exec playwright install --with-deps chromium
+      - run: |
+          # The runner's package mirrors sometimes can't be reached for a moment.
+          for attempt in 1 2 3; do
+            pnpm --filter @mailquilt/editor exec playwright install --with-deps chromium && exit 0
+            sleep 15
+          done
+          exit 1
       - run: pnpm turbo run test --filter=@mailquilt/core --filter=@mailquilt/renderer --filter=@repo/install-checks
         env:
           CI: true
@@ -53,7 +59,13 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @mailquilt/editor exec playwright install --with-deps ${{ matrix.browser }}
+      - run: |
+          # The runner's package mirrors sometimes can't be reached for a moment.
+          for attempt in 1 2 3; do
+            pnpm --filter @mailquilt/editor exec playwright install --with-deps ${{ matrix.browser }} && exit 0
+            sleep 15
+          done
+          exit 1
       # One suite at a time, as each builds and serves its own page first.
       - run: >-
           pnpm turbo run test --concurrency=1 --filter=@mailquilt/editor --filter=@mailquilt/react --filter=docs -- --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/2
