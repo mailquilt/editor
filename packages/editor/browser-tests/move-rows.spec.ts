@@ -187,20 +187,19 @@ test.describe("moving a selected Row from the keyboard", () => {
   }) => {
     await open(page, [[["One"]], [["Two"]]]);
     await selectRow(page, 1);
-    const prevented = page.evaluate(
-      () =>
-        // oxlint-disable-next-line promise/avoid-new -- An event listener only takes a callback.
-        new Promise((resolve) => {
-          document.addEventListener("keydown", (event) => {
-            if (event.key === "ArrowLeft") {
-              resolve(event.defaultPrevented);
-            }
-          });
-        })
-    );
+    // Listening before the key is pressed, so the press can't come first.
+    await page.evaluate(() => {
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "ArrowLeft") {
+          Object.assign(window, { leftPrevented: event.defaultPrevented });
+        }
+      });
+    });
 
     await page.keyboard.press("Alt+ArrowLeft");
-    await expect(prevented).resolves.toBe(true);
+    await expect
+      .poll(() => page.evaluate(() => Reflect.get(window, "leftPrevented")))
+      .toBe(true);
     await expect(announcement(page)).toHaveText("The Row can't move left.");
 
     await page.keyboard.press("Alt+ArrowRight");

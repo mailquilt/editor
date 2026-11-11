@@ -44,7 +44,7 @@ test("actions picks the Shell's buttons", async ({ page }) => {
   await expect(textBlock(page)).toHaveText("Hello");
 
   await expect(shell(page)).toHaveAttribute("actions", "export-html");
-  await expect(shell(page).locator(".header").getByRole("button")).toHaveText([
-    "Export HTML",
-  ]);
+  await expect(
+    shell(page).locator('[part="actions"]').getByRole("button")
+  ).toHaveText(["Export HTML"]);
 });

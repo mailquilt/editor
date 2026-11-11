@@ -340,7 +340,8 @@ const MERGE_TAG = /\{\{[^{}]+\}\}/gu;
  * Keeps a Merge Tag whole, since a mark over part of one splits it in the HTML.
  * After any change, such as formatting, linking, typing or paste, a mark on
  * part of a tag goes on all of it, or comes off all of it when the change only
- * took marks of that type off.
+ * took marks of that type off. Where parts have different links, the one the
+ * change put on wins.
  */
 const keepMergeTagsWhole = new Plugin({
   appendTransaction: (transactions, _before, state) => {
@@ -352,12 +353,12 @@ const keepMergeTagsWhole = new Plugin({
     ) {
       return null;
     }
-    const added = new Set<MarkType>();
+    const added: Mark[] = [];
     const removed = new Set<MarkType>();
     for (const { steps } of transactions) {
       for (const step of steps) {
         if (step instanceof AddMarkStep) {
-          added.add(step.mark.type);
+          added.push(step.mark);
         } else if (step instanceof RemoveMarkStep) {
           removed.add(step.mark.type);
         }
@@ -377,9 +378,19 @@ const keepMergeTagsWhole = new Plugin({
             texts.push(child);
           }
         });
-        for (const mark of new Set(texts.flatMap((text) => text.marks))) {
+        const isAdded = (mark: Mark) => added.some((each) => each.eq(mark));
+        const found = [...new Set(texts.flatMap((text) => text.marks))];
+        // A link replaces another, so the one just added goes on last.
+        const marks = [
+          ...found.filter((mark) => !isAdded(mark)),
+          ...found.filter(isAdded),
+        ];
+        for (const mark of marks) {
           if (!texts.every((text) => mark.isInSet(text.marks))) {
-            if (removed.has(mark.type) && !added.has(mark.type)) {
+            if (
+              removed.has(mark.type) &&
+              !added.some((each) => each.type === mark.type)
+            ) {
               tr.removeMark(from, to, mark);
             } else {
               tr.addMark(from, to, mark);
