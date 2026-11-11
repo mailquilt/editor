@@ -164,6 +164,24 @@ test.describe("moving an email with JSON", () => {
     await expect(shell(page).locator("input[type=file]")).toHaveValue("");
   });
 
+  test("a reason goes away with the next edit or good file", async ({
+    page,
+  }) => {
+    await openShell(page);
+    const { text } = await exportFile(page, "Export JSON");
+
+    await importFile(page, "{not json");
+    await expect(shell(page).getByRole("alert")).toBeVisible();
+    await importFile(page, text);
+    await expect(shell(page).getByRole("alert")).toHaveCount(0);
+
+    await importFile(page, "{not json");
+    await expect(shell(page).getByRole("alert")).toBeVisible();
+    await focusStartOfTextBlock(page);
+    await page.keyboard.type("Edited ");
+    await expect(shell(page).getByRole("alert")).toHaveCount(0);
+  });
+
   test("with no email, the exports say so and download nothing", async ({
     page,
   }) => {
@@ -205,6 +223,27 @@ test.describe("the editor's API", () => {
     expect(JSON.stringify(value)).toContain("Oh Hello");
     expect(html).toMatch(/<!doctype html>/iu);
     expect(html).toContain("Oh Hello");
+  });
+
+  test("a value set before the element is defined still opens", async ({
+    page,
+  }) => {
+    await page.goto("/shell.html");
+    const html = await page.evaluate(async (email) => {
+      const late = document.createElement(
+        "mail-quilt-shell-late"
+      ) as MailQuiltShell;
+      late.value = email;
+      document.body.append(late);
+      const defined = customElements.get(
+        "mail-quilt-shell"
+      ) as typeof MailQuiltShell;
+      customElements.define("mail-quilt-shell-late", class extends defined {});
+      await late.updateComplete;
+      return await late.exportHtml();
+    }, emailWith("Early"));
+
+    expect(html).toContain("Early");
   });
 
   test("a refused first email fires mq-error and shows its reason", async ({
@@ -274,6 +313,16 @@ test.describe("saving in the browser", () => {
     await expect(textBlock(page)).toHaveText("Saved Hello");
   });
 
+  test("a reload reopens an imported email", async ({ page }) => {
+    await openShell(page, `?save-key=${key}`);
+    await importFile(page, JSON.stringify(emailWith("Imported")));
+    await expect(textBlock(page)).toHaveText("Imported");
+
+    await page.reload();
+
+    await expect(textBlock(page)).toHaveText("Imported");
+  });
+
   test("a damaged saved email shows why, and stays until a change", async ({
     page,
   }) => {
@@ -329,6 +378,25 @@ test.describe("saving in the browser", () => {
       await expect(textBlock(page)).toHaveText("Unsaved Hello");
     });
   }
+
+  test("keeps saying it can't save while showing another reason", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(window, "localStorage", {
+        get() {
+          throw new DOMException("Blocked", "SecurityError");
+        },
+      });
+    });
+    await openShell(page, `?save-key=${key}`);
+
+    await importFile(page, "{not json");
+
+    const alerts = shell(page).getByRole("alert");
+    await expect(alerts.filter({ hasText: "valid JSON" })).toBeVisible();
+    await expect(alerts.filter({ hasText: "can't save" })).toBeVisible();
+  });
 
   test("without a save key, nothing is stored", async ({ page }) => {
     await page.addInitScript(() => {
