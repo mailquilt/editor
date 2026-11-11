@@ -115,14 +115,15 @@ export const createEditor = ({
             openStep.push(operation);
           }
         }
+        openMergeKey = mergeKey;
+        // A step that changes nothing would make an undo seem to do nothing.
+        if (openStep.length === 0) {
+          undoStack.pop();
+          openMergeKey = undefined;
+        }
       } else {
         undoStack.push(operations);
-      }
-      openMergeKey = mergeKey;
-      // A step that changes nothing would make an undo seem to do nothing.
-      if (openStep?.length === 0) {
-        undoStack.pop();
-        openMergeKey = undefined;
+        openMergeKey = mergeKey;
       }
       redoStack.length = 0;
       notify(operations);
