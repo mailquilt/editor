@@ -81,8 +81,8 @@ import type { Tooltips } from "./tooltips.js";
 const MIN_EDITOR_WIDTH = 640;
 
 /**
- * The language of the editor's own words, for its tools inside the email, which
- * would otherwise take the email's language.
+ * The language of the editor's own words, on the email card, so that a Block's
+ * label and tools have it. Only each Block's content takes the email's language.
  */
 const UI_LANG = "en";
 
@@ -987,6 +987,10 @@ export class MailQuilt extends LitElement {
       }
     }
     this.#removeViewsExcept(new Set(blocks.map(({ id }) => id)));
+    // The text is the email's, unlike the Block's label around it.
+    for (const view of this.#views.values()) {
+      view.element.lang = this.#emailLang;
+    }
     const rows = this.#rendered?.rows ?? [];
     if (
       this.#selectedRowId !== undefined &&
@@ -1085,7 +1089,7 @@ export class MailQuilt extends LitElement {
         >
           <div
             class="email"
-            lang=${settings.language ?? nothing}
+            lang=${UI_LANG}
             @beforeinput=${this.#onBeforeInput}
             @keydown=${this.#onEmailKeydown}
             style=${styleMap({
@@ -1179,7 +1183,6 @@ export class MailQuilt extends LitElement {
       <div
         aria-label=${`Row ${index + 1}`}
         class="ui row-toolbar"
-        lang=${UI_LANG}
         role="group"
         @keydown=${(event: KeyboardEvent) =>
           this.#onRowToolbarKeydown(event, row.id)}
@@ -1245,7 +1248,7 @@ export class MailQuilt extends LitElement {
         ${
           blocks.length === 0
             ? html`
-                <div class="ui placeholder" lang=${UI_LANG}>
+                <div class="ui placeholder">
                   <div class="placeholder-label">
                     <span class="placeholder-icon">${ICONS.plus}</span>
                     <p>Drop a Block here</p>
@@ -1294,14 +1297,18 @@ export class MailQuilt extends LitElement {
       >
         ${selected ? nothing : renderDragHandle(this.#onHandleMousedown)}
         ${rich ? this.#views.get(block.id)?.element : nothing}
-        ${renderBlockContent(block, this.#failedImages, this.#onImageError)}
+        ${renderBlockContent(
+          block,
+          this.#emailLang,
+          this.#failedImages,
+          this.#onImageError
+        )}
         ${selected ? this.#renderBlockToolbar() : nothing}
         ${
           selected && rich && this.#editingText
             ? renderFormatBar(
                 {
                   formats: this.#formats,
-                  lang: UI_LANG,
                   linkForm: this.#linkForm,
                 },
                 this.#formatBarEvents
@@ -1319,7 +1326,6 @@ export class MailQuilt extends LitElement {
         aria-label="Block tools"
         aria-orientation="vertical"
         class="ui bar block-toolbar"
-        lang=${UI_LANG}
         role="toolbar"
         @keydown=${onToolbarArrowKeys}
         @mousedown=${this.#onControlMousedown}
@@ -1400,6 +1406,11 @@ export class MailQuilt extends LitElement {
         </button>
       </div>
     `;
+  }
+
+  /** On each Block's content. With none set, it's unknown, as in the export. */
+  get #emailLang() {
+    return this.#rendered?.settings.language ?? "";
   }
 
   get #selectedView() {

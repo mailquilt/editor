@@ -110,10 +110,14 @@ export const hasRichText = ({ type }: Pick<Block, "type">) =>
  * A Button's face, and no link, because a click on the canvas selects it. Its
  * background belongs to this and not the whole Block, unlike a Block's other styles.
  */
-const renderButton = (block: Block) => {
+const renderButton = (block: Block, lang: string) => {
   const { "text-align": align, ...face } = blockStyles(block);
   return html`
-    <div class="button-block" style=${styleMap({ "text-align": align })}>
+    <div
+      class="button-block"
+      lang=${lang}
+      style=${styleMap({ "text-align": align })}
+    >
       <span class="button" style=${styleMap(face)}>${block.props.label}</span>
     </div>
   `;
@@ -127,6 +131,7 @@ const renderButton = (block: Block) => {
  */
 const renderImage = (
   block: Block,
+  lang: string,
   failedImages: ReadonlySet<string>,
   onImageError: (src: string) => void
 ) => {
@@ -149,6 +154,7 @@ const renderImage = (
               <img
                 alt=${alt}
                 draggable="false"
+                lang=${lang}
                 src=${src}
                 style=${size}
                 @error=${() => onImageError(src)}
@@ -168,18 +174,22 @@ const renderDivider = (block: Block) => html`
 const renderSpacer = (block: Block) =>
   html`<div class="spacer" style=${styleMap(blockStyles(block))}></div>`;
 
-/** What a Block without text draws on the canvas. */
+/**
+ * What a Block without text draws on the canvas. Its words take the email's
+ * `lang`, and its stand-ins the editor's.
+ */
 export const renderBlockContent = (
   block: Block,
+  lang: string,
   failedImages: ReadonlySet<string>,
   onImageError: (src: string) => void
 ) => {
   switch (block.type) {
     case "button": {
-      return renderButton(block);
+      return renderButton(block, lang);
     }
     case "image": {
-      return renderImage(block, failedImages, onImageError);
+      return renderImage(block, lang, failedImages, onImageError);
     }
     case "divider": {
       return renderDivider(block);

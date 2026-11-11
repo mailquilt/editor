@@ -219,10 +219,17 @@ test.describe("an empty Column", () => {
 });
 
 test.describe("the email's language", () => {
-  test("stays with the email, not the tools on it", async ({ page }) => {
+  test("is on each Block's content, not on the Block or its tools", async ({
+    page,
+  }) => {
     await page.goto("/");
-    const document = emailWith([[["A"]], [[]]]);
+    const document = emailWith([[["A"]], [[]], [[]]]);
     document.settings.language = "de";
+    document.rows[2]?.columns[0]?.blocks.push({
+      id: "button",
+      props: { label: "Los" },
+      type: "button",
+    });
     await setValue(page, document);
     await textBlock(page).click();
 
@@ -231,7 +238,9 @@ test.describe("the email's language", () => {
       const langOf = (selector: string) =>
         root.querySelector(selector)?.closest("[lang]")?.getAttribute("lang");
       return {
+        block: langOf(".block"),
         blockTools: langOf(".block-toolbar"),
+        button: langOf(".button"),
         formatBar: langOf(".format-bar"),
         placeholder: langOf(".placeholder"),
         rowTools: langOf(".row-toolbar"),
@@ -240,7 +249,9 @@ test.describe("the email's language", () => {
     });
 
     expect(langs).toEqual({
+      block: "en",
       blockTools: "en",
+      button: "de",
       formatBar: "en",
       placeholder: "en",
       rowTools: "en",

@@ -75,8 +75,6 @@ const MARK_BUTTONS: { keys: string; label: string; mark: ToggleableMark }[] = [
 export interface FormatBarState {
   /** Unset while the text has nothing to format. */
   formats: TextFormats | undefined;
-  /** The language of the bar's own words. */
-  lang: string;
   /** Set while the link field is open. */
   linkForm: { error: boolean } | undefined;
 }
@@ -162,13 +160,12 @@ const renderLinkForm = (
  * goes back, so it takes no stop of its own from Tab.
  */
 export const renderFormatBar = (
-  { formats, lang, linkForm }: FormatBarState,
+  { formats, linkForm }: FormatBarState,
   events: FormatBarEvents
 ) => html`
   <div
     aria-label="Text formatting"
     class="ui bar format-bar"
-    lang=${lang}
     role="toolbar"
     @keydown=${(event: KeyboardEvent) => {
       // Escape goes back to the text, as from the link field.
