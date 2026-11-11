@@ -1,7 +1,7 @@
 import type { BlocksDocument } from "@mailquilt/core";
 import { describe, expect, it } from "vitest";
 
-import { renderEmail } from "../src/node.js";
+import { renderEmail } from "../src/index.js";
 
 const emailWith = (
   ...blocks: { props: Record<string, unknown>; type: string }[]
