@@ -1,6 +1,9 @@
-import { test } from "@playwright/test";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 
-import { freshProjects } from "../fresh-projects.ts";
+import { expect, test } from "@playwright/test";
+
+import { freshProjectDir, freshProjects } from "../fresh-projects.ts";
 import {
   checkLoadSaveExport,
   checkRefusedDocument,
@@ -23,4 +26,22 @@ test("a plain JS project's Shell opens, saves, exports and refuses", async ({
   page,
 }) => {
   await checkShell(page, `${url}shell/`);
+});
+
+test("the docs' server code builds and renders an email in Node", async () => {
+  const { stdout } = await promisify(execFile)(
+    "node",
+    [
+      "--input-type=module",
+      "--eval",
+      `const { email } = await import("./server/build-an-email.js");
+       const { htmlFor } = await import("./server/render.js");
+       console.log("RESULT" + JSON.stringify(await htmlFor(email)));`,
+    ],
+    { cwd: freshProjectDir("plain-js") }
+  );
+
+  expect(
+    JSON.parse(stdout.slice(stdout.indexOf("RESULT") + "RESULT".length))
+  ).toContain("{{first_name}}");
 });

@@ -18,5 +18,4 @@ export default defineConfig({
       rules: { "unicorn/filename-case": "off" },
     },
   ],
-  settings: root.settings,
 });
