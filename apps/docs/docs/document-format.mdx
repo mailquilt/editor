@@ -32,7 +32,7 @@ The editor never repairs a document. If one doesn't match this format, the edito
 | --- | --- |
 | `width` | Required. The email's width, a whole number of pixels, 1 or more. |
 | `backgroundColor` | Required. A [color](#colors). |
-| `fontFamily` | Required. A CSS font list, such as `"Arial, Helvetica, sans-serif"`. The settings panel offers Arial, Courier New, Georgia, Tahoma, Times New Roman and Verdana. |
+| `fontFamily` | Required. A CSS font list, such as `"Arial, Helvetica, sans-serif"`. It can hold only the letters A to Z, digits, spaces, hyphens, underscores, commas and quotes. The settings panel offers Arial, Courier New, Georgia, Tahoma, Times New Roman and Verdana. |
 | `preheader` | Optional. The short text inboxes show after the subject. |
 | `language` | Optional. The email's language. The settings panel only accepts a language code such as `en` or `pt-BR`, but a saved document loads with any text here, so an email with a bad value can still be opened and fixed. |
 
@@ -86,7 +86,7 @@ Every Block has an `id`, which is an [ID](#ids), a `type` from the list below, a
 
 | Prop | Value |
 | --- | --- |
-| `src` | Optional. The image's URL, starting with `https:` or `http:`, or a [Merge Tag](#merge-tags) such as `{{logo_url}}`. A new Image has none until someone adds one. |
+| `src` | Optional. The image's URL, starting with `https:` or `http:`, or a [Merge Tag](#merge-tags) such as `{{logo_url}}`. A new Image has none until someone adds one, and an Image without one is left out of the exported HTML. |
 | `alt` | Optional. What a screen reader says, and what shows if images are off. |
 | `width` | Optional. A whole number of pixels, 1 or more. Without it, the image fills the Column, and it never grows wider than the Column. |
 | `href` | Optional. A [link](#links). A linked Image needs `alt` text that isn't blank, because the alt text is all that names the link. |
@@ -172,3 +172,5 @@ A link starts with `https:`, `http:`, `mailto:` or `tel:`, or with a [Merge Tag]
 ### Merge Tags
 
 A Merge Tag such as `{{first_name}}` can go anywhere in text, and at the start of a link or image URL. Mail Quilt keeps it as written in the exported HTML, so your sending tool can fill it in. In a URL that starts with a Merge Tag, no colon can come between the tag and the first `/`, `?` or `#`, so `{{base}}/path` is a link but `{{x}}javascript:` isn't.
+
+Mail Quilt escapes any `&`, `<` or `>` in a Merge Tag, and any `"` too in a link or image URL, such as `&` to `&amp;`. Your sending tool sees the escaped tag, so keep tags to names, such as `{{cta_url}}`.

@@ -25,7 +25,7 @@ Invalid props for Block "8f5b928cfc0fd74ae8": color: Must be a color written as 
 
 ## Commands
 
-A Command is a plain object with a `type`. `apply()` returns `{ ok: true }` when the email changed, with a `createdId` if the Command added a Block or a Row. Otherwise it returns `{ ok: false, reason }` and the email is unchanged. If the email was already as the Command asked, the result also has `unchanged: true`.
+A Command is a plain object with a `type`. `apply()` returns `{ ok: true }` when the email changed, with a `createdId` for what it added: the new Block's ID from `insertBlock` and `insertBlockInNewRow`, and the new Row's from `insertRow`. Otherwise it returns `{ ok: false, reason }` and the email is unchanged. If the email was already as the Command asked, the result also has `unchanged: true`.
 
 | `type` | Other fields | What it does |
 | --- | --- | --- |
@@ -64,7 +64,7 @@ editor.undo();
 editor.redo();
 ```
 
-To make several Commands one step, give them the same `mergeKey`. The editor does this while someone types, so that a word is undone at once rather than a letter at a time.
+To make several Commands one step, give them the same `mergeKey`. The editor does this while someone types, so that a word is undone at once rather than a letter at a time. If the changes end where they started, as when someone types a letter and deletes it, they leave no step to undo.
 
 ```js
 editor.apply(first, { mergeKey: "import" });

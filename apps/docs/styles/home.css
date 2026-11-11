@@ -249,6 +249,12 @@
   max-height: 27rem;
 }
 
+/* A tab's install command sits in a strip of its own, above the file. */
+.home-code-tabs [data-blume-tab-panel] > pre + pre {
+  margin-top: 0;
+  border-top: 1px solid var(--blume-border);
+}
+
 /* ---------- Packages ---------- */
 
 .home-packages {
@@ -581,42 +587,6 @@
 .home-tools svg:last-child {
   background: color-mix(in srgb, var(--site-accent) 16%, transparent);
   stroke: var(--site-accent-text);
-}
-
-/* ---------- Before you rely on it ---------- */
-
-.home-clients-title {
-  margin-top: 3rem;
-}
-
-.home-clients {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 0.5rem;
-  margin: 1rem 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-@media (min-width: 40rem) {
-  .home-clients {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-/* None is checked yet, so each is a slot. A checked one will be solid. */
-.home-clients li {
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
-  padding: 0.875rem 1rem;
-  border: var(--site-slot);
-  border-radius: 0.75rem;
-}
-
-.home-client {
-  color: var(--blume-foreground);
-  font-weight: 500;
 }
 
 /* ---------- Questions ---------- */

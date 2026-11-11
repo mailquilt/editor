@@ -1,13 +1,7 @@
 ---
-// What to know before relying on it, and which email clients are checked.
+// What to know before relying on it. Which email clients are checked is kept
+// on its docs page alone, so it's only ever updated there.
 import { withBase } from "blume/components/islands/base-path.ts";
-
-const clients = [
-  { name: "Gmail", status: "To be checked before 0.1.0" },
-  { name: "Apple Mail", status: "To be checked before 0.1.0" },
-  { name: "Outlook", status: "Untested" },
-  { name: "Any other client", status: "Untested" },
-];
 ---
 
 <section class="site-section">
@@ -29,25 +23,17 @@ const clients = [
           component in your app.
         </li>
         <li>
-          Editing needs a screen at least 640 pixels wide. On a phone, people
-          can still preview an email.
+          Editing needs the editor to be at least 640 pixels wide. On a phone,
+          people can still preview an email.
         </li>
         <li>
           Images are added by URL. There's no upload yet, and no library of
           templates.
         </li>
-      </ul>
-
-      <h3 class="site-h3 home-clients-title">Tested email clients</h3>
-      <ul class="home-clients">
-        {
-          clients.map(({ name, status }) => (
-            <li>
-              <span class="home-client">{name}</span>
-              <span class="site-small site-muted">{status}</span>
-            </li>
-          ))
-        }
+        <li>
+          Outlook and email clients other than Gmail and Apple Mail are
+          untested.
+        </li>
       </ul>
       <div class="site-actions">
         <a class="site-link" href={withBase("/docs/email-clients")}

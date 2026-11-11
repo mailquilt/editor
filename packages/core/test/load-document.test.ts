@@ -46,6 +46,22 @@ describe(loadDocument, () => {
 
     expect(loadDocument(email)).toMatchObject({ ok: true });
   });
+
+  it("returns a document that shares nothing with the one passed in", () => {
+    const email = readFixture("version-1");
+    const loaded = loadDocument(email);
+
+    email.settings.width = 500;
+    email.rows[0].props.backgroundColor = "#000000";
+    email.rows[0].columns[0].blocks[0].props.content.content[0].content[0].text =
+      "Changed";
+    email.rows[1].columns[0].blocks.push("changed");
+
+    expect(loaded).toStrictEqual({
+      document: readFixture("version-1"),
+      ok: true,
+    });
+  });
 });
 
 describe("refusing a document", () => {
@@ -217,6 +233,22 @@ describe("refusing a document", () => {
         return email;
       },
       /props/u,
+    ],
+    [
+      "an empty ID",
+      (email) => {
+        email.rows[0].columns[0].blocks[0].id = "";
+        return email;
+      },
+      /rows\.0\.columns\.0\.blocks\.0\.id/u,
+    ],
+    [
+      "a Column prop this version doesn't know",
+      (email) => {
+        email.rows[0].columns[0].props = { padding: 4 };
+        return email;
+      },
+      /rows\.0\.columns\.0\.props/u,
     ],
     [
       "a Row with no Columns",

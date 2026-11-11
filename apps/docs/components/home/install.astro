@@ -11,16 +11,36 @@ import bundlerExample from "../../docs/_quick-start/plain-js/main.js?raw";
 // oxlint-disable-next-line import/default -- As above.
 import reactExample from "../../docs/_quick-start/react/app/editor.tsx?raw";
 
-const INSTALL = "npm install @mailquilt/editor";
-
-/** The quick start's files, highlighted as the docs' own code blocks are. */
+/**
+ * The quick start's files, each after its install command, highlighted as the
+ * docs' own code blocks are. The CDN build needs no install.
+ */
 const examples = await Promise.all(
   [
-    { code: bundlerExample, lang: "js", tab: "With a bundler", title: "main.js" },
+    {
+      code: bundlerExample,
+      install: "npm install @mailquilt/editor",
+      lang: "js",
+      tab: "With a bundler",
+      title: "main.js",
+    },
     { code: cdnExample, lang: "html", tab: "From a CDN", title: "index.html" },
-    { code: reactExample, lang: "tsx", tab: "React", title: "app/editor.tsx" },
-  ].map(async ({ tab, ...source }) => ({
+    {
+      code: reactExample,
+      install: "npm install @mailquilt/react",
+      lang: "tsx",
+      tab: "React",
+      title: "app/editor.tsx",
+    },
+  ].map(async ({ install, tab, ...source }) => ({
     html: await codeBlockHtml(source, data.config.codeThemes),
+    install:
+      install === undefined
+        ? undefined
+        : await codeBlockHtml(
+            { code: install, lang: "bash" },
+            data.config.codeThemes
+          ),
     tab,
   }))
 );
@@ -36,12 +56,6 @@ const examples = await Promise.all(
         it's refused. Call <code>exportHtml()</code> when it's ready to send.
         That's the whole API.
       </p>
-      <div class="site-actions">
-        <div class="site-command">
-          <code>{INSTALL}</code>
-          <button data-copy={INSTALL} type="button">Copy</button>
-        </div>
-      </div>
       <p class="site-small site-muted home-code-note">
         These are the quick start's own files. The project's tests install
         each one in a fresh project and run it in a browser.
@@ -50,8 +64,9 @@ const examples = await Promise.all(
     <div class="prose max-w-none home-code-tabs">
       <Tabs hash={false}>
         {
-          examples.map(({ html, tab }) => (
+          examples.map(({ html, install, tab }) => (
             <Tab title={tab}>
+              {install && <Fragment set:html={install} />}
               <Fragment set:html={html} />
             </Tab>
           ))

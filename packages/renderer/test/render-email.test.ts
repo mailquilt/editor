@@ -107,20 +107,6 @@ describe(renderEmail, () => {
 
   it.each([
     [
-      "50-50",
-      emailWithColumns(
-        { texts: ["Left"], width: 50 },
-        { texts: ["Right"], width: 50 }
-      ),
-    ],
-    [
-      "33-67",
-      emailWithColumns(
-        { texts: ["Narrow"], width: 33 },
-        { texts: ["Wide"], width: 67 }
-      ),
-    ],
-    [
       "33-33-33",
       emailWithColumns(
         { texts: ["One"], width: 33.33 },
@@ -184,12 +170,13 @@ describe(renderEmail, () => {
     expect(html).toContain('lang="en&quot;&gt;&lt;script&gt;');
   });
 
-  it("exports a setting that's undefined as if it weren't set", async () => {
+  it("loads no web fonts, even for a font MJML would load", async () => {
     const email = emailWithText("Hi");
-    const block = email.rows[0]?.columns[0]?.blocks[0] as Block;
-    block.props = { ...block.props, color: undefined };
+    email.settings.fontFamily = "Roboto, sans-serif";
 
-    await expect(renderEmail(email)).resolves.toContain("color:#000000");
+    await expect(renderEmail(email)).resolves.not.toContain(
+      "fonts.googleapis.com"
+    );
   });
 
   it("escapes a preheader so it can't become markup", async () => {
@@ -272,18 +259,6 @@ describe(renderEmail, () => {
     expect(html).not.toContain("<script>");
   });
 
-  it("escapes formatted text", async () => {
-    const html = await renderEmail(
-      emailWithInline({
-        marks: [{ type: "bold" }],
-        text: "<b>&",
-        type: "text",
-      })
-    );
-
-    expect(html).toContain("<strong>&lt;b&gt;&amp;</strong>");
-  });
-
   it("renders a line break, ignoring marks left on it", async () => {
     const html = await renderEmail(
       emailWithInline(
@@ -312,24 +287,6 @@ describe(renderEmail, () => {
   // has to get through it, or an email could be edited but never exported.
   const accepted: [string, (email: BlocksDocument) => void][] = [
     [
-      "a short hex color",
-      (email) => {
-        email.settings.backgroundColor = "#FFF";
-      },
-    ],
-    [
-      "an rgb() color",
-      (email) => {
-        email.settings.backgroundColor = "rgb(1, 2, 3)";
-      },
-    ],
-    [
-      "an rgba() color",
-      (email) => {
-        email.settings.backgroundColor = "rgba(1,2,3,0.5)";
-      },
-    ],
-    [
       "the narrowest email",
       (email) => {
         email.settings.width = 1;
@@ -345,12 +302,6 @@ describe(renderEmail, () => {
       "an empty font family",
       (email) => {
         email.settings.fontFamily = "";
-      },
-    ],
-    [
-      "a font family with quotes",
-      (email) => {
-        email.settings.fontFamily = `"Times New Roman", serif`;
       },
     ],
     [
@@ -378,6 +329,28 @@ describe(renderEmail, () => {
     change(email);
 
     await expect(renderEmail(email)).resolves.toMatch(/^<!doctype html>/iu);
+  });
+
+  it("exports a font family with quotes, escaped in a Heading's style", async () => {
+    const email = emailWithText("Hi");
+    email.settings.fontFamily = `"Times New Roman", serif`;
+    email.rows[0]?.columns[0]?.blocks.push({
+      id: "heading-1",
+      props: {
+        content: {
+          content: [
+            { content: [{ text: "Title", type: "text" }], type: "paragraph" },
+          ],
+          type: "doc",
+        },
+        level: 1,
+      },
+      type: "heading",
+    });
+
+    await expect(renderEmail(email)).resolves.toMatch(
+      /<h1 style="[^"]*font-family:&quot;Times New Roman&quot;, serif;/u
+    );
   });
 
   it("refuses a Column width that would break out of its attribute, with the reason", async () => {

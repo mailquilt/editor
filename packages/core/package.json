@@ -2,11 +2,28 @@
   "name": "@mailquilt/core",
   "version": "0.0.0",
   "description": "Mail Quilt document model and Commands. Runs without a DOM.",
+  "keywords": [
+    "document-model",
+    "email",
+    "email-builder",
+    "email-editor"
+  ],
+  "homepage": "https://github.com/yourcodebuddy-in/mailquilt#readme",
+  "bugs": {
+    "url": "https://github.com/yourcodebuddy-in/mailquilt/issues"
+  },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourcodebuddy-in/mailquilt.git",
+    "directory": "packages/core"
+  },
   "files": [
-    "dist"
+    "dist",
+    "src"
   ],
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -27,5 +44,8 @@
     "tsdown": "^0.23.5",
     "typescript": "7.0.2",
     "vitest": "^5.1.0"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

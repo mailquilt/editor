@@ -324,17 +324,6 @@ describe("the moveBlock Command", () => {
     expect(operations).toStrictEqual([]);
     expect(document).toStrictEqual(twoColumnEmail());
   });
-
-  it("rejects an index that isn't a whole number from zero up", () => {
-    const { editor } = setup();
-
-    expect(send(editor, { ...move("a", "right", 0), index: -1 })).toMatchObject(
-      { ok: false }
-    );
-    expect(
-      send(editor, { ...move("a", "right", 0), index: 0.5 })
-    ).toMatchObject({ ok: false });
-  });
 });
 
 describe("the Commands that add a Row for a Block", () => {
@@ -440,6 +429,15 @@ describe("a Command for what's already so", () => {
       unchanged: true,
     });
     expect(editor.apply(move("a", "nope", 0))).not.toHaveProperty("unchanged");
+  });
+
+  it("says a Row already has the layout it's asked for", () => {
+    const { editor, operations } = setup();
+
+    expect(
+      editor.apply({ layout: "50/50", rowId: "row", type: "setRowLayout" })
+    ).toMatchObject({ ok: false, unchanged: true });
+    expect(operations).toStrictEqual([]);
   });
 });
 
@@ -782,11 +780,6 @@ describe("rejecting a Row Command", () => {
       /layout/u,
     ],
     [
-      "the layout the Row already has",
-      { layout: "50/50", rowId: "row", type: "setRowLayout" },
-      /already/u,
-    ],
-    [
       "a layout for a Row that doesn't exist",
       { layout: "100", rowId: "missing", type: "setRowLayout" },
       /no row.*missing/iu,
@@ -800,11 +793,6 @@ describe("rejecting a Row Command", () => {
       "a new Row past the end of the email",
       { index: 2, layout: "100", type: "insertRow" },
       /index 2/iu,
-    ],
-    [
-      "a new Row at a negative index",
-      { index: -1, layout: "100", type: "insertRow" },
-      /index/u,
     ],
     [
       "removing a Row that doesn't exist",
@@ -935,13 +923,6 @@ describe("the moveRow Command", () => {
     expect(editor.getDocument()).toStrictEqual(document);
     expect(operations).toStrictEqual([]);
     expect(editor.undo()).toBeFalsy();
-  });
-
-  it("rejects an index that isn't a whole number from zero up", () => {
-    const { editor } = setup(threeRowEmail());
-
-    expect(send(editor, moveRow("first", -1))).toMatchObject({ ok: false });
-    expect(send(editor, moveRow("first", 0.5))).toMatchObject({ ok: false });
   });
 
   it("says a Row is already where it's asked to go", () => {

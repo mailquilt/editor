@@ -1,6 +1,6 @@
 # Mail Quilt: Project Brief
 
-> **Status:** Pre-release planning. A throwaway Shadow DOM test is complete (`docs/adr/0002-build-the-editor-with-lit-in-shadow-dom.md`). No product code exists yet.
+> **Status:** `0.1.0` is built: the four packages, the docs site and the Playground. It isn't released yet. The release waits on the steps in #18: tests with real email clients and by hand, an accessibility audit, making the repository public, and publishing the packages.
 > **How to read this:** Section 21 defines what ships first. Sections 13–20 are non-binding ideas unless section 21 includes them, and only the items listed in section 21 may shape the `0.1.0` design. Terms are defined in `GLOSSARY.md`.
 
 ## 1. Summary
@@ -8,10 +8,10 @@
 Mail Quilt is a set of free, open-source, MIT-licensed packages for building email design into any web app. The packages are the product, and a developer takes as many of them as they need:
 
 - **The Shell:** a whole editor page, ready-made. They build nothing.
-- **The editor:** the `<mail-quilt>` Web Component, with wrappers for React, Vue and Svelte. They build their own page around it.
+- **The editor:** the `<mail-quilt>` Web Component, with a wrapper for React, and Vue and Svelte wrappers to come. They build their own page around it.
 - **The core and the renderer:** the email as data, the Commands that change it, and the HTML. The editor is built on them, and a developer can build on them too: an interface of their own, or none.
 
-The ready-made editor is what most apps start with, and it is one part of Mail Quilt, not the whole of it.
+The editor is what most apps start with, and it is one part of Mail Quilt, not the whole of it.
 
 Users can create the same email in three ways:
 
@@ -21,7 +21,7 @@ Users can create the same email in three ways:
 
 Coding tools such as Claude Code can also create and edit emails through a local mode and an MCP server.
 
-**Positioning:** free, MIT-licensed packages for building email design into your app, in any framework: use the ready-made editor, build your own page around it, or build on the document model underneath. Do not sell the ready-made editor as the whole product. Building a whole interface on `core` is possible, as the editor does it, but it is not documented or tested as a supported path yet, and the custom-block API is private until after `0.1.0`, so do not promise a kit for custom editors. Once they ship, AI features will use the same editing Commands as the UI. Do not claim AI features before they exist.
+**Positioning:** free, MIT-licensed packages for building email design into your app, in any framework: use the Shell, build your own page around the editor, or build on the document model underneath. Do not sell the editor as the whole product. Building a whole interface on `core` is possible, as the editor does it, but it is not documented or tested as a supported path yet, and the custom-block API is private until after `0.1.0`, so do not promise a kit for custom editors. Once they ship, AI features will use the same editing Commands as the UI. Do not claim AI features before they exist.
 
 ## 2. Goals
 
@@ -50,7 +50,7 @@ Mail Quilt should integrate with email providers rather than compete with them.
 
 `0.1.0` is built for the first two groups. The others come later.
 
-- **Developers** building email design into their product, with the ready-made editor or on the packages under it
+- **Developers** building email design into their product, with the editor or on the packages under it
 - **Their end users**, such as marketers and founders, who design emails without code
 - **Developers using coding tools** who want agents to build emails in their repo
 - **Individuals** using the free Playground to design and export an email

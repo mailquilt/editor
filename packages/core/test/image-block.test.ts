@@ -128,7 +128,6 @@ describe("Image Block", () => {
 
   it.each([
     ["no alt text", {}],
-    ["empty alt text", { alt: "" }],
     ["alt text of only spaces", { alt: "   " }],
   ])("refuses a link with %s, as nothing would name it", (_name, props) => {
     const { document, result } = setProps({

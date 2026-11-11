@@ -1,36 +1,6 @@
 import * as v from "valibot";
 
 /**
- * Text is stored as limited ProseMirror JSON (ADR 0001), so it can be validated
- * like any other property without loading ProseMirror.
- */
-export type RichTextMark =
-  | { type: "bold" | "italic" | "underline" }
-  | { type: "link"; attrs: { href: string } };
-
-export interface RichTextNode {
-  type: "text";
-  text: string;
-  marks?: RichTextMark[];
-}
-
-export interface RichTextHardBreak {
-  type: "hardBreak";
-  /** ProseMirror keeps these on a line break inside formatted text. */
-  marks?: RichTextMark[];
-}
-
-export interface RichTextParagraph {
-  type: "paragraph";
-  content?: (RichTextHardBreak | RichTextNode)[];
-}
-
-export interface RichTextDocument {
-  type: "doc";
-  content: RichTextParagraph[];
-}
-
-/**
  * A Merge Tag must come first and be complete. Whatever follows it can't have a
  * colon before the path, query or fragment, because the tag's value could be
  * empty or finish a scheme, as in `{{x}}javascript:alert(1)`.
@@ -95,6 +65,7 @@ const inlineSchema = v.variant("type", [
     type: v.literal("text"),
   }),
   v.strictObject({
+    /** ProseMirror keeps these on a line break inside formatted text. */
     marks: v.optional(marksSchema),
     type: v.literal("hardBreak"),
   }),
@@ -109,3 +80,14 @@ export const richTextSchema = v.strictObject({
   content: v.pipe(v.array(paragraphSchema), v.nonEmpty()),
   type: v.literal("doc"),
 });
+
+/**
+ * Text is stored as limited ProseMirror JSON (ADR 0001), so it can be validated
+ * like any other property without loading ProseMirror.
+ */
+export type RichTextDocument = v.InferOutput<typeof richTextSchema>;
+export type RichTextParagraph = v.InferOutput<typeof paragraphSchema>;
+type RichTextInline = v.InferOutput<typeof inlineSchema>;
+export type RichTextNode = Extract<RichTextInline, { type: "text" }>;
+export type RichTextHardBreak = Extract<RichTextInline, { type: "hardBreak" }>;
+export type RichTextMark = v.InferOutput<typeof marksSchema>[number];

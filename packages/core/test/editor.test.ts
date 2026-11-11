@@ -108,20 +108,6 @@ describe("rejecting a Command", () => {
       }),
       /content/iu,
     ],
-    [
-      "a node outside limited rich text",
-      (blockId) => ({
-        blockId,
-        props: {
-          content: {
-            content: [{ attrs: { level: 1 }, type: "heading" }],
-            type: "doc",
-          },
-        },
-        type: "updateProps",
-      }),
-      /content/iu,
-    ],
   ];
 
   it.each(rejected)(

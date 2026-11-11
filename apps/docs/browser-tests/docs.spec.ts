@@ -4,6 +4,9 @@ import { promisify } from "node:util";
 import { BLOCK_TYPES, loadDocument } from "@mailquilt/core";
 import { expect, test } from "@playwright/test";
 
+/** For tests of the site's content, which is the same in every browser. */
+const SAME_IN_EVERY_BROWSER = "Checks content, so Chromium alone runs it.";
+
 test("the landing page's editor is live, and shows the email it would save", async ({
   page,
 }) => {
@@ -98,7 +101,9 @@ test("in a narrow window, the landing page shows a picture of the editor", async
   ).toBeVisible();
   await expect(page.locator("mail-quilt")).toHaveCount(0);
   await expect(
-    page.getByText("This is the ready-made editor", { exact: false })
+    page.getByText("This is the editor, one of the four packages", {
+      exact: false,
+    })
   ).toBeHidden();
 });
 
@@ -146,7 +151,8 @@ const RUN_DOCS_CODE = `
   console.log("RESULT" + JSON.stringify({ email, html: await htmlFor(email), refusal }));
 `;
 
-test("the code in the docs runs as written", async () => {
+test("the code in the docs runs as written", async ({ browserName }) => {
+  test.skip(browserName !== "chromium", SAME_IN_EVERY_BROWSER);
   const { stdout } = await promisify(execFile)(
     process.execPath,
     ["--input-type=module", "--eval", RUN_DOCS_CODE],
@@ -161,7 +167,11 @@ test("the code in the docs runs as written", async () => {
   expect(refusal).toMatch(/^This email can't be sent/u);
 });
 
-test("each example email comes with its document", async ({ page }) => {
+test("each example email comes with its document", async ({
+  browserName,
+  page,
+}) => {
+  test.skip(browserName !== "chromium", SAME_IN_EVERY_BROWSER);
   await page.goto("/examples");
   const downloads = page.getByRole("link", { name: "Download the JSON" });
 
@@ -177,8 +187,10 @@ test("each example email comes with its document", async ({ page }) => {
 });
 
 test("the document format reference's example is an email core loads", async ({
+  browserName,
   page,
 }) => {
+  test.skip(browserName !== "chromium", SAME_IN_EVERY_BROWSER);
   await page.goto("/docs/document-format");
   const example = await page
     .getByTestId("example-email")
@@ -205,9 +217,11 @@ const pagePath = (path: string) =>
 
 test("every page's links and assets resolve", async ({
   baseURL,
+  browserName,
   context,
   request,
 }) => {
+  test.skip(browserName !== "chromium", SAME_IN_EVERY_BROWSER);
   const { origin } = new URL(baseURL as string);
   const failedAssets: string[] = [];
   context.on("response", (response) => {
@@ -274,8 +288,10 @@ test("every page's links and assets resolve", async ({
 const collapse = (text: string) => text.replaceAll(/\s+/gu, " ").trim();
 
 test("the theme tokens page lists every token, with its default", async ({
+  browserName,
   page,
 }) => {
+  test.skip(browserName !== "chromium", SAME_IN_EVERY_BROWSER);
   await page.goto("/playground");
   await expect(page.getByRole("textbox", { name: "Text Block" })).toBeVisible();
   /** The editor's own tokens, from its stylesheet: name, then default. */

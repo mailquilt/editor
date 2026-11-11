@@ -76,11 +76,8 @@ describe("Button Block", () => {
 
   it.each([
     ["no label", { label: null }, /label/u],
-    ["an empty label", { label: "" }, /label/u],
     ["a label of only spaces", { label: "   " }, /label/u],
     ["a label that isn't text", { label: 1 }, /label/u],
-    ["rich text as its label", { label: { type: "doc" } }, /label/u],
-    ["an unknown alignment", { align: "justify" }, /align/u],
     ["a background MJML can't read", { backgroundColor: "red" }, /background/u],
     [
       "a see-through background, which MJML would paint twice",

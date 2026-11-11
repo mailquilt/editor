@@ -40,11 +40,11 @@ npm install @mailquilt/react
 With `save-key`, the Shell keeps the email in the browser's `localStorage` under that key:
 
 - When the Shell opens, an email saved under the key opens instead of `value`. `value` is the email to start from when nothing is saved yet.
-- While the saved email is open, setting `value` to nothing, or to that same starting email again, leaves it open. A React component that renders again, or gets its starting email after the Shell opens, doesn't replace the person's work. Setting a different email opens it as usual.
+- While the saved email is open, setting `value` to the starting email again leaves it open. If the Shell opened without a starting email, setting nothing leaves it open too, and the first email you set becomes the starting email. So a React component that renders again, or gets its starting email after the Shell opens, doesn't replace the person's work. Any other `value` works as on `<mail-quilt>`: a different email opens, and setting it to nothing empties the editor.
 - If the saved email can't be opened, the message bar says why and `value` opens instead. The saved email stays as it is until the person changes something, so nothing is lost by opening the page.
 - Each change is saved under the key. If the browser can't save, because storage is blocked or full, the message bar says so, and suggests Export JSON while that button shows.
 
-Pick a key no other app on the same origin uses, such as one starting with your app's name. The Shell reads the key once, when it opens, so set it before then, as the examples do. Removing it later stops the saving.
+Pick a key no other app on the same origin uses, such as one starting with your app's name. Set it before the Shell opens, as the examples do. If you change it later, the email saved under the new key opens. With nothing saved there, the current email stays and is saved under the new key from its next change. Removing the key stops the saving.
 
 Opening the saved email doesn't fire `mq-change`, because the person hasn't changed anything. If your app keeps its own copy of the email, read `value` from the element once it has loaded, such as from the `ref` in React, rather than assuming it's the email you passed.
 

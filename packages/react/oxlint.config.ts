@@ -11,5 +11,4 @@ export default defineConfig({
   env: root.env,
   extends: [core, playwright, react],
   ignorePatterns: root.ignorePatterns,
-  settings: root.settings,
 });
