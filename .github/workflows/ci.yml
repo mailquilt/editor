@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  pull_request:
+    # Ready for review is when a draft starts being checked.
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Lint, types, unit tests and install checks
+    # A draft is still being worked on, so it isn't checked until it's ready.
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm build
+      - run: pnpm check-types
+      # The install checks run in Chromium only.
+      - run: pnpm --filter @mailquilt/editor exec playwright install --with-deps chromium
+      - run: pnpm turbo run test --filter=@mailquilt/core --filter=@mailquilt/renderer --filter=@repo/install-checks
+        env:
+          CI: true
+
+  browsers:
+    name: Browser tests (${{ matrix.browser }} ${{ matrix.shard }}/2)
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+        shard: [1, 2]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @mailquilt/editor exec playwright install --with-deps ${{ matrix.browser }}
+      # One suite at a time, as each builds and serves its own page first.
+      - run: >-
+          pnpm turbo run test --concurrency=1 --filter=@mailquilt/editor --filter=@mailquilt/react --filter=docs -- --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/2
+        env:
+          CI: true
