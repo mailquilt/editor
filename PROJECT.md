@@ -8,7 +8,7 @@
 Mail Quilt is a set of free, open-source, MIT-licensed packages for building email design into any web app. The packages are the product, and a developer takes as many of them as they need:
 
 - **The Shell:** a whole editor page, ready-made. They build nothing.
-- **The editor:** the `<mail-quilt>` Web Component, with wrappers for React, Vue and Svelte. They build their own page around it.
+- **The editor:** the `<mail-quilt>` Web Component, with a wrapper for React, and Vue and Svelte wrappers to come. They build their own page around it.
 - **The core and the renderer:** the email as data, the Commands that change it, and the HTML. The editor is built on them, and a developer can build on them too: an interface of their own, or none.
 
 The editor is what most apps start with, and it is one part of Mail Quilt, not the whole of it.
