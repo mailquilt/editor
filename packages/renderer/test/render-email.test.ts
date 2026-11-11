@@ -357,12 +357,6 @@ describe(renderEmail, () => {
       },
     ],
     [
-      "a font family with quotes",
-      (email) => {
-        email.settings.fontFamily = `"Times New Roman", serif`;
-      },
-    ],
-    [
       "the narrowest Column",
       (email) => {
         const [row] = email.rows;
@@ -387,6 +381,28 @@ describe(renderEmail, () => {
     change(email);
 
     await expect(renderEmail(email)).resolves.toMatch(/^<!doctype html>/iu);
+  });
+
+  it("exports a font family with quotes, escaped in a Heading's style", async () => {
+    const email = emailWithText("Hi");
+    email.settings.fontFamily = `"Times New Roman", serif`;
+    email.rows[0]?.columns[0]?.blocks.push({
+      id: "heading-1",
+      props: {
+        content: {
+          content: [
+            { content: [{ text: "Title", type: "text" }], type: "paragraph" },
+          ],
+          type: "doc",
+        },
+        level: 1,
+      },
+      type: "heading",
+    });
+
+    await expect(renderEmail(email)).resolves.toMatch(
+      /<h1 style="[^"]*font-family:&quot;Times New Roman&quot;, serif;/u
+    );
   });
 
   it("refuses a Column width that would break out of its attribute, with the reason", async () => {
