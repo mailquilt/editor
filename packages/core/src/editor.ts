@@ -3,7 +3,7 @@ import type { Command } from "./commands.js";
 import type { BlocksDocument } from "./document.js";
 import { loadDocument } from "./load-document.js";
 import { applyOperation, reverseOperation } from "./operations.js";
-import type { Operation } from "./operations.js";
+import type { Operation, PropsTarget } from "./operations.js";
 
 export type ApplyResult =
   | {
@@ -39,6 +39,17 @@ export interface Editor {
    */
   subscribe: (listener: (operations: Operation[]) => void) => () => void;
 }
+
+/** Whether two setProps Operations change the same thing. */
+const isSameTarget = (a: PropsTarget, b: PropsTarget) => {
+  if ("blockId" in a) {
+    return "blockId" in b && a.blockId === b.blockId;
+  }
+  if ("rowId" in a) {
+    return "rowId" in b && a.rowId === b.rowId;
+  }
+  return "emailSettings" in b;
+};
 
 export const createEditor = ({
   document: initialDocument,
@@ -82,7 +93,20 @@ export const createEditor = ({
       const mergeKey = options?.mergeKey;
       const openStep = undoStack.at(-1);
       if (openStep && mergeKey !== undefined && mergeKey === openMergeKey) {
-        openStep.push(...operations);
+        for (const operation of operations) {
+          const last = openStep.at(-1);
+          // One Operation per thing, from its first props to its latest, so a
+          // step doesn't keep a copy of a Block's text for every keystroke.
+          if (
+            last?.type === "setProps" &&
+            operation.type === "setProps" &&
+            isSameTarget(last, operation)
+          ) {
+            openStep[openStep.length - 1] = { ...last, props: operation.props };
+          } else {
+            openStep.push(operation);
+          }
+        }
       } else {
         undoStack.push(operations);
       }

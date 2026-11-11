@@ -263,6 +263,14 @@ const stopReleaseClick = (click: MouseEvent) => {
   }
 };
 
+/** Stops the click of a release that ends a drag, until the next task. */
+const guardReleaseClick = () => {
+  window.addEventListener("click", stopReleaseClick, { capture: true });
+  setTimeout(() => {
+    window.removeEventListener("click", stopReleaseClick, { capture: true });
+  }, 0);
+};
+
 interface Press {
   grab: Grab;
   /** Where the press was, which the copy keeps under the pointer. */
@@ -467,6 +475,11 @@ export const createBlockDragging = ({
           keydown.preventDefault();
           keydown.stopPropagation();
           release(false);
+          // The button is still down, and the body still has the pointer.
+          window.addEventListener("pointerup", guardReleaseClick, {
+            capture: true,
+            once: true,
+          });
         }
       },
       { capture: true, signal }
@@ -528,12 +541,7 @@ export const createBlockDragging = ({
           up.stopPropagation();
           // Where it was let go, which may be ahead of the last frame.
           drag.pointer = { x: up.clientX, y: up.clientY };
-          window.addEventListener("click", stopReleaseClick, { capture: true });
-          setTimeout(() => {
-            window.removeEventListener("click", stopReleaseClick, {
-              capture: true,
-            });
-          }, 0);
+          guardReleaseClick();
         }
         release(true);
       },

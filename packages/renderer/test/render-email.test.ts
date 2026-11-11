@@ -350,7 +350,7 @@ describe(renderEmail, () => {
     [
       "a font family with quotes",
       (email) => {
-        email.settings.fontFamily = `"Times New Roman", <serif>`;
+        email.settings.fontFamily = `"Times New Roman", serif`;
       },
     ],
     [

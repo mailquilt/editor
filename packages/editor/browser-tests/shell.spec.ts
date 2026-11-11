@@ -382,6 +382,25 @@ test.describe("a saved email standing in for the host's", () => {
   });
 });
 
+test("a new save-key opens the email saved under it", async ({ page }) => {
+  await page.addInitScript(
+    (email) => localStorage.setItem("test:second", JSON.stringify(email)),
+    emailWith("Second")
+  );
+  await openShell(page, "?save-key=test:first");
+
+  await shell(page).evaluate((element) =>
+    element.setAttribute("save-key", "test:second")
+  );
+  await expect(textBlock(page)).toHaveText("Second");
+  await focusStartOfTextBlock(page);
+  await page.keyboard.type("Oh ");
+
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem("test:second")))
+    .toContain("Oh Second");
+});
+
 test("removing save-key stops saving", async ({ page }) => {
   await openShell(page, "?save-key=test:email");
   await shell(page).evaluate((element) => element.removeAttribute("save-key"));

@@ -33,6 +33,24 @@ test("typing fires mq-change with the new document", async ({ page }) => {
   await expect.poll(() => latestDocumentText(page)).toBe("Oh Hello");
 });
 
+test("a value set before the element is defined still opens", async ({
+  page,
+}) => {
+  const html = await page.evaluate(
+    async (email) => {
+      const late = document.createElement("mail-quilt-late") as MailQuilt;
+      late.value = email;
+      document.body.append(late);
+      const defined = customElements.get("mail-quilt") as typeof MailQuilt;
+      customElements.define("mail-quilt-late", class extends defined {});
+      return await late.exportHtml();
+    },
+    emailWith([[["Early"]]])
+  );
+
+  expect(html).toContain("Early");
+});
+
 test("mq-change reaches listeners outside the element", async ({ page }) => {
   await page.evaluate(() => {
     document.addEventListener("mq-change", () => {

@@ -194,6 +194,11 @@ test.describe("moving a Block by its handle", () => {
   test("Escape cancels the drag", async ({ page }) => {
     await load(page, [[["One", "Two"], ["Three"]]]);
     const changes = await changeCount(page).textContent();
+    await page.evaluate(() => {
+      document.body.addEventListener("click", () => {
+        document.body.dataset.clicked = "yes";
+      });
+    });
 
     await pickUp(page, handleOf(page, "Two"));
     await moveTo(page, await topOf(blockElement(page, "Three")));
@@ -201,6 +206,8 @@ test.describe("moving a Block by its handle", () => {
     await page.mouse.up();
     await settle(page);
 
+    // The release isn't a click the host page should see.
+    await expect(page.locator("body")).not.toHaveAttribute("data-clicked");
     expect(await structure(page)).toStrictEqual([[["One", "Two"], ["Three"]]]);
     await expect(changeCount(page)).toHaveText(changes as string);
     await expect(dropIndicator(page)).toBeHidden();

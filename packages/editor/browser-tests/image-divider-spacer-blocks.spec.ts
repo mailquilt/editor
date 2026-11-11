@@ -2,6 +2,7 @@ import { AxeBuilder } from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import type { BrowserContext, Locator, Page } from "@playwright/test";
 
+import type { MailQuilt } from "../src/index.js";
 import {
   addRow,
   blockGroup,
@@ -379,6 +380,20 @@ test.describe("an Image", () => {
     await change(field(page, "Image URL"), PHOTO);
 
     await expect(image(page)).toHaveAttribute("src", PHOTO);
+
+    // Once the URL works, an email the host passes in shows it. The test host
+    // passes its own email back after each change, so that comes first.
+    await expect(page.getByTestId("latest-document")).toContainText(PHOTO);
+    await context.unroute(missing);
+    await canvas(page).evaluate((element, src) => {
+      const editor = element as MailQuilt;
+      const email = editor.value as NonNullable<MailQuilt["value"]>;
+      const block = email.rows[0]?.columns[0]?.blocks[0] as { props: object };
+      block.props = { src };
+      editor.value = email;
+    }, missing);
+
+    await expect(image(page)).toHaveAttribute("src", missing);
   });
 
   test("takes a Merge Tag as its URL and link, as far as the export", async ({

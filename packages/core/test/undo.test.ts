@@ -228,17 +228,26 @@ describe("subscribing to Operations", () => {
     ]);
   });
 
-  it("sends the reverse of a merged step, most recent Operation first", () => {
-    const { editor, setText } = setup();
+  it("sends one Operation for a merged run of changes to one Block", () => {
+    const { blockId, document, editor, setText } = setup();
+    const before = document.rows[0]?.columns[0]?.blocks[0]?.props;
     setText("A", { mergeKey: "typing" });
     setText("AB", { mergeKey: "typing" });
-    const received: { props: unknown }[][] = [];
-    editor.subscribe((operations) => received.push(operations as never));
+    const received: unknown[][] = [];
+    editor.subscribe((operations) => received.push(operations));
 
     editor.undo();
 
-    expect(received[0]?.[0]?.props).toStrictEqual({ content: paragraph("A") });
-    expect(received[0]).toHaveLength(2);
+    expect(received).toStrictEqual([
+      [
+        {
+          blockId,
+          previousProps: { content: paragraph("AB") },
+          props: before,
+          type: "setProps",
+        },
+      ],
+    ]);
   });
 
   it("sends nothing for a rejected Command or an empty undo", () => {
