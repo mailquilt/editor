@@ -12,7 +12,7 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
@@ -25,6 +25,8 @@ jobs:
       - run: pnpm lint
       - run: pnpm build
       - run: pnpm check-types
-      - run: pnpm test
+      # One suite at a time: run together, the browser suites outgrow the
+      # runner's two CPUs, and a suite's server can't start in time.
+      - run: pnpm turbo run test --concurrency=1
         env:
           CI: true

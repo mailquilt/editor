@@ -17,5 +17,7 @@ export default defineConfig({
     command: `blume build && blume preview --port ${port}`,
     port,
     reuseExistingServer: !process.env.CI,
+    // The site builds first, which takes longer than the default minute on CI.
+    timeout: 120_000,
   },
 });
