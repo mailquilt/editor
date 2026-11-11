@@ -1,6 +1,6 @@
 # Mail Quilt
 
-Free, MIT-licensed packages for building email design into any web app: a ready-made drag-and-drop editor, and the document model and renderer it's built on.
+Free, MIT-licensed packages for building email design into any web app: a drag-and-drop editor, a ready-made editor page around it, and the document model and renderer they're built on.
 
 ## Install
 
