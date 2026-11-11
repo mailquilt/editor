@@ -11,12 +11,19 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Both jobs run in Playwright's own image, which has every browser and the
+# system libraries they need, so they install nothing from Ubuntu's package
+# servers. Its version must match @playwright/test in the packages.
+
 jobs:
   check:
     name: Lint, types, unit tests and install checks
     # A draft is still being worked on, so it isn't checked until it's ready.
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.65.0-noble
+      options: --user 1001
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
@@ -29,14 +36,6 @@ jobs:
       - run: pnpm lint
       - run: pnpm build
       - run: pnpm check-types
-      # The install checks run in Chromium only.
-      - run: |
-          # The runner's package mirrors sometimes can't be reached for a moment.
-          for attempt in 1 2 3; do
-            pnpm --filter @mailquilt/editor exec playwright install --with-deps chromium && exit 0
-            sleep 15
-          done
-          exit 1
       - run: pnpm turbo run test --filter=@mailquilt/core --filter=@mailquilt/renderer --filter=@repo/install-checks
         env:
           CI: true
@@ -45,6 +44,9 @@ jobs:
     name: Browser tests (${{ matrix.browser }} ${{ matrix.shard }}/2)
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.65.0-noble
+      options: --user 1001
     timeout-minutes: 20
     strategy:
       fail-fast: false
@@ -59,13 +61,6 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: |
-          # The runner's package mirrors sometimes can't be reached for a moment.
-          for attempt in 1 2 3; do
-            pnpm --filter @mailquilt/editor exec playwright install --with-deps ${{ matrix.browser }} && exit 0
-            sleep 15
-          done
-          exit 1
       # One suite at a time, as each builds and serves its own page first.
       - run: >-
           pnpm turbo run test --concurrency=1 --filter=@mailquilt/editor --filter=@mailquilt/react --filter=docs -- --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/2
