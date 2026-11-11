@@ -1952,7 +1952,8 @@ export class MailQuilt extends LitElement {
             class="icon-button danger"
             data-tooltip="Delete Row"
             type="button"
-            @click=${() => this.#deleteRow(row.id)}
+            @click=${({ detail }: MouseEvent) =>
+              this.#deleteRow(row.id, detail === 0)}
           >
             ${ICONS.delete}
           </button>
@@ -2074,7 +2075,8 @@ export class MailQuilt extends LitElement {
           data-tooltip="Delete Block"
           tabindex="-1"
           type="button"
-          @click=${this.#deleteSelectedBlock}
+          @click=${({ detail }: MouseEvent) =>
+            this.#deleteSelectedBlock(detail === 0)}
         >
           ${ICONS.delete}
         </button>
@@ -2947,8 +2949,11 @@ export class MailQuilt extends LitElement {
     return this.renderRoot.querySelector<HTMLElement>(`#tab-${tab}`);
   }
 
-  /** Focus goes to the next Block, or else the one before, as it would be lost. */
-  async #deleteSelectedBlock() {
+  /**
+   * From the keyboard, focus goes to the next Block, or else the one before, as
+   * it would be lost. A button pressed with a key clicks with a `detail` of 0.
+   */
+  async #deleteSelectedBlock(fromKeyboard: boolean) {
     const document = this.#editor?.getDocument();
     const blockId = this.#activeBlockId;
     if (!document || blockId === undefined) {
@@ -2961,28 +2966,25 @@ export class MailQuilt extends LitElement {
       this.#announce("Block deleted.");
       this.#publishStructure();
       await this.updateComplete;
-      if (neighbour !== undefined) {
+      if (fromKeyboard && neighbour !== undefined) {
         this.#blockElement(neighbour)?.focus();
       }
     }
   }
 
   /**
-   * With focus in the Row, it goes to the next Row's tools, or else the one
+   * From the keyboard, focus goes to the next Row's tools, or else the one
    * before, as it would be lost.
    */
-  async #deleteRow(rowId: string) {
+  async #deleteRow(rowId: string, fromKeyboard: boolean) {
     const rows = this.#editor?.getDocument().rows ?? [];
     const index = rows.findIndex(({ id }) => id === rowId);
     const neighbour = rows[index + 1] ?? rows[index - 1];
-    const hadFocus = this.renderRoot
-      .querySelector(`.row-frame[data-row-id="${CSS.escape(rowId)}"]`)
-      ?.contains(this.shadowRoot?.activeElement ?? null);
     if (this.#tryCommand({ rowId, type: "removeRow" })) {
       this.#announce("Row deleted.");
       this.#publishStructure();
       await this.updateComplete;
-      if (hadFocus && neighbour) {
+      if (fromKeyboard && neighbour) {
         this.renderRoot
           .querySelector(
             `.row-frame[data-row-id="${CSS.escape(neighbour.id)}"] .row-toolbar`

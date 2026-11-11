@@ -205,6 +205,24 @@ test.describe("deleting a Block", () => {
     expect(await structure(page)).toStrictEqual([[["A"]]]);
   });
 
+  test("with the mouse, deleting selects nothing in its place", async ({
+    page,
+  }) => {
+    await setValue(page, emailWith([[["A", "B"]]]));
+    await canvas(page)
+      .getByRole("group", { name: "Text Block" })
+      .filter({ hasText: "A" })
+      .click();
+
+    await deleteBlock(page).click();
+
+    await expect(canvas(page).getByRole("status")).toHaveText("Block deleted.");
+    expect(await structure(page)).toStrictEqual([[["B"]]]);
+    await expect(
+      canvas(page).locator('.block[aria-current="true"]')
+    ).toHaveCount(0);
+  });
+
   test("a second Enter from the keyboard doesn't add a Block", async ({
     page,
   }) => {
