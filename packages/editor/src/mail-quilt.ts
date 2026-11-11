@@ -923,7 +923,7 @@ export class MailQuilt extends LitElement {
        */
       .email:has(.row-frame:hover)
         .row-frame:not(:hover)
-        > .row-toolbar:not(:focus-within) {
+        > .row-toolbar:not(:has(:focus-visible)) {
         opacity: 0;
         pointer-events: none;
       }
@@ -2603,6 +2603,9 @@ export class MailQuilt extends LitElement {
    * button takes focus, so typing can't go on in a Block's text.
    */
   async #selectRow(rowId: string) {
+    // From the keyboard, as from the Rows tab, the focus ring follows.
+    const focusVisible =
+      this.shadowRoot?.activeElement?.matches(":focus-visible") ?? false;
     this.#clearBlockSelection();
     this.#selectedRowId = rowId;
     this.#showProperties = true;
@@ -2612,7 +2615,7 @@ export class MailQuilt extends LitElement {
       .querySelector(`.row-frame[data-row-selected] .row-toolbar`)
       ?.querySelector<HTMLElement>('[aria-label="Select Row"]');
     if (button && this.shadowRoot?.activeElement !== button) {
-      button.focus({ focusVisible: false } as FocusOptions);
+      button.focus({ focusVisible } as FocusOptions);
     }
   }
 

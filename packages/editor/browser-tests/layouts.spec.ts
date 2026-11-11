@@ -291,9 +291,7 @@ test.describe("adding and deleting Rows", () => {
   test("each is one undo step", async ({ page }) => {
     await addRow(page);
     await expect(rowControls(page, 2)).toBeVisible();
-    // The added Row's tools have focus, and show over the first Row's.
-    await deleteRowButton(page, 1).focus();
-    await page.keyboard.press("Enter");
+    await deleteRow(page, 1);
     await expect(textBlock(page)).toHaveCount(0);
 
     await page.getByRole("button", { name: "Undo" }).click();
