@@ -394,7 +394,11 @@ const planSetRowLayout = (
     return rejected(`No Row with ID "${rowId}"`);
   }
   if (rowLayoutOf(row) === layout) {
-    return rejected(`Row "${rowId}" already has the layout "${layout}"`);
+    return {
+      ok: false,
+      reason: `Row "${rowId}" already has the layout "${layout}"`,
+      unchanged: true,
+    };
   }
 
   const widths = LAYOUT_WIDTHS[layout];

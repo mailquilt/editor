@@ -441,6 +441,15 @@ describe("a Command for what's already so", () => {
     });
     expect(editor.apply(move("a", "nope", 0))).not.toHaveProperty("unchanged");
   });
+
+  it("says a Row already has the layout it's asked for", () => {
+    const { editor, operations } = setup();
+
+    expect(
+      editor.apply({ layout: "50/50", rowId: "row", type: "setRowLayout" })
+    ).toMatchObject({ ok: false, unchanged: true });
+    expect(operations).toStrictEqual([]);
+  });
 });
 
 describe("rejecting a Block Command", () => {
@@ -780,11 +789,6 @@ describe("rejecting a Row Command", () => {
       "a layout named after a built-in",
       { layout: "constructor", rowId: "row", type: "setRowLayout" },
       /layout/u,
-    ],
-    [
-      "the layout the Row already has",
-      { layout: "50/50", rowId: "row", type: "setRowLayout" },
-      /already/u,
     ],
     [
       "a layout for a Row that doesn't exist",
