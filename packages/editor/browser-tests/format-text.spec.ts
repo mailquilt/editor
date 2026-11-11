@@ -213,6 +213,29 @@ test.describe("bold, italic and underline", () => {
       ]);
   });
 
+  test("bold on part of a Merge Tag makes all of the tag bold", async ({
+    page,
+  }) => {
+    await selectAllInBlock(page);
+    await page.keyboard.type("Hi {{first_name}}");
+    await pressArrow(page, "ArrowLeft");
+    await pressArrow(page, "ArrowLeft");
+    for (const _ of "first_name") {
+      // oxlint-disable-next-line no-await-in-loop -- Each key moves the selection on.
+      await extendSelection(page, "ArrowLeft");
+    }
+
+    await page.keyboard.press("ControlOrMeta+b");
+
+    await expect
+      .poll(() => savedInline(page))
+      .toStrictEqual([
+        { text: "Hi ", type: "text" },
+        { marks: [{ type: "bold" }], text: "{{first_name}}", type: "text" },
+      ]);
+    expect(await exportHtml(page)).toContain("<strong>{{first_name}}</strong>");
+  });
+
   test("text typed after turning bold on is bold", async ({ page }) => {
     await cursorAtEndOfBlock(page);
 

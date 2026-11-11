@@ -19,7 +19,12 @@ import type {
   Node as ProseMirrorNode,
   ResolvedPos,
 } from "prosemirror-model";
-import { EditorState, Selection, TextSelection } from "prosemirror-state";
+import {
+  EditorState,
+  Plugin,
+  Selection,
+  TextSelection,
+} from "prosemirror-state";
 import type { Command, Transaction } from "prosemirror-state";
 import {
   AddMarkStep,
@@ -325,6 +330,69 @@ const changesFormatting = ({ steps }: Transaction) =>
         step.slice.content.firstChild?.type.name === "hardBreak")
   );
 
+/** Marks a change the host made, which isn't the user's to report. */
+const FROM_HOST = "mailquilt:fromHost";
+
+/** A Merge Tag, as `core` finds one. */
+const MERGE_TAG = /\{\{[^{}]+\}\}/gu;
+
+/**
+ * Keeps a Merge Tag whole, since a mark over part of one splits it in the HTML.
+ * After any change, such as formatting, linking, typing or paste, a mark on
+ * part of a tag goes on all of it, or comes off all of it when the change only
+ * took marks of that type off.
+ */
+const keepMergeTagsWhole = new Plugin({
+  appendTransaction: (transactions, _before, state) => {
+    if (
+      !transactions.some(
+        (transaction) =>
+          transaction.docChanged && !transaction.getMeta(FROM_HOST)
+      )
+    ) {
+      return null;
+    }
+    const added = new Set<MarkType>();
+    const removed = new Set<MarkType>();
+    for (const { steps } of transactions) {
+      for (const step of steps) {
+        if (step instanceof AddMarkStep) {
+          added.add(step.mark.type);
+        } else if (step instanceof RemoveMarkStep) {
+          removed.add(step.mark.type);
+        }
+      }
+    }
+    const { tr } = state;
+    state.doc.descendants((node, pos) => {
+      if (!node.isTextblock) {
+        return true;
+      }
+      for (const { 0: tag, index } of node.textContent.matchAll(MERGE_TAG)) {
+        const from = pos + 1 + index;
+        const to = from + tag.length;
+        const texts: ProseMirrorNode[] = [];
+        state.doc.nodesBetween(from, to, (child) => {
+          if (child.isText) {
+            texts.push(child);
+          }
+        });
+        for (const mark of new Set(texts.flatMap((text) => text.marks))) {
+          if (!texts.every((text) => mark.isInSet(text.marks))) {
+            if (removed.has(mark.type) && !added.has(mark.type)) {
+              tr.removeMark(from, to, mark);
+            } else {
+              tr.addMark(from, to, mark);
+            }
+          }
+        }
+      }
+      return false;
+    });
+    return tr.docChanged ? tr : null;
+  },
+});
+
 /**
  * Where the cursor belongs once `current` has become `next`, or undefined if
  * they match. Removing the "l" typed in "Hell|lo" could be read as a change at
@@ -346,9 +414,6 @@ const cursorAfterChange = (
     Math.min(moved, Math.max(start, end.a))
   );
 };
-
-/** Marks a change the host made, which isn't the user's to report. */
-const FROM_HOST = "mailquilt:fromHost";
 
 /** Marks a focus change: true when the text gains focus, false when it loses it. */
 const FOCUSED = "mailquilt:focused";
@@ -459,6 +524,7 @@ export const createTextBlockView = ({
           "Shift-Enter": insertHardBreak,
         }),
         keymap(editingKeys),
+        keepMergeTagsWhole,
       ],
     }),
   });
