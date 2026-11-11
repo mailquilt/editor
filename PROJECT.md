@@ -101,7 +101,7 @@ Keyboard, drag and drop, and the document path are part of `0.1.0`. AI, MCP, CLI
 - **The core is framework-free.** `core` and `renderer` must run without a browser DOM or UI framework.
 - **The UI is written once.** The editor is a Web Component, and framework wrappers stay thin.
 - **The renderer works on its own.** A server can render an email without loading any editor code.
-- **MJML is internal to `renderer`.** It uses `mjml-browser` on servers and in browsers, which keeps the full `mjml` package and its dependencies out of every install. That build is about 345 KB gzipped, so it loads only for preview or export.
+- **MJML is internal to `renderer`.** It uses `mjml-browser` on servers and in browsers, which keeps the full `mjml` package and its dependencies out of every install. In a browser, MJML and the `cheerio` it needs are about 423 KB gzipped, so they load only for preview or export.
 - **The canvas does not run MJML.** It is a fast Lit view. Preview shows the real exported HTML in a sandboxed iframe. Each Block uses one shared function to turn its properties into styles for both.
 - **Block definitions are split by package.** See section 11. Their definitions drive the settings UI and validation, and later AI schemas and MCP tools.
 - **Documents are versioned.** Every saved format has a version and a migration path.
