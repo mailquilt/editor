@@ -99,6 +99,20 @@ test.beforeEach(async ({ page }) => {
   await expect(textBlock(page)).toHaveText("Hello");
 });
 
+test("from all the text selected, ← and → go to its start and end", async ({
+  page,
+}) => {
+  await selectAllInBlock(page);
+  await pressArrow(page, "ArrowLeft");
+  await page.keyboard.type("x");
+  await expect(textBlock(page)).toHaveText("xHello");
+
+  await selectAll(page);
+  await pressArrow(page, "ArrowRight");
+  await page.keyboard.type("y");
+  await expect(textBlock(page)).toHaveText("xHelloy");
+});
+
 test.describe("bold, italic and underline", () => {
   test("Underline from its keyboard shortcut reaches the exported email", async ({
     page,
