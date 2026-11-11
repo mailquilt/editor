@@ -220,6 +220,58 @@ test.describe("bold, italic and underline", () => {
         { marks: [{ type: "bold" }], text: "{{first_name}}", type: "text" },
       ]);
   });
+
+  test("bold off part of a Merge Tag takes it off all of the tag", async ({
+    page,
+  }) => {
+    await selectAllInBlock(page);
+    await page.keyboard.type("Hi {{first_name}}");
+    await selectAll(page);
+    await page.keyboard.press("ControlOrMeta+b");
+    await pressArrow(page, "ArrowRight");
+    await pressArrow(page, "ArrowLeft");
+    await pressArrow(page, "ArrowLeft");
+    for (const _ of "first_name") {
+      // oxlint-disable-next-line no-await-in-loop -- Each key moves the selection on.
+      await extendSelection(page, "ArrowLeft");
+    }
+
+    await page.keyboard.press("ControlOrMeta+b");
+
+    await expect
+      .poll(() => savedInline(page))
+      .toStrictEqual([
+        { marks: [{ type: "bold" }], text: "Hi ", type: "text" },
+        { text: "{{first_name}}", type: "text" },
+      ]);
+  });
+
+  test("a new link on part of a linked Merge Tag goes on all of it", async ({
+    page,
+  }) => {
+    await selectAllInBlock(page);
+    await page.keyboard.type("{{first_name}}");
+    await selectAll(page);
+    await addLink(page, "https://example.com");
+    await expect(textBlock(page)).toBeFocused();
+    await pressArrow(page, "ArrowLeft");
+    for (const _ of "{{first") {
+      // oxlint-disable-next-line no-await-in-loop -- Each key moves the selection on.
+      await extendSelection(page, "ArrowRight");
+    }
+
+    await addLink(page, "https://example.org");
+
+    await expect
+      .poll(() => savedInline(page))
+      .toStrictEqual([
+        {
+          marks: [{ attrs: { href: "https://example.org" }, type: "link" }],
+          text: "{{first_name}}",
+          type: "text",
+        },
+      ]);
+  });
 });
 
 test.describe("the toolbar", () => {
