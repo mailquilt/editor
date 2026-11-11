@@ -19,7 +19,12 @@ import type {
   Node as ProseMirrorNode,
   ResolvedPos,
 } from "prosemirror-model";
-import { EditorState, Selection, TextSelection } from "prosemirror-state";
+import {
+  AllSelection,
+  EditorState,
+  Selection,
+  TextSelection,
+} from "prosemirror-state";
 import type { Command, Transaction } from "prosemirror-state";
 import {
   AddMarkStep,
@@ -283,6 +288,28 @@ const insertHardBreak: Command = (state, dispatch) => {
 };
 
 /**
+ * From all the text selected, ← and → go to its start or end, as from any other
+ * selection. Select all covers the whole document, and some browsers leave
+ * that to an arrow key that then does nothing, such as WebKit on Linux once a
+ * link is in it.
+ */
+const collapseSelectAll =
+  (toEnd: boolean): Command =>
+  (state, dispatch) => {
+    if (!(state.selection instanceof AllSelection)) {
+      return false;
+    }
+    dispatch?.(
+      state.tr
+        .setSelection(
+          toEnd ? Selection.atEnd(state.doc) : Selection.atStart(state.doc)
+        )
+        .scrollIntoView()
+    );
+    return true;
+  };
+
+/**
  * ProseMirror's own keys, with Enter keeping the formatting and Delete removing
  * an empty paragraph. Commands are matched rather than keys, so the macOS keys
  * that delete forward too, such as Ctrl+D and Alt+Delete, change with Delete.
@@ -449,6 +476,8 @@ export const createTextBlockView = ({
       doc: schema.nodeFromJSON(content),
       plugins: [
         keymap({
+          ArrowLeft: collapseSelectAll(false),
+          ArrowRight: collapseSelectAll(true),
           "Mod-B": bold,
           "Mod-Enter": insertHardBreak,
           "Mod-I": toggleMarkCommand(schema.marks.italic),
