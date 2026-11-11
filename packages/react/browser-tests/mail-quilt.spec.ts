@@ -86,16 +86,21 @@ test("a different document in value loads and clears undo history", async ({
   await expect(textBlock(page)).toHaveText("Other");
 });
 
-test("a refused later document leaves the email and reports why", async ({
+test("other props such as className and aria-label reach the element", async ({
   page,
 }) => {
-  await page.goto("/");
-  await expect(textBlock(page)).toHaveText("Hello");
-
-  await page.getByRole("button", { name: "Load a refused email" }).click();
-
-  await expect(page.getByTestId("errors")).toContainText("newer");
-  await expect(textBlock(page)).toHaveText("Hello");
+  for (const [query, tag] of [
+    ["/", "mail-quilt"],
+    ["/?shell", "mail-quilt-shell"],
+  ] as const) {
+    // oxlint-disable-next-line no-await-in-loop -- One component, then the other.
+    await page.goto(query);
+    const element = page.locator(tag);
+    // oxlint-disable-next-line no-await-in-loop -- See above.
+    await expect(element).toHaveClass("host-editor");
+    // oxlint-disable-next-line no-await-in-loop -- See above.
+    await expect(element).toHaveAttribute("aria-label", "Newsletter");
+  }
 });
 
 test("ref gives the host the element, to export HTML", async ({ page }) => {

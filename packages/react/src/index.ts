@@ -13,7 +13,7 @@ import {
   useLayoutEffect,
   useState,
 } from "react";
-import type { Ref } from "react";
+import type { HTMLAttributes, ReactElement, Ref } from "react";
 
 export type {
   BlocksDocument,
@@ -30,9 +30,16 @@ interface EditorProps<Element> {
   value?: BlocksDocument;
 }
 
-export type MailQuiltProps = EditorProps<MailQuiltElement>;
+/** What else the element takes, such as `className`, `style`, `id` and `aria-*`. */
+type ElementAttributes = Omit<
+  HTMLAttributes<HTMLElement>,
+  "children" | "dangerouslySetInnerHTML" | "onChange" | "onError"
+>;
 
-export interface MailQuiltShellProps extends EditorProps<MailQuiltShellElement> {
+export type MailQuiltProps = EditorProps<MailQuiltElement> & ElementAttributes;
+
+export interface MailQuiltShellProps
+  extends EditorProps<MailQuiltShellElement>, ElementAttributes {
   /** The Shell's buttons to show. All of them when left out, none when empty. */
   actions?: readonly ShellAction[];
   /** The text in the Shell's header. "Email" when left out. */
@@ -106,8 +113,17 @@ const useEditorElement = <
   return setElement;
 };
 
-export const MailQuilt = (props: MailQuiltProps) =>
-  createElement("mail-quilt", { ref: useEditorElement(props) });
+export const MailQuilt = ({
+  onChange,
+  onError,
+  ref,
+  value,
+  ...attributes
+}: MailQuiltProps): ReactElement =>
+  createElement("mail-quilt", {
+    ...attributes,
+    ref: useEditorElement({ onChange, onError, ref, value }),
+  });
 
 /**
  * A ready-made editor page: the editor with a header, Import and Export, and
@@ -117,17 +133,22 @@ export const MailQuilt = (props: MailQuiltProps) =>
 export const MailQuiltShell = ({
   actions,
   heading,
+  onChange,
+  onError,
+  ref,
   saveKey,
-  ...props
-}: MailQuiltShellProps) => {
+  value,
+  ...rest
+}: MailQuiltShellProps): ReactElement => {
   // React's types only know the attributes of built-in elements.
   const attributes: Record<string, unknown> = {
+    ...rest,
     actions: actions?.join(" "),
     heading,
     "save-key": saveKey,
   };
   return createElement("mail-quilt-shell", {
     ...attributes,
-    ref: useEditorElement(props),
+    ref: useEditorElement({ onChange, onError, ref, value }),
   });
 };
