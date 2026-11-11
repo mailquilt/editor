@@ -1,19 +1,12 @@
 import { createEditor, createEmail } from "@mailquilt/core";
 import { MailQuiltShell } from "@mailquilt/react";
 
-// The editor only does anything in a browser, so this island is never
-// server-rendered.
-export const client = "only";
+import { paragraph } from "../site/rich-text";
 
 // The key the Playground has always used, so visitors keep their saved emails.
 // The prefix, because other apps on the same origin, such as other projects on
 // localhost, share its localStorage.
 const SAVED_EMAIL_KEY = "mailquilt:playground:email";
-
-const paragraph = (text: string) => ({
-  content: [{ content: [{ text, type: "text" }], type: "paragraph" }],
-  type: "doc",
-});
 
 /**
  * A Heading, a Text Block and a Button, each in its own Row, so that moving a

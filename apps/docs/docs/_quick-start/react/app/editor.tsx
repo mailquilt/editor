@@ -11,8 +11,13 @@ const savedEmail = (): BlocksDocument | undefined => {
   if (typeof window === "undefined") {
     return;
   }
-  const saved = localStorage.getItem("email");
-  return saved ? JSON.parse(saved) : starterEmail;
+  try {
+    const saved = localStorage.getItem("email");
+    return saved ? JSON.parse(saved) : starterEmail;
+  } catch {
+    // Storage is blocked, or what's saved isn't JSON.
+    return starterEmail;
+  }
 };
 
 export const Editor = () => {
@@ -25,8 +30,8 @@ export const Editor = () => {
     <main>
       <MailQuilt
         onChange={(next) => {
-          localStorage.setItem("email", JSON.stringify(next));
           setEmail(next);
+          localStorage.setItem("email", JSON.stringify(next));
         }}
         onError={({ reason }) => setLoadError(reason)}
         ref={editor}
