@@ -16,7 +16,12 @@ export const arrowDirection = (event: KeyboardEvent): Direction | undefined =>
     ? undefined
     : ARROW_KEYS[event.key];
 
-const locate = (document: BlocksDocument, blockId: string) => {
+/** Every Block in the email, in reading order. */
+export const blocksIn = (document: BlocksDocument) =>
+  document.rows.flatMap((row) => row.columns.flatMap(({ blocks }) => blocks));
+
+/** A Block, and its Column and Row with their indexes. */
+export const locate = (document: BlocksDocument, blockId: string) => {
   const position = findBlockPosition(document, blockId);
   const row = position && document.rows[position.rowIndex];
   if (!(position && row)) {
@@ -28,6 +33,8 @@ const locate = (document: BlocksDocument, blockId: string) => {
   const column = row.columns[columnIndex];
   return column && { ...position, column, columnIndex, row };
 };
+
+export type BlockPlace = NonNullable<ReturnType<typeof locate>>;
 
 export const columnLabel = (rowIndex: number, columnIndex: number) =>
   `Row ${rowIndex + 1}, Column ${columnIndex + 1}`;
@@ -55,9 +62,7 @@ export const neighbourBlockId = (
   direction: Direction
 ) => {
   if (direction === "up" || direction === "down") {
-    const ids = document.rows.flatMap((row) =>
-      row.columns.flatMap((column) => column.blocks.map(({ id }) => id))
-    );
+    const ids = blocksIn(document).map(({ id }) => id);
     return ids[ids.indexOf(blockId) + (direction === "down" ? 1 : -1)];
   }
   const place = locate(document, blockId);
