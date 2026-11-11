@@ -659,6 +659,7 @@ test.describe("setting value", () => {
       (element as MailQuilt).value = undefined;
     });
     await expect(textBlock(page)).toHaveCount(0);
+    await expect(exportHtml(page)).rejects.toThrow("has no document to export");
 
     await setValue(page, saved);
     await expect(textBlock(page)).toHaveText("Hello");
@@ -666,47 +667,34 @@ test.describe("setting value", () => {
 });
 
 test.describe("refusing a document", () => {
-  // oxlint-disable-next-line typescript/no-explicit-any -- These damage documents on purpose, which the real type forbids.
-  const refused: [string, (email: any) => unknown, RegExp][] = [
-    [
-      "a newer version",
-      (email) => ({ ...email, version: 2 }),
-      /version 2 is newer/iu,
-    ],
-  ];
+  test("a newer version fires mq-error and leaves the email as it was", async ({
+    page,
+  }) => {
+    await focusStartOfTextBlock(page);
+    await page.keyboard.type("ab");
+    await expect(page.getByTestId("change-count")).toHaveText("2");
+    const before = await currentValue(page);
 
-  for (const [name, damage, reason] of refused) {
-    test(`${name} fires mq-error and leaves the email as it was`, async ({
-      page,
-    }) => {
-      await focusStartOfTextBlock(page);
-      await page.keyboard.type("ab");
-      await expect(page.getByTestId("change-count")).toHaveText("2");
-      const before = await canvas(page).evaluate(
-        (element) => (element as MailQuilt).value
-      );
-
-      const reasons = await setValueAndCollectErrors(
-        page,
-        damage(structuredClone(before))
-      );
-
-      expect(reasons).toStrictEqual([expect.stringMatching(reason)]);
-      await expect(textBlock(page)).toHaveText("abHello");
-      expect(
-        await canvas(page).evaluate((element) => (element as MailQuilt).value)
-      ).toStrictEqual(before);
-      expect(await exportHtml(page)).toContain("abHello");
-      await expect(page.getByTestId("change-count")).toHaveText("2");
-
-      // The email is still the same one, with its cursor and undo history.
-      await expect(textBlock(page)).toBeFocused();
-      await page.keyboard.type("c");
-      await expect(textBlock(page)).toHaveText("abcHello");
-      await undo(page);
-      await expect(textBlock(page)).toHaveText("Hello");
+    const reasons = await setValueAndCollectErrors(page, {
+      ...before,
+      version: 2,
     });
-  }
+
+    expect(reasons).toStrictEqual([
+      expect.stringMatching(/version 2 is newer/iu),
+    ]);
+    await expect(textBlock(page)).toHaveText("abHello");
+    expect(await currentValue(page)).toStrictEqual(before);
+    expect(await exportHtml(page)).toContain("abHello");
+    await expect(page.getByTestId("change-count")).toHaveText("2");
+
+    // The email is still the same one, with its cursor and undo history.
+    await expect(textBlock(page)).toBeFocused();
+    await page.keyboard.type("c");
+    await expect(textBlock(page)).toHaveText("abcHello");
+    await undo(page);
+    await expect(textBlock(page)).toHaveText("Hello");
+  });
 
   test("a clone with a damaged list isn't mistaken for the same document", async ({
     page,
@@ -755,11 +743,16 @@ test.describe("refusing a document", () => {
       return {
         editors:
           element.shadowRoot?.querySelectorAll("[contenteditable]").length,
+        exported: await element.exportHtml().catch(String),
         value: element.value ?? null,
       };
     });
 
-    expect(result).toStrictEqual({ editors: 0, value: null });
+    expect(result).toStrictEqual({
+      editors: 0,
+      exported: "Error: <mail-quilt> has no document to export",
+      value: null,
+    });
   });
 });
 

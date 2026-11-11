@@ -265,6 +265,41 @@ const belowMiddleOf = async (page: Page, position: number) => {
 
 const changeCount = (page: Page) => page.getByTestId("change-count");
 
+test("each Row move fires one mq-change, by button, Alt+↓ or drag", async ({
+  page,
+}) => {
+  await open(page, [[["One"]], [["Two"]], [["Three"]]]);
+  const before = Number(await changeCount(page).textContent());
+
+  await clickRowTool(page, 1, "Move Row down");
+  await expect(structure(page)).resolves.toEqual([
+    [["Two"]],
+    [["One"]],
+    [["Three"]],
+  ]);
+  await expect(changeCount(page)).toHaveText(String(before + 1));
+
+  await selectRow(page, 1);
+  await page.keyboard.press("Alt+ArrowDown");
+  await expect(structure(page)).resolves.toEqual([
+    [["One"]],
+    [["Two"]],
+    [["Three"]],
+  ]);
+  await expect(changeCount(page)).toHaveText(String(before + 2));
+
+  const to = await belowMiddleOf(page, 3);
+  await pickUp(page, await grip(page, 1, "handle"));
+  await moveTo(page, ...to);
+  await letGo(page);
+  await expect(structure(page)).resolves.toEqual([
+    [["Two"]],
+    [["Three"]],
+    [["One"]],
+  ]);
+  await expect(changeCount(page)).toHaveText(String(before + 3));
+});
+
 test.describe("dragging a Row", () => {
   for (const by of ["handle", "tag"] as const) {
     test(`by its ${by} moves it between Rows, as one undo step`, async ({

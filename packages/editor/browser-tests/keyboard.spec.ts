@@ -6,7 +6,12 @@ import {
   addRow,
   blockTool,
   canvas,
+  chooseLayout,
   emailWith,
+  layoutOption,
+  openBlocks,
+  openTab,
+  selectRow,
   setValue,
   structure,
   textBlock,
@@ -535,6 +540,22 @@ test.describe("announcing a move", () => {
     await expect(announcement(page)).toBeEmpty();
   });
 
+  test("undo of a layout change that moves several Blocks says nothing of one", async ({
+    page,
+  }) => {
+    await open(page, [[["A"], ["B"], ["C"]]]);
+    await blockWith(page, "A").focus();
+    await page.keyboard.press("Alt+ArrowLeft");
+    await expect(announcement(page)).toHaveText("The Block can't move left.");
+    await chooseLayout(page, 1, "100");
+    await expect(structure(page)).resolves.toEqual([[["A", "B", "C"]]]);
+
+    await page.getByRole("button", { name: "Undo" }).click();
+
+    await expect(structure(page)).resolves.toEqual([[["A"], ["B"], ["C"]]]);
+    await expect(announcement(page)).toBeEmpty();
+  });
+
   test("doesn't carry over to another email", async ({ page }) => {
     await open(page, [[["A", "B"]]]);
     await blockWith(page, "A").focus();
@@ -974,6 +995,29 @@ test.describe("automated accessibility checks", () => {
     await page.keyboard.press("Enter");
     await expect(page.getByRole("alert")).toBeVisible();
 
+    expect(await violations(page)).toEqual([]);
+  });
+
+  test("pass with a Row, the Rows tab, a Heading and the narrow notice showing", async ({
+    page,
+  }) => {
+    await openBlocks(page, ["heading", "text"]);
+
+    await selectRow(page, 1);
+    await expect(layoutOption(page, "100")).toBeVisible();
+    expect(await violations(page)).toEqual([]);
+
+    await openTab(page, "Rows");
+    expect(await violations(page)).toEqual([]);
+
+    await canvas(page).getByRole("group", { name: "Heading Block" }).focus();
+    await expect(page.getByLabel("Level", { exact: true })).toBeVisible();
+    expect(await violations(page)).toEqual([]);
+
+    await page.setViewportSize({ height: 800, width: 390 });
+    await expect(
+      canvas(page).getByText("Editing needs more room")
+    ).toBeVisible();
     expect(await violations(page)).toEqual([]);
   });
 
