@@ -216,6 +216,27 @@ test.describe("deleting a Block", () => {
     await expect(textBlock(page)).toHaveText("Hello");
   });
 
+  test("from the keyboard, focus moves to the next Block, or else the one before, and it's announced", async ({
+    page,
+  }) => {
+    await setValue(page, emailWith([[["A", "B", "C"]]]));
+    const block = (text: string) =>
+      canvas(page)
+        .getByRole("group", { name: "Text Block" })
+        .filter({ hasText: text });
+    await block("B").focus();
+
+    await deleteBlock(page).focus();
+    await page.keyboard.press("Enter");
+    await expect(block("C")).toBeFocused();
+    await expect(canvas(page).getByRole("status")).toHaveText("Block deleted.");
+
+    await deleteBlock(page).focus();
+    await page.keyboard.press("Enter");
+    await expect(block("A")).toBeFocused();
+    expect(await structure(page)).toStrictEqual([[["A"]]]);
+  });
+
   test("a second Enter from the keyboard doesn't add a Block", async ({
     page,
   }) => {
@@ -342,6 +363,28 @@ test.describe("adding and deleting Rows", () => {
     await expect(toolbar(page)).toBeFocused();
   });
 
+  test("deleting a Row from the keyboard moves focus to the next Row, or else the one before, and it's announced", async ({
+    page,
+  }) => {
+    await addRow(page);
+    await addRow(page);
+    await expect(rowControls(page, 3)).toBeVisible();
+    await deleteRowButton(page, 2).focus();
+
+    await page.keyboard.press("Enter");
+    await expect(
+      rowControls(page, 2).getByRole("button", { name: "Select Row" })
+    ).toBeFocused();
+    await expect(canvas(page).getByRole("status")).toHaveText("Row deleted.");
+
+    await deleteRowButton(page, 2).focus();
+    await page.keyboard.press("Enter");
+    await expect(
+      rowControls(page, 1).getByRole("button", { name: "Select Row" })
+    ).toBeFocused();
+    expect(await structure(page)).toStrictEqual([[["Hello"]]]);
+  });
+
   test("deleting another Row from the keyboard leaves the selected Block alone", async ({
     page,
   }) => {
@@ -354,7 +397,6 @@ test.describe("adding and deleting Rows", () => {
     await expect(rowControls(page, 2)).toHaveCount(0);
     await page.keyboard.press("Enter");
 
-    await expect(toolbar(page)).toBeFocused();
     await expect(textBlock(page).locator("p")).toHaveCount(1);
   });
 });
