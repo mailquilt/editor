@@ -192,6 +192,15 @@ describe(renderEmail, () => {
     await expect(renderEmail(email)).resolves.toContain("color:#000000");
   });
 
+  it("loads no web fonts, even for a font MJML would load", async () => {
+    const email = emailWithText("Hi");
+    email.settings.fontFamily = "Roboto, sans-serif";
+
+    await expect(renderEmail(email)).resolves.not.toContain(
+      "fonts.googleapis.com"
+    );
+  });
+
   it("escapes a preheader so it can't become markup", async () => {
     const email = emailWithText("Hi");
     email.settings.preheader = `</mj-preview><script>alert("x")</script> & {{name}}`;

@@ -2,7 +2,7 @@
 declare module "mjml-browser" {
   const mjml2html: (
     mjml: string,
-    options: { validationLevel: "strict" }
+    options: { fonts?: Record<string, string>; validationLevel: "strict" }
   ) => Promise<{ html: string }>;
   export default mjml2html;
 }
