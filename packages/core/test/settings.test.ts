@@ -255,6 +255,21 @@ describe("Email settings", () => {
     ["a color MJML can't read", { backgroundColor: "red" }, /backgroundColor/u],
     ["no background color", { backgroundColor: null }, /backgroundColor/u],
     ["no font", { fontFamily: null }, /fontFamily/u],
+    [
+      "a font that adds a CSS rule",
+      { fontFamily: "Arial;display:none" },
+      /fontFamily/u,
+    ],
+    [
+      "a font that ends the CSS block",
+      { fontFamily: "Arial}p{color:red" },
+      /fontFamily/u,
+    ],
+    [
+      "a font that loads a URL",
+      { fontFamily: "url(https://x)" },
+      /fontFamily/u,
+    ],
     ["a preheader that isn't text", { preheader: 1 }, /preheader/u],
     ["a language that isn't a code", { language: "English" }, /language/u],
     ["a language that breaks out", { language: 'en"x' }, /language/u],

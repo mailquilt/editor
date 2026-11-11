@@ -1603,6 +1603,8 @@ export class MailQuilt extends LitElement {
   #formats: TextFormats | undefined;
   /** Text in the settings panel that isn't the document's value. */
   readonly #drafts = new Map<string, FieldDraft>();
+  /** One copy of the document for each update, as `value` makes a new one. */
+  #rendered: BlocksDocument | undefined;
   /** Image URLs that didn't load, which the canvas stops trying to show. */
   readonly #failedImages = new Set<string>();
   /** Set while the link field is open. */
@@ -1636,6 +1638,13 @@ export class MailQuilt extends LitElement {
     super();
     // On the way in, because ProseMirror handles the key before it bubbles here.
     this.addEventListener("keydown", this.#onKeydownCapture, { capture: true });
+    // A host may set `value` before this element is defined, which leaves an
+    // own property in front of the setter.
+    if (Object.hasOwn(this, "value")) {
+      const { value } = this;
+      Reflect.deleteProperty(this, "value");
+      this.value = value;
+    }
   }
 
   get value() {
@@ -1700,13 +1709,14 @@ export class MailQuilt extends LitElement {
 
   protected override willUpdate() {
     this.#focusedBeforeUpdate = this.shadowRoot?.activeElement;
+    this.#rendered = this.value;
     // Lit still updates detached elements, and nothing would destroy these
     // views. connectedCallback requests an update that creates them instead.
     if (!this.isConnected) {
       return;
     }
     const blockIds = new Set<string>();
-    const rows = this.value?.rows ?? [];
+    const rows = this.#rendered?.rows ?? [];
     for (const row of rows) {
       for (const column of row.columns) {
         for (const block of column.blocks) {
@@ -1791,7 +1801,7 @@ export class MailQuilt extends LitElement {
   }
 
   protected override render() {
-    const document = this.value;
+    const document = this.#rendered;
     if (!document) {
       return nothing;
     }
@@ -3393,6 +3403,9 @@ export class MailQuilt extends LitElement {
     this.#previewHtml = undefined;
     this.#announcement = "";
     this.#drafts.clear();
+    // A URL that failed before may load now, as its image may have been
+    // uploading, or the connection down.
+    this.#failedImages.clear();
     this.#destroyViews();
     this.#editor = document && createEditor({ document });
     this.requestUpdate();

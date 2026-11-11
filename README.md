@@ -1,153 +1,35 @@
-# Turborepo starter
+# Mail Quilt
 
-This Turborepo starter is maintained by the Turborepo core team.
+Free, MIT-licensed packages for building email design into any web app: a ready-made drag-and-drop editor, and the document model and renderer it's built on.
 
-## Using this example
+## Packages
 
-Run the following command:
+| Package | What it is |
+| --- | --- |
+| `@mailquilt/core` | The email as JSON, the Commands that change it, and undo. Runs without a DOM. |
+| `@mailquilt/renderer` | Turns a document into email HTML with MJML. Runs without a DOM. |
+| `@mailquilt/editor` | The `<mail-quilt>` editor and the `<mail-quilt-shell>` editor page, as Web Components. |
+| `@mailquilt/react` | The editor and the Shell as React components. |
 
-```sh
-npx create-turbo@latest
-```
+`apps/docs` is the website: the landing page, the docs and the Playground. `packages/install-checks` installs the built packages into fresh projects and tests them there.
 
-## What's inside?
+## Working on it
 
-This Turborepo includes the following packages/apps:
-
-### Apps and Packages
-
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
-
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
-
-### Utilities
-
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-
-### Build
-
-To build all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+You need Node 24 or later and pnpm.
 
 ```sh
-cd my-turborepo
-turbo build
+pnpm install
+pnpm build        # every package, with Turborepo
+pnpm test         # unit tests, and Playwright tests in the browser
+pnpm check-types
+pnpm lint         # pnpm fix formats and fixes what it can
 ```
 
-Without global `turbo`, use your package manager:
+Run one package's task with a filter, such as `pnpm --filter @mailquilt/core test`. The browser tests need Playwright's browsers: `pnpm --filter @mailquilt/editor exec playwright install`.
 
-```sh
-cd my-turborepo
-npx turbo build
-pnpm exec turbo build
-pnpm exec turbo build
-```
+- `PROJECT.md` describes what Mail Quilt is for and what ships first.
+- `GLOSSARY.md` defines the words the code and docs use.
+- `docs/adr/` records the main design decisions.
+- `docs/agents/testing.md` says how tests are written here.
 
-You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo build --filter=<package>
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo build --filter=<package>
-pnpm exec turbo build --filter=<package>
-pnpm exec turbo build --filter=<package>
-```
-
-### Develop
-
-To develop all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo dev
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo dev
-pnpm exec turbo dev
-pnpm exec turbo dev
-```
-
-You can develop a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo dev --filter=<package>
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo dev --filter=<package>
-pnpm exec turbo dev --filter=<package>
-pnpm exec turbo dev --filter=<package>
-```
-
-### Remote Caching
-
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
-
-Turborepo can use a technique known as [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo login
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo login
-pnpm exec turbo login
-pnpm exec turbo login
-```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo link
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo link
-pnpm exec turbo link
-pnpm exec turbo link
-```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.dev/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.dev/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.dev/docs/reference/configuration)
-- [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)
+Issues and plans are in [GitHub Issues](https://github.com/yourcodebuddy-in/mailquilt/issues).

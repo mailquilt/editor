@@ -1,6 +1,7 @@
 import { isSameDocument, loadDocument } from "@mailquilt/core";
 import type { BlocksDocument, LoadResult } from "@mailquilt/core";
 import { css, html, LitElement, nothing, unsafeCSS } from "lit";
+import type { PropertyValues } from "lit";
 
 import "./mail-quilt.js";
 import type { MailQuilt } from "./mail-quilt.js";
@@ -179,6 +180,12 @@ export class MailQuiltShell extends LitElement {
 
   constructor() {
     super();
+    // As on <mail-quilt>, for a `value` set before this element is defined.
+    if (Object.hasOwn(this, "value")) {
+      const { value } = this;
+      Reflect.deleteProperty(this, "value");
+      this.value = value;
+    }
     this.heading = "Email";
     this.#editor.addEventListener("mq-change", ({ detail }) => {
       this.#keep(detail.document);
@@ -225,9 +232,13 @@ export class MailQuiltShell extends LitElement {
     this.#bodyObserver.disconnect();
   }
 
-  protected override willUpdate() {
+  protected override willUpdate(changed: PropertyValues<this>) {
     if (!this.#started) {
       this.#start();
+    } else if (changed.has("saveKey") && this.saveKey) {
+      // Another key keeps another email. With none saved there, the current
+      // email is saved under it from its next change.
+      this.#openSavedEmail(this.saveKey);
     }
   }
 

@@ -59,7 +59,12 @@ export const solidColorSchema = v.pipe(
 
 export const emailSettingsSchema = v.strictObject({
   backgroundColor: colorSchema,
-  fontFamily: v.string(),
+  // Font names only, as both outputs put it in CSS, where a ; or : would add
+  // rules of its own.
+  fontFamily: v.pipe(
+    v.string(),
+    v.regex(/^[\w ,'"-]*$/u, "Must be a list of font names")
+  ),
   language: v.optional(v.string()),
   preheader: v.optional(v.string()),
   width: v.pipe(v.number(), v.safeInteger(), v.minValue(1)),
