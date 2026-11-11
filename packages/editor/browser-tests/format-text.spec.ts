@@ -197,6 +197,29 @@ test.describe("bold, italic and underline", () => {
       ]);
     expect(await exportHtml(page)).toContain("<strong>{{first_name}}</strong>");
   });
+
+  test("a Merge Tag after a line break is kept whole too", async ({ page }) => {
+    await selectAllInBlock(page);
+    await page.keyboard.type("Hi");
+    await page.keyboard.press("Shift+Enter");
+    await page.keyboard.type("{{first_name}}");
+    await pressArrow(page, "ArrowLeft");
+    await pressArrow(page, "ArrowLeft");
+    for (const _ of "first_name") {
+      // oxlint-disable-next-line no-await-in-loop -- Each key moves the selection on.
+      await extendSelection(page, "ArrowLeft");
+    }
+
+    await page.keyboard.press("ControlOrMeta+b");
+
+    await expect
+      .poll(() => savedInline(page))
+      .toStrictEqual([
+        { text: "Hi", type: "text" },
+        { type: "hardBreak" },
+        { marks: [{ type: "bold" }], text: "{{first_name}}", type: "text" },
+      ]);
+  });
 });
 
 test.describe("the toolbar", () => {
