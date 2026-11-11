@@ -54,9 +54,9 @@ export interface TextBlockView {
 }
 
 /**
- * The JSON of ADR 0001, with the names and HTML rules Tiptap's extensions had
- * (ADR 0003), so saved and pasted text read as they did. Marks are listed in the
- * order the JSON lists them, with links first so they stay around the others.
+ * The JSON of ADR 0001. Its names, mark order and HTML rules are the ones saved
+ * and pasted text have always been read with (ADR 0003). Links come first among
+ * the marks, so they stay around the others in the JSON and in the HTML.
  */
 const schema = new Schema({
   // oxlint-disable-next-line sort-keys -- The order is the JSON's.
@@ -152,43 +152,36 @@ const { link } = schema.marks;
  * of its text has it, so that formatting part of a selection formats all of it.
  */
 const isMarkActive = (state: EditorState, type: MarkType) => {
-  const { empty, ranges } = state.selection;
-  if (empty) {
+  if (state.selection.empty) {
     return Boolean(
       type.isInSet(state.storedMarks ?? state.selection.$from.marks())
     );
   }
-  const pieces = ranges.flatMap(({ $from, $to }) => {
-    const found: { length: number; marked: boolean }[] = [];
-    state.doc.nodesBetween($from.pos, $to.pos, (node, pos) => {
-      if (node.isText || node.marks.length > 0) {
-        found.push({
-          length:
-            Math.min($to.pos, pos + node.nodeSize) - Math.max($from.pos, pos),
-          marked: Boolean(type.isInSet(node.marks)),
-        });
+  const { from, to } = state.selection;
+  let selected = 0;
+  let marked = 0;
+  state.doc.nodesBetween(from, to, (node, pos) => {
+    if (node.isText || node.marks.length > 0) {
+      const length = Math.min(to, pos + node.nodeSize) - Math.max(from, pos);
+      selected += length;
+      if (type.isInSet(node.marks)) {
+        marked += length;
       }
-    });
-    return found;
+    }
   });
-  const selected = pieces.reduce((sum, { length }) => sum + length, 0);
-  const marked = pieces
-    .filter((piece) => piece.marked)
-    .reduce((sum, { length }) => sum + length, 0);
   return selected > 0 && marked >= selected;
 };
 
 /** The link at the cursor, or the first one in the selection. */
 const linkHrefAt = ({ doc, selection, storedMarks }: EditorState) => {
-  const marks: readonly Mark[] = selection.empty
-    ? [...(storedMarks ?? []), ...selection.$head.marks()]
-    : (() => {
-        const found: Mark[] = [];
-        doc.nodesBetween(selection.from, selection.to, (node) => {
-          found.push(...node.marks);
-        });
-        return found;
-      })();
+  const marks: Mark[] = [];
+  if (selection.empty) {
+    marks.push(...(storedMarks ?? []), ...selection.$head.marks());
+  } else {
+    doc.nodesBetween(selection.from, selection.to, (node) => {
+      marks.push(...node.marks);
+    });
+  }
   return link.isInSet(marks)?.attrs.href as string | undefined;
 };
 
@@ -227,7 +220,7 @@ const linkRangeAt = ($pos: ResolvedPos, href?: string) => {
 };
 
 /** Takes a mark off the selection, and off what's typed next. */
-const removeMark = (tr: Transaction, type: MarkType) => {
+const unmarkSelection = (tr: Transaction, type: MarkType) => {
   for (const { $from, $to } of tr.selection.ranges) {
     tr.removeMark($from.pos, $to.pos, type);
   }
@@ -235,7 +228,7 @@ const removeMark = (tr: Transaction, type: MarkType) => {
 };
 
 /** Puts a mark on the selection, or on what's typed next at a cursor. */
-const addMark = (tr: Transaction, mark: Mark) => {
+const markSelection = (tr: Transaction, mark: Mark) => {
   if (tr.selection.empty) {
     return tr.addStoredMark(mark);
   }
@@ -246,18 +239,18 @@ const addMark = (tr: Transaction, mark: Mark) => {
 };
 
 /** Takes a mark off if all of the selection has it, or puts it on all of it. */
-const toggleMark =
+const toggleMarkCommand =
   (type: MarkType): Command =>
   (state, dispatch) => {
     dispatch?.(
       isMarkActive(state, type)
-        ? removeMark(state.tr, type)
-        : addMark(state.tr, type.create())
+        ? unmarkSelection(state.tr, type)
+        : markSelection(state.tr, type.create())
     );
     return true;
   };
 
-/** Delete in an empty paragraph removes it, as Tiptap's Delete did. */
+/** Delete in an empty paragraph removes it, even when it's the last one. */
 const deleteEmptyParagraph: Command = (state, dispatch) => {
   const { $anchor, empty } = state.selection;
   if (!empty || $anchor.parent.content.size > 0) {
@@ -269,12 +262,18 @@ const deleteEmptyParagraph: Command = (state, dispatch) => {
   return true;
 };
 
-/** A line break that keeps the formatting, so typing after it carries on. */
+/**
+ * A line break in place of the selection, with the cursor after it. It keeps
+ * the formatting, so typing after it carries on, but has none of its own.
+ */
 const insertHardBreak: Command = (state, dispatch) => {
-  const { $from, $to, from, to } = state.selection;
+  const { $from, $to } = state.selection;
   const marks = state.storedMarks ?? ($to.parentOffset ? $from.marks() : null);
   if (dispatch) {
-    const tr = state.tr.replaceWith(from, to, schema.nodes.hardBreak.create());
+    const tr = state.tr.replaceSelectionWith(
+      schema.nodes.hardBreak.create(),
+      false
+    );
     if (marks) {
       tr.ensureMarks(marks);
     }
@@ -284,8 +283,9 @@ const insertHardBreak: Command = (state, dispatch) => {
 };
 
 /**
- * ProseMirror's own keys, with Enter keeping the formatting, Delete removing an
- * empty paragraph, and Shift+Enter or Mod+Enter for a line break, as Tiptap had.
+ * ProseMirror's own keys, with Enter keeping the formatting and Delete removing
+ * an empty paragraph. Commands are matched rather than keys, so the macOS keys
+ * that delete forward too, such as Ctrl+D and Alt+Delete, change with Delete.
  */
 const editingKeys = Object.fromEntries(
   Object.entries(baseKeymap).map(([key, command]) => {
@@ -350,6 +350,9 @@ const cursorAfterChange = (
 /** Marks a change the host made, which isn't the user's to report. */
 const FROM_HOST = "mailquilt:fromHost";
 
+/** Marks a focus change: true when the text gains focus, false when it loses it. */
+const FOCUSED = "mailquilt:focused";
+
 /**
  * Owns the DOM and ProseMirror view of one Block's text. Lit only places
  * `element` on the canvas, so the view survives re-renders. The editor keeps
@@ -379,7 +382,9 @@ export const createTextBlockView = ({
   const element = document.createElement("div");
   // Where bold would change nothing, its shortcut is still taken, or the
   // browser would make the text bold itself.
-  const bold: Command = canBold ? toggleMark(schema.marks.bold) : () => true;
+  const bold: Command = canBold
+    ? toggleMarkCommand(schema.marks.bold)
+    : () => true;
 
   const view = new EditorView(element, {
     attributes: {
@@ -389,12 +394,17 @@ export const createTextBlockView = ({
       tabindex: "0",
     },
     dispatchTransaction(this: EditorView, transaction: Transaction) {
-      // A blur can still come while the view is taken down.
+      // The editor can still call a view it has taken down.
       if (this.isDestroyed) {
         return;
       }
       const before = this.state;
-      const after = before.apply(transaction);
+      // With what plugins add to it, and nothing if a plugin refuses it.
+      const { state: after, transactions } =
+        before.applyTransaction(transaction);
+      if (!transactions.includes(transaction)) {
+        return;
+      }
       this.updateState(after);
       // Turning bold on at the cursor changes the next text but not the email.
       if (transaction.storedMarksSet && !transaction.docChanged) {
@@ -404,10 +414,10 @@ export const createTextBlockView = ({
       if (!before.selection.eq(after.selection) && !transaction.docChanged) {
         onTypingBreak();
       }
-      if (transaction.getMeta("focus")) {
+      const focused = transaction.getMeta(FOCUSED) as boolean | undefined;
+      if (focused === true) {
         onFocus();
-      }
-      if (transaction.getMeta("blur")) {
+      } else if (focused === false) {
         onTypingBreak();
       }
       if (transaction.getMeta(FROM_HOST) || before.doc.eq(after.doc)) {
@@ -427,11 +437,11 @@ export const createTextBlockView = ({
     },
     handleDOMEvents: {
       blur: ({ dispatch, state }) => {
-        dispatch(state.tr.setMeta("blur", true));
+        dispatch(state.tr.setMeta(FOCUSED, false));
         return false;
       },
       focus: ({ dispatch, state }) => {
-        dispatch(state.tr.setMeta("focus", true));
+        dispatch(state.tr.setMeta(FOCUSED, true));
         return false;
       },
     },
@@ -441,11 +451,11 @@ export const createTextBlockView = ({
         keymap({
           "Mod-B": bold,
           "Mod-Enter": insertHardBreak,
-          "Mod-I": toggleMark(schema.marks.italic),
-          "Mod-U": toggleMark(schema.marks.underline),
+          "Mod-I": toggleMarkCommand(schema.marks.italic),
+          "Mod-U": toggleMarkCommand(schema.marks.underline),
           "Mod-b": bold,
-          "Mod-i": toggleMark(schema.marks.italic),
-          "Mod-u": toggleMark(schema.marks.underline),
+          "Mod-i": toggleMarkCommand(schema.marks.italic),
+          "Mod-u": toggleMarkCommand(schema.marks.underline),
           "Shift-Enter": insertHardBreak,
         }),
         keymap(editingKeys),
@@ -488,7 +498,7 @@ export const createTextBlockView = ({
         if (range) {
           tr.removeMark(range.from, range.to, link);
         }
-        dispatch?.(removeMark(tr, link));
+        dispatch?.(unmarkSelection(tr, link));
         return true;
       }),
     setContent: (next) => {
@@ -522,7 +532,7 @@ export const createTextBlockView = ({
         const mark = link.create({ href });
         const { tr } = state;
         if (doc.textBetween(from, to)) {
-          addMark(tr, mark);
+          markSelection(tr, mark);
         } else if (empty && isMarkActive(state, link)) {
           const range = linkRangeAt($from);
           if (range && range.from <= from && range.to >= to) {
@@ -537,6 +547,6 @@ export const createTextBlockView = ({
         dispatch?.(tr);
         return true;
       }),
-    toggleMark: (mark) => run(toggleMark(schema.marks[mark])),
+    toggleMark: (mark) => run(toggleMarkCommand(schema.marks[mark])),
   };
 };
