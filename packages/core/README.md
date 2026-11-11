@@ -10,7 +10,7 @@ npm install @mailquilt/core
 import { createEditor, createEmail, loadDocument } from "@mailquilt/core";
 
 // Check an email your app saved before trusting it.
-const loaded = loadDocument(savedJson);
+const loaded = loadDocument(JSON.parse(savedJson));
 const editor = createEditor({
   document: loaded.ok ? loaded.document : createEmail(),
 });
