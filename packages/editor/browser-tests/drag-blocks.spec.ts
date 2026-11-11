@@ -573,6 +573,36 @@ test.describe("letting go far from the editor", () => {
     await expect(changeCount(page)).toHaveText(changes as string);
   });
 
+  test("a release the window missed ends the drag", async ({ page }) => {
+    await load(page, [[["One", "Two"]]]);
+    await page.evaluate(() => {
+      window.addEventListener(
+        "pointerdown",
+        ({ pointerId }) => {
+          (window as unknown as { pointerId: number }).pointerId = pointerId;
+        },
+        { capture: true }
+      );
+    });
+    await pickUp(page, handleOf(page, "One"));
+    await moveTo(page, await bottomOf(blockElement(page, "Two")));
+
+    // As the next move would be after a release outside the window.
+    await page.evaluate(() => {
+      const { pointerId } = window as unknown as { pointerId: number };
+      window.dispatchEvent(
+        new PointerEvent("pointermove", { buttons: 0, pointerId })
+      );
+    });
+
+    await expect(
+      canvas(page).locator("[data-drag-ghost], [data-drag-source]")
+    ).toHaveCount(0);
+    await page.mouse.up();
+    await settle(page);
+    expect(await structure(page)).toStrictEqual([[["One", "Two"]]]);
+  });
+
   test("the Block can be dragged again afterwards", async ({ page }) => {
     await load(page, [[["One", "Two"]]]);
     const editor = await boxOf(canvas(page));
@@ -1016,6 +1046,31 @@ test.describe("auto-scrolling", () => {
     await expect.poll(containerLeft).toBeGreaterThan(100);
     await page.keyboard.press("Escape");
     await page.mouse.up();
+  });
+
+  test("letting go below a scrolling container, over what it hides, moves nothing", async ({
+    page,
+  }) => {
+    await load(page, [[manyBlocks]]);
+    await canvas(page).evaluate((element) => {
+      const scroller = document.createElement("section");
+      scroller.style.cssText =
+        "height: 300px; overflow: auto; position: fixed; top: 0; left: 0; width: 800px; background: white; z-index: 10";
+      element.replaceWith(scroller);
+      scroller.append(element);
+    });
+    await expect(textBlock(page).first()).toBeVisible();
+    const changes = await changeCount(page).textContent();
+    const handle = handleOf(page, "Block 0");
+    await handle.hover();
+
+    await pickUp(page, handle);
+    await moveTo(page, { x: 400, y: 360 });
+    await page.mouse.up();
+    await settle(page);
+
+    expect((await structure(page)).flat().flat()).toStrictEqual(manyBlocks);
+    await expect(changeCount(page)).toHaveText(changes as string);
   });
 
   test("a container doesn't scroll the way it hides", async ({ page }) => {

@@ -232,14 +232,22 @@ const autoScroll = (containers: ScrollContainer[], { x, y }: Point) => {
 
 /**
  * Shows the dragging cursor over the host page and the editor alike, whatever
- * cursor their own styles ask for. An adopted style sheet, unlike a <style>
- * element, works under a Content Security Policy that blocks inline styles.
- * Returns what puts the usual cursors back.
+ * cursor their own styles ask for, and inside any element the editor is in,
+ * such as the Shell. An adopted style sheet, unlike a <style> element, works
+ * under a Content Security Policy that blocks inline styles. Returns what puts
+ * the usual cursors back.
  */
 const showGrabbingCursor = (root: ShadowRoot) => {
   const sheet = new CSSStyleSheet();
   sheet.replaceSync("* { cursor: grabbing !important; }");
-  const owners = [document, root];
+  const owners: (Document | ShadowRoot)[] = [document];
+  for (
+    let owner: Node = root;
+    owner instanceof ShadowRoot;
+    owner = owner.host.getRootNode()
+  ) {
+    owners.push(owner);
+  }
   for (const owner of owners) {
     owner.adoptedStyleSheets = [...owner.adoptedStyleSheets, sheet];
   }
@@ -315,16 +323,26 @@ export const createBlockDragging = ({
    * without the dragged one, as a move's index is. There's no landing far from the
    * editor, which is how to abandon a drag, or on the side panel, so that letting
    * go of a palette item that barely moved adds nothing, or on the floating
-   * toolbar.
+   * toolbar. Nor is there outside a scroll container the editor is in, such as
+   * the Shell's, where what's under the pointer is scrolled out of sight.
    */
-  const landing = ({ element, source }: Grab, pointer: Point) => {
+  const landing = (
+    { element, source }: Grab,
+    pointer: Point,
+    scrollContainers: ScrollContainer[]
+  ) => {
     const email = root.querySelector(".email");
     const controls = root.querySelectorAll(".side-panel, .floating-toolbar");
     if (
       !email ||
       (startedOn && contains(startedOn, pointer)) ||
       [...controls].some((control) => contains(control, pointer)) ||
-      !contains(root.host, pointer, DROP_MARGIN_PX)
+      !contains(root.host, pointer, DROP_MARGIN_PX) ||
+      scrollContainers.some(
+        (container) =>
+          container.element !== document.scrollingElement &&
+          !contains(container.element, pointer)
+      )
     ) {
       return;
     }
@@ -402,7 +420,7 @@ export const createBlockDragging = ({
     // An undo during the drag can take away the Block being dragged.
     const place =
       drop && grab.element.isConnected
-        ? landing(grab, dragged.pointer)?.place
+        ? landing(grab, dragged.pointer, dragged.scrollContainers)?.place
         : undefined;
     startedOn = undefined;
     dragged.ghost.remove();
@@ -435,7 +453,7 @@ export const createBlockDragging = ({
     }
     ghost.style.translate = `${pointer.x - from.x}px ${pointer.y - from.y}px`;
     autoScroll(scrollContainers, pointer);
-    showIndicator(landing(grab, pointer));
+    showIndicator(landing(grab, pointer, scrollContainers));
     frame = requestAnimationFrame(onFrame);
   };
 
@@ -475,11 +493,23 @@ export const createBlockDragging = ({
           keydown.preventDefault();
           keydown.stopPropagation();
           release(false);
-          // The button is still down, and the body still has the pointer.
-          window.addEventListener("pointerup", guardReleaseClick, {
-            capture: true,
-            once: true,
-          });
+          // The button is still down, and the body still has the pointer. A
+          // cancelled pointer has no release to guard.
+          const guard = new AbortController();
+          const options = { capture: true, signal: guard.signal };
+          window.addEventListener(
+            "pointerup",
+            () => {
+              guard.abort();
+              guardReleaseClick();
+            },
+            options
+          );
+          window.addEventListener(
+            "pointercancel",
+            () => guard.abort(),
+            options
+          );
         }
       },
       { capture: true, signal }
@@ -515,6 +545,11 @@ export const createBlockDragging = ({
       "pointermove",
       (move) => {
         if (move.pointerId !== pointerId || !press) {
+          return;
+        }
+        // The button was let go where the window didn't hear it.
+        if (move.buttons === 0) {
+          release(false);
           return;
         }
         const pointer = { x: move.clientX, y: move.clientY };

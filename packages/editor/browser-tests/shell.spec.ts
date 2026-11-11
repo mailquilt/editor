@@ -592,6 +592,29 @@ test.describe("look", () => {
   });
 });
 
+test("shows the dragging cursor over the Shell during a drag", async ({
+  page,
+}) => {
+  await openShell(page);
+  const button = shell(page).getByRole("button", { name: "Export HTML" });
+  const cursor = () =>
+    button.evaluate((element) => getComputedStyle(element).cursor);
+  const tile = await box(
+    shell(page)
+      .getByRole("group", { name: "Add content" })
+      .getByRole("button", { exact: true, name: "Text" })
+  );
+
+  await page.mouse.move(tile.x + tile.width / 2, tile.y + tile.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(tile.x, tile.y + tile.height + 20, { steps: 4 });
+  await expect.poll(cursor).toBe("grabbing");
+  await page.keyboard.press("Escape");
+  await page.mouse.up();
+
+  await expect.poll(cursor).toBe("pointer");
+});
+
 test.describe("accessibility", () => {
   test("the keyboard reaches every header control", async ({ page }) => {
     await openShell(page);
