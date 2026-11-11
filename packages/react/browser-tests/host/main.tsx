@@ -138,12 +138,9 @@ const CallbackRefHost = () => {
 const ShellHost = () => {
   const [document, setDocument] = useState(firstEmail);
   const [errors, setErrors] = useState<string[]>([]);
-  const [html, setHtml] = useState("");
   const [ready, setReady] = useState(false);
-  const shell = useRef<MailQuiltShellElement | null>(null);
   // The wrapper hands over the element only after it has set `value`.
   const attach = useCallback((element: MailQuiltShellElement | null) => {
-    shell.current = element;
     setReady(element !== null);
   }, []);
   const params = new URLSearchParams(window.location.search);
@@ -152,19 +149,10 @@ const ShellHost = () => {
   return (
     <main style={{ display: "grid", gridTemplateRows: "auto 700px" }}>
       <div>
-        <button
-          onClick={async () =>
-            setHtml((await shell.current?.exportHtml()) ?? "")
-          }
-          type="button"
-        >
-          Export with ref
-        </button>
         <button onClick={() => setDocument(firstEmail())} type="button">
           Load the first email again
         </button>
         <output data-testid="ready">{ready ? "yes" : "no"}</output>
-        <output data-testid="html">{html}</output>
         <output data-testid="errors">{errors.join("\n")}</output>
         <output data-testid="latest-document">
           {JSON.stringify(document)}

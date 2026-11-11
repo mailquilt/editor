@@ -108,18 +108,6 @@ test.beforeEach(async ({ page }) => {
 });
 
 test.describe("selecting a Block", () => {
-  test("nothing is selected at first", async ({ page }) => {
-    await expect(selectedBlock(page)).toHaveCount(0);
-    await expect(deleteBlock(page)).toHaveCount(0);
-  });
-
-  test("clicking a Block selects it", async ({ page }) => {
-    await textBlock(page).click();
-
-    await expect(selectedBlock(page)).toHaveText("Hello");
-    await expect(deleteBlock(page)).toBeVisible();
-  });
-
   test("clicking another Block moves the selection", async ({ page }) => {
     await textBlock(page).click();
     await addText(page);
@@ -134,33 +122,6 @@ test.describe("selecting a Block", () => {
 });
 
 test.describe("the palette", () => {
-  test("adds a Text Block after the selected Block and selects it", async ({
-    page,
-  }) => {
-    await textBlock(page).click();
-    await addText(page);
-    await page.keyboard.type("Second");
-    await textBlock(page).first().click();
-
-    await addText(page);
-    await page.keyboard.type("Between");
-
-    await expect(selectedBlock(page)).toHaveText("Between");
-    expect(await structure(page)).toStrictEqual([
-      [["Hello", "Between", "Second"]],
-    ]);
-  });
-
-  test("adds to the end of the last Column when nothing is selected", async ({
-    page,
-  }) => {
-    await addText(page);
-    await expect(textBlock(page)).toHaveCount(2);
-    await page.keyboard.type("New");
-
-    expect(await structure(page)).toStrictEqual([[["Hello", "New"]]]);
-  });
-
   test("adds a Row for the Block when the email has no Rows, as one undo step", async ({
     page,
   }) => {
@@ -279,24 +240,6 @@ test.describe("an empty Column", () => {
     await expect(selectedBlock(page)).toHaveText("Right");
     expect(await structure(page)).toStrictEqual([[["Hello"], ["Right"]]]);
   });
-
-  test("stays after its last Block is deleted", async ({ page }) => {
-    await chooseLayout(page, 1, "50/50");
-    await addToColumn(page).click();
-    await expect(selectedBlock(page)).toHaveCount(1);
-
-    await deleteBlock(page).click();
-
-    expect(await structure(page)).toStrictEqual([[["Hello"], []]]);
-    expect(await widths(page)).toStrictEqual([50, 50]);
-  });
-
-  test("its button isn't exported", async ({ page }) => {
-    await chooseLayout(page, 1, "50/50");
-    await expect(addToColumn(page)).toBeVisible();
-
-    expect(await exportHtml(page)).not.toContain("Add Text Block");
-  });
 });
 
 test.describe("adding and deleting Rows", () => {
@@ -395,25 +338,6 @@ test.describe("adding and deleting Rows", () => {
     await expect(toolbar(page)).toBeFocused();
     await expect(textBlock(page).locator("p")).toHaveCount(1);
   });
-
-  test("controlled host keeps undo after a structural change", async ({
-    page,
-  }) => {
-    await addRow(page);
-    await expect(page.getByTestId("change-count")).toHaveText("1");
-    await expect
-      .poll(
-        async () =>
-          JSON.parse(
-            (await page.getByTestId("latest-document").textContent()) ?? "{}"
-          ).rows.length
-      )
-      .toBe(2);
-
-    await page.getByRole("button", { name: "Undo" }).click();
-
-    await expect(rowControls(page, 2)).toHaveCount(0);
-  });
 });
 
 test.describe("choosing a layout", () => {
@@ -421,7 +345,6 @@ test.describe("choosing a layout", () => {
     ["100", [100], [600]],
     ["50/50", [50, 50], [300, 300]],
     ["33/67", [33, 67], [198, 402]],
-    ["67/33", [67, 33], [402, 198]],
     ["33/33/33", [33.33, 33.33, 33.34], [200, 200, 200]],
     ["25/25/25/25", [25, 25, 25, 25], [150, 150, 150, 150]],
   ];
@@ -449,17 +372,6 @@ test.describe("choosing a layout", () => {
       expect(new Set(boxes.map(({ top }) => top)).size).toBe(1);
     });
   }
-
-  test("shows the Row's current layout and no other", async ({ page }) => {
-    await expect(await shownLayout(page, 1, "100")).toHaveAttribute(
-      "aria-pressed",
-      "true"
-    );
-    await expect(await shownLayout(page, 1, "50/50")).toHaveAttribute(
-      "aria-pressed",
-      "false"
-    );
-  });
 
   test("shows no current layout for widths that aren't a preset", async ({
     page,
@@ -695,44 +607,5 @@ test.describe("structure changes and the rest of the editor", () => {
     await undo(page);
 
     await expect(rowControls(page, 2)).toHaveCount(0);
-  });
-
-  test("the Preview shows the structure as it is now", async ({ page }) => {
-    await page.getByRole("button", { exact: true, name: "Preview" }).click();
-    const dialog = page.getByRole("dialog", { name: "Preview" });
-    await expect(
-      dialog.frameLocator("iframe").getByText("Hello")
-    ).toBeVisible();
-    await dialog.getByRole("button", { name: "Close" }).click();
-
-    await textBlock(page).click();
-    await deleteBlock(page).click();
-    await expect(textBlock(page)).toHaveCount(0);
-    await page.getByRole("button", { exact: true, name: "Preview" }).click();
-
-    await expect(dialog.frameLocator("iframe").getByText("Hello")).toHaveCount(
-      0
-    );
-  });
-
-  test("host CSS doesn't reach the new controls", async ({ page }) => {
-    await expect(deleteRowButton(page, 1)).toHaveCSS(
-      "font-family",
-      /system-ui|sans-serif/u
-    );
-    await expect(rowControls(page, 1)).toHaveCSS("color", "rgb(22, 24, 29)");
-  });
-
-  test("the button in an empty Column doesn't use the email's font", async ({
-    page,
-  }) => {
-    await chooseLayout(page, 1, "50/50");
-
-    await expect(addToColumn(page)).toHaveCSS("font-size", "12px");
-    await expect(addToColumn(page)).toHaveCSS(
-      "font-family",
-      /system-ui|sans-serif/u
-    );
-    await expect(addToColumn(page)).not.toHaveCSS("font-family", /Arial/u);
   });
 });

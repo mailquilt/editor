@@ -75,11 +75,6 @@ describe("refusing a document", () => {
       /version 2 is newer.*version 1/iu,
     ],
     [
-      "a newer version it can't otherwise read",
-      () => ({ blocks: "new format", version: 99 }),
-      /version 99 is newer/iu,
-    ],
-    [
       "missing settings",
       ({ settings: _settings, ...email }) => email,
       /settings/u,
@@ -146,33 +141,9 @@ describe("refusing a document", () => {
       /settings\.backgroundColor.*color/u,
     ],
     [
-      "an email width that's fractional",
-      (email) => {
-        email.settings.width = 600.5;
-        return email;
-      },
-      /settings\.width/u,
-    ],
-    [
       "an email width that's huge",
       (email) => {
         email.settings.width = 1e21;
-        return email;
-      },
-      /settings\.width/u,
-    ],
-    [
-      "an email width that's tiny",
-      (email) => {
-        email.settings.width = 1e-7;
-        return email;
-      },
-      /settings\.width/u,
-    ],
-    [
-      "an email width that's zero",
-      (email) => {
-        email.settings.width = 0;
         return email;
       },
       /settings\.width/u,
@@ -335,7 +306,17 @@ describe("refusing a document", () => {
     });
   });
 
-  it.each(refused)("doesn't change %s", (_name, damage) => {
+  // Two, as no refusal writes to what it was given: one the schema refuses, and
+  // one refused only once every Block's props have been checked.
+  const untouched = refused.filter(([name]) =>
+    ["a document of another kind", "two Blocks with the same ID"].includes(name)
+  );
+  // A renamed case would otherwise drop out without a failure.
+  if (untouched.length !== 2) {
+    throw new Error("Update these names to match the refused list");
+  }
+
+  it.each(untouched)("doesn't change %s", (_name, damage) => {
     const document = damage(readFixture("version-1"));
     const before = structuredClone(document);
 

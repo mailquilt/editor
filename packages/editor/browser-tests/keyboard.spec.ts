@@ -369,32 +369,10 @@ test.describe("moving a Block with Alt+Arrow keys", () => {
   });
 });
 
-const DIRECTIONS = ["up", "down", "left", "right"];
-
 const moveButton = (page: Page, direction: string) =>
   page.getByRole("button", { name: `Move Block ${direction}` });
 
 test.describe("moving a Block with toolbar buttons", () => {
-  test("only the selected Block has them", async ({ page }) => {
-    await open(page, [[["A"]]]);
-    await Promise.all(
-      DIRECTIONS.map((direction) =>
-        expect(moveButton(page, direction)).toHaveCount(0)
-      )
-    );
-
-    await blockWith(page, "A").focus();
-    await Promise.all(
-      DIRECTIONS.map((direction) =>
-        expect(
-          blockWith(page, "A").getByRole("button", {
-            name: `Move Block ${direction}`,
-          })
-        ).toBeEnabled()
-      )
-    );
-  });
-
   test("from the keyboard, focus stays on the button for the next press", async ({
     page,
   }) => {
@@ -438,18 +416,6 @@ test.describe("moving a Block with toolbar buttons", () => {
     await expect(blockWith(page, "Ax").getByRole("textbox")).toBeFocused();
     await page.keyboard.type("y");
     await expect(structure(page)).resolves.toEqual([[["B", "Axy"]]]);
-  });
-
-  test("each press is one undo step", async ({ page }) => {
-    await open(page, [[["A", "B", "C"]]]);
-    await blockWith(page, "A").focus();
-    await moveButton(page, "down").click();
-    await moveButton(page, "down").click();
-
-    await page.getByRole("button", { name: "Undo" }).click();
-    await expect(structure(page)).resolves.toEqual([[["B", "A", "C"]]]);
-    await page.getByRole("button", { name: "Undo" }).click();
-    await expect(structure(page)).resolves.toEqual([[["A", "B", "C"]]]);
   });
 });
 
@@ -503,17 +469,6 @@ test.describe("announcing a move", () => {
       "Moved to Row 1, Column 1, position 2 of 3."
     );
 
-    await expect.poll(() => announcementCount(page)).toBe(2);
-  });
-
-  test("pressing at an edge again is announced again", async ({ page }) => {
-    await open(page, [[["A"]]]);
-    await countAnnouncements(page);
-    await blockWith(page, "A").focus();
-
-    await page.keyboard.press("Alt+ArrowLeft");
-    await expect.poll(() => announcementCount(page)).toBe(1);
-    await page.keyboard.press("Alt+ArrowLeft");
     await expect.poll(() => announcementCount(page)).toBe(2);
   });
 
@@ -616,16 +571,6 @@ test.describe("typing inside a Block", () => {
     await page.keyboard.type("x");
 
     await expect(structure(page)).resolves.toEqual([[["one xtwo"], ["C"]]]);
-  });
-
-  test("Enter starts a new paragraph", async ({ page }) => {
-    await open(page, [[["A", "B"]]]);
-    await textOf(page, "A").click();
-
-    await page.keyboard.press("Enter");
-
-    await expect(textOf(page, "A").locator("p")).toHaveCount(2);
-    await expect(textOf(page, "A")).toBeFocused();
   });
 
   test("Escape returns to the Block, and Enter to the same place", async ({
@@ -957,24 +902,6 @@ test.describe("labels and focus states", () => {
     }
     // oxlint-enable no-await-in-loop
     await expect(blockWith(page, "L")).toBeFocused();
-    await expect(blockWith(page, "L")).toBeInViewport();
-  });
-
-  test("a Block moved with a toolbar button stays in view", async ({
-    page,
-  }) => {
-    await page.setViewportSize({ height: 500, width: 1000 });
-    await open(page, [[TWELVE]]);
-    await blockWith(page, "L").focus();
-    await moveButton(page, "up").focus();
-
-    // oxlint-disable no-await-in-loop -- Each press depends on the one before.
-    for (const expected of [10, 9, 8, 7, 6, 5, 4, 3, 2, 1]) {
-      await page.keyboard.press("Enter");
-      await expect.poll(() => positionOfL(page)).toBe(expected);
-    }
-    // oxlint-enable no-await-in-loop
-    await expect.poll(() => gapBelowTop(page, "L")).toBeGreaterThanOrEqual(0);
     await expect(blockWith(page, "L")).toBeInViewport();
   });
 

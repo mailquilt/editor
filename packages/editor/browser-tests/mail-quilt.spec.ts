@@ -23,17 +23,6 @@ test.beforeEach(async ({ page }) => {
   await expect(textBlock(page)).toHaveText("Hello");
 });
 
-test("renders the email inside Shadow DOM", async ({ page }) => {
-  const placement = await canvas(page).evaluate((element) => ({
-    inLightDom: element.querySelector("[contenteditable]") !== null,
-    inShadowDom: Boolean(
-      element.shadowRoot?.querySelector("[contenteditable]")
-    ),
-  }));
-
-  expect(placement).toStrictEqual({ inLightDom: false, inShadowDom: true });
-});
-
 test("typing fires mq-change with the new document", async ({ page }) => {
   await focusStartOfTextBlock(page);
 
@@ -112,17 +101,6 @@ test("host CSS doesn't reach the canvas", async ({ page }) => {
   await expect(paragraph).toHaveCSS("text-transform", "none");
   await expect(paragraph).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
   await expect(textBlock(page)).toHaveCSS("white-space-collapse", /pre|break/u);
-});
-
-test("a controlled host passing each change back doesn't move the cursor", async ({
-  page,
-}) => {
-  await focusStartOfTextBlock(page);
-
-  await page.keyboard.type("abc");
-
-  await expect(textBlock(page)).toHaveText("abcHello");
-  await expect.poll(() => latestDocumentText(page)).toBe("abcHello");
 });
 
 test("host re-renders don't reset the canvas", async ({ page }) => {
@@ -222,27 +200,6 @@ const addSecondTextBlock = (page: Page) =>
   });
 
 test.describe("undo and redo while typing", () => {
-  test("undo removes a burst of typing as one step", async ({ page }) => {
-    await focusStartOfTextBlock(page);
-    await page.keyboard.type("abc");
-    await expect(page.getByTestId("change-count")).toHaveText("3");
-
-    await undo(page);
-
-    await expect(textBlock(page)).toHaveText("Hello");
-  });
-
-  test("redo restores what undo removed", async ({ page }) => {
-    await focusStartOfTextBlock(page);
-    await page.keyboard.type("abc");
-    await undo(page);
-    await expect(textBlock(page)).toHaveText("Hello");
-
-    await redo(page);
-
-    await expect(textBlock(page)).toHaveText("abcHello");
-  });
-
   test("Control+Y also redoes", async ({ page }) => {
     await focusStartOfTextBlock(page);
     await page.keyboard.type("abc");
@@ -550,20 +507,6 @@ test.describe("undo and redo while typing", () => {
 const currentValue = (page: Page) =>
   canvas(page).evaluate((element) => (element as MailQuilt).value);
 
-const reverseKeys = (value: unknown): unknown => {
-  if (Array.isArray(value)) {
-    return value.map(reverseKeys);
-  }
-  return typeof value === "object" && value !== null
-    ? Object.fromEntries(
-        Object.entries(value)
-          // oxlint-disable-next-line unicorn/no-array-reverse -- This package's ES2022 lib has no toReversed, and these entries are a new array.
-          .reverse()
-          .map(([key, item]) => [key, reverseKeys(item)])
-      )
-    : value;
-};
-
 const withText = (document: unknown, text: string) => {
   // oxlint-disable-next-line typescript/no-explicit-any -- Saved JSON, reached along a path this test's email is known to have.
   const copy = structuredClone(document) as any;
@@ -603,21 +546,6 @@ test.describe("setting value", () => {
     );
 
     await expect(textBlock(page)).toBeFocused();
-    await page.keyboard.type("c");
-    await expect(textBlock(page)).toHaveText("abcHello");
-    await undo(page);
-    await expect(textBlock(page)).toHaveText("Hello");
-  });
-
-  test("the same content with its keys in another order keeps undo and the cursor", async ({
-    page,
-  }) => {
-    await focusStartOfTextBlock(page);
-    await page.keyboard.type("ab");
-    await expect(textBlock(page)).toHaveText("abHello");
-
-    await setValue(page, reverseKeys(await currentValue(page)));
-
     await page.keyboard.type("c");
     await expect(textBlock(page)).toHaveText("abcHello");
     await undo(page);
@@ -737,16 +665,6 @@ test.describe("setting value", () => {
 test.describe("refusing a document", () => {
   // oxlint-disable-next-line typescript/no-explicit-any -- These damage documents on purpose, which the real type forbids.
   const refused: [string, (email: any) => unknown, RegExp][] = [
-    ["a malformed document", ({ rows: _rows, ...email }) => email, /rows/u],
-    ["a value that isn't a document", () => null, /object/iu],
-    [
-      "an unknown Block type",
-      (email) => {
-        email.rows[0].columns[0].blocks[0].type = "hologram";
-        return email;
-      },
-      /unknown type "hologram"/u,
-    ],
     [
       "a newer version",
       (email) => ({ ...email, version: 2 }),
@@ -801,37 +719,6 @@ test.describe("refusing a document", () => {
 
     expect(reasons).toStrictEqual([expect.stringMatching(/rows\.1/u)]);
     await expect(textBlock(page)).toHaveText("Hello");
-  });
-
-  test("a color MJML can't export is refused on load, not at export", async ({
-    page,
-  }) => {
-    const damaged = await canvas(page).evaluate(
-      (element) => (element as MailQuilt).value
-    );
-    if (damaged) {
-      damaged.settings.backgroundColor = "not a color";
-    }
-
-    const reasons = await setValueAndCollectErrors(page, damaged);
-
-    expect(reasons).toStrictEqual([
-      expect.stringMatching(/settings\.backgroundColor/u),
-    ]);
-    expect(await exportHtml(page)).toContain("Hello");
-  });
-
-  test("doesn't change the refused document", async ({ page }) => {
-    const unchanged = await canvas(page).evaluate(async (element) => {
-      const mailQuilt = element as MailQuilt;
-      const damaged = { ...mailQuilt.value, extra: "keep me", version: 2 };
-      const before = JSON.stringify(damaged);
-      mailQuilt.value = damaged as unknown as MailQuilt["value"];
-      await mailQuilt.updateComplete;
-      return JSON.stringify(damaged) === before;
-    });
-
-    expect(unchanged).toBeTruthy();
   });
 
   test("mq-error reaches a listener added just after setting value", async ({

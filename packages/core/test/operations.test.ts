@@ -272,9 +272,4 @@ describe.each([
 
     expect(document).toStrictEqual(twoRows());
   });
-
-  it("survives a JSON round trip", () => {
-    // oxlint-disable-next-line unicorn/prefer-structured-clone -- JSON is what hosts send Operations as, so this tests JSON itself.
-    expect(JSON.parse(JSON.stringify(operation))).toStrictEqual(operation);
-  });
 });

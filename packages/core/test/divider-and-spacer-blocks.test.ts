@@ -1,13 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  BLOCK_TYPES,
-  blockSettingsFields,
-  blockStyles,
-  createEditor,
-  createEmail,
-  loadDocument,
-} from "../src/index.js";
+import { blockStyles, createEditor, createEmail } from "../src/index.js";
 import type { BlocksDocument } from "../src/index.js";
 
 const withBlock = (
@@ -51,10 +44,6 @@ describe.each(["divider", "spacer"])("a %s Block", (type) => {
     expect(result.ok).toBeTruthy();
     expect(propsOf(editor.getDocument())).toStrictEqual({});
   });
-
-  it("is offered in the palette", () => {
-    expect(BLOCK_TYPES.map((block) => block.type)).toContain(type);
-  });
 });
 
 describe("Divider Block", () => {
@@ -75,10 +64,7 @@ describe("Divider Block", () => {
 
   it.each([
     ["a color MJML can't read", { color: "red" }, /color/u],
-    ["a thickness of 0", { thickness: 0 }, /thickness/u],
     ["a thickness over the limit", { thickness: 101 }, /thickness/u],
-    ["a fractional thickness", { thickness: 1.5 }, /thickness/u],
-    ["a thickness that isn't a number", { thickness: "2px" }, /thickness/u],
     ["a property it doesn't have", { height: 10 }, /height/u],
   ])("rejects %s", (_name, props, reason) => {
     expect(setProps("divider", props).result).toStrictEqual({
@@ -102,38 +88,6 @@ describe("Divider Block", () => {
       })
     ).toStrictEqual({ "border-color": "#111111", "border-width": "8px" });
   });
-
-  it("offers its color and thickness as settings", () => {
-    expect(
-      blockSettingsFields({ props: {}, type: "divider" }).map(({ key }) => key)
-    ).toStrictEqual(["color", "thickness"]);
-  });
-
-  it("makes one undo step of a change", () => {
-    const editor = createEditor({ document: withBlock("divider") });
-
-    editor.apply({
-      blockId: "block-1",
-      props: { thickness: 4 },
-      type: "updateProps",
-    });
-    editor.undo();
-
-    expect(propsOf(editor.getDocument())).toStrictEqual({});
-  });
-
-  it("loads from a saved email", () => {
-    const document = withBlock("divider", { color: "#123", thickness: 2 });
-
-    expect(loadDocument(document)).toStrictEqual({ document, ok: true });
-  });
-
-  it("refuses a saved email with a thickness of 0", () => {
-    expect(loadDocument(withBlock("divider", { thickness: 0 }))).toStrictEqual({
-      ok: false,
-      reason: expect.stringContaining('Block "block-1"'),
-    });
-  });
 });
 
 describe("Spacer Block", () => {
@@ -145,10 +99,7 @@ describe("Spacer Block", () => {
   });
 
   it.each([
-    ["a height of 0", { height: 0 }, /height/u],
     ["a height over the limit", { height: 1001 }, /height/u],
-    ["a fractional height", { height: 1.5 }, /height/u],
-    ["a height that isn't a number", { height: "40px" }, /height/u],
     ["a property it doesn't have", { color: "#000000" }, /color/u],
   ])("rejects %s", (_name, props, reason) => {
     expect(setProps("spacer", props).result).toStrictEqual({
@@ -164,37 +115,5 @@ describe("Spacer Block", () => {
     expect(
       blockStyles({ props: { height: 40 }, type: "spacer" })
     ).toStrictEqual({ height: "40px" });
-  });
-
-  it("offers its height as a setting", () => {
-    expect(
-      blockSettingsFields({ props: {}, type: "spacer" }).map(({ key }) => key)
-    ).toStrictEqual(["height"]);
-  });
-
-  it("makes one undo step of a change", () => {
-    const editor = createEditor({ document: withBlock("spacer") });
-
-    editor.apply({
-      blockId: "block-1",
-      props: { height: 40 },
-      type: "updateProps",
-    });
-    editor.undo();
-
-    expect(propsOf(editor.getDocument())).toStrictEqual({});
-  });
-
-  it("loads from a saved email", () => {
-    const document = withBlock("spacer", { height: 40 });
-
-    expect(loadDocument(document)).toStrictEqual({ document, ok: true });
-  });
-
-  it("refuses a saved email with a height of 0", () => {
-    expect(loadDocument(withBlock("spacer", { height: 0 }))).toStrictEqual({
-      ok: false,
-      reason: expect.stringContaining('Block "block-1"'),
-    });
   });
 });

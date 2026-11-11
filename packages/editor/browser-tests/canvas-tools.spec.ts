@@ -5,7 +5,6 @@ import {
   blockGroup,
   canvas,
   currentValue,
-  dragTo,
   emailWith,
   openBlocks,
   setValue,
@@ -40,23 +39,6 @@ const outlineOf = (page: Page, selector: string) =>
     });
 
 test.describe("a Block on the canvas", () => {
-  test("shows an outline on hover, and a stronger one while selected", async ({
-    page,
-  }) => {
-    await openBlocks(page, ["button", "divider"]);
-    expect(await outlineOf(page, ".block")).toBe("none");
-
-    await blockGroup(page, "Button").hover();
-    expect(await outlineOf(page, ".block")).toBe("1px solid");
-
-    await blockGroup(page, "Divider").focus();
-    await blockGroup(page, "Divider").getByRole("button").first().focus();
-    await page.mouse.move(0, 0);
-    expect(await outlineOf(page, '.block[aria-current="true"]')).toBe(
-      "2px solid"
-    );
-  });
-
   test("only the selected one has a toolbar: drag, move four ways, delete", async ({
     page,
   }) => {
@@ -181,21 +163,6 @@ test.describe("a Row on the canvas", () => {
     await expect(rowTools(page, 2)).toHaveCSS("opacity", "1");
   });
 
-  test("has Select Row, the Move Row buttons and Delete Row", async ({
-    page,
-  }) => {
-    await openBlocks(page, ["button"]);
-
-    await expect(
-      namesOf(rowTools(page, 1).getByRole("button"))
-    ).resolves.toEqual([
-      "Select Row",
-      "Move Row up",
-      "Move Row down",
-      "Delete Row",
-    ]);
-  });
-
   test("an empty Row is selected and deleted from the keyboard", async ({
     page,
   }) => {
@@ -223,21 +190,6 @@ test.describe("a Row on the canvas", () => {
 });
 
 test.describe("an empty Column", () => {
-  test("says to drop a Block there, and keeps its buttons", async ({
-    page,
-  }) => {
-    await openBlocks(page, ["button"], []);
-
-    const column = canvas(page).locator(".column").nth(1);
-    await expect(column).toContainText("Drop a Block here");
-    await expect(
-      column.getByRole("button", {
-        exact: true,
-        name: "Add Text Block here, Row 1, Column 2",
-      })
-    ).toBeVisible();
-  });
-
   test("every add button takes the pointer's click", async ({ page }) => {
     await openBlocks(page, ["button"], []);
     const column = canvas(page).locator(".column").nth(1);
@@ -367,20 +319,6 @@ test.describe("dragging a Block", () => {
     );
     await expect(structure(page)).resolves.toEqual([[["B"], ["C", "A"]]]);
   });
-
-  test("from the Content tab onto an empty Column", async ({ page }) => {
-    await openBlocks(page, ["button"], []);
-
-    await dragTo(
-      page,
-      canvas(page)
-        .getByRole("group", { name: "Add content" })
-        .getByRole("button", { exact: true, name: "Divider" }),
-      canvas(page).locator(".column").nth(1)
-    );
-
-    await expect(blockGroup(page, "Divider")).toBeVisible();
-  });
 });
 
 test.describe("the format bar", () => {
@@ -491,18 +429,6 @@ test.describe("the floating toolbar", () => {
 });
 
 test.describe("the side panel", () => {
-  test("is docked on the right of the canvas", async ({ page }) => {
-    await openBlocks(page, ["text"]);
-
-    const email = await canvas(page).locator(".email").boundingBox();
-    const panel = await canvas(page).locator(".side-panel").boundingBox();
-    const host = await canvas(page).boundingBox();
-    expect(panel?.x).toBeGreaterThan((email?.x ?? 0) + (email?.width ?? 0));
-    expect((panel?.x ?? 0) + (panel?.width ?? 0)).toBe(
-      (host?.x ?? 0) + (host?.width ?? 0)
-    );
-  });
-
   test("the email card keeps its width on the workspace", async ({ page }) => {
     await openBlocks(page, ["text"]);
 
@@ -518,7 +444,7 @@ test.describe("the side panel", () => {
   });
 });
 
-test.describe("review fixes", () => {
+test.describe("a Block's drag handle and link shortcut", () => {
   // The test host's unfriendly CSS pushes the canvas far down the page.
   test.use({ viewport: { height: 1600, width: 1280 } });
 

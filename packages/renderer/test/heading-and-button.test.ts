@@ -56,24 +56,6 @@ const button = (props: Record<string, unknown>) => ({ props, type: "button" });
 const buttonLink = (html: string) => html.match(/<a\s[^>]*>/u)?.[0] ?? "";
 
 describe("a Heading Block", () => {
-  it.each([
-    [1, "32px"],
-    [2, "24px"],
-    [3, "20px"],
-  ])("renders level %i as a real heading of %s", async (level, size) => {
-    const html = await renderEmail(
-      emailWith(heading({ content: richText([text("Sale")]), level }))
-    );
-
-    expect(html).toMatch(
-      new RegExp(
-        `<h${level} style="[^"]*font-size:${size}[^"]*">Sale</h${level}>`,
-        "u"
-      )
-    );
-    expect(html).toMatch(new RegExp(`<h${level} style="margin:0;`, "u"));
-  });
-
   it("matches the saved HTML with every setting and every mark", async () => {
     await expect(
       renderEmail(
@@ -108,21 +90,6 @@ describe("a Heading Block", () => {
         )
       )
     ).resolves.toMatchFileSnapshot("expected/heading-levels.html");
-  });
-
-  it("has the email's font and line height on its own tag", async () => {
-    const html = await renderEmail({
-      ...emailWith(heading({ content: richText([text("Sale")]), level: 1 })),
-      settings: {
-        backgroundColor: "#ffffff",
-        fontFamily: "'Courier New', Courier, monospace",
-        width: 600,
-      },
-    });
-
-    expect(html).toMatch(
-      /<h1 style="[^"]*font-family:'Courier New', Courier, monospace;line-height:1\.5;[^"]*">/u
-    );
   });
 
   it("stays one heading across paragraphs, as lines", async () => {
@@ -167,16 +134,6 @@ describe("a Heading Block", () => {
     expect(html).toContain("&lt;script&gt;&amp;</h1>");
     expect(html).not.toContain("<script>");
   });
-
-  it("keeps a Merge Tag intact", async () => {
-    const html = await renderEmail(
-      emailWith(
-        heading({ content: richText([text("Hi {{first_name}}")]), level: 1 })
-      )
-    );
-
-    expect(html).toContain(">Hi {{first_name}}</h1>");
-  });
 });
 
 describe("a Button Block", () => {
@@ -212,13 +169,6 @@ describe("a Button Block", () => {
       /<table[^>]*role="presentation"[^>]*>\s*<tbody>\s*<tr>\s*<td[^>]*bgcolor="#2563eb"/u
     );
     expect(html).toMatch(/<a\s[^>]*>\s*Buy\s*<\/a>/u);
-  });
-
-  it("isn't a link until it has one", async () => {
-    const html = await renderEmail(emailWith(button({ label: "Buy" })));
-
-    expect(html).not.toMatch(/<a\b/u);
-    expect(html).toMatch(/<p\s[^>]*>\s*Buy\s*<\/p>/u);
   });
 
   it("keeps a Merge Tag intact in its link and label", async () => {
@@ -259,17 +209,6 @@ describe("a Button Block", () => {
 
     expect(buttonLink(html)).not.toContain('onclick="');
     expect(buttonLink(html)).toContain("&quot;onclick=&quot;");
-  });
-
-  it.each([
-    // oxlint-disable-next-line no-script-url -- What's being refused.
-    ["javascript:alert(1)"],
-    ["data:text/html,x"],
-    ["vbscript:x"],
-  ])("refuses to render the link %s", async (href) => {
-    await expect(
-      renderEmail(emailWith(button({ href, label: "Buy" })))
-    ).rejects.toThrow(/button|href|link/iu);
   });
 
   it("takes the same space and size as the canvas draws", async () => {

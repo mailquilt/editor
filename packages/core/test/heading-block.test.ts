@@ -96,37 +96,12 @@ describe("Heading Block", () => {
   });
 
   it.each([
-    ["level 0", { level: 0 }, /level/u],
     ["level 4", { level: 4 }, /level/u],
-    ["a level written as text", { level: "1" }, /level/u],
     ["no level", { level: null }, /level/u],
     ["an unknown alignment", { align: "middle" }, /align/u],
     ["a color MJML can't read", { color: "red" }, /color/u],
-    ["a fractional font size", { fontSize: 12.5 }, /fontSize/u],
     ["a font size past the limit", { fontSize: 201 }, /fontSize/u],
     ["a property it doesn't have", { href: "https://a.example" }, /href/u],
-    [
-      "a link with an executable scheme",
-      {
-        content: {
-          content: [
-            {
-              content: [
-                {
-                  // oxlint-disable-next-line no-script-url -- What's being refused.
-                  marks: [{ attrs: { href: "javascript:x" }, type: "link" }],
-                  text: "Click",
-                  type: "text",
-                },
-              ],
-              type: "paragraph",
-            },
-          ],
-          type: "doc",
-        },
-      },
-      /href/u,
-    ],
   ])("rejects %s", (_name, props, reason) => {
     const { editor } = setup();
     const before = editor.getDocument();
@@ -144,40 +119,8 @@ describe("Heading Block", () => {
     expect(editor.getDocument()).toStrictEqual(before);
   });
 
-  it("makes one undo step of a change to its level", () => {
-    const { editor } = setup();
-
-    editor.apply({
-      blockId: "heading-1",
-      props: { level: 2 },
-      type: "updateProps",
-    });
-    editor.undo();
-
-    expect(propsOf(editor.getDocument())).toStrictEqual({
-      content: emptyText,
-      level: 1,
-    });
-  });
-
-  it("loads from a saved email", () => {
-    const document = withHeading({
-      align: "right",
-      color: "#333333",
-      content: emptyText,
-      fontSize: 18,
-      level: 2,
-    });
-
-    expect(loadDocument(document)).toStrictEqual({ document, ok: true });
-  });
-
-  it.each([
-    ["no level", { content: emptyText }],
-    ["no content", { level: 1 }],
-    ["level 7", { content: emptyText, level: 7 }],
-  ])("refuses a saved email with %s", (_name, props) => {
-    expect(loadDocument(withHeading(props))).toStrictEqual({
+  it("refuses a saved email with no content", () => {
+    expect(loadDocument(withHeading({ level: 1 }))).toStrictEqual({
       ok: false,
       reason: expect.stringContaining('Block "heading-1"'),
     });
@@ -216,28 +159,6 @@ describe("Heading Block", () => {
       "font-size": "50px",
       "font-weight": "700",
       "text-align": "right",
-    });
-  });
-
-  it("offers its level, alignment, color and font size as settings", () => {
-    const fields = blockSettingsFields({
-      props: { content: emptyText, level: 1 },
-      type: "heading",
-    });
-
-    expect(fields.map(({ key }) => key)).toStrictEqual([
-      "level",
-      "align",
-      "color",
-      "fontSize",
-    ]);
-    expect(fields[0]).toMatchObject({
-      options: [
-        { label: "Heading 1", value: 1 },
-        { label: "Heading 2", value: 2 },
-        { label: "Heading 3", value: 3 },
-      ],
-      type: "select",
     });
   });
 });

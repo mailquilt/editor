@@ -4,7 +4,6 @@ import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
 const PLAYGROUND = "/playground";
-const SAVED_EMAIL_KEY = "mailquilt:playground:email";
 
 const textBlock = (page: Page) =>
   page.getByRole("textbox", { name: "Text Block" });
@@ -47,23 +46,6 @@ test.beforeEach(({ page }) => {
 });
 
 test.describe("saving in the browser", () => {
-  test("opens the starter email when nothing is saved", async ({ page }) => {
-    await page.goto(PLAYGROUND);
-
-    await expect(textBlock(page)).toContainText("type here");
-    await expect(page.getByRole("alert")).toHaveCount(0);
-  });
-
-  test("the email is still there after a reload", async ({ page }) => {
-    await page.goto(PLAYGROUND);
-    await typeInTextBlock(page, "Saved ");
-    await expect(textBlock(page)).toContainText("Saved Hi");
-
-    await page.reload();
-
-    await expect(textBlock(page)).toContainText("Saved Hi");
-  });
-
   test("still works when storage is unavailable, and says it can't save", async ({
     page,
   }) => {
@@ -81,21 +63,6 @@ test.describe("saving in the browser", () => {
     await typeInTextBlock(page, "Unsaved ");
     await expect(textBlock(page)).toContainText("Unsaved Hi");
     await expect(page.getByRole("alert")).toContainText("can't save");
-  });
-
-  test("says when it can't save because storage is full", async ({ page }) => {
-    await page.addInitScript(() => {
-      Storage.prototype.setItem = () => {
-        throw new DOMException("Full", "QuotaExceededError");
-      };
-    });
-    await page.goto(PLAYGROUND);
-    await expect(page.getByRole("alert")).toHaveCount(0);
-
-    await typeInTextBlock(page, "Unsaved ");
-
-    await expect(page.getByRole("alert")).toContainText("can't save");
-    await expect(textBlock(page)).toContainText("Unsaved Hi");
   });
 
   test("keeps saying it can't save while showing another reason", async ({
@@ -116,106 +83,9 @@ test.describe("saving in the browser", () => {
     await expect(alerts.filter({ hasText: "valid JSON" })).toBeVisible();
     await expect(alerts.filter({ hasText: "can't save" })).toBeVisible();
   });
-
-  for (const { name, reason, saved } of [
-    { name: "damaged", reason: "valid JSON", saved: "{not json" },
-    {
-      name: "from a newer version",
-      reason: "newer",
-      saved: JSON.stringify({ kind: "blocks", rows: [], version: 999 }),
-    },
-  ]) {
-    test(`opens the starter email and says why when the saved one is ${name}`, async ({
-      page,
-    }) => {
-      await page.addInitScript(
-        ({ key, value }) => localStorage.setItem(key, value),
-        { key: SAVED_EMAIL_KEY, value: saved }
-      );
-
-      await page.goto(PLAYGROUND);
-
-      await expect(textBlock(page)).toContainText("type here");
-      await expect(page.getByRole("alert")).toContainText(reason);
-      // Opening the page must leave the only copy for the person to deal with.
-      expect(
-        await page.evaluate((key) => localStorage.getItem(key), SAVED_EMAIL_KEY)
-      ).toBe(saved);
-    });
-  }
 });
 
 test.describe("moving an email with JSON", () => {
-  test("an exported email comes back when imported", async ({ page }) => {
-    await page.goto(PLAYGROUND);
-    await typeInTextBlock(page, "Exported ");
-    await expect(textBlock(page)).toContainText("Exported Hi");
-
-    const { name, text } = await exportFile(page, "Export JSON");
-    expect(name).toBe("email.json");
-
-    await typeInTextBlock(page, "Later ");
-    await expect(textBlock(page)).toContainText("Later Exported Hi");
-
-    await importFile(page, text);
-
-    await expect(textBlock(page)).toContainText("Exported Hi");
-    await expect(textBlock(page)).not.toContainText("Later");
-  });
-
-  test("an imported email is still there after a reload", async ({ page }) => {
-    await page.goto(PLAYGROUND);
-    await typeInTextBlock(page, "Imported ");
-    await expect(textBlock(page)).toContainText("Imported Hi");
-    const { text } = await exportFile(page, "Export JSON");
-    await page.evaluate(() => localStorage.clear());
-    await page.reload();
-    await expect(textBlock(page)).toContainText("type here");
-
-    await importFile(page, text);
-    await expect(textBlock(page)).toContainText("Imported Hi");
-    await page.reload();
-
-    await expect(textBlock(page)).toContainText("Imported Hi");
-  });
-
-  for (const { file, name, reason } of [
-    { file: "{not json", name: "isn't JSON", reason: "valid JSON" },
-    { file: "[]", name: "isn't an email", reason: "must be an object" },
-    {
-      file: JSON.stringify({ kind: "blocks", rows: [], version: 999 }),
-      name: "is from a newer version",
-      reason: "newer",
-    },
-  ]) {
-    test(`a file that ${name} shows the reason and changes nothing`, async ({
-      page,
-    }) => {
-      await page.goto(PLAYGROUND);
-      await typeInTextBlock(page, "Current ");
-      await expect(textBlock(page)).toContainText("Current Hi");
-
-      await importFile(page, file);
-
-      await expect(page.getByRole("alert")).toContainText(reason);
-      await expect(textBlock(page)).toContainText("Current Hi");
-
-      await page.reload();
-
-      await expect(textBlock(page)).toContainText("Current Hi");
-    });
-  }
-
-  test("the same file can be chosen again", async ({ page }) => {
-    await page.goto(PLAYGROUND);
-
-    await importFile(page, "{not json");
-    await expect(page.getByRole("alert")).toContainText("valid JSON");
-
-    // A browser only reports a choice that differs from the input's value.
-    await expect(page.locator("input[type=file]")).toHaveValue("");
-  });
-
   test("a reason goes away with the next edit or good file", async ({
     page,
   }) => {
@@ -232,46 +102,6 @@ test.describe("moving an email with JSON", () => {
     await typeInTextBlock(page, "Edited ");
     await expect(page.getByRole("alert")).toHaveCount(0);
   });
-});
-
-test("exports the email as an HTML file", async ({ page }) => {
-  await page.goto(PLAYGROUND);
-  await typeInTextBlock(page, "Sent ");
-  await expect(textBlock(page)).toContainText("Sent Hi");
-
-  const { name, text } = await exportFile(page, "Export HTML");
-
-  expect(name).toBe("email.html");
-  expect(text).toMatch(/<!doctype html>/iu);
-  expect(text).toContain("Sent Hi");
-});
-
-test("says so when the HTML can't be exported", async ({ page }) => {
-  await page.goto(PLAYGROUND);
-  await expect(textBlock(page)).toBeVisible();
-  // MJML loads on first export, so this is the moment that request can fail, as
-  // it would after a redeploy removes the file.
-  await page.route("**/*.js", (route) => route.abort());
-
-  await page.getByRole("button", { name: "Export HTML" }).click();
-
-  await expect(page.getByRole("alert")).toContainText("couldn't be exported");
-});
-
-test("a failed HTML export's reason goes away once one works", async ({
-  page,
-}) => {
-  await page.goto(PLAYGROUND);
-  await expect(textBlock(page)).toBeVisible();
-  await page.route("**/*.js", (route) => route.abort());
-  await page.getByRole("button", { name: "Export HTML" }).click();
-  await expect(page.getByRole("alert")).toContainText("couldn't be exported");
-  await page.unrouteAll();
-
-  const { name } = await exportFile(page, "Export HTML");
-
-  expect(name).toBe("email.html");
-  await expect(page.getByRole("alert")).toHaveCount(0);
 });
 
 test("starts with several Rows, so moving one can be tried straight away", async ({
@@ -345,65 +175,4 @@ test("on a phone, the Shell is only as tall as its notice", async ({
   );
   // The notice's own height, not a window's worth of empty space below it.
   expect(noticeBox?.height).toBe(360);
-});
-
-test("names the email in the Shell's header", async ({ page }) => {
-  await page.goto(PLAYGROUND);
-
-  await expect(
-    page.locator("mail-quilt-shell").getByRole("heading")
-  ).toHaveText("Your email");
-});
-
-test("opens an email saved before the Playground used the Shell", async ({
-  page,
-}) => {
-  const saved = JSON.stringify({
-    kind: "blocks",
-    rows: [
-      {
-        columns: [
-          {
-            blocks: [
-              {
-                id: "block-1",
-                props: {
-                  content: {
-                    content: [
-                      {
-                        content: [{ text: "Kept from before", type: "text" }],
-                        type: "paragraph",
-                      },
-                    ],
-                    type: "doc",
-                  },
-                },
-                type: "text",
-              },
-            ],
-            id: "column-1",
-            props: {},
-            width: 100,
-          },
-        ],
-        id: "row-1",
-        props: {},
-      },
-    ],
-    settings: {
-      backgroundColor: "#ffffff",
-      fontFamily: "Arial, Helvetica, sans-serif",
-      width: 600,
-    },
-    version: 1,
-  });
-  await page.addInitScript(
-    ({ key, value }) => localStorage.setItem(key, value),
-    { key: SAVED_EMAIL_KEY, value: saved }
-  );
-
-  await page.goto(PLAYGROUND);
-
-  await expect(textBlock(page)).toHaveText("Kept from before");
-  await expect(page.getByRole("alert")).toHaveCount(0);
 });

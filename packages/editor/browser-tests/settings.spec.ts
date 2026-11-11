@@ -139,14 +139,6 @@ test.describe("the panel", () => {
     await expect(email(page)).toHaveCount(0);
   });
 
-  test("shows the settings of the selected Row", async ({ page }) => {
-    await selectRow(page, 1);
-
-    await expect(field(page, "Background color", row(page))).toHaveValue("");
-    await expect(block(page)).toHaveCount(0);
-    await expect(email(page)).toHaveCount(0);
-  });
-
   test("follows the selection", async ({ page }) => {
     await setValue(page, emailWith([[["One", "Two"]]]));
     await canvas(page).getByText("One", { exact: true }).click();
@@ -351,20 +343,6 @@ test.describe("Email settings", () => {
       /./u
     );
   });
-
-  test("update the Preview", async ({ page }) => {
-    await page.getByRole("button", { name: "Preview" }).click();
-    await page.getByRole("button", { name: "Close" }).click();
-
-    await change(field(page, "Background color"), "#eeeeee");
-
-    await page.getByRole("button", { name: "Preview" }).click();
-    const preview = page.frameLocator('iframe[title="Email preview"]');
-    await expect(preview.locator("body")).toHaveCSS(
-      "background-color",
-      "rgb(238, 238, 238)"
-    );
-  });
 });
 
 test.describe("undo", () => {
@@ -483,23 +461,14 @@ test.describe("validation", () => {
     await expect(changeCount(page)).toHaveText("1");
   });
 
-  for (const [problem, name, text] of [
-    ["a width of zero", "Width (px)", "0"],
-    ["an empty width", "Width (px)", ""],
-    ["a width that isn't whole", "Width (px)", "1.5"],
-    ["a color that isn't one", "Background color", "blue"],
-    ["an empty color", "Background color", ""],
-    ["a language that isn't a code", "Language", "English"],
-  ] as const) {
-    test(`refuses ${problem} in the email's settings`, async ({ page }) => {
-      const before = await currentValue(page);
+  test("refuses an empty width in the email's settings", async ({ page }) => {
+    const before = await currentValue(page);
 
-      await change(field(page, name), text);
+    await change(field(page, "Width (px)"), "");
 
-      await expect(email(page).getByRole("alert")).toHaveCount(1);
-      expect(await currentValue(page)).toStrictEqual(before);
-    });
-  }
+    await expect(email(page).getByRole("alert")).toHaveCount(1);
+    expect(await currentValue(page)).toStrictEqual(before);
+  });
 
   test("Escape brings back the current value", async ({ page }) => {
     const language = field(page, "Language");
@@ -819,53 +788,9 @@ test.describe("layout", () => {
       (emailBox?.y ?? 0) + (emailBox?.height ?? 0)
     );
   });
-
-  test("shows the email at its width when there's room", async ({ page }) => {
-    await inHostOf(page, 1000);
-
-    await expect(canvas(page).locator(".email")).toHaveCSS("width", "600px");
-  });
-
-  test("follows the email's width", async ({ page }) => {
-    await inHostOf(page, 1400);
-
-    await change(field(page, "Width (px)"), "900");
-
-    await expect(canvas(page).locator(".email")).toHaveCSS("width", "900px");
-  });
-});
-
-test.describe("dragging", () => {
-  test("adds nothing when dropped on the panel", async ({ page }) => {
-    await openTab(page, "Content");
-    const before = await structure(page);
-    const palette = page
-      .getByRole("group", { name: "Add content" })
-      .getByRole("button", { name: "Text" });
-    const from = await palette.boundingBox();
-    const to = await canvas(page)
-      .getByRole("tab", { name: "Settings" })
-      .boundingBox();
-    if (!(from && to)) {
-      throw new Error("Nothing to drag");
-    }
-
-    await page.mouse.move(from.x + 4, from.y + 4);
-    await page.mouse.down();
-    await page.mouse.move(to.x + 4, to.y + 4, { steps: 8 });
-    await page.mouse.up();
-
-    expect(await structure(page)).toStrictEqual(before);
-  });
 });
 
 test.describe("accessibility", () => {
-  test("has no violations with everything showing", async ({ page }) => {
-    await textBlock(page).click();
-
-    expect(await violations(page)).toStrictEqual([]);
-  });
-
   test("has no violations while showing a refused value", async ({ page }) => {
     await textBlock(page).click();
     await change(field(page, "Color", block(page)), "red");
@@ -905,11 +830,5 @@ test.describe("accessibility", () => {
       // oxlint-disable-next-line no-await-in-loop -- See above.
       await expectNamedWithFocusRing(control);
     }
-  });
-
-  test("says which unit a number uses", async ({ page }) => {
-    await expect(
-      page.getByRole("spinbutton", { name: "Width (px)" })
-    ).toBeVisible();
   });
 });

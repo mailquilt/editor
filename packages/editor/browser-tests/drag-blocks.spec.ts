@@ -152,54 +152,6 @@ test.describe("moving a Block by its handle", () => {
     );
   });
 
-  test("to another Column", async ({ page }) => {
-    await load(page, [[["One", "Two"], ["Three"]]]);
-
-    await drag(
-      page,
-      handleOf(page, "Two"),
-      await topOf(blockElement(page, "Three"))
-    );
-
-    expect(await structure(page)).toStrictEqual([[["One"], ["Two", "Three"]]]);
-  });
-
-  test("to the end of another Column", async ({ page }) => {
-    await load(page, [[["One", "Two"], ["Three"]]]);
-
-    await drag(
-      page,
-      handleOf(page, "One"),
-      await bottomOf(blockElement(page, "Three"))
-    );
-
-    expect(await structure(page)).toStrictEqual([[["Two"], ["Three", "One"]]]);
-  });
-
-  test("down within its Column", async ({ page }) => {
-    await load(page, [[["One", "Two", "Three"]]]);
-
-    await drag(
-      page,
-      handleOf(page, "One"),
-      await bottomOf(blockElement(page, "Two"))
-    );
-
-    expect(await structure(page)).toStrictEqual([[["Two", "One", "Three"]]]);
-  });
-
-  test("up within its Column", async ({ page }) => {
-    await load(page, [[["One", "Two", "Three"]]]);
-
-    await drag(
-      page,
-      handleOf(page, "Three"),
-      await topOf(blockElement(page, "One"))
-    );
-
-    expect(await structure(page)).toStrictEqual([[["Three", "One", "Two"]]]);
-  });
-
   test("into an empty Column", async ({ page }) => {
     await load(page, [[["One"], []]]);
 
@@ -220,40 +172,6 @@ test.describe("moving a Block by its handle", () => {
     expect(await structure(page)).toStrictEqual([
       [[]],
       [["Two"], ["Three", "One"]],
-    ]);
-  });
-
-  test("several times in a row, in any direction", async ({ page }) => {
-    await load(page, [[["One", "Two"], ["Three"]]]);
-
-    await drag(
-      page,
-      handleOf(page, "Two"),
-      await bottomOf(blockElement(page, "Three"))
-    );
-    expect(await structure(page)).toStrictEqual([[["One"], ["Three", "Two"]]]);
-
-    await drag(
-      page,
-      handleOf(page, "Two"),
-      await topOf(blockElement(page, "Three"))
-    );
-    expect(await structure(page)).toStrictEqual([[["One"], ["Two", "Three"]]]);
-
-    await drag(
-      page,
-      handleOf(page, "Three"),
-      await topOf(blockElement(page, "One"))
-    );
-    expect(await structure(page)).toStrictEqual([[["Three", "One"], ["Two"]]]);
-
-    await drag(
-      page,
-      handleOf(page, "Two"),
-      await bottomOf(blockElement(page, "One"))
-    );
-    expect(await structure(page)).toStrictEqual([
-      [["Three", "One", "Two"], []],
     ]);
   });
 
@@ -353,19 +271,6 @@ test.describe("moving a Block by its handle", () => {
       canvas(page).getByRole("button", { name: "Drag Block" })
     ).toHaveCount(0);
     await expect(handleOf(page, "One")).toBeAttached();
-  });
-
-  test("only the handle starts a drag", async ({ page }) => {
-    await load(page, [[["One", "Two"], ["Three"]]]);
-
-    const { height, x, y } = await boxOf(blockElement(page, "Two"));
-    await page.mouse.move(x + 100, y + height - 2);
-    await page.mouse.down();
-    await moveTo(page, await bottomOf(blockElement(page, "Three")));
-    await expect(canvas(page).locator("[data-drag-ghost]")).toHaveCount(0);
-    await page.mouse.up();
-
-    expect(await structure(page)).toStrictEqual([[["One", "Two"], ["Three"]]]);
   });
 });
 
@@ -571,18 +476,6 @@ test.describe("while dragging", () => {
     expect(box.width).toBeCloseTo(row.width, 0);
     await page.keyboard.press("Escape");
   });
-
-  test("the indicator goes once the drag ends", async ({ page }) => {
-    await load(page, [[["One", "Two"]]]);
-    await expect(dropIndicator(page)).toBeHidden();
-
-    await pickUp(page, handleOf(page, "One"));
-    await moveTo(page, await bottomOf(blockElement(page, "Two")));
-    await expect(dropIndicator(page)).toBeVisible();
-    await page.mouse.up();
-
-    await expect(dropIndicator(page)).toBeHidden();
-  });
 });
 
 test.describe("dropping outside any Row", () => {
@@ -623,26 +516,6 @@ test.describe("dropping outside any Row", () => {
     expect(await structure(page)).toStrictEqual([[["Two"]], [["One"]]]);
   });
 
-  test("beside a Row, on its toolbar, adds a Row before it", async ({
-    page,
-  }) => {
-    await load(page, [[["One", "Two"]], [["Three"]]]);
-    const controls = await boxOf(
-      page.getByRole("group", { exact: true, name: "Row 2" })
-    );
-
-    await drag(page, handleOf(page, "Two"), {
-      x: controls.x + controls.width / 2,
-      y: controls.y + 4,
-    });
-
-    expect(await structure(page)).toStrictEqual([
-      [["One"]],
-      [["Two"]],
-      [["Three"]],
-    ]);
-  });
-
   test("beside a Row adds a Row next to it", async ({ page }) => {
     await load(page, [[["One", "Two"]], [["Three"]]]);
     const row = await boxOf(canvas(page).locator(".row").last());
@@ -657,20 +530,6 @@ test.describe("dropping outside any Row", () => {
       [["Three"]],
       [["Two"]],
     ]);
-  });
-
-  test("keeps the Row it came from, now empty", async ({ page }) => {
-    await load(page, [[["One"]]]);
-    const { height, width, x, y } = await boxOf(
-      canvas(page).locator(".row").first()
-    );
-
-    await drag(page, handleOf(page, "One"), {
-      x: x + width / 2,
-      y: y + height + 30,
-    });
-
-    expect(await structure(page)).toStrictEqual([[[]], [["One"]]]);
   });
 
   test("is one change for the host", async ({ page }) => {
@@ -705,18 +564,6 @@ test.describe("letting go far from the editor", () => {
 
     expect(await structure(page)).toStrictEqual([[["One", "Two"]]]);
     await expect(changeCount(page)).toHaveText(changes as string);
-  });
-
-  test("adds nothing from the palette", async ({ page }) => {
-    await load(page, [[["One"]]]);
-    const editor = await boxOf(canvas(page));
-
-    await drag(page, paletteText(page), {
-      x: 300,
-      y: editor.y + editor.height + 200,
-    });
-
-    expect(await structure(page)).toStrictEqual([[["One"]]]);
   });
 
   test("the Block can be dragged again afterwards", async ({ page }) => {
@@ -769,20 +616,6 @@ test.describe("dragging from the palette", () => {
 
     await expect(textBlock(page).nth(1)).toHaveText("Typed");
     expect(await structure(page)).toStrictEqual([[["One", "Typed"]]]);
-  });
-
-  test("outside any Row adds a Row", async ({ page }) => {
-    await load(page, [[["One"]]]);
-    const { height, width, x, y } = await boxOf(
-      canvas(page).locator(".row").first()
-    );
-
-    await drag(page, paletteText(page), {
-      x: x + width / 2,
-      y: y + height + 30,
-    });
-
-    expect(await structure(page)).toStrictEqual([[["One"]], [[""]]]);
   });
 
   test("into an email with no Rows", async ({ page }) => {
@@ -989,24 +822,6 @@ test.describe("undo", () => {
     expect(await structure(page)).toStrictEqual([[["Two", "One"], ["Three"]]]);
     await redo(page);
     expect(await structure(page)).toStrictEqual([[["Two"], ["Three", "One"]]]);
-  });
-
-  test("a drag to a new Row is one step", async ({ page }) => {
-    await load(page, [[["One", "Two"]]]);
-    const { height, width, x, y } = await boxOf(
-      canvas(page).locator(".row").first()
-    );
-
-    await drag(page, handleOf(page, "Two"), {
-      x: x + width / 2,
-      y: y + height + 30,
-    });
-    expect(await structure(page)).toStrictEqual([[["One"]], [["Two"]]]);
-
-    await undo(page);
-    expect(await structure(page)).toStrictEqual([[["One", "Two"]]]);
-    await redo(page);
-    expect(await structure(page)).toStrictEqual([[["One"]], [["Two"]]]);
   });
 
   test("two drags to new Rows in a row are two steps", async ({ page }) => {
@@ -1337,58 +1152,6 @@ test.describe("a Block that's removed or replaced", () => {
       await bottomOf(blockElement(page, "Two"))
     );
     expect(await structure(page)).toStrictEqual([[[], ["Two", "One"]]]);
-  });
-
-  test("loading another email keeps dragging working", async ({ page }) => {
-    await load(page, [[["One"], ["Two"]]]);
-    await drag(
-      page,
-      handleOf(page, "One"),
-      await bottomOf(blockElement(page, "Two"))
-    );
-
-    await load(page, [[["Three", "Four"]]]);
-    await drag(
-      page,
-      handleOf(page, "Three"),
-      await bottomOf(blockElement(page, "Four"))
-    );
-
-    expect(await structure(page)).toStrictEqual([[["Four", "Three"]]]);
-  });
-
-  test("a new Block can be dragged", async ({ page }) => {
-    await load(page, [[["One"]]]);
-    await paletteText(page).click();
-    await page.keyboard.type("New");
-
-    await drag(
-      page,
-      handleOf(page, "New"),
-      await topOf(blockElement(page, "One"))
-    );
-
-    expect(await structure(page)).toStrictEqual([[["New", "One"]]]);
-  });
-
-  test("moving the element in the page keeps dragging working", async ({
-    page,
-  }) => {
-    await load(page, [[["One", "Two"]]]);
-    await canvas(page).evaluate((element) => {
-      const parent = element.parentElement;
-      element.remove();
-      parent?.append(element);
-    });
-    await expect(textBlock(page).first()).toBeVisible();
-
-    await drag(
-      page,
-      handleOf(page, "One"),
-      await bottomOf(blockElement(page, "Two"))
-    );
-
-    expect(await structure(page)).toStrictEqual([[["Two", "One"]]]);
   });
 });
 

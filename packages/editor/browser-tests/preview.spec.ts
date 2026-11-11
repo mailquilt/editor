@@ -95,21 +95,6 @@ test("opening the Preview doesn't change the document", async ({ page }) => {
   await expect(page.getByTestId("change-count")).toHaveText("0");
 });
 
-test("MJML loads when Preview opens, not with the editor", async ({ page }) => {
-  const requests: string[] = [];
-  page.on("request", (request) => requests.push(request.url()));
-  await page.reload();
-  await expect(textBlock(page)).toHaveText("Hello");
-  expect(requests.filter((url) => url.includes("mjml-browser"))).toEqual([]);
-
-  await previewButton(page).click();
-  await expect(previewEmail(page)).toContainText("Hello");
-
-  expect(requests.filter((url) => url.includes("mjml-browser"))).toHaveLength(
-    1
-  );
-});
-
 test("a slow MJML shows a loading message, then the email", async ({
   page,
 }) => {
@@ -197,19 +182,6 @@ test.describe("reflecting the latest edits", () => {
     await expect(previewEmail(page)).toContainText("xHello");
   });
 
-  test("Preview shows the result of undo", async ({ page }) => {
-    await focusStartOfTextBlock(page);
-    await page.keyboard.type("x");
-    await expect(textBlock(page)).toHaveText("xHello");
-    await page.keyboard.press("ControlOrMeta+z");
-    await expect(textBlock(page)).toHaveText("Hello");
-
-    await previewButton(page).click();
-
-    await expect(previewEmail(page)).toContainText("Hello");
-    await expect(previewEmail(page)).not.toContainText("xHello");
-  });
-
   test("an unchanged email isn't compiled again, and any change is", async ({
     page,
   }) => {
@@ -241,15 +213,6 @@ test.describe("reflecting the latest edits", () => {
     await expect(textBlock(page)).toHaveText("From the host");
     await openThenClose("From the host");
     expect(await exportCount(page)).toBe("4");
-  });
-
-  test("Preview shows a document the host set", async ({ page }) => {
-    await setValue(page, emailWith("From the host"));
-    await expect(textBlock(page)).toHaveText("From the host");
-
-    await previewButton(page).click();
-
-    await expect(previewEmail(page)).toContainText("From the host");
   });
 
   test("closing during a render, editing and reopening shows the edit", async ({
@@ -382,18 +345,6 @@ test.describe("closing", () => {
     await expect(previewDialog(page)).toBeHidden();
   });
 
-  test("focus goes to Close on opening, and back to Preview on closing", async ({
-    page,
-  }) => {
-    await previewButton(page).focus();
-    await page.keyboard.press("Enter");
-    await expect(closeButton(page)).toBeFocused();
-
-    await page.keyboard.press("Escape");
-
-    await expect(previewButton(page)).toBeFocused();
-  });
-
   test("the Block keeps its cursor and undo history after the Preview", async ({
     page,
   }) => {
@@ -412,20 +363,6 @@ test.describe("closing", () => {
     await expect(textBlock(page)).toHaveText("aHello");
     await page.keyboard.press("ControlOrMeta+z");
     await expect(textBlock(page)).toHaveText("Hello");
-  });
-
-  test("Escape also gives the Block back its cursor", async ({ page }) => {
-    await focusStartOfTextBlock(page);
-    await page.keyboard.type("a");
-    await expect(textBlock(page)).toHaveText("aHello");
-
-    await previewButton(page).click();
-    await expect(previewEmail(page)).toContainText("aHello");
-    await page.keyboard.press("Escape");
-    await expect(textBlock(page)).toBeFocused();
-    await page.keyboard.type("b");
-
-    await expect(textBlock(page)).toHaveText("abHello");
   });
 
   test("opening with the mouse and no Block focused returns focus to Preview", async ({

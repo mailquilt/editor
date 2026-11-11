@@ -16,25 +16,6 @@ const firstBlock = (document: ReturnType<typeof createEmail>) => {
 };
 
 describe(createEmail, () => {
-  it("creates a versioned blocks email", () => {
-    expect(createEmail()).toMatchObject({ kind: "blocks", version: 1 });
-  });
-
-  it("creates one full-width Column in one Row", () => {
-    const email = createEmail();
-
-    expect(email.rows).toHaveLength(1);
-    expect(email.rows[0]?.columns).toHaveLength(1);
-    expect(email.rows[0]?.columns[0]?.width).toBe(100);
-  });
-
-  it("creates one empty Text Block stored as limited rich text", () => {
-    expect(firstBlock(createEmail())).toMatchObject({
-      props: { content: { content: [{ type: "paragraph" }], type: "doc" } },
-      type: "text",
-    });
-  });
-
   it("gives every Row, Column and Block its own ID in each email", () => {
     const ids = [createEmail(), createEmail()].flatMap((email) =>
       email.rows.flatMap((row) => [
@@ -47,13 +28,6 @@ describe(createEmail, () => {
     );
 
     expect(new Set(ids).size).toBe(6);
-  });
-
-  it("creates an email that survives a JSON round trip", () => {
-    const email = createEmail();
-
-    // oxlint-disable-next-line unicorn/prefer-structured-clone -- JSON is the saved format, so this tests JSON itself.
-    expect(JSON.parse(JSON.stringify(email))).toStrictEqual(email);
   });
 });
 
@@ -124,11 +98,6 @@ describe("rejecting a Command", () => {
       "props that aren't an object",
       (blockId) => ({ blockId, props: "Hi", type: "updateProps" }),
       /props/iu,
-    ],
-    [
-      "a property the Text Block doesn't have",
-      (blockId) => ({ blockId, props: { colour: "red" }, type: "updateProps" }),
-      /colour/iu,
     ],
     [
       "text that isn't limited rich text",

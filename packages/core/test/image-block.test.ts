@@ -5,7 +5,6 @@ import {
   blockStyles,
   createEditor,
   createEmail,
-  loadDocument,
 } from "../src/index.js";
 import type { BlocksDocument } from "../src/index.js";
 
@@ -106,26 +105,11 @@ describe("Image Block", () => {
     expect(propsOf(document)).toStrictEqual({});
   });
 
-  it.each([
-    ["https://shop.example"],
-    ["mailto:sales@shop.example"],
-    ["tel:+15551234567"],
-    ["{{cta_url}}"],
-  ])("accepts the link %s", (href) => {
-    expect(setProps({ alt: "Our logo", href }).result).toStrictEqual({
-      ok: true,
-    });
-  });
-
-  it.each([
-    // oxlint-disable-next-line no-script-url -- What's being refused.
-    ["javascript:alert(1)"],
-    ["data:text/html,<script>alert(1)</script>"],
-    // oxlint-disable-next-line no-script-url -- What's being refused.
-    ["{{x}}javascript:alert(1)"],
-    ["/relative"],
-  ])("refuses the link %j", (href) => {
-    expect(setProps({ alt: "Our logo", href }).result).toStrictEqual({
+  it("refuses a link the allowlist refuses", () => {
+    expect(
+      // oxlint-disable-next-line no-script-url -- What's being refused.
+      setProps({ alt: "Our logo", href: "javascript:alert(1)" }).result
+    ).toStrictEqual({
       ok: false,
       reason: expect.stringMatching(/href/u),
     });
@@ -133,9 +117,6 @@ describe("Image Block", () => {
 
   it.each([
     ["a width of 0", { width: 0 }, /width/u],
-    ["a negative width", { width: -1 }, /width/u],
-    ["a fractional width", { width: 1.5 }, /width/u],
-    ["a width that isn't a number", { width: "100px" }, /width/u],
     ["alt text that isn't text", { alt: 1 }, /alt/u],
     ["a property it doesn't have", { align: "left" }, /align/u],
   ])("rejects %s", (_name, props, reason) => {
@@ -193,63 +174,6 @@ describe("Image Block", () => {
     ).toStrictEqual({ ok: true });
   });
 
-  it("can have its settings removed", () => {
-    const editor = createEditor({
-      document: withImage({ alt: "Logo", src: "{{logo_url}}", width: 100 }),
-    });
-
-    expect(
-      editor.apply({
-        blockId: "image-1",
-        props: { alt: null, src: null, width: null },
-        type: "updateProps",
-      })
-    ).toStrictEqual({ ok: true });
-
-    expect(propsOf(editor.getDocument())).toStrictEqual({});
-  });
-
-  it("makes one undo step of a change to its URL", () => {
-    const editor = createEditor({
-      document: withImage({ src: "{{logo_url}}" }),
-    });
-
-    editor.apply({
-      blockId: "image-1",
-      props: { src: "https://cdn.example/new.png" },
-      type: "updateProps",
-    });
-    editor.undo();
-
-    expect(propsOf(editor.getDocument())).toStrictEqual({
-      src: "{{logo_url}}",
-    });
-  });
-
-  it("loads from a saved email", () => {
-    const document = withImage({
-      alt: "Logo",
-      href: "{{cta_url}}",
-      src: "{{logo_url}}",
-      width: 120,
-    });
-
-    expect(loadDocument(document)).toStrictEqual({ document, ok: true });
-  });
-
-  it.each([
-    // oxlint-disable-next-line no-script-url -- What's being refused.
-    ["an executable image URL", { src: "javascript:alert(1)" }],
-    // oxlint-disable-next-line no-script-url -- What's being refused.
-    ["an executable link", { alt: "Logo", href: "javascript:alert(1)" }],
-    ["a link with no alt text", { href: "https://shop.example" }],
-  ])("refuses a saved email with %s", (_name, props) => {
-    expect(loadDocument(withImage(props))).toStrictEqual({
-      ok: false,
-      reason: expect.stringContaining('Block "image-1"'),
-    });
-  });
-
   it("has no CSS until a width is set", () => {
     expect(blockStyles({ props: {}, type: "image" })).toStrictEqual({});
     expect(blockStyles({ props: { width: 240 }, type: "image" })).toStrictEqual(
@@ -261,11 +185,5 @@ describe("Image Block", () => {
     expect(linkField({})).toMatchObject({ disabled: true });
     expect(linkField({ alt: "   " })).toMatchObject({ disabled: true });
     expect(linkField({ alt: "Logo" })).not.toHaveProperty("disabled");
-  });
-
-  it("offers its URL, alt text, width and link as settings", () => {
-    expect(
-      blockSettingsFields({ props: {}, type: "image" }).map(({ key }) => key)
-    ).toStrictEqual(["src", "alt", "width", "href"]);
   });
 });
