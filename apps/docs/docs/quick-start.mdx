@@ -56,7 +56,7 @@ npm install @mailquilt/react
 | `mq-error` | An event fired when the editor refuses an email, which then keeps the email it had. The reason is in `event.detail.reason`. The [document format](./document-format) page lists what the editor accepts. |
 | `exportHtml()` | Returns a promise of the email's HTML, ready to send. It rejects if the editor has no email. |
 
-In React, these are the `value`, `onChange` and `onError` props, and `exportHtml()` on the `ref`.
+In React, these are the `value`, `onChange` and `onError` props, and `exportHtml()` on the `ref`. Other props, such as `className`, `style` and `aria-label`, go to the element.
 
 Opening a different email clears undo history. Setting `value` to the email the editor last sent you changes nothing, even if you copied it or its keys come back in another order. That's why the examples can save each change and pass it straight back.
 
