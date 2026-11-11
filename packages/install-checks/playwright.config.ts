@@ -7,6 +7,9 @@ export default defineConfig({
   // These check the packages, and the browser tests of each package cover the
   // other browsers.
   projects: [{ name: "chromium", use: devices["Desktop Chrome"] }],
+  // CI's runners are slow enough that a key can land before the page has
+  // caught up. A test that passes on a retry is still reported as flaky.
+  retries: process.env.CI ? 2 : 0,
   testDir: "tests",
   // The fresh projects are the quick-start code the docs show, which marks its
   // outputs with ids rather than test-only attributes.
