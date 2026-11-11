@@ -7,11 +7,14 @@ import type { Rolldown } from "tsdown";
 const packageRoot = /^.*[/\\]node_modules[/\\](?:@[^/\\]+[/\\])?[^/\\]+/u;
 
 const licenseOf = (root: string) => {
-  const { license, name, version } = JSON.parse(
+  const { author, license, name, version } = JSON.parse(
     readFileSync(path.join(root, "package.json"), "utf-8")
   );
   const file = readdirSync(root).find((each) => /^licen[cs]e/iu.test(each));
-  const text = file ? readFileSync(path.join(root, file), "utf-8").trim() : "";
+  // A package with no license file still gets its copyright line.
+  const text = file
+    ? readFileSync(path.join(root, file), "utf-8").trim()
+    : `Copyright (c) ${author?.name ?? author}`;
   return `${name}@${version} (${license})\n\n${text}`;
 };
 
