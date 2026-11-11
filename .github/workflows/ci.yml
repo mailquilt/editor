@@ -2,6 +2,8 @@ name: CI
 
 on:
   pull_request:
+    # Ready for review is when a draft starts being checked.
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
 
@@ -12,6 +14,8 @@ concurrency:
 jobs:
   check:
     name: Lint, types, unit tests and install checks
+    # A draft is still being worked on, so it isn't checked until it's ready.
+    if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -33,6 +37,7 @@ jobs:
 
   browsers:
     name: Browser tests (${{ matrix.browser }} ${{ matrix.shard }}/2)
+    if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
