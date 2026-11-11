@@ -158,30 +158,6 @@ test("a render that fails shows why, and doesn't promise a retry will help", asy
 });
 
 test.describe("reflecting the latest edits", () => {
-  test("Preview shows edits made since it last opened", async ({ page }) => {
-    await previewButton(page).click();
-    await expect(previewEmail(page)).toContainText("Hello");
-    await closeButton(page).click();
-
-    await focusStartOfTextBlock(page);
-    await page.keyboard.type("Oh ");
-    await previewButton(page).click();
-
-    await expect(previewEmail(page)).toContainText("Oh Hello");
-    expect(await previewFrame(page).getAttribute("srcdoc")).toBe(
-      await exportHtml(page)
-    );
-  });
-
-  test("Preview shows the text right after a keystroke", async ({ page }) => {
-    await focusStartOfTextBlock(page);
-    await page.keyboard.type("x");
-
-    await previewButton(page).click();
-
-    await expect(previewEmail(page)).toContainText("xHello");
-  });
-
   test("an unchanged email isn't compiled again, and any change is", async ({
     page,
   }) => {

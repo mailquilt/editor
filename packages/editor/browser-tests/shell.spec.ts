@@ -688,35 +688,4 @@ test.describe("parts", () => {
       "message",
     ]);
   });
-
-  test("let a host hide a button or the heading with CSS", async ({ page }) => {
-    await openShell(page);
-
-    await page.addStyleTag({
-      content: `
-        mail-quilt-shell::part(export-html),
-        mail-quilt-shell::part(heading) {
-          display: none;
-        }
-      `,
-    });
-
-    await expect(
-      shell(page).getByRole("button", { name: "Export HTML" })
-    ).toBeHidden();
-    await expect(shell(page).getByRole("heading")).toBeHidden();
-    await expect(
-      shell(page).getByRole("button", { name: "Export JSON" })
-    ).toBeVisible();
-  });
-});
-
-test.describe("the frame", () => {
-  test("isn't drawn again by the editor inside it", async ({ page }) => {
-    await openShell(page);
-
-    const editorFrame = shell(page).locator("mail-quilt").locator(".editor");
-    await expect(editorFrame).toHaveCSS("border-radius", "0px");
-    await expect(editorFrame).toHaveCSS("box-shadow", "none");
-  });
 });

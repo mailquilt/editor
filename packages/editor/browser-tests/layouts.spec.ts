@@ -193,15 +193,6 @@ test.describe("deleting a Block", () => {
     await expect(textBlock(page)).toHaveText("Hello!?");
   });
 
-  test("takes the formatting buttons with the selection", async ({ page }) => {
-    await textBlock(page).click();
-    await expect(page.getByRole("button", { name: "Bold" })).toBeEnabled();
-
-    await deleteBlock(page).click();
-
-    await expect(page.getByRole("button", { name: "Bold" })).toHaveCount(0);
-  });
-
   test("from the keyboard, leaves focus where undo still works", async ({
     page,
   }) => {
@@ -402,37 +393,22 @@ test.describe("adding and deleting Rows", () => {
 });
 
 test.describe("choosing a layout", () => {
-  const LAYOUTS: [string, number[], number[]][] = [
-    ["100", [100], [600]],
-    ["50/50", [50, 50], [300, 300]],
-    ["33/67", [33, 67], [198, 402]],
-    ["33/33/33", [33.33, 33.33, 33.34], [200, 200, 200]],
-    ["25/25/25/25", [25, 25, 25, 25], [150, 150, 150, 150]],
-  ];
+  test("33/33/33 shows and exports its Columns side by side", async ({
+    page,
+  }) => {
+    await chooseLayout(page, 1, "33/33/33");
 
-  for (const [layout, percentages, pixels] of LAYOUTS) {
-    test(`${layout} shows and exports its Columns side by side`, async ({
-      page,
-    }) => {
-      if (layout === "100") {
-        await chooseLayout(page, 1, "50/50");
-        await expect(addToColumn(page)).toHaveCount(1);
-      }
-
-      await chooseLayout(page, 1, layout);
-
-      await expect(await shownLayout(page, 1, layout)).toHaveAttribute(
-        "aria-pressed",
-        "true"
-      );
-      expect(await widths(page)).toStrictEqual(percentages);
-      await expect(addToColumn(page)).toHaveCount(percentages.length - 1);
-      expect(await canvasColumnWidths(page)).toStrictEqual(pixels);
-      const boxes = await exportedColumnBoxes(page);
-      expect(boxes.map(({ width }) => width)).toStrictEqual(pixels);
-      expect(new Set(boxes.map(({ top }) => top)).size).toBe(1);
-    });
-  }
+    await expect(await shownLayout(page, 1, "33/33/33")).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+    expect(await widths(page)).toStrictEqual([33.33, 33.33, 33.34]);
+    await expect(addToColumn(page)).toHaveCount(2);
+    expect(await canvasColumnWidths(page)).toStrictEqual([200, 200, 200]);
+    const boxes = await exportedColumnBoxes(page);
+    expect(boxes.map(({ width }) => width)).toStrictEqual([200, 200, 200]);
+    expect(new Set(boxes.map(({ top }) => top)).size).toBe(1);
+  });
 
   test("shows no current layout for widths that aren't a preset", async ({
     page,

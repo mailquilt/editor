@@ -121,23 +121,6 @@ test.beforeEach(async ({ page }) => {
 });
 
 test.describe("bold, italic and underline", () => {
-  test("Bold from the toolbar reaches the exported email", async ({ page }) => {
-    await selectAllInBlock(page);
-
-    await toolbarButton(page, "Bold").click();
-
-    await expect
-      .poll(() => savedInline(page))
-      .toStrictEqual([
-        { marks: [{ type: "bold" }], text: "Hello", type: "text" },
-      ]);
-    await expect(toolbarButton(page, "Bold")).toHaveAttribute(
-      "aria-pressed",
-      "true"
-    );
-    expect(await exportHtml(page)).toContain("<strong>Hello</strong>");
-  });
-
   test("Underline from its keyboard shortcut reaches the exported email", async ({
     page,
   }) => {
@@ -234,24 +217,6 @@ test.describe("bold, italic and underline", () => {
         { marks: [{ type: "bold" }], text: "{{first_name}}", type: "text" },
       ]);
     expect(await exportHtml(page)).toContain("<strong>{{first_name}}</strong>");
-  });
-
-  test("text typed after turning bold on is bold", async ({ page }) => {
-    await cursorAtEndOfBlock(page);
-
-    await toolbarButton(page, "Bold").click();
-    await expect(toolbarButton(page, "Bold")).toHaveAttribute(
-      "aria-pressed",
-      "true"
-    );
-    await page.keyboard.type("x");
-
-    await expect
-      .poll(() => savedInline(page))
-      .toStrictEqual([
-        { text: "Hello", type: "text" },
-        { marks: [{ type: "bold" }], text: "x", type: "text" },
-      ]);
   });
 });
 

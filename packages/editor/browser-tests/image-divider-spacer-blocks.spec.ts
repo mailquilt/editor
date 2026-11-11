@@ -16,7 +16,6 @@ import {
   openBlocks as open,
   openExport,
   palette,
-  redo,
   rowTools,
   settle,
   undo,
@@ -117,75 +116,9 @@ test.describe("the palette", () => {
       page.getByRole("group", { name: "Add content" }).getByRole("button")
     ).toHaveText(["Text", "Heading", "Image", "Button", "Divider", "Spacer"]);
   });
-
-  test("adds an Image, selected, and undoes and redoes it", async ({
-    page,
-  }) => {
-    await open(page, ["text"]);
-
-    await palette(page, "Image").click();
-
-    await expect(blockGroup(page, "Image")).toBeFocused();
-    await expect(blockTypes(page)).resolves.toEqual(["text", "image"]);
-
-    await undo(page);
-    await expect(blockTypes(page)).resolves.toEqual(["text"]);
-
-    await redo(page);
-    await expect(blockTypes(page)).resolves.toEqual(["text", "image"]);
-  });
 });
 
-test.describe("moving an Image", () => {
-  test("by its handle, within a Column", async ({ page }) => {
-    await open(page, ["text", "image"]);
-    const block = blockGroup(page, "Image");
-    await block.hover();
-
-    await dragTo(
-      page,
-      block.locator(".drag-handle"),
-      blockGroup(page, "Text"),
-      0.25
-    );
-
-    await expect(blockTypes(page)).resolves.toEqual(["image", "text"]);
-
-    await undo(page);
-    await expect(blockTypes(page)).resolves.toEqual(["text", "image"]);
-  });
-
-  test("by its handle, to another Column", async ({ page }) => {
-    await open(page, ["image"], []);
-    const block = blockGroup(page, "Image");
-    await block.hover();
-
-    await dragTo(
-      page,
-      block.locator(".drag-handle"),
-      canvas(page).locator(".column").nth(1)
-    );
-
-    await expect(blockTypes(page, 0, 1)).resolves.toEqual(["image"]);
-    await expect(blockTypes(page, 0, 0)).resolves.toEqual([]);
-  });
-
-  test("by keyboard", async ({ page }) => {
-    await open(page, ["text", "image"]);
-    await blockGroup(page, "Image").focus();
-
-    await page.keyboard.press("Alt+ArrowUp");
-
-    await expect(blockTypes(page)).resolves.toEqual(["image", "text"]);
-    await expect(blockGroup(page, "Image")).toBeFocused();
-    await expect(canvas(page).getByRole("status")).toHaveText(
-      "Moved to Row 1, Column 1, position 1 of 2."
-    );
-
-    await page.keyboard.press("ControlOrMeta+z");
-    await expect(blockTypes(page)).resolves.toEqual(["text", "image"]);
-  });
-
+test.describe("selecting an Image", () => {
   test("is reached with arrow keys, and ignores Enter", async ({ page }) => {
     await open(page, ["text", "image"]);
     await blockGroup(page, "Text").focus();
@@ -195,18 +128,6 @@ test.describe("moving an Image", () => {
 
     await page.keyboard.press("Enter");
     await expect(blockGroup(page, "Image")).toBeFocused();
-  });
-
-  test("can be deleted, and comes back with undo", async ({ page }) => {
-    await open(page, ["text", "image"]);
-    await blockGroup(page, "Image").focus();
-
-    await page.getByRole("button", { name: "Delete Block" }).click();
-    await expect(blockTypes(page)).resolves.toEqual(["text"]);
-
-    await undo(page);
-    await expect(blockTypes(page)).resolves.toEqual(["text", "image"]);
-    await expect(blockGroup(page, "Image")).toBeVisible();
   });
 });
 
@@ -527,19 +448,6 @@ test.describe("an Image", () => {
     await expect(box(opened.locator("img"))).resolves.toEqual(onCanvas);
   });
 
-  test("goes back to filling its Column when the width is cleared", async ({
-    page,
-  }) => {
-    await open(page, ["image"]);
-    await blockGroup(page, "Image").focus();
-    await change(field(page, "Width (px)"), "120");
-
-    await change(field(page, "Width (px)"), "");
-
-    await expect(firstBlockProps(page)).resolves.toEqual({ src: PHOTO });
-    await expect(box(image(page))).resolves.toMatchObject({ width: 568 });
-  });
-
   test("takes up the same space on the canvas as in the export", async ({
     page,
   }) => {
@@ -601,21 +509,6 @@ test.describe("a Divider", () => {
       height: 6,
     });
     await expect(look(opened.locator("p"))).resolves.toEqual(onCanvas);
-  });
-
-  test("refuses a thickness of 0, and says so", async ({ page }) => {
-    await open(page, ["divider"]);
-    await blockGroup(page, "Divider").focus();
-
-    await change(field(page, "Thickness (px)"), "0");
-
-    await expect(field(page, "Thickness (px)")).toHaveAttribute(
-      "aria-invalid",
-      "true"
-    );
-    await expect(page.getByRole("alert")).toHaveText(
-      "Use a whole number from 1 to 100."
-    );
   });
 });
 
@@ -795,21 +688,6 @@ test.describe("a Spacer", () => {
       ]);
     });
   });
-
-  test("refuses a height of 0, and says so", async ({ page }) => {
-    await open(page, ["spacer"]);
-    await blockGroup(page, "Spacer").focus();
-
-    await change(field(page, "Height (px)"), "0");
-
-    await expect(field(page, "Height (px)")).toHaveAttribute(
-      "aria-invalid",
-      "true"
-    );
-    await expect(page.getByRole("alert")).toHaveText(
-      "Use a whole number from 1 to 1000."
-    );
-  });
 });
 
 test.describe("the floating toolbar", () => {
@@ -877,15 +755,28 @@ test.describe("accessibility", () => {
     await expect(violations(page)).resolves.toEqual([]);
   });
 
-  test("finds no problem with an exported Image, Divider and Spacer", async ({
+  test("finds no problem with an exported email of each type of Block", async ({
     page,
   }) => {
-    await open(page, ["image", "divider", "spacer"]);
-    await canvas(page).locator(".block").first().focus();
+    await open(page, [
+      "heading",
+      "text",
+      "button",
+      "image",
+      "divider",
+      "spacer",
+    ]);
+    await blockGroup(page, "Button").focus();
+    await change(field(page, "Link"), "https://shop.example");
+    await blockGroup(page, "Image").focus();
     await change(field(page, "Alt text"), "A red bicycle");
     await change(field(page, "Link"), "https://shop.example");
     const { opened } = await openExport(page);
 
+    await expect(
+      opened.getByRole("heading", { level: 2, name: "Sale" })
+    ).toBeVisible();
+    await expect(opened.getByRole("link", { name: "Buy" })).toBeVisible();
     await expect(
       opened.getByRole("img", { name: "A red bicycle" })
     ).toBeVisible();

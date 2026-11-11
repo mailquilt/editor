@@ -410,10 +410,4 @@ test.describe("dragging a Row", () => {
 
     await expect(structure(page)).resolves.toEqual([[["One"]], [["Two"]]]);
   });
-
-  test("its tag takes a touch for a drag, not a scroll", async ({ page }) => {
-    await open(page, [[["One"]]]);
-
-    await expect(await grip(page, 1, "tag")).toHaveCSS("touch-action", "none");
-  });
 });

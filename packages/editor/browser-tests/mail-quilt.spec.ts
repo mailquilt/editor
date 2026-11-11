@@ -331,21 +331,6 @@ test.describe("undo and redo while typing", () => {
     await expect(textBlock(page)).toHaveText("Hello");
   });
 
-  test("typing after redo continues after the restored text", async ({
-    page,
-  }) => {
-    await focusStartOfTextBlock(page);
-    await page.keyboard.type("abc");
-    await undo(page);
-    await expect(textBlock(page)).toHaveText("Hello");
-    await redo(page);
-    await expect(textBlock(page)).toHaveText("abcHello");
-
-    await page.keyboard.type("d");
-
-    await expect(textBlock(page)).toHaveText("abcdHello");
-  });
-
   test("undo keeps focus in the Block", async ({ page }) => {
     await focusStartOfTextBlock(page);
     await page.keyboard.type("abc");

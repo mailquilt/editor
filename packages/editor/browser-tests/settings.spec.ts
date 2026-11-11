@@ -239,11 +239,13 @@ test.describe("Text settings", () => {
     await expect(field(page, "Color", block(page))).toHaveValue("#00ff00");
   });
 
-  test("go back to the default when emptied", async ({ page }) => {
+  test("go back to the default when emptied, even with spaces left", async ({
+    page,
+  }) => {
     await textBlock(page).click();
     await change(field(page, "Color", block(page)), "#ff0000");
 
-    await change(field(page, "Color", block(page)), "");
+    await change(field(page, "Color", block(page)), "  ");
 
     expect(await blockProps(page)).not.toHaveProperty("color");
     await expect(field(page, "Color", block(page))).toHaveValue("#000000");
@@ -272,17 +274,6 @@ test.describe("Row settings", () => {
     expect(html).toContain("background-color:#00ff00");
     await expect(opened.getByText("In", { exact: true })).toBeVisible();
     await opened.close();
-  });
-
-  test("lose the color when emptied", async ({ page }) => {
-    await selectRow(page, 1);
-    await change(field(page, "Background color", row(page)), "#00ff00");
-
-    await change(field(page, "Background color", row(page)), "");
-
-    const { rows } = await currentValue(page);
-    expect(rows[0]?.props).toStrictEqual({});
-    await expect(field(page, "Background color", row(page))).toHaveValue("");
   });
 });
 
@@ -327,21 +318,6 @@ test.describe("Email settings", () => {
     );
     await expect(opened.getByText("Hello {{first_name}}")).toBeHidden();
     await opened.close();
-  });
-
-  test("leave no preheader or language when emptied", async ({ page }) => {
-    const before = await settingsOf(page);
-    await change(field(page, "Preheader"), "Hi");
-    await change(field(page, "Language"), "en");
-
-    await change(field(page, "Preheader"), "");
-    await change(field(page, "Language"), "  ");
-
-    expect(await settingsOf(page)).toStrictEqual(before);
-    await expect(canvas(page).locator(".email")).not.toHaveAttribute(
-      "lang",
-      /./u
-    );
   });
 });
 

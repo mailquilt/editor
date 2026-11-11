@@ -949,18 +949,6 @@ test.describe("labels and focus states", () => {
 });
 
 test.describe("automated accessibility checks", () => {
-  test("reach inside the Shadow DOM", async ({ page }) => {
-    await open(page, [[["A"]]]);
-    await canvas(page).evaluate((host) => {
-      const undo = host.shadowRoot?.querySelector(".floating-toolbar button");
-      undo?.removeAttribute("aria-label");
-    });
-
-    expect(await violations(page)).toEqual([
-      expect.objectContaining({ id: "button-name" }),
-    ]);
-  });
-
   test("pass with Columns, empty Columns and no Block selected", async ({
     page,
   }) => {

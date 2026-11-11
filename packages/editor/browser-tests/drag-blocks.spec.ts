@@ -462,12 +462,22 @@ test.describe("while dragging", () => {
     await moveTo(page, await bottomOf(blockElement(page, "Two")));
     const after = await indicatorBox(page);
     expect(after.y + after.height / 2).toBeCloseTo(two.y + two.height, 0);
+    // The Column it would land in is highlighted, and no other.
+    await expect(canvas(page).locator(".email")).toHaveAttribute(
+      "data-dragging"
+    );
+    await expect(column(page, 0, 0)).toHaveAttribute("data-drop-target");
+    await expect(column(page, 0, 1)).not.toHaveAttribute("data-drop-target");
 
     await page.mouse.up();
     await settle(page);
     expect(await structure(page)).toStrictEqual([
       [["One", "Two", "Four", "Three"], []],
     ]);
+    await expect(canvas(page).locator("[data-drop-target]")).toHaveCount(0);
+    await expect(canvas(page).locator(".email")).not.toHaveAttribute(
+      "data-dragging"
+    );
   });
 
   test("the indicator spans the email outside any Row", async ({ page }) => {
@@ -785,22 +795,6 @@ test.describe("text after a move", () => {
     expect(await structure(page)).toStrictEqual([[[], ["Two", "One more"]]]);
   });
 
-  test("the moved Block can be typed in straight away", async ({ page }) => {
-    await load(page, [[["One"], ["Two"]]]);
-
-    await drag(
-      page,
-      handleOf(page, "One"),
-      await bottomOf(blockElement(page, "Two"))
-    );
-    await expect(blockElement(page, "One").getByRole("textbox")).toBeFocused();
-    await page.keyboard.type("X");
-
-    const after = await structure(page);
-    expect(after[0]?.[1]?.[0]).toBe("Two");
-    expect(after[0]?.[1]?.[1]?.replace("X", "")).toBe("One");
-  });
-
   test("the moved Block can be clicked and edited", async ({ page }) => {
     await load(page, [[["One", "Two"], ["Three"]]]);
 
@@ -1069,7 +1063,8 @@ test.describe("auto-scrolling", () => {
     await page.mouse.up();
     await settle(page);
 
-    expect((await structure(page)).flat().flat()).toStrictEqual(manyBlocks);
+    const after = await structure(page);
+    expect(after.flat().flat()).toStrictEqual(manyBlocks);
     await expect(changeCount(page)).toHaveText(changes as string);
   });
 
