@@ -8,8 +8,10 @@ import {
   canvas,
   chooseLayout,
   deleteRow,
+  emailWith,
   exportHtml,
   layoutOption,
+  openTab,
   selectRow,
   rowTools,
   setValue,
@@ -253,6 +255,21 @@ test.describe("adding and deleting Rows", () => {
     expect(await widths(page, 1)).toStrictEqual([100]);
   });
 
+  test("the Rows tab selects the Row it adds, so the next goes after it", async ({
+    page,
+  }) => {
+    await textBlock(page).click();
+
+    await addRow(page, "50/50");
+    await addRow(page, "33/67");
+
+    expect(await widths(page, 1)).toStrictEqual([50, 50]);
+    expect(await widths(page, 2)).toStrictEqual([33, 67]);
+    await expect(
+      rowControls(page, 3).getByRole("button", { name: "Select Row" })
+    ).toHaveAttribute("aria-pressed", "true");
+  });
+
   test("the Rows tab adds after the selected Block's Row", async ({ page }) => {
     await addRow(page);
     await addToColumn(page).click();
@@ -285,7 +302,9 @@ test.describe("adding and deleting Rows", () => {
   test("each is one undo step", async ({ page }) => {
     await addRow(page);
     await expect(rowControls(page, 2)).toBeVisible();
-    await deleteRow(page, 1);
+    // The added Row's tools have focus, and show over the first Row's.
+    await deleteRowButton(page, 1).focus();
+    await page.keyboard.press("Enter");
     await expect(textBlock(page)).toHaveCount(0);
 
     await page.getByRole("button", { name: "Undo" }).click();
@@ -523,6 +542,7 @@ test.describe("structure changes and the rest of the editor", () => {
   }) => {
     await addRow(page);
     await expect(rowControls(page, 2)).toBeVisible();
+    await openTab(page, "Rows");
     await canvas(page)
       .getByRole("group", { name: "Add a Row" })
       .getByRole("button", { exact: true, name: "100" })

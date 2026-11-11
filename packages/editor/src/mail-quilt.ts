@@ -2872,8 +2872,8 @@ export class MailQuilt extends LitElement {
       : findBlockPosition(document, this.#activeBlockId);
   }
 
-  /** After the selected Block's Row, or else at the end. */
-  #addRow(layout: RowLayout) {
+  /** After the selected Block's Row, or else at the end, and selects it. */
+  async #addRow(layout: RowLayout) {
     const document = this.#editor?.getDocument();
     if (!document) {
       return;
@@ -2885,11 +2885,17 @@ export class MailQuilt extends LitElement {
       selectedRow === -1
         ? this.#selectedPosition(document)?.rowIndex
         : selectedRow;
-    this.#apply({
+    const result = this.#tryCommand({
       index: rowIndex === undefined ? document.rows.length : rowIndex + 1,
       layout,
       type: "insertRow",
     });
+    if (result) {
+      this.#publishStructure();
+      if (result.createdId !== undefined) {
+        await this.#selectRow(result.createdId);
+      }
+    }
   }
 
   #onWorkspacePointerdown({ currentTarget, target }: PointerEvent) {
