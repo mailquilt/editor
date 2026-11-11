@@ -3269,9 +3269,15 @@ export class MailQuilt extends LitElement {
       return;
     }
     const direction = arrowDirection(event);
-    if (event.altKey && (direction === "up" || direction === "down")) {
-      event.preventDefault();
+    if (!(event.altKey && direction)) {
+      return;
+    }
+    // Alt+Left would go back in history.
+    event.preventDefault();
+    if (direction === "up" || direction === "down") {
       this.#moveRow(rowId, direction);
+    } else {
+      this.#announce(`The Row can't move ${direction}.`);
     }
   }
 

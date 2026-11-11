@@ -181,6 +181,31 @@ test.describe("moving a selected Row from the keyboard", () => {
     await expect(structure(page)).resolves.toEqual([[["One"]], [["Two"]]]);
     await expect(selectRowButton(page, 1)).toBeFocused();
   });
+
+  test("Alt+← and Alt+→ say it can't move that way, and don't go back a page", async ({
+    page,
+  }) => {
+    await open(page, [[["One"]], [["Two"]]]);
+    await selectRow(page, 1);
+    const prevented = page.evaluate(
+      () =>
+        // oxlint-disable-next-line promise/avoid-new -- An event listener only takes a callback.
+        new Promise((resolve) => {
+          document.addEventListener("keydown", (event) => {
+            if (event.key === "ArrowLeft") {
+              resolve(event.defaultPrevented);
+            }
+          });
+        })
+    );
+
+    await page.keyboard.press("Alt+ArrowLeft");
+    await expect(prevented).resolves.toBe(true);
+    await expect(announcement(page)).toHaveText("The Row can't move left.");
+
+    await page.keyboard.press("Alt+ArrowRight");
+    await expect(announcement(page)).toHaveText("The Row can't move right.");
+  });
 });
 
 const rowFrame = (page: Page, position: number) =>
