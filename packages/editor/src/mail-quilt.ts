@@ -1649,7 +1649,7 @@ export class MailQuilt extends LitElement {
     }
   }
 
-  get value() {
+  get value(): BlocksDocument | undefined {
     return this.#editor?.getDocument();
   }
 
@@ -1657,9 +1657,10 @@ export class MailQuilt extends LitElement {
    * A document with the same content as the last one received or sent out
    * changes nothing, so a controlled host keeps its undo history and cursor. Any
    * other document loads and clears undo history. A document that can't be
-   * trusted fires `mq-error`, and the current email stays as it was.
+   * trusted fires `mq-error`, and the current email stays as it was. Any value
+   * is checked, such as a saved email read back from JSON, so any is allowed.
    */
-  set value(document: BlocksDocument | undefined) {
+  set value(document: unknown) {
     // Checked first, because a controlled host does this after every keystroke.
     if (isSameDocument(document, this.#lastKnownDocument)) {
       return;
