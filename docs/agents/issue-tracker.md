@@ -18,6 +18,18 @@ Infer the repo from `git remote -v`; `gh` does this automatically when run insid
 
 File issues only into the user's own repo. Never file into `mattpocock/skills` (the repo these skills come from) unless the user owns it. In a fork, `gh` can default to the upstream parent, so before the first `gh issue create` of a session, check the target with `gh repo view --json nameWithOwner` and confirm it with the user if it is not their repo.
 
+## Keeping issues and PRs accurate
+
+The repo is owned by a user, not an organization, so GitHub's issue types aren't available. A type label does that job.
+
+- **Labels at creation.** Every issue gets a type label (`enhancement`, `bug` or `documentation`) and a triage label. Every PR gets the type label that matches its title prefix: `feat:` and `perf:` → `enhancement`, `fix:` → `bug`, `docs:` → `documentation`. Assign both to the maintainer.
+- **Every PR names an issue.** Put `Closes #<n>` in the PR body, or `Part of #<n>` for work under an umbrella issue. A commit message isn't enough: it closes the issue but doesn't link the PR. Fixes, performance and cleanup work get an issue first, or go under an umbrella issue such as a review.
+- **The issue body is the contract.** When triage produces an agent brief or changes a decision, rewrite the body. The old text stays in the edit history. Don't leave a comment that overrides a stale body.
+- **Write decisions back before closing.** Replace a "Decisions to make in triage" section, or any "confirm in triage" note, with the decision taken.
+- **Close with an explanation.** Comment with the PR that delivered the issue, or why it was dropped, and add `wontfix` to a dropped one. Tick the acceptance criteria that were met, and say which weren't and why.
+- **Keep review findings in the issue.** An audit or review issue lists its findings as a checklist, and each fixing PR ticks one and says `Part of #<n>`.
+- **Push everything before merging.** A commit pushed after the merge never reaches `main`.
+
 ## Pull requests as a triage surface
 
 **PRs as a request surface: no.** _(Set to `yes` if this repo treats external PRs as feature requests; `/triage` reads this flag.)_
