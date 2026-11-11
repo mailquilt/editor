@@ -222,14 +222,27 @@ test.describe("the email's language", () => {
   test("is on each Block's content, not on the Block or its tools", async ({
     page,
   }) => {
+    // A 1×1 PNG, so the image loads rather than showing its stand-in.
+    await page.route("https://cdn.example/**", (route) =>
+      route.fulfill({
+        body: Buffer.from(
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAEBgIApD5fRAAAAABJRU5ErkJggg==",
+          "base64"
+        ),
+        contentType: "image/png",
+      })
+    );
     await page.goto("/");
     const document = emailWith([[["A"]], [[]], [[]]]);
     document.settings.language = "de";
-    document.rows[2]?.columns[0]?.blocks.push({
-      id: "button",
-      props: { label: "Los" },
-      type: "button",
-    });
+    document.rows[2]?.columns[0]?.blocks.push(
+      { id: "button", props: { label: "Los" }, type: "button" },
+      {
+        id: "image",
+        props: { alt: "Logo", src: "https://cdn.example/logo.png" },
+        type: "image",
+      }
+    );
     await setValue(page, document);
     await textBlock(page).click();
 
@@ -242,6 +255,7 @@ test.describe("the email's language", () => {
         blockTools: langOf(".block-toolbar"),
         button: langOf(".button"),
         formatBar: langOf(".format-bar"),
+        imageAlt: langOf(".image-block img"),
         placeholder: langOf(".placeholder"),
         rowTools: langOf(".row-toolbar"),
         text: langOf(".ProseMirror"),
@@ -253,10 +267,29 @@ test.describe("the email's language", () => {
       blockTools: "en",
       button: "de",
       formatBar: "en",
+      imageAlt: "de",
       placeholder: "en",
       rowTools: "en",
       text: "de",
     });
+  });
+
+  test("is unknown on the content of an email that has none", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await setValue(page, emailWith([[["A"]]]));
+
+    await expect(textBlock(page)).toBeVisible();
+
+    const lang = await canvas(page).evaluate((host) =>
+      host.shadowRoot
+        ?.querySelector(".ProseMirror")
+        ?.closest("[lang]")
+        ?.getAttribute("lang")
+    );
+
+    expect(lang).toBe("");
   });
 });
 
