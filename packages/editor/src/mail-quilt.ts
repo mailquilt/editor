@@ -1600,6 +1600,8 @@ export class MailQuilt extends LitElement {
   #panelTab: PanelTab = "content";
   /** What had focus in the editor when the current update began. */
   #focusedBeforeUpdate: Element | null | undefined;
+  /** Set while `updated` gives focus back, which selects nothing new. */
+  #restoringFocus = false;
   #formats: TextFormats | undefined;
   /** Text in the settings panel that isn't the document's value. */
   readonly #drafts = new Map<string, FieldDraft>();
@@ -1793,7 +1795,9 @@ export class MailQuilt extends LitElement {
             ] as HTMLButtonElement[]
           ).find((button) => !button.disabled)
         : undefined;
+      this.#restoringFocus = true;
       (tool ?? block ?? view ?? rowTool ?? this.#floatingToolbar)?.focus();
+      this.#restoringFocus = false;
     }
     if (this.isConnected && this.shadowRoot) {
       this.#syncTooltips(this.shadowRoot);
@@ -2593,6 +2597,10 @@ export class MailQuilt extends LitElement {
   }
 
   #selectBlock(blockId: string) {
+    // The Block is selected already, and the panel stays as it was left.
+    if (this.#restoringFocus) {
+      return;
+    }
     this.#activeBlockId = blockId;
     this.#selectedRowId = undefined;
     this.#showProperties = true;

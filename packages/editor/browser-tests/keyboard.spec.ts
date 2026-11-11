@@ -263,6 +263,23 @@ test.describe("moving a Block with Alt+Arrow keys", () => {
     await expect(blockWith(page, "B")).toBeFocused();
   });
 
+  test("after Back, keeps the side panel's tabs showing", async ({ page }) => {
+    await open(page, [[["A", "B", "C"]]]);
+    await blockWith(page, "A").focus();
+    // The mouse leaves focus on the Block.
+    await canvas(page)
+      .getByRole("button", { exact: true, name: "Back" })
+      .click();
+
+    await page.keyboard.press("Alt+ArrowDown");
+
+    await expect(structure(page)).resolves.toEqual([[["B", "A", "C"]]]);
+    await expect(blockWith(page, "A")).toBeFocused();
+    await expect(
+      canvas(page).getByRole("tab", { name: "Content" })
+    ).toBeVisible();
+  });
+
   test("stops at the edge of a Row", async ({ page }) => {
     await open(page, [[["A"], ["B"]]]);
     await blockWith(page, "A").focus();
