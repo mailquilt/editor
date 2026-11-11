@@ -176,6 +176,29 @@ test.describe("bold, italic and underline", () => {
     );
   });
 
+  test("bold on text that's partly bold makes all of it bold", async ({
+    page,
+  }) => {
+    await cursorAtEndOfBlock(page);
+    await page.keyboard.press("ControlOrMeta+b");
+    await page.keyboard.type(" there");
+    await expect
+      .poll(() => savedInline(page))
+      .toStrictEqual([
+        { text: "Hello", type: "text" },
+        { marks: [{ type: "bold" }], text: " there", type: "text" },
+      ]);
+
+    await selectAll(page);
+    await page.keyboard.press("ControlOrMeta+b");
+
+    await expect
+      .poll(() => savedInline(page))
+      .toStrictEqual([
+        { marks: [{ type: "bold" }], text: "Hello there", type: "text" },
+      ]);
+  });
+
   test("text typed after turning bold on is bold", async ({ page }) => {
     await cursorAtEndOfBlock(page);
 
@@ -305,6 +328,51 @@ test.describe("the toolbar", () => {
 });
 
 test.describe("line breaks", () => {
+  test("Enter and Shift+Enter keep the formatting for what's typed next", async ({
+    page,
+  }) => {
+    await selectAllInBlock(page);
+    await page.keyboard.press("ControlOrMeta+b");
+    await pressArrow(page, "ArrowRight");
+
+    await page.keyboard.press("Shift+Enter");
+    await page.keyboard.type("x");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("y");
+
+    const bold = [{ type: "bold" }];
+    await expect
+      .poll(() => savedParagraphs(page))
+      .toStrictEqual([
+        {
+          content: [
+            { marks: bold, text: "Hello", type: "text" },
+            { type: "hardBreak" },
+            { marks: bold, text: "x", type: "text" },
+          ],
+          type: "paragraph",
+        },
+        {
+          content: [{ marks: bold, text: "y", type: "text" }],
+          type: "paragraph",
+        },
+      ]);
+  });
+
+  test("Delete in an empty last paragraph removes it", async ({ page }) => {
+    await cursorAtEndOfBlock(page);
+    await page.keyboard.press("Enter");
+    await expect.poll(() => savedParagraphs(page)).toHaveLength(2);
+
+    await page.keyboard.press("Delete");
+
+    await expect
+      .poll(() => savedParagraphs(page))
+      .toStrictEqual([
+        { content: [{ text: "Hello", type: "text" }], type: "paragraph" },
+      ]);
+  });
+
   test("Shift+Enter adds a line break in the same paragraph", async ({
     page,
   }) => {

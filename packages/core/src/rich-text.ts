@@ -1,8 +1,8 @@
 import * as v from "valibot";
 
 /**
- * Text is stored as limited Tiptap JSON (ADR 0001), so it can be validated like
- * any other property without loading Tiptap.
+ * Text is stored as limited ProseMirror JSON (ADR 0001), so it can be validated
+ * like any other property without loading ProseMirror.
  */
 export type RichTextMark =
   | { type: "bold" | "italic" | "underline" }

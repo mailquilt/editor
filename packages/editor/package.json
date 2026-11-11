@@ -21,16 +21,13 @@
   "dependencies": {
     "@mailquilt/core": "workspace:*",
     "@mailquilt/renderer": "workspace:*",
-    "@tiptap/core": "^3.32.3",
-    "@tiptap/extension-bold": "^3.32.3",
-    "@tiptap/extension-document": "^3.32.3",
-    "@tiptap/extension-hard-break": "^3.32.3",
-    "@tiptap/extension-italic": "^3.32.3",
-    "@tiptap/extension-paragraph": "^3.32.3",
-    "@tiptap/extension-text": "^3.32.3",
-    "@tiptap/extension-underline": "^3.32.3",
-    "@tiptap/pm": "^3.32.3",
-    "lit": "^3.3.3"
+    "lit": "^3.3.3",
+    "prosemirror-commands": "^1.7.2",
+    "prosemirror-keymap": "^1.2.3",
+    "prosemirror-model": "^1.25.13",
+    "prosemirror-state": "^1.4.4",
+    "prosemirror-transform": "^1.12.5",
+    "prosemirror-view": "^1.42.9"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",

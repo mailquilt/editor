@@ -97,7 +97,7 @@ Keyboard, drag and drop, and the document path are part of `0.1.0`. AI, MCP, CLI
 - **All edits go through Commands.** A Command is a request that can be rejected. An accepted Command produces one or more Operations and counts as one undo step. Undo applies the reverse Operations.
 - **Operations are a small fixed set:** insert, remove, move, set properties and set Column width. Move is its own Operation, so later collaboration does not treat it as a delete plus a new Block.
 - **A null removes a property.** A Command that sets properties merges them like JSON Merge Patch, so Commands stay plain JSON. The schema decides whether that property can go.
-- **There is one undo history.** Tiptap's history is off. Typing in one Block merges into one undo step until the user pauses or leaves that Block.
+- **There is one undo history.** ProseMirror's history isn't loaded. Typing in one Block merges into one undo step until the user pauses or leaves that Block.
 - **The core is framework-free.** `core` and `renderer` must run without a browser DOM or UI framework.
 - **The UI is written once.** The editor is a Web Component, and framework wrappers stay thin.
 - **The renderer works on its own.** A server can render an email without loading any editor code.
@@ -116,7 +116,7 @@ Keyboard, drag and drop, and the document path are part of `0.1.0`. AI, MCP, CLI
 | Editor UI | Lit Web Component (see ADR 0002) |
 | Validation | Valibot, used internally. It also generates JSON Schema when AI and MCP need it |
 | Drag and drop | The editor's own pointer events (see ADR 0002) |
-| Rich text | Tiptap core |
+| Rich text | ProseMirror (see ADR 0003) |
 | HTML editor | CodeMirror (later) |
 | Email output | MJML |
 | Canvas isolation | Shadow DOM (see ADR 0002) |
@@ -223,7 +223,7 @@ Migrations add these only when their features are built:
 - `kind` is kept so HTML documents can be added later.
 - A Row has 1–4 Columns, chosen from presets such as equal widths or ⅓ + ⅔. There is no drag-to-resize in `0.1.0`.
 - Moving the last Block out of a Column leaves it empty. It stays until the user changes the layout.
-- Text and Heading Blocks store limited Tiptap JSON (see `docs/adr/0001-store-rich-text-as-limited-json.md`). A Heading also has a level from 1 to 3, and exports as one heading however many lines it has.
+- Text and Heading Blocks store limited ProseMirror JSON (see `docs/adr/0001-store-rich-text-as-limited-json.md`). A Heading also has a level from 1 to 3, and exports as one heading however many lines it has.
 - Button Blocks store a plain-text label and a link, which may be a Merge Tag such as `{{cta_url}}`. Links in any Block are limited to `http:`, `https:`, `mailto:`, `tel:` and Merge Tags, so an executable scheme can't load or export.
 - Image Blocks take a URL, which may be a Merge Tag such as `{{logo_url}}`, limited to `http:`, `https:` and Merge Tags. Until it has a URL, an Image shows a placeholder on the canvas and leaves nothing in the export. On the canvas, a URL with a Merge Tag also shows a placeholder, as there's nothing to load, and so does a URL that failed to load. An Image needs alt text before it can have a link, and keeps it for as long as it has one, because alt text is all that can name that link. Uploads come later through an adapter.
 - `editor` and `renderer` refuse documents they cannot trust: malformed documents, unknown Block types, and versions newer than they support. They never repair or change them, so a host's auto-save cannot overwrite the original.
@@ -518,7 +518,7 @@ Mail Quilt will not host collaboration, but it gives developers what they need t
 - A way to apply remote operations without adding them to local undo history
 - Stable IDs for rows, columns and blocks
 - Presence hooks for cursors and selected blocks
-- A rich text integration point for Tiptap collaboration
+- A rich text integration point for ProseMirror collaboration, such as `y-prosemirror`
 - A documented example, likely using Yjs
 
 Possible shape:
