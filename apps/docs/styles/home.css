@@ -583,42 +583,6 @@
   stroke: var(--site-accent-text);
 }
 
-/* ---------- Before you rely on it ---------- */
-
-.home-clients-title {
-  margin-top: 3rem;
-}
-
-.home-clients {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 0.5rem;
-  margin: 1rem 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-@media (min-width: 40rem) {
-  .home-clients {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-/* None is checked yet, so each is a slot. A checked one will be solid. */
-.home-clients li {
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
-  padding: 0.875rem 1rem;
-  border: var(--site-slot);
-  border-radius: 0.75rem;
-}
-
-.home-client {
-  color: var(--blume-foreground);
-  font-weight: 500;
-}
-
 /* ---------- Questions ---------- */
 
 .home-faq details {
