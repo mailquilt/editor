@@ -163,6 +163,29 @@ test.describe("moving an email with JSON", () => {
     // A browser only reports a choice that differs from the input's value.
     await expect(shell(page).locator("input[type=file]")).toHaveValue("");
   });
+
+  test("with no email, the exports say so and download nothing", async ({
+    page,
+  }) => {
+    let downloads = 0;
+    page.on("download", () => {
+      downloads += 1;
+    });
+
+    for (const name of ["Export JSON", "Export HTML"]) {
+      // oxlint-disable-next-line no-await-in-loop -- Each starts afresh, so its own reason shows.
+      await page.goto("/shell.html?refused-first");
+      // oxlint-disable-next-line no-await-in-loop -- See above.
+      await expect(shell(page).getByRole("alert")).toContainText("newer");
+      // oxlint-disable-next-line no-await-in-loop -- See above.
+      await shell(page).getByRole("button", { name }).click();
+      // oxlint-disable-next-line no-await-in-loop -- See above.
+      await expect(shell(page).getByRole("alert")).toHaveText(
+        "There's no email to export."
+      );
+    }
+    expect(downloads).toBe(0);
+  });
 });
 
 test.describe("the editor's API", () => {

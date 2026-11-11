@@ -402,6 +402,10 @@ export class MailQuiltShell extends LitElement {
   }
 
   readonly #exportHtmlFile = async () => {
+    if (!this.value) {
+      this.#showNotice("There's no email to export.");
+      return;
+    }
     try {
       downloadFile("email.html", "text/html", await this.exportHtml());
       this.#showNotice(undefined);
