@@ -85,6 +85,15 @@ export const focusStartOfTextBlock = async (page: Page) => {
   await page.keyboard.press(
     process.platform === "darwin" ? "Meta+ArrowLeft" : "Home"
   );
+  // ProseMirror learns of the moved cursor a moment later. A key it handles
+  // itself, such as Enter, would act on the old position before then.
+  await page.evaluate(
+    () =>
+      // oxlint-disable-next-line promise/avoid-new -- These browser callbacks have no promise form.
+      new Promise((resolve) => {
+        requestAnimationFrame(() => setTimeout(resolve, 0));
+      })
+  );
 };
 
 export const palette = (page: Page, name: string) =>
