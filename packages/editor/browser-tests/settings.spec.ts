@@ -285,8 +285,14 @@ test.describe("Email settings", () => {
       width: 500,
     });
 
+    await expect
+      .poll(() =>
+        textBlock(page).evaluate((text) =>
+          text.closest("[lang]")?.getAttribute("lang")
+        )
+      )
+      .toBe("pt-BR");
     const onCanvas = canvas(page).locator(".email");
-    await expect(onCanvas).toHaveAttribute("lang", "pt-BR");
     await expect(onCanvas).toHaveCSS("background-color", "rgb(238, 238, 238)");
     await expect(onCanvas).toHaveCSS("width", "500px");
     expect(
