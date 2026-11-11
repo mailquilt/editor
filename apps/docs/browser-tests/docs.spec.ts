@@ -47,15 +47,25 @@ test("the landing page's editor stays inside its frame as the email grows", asyn
   await page.goto("/");
   const editor = page.locator("mail-quilt");
   const frame = page.locator("[data-home-editor]");
-  await editor.getByRole("tab", { name: "Rows" }).click();
-
-  // Enough Rows to make the email taller than the editor starts out.
+  // Enough Rows to make the email taller than the editor starts out. Each new
+  // Row is selected, so the Rows tab is opened again for the next.
   for (let added = 0; added < 4; added += 1) {
+    const back = editor.getByRole("button", { exact: true, name: "Back" });
     // oxlint-disable-next-line no-await-in-loop -- One Row at a time.
-    await editor.getByRole("button", { name: /^100/u }).first().click();
+    if (await back.isVisible()) {
+      // oxlint-disable-next-line no-await-in-loop -- As above.
+      await back.click();
+    }
+    // oxlint-disable-next-line no-await-in-loop -- As above.
+    await editor.getByRole("tab", { name: "Rows" }).click();
+    // oxlint-disable-next-line no-await-in-loop -- As above.
+    await editor
+      .getByRole("group", { name: "Add a Row" })
+      .getByRole("button", { exact: true, name: "100" })
+      .click();
   }
 
-  const inner = await editor.locator(".editor").boundingBox();
+  const inner = await editor.boundingBox();
   const outer = await frame.boundingBox();
   expect(inner?.height).toBeGreaterThan(600);
   expect(outer?.height).toBe(inner?.height);
