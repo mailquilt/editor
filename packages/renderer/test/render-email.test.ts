@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import type { Block, BlocksDocument } from "@mailquilt/core";
 import { describe, expect, it } from "vitest";
 
-import { renderEmail } from "../src/node.js";
+import { renderEmail } from "../src/index.js";
 
 const emailWithText = (...paragraphs: string[]): BlocksDocument => ({
   kind: "blocks",
@@ -593,7 +593,7 @@ describe(renderEmail, () => {
 
     expect(hasDom).toBeFalsy();
     expect(html).toContain("Hi {{first_name}}");
-    expect(loaded.some((url) => url.includes("/mjml/"))).toBeTruthy();
+    expect(loaded.some((url) => url.includes("/mjml-browser/"))).toBeTruthy();
     expect(
       loaded.filter((url) =>
         /tiptap|prosemirror|\/node_modules\/lit|\/packages\/editor\//u.test(url)
