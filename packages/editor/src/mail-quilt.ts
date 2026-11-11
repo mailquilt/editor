@@ -735,8 +735,25 @@ export class MailQuilt extends LitElement {
         display: none;
       }
 
+      /*
+       * The copy that follows the pointer is a popover, so that it's in the top
+       * layer. This takes away a popover's own look, leaving what it copies.
+       */
+      :where([data-drag-ghost]) {
+        background: none;
+        border: none;
+        color: inherit;
+        overflow: visible;
+        padding: 0;
+      }
+
+      /* What's dragged keeps its place, unseen, while its copy moves. */
+      [data-drag-source] {
+        opacity: 0;
+      }
+
       /* The Block that follows the pointer, which also shows what's under it. */
-      .block[data-dnd-dragging] {
+      .block[data-drag-ghost] {
         background: #ffffff;
         box-shadow: var(--mq-shadow);
         opacity: 0.85;
@@ -922,7 +939,7 @@ export class MailQuilt extends LitElement {
       }
 
       /* The Row that follows the pointer, which also shows what's under it. */
-      .row-frame[data-dnd-dragging] {
+      .row-frame[data-drag-ghost] {
         background: #ffffff;
         box-shadow: var(--mq-shadow);
         opacity: 0.85;
@@ -1662,6 +1679,12 @@ export class MailQuilt extends LitElement {
   override connectedCallback() {
     super.connectedCallback();
     this.#resizeObserver.observe(this);
+    if (this.shadowRoot) {
+      this.#dragging = createBlockDragging({
+        onDrop: (source, place) => this.#drop(source, place),
+        root: this.shadowRoot,
+      });
+    }
     this.requestUpdate();
   }
 
@@ -1763,11 +1786,6 @@ export class MailQuilt extends LitElement {
       (tool ?? block ?? view ?? rowTool ?? this.#floatingToolbar)?.focus();
     }
     if (this.isConnected && this.shadowRoot) {
-      this.#dragging ??= createBlockDragging({
-        onDrop: (source, place) => this.#drop(source, place),
-        root: this.shadowRoot,
-      });
-      this.#dragging.sync();
       this.#syncTooltips(this.shadowRoot);
     }
   }
@@ -2979,9 +2997,9 @@ export class MailQuilt extends LitElement {
       this.#announceRowMove(source.rowId);
       this.#publishStructure();
       await this.updateComplete;
-      // dnd-kit puts the dragged Row back in the page, which takes focus from
-      // anything in it. The selection stays, so it gets focus back: in its text if
-      // that's where it was, or on the selected Row's tools.
+      // Lit may move the Row's element when it reorders the Rows, which takes focus
+      // from anything in it. The selection stays, so it gets focus back: in its
+      // text if that's where it was, or on the selected Row's tools.
       if (!this.shadowRoot?.activeElement) {
         const block =
           this.#activeBlockId === undefined
@@ -3093,7 +3111,7 @@ export class MailQuilt extends LitElement {
    * paragraph.
    */
   #onBlockKeydown(event: KeyboardEvent) {
-    // Escape cancels a drag, and the cursor stays where it was.
+    // The Blocks would change under a drag that's still going.
     if (this.#dragging?.isDragging()) {
       return;
     }
