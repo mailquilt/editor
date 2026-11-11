@@ -1,6 +1,6 @@
 # Contributing
 
-Mail Quilt isn't accepting pull requests yet. It's early, and one person builds it, so outside code would take longer to review than to write. A pull request from outside the project is closed with a link to this page.
+Mail Quilt isn't accepting pull requests yet. It's early, and one person builds it, so outside code would take longer to review than to write. For now, only the project's collaborators can open one.
 
 Issues are welcome:
 
