@@ -1,6 +1,6 @@
 # Mail Quilt: Project Brief
 
-> **Status:** Pre-release planning. A throwaway Shadow DOM test is complete (`docs/adr/0002-build-the-editor-with-lit-in-shadow-dom.md`). No product code exists yet.
+> **Status:** `0.1.0` is built: the four packages, the docs site and the Playground. It isn't released yet. The release waits on the steps in #18: tests with real email clients and by hand, an accessibility audit, making the repository public, and publishing the packages.
 > **How to read this:** Section 21 defines what ships first. Sections 13–20 are non-binding ideas unless section 21 includes them, and only the items listed in section 21 may shape the `0.1.0` design. Terms are defined in `GLOSSARY.md`.
 
 ## 1. Summary
