@@ -36,6 +36,8 @@ const shellPages = {
   "plain-js": "shell",
   react: path.join("app", "shell"),
 } as const;
+/** The docs' server-side examples, run in Node against the packed packages. */
+const serverCode = path.join(quickStart, "..", "_code");
 const tarballs = path.join(freshProjectsDir, "tarballs");
 
 const pnpm = (cwd: string, ...args: string[]) => {
@@ -64,10 +66,16 @@ for (const name of Object.keys(
   const dir = freshProjectDir(name);
   cpSync(path.join(here, "projects", name), dir, { recursive: true });
   cpSync(path.join(quickStart, name), dir, { recursive: true });
-  cpSync(
-    path.join(here, "projects", "starter-email.js"),
-    path.join(dir, "starter-email.js")
-  );
+  // The React project has its own typed copy.
+  if (name !== "react") {
+    cpSync(
+      path.join(here, "projects", "starter-email.js"),
+      path.join(dir, "starter-email.js")
+    );
+  }
+  if (name === "plain-js") {
+    cpSync(serverCode, path.join(dir, "server"), { recursive: true });
+  }
   if (name in shellPages) {
     cpSync(
       path.join(shellExamples, name),
