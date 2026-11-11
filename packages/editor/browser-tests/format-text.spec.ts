@@ -113,6 +113,8 @@ const addLink = async (page: Page, href: string) => {
   await toolbarButton(page, "Link").click();
   await linkInput(page).fill(href);
   await page.keyboard.press("Enter");
+  // Focus goes back to the text, and a key pressed before it lands is lost.
+  await waitForSelectionToRegister(page);
 };
 
 test.beforeEach(async ({ page }) => {
