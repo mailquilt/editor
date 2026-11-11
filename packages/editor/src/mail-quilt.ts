@@ -2815,10 +2815,13 @@ export class MailQuilt extends LitElement {
     control: HTMLInputElement | HTMLSelectElement
   ) {
     const key = draftKey(section, field);
+    const value = fieldValue(field, control);
+    // An image URL that failed may load now, so entering it again tries again.
+    if (typeof value === "string") {
+      this.#failedImages.delete(value);
+    }
     // Rejections are expected here, as they're what a person typed.
-    const result = this.#editor?.apply(
-      section.command({ [field.key]: fieldValue(field, control) })
-    );
+    const result = this.#editor?.apply(section.command({ [field.key]: value }));
     if (result?.ok || result?.unchanged) {
       this.#drafts.delete(key);
     } else {
