@@ -42,8 +42,8 @@ const inlineToHtml = (node: RichTextHardBreak | RichTextNode) => {
     return "<br />";
   }
   let html = escapeText(node.text);
-  // Inner marks first, so that the first mark goes on the outside. Tiptap lists
-  // links first, which keeps them around the other marks.
+  // Inner marks first, so that the first mark goes on the outside. The editor's
+  // schema lists links first, which keeps them around the other marks.
   for (const mark of (node.marks ?? []).toReversed()) {
     html = wrapInMark(html, mark);
   }

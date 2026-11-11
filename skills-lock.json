@@ -79,12 +79,6 @@
       "skillPath": "skills/engineering/tdd/SKILL.md",
       "computedHash": "daf55026f456af104a72fa43247f7bcec89e5127316dc5b1b8d675d6a9d8ce94"
     },
-    "tiptap": {
-      "source": "ueberdosis/tiptap",
-      "sourceType": "github",
-      "skillPath": ".agents/skills/tiptap/SKILL.md",
-      "computedHash": "88ea00fb5ca1fed01160dc0baec4767fa0279d037ed9c8ee20a6ea43eb28b8ea"
-    },
     "to-spec": {
       "source": "mattpocock/skills",
       "sourceType": "github",

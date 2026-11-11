@@ -3044,7 +3044,7 @@ export class MailQuilt extends LitElement {
     );
     if (!result.ok) {
       if (!result.unchanged) {
-        // Tiptap's schema should be no wider than core's, so this is a bug here.
+        // The text schema should be no wider than core's, so this is a bug here.
         console.error(`<mail-quilt> rejected an edit: ${result.reason}`);
       }
       return;

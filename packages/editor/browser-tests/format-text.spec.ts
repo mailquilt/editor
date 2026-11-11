@@ -89,6 +89,26 @@ const pasteHtml = (page: Page, html: string) =>
     element.dispatchEvent(event);
   }, html);
 
+const extendSelection = async (page: Page, key: "ArrowLeft" | "ArrowRight") => {
+  await page.keyboard.press(`Shift+${key}`);
+  await waitForSelectionToRegister(page);
+};
+
+/** The plain text a copy of the selection would give. */
+const copiedText = (page: Page) =>
+  textBlock(page).evaluate((element) => {
+    const clipboardData = new DataTransfer();
+    // Not a ClipboardEvent, whose constructor ignores this data in Firefox.
+    const event = new Event("copy", {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+    });
+    Object.defineProperty(event, "clipboardData", { value: clipboardData });
+    element.dispatchEvent(event);
+    return clipboardData.getData("text/plain");
+  });
+
 const addLink = async (page: Page, href: string) => {
   await toolbarButton(page, "Link").click();
   await linkInput(page).fill(href);
@@ -174,6 +194,29 @@ test.describe("bold, italic and underline", () => {
       "aria-pressed",
       "false"
     );
+  });
+
+  test("bold on text that's partly bold makes all of it bold", async ({
+    page,
+  }) => {
+    await cursorAtEndOfBlock(page);
+    await page.keyboard.press("ControlOrMeta+b");
+    await page.keyboard.type(" there");
+    await expect
+      .poll(() => savedInline(page))
+      .toStrictEqual([
+        { text: "Hello", type: "text" },
+        { marks: [{ type: "bold" }], text: " there", type: "text" },
+      ]);
+
+    await selectAll(page);
+    await page.keyboard.press("ControlOrMeta+b");
+
+    await expect
+      .poll(() => savedInline(page))
+      .toStrictEqual([
+        { marks: [{ type: "bold" }], text: "Hello there", type: "text" },
+      ]);
   });
 
   test("text typed after turning bold on is bold", async ({ page }) => {
@@ -305,6 +348,97 @@ test.describe("the toolbar", () => {
 });
 
 test.describe("line breaks", () => {
+  test("Enter and Shift+Enter keep the formatting for what's typed next", async ({
+    page,
+  }) => {
+    await selectAllInBlock(page);
+    await page.keyboard.press("ControlOrMeta+b");
+    await pressArrow(page, "ArrowRight");
+
+    await page.keyboard.press("Shift+Enter");
+    await page.keyboard.type("x");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("y");
+
+    const bold = [{ type: "bold" }];
+    await expect
+      .poll(() => savedParagraphs(page))
+      .toStrictEqual([
+        {
+          content: [
+            { marks: bold, text: "Hello", type: "text" },
+            { type: "hardBreak" },
+            { marks: bold, text: "x", type: "text" },
+          ],
+          type: "paragraph",
+        },
+        {
+          content: [{ marks: bold, text: "y", type: "text" }],
+          type: "paragraph",
+        },
+      ]);
+  });
+
+  test("a line break replaces the selection, and typing goes after it", async ({
+    page,
+  }) => {
+    await cursorAtEndOfBlock(page);
+    await extendSelection(page, "ArrowLeft");
+    await extendSelection(page, "ArrowLeft");
+    await extendSelection(page, "ArrowLeft");
+
+    await page.keyboard.press("Shift+Enter");
+    await page.keyboard.type("x");
+
+    await expect
+      .poll(() => savedInline(page))
+      .toStrictEqual([
+        { text: "He", type: "text" },
+        { type: "hardBreak" },
+        { text: "x", type: "text" },
+      ]);
+  });
+
+  test("a line break over all the text keeps the break", async ({ page }) => {
+    await selectAllInBlock(page);
+
+    await page.keyboard.press("Shift+Enter");
+    await page.keyboard.type("x");
+
+    await expect
+      .poll(() => savedInline(page))
+      .toStrictEqual([{ type: "hardBreak" }, { text: "x", type: "text" }]);
+  });
+
+  test("Control or Command+Enter adds a line break too", async ({ page }) => {
+    await cursorAtEndOfBlock(page);
+
+    await page.keyboard.press("ControlOrMeta+Enter");
+    await page.keyboard.type("x");
+
+    await expect
+      .poll(() => savedInline(page))
+      .toStrictEqual([
+        { text: "Hello", type: "text" },
+        { type: "hardBreak" },
+        { text: "x", type: "text" },
+      ]);
+  });
+
+  test("Delete in an empty last paragraph removes it", async ({ page }) => {
+    await cursorAtEndOfBlock(page);
+    await page.keyboard.press("Enter");
+    await expect.poll(() => savedParagraphs(page)).toHaveLength(2);
+
+    await page.keyboard.press("Delete");
+
+    await expect
+      .poll(() => savedParagraphs(page))
+      .toStrictEqual([
+        { content: [{ text: "Hello", type: "text" }], type: "paragraph" },
+      ]);
+  });
+
   test("Shift+Enter adds a line break in the same paragraph", async ({
     page,
   }) => {
@@ -598,6 +732,29 @@ test.describe("links", () => {
       await expect(textBlock(page)).toBeFocused();
     });
 
+    test("Remove link with only a cursor takes off all of it", async ({
+      page,
+    }) => {
+      // "He" bold as well, so the link is in two pieces.
+      await pressArrow(page, "ArrowLeft");
+      await extendSelection(page, "ArrowRight");
+      await extendSelection(page, "ArrowRight");
+      await page.keyboard.press("ControlOrMeta+b");
+      // A cursor in the second piece, between "l" and "lo".
+      await pressArrow(page, "ArrowRight");
+      await pressArrow(page, "ArrowRight");
+
+      await toolbarButton(page, "Link").click();
+      await page.getByRole("button", { name: "Remove link" }).click();
+
+      await expect
+        .poll(() => savedInline(page))
+        .toStrictEqual([
+          { marks: [{ type: "bold" }], text: "He", type: "text" },
+          { text: "llo", type: "text" },
+        ]);
+    });
+
     test("typing at the end of a link doesn't extend it", async ({ page }) => {
       await pressArrow(page, "ArrowRight");
 
@@ -837,6 +994,38 @@ test.describe("copy and paste", () => {
           type: "text",
         },
       ]);
+  });
+
+  test("formatting written as styles is kept", async ({ page }) => {
+    await selectAllInBlock(page);
+
+    // Google Docs wraps what it copies in a <b> that isn't bold.
+    await pasteHtml(
+      page,
+      `<b style="font-weight:normal"><p><span style="font-weight:700">bold</span><span style="font-style:italic">italic</span><span style="text-decoration:underline">under</span><span>plain</span></p></b>`
+    );
+
+    await expect
+      .poll(() => savedInline(page))
+      .toStrictEqual([
+        { marks: [{ type: "bold" }], text: "bold", type: "text" },
+        { marks: [{ type: "italic" }], text: "italic", type: "text" },
+        { marks: [{ type: "underline" }], text: "under", type: "text" },
+        { text: "plain", type: "text" },
+      ]);
+  });
+
+  test("copying gives plain text with its lines and paragraphs", async ({
+    page,
+  }) => {
+    await cursorAtEndOfBlock(page);
+    await page.keyboard.press("Shift+Enter");
+    await page.keyboard.type("A");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("B");
+    await selectAll(page);
+
+    expect(await copiedText(page)).toBe("Hello\nA\n\nB");
   });
 
   test("pasted content is reduced to the allowed formatting", async ({

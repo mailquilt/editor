@@ -558,7 +558,7 @@ describe(renderEmail, () => {
     expect(document).toStrictEqual(before);
   });
 
-  it("runs in plain Node with no DOM, editor or Tiptap code loaded", () => {
+  it("runs in plain Node with no DOM, editor or ProseMirror code loaded", () => {
     // Runs the built package in its own process, because the test runner's own
     // modules would hide what the package actually loads.
     const script = `
@@ -596,7 +596,7 @@ describe(renderEmail, () => {
     expect(loaded.some((url) => url.includes("/mjml-browser/"))).toBeTruthy();
     expect(
       loaded.filter((url) =>
-        /tiptap|prosemirror|\/node_modules\/lit|\/packages\/editor\//u.test(url)
+        /prosemirror|\/node_modules\/lit|\/packages\/editor\//u.test(url)
       )
     ).toStrictEqual([]);
   });
