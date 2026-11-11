@@ -61,6 +61,35 @@ test.describe("a tooltip", () => {
     await expect(tooltip(page)).toBeHidden();
   });
 
+  test("stays by its button on a page that transforms the editor", async ({
+    page,
+  }) => {
+    await openBlocks(page, ["text"]);
+    await canvas(page).evaluate((element) => {
+      (element.parentElement as HTMLElement).style.transform =
+        "translate(40px, 30px)";
+    });
+
+    await undoButton(page).hover();
+
+    await expect(tooltip(page)).toBeVisible();
+    const button = await undoButton(page).boundingBox();
+    const shown = await tooltip(page).boundingBox();
+    if (!(button && shown)) {
+      throw new Error("The button or tooltip has no box");
+    }
+    expect(
+      Math.abs(shown.x + shown.width / 2 - (button.x + button.width / 2))
+    ).toBeLessThan(2);
+    // Next to it, above or below.
+    expect(
+      Math.min(
+        Math.abs(button.y - (shown.y + shown.height)),
+        Math.abs(shown.y - (button.y + button.height))
+      )
+    ).toBeLessThan(10);
+  });
+
   test("closes with Escape, without moving focus or the pointer", async ({
     page,
   }) => {
