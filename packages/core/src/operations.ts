@@ -59,11 +59,6 @@ export type Operation =
 const columnsIn = (document: BlocksDocument) =>
   document.rows.flatMap(({ columns }) => columns);
 
-export const findBlock = (document: BlocksDocument, blockId: string) =>
-  columnsIn(document)
-    .flatMap(({ blocks }) => blocks)
-    .find(({ id }) => id === blockId);
-
 /** A Block and where it is, or undefined if it isn't in the document. */
 export const findBlockPosition = (
   document: BlocksDocument,
@@ -79,6 +74,9 @@ export const findBlockPosition = (
     }
   }
 };
+
+export const findBlock = (document: BlocksDocument, blockId: string) =>
+  findBlockPosition(document, blockId)?.block;
 
 export const findColumn = (document: BlocksDocument, columnId: string) =>
   columnsIn(document).find(({ id }) => id === columnId);
