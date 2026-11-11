@@ -1,6 +1,6 @@
 # Mail Quilt
 
-A set of packages for building email design into a web app. Developers use the ready-made editor, build their own page around it, or build on the document model underneath, and their users design emails with what they built.
+A set of packages for building email design into a web app. Developers use the Shell, build their own page around the editor, or build on the document model underneath, and their users design emails with what they built.
 
 ## Language
 
@@ -47,7 +47,7 @@ A CSS custom property starting with `--mq-` that sets one of the editor's own co
 ### Product
 
 **Playground**:
-A public page in the docs site where anyone can try the ready-made editor. It is a Shell.
+A public page in the docs site where anyone can try the editor. It is a Shell.
 _Avoid_: Demo, hosted editor
 
 **Shell**:
