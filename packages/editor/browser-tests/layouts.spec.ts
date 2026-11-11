@@ -1,25 +1,26 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
-import type { MailQuilt } from "../src/index.js";
 import {
   addRow,
   blockTool,
   canvas,
   chooseLayout,
+  currentValue,
   deleteRow,
   emailWith,
   exportHtml,
   layoutOption,
   openTab,
-  selectRow,
+  redoByKey,
   rowTools,
+  selectRow,
   setValue,
   showPalette,
+  structure,
   textBlock,
+  undoByKey,
 } from "./helpers.js";
-
-type Document = NonNullable<MailQuilt["value"]>;
 
 const addText = async (page: Page) => {
   const text = await showPalette(page, "Text");
@@ -48,34 +49,10 @@ const toolbar = (page: Page) =>
 const selectedBlock = (page: Page) =>
   canvas(page).locator('[aria-current="true"]').getByRole("textbox");
 
-const currentValue = (page: Page) =>
-  canvas(page).evaluate((element) => (element as MailQuilt).value as Document);
-
-const textOf = (block: Document["rows"][0]["columns"][0]["blocks"][0]) => {
-  const { content } = block.props as {
-    content: { content: { content?: { text: string }[] }[] };
-  };
-  return content.content
-    .flatMap((paragraph) => paragraph.content ?? [])
-    .map(({ text }) => text)
-    .join("");
-};
-
-/** Each Row's Columns, as the text of each Column's Blocks. */
-const structure = async (page: Page) => {
-  const { rows } = await currentValue(page);
-  return rows.map((row) =>
-    row.columns.map((column) => column.blocks.map(textOf))
-  );
-};
-
 const widths = async (page: Page, rowIndex = 0) => {
   const { rows } = await currentValue(page);
   return rows[rowIndex]?.columns.map(({ width }) => width);
 };
-
-const undo = (page: Page) => page.keyboard.press("ControlOrMeta+z");
-const redo = (page: Page) => page.keyboard.press("ControlOrMeta+Shift+z");
 
 /** Column positions as a person sees them, from the exported HTML. */
 const exportedColumnBoxes = async (page: Page) => {
@@ -134,7 +111,7 @@ test.describe("the palette", () => {
     await expect(textBlock(page)).toHaveCount(1);
     await page.keyboard.type("A");
     await expect(textBlock(page)).toHaveText("A");
-    await undo(page);
+    await undoByKey(page);
     await expect(textBlock(page)).toHaveText("");
     expect(await structure(page)).toStrictEqual([[[""]]]);
 
@@ -155,10 +132,10 @@ test.describe("the palette", () => {
     await addText(page);
     await expect(textBlock(page)).toHaveCount(2);
 
-    await undo(page);
+    await undoByKey(page);
     await expect(textBlock(page)).toHaveCount(1);
 
-    await redo(page);
+    await redoByKey(page);
     await expect(textBlock(page)).toHaveCount(2);
     expect(await structure(page)).toStrictEqual([[["Hello", ""]]]);
   });
@@ -185,7 +162,7 @@ test.describe("deleting a Block", () => {
     await deleteBlock(page).click();
     await expect(textBlock(page)).toHaveCount(0);
 
-    await undo(page);
+    await undoByKey(page);
 
     await expect(textBlock(page)).toHaveText("Hello!");
     await textBlock(page).click();
@@ -203,7 +180,7 @@ test.describe("deleting a Block", () => {
 
     await expect(textBlock(page)).toHaveCount(0);
     await expect(toolbar(page)).toBeFocused();
-    await undo(page);
+    await undoByKey(page);
     await expect(textBlock(page)).toHaveText("Hello");
   });
 
@@ -340,7 +317,7 @@ test.describe("adding and deleting Rows", () => {
     await deleteRow(page, 1);
 
     await expect(toolbar(page)).toBeFocused();
-    await undo(page);
+    await undoByKey(page);
     await expect(textBlock(page)).toHaveText("Hello");
   });
 
@@ -550,7 +527,7 @@ test.describe("structure changes and the rest of the editor", () => {
     // Typed, because a filled value leaves nothing for the field's own undo.
     await page.keyboard.type("https");
 
-    await undo(page);
+    await undoByKey(page);
 
     await expect(textBlock(page)).toHaveText("Hellox");
   });
@@ -566,7 +543,7 @@ test.describe("structure changes and the rest of the editor", () => {
       .getByRole("button", { exact: true, name: "100" })
       .focus();
 
-    await undo(page);
+    await undoByKey(page);
 
     await expect(rowControls(page, 2)).toHaveCount(0);
   });
@@ -577,7 +554,7 @@ test.describe("structure changes and the rest of the editor", () => {
     await addRow(page);
     await expect(rowControls(page, 2)).toBeVisible();
 
-    await undo(page);
+    await undoByKey(page);
 
     await expect(rowControls(page, 2)).toHaveCount(0);
   });
@@ -588,7 +565,7 @@ test.describe("structure changes and the rest of the editor", () => {
     await chooseLayout(page, 1, "50/50");
     await expect(addToColumn(page)).toHaveCount(1);
 
-    await undo(page);
+    await undoByKey(page);
 
     await expect(addToColumn(page)).toHaveCount(0);
   });
@@ -599,7 +576,7 @@ test.describe("structure changes and the rest of the editor", () => {
     await deleteRow(page, 1);
     await expect(textBlock(page)).toHaveCount(0);
 
-    await undo(page);
+    await undoByKey(page);
 
     await expect(textBlock(page)).toHaveText("Hello");
   });
@@ -642,7 +619,7 @@ test.describe("structure changes and the rest of the editor", () => {
     await expect(rowControls(page, 2)).toBeVisible();
     await deleteRowButton(page, 1).focus();
 
-    await undo(page);
+    await undoByKey(page);
 
     await expect(rowControls(page, 2)).toHaveCount(0);
   });

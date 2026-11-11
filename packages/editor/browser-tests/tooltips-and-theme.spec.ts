@@ -53,7 +53,6 @@ test.describe("a tooltip", () => {
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, {
       steps: 4,
     });
-    await page.waitForTimeout(300);
 
     await expect(tooltip(page)).toBeVisible();
 

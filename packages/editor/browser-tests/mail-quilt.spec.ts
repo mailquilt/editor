@@ -3,12 +3,17 @@ import type { Page } from "@playwright/test";
 
 import type { MailQuilt } from "../src/index.js";
 import {
+  addSecondTextBlock,
   canvas,
+  currentValue,
   emailWith,
   exportHtml,
   focusStartOfTextBlock,
+  redoByKey,
   setValue,
   textBlock,
+  undoByKey,
+  waitForSelectionToRegister,
 } from "./helpers.js";
 
 const latestDocumentText = async (page: Page) => {
@@ -189,39 +194,11 @@ test("exported HTML keeps repeated spaces typed in a Text Block", async ({
   expect(await exportHtml(page)).toContain("a   b Hello");
 });
 
-const undo = (page: Page) => page.keyboard.press("ControlOrMeta+z");
-const redo = (page: Page) => page.keyboard.press("ControlOrMeta+Shift+z");
-
-/**
- * Chromium reports a moved selection just after the key press, so the editor
- * can only act on it once this has passed. A person's next key is always later.
- */
-const waitForSelectionToRegister = (page: Page) =>
-  page.evaluate(
-    () =>
-      // oxlint-disable-next-line promise/avoid-new -- These browser callbacks have no promise form.
-      new Promise((resolve) => {
-        requestAnimationFrame(() => setTimeout(resolve, 0));
-      })
-  );
-
-const addSecondTextBlock = (page: Page) =>
-  canvas(page).evaluate((element) => {
-    const mailQuilt = element as MailQuilt;
-    const document = mailQuilt.value;
-    const column = document?.rows[0]?.columns[0];
-    const block = column?.blocks[0];
-    if (block) {
-      column?.blocks.push({ ...structuredClone(block), id: "block-2" });
-    }
-    mailQuilt.value = document;
-  });
-
 test.describe("undo and redo while typing", () => {
   test("Control+Y also redoes", async ({ page }) => {
     await focusStartOfTextBlock(page);
     await page.keyboard.type("abc");
-    await undo(page);
+    await undoByKey(page);
     await expect(textBlock(page)).toHaveText("Hello");
 
     await page.keyboard.press("Control+y");
@@ -236,11 +213,11 @@ test.describe("undo and redo while typing", () => {
     await page.keyboard.type("abc");
     await expect(page.getByTestId("change-count")).toHaveText("3");
 
-    await undo(page);
+    await undoByKey(page);
     await expect(page.getByTestId("change-count")).toHaveText("4");
     await expect.poll(() => latestDocumentText(page)).toBe("Hello");
 
-    await redo(page);
+    await redoByKey(page);
     await expect(page.getByTestId("change-count")).toHaveText("5");
     await expect.poll(() => latestDocumentText(page)).toBe("abcHello");
   });
@@ -248,8 +225,8 @@ test.describe("undo and redo while typing", () => {
   test("undo with nothing to undo changes nothing", async ({ page }) => {
     await focusStartOfTextBlock(page);
 
-    await undo(page);
-    await redo(page);
+    await undoByKey(page);
+    await redoByKey(page);
 
     await expect(textBlock(page)).toHaveText("Hello");
     await expect(page.getByTestId("change-count")).toHaveText("0");
@@ -266,9 +243,9 @@ test.describe("undo and redo while typing", () => {
     await page.keyboard.type("cd");
     await expect(textBlock(page)).toHaveText("abcdHello");
 
-    await undo(page);
+    await undoByKey(page);
     await expect(textBlock(page)).toHaveText("abHello");
-    await undo(page);
+    await undoByKey(page);
     await expect(textBlock(page)).toHaveText("Hello");
   });
 
@@ -286,12 +263,12 @@ test.describe("undo and redo while typing", () => {
     await page.keyboard.type("c");
     await expect(first).toHaveText("Helloac");
 
-    await undo(page);
+    await undoByKey(page);
     await expect(first).toHaveText("Helloa");
-    await undo(page);
+    await undoByKey(page);
     await expect(second).toHaveText("Hello");
     await expect(first).toHaveText("Helloa");
-    await undo(page);
+    await undoByKey(page);
     await expect(first).toHaveText("Hello");
   });
 
@@ -312,7 +289,7 @@ test.describe("undo and redo while typing", () => {
     await page.keyboard.type("b");
     await expect(first).toHaveText("Helloab");
 
-    await undo(page);
+    await undoByKey(page);
     await expect(first).toHaveText("Helloa");
   });
 
@@ -321,13 +298,13 @@ test.describe("undo and redo while typing", () => {
   }) => {
     await focusStartOfTextBlock(page);
     await page.keyboard.type("abc");
-    await undo(page);
+    await undoByKey(page);
     await expect(textBlock(page)).toHaveText("Hello");
 
     await page.keyboard.type("x");
     await expect(textBlock(page)).toHaveText("xHello");
 
-    await undo(page);
+    await undoByKey(page);
     await expect(textBlock(page)).toHaveText("Hello");
   });
 
@@ -335,7 +312,7 @@ test.describe("undo and redo while typing", () => {
     await focusStartOfTextBlock(page);
     await page.keyboard.type("abc");
 
-    await undo(page);
+    await undoByKey(page);
 
     await expect(textBlock(page)).toHaveText("Hello");
     await expect(textBlock(page)).toBeFocused();
@@ -351,7 +328,7 @@ test.describe("undo and redo while typing", () => {
     await page.keyboard.type("l");
     await expect(textBlock(page)).toHaveText("Helllo");
 
-    await undo(page);
+    await undoByKey(page);
     await expect(textBlock(page)).toHaveText("Hello");
     await page.keyboard.type("x");
 
@@ -366,10 +343,10 @@ test.describe("undo and redo while typing", () => {
     await page.keyboard.press("ArrowRight");
     await page.keyboard.press("ArrowRight");
     await page.keyboard.type("l");
-    await undo(page);
+    await undoByKey(page);
     await expect(textBlock(page)).toHaveText("Hello");
 
-    await redo(page);
+    await redoByKey(page);
     await expect(textBlock(page)).toHaveText("Helllo");
     await page.keyboard.type("x");
 
@@ -388,10 +365,10 @@ test.describe("undo and redo while typing", () => {
     await focusStartOfTextBlock(page);
     await page.keyboard.press("Enter");
     await expect(textBlock(page).locator("p")).toHaveCount(2);
-    await undo(page);
+    await undoByKey(page);
     await expect(textBlock(page).locator("p")).toHaveCount(1);
 
-    await redo(page);
+    await redoByKey(page);
     await expect(textBlock(page).locator("p")).toHaveCount(2);
     await page.keyboard.type("x");
 
@@ -467,7 +444,7 @@ test.describe("undo and redo while typing", () => {
     await page.keyboard.type("b");
     await expect(textBlock(page)).toHaveText("aHbello");
 
-    await undo(page);
+    await undoByKey(page);
 
     await expect(textBlock(page)).toHaveText("aHello");
   });
@@ -484,11 +461,11 @@ test.describe("undo and redo while typing", () => {
     await page.keyboard.type("y");
     await expect(textBlock(page)).toHaveText("HelloxHelloy");
 
-    await undo(page);
+    await undoByKey(page);
     await expect(textBlock(page)).toHaveText("HelloxHello");
-    await undo(page);
+    await undoByKey(page);
     await expect(textBlock(page)).toHaveText("Hellox");
-    await undo(page);
+    await undoByKey(page);
     await expect(textBlock(page)).toHaveText("Hello");
   });
 
@@ -500,15 +477,12 @@ test.describe("undo and redo while typing", () => {
     await page.keyboard.type("y");
     await expect(textBlock(page)).toHaveText("y");
 
-    await undo(page);
+    await undoByKey(page);
     await expect(textBlock(page)).toHaveText("");
-    await undo(page);
+    await undoByKey(page);
     await expect(textBlock(page)).toHaveText("Hello");
   });
 });
-
-const currentValue = (page: Page) =>
-  canvas(page).evaluate((element) => (element as MailQuilt).value);
 
 const withText = (document: unknown, text: string) => {
   // oxlint-disable-next-line typescript/no-explicit-any -- Saved JSON, reached along a path this test's email is known to have.
@@ -551,7 +525,7 @@ test.describe("setting value", () => {
     await expect(textBlock(page)).toBeFocused();
     await page.keyboard.type("c");
     await expect(textBlock(page)).toHaveText("abcHello");
-    await undo(page);
+    await undoByKey(page);
     await expect(textBlock(page)).toHaveText("Hello");
   });
 
@@ -578,9 +552,9 @@ test.describe("setting value", () => {
     await expect(textBlock(page)).toHaveText("Another email");
 
     await focusStartOfTextBlock(page);
-    await undo(page);
+    await undoByKey(page);
     await expect(textBlock(page)).toHaveText("Another email");
-    await redo(page);
+    await redoByKey(page);
     await expect(textBlock(page)).toHaveText("Another email");
     // Loading isn't a change, so a host's auto-save has nothing to overwrite.
     await expect(page.getByTestId("change-count")).toHaveText("2");
@@ -618,7 +592,7 @@ test.describe("setting value", () => {
 
     await page.keyboard.type("c");
     await expect(textBlock(page)).toHaveText("abcHello");
-    await undo(page);
+    await undoByKey(page);
     await expect(textBlock(page)).toHaveText("Hello");
   });
 
@@ -692,7 +666,7 @@ test.describe("refusing a document", () => {
     await expect(textBlock(page)).toBeFocused();
     await page.keyboard.type("c");
     await expect(textBlock(page)).toHaveText("abcHello");
-    await undo(page);
+    await undoByKey(page);
     await expect(textBlock(page)).toHaveText("Hello");
   });
 

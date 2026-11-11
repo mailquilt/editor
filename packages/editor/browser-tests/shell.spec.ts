@@ -37,7 +37,7 @@ test.beforeEach(({ page }) => {
   page.on("filechooser", () => null);
 });
 
-const header = (page: Page) => shell(page).locator(".header");
+const header = (page: Page) => shell(page).locator('[part="header"]');
 
 const box = async (target: Locator) => {
   const found = await target.boundingBox();
@@ -652,7 +652,9 @@ test.describe("too narrow to edit in", () => {
     page,
   }) => {
     await page.goto("/shell.html?narrow");
-    const notice = shell(page).locator("mail-quilt").locator(".narrow-notice");
+    const notice = shell(page)
+      .getByText("Editing needs more room")
+      .locator("..");
     await expect(notice).toBeVisible();
 
     const noticeBox = await box(notice);

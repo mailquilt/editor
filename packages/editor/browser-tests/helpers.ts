@@ -199,6 +199,36 @@ export const undo = (page: Page) =>
 export const redo = (page: Page) =>
   page.getByRole("button", { name: "Redo" }).click();
 
+export const undoByKey = (page: Page) => page.keyboard.press("ControlOrMeta+z");
+export const redoByKey = (page: Page) =>
+  page.keyboard.press("ControlOrMeta+Shift+z");
+
+/**
+ * Chromium reports a moved selection just after the key press, so the editor
+ * can only act on it once this has passed. A person's next key is always later.
+ */
+export const waitForSelectionToRegister = (page: Page) =>
+  page.evaluate(
+    () =>
+      // oxlint-disable-next-line promise/avoid-new -- These browser callbacks have no promise form.
+      new Promise((resolve) => {
+        requestAnimationFrame(() => setTimeout(resolve, 0));
+      })
+  );
+
+/** A copy of the first Block, after it in its Column. */
+export const addSecondTextBlock = (page: Page) =>
+  canvas(page).evaluate((element) => {
+    const mailQuilt = element as MailQuilt;
+    const document = mailQuilt.value;
+    const column = document?.rows[0]?.columns[0];
+    const block = column?.blocks[0];
+    if (block) {
+      column?.blocks.push({ ...structuredClone(block), id: "block-2" });
+    }
+    mailQuilt.value = document;
+  });
+
 export const blocks = async (page: Page, rowIndex = 0, columnIndex = 0) => {
   const { rows } = await currentValue(page);
   return rows[rowIndex]?.columns[columnIndex]?.blocks ?? [];
@@ -299,12 +329,21 @@ export const dragTo = async (
   await settle(page);
 };
 
+/**
+ * Legacy mode, because the default mode opens a new page to finish, which
+ * hangs in Chromium and WebKit while the Preview's sandboxed iframe is showing.
+ * The iframe itself, the email, can be left out too.
+ */
 export const violations = async (
   page: Page,
-  element = "mail-quilt"
+  element = "mail-quilt",
+  { excludeIframe = false } = {}
 ): Promise<{ id: string; targets: unknown[] }[]> => {
-  const { violations: found } = await new AxeBuilder({ page })
-    .include(element)
+  const builder = new AxeBuilder({ page }).include(element);
+  if (excludeIframe) {
+    builder.exclude("iframe");
+  }
+  const { violations: found } = await builder
     .setLegacyMode()
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
     .analyze();

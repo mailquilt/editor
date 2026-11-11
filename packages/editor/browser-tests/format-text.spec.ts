@@ -1,8 +1,14 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
-import type { MailQuilt } from "../src/index.js";
-import { canvas, exportHtml } from "./helpers.js";
+import {
+  addSecondTextBlock,
+  canvas,
+  exportHtml,
+  redoByKey,
+  undoByKey,
+  waitForSelectionToRegister,
+} from "./helpers.js";
 
 const textBlock = (page: Page) =>
   page.getByRole("textbox", { name: "Text Block" }).first();
@@ -17,8 +23,6 @@ const toolbarButton = (page: Page, name: string) =>
 const linkInput = (page: Page) =>
   page.getByRole("textbox", { name: "Link URL" });
 
-const undo = (page: Page) => page.keyboard.press("ControlOrMeta+z");
-const redo = (page: Page) => page.keyboard.press("ControlOrMeta+Shift+z");
 const selectAll = (page: Page) => page.keyboard.press("ControlOrMeta+a");
 
 /** The saved content of the Block at `index`, as the host last received it. */
@@ -40,19 +44,6 @@ const selectAllInBlock = async (page: Page) => {
   await selectAll(page);
 };
 
-/**
- * Chromium reports a moved selection just after the key press, so the editor
- * can only act on it once this has passed. A person's next key is always later.
- */
-const waitForSelectionToRegister = (page: Page) =>
-  page.evaluate(
-    () =>
-      // oxlint-disable-next-line promise/avoid-new -- These browser callbacks have no promise form.
-      new Promise((resolve) => {
-        requestAnimationFrame(() => setTimeout(resolve, 0));
-      })
-  );
-
 const pressArrow = async (page: Page, key: "ArrowLeft" | "ArrowRight") => {
   await page.keyboard.press(key);
   await waitForSelectionToRegister(page);
@@ -62,18 +53,6 @@ const cursorAtEndOfBlock = async (page: Page) => {
   await selectAllInBlock(page);
   await pressArrow(page, "ArrowRight");
 };
-
-const addSecondTextBlock = (page: Page) =>
-  canvas(page).evaluate((element) => {
-    const mailQuilt = element as MailQuilt;
-    const document = mailQuilt.value;
-    const column = document?.rows[0]?.columns[0];
-    const block = column?.blocks[0];
-    if (block) {
-      column?.blocks.push({ ...structuredClone(block), id: "block-2" });
-    }
-    mailQuilt.value = document;
-  });
 
 const pasteHtml = (page: Page, html: string) =>
   textBlock(page).evaluate((element, value) => {
@@ -693,7 +672,7 @@ test.describe("undo and redo", () => {
         { marks: [{ type: "bold" }], text: "Hello", type: "text" },
       ]);
 
-    await undo(page);
+    await undoByKey(page);
     await expect
       .poll(() => savedInline(page))
       .toStrictEqual([{ text: "Hello", type: "text" }]);
@@ -702,7 +681,7 @@ test.describe("undo and redo", () => {
       "false"
     );
 
-    await redo(page);
+    await redoByKey(page);
     await expect
       .poll(() => savedInline(page))
       .toStrictEqual([
@@ -729,7 +708,7 @@ test.describe("undo and redo", () => {
     await selectAll(page);
     await pressArrow(page, "ArrowRight");
 
-    await undo(page);
+    await undoByKey(page);
     await expect(textBlock(page)).toHaveText("Hello");
     await page.keyboard.type("!");
 
@@ -750,7 +729,7 @@ test.describe("undo and redo", () => {
         },
       ]);
 
-    await undo(page);
+    await undoByKey(page);
 
     await expect
       .poll(() => savedInline(page))
@@ -768,11 +747,11 @@ test.describe("undo and redo", () => {
     await page.keyboard.type("x");
     await expect(textBlock(page)).toContainText("x");
 
-    await undo(page);
+    await undoByKey(page);
     await expect
       .poll(() => savedInline(page))
       .toStrictEqual([{ text: "Hello!", type: "text" }, { type: "hardBreak" }]);
-    await undo(page);
+    await undoByKey(page);
     await expect
       .poll(() => savedInline(page))
       .toStrictEqual([{ text: "Hello!", type: "text" }]);
@@ -792,7 +771,7 @@ test.describe("undo and redo", () => {
         { marks: [{ type: "bold" }], text: "b", type: "text" },
       ]);
 
-    await undo(page);
+    await undoByKey(page);
 
     await expect
       .poll(() => savedInline(page))
@@ -810,7 +789,7 @@ test.describe("undo and redo", () => {
       .toStrictEqual([{ text: "Hello", type: "text" }]);
     await expect(textBlock(page)).toBeFocused();
 
-    await undo(page);
+    await undoByKey(page);
     await expect
       .poll(() => savedInline(page))
       .toStrictEqual([
@@ -821,7 +800,7 @@ test.describe("undo and redo", () => {
         },
       ]);
 
-    await undo(page);
+    await undoByKey(page);
     await expect
       .poll(() => savedInline(page))
       .toStrictEqual([{ text: "Hello", type: "text" }]);

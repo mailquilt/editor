@@ -4,14 +4,18 @@ import type { Locator, Page } from "@playwright/test";
 import {
   canvas,
   chooseLayout,
-  deleteRow,
-  openTab,
   currentValue,
+  deleteRow,
   emailWith,
   moveCursorToLineEnd,
+  openTab,
+  palette,
+  redoByKey,
+  settle,
   setValue,
   structure,
   textBlock,
+  undoByKey,
 } from "./helpers.js";
 
 const blockElement = (page: Page, text: string) =>
@@ -42,11 +46,6 @@ const column = (page: Page, rowIndex: number, columnIndex: number) =>
     .nth(rowIndex)
     .locator(".column")
     .nth(columnIndex);
-
-const paletteText = (page: Page) =>
-  page
-    .getByRole("group", { name: "Add content" })
-    .getByRole("button", { name: "Text" });
 
 const dropIndicator = (page: Page) => canvas(page).locator(".drop-indicator");
 
@@ -80,16 +79,6 @@ const bottomOf = async (locator: Locator): Promise<Point> => {
   return { x: x + width / 2, y: y + (height * 3) / 4 };
 };
 
-/** Lets the drag catch up with the pointer, as it does for a person. */
-const settle = (page: Page) =>
-  page.evaluate(
-    () =>
-      // oxlint-disable-next-line promise/avoid-new -- requestAnimationFrame only takes a callback.
-      new Promise((resolve) => {
-        requestAnimationFrame(() => requestAnimationFrame(resolve));
-      })
-  );
-
 const pickUp = async (page: Page, from: Locator) => {
   const start = await centerOf(from);
   await page.mouse.move(start.x, start.y);
@@ -109,9 +98,6 @@ const drag = async (page: Page, from: Locator, to: Point) => {
   await page.mouse.up();
   await settle(page);
 };
-
-const undo = (page: Page) => page.keyboard.press("ControlOrMeta+z");
-const redo = (page: Page) => page.keyboard.press("ControlOrMeta+Shift+z");
 
 const load = async (page: Page, rows: string[][][]) => {
   await setValue(page, emailWith(rows));
@@ -315,9 +301,9 @@ test.describe("the text cursor during a drag", () => {
     await load(page, [[["One", "Two"]]]);
     await placeCursorAfterTwo(page);
     await openTab(page, "Content");
-    const start = await centerOf(paletteText(page));
+    const start = await centerOf(palette(page, "Text"));
 
-    await pickUp(page, paletteText(page));
+    await pickUp(page, palette(page, "Text"));
     await moveTo(page, start);
     await page.mouse.up();
     await settle(page);
@@ -634,7 +620,7 @@ test.describe("dragging from the palette", () => {
 
     await drag(
       page,
-      paletteText(page),
+      palette(page, "Text"),
       await bottomOf(blockElement(page, "One"))
     );
 
@@ -646,7 +632,7 @@ test.describe("dragging from the palette", () => {
   test("into an empty Column", async ({ page }) => {
     await load(page, [[["One"], []]]);
 
-    await drag(page, paletteText(page), await centerOf(column(page, 0, 1)));
+    await drag(page, palette(page, "Text"), await centerOf(column(page, 0, 1)));
 
     expect(await structure(page)).toStrictEqual([[["One"], [""]]]);
   });
@@ -656,7 +642,7 @@ test.describe("dragging from the palette", () => {
 
     await drag(
       page,
-      paletteText(page),
+      palette(page, "Text"),
       await bottomOf(blockElement(page, "One"))
     );
     await page.keyboard.type("Typed");
@@ -671,29 +657,29 @@ test.describe("dragging from the palette", () => {
     await expect(textBlock(page)).toHaveCount(0);
     const email = await boxOf(canvas(page).locator(".email"));
 
-    await drag(page, paletteText(page), {
+    await drag(page, palette(page, "Text"), {
       x: email.x + 300,
       y: email.y + 20,
     });
 
     expect(await structure(page)).toStrictEqual([[[""]]]);
-    await undo(page);
+    await undoByKey(page);
     expect(await structure(page)).toStrictEqual([]);
   });
 
   test("leaves the palette button where it was", async ({ page }) => {
     await load(page, [[["One"]]]);
-    const before = await boxOf(paletteText(page));
+    const before = await boxOf(palette(page, "Text"));
 
-    await pickUp(page, paletteText(page));
+    await pickUp(page, palette(page, "Text"));
     await moveTo(page, await bottomOf(blockElement(page, "One")));
-    await expect(paletteText(page)).toBeVisible();
+    await expect(palette(page, "Text")).toBeVisible();
     await page.mouse.up();
     await settle(page);
 
     // The new Block's settings show in place of the tabs.
     await openTab(page, "Content");
-    expect(await boxOf(paletteText(page))).toStrictEqual(before);
+    expect(await boxOf(palette(page, "Text"))).toStrictEqual(before);
     await expect(
       canvas(page).locator("[data-drag-ghost], [data-drag-source]")
     ).toHaveCount(0);
@@ -703,9 +689,9 @@ test.describe("dragging from the palette", () => {
     page,
   }) => {
     await load(page, [[["One"]]]);
-    const start = await centerOf(paletteText(page));
+    const start = await centerOf(palette(page, "Text"));
 
-    await pickUp(page, paletteText(page));
+    await pickUp(page, palette(page, "Text"));
     await moveTo(page, start);
     await expect(dropIndicator(page)).toBeHidden();
     await page.mouse.up();
@@ -718,7 +704,7 @@ test.describe("dragging from the palette", () => {
     page,
   }) => {
     await load(page, [[["One"]]]);
-    const { x, y } = await centerOf(paletteText(page));
+    const { x, y } = await centerOf(palette(page, "Text"));
 
     await page.mouse.move(x, y);
     await page.mouse.down();
@@ -733,12 +719,12 @@ test.describe("dragging from the palette", () => {
 
     await drag(
       page,
-      paletteText(page),
+      palette(page, "Text"),
       await bottomOf(blockElement(page, "One"))
     );
     // The new Block's settings show in place of the tabs.
     await openTab(page, "Content");
-    await paletteText(page).click();
+    await palette(page, "Text").click();
 
     expect(await structure(page)).toStrictEqual([[["One", "", ""]]]);
   });
@@ -845,13 +831,13 @@ test.describe("undo", () => {
     );
     expect(await structure(page)).toStrictEqual([[["Two"], ["Three", "One"]]]);
 
-    await undo(page);
+    await undoByKey(page);
     expect(await structure(page)).toStrictEqual([[["Two", "One"], ["Three"]]]);
-    await undo(page);
+    await undoByKey(page);
     expect(await structure(page)).toStrictEqual([[["One", "Two"], ["Three"]]]);
-    await redo(page);
+    await redoByKey(page);
     expect(await structure(page)).toStrictEqual([[["Two", "One"], ["Three"]]]);
-    await redo(page);
+    await redoByKey(page);
     expect(await structure(page)).toStrictEqual([[["Two"], ["Three", "One"]]]);
   });
 
@@ -872,7 +858,7 @@ test.describe("undo", () => {
       [["Three"]],
     ]);
 
-    await undo(page);
+    await undoByKey(page);
     expect(await structure(page)).toStrictEqual([
       [["One", "Three"]],
       [["Two"]],
@@ -885,13 +871,13 @@ test.describe("undo", () => {
       canvas(page).locator(".row").first()
     );
 
-    await drag(page, paletteText(page), {
+    await drag(page, palette(page, "Text"), {
       x: x + width / 2,
       y: y + height + 30,
     });
     expect(await structure(page)).toStrictEqual([[["One"]], [[""]]]);
 
-    await undo(page);
+    await undoByKey(page);
     expect(await structure(page)).toStrictEqual([[["One"]]]);
   });
 
@@ -905,9 +891,9 @@ test.describe("undo", () => {
     );
     await page.keyboard.type("X");
 
-    await undo(page);
+    await undoByKey(page);
     expect(await structure(page)).toStrictEqual([[[], ["Two", "One"]]]);
-    await undo(page);
+    await undoByKey(page);
     expect(await structure(page)).toStrictEqual([[["One"], ["Two"]]]);
   });
 
@@ -926,7 +912,7 @@ test.describe("undo", () => {
     await page.mouse.move(x, y);
     await page.mouse.down();
     await page.mouse.up();
-    await undo(page);
+    await undoByKey(page);
 
     expect(await structure(page)).toStrictEqual([[["One", "Two"]]]);
   });
@@ -939,7 +925,7 @@ test.describe("undo", () => {
       handleOf(page, "One"),
       await bottomOf(blockElement(page, "Two"))
     );
-    await undo(page);
+    await undoByKey(page);
     await blockElement(page, "One").getByRole("textbox").click();
     await moveCursorToLineEnd(page);
     await page.keyboard.type("!");
@@ -1143,12 +1129,13 @@ test.describe("a Block that's removed or replaced", () => {
     await load(page, [[["One", "Two"]]]);
 
     await pickUp(page, handleOf(page, "One"));
-    await canvas(page).evaluate((element) => {
+    const removed = await canvas(page).evaluateHandle((element) => {
       const parent = element.parentElement;
       element.remove();
-      setTimeout(() => parent?.append(element), 50);
+      return { element, parent };
     });
     await page.mouse.up();
+    await removed.evaluate(({ element, parent }) => parent?.append(element));
     await expect(textBlock(page).first()).toBeVisible();
     await settle(page);
     expect(errors).toStrictEqual([]);
@@ -1169,7 +1156,7 @@ test.describe("a Block that's removed or replaced", () => {
     expect(await structure(page)).toStrictEqual([[["One", "Two"]]]);
 
     await pickUp(page, handleOf(page, "One"));
-    await undo(page);
+    await undoByKey(page);
     await settle(page);
     await moveTo(page, await bottomOf(blockElement(page, "Two")));
     await page.mouse.up();
@@ -1191,7 +1178,7 @@ test.describe("a Block that's removed or replaced", () => {
 
     await pickUp(page, handleOf(page, "One"));
     await moveTo(page, await topOf(blockElement(page, "Two")));
-    await undo(page);
+    await undoByKey(page);
     await settle(page);
     // The undo made the Block anew, so the drag of the old one is over.
     await expect(
@@ -1271,7 +1258,7 @@ test.describe("on a touch screen", () => {
 
     await touchDrag(
       page,
-      await centerOf(paletteText(page)),
+      await centerOf(palette(page, "Text")),
       await bottomOf(blockElement(page, "One"))
     );
 

@@ -1,4 +1,3 @@
-import { AxeBuilder } from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
@@ -11,10 +10,12 @@ import {
   layoutOption,
   openBlocks,
   openTab,
+  palette,
   selectRow,
   setValue,
   structure,
   textBlock,
+  violations,
 } from "./helpers.js";
 
 /** A Block itself, as opposed to the text inside it. */
@@ -45,11 +46,6 @@ const textOf = (page: Page, text: string) =>
 
 const announcement = (page: Page) => canvas(page).getByRole("status");
 
-const paletteText = (page: Page) =>
-  page
-    .getByRole("group", { name: "Add content" })
-    .getByRole("button", { name: "Text" });
-
 const newBlockText = (page: Page) =>
   canvas(page).locator('[aria-current="true"]').getByRole("textbox");
 
@@ -73,24 +69,6 @@ const controlsWithoutRing = (page: Page) =>
         (control) => control.getAttribute("aria-label") ?? control.textContent
       );
   });
-
-/**
- * Only the editor, because the test host's CSS is unfriendly on purpose. Legacy
- * mode, because the default mode opens a new page to finish, which hangs in
- * Chromium and WebKit while the Preview's sandboxed iframe is showing.
- */
-const violations = async (page: Page) => {
-  const { violations: found } = await new AxeBuilder({ page })
-    .include("mail-quilt")
-    .exclude("iframe")
-    .setLegacyMode()
-    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
-    .analyze();
-  return found.map(({ id, nodes }) => ({
-    id,
-    targets: nodes.map(({ target }) => target),
-  }));
-};
 
 /**
  * How far below the top of the window a Block and its toolbar start, and so
@@ -765,7 +743,7 @@ test.describe("Enter on a palette item", () => {
     await open(page, [[["A", "B"], ["C"]]]);
     await blockWith(page, "A").focus();
     await backToTabs(page);
-    await paletteText(page).focus();
+    await palette(page, "Text").focus();
 
     await page.keyboard.press("Enter");
 
@@ -784,7 +762,7 @@ test.describe("Enter on a palette item", () => {
     page,
   }) => {
     await open(page, [[["A"]]]);
-    await paletteText(page).focus();
+    await palette(page, "Text").focus();
 
     await page.keyboard.down("Enter");
     await expect(newBlockText(page)).toBeFocused();
@@ -798,7 +776,7 @@ test.describe("Enter on a palette item", () => {
 
   test("with no Block selected, adds to the last Column", async ({ page }) => {
     await open(page, [[["A"], ["B"]]]);
-    await paletteText(page).focus();
+    await palette(page, "Text").focus();
 
     await page.keyboard.press("Enter");
 
@@ -1026,6 +1004,8 @@ test.describe("automated accessibility checks", () => {
     await page.getByRole("button", { name: "Preview" }).click();
     await expect(page.getByTitle("Email preview")).toBeVisible();
 
-    expect(await violations(page)).toEqual([]);
+    expect(
+      await violations(page, "mail-quilt", { excludeIframe: true })
+    ).toEqual([]);
   });
 });

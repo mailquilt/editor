@@ -286,9 +286,14 @@ test.describe("the sandbox", () => {
 
     await previewButton(page).click();
     await previewEmail(page).getByRole("link", { name: "Go there" }).click();
-    // Nothing to wait for when nothing happens, so give a popup time to load.
-    await page.waitForTimeout(500);
 
+    // Nothing happens to wait for, so this shows nothing can: no token lets
+    // the frame open a popup or move the page.
+    expect(
+      await previewFrame(page).evaluate((frame) => [
+        ...(frame as HTMLIFrameElement).sandbox,
+      ])
+    ).toEqual([]);
     expect(opened).toEqual([]);
     expect(page.url()).toBe(url);
     await expect(previewDialog(page)).toBeVisible();

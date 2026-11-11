@@ -7,17 +7,15 @@ import {
   currentValue,
   emailWith,
   openBlocks,
-  setValue,
+  rowTools,
   settle,
+  setValue,
   structure,
   textBlock,
 } from "./helpers.js";
 
 const blockTools = (page: Page) =>
   canvas(page).getByRole("toolbar", { name: "Block tools" });
-
-const rowTools = (page: Page, position: number) =>
-  canvas(page).getByRole("group", { exact: true, name: `Row ${position}` });
 
 const formatBar = (page: Page) =>
   canvas(page).getByRole("toolbar", { name: "Text formatting" });
