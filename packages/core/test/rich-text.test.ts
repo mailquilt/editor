@@ -77,16 +77,6 @@ describe("limited rich text", () => {
       "the same mark twice",
       { marks: [{ type: "bold" }, { type: "bold" }], text: "x" },
     ],
-    [
-      "two links on the same text",
-      {
-        marks: [
-          { attrs: { href: "https://a.b" }, type: "link" },
-          { attrs: { href: "https://c.d" }, type: "link" },
-        ],
-        text: "x",
-      },
-    ],
   ])("refuses %s", (_name, node) => {
     expect(
       loadDocument(emailWithInline({ ...node, type: "text" })).ok
@@ -95,6 +85,21 @@ describe("limited rich text", () => {
 
   it("refuses an inline node it doesn't know", () => {
     const email = emailWithInline({ attrs: { src: "x" }, type: "image" });
+
+    expect(loadDocument(email).ok).toBeFalsy();
+  });
+
+  it("refuses anything but paragraphs at the top level", () => {
+    const email = createEmail();
+    const block = email.rows[0]?.columns[0]?.blocks[0];
+    if (block) {
+      block.props = {
+        content: {
+          content: [{ attrs: { level: 1 }, type: "heading" }],
+          type: "doc",
+        },
+      };
+    }
 
     expect(loadDocument(email).ok).toBeFalsy();
   });

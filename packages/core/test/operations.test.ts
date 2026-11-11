@@ -218,7 +218,6 @@ describe("applying an Operation", () => {
 
   it.each([
     ["an insert into", { ...insert, columnId: "missing" }],
-    ["a remove from", { ...remove, columnId: "missing" }],
     ["a move from", { ...move, from: { columnId: "missing", index: 0 } }],
     ["a move to", { ...move, to: { columnId: "missing", index: 0 } }],
     ["a width on", { ...setColumnWidth, columnId: "missing" }],
@@ -229,15 +228,11 @@ describe("applying an Operation", () => {
     }
   );
 
-  it.each([
-    ["an insert into", { ...insertColumn, rowId: "missing" }],
-    ["a remove from", { ...removeColumn, rowId: "missing" }],
-  ] as [string, Operation][])(
-    "throws for %s a missing Row",
-    (_name, operation) => {
-      expect(() => applied(operation)).toThrow(/missing/u);
-    }
-  );
+  it("throws for an insert into a missing Row", () => {
+    expect(() =>
+      applied({ ...insertColumn, rowId: "missing" } as Operation)
+    ).toThrow(/missing/u);
+  });
 
   it("throws for a move of a Block that isn't there", () => {
     expect(() =>

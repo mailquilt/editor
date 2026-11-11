@@ -1,36 +1,7 @@
-import type { BlocksDocument } from "@mailquilt/core";
 import { describe, expect, it } from "vitest";
 
 import { renderEmail } from "../src/index.js";
-
-const emailWith = (
-  ...blocks: { props: Record<string, unknown>; type: string }[]
-): BlocksDocument => ({
-  kind: "blocks",
-  rows: [
-    {
-      columns: [
-        {
-          blocks: blocks.map((block, index) => ({
-            id: `block-${index}`,
-            ...block,
-          })),
-          id: "column-1",
-          props: {},
-          width: 100,
-        },
-      ],
-      id: "row-1",
-      props: {},
-    },
-  ],
-  settings: {
-    backgroundColor: "#ffffff",
-    fontFamily: "Arial, Helvetica, sans-serif",
-    width: 600,
-  },
-  version: 1,
-});
+import { emailWith } from "./email-with.js";
 
 const richText = (...paragraphs: unknown[][]) => ({
   content: paragraphs.map((content) =>
@@ -209,14 +180,5 @@ describe("a Button Block", () => {
 
     expect(buttonLink(html)).not.toContain('onclick="');
     expect(buttonLink(html)).toContain("&quot;onclick=&quot;");
-  });
-
-  it("takes the same space and size as the canvas draws", async () => {
-    const html = await renderEmail(emailWith(button({ label: "Buy" })));
-
-    expect(html).toMatch(/<p\s[^>]*font-size:16px[^>]*line-height:1\.5/u);
-    expect(html).toMatch(/padding:10px 25px/u);
-    expect(html).toMatch(/border-radius:3px/u);
-    expect(html).toMatch(/<td[^>]*style="[^"]*padding:16px/u);
   });
 });

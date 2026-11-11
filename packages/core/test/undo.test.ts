@@ -189,6 +189,64 @@ describe("merging Commands into one undo step", () => {
 
     expect(editor.getDocument()).toStrictEqual(document);
   });
+
+  it("undoes merged changes to different Blocks and a Row together", () => {
+    const { editor, setText } = setup();
+    const [row] = editor.getDocument().rows;
+    const added = editor.apply({
+      blockType: "text",
+      columnId: row?.columns[0]?.id ?? "",
+      index: 1,
+      type: "insertBlock",
+    });
+    const before = editor.getDocument();
+    setText("A", { mergeKey: "typing" });
+    editor.apply(
+      {
+        blockId: added.ok ? (added.createdId ?? "") : "",
+        props: { content: paragraph("B") },
+        type: "updateProps",
+      },
+      { mergeKey: "typing" }
+    );
+    editor.apply(
+      {
+        props: { backgroundColor: "#ff0000" },
+        rowId: row?.id ?? "",
+        type: "updateRowProps",
+      },
+      { mergeKey: "typing" }
+    );
+
+    editor.undo();
+
+    expect(editor.getDocument()).toStrictEqual(before);
+  });
+
+  it("leaves no step for changes that end where they started", () => {
+    const { blockId, document, editor, setText } = setup();
+    const original = document.rows[0]?.columns[0]?.blocks[0]?.props ?? {};
+    setText("A", { mergeKey: "typing" });
+    editor.apply(
+      { blockId, props: original, type: "updateProps" },
+      { mergeKey: "typing" }
+    );
+
+    expect(editor.undo()).toBeFalsy();
+  });
+
+  it("starts a new step after changes that ended where they started", () => {
+    const { editor, setText } = setup();
+    setText("X");
+    const afterX = editor.getDocument();
+    setText("XA", { mergeKey: "typing" });
+    setText("X", { mergeKey: "typing" });
+    setText("XB", { mergeKey: "typing" });
+
+    editor.undo();
+
+    expect(editor.getDocument()).toStrictEqual(afterX);
+  });
 });
 
 describe("subscribing to Operations", () => {
