@@ -1,15 +1,8 @@
-// Neither package ships types. This is the part of their API `renderer` uses.
-type Compile = (
-  mjml: string,
-  options: { validationLevel: "strict" }
-) => Promise<{ html: string }>;
-
-declare module "mjml" {
-  const mjml2html: Compile;
-  export default mjml2html;
-}
-
+// The package ships no types. This is the part of its API `renderer` uses.
 declare module "mjml-browser" {
-  const mjml2html: Compile;
+  const mjml2html: (
+    mjml: string,
+    options: { validationLevel: "strict" }
+  ) => Promise<{ html: string }>;
   export default mjml2html;
 }

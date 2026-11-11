@@ -9,9 +9,8 @@
   "type": "module",
   "exports": {
     ".": {
-      "types": "./dist/node.d.ts",
-      "browser": "./dist/browser.js",
-      "default": "./dist/node.js"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     }
   },
   "scripts": {
@@ -21,7 +20,7 @@
   },
   "dependencies": {
     "@mailquilt/core": "workspace:*",
-    "mjml": "^5.4.1",
+    "cheerio": "^1.2.0",
     "mjml-browser": "^5.4.1"
   },
   "devDependencies": {
