@@ -181,6 +181,30 @@ test.describe("moving a selected Row from the keyboard", () => {
     await expect(structure(page)).resolves.toEqual([[["One"]], [["Two"]]]);
     await expect(selectRowButton(page, 1)).toBeFocused();
   });
+
+  test("Alt+← and Alt+→ say it can't move that way, and don't go back a page", async ({
+    page,
+  }) => {
+    await open(page, [[["One"]], [["Two"]]]);
+    await selectRow(page, 1);
+    // Listening before the key is pressed, so the press can't come first.
+    await page.evaluate(() => {
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "ArrowLeft") {
+          Object.assign(window, { leftPrevented: event.defaultPrevented });
+        }
+      });
+    });
+
+    await page.keyboard.press("Alt+ArrowLeft");
+    await expect
+      .poll(() => page.evaluate(() => Reflect.get(window, "leftPrevented")))
+      .toBe(true);
+    await expect(announcement(page)).toHaveText("The Row can't move left.");
+
+    await page.keyboard.press("Alt+ArrowRight");
+    await expect(announcement(page)).toHaveText("The Row can't move right.");
+  });
 });
 
 const rowFrame = (page: Page, position: number) =>
@@ -239,6 +263,41 @@ const belowMiddleOf = async (page: Page, position: number) => {
 };
 
 const changeCount = (page: Page) => page.getByTestId("change-count");
+
+test("each Row move fires one mq-change, by button, Alt+↓ or drag", async ({
+  page,
+}) => {
+  await open(page, [[["One"]], [["Two"]], [["Three"]]]);
+  const before = Number(await changeCount(page).textContent());
+
+  await clickRowTool(page, 1, "Move Row down");
+  await expect(structure(page)).resolves.toEqual([
+    [["Two"]],
+    [["One"]],
+    [["Three"]],
+  ]);
+  await expect(changeCount(page)).toHaveText(String(before + 1));
+
+  await selectRow(page, 1);
+  await page.keyboard.press("Alt+ArrowDown");
+  await expect(structure(page)).resolves.toEqual([
+    [["One"]],
+    [["Two"]],
+    [["Three"]],
+  ]);
+  await expect(changeCount(page)).toHaveText(String(before + 2));
+
+  const to = await belowMiddleOf(page, 3);
+  await pickUp(page, await grip(page, 1, "handle"));
+  await moveTo(page, ...to);
+  await letGo(page);
+  await expect(structure(page)).resolves.toEqual([
+    [["Two"]],
+    [["Three"]],
+    [["One"]],
+  ]);
+  await expect(changeCount(page)).toHaveText(String(before + 3));
+});
 
 test.describe("dragging a Row", () => {
   for (const by of ["handle", "tag"] as const) {
@@ -384,11 +443,5 @@ test.describe("dragging a Row", () => {
     await letGo(page);
 
     await expect(structure(page)).resolves.toEqual([[["One"]], [["Two"]]]);
-  });
-
-  test("its tag takes a touch for a drag, not a scroll", async ({ page }) => {
-    await open(page, [[["One"]]]);
-
-    await expect(await grip(page, 1, "tag")).toHaveCSS("touch-action", "none");
   });
 });

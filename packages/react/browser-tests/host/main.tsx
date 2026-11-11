@@ -75,9 +75,6 @@ const Host = () => {
       <button onClick={() => setDocument(emailWith("Other"))} type="button">
         Load another email
       </button>
-      <button onClick={() => setDocument(refusedEmail)} type="button">
-        Load a refused email
-      </button>
       <button
         onClick={async () =>
           setHtml((await editor.current?.exportHtml()) ?? "")
@@ -95,6 +92,8 @@ const Host = () => {
       <output data-testid="latest-document">{JSON.stringify(document)}</output>
       {shown && (
         <MailQuilt
+          aria-label="Newsletter"
+          className="host-editor"
           onChange={(next) => setDocument(next)}
           onError={({ reason }) => setErrors((all) => [...all, reason])}
           ref={editor}
@@ -137,7 +136,6 @@ const CallbackRefHost = () => {
 /** A controlled host of the Shell. */
 const ShellHost = () => {
   const [document, setDocument] = useState(firstEmail);
-  const [errors, setErrors] = useState<string[]>([]);
   const [ready, setReady] = useState(false);
   // The wrapper hands over the element only after it has set `value`.
   const attach = useCallback((element: MailQuiltShellElement | null) => {
@@ -148,21 +146,13 @@ const ShellHost = () => {
 
   return (
     <main style={{ display: "grid", gridTemplateRows: "auto 700px" }}>
-      <div>
-        <button onClick={() => setDocument(firstEmail())} type="button">
-          Load the first email again
-        </button>
-        <output data-testid="ready">{ready ? "yes" : "no"}</output>
-        <output data-testid="errors">{errors.join("\n")}</output>
-        <output data-testid="latest-document">
-          {JSON.stringify(document)}
-        </output>
-      </div>
+      <output data-testid="ready">{ready ? "yes" : "no"}</output>
       <MailQuiltShell
         actions={params.has("only-html") ? ["export-html"] : undefined}
+        aria-label="Newsletter"
+        className="host-editor"
         heading="Campaign"
         onChange={(next) => setDocument(next)}
-        onError={({ reason }) => setErrors((all) => [...all, reason])}
         ref={attach}
         saveKey={save ? "react-test:email" : undefined}
         value={document}

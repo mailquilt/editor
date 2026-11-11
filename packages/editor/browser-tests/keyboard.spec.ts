@@ -1,4 +1,3 @@
-import { AxeBuilder } from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
@@ -6,10 +5,17 @@ import {
   addRow,
   blockTool,
   canvas,
+  chooseLayout,
   emailWith,
+  layoutOption,
+  openBlocks,
+  openTab,
+  palette,
+  selectRow,
   setValue,
   structure,
   textBlock,
+  violations,
 } from "./helpers.js";
 
 /** A Block itself, as opposed to the text inside it. */
@@ -40,11 +46,6 @@ const textOf = (page: Page, text: string) =>
 
 const announcement = (page: Page) => canvas(page).getByRole("status");
 
-const paletteText = (page: Page) =>
-  page
-    .getByRole("group", { name: "Add content" })
-    .getByRole("button", { name: "Text" });
-
 const newBlockText = (page: Page) =>
   canvas(page).locator('[aria-current="true"]').getByRole("textbox");
 
@@ -68,24 +69,6 @@ const controlsWithoutRing = (page: Page) =>
         (control) => control.getAttribute("aria-label") ?? control.textContent
       );
   });
-
-/**
- * Only the editor, because the test host's CSS is unfriendly on purpose. Legacy
- * mode, because the default mode opens a new page to finish, which hangs in
- * Chromium and WebKit while the Preview's sandboxed iframe is showing.
- */
-const violations = async (page: Page) => {
-  const { violations: found } = await new AxeBuilder({ page })
-    .include("mail-quilt")
-    .exclude("iframe")
-    .setLegacyMode()
-    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
-    .analyze();
-  return found.map(({ id, nodes }) => ({
-    id,
-    targets: nodes.map(({ target }) => target),
-  }));
-};
 
 /**
  * How far below the top of the window a Block and its toolbar start, and so
@@ -261,6 +244,23 @@ test.describe("moving a Block with Alt+Arrow keys", () => {
     await page.keyboard.press("Alt+ArrowLeft");
     await expect(structure(page)).resolves.toEqual([[["A"], ["B"], ["C"]]]);
     await expect(blockWith(page, "B")).toBeFocused();
+  });
+
+  test("after Back, keeps the side panel's tabs showing", async ({ page }) => {
+    await open(page, [[["A", "B", "C"]]]);
+    await blockWith(page, "A").focus();
+    // The mouse leaves focus on the Block.
+    await canvas(page)
+      .getByRole("button", { exact: true, name: "Back" })
+      .click();
+
+    await page.keyboard.press("Alt+ArrowDown");
+
+    await expect(structure(page)).resolves.toEqual([[["B", "A", "C"]]]);
+    await expect(blockWith(page, "A")).toBeFocused();
+    await expect(
+      canvas(page).getByRole("tab", { name: "Content" })
+    ).toBeVisible();
   });
 
   test("stops at the edge of a Row", async ({ page }) => {
@@ -518,6 +518,22 @@ test.describe("announcing a move", () => {
     await expect(announcement(page)).toBeEmpty();
   });
 
+  test("undo of a layout change that moves several Blocks says nothing of one", async ({
+    page,
+  }) => {
+    await open(page, [[["A"], ["B"], ["C"]]]);
+    await blockWith(page, "A").focus();
+    await page.keyboard.press("Alt+ArrowLeft");
+    await expect(announcement(page)).toHaveText("The Block can't move left.");
+    await chooseLayout(page, 1, "100");
+    await expect(structure(page)).resolves.toEqual([[["A", "B", "C"]]]);
+
+    await page.getByRole("button", { name: "Undo" }).click();
+
+    await expect(structure(page)).resolves.toEqual([[["A"], ["B"], ["C"]]]);
+    await expect(announcement(page)).toBeEmpty();
+  });
+
   test("doesn't carry over to another email", async ({ page }) => {
     await open(page, [[["A", "B"]]]);
     await blockWith(page, "A").focus();
@@ -727,7 +743,7 @@ test.describe("Enter on a palette item", () => {
     await open(page, [[["A", "B"], ["C"]]]);
     await blockWith(page, "A").focus();
     await backToTabs(page);
-    await paletteText(page).focus();
+    await palette(page, "Text").focus();
 
     await page.keyboard.press("Enter");
 
@@ -746,7 +762,7 @@ test.describe("Enter on a palette item", () => {
     page,
   }) => {
     await open(page, [[["A"]]]);
-    await paletteText(page).focus();
+    await palette(page, "Text").focus();
 
     await page.keyboard.down("Enter");
     await expect(newBlockText(page)).toBeFocused();
@@ -760,7 +776,7 @@ test.describe("Enter on a palette item", () => {
 
   test("with no Block selected, adds to the last Column", async ({ page }) => {
     await open(page, [[["A"], ["B"]]]);
-    await paletteText(page).focus();
+    await palette(page, "Text").focus();
 
     await page.keyboard.press("Enter");
 
@@ -932,18 +948,6 @@ test.describe("labels and focus states", () => {
 });
 
 test.describe("automated accessibility checks", () => {
-  test("reach inside the Shadow DOM", async ({ page }) => {
-    await open(page, [[["A"]]]);
-    await canvas(page).evaluate((host) => {
-      const undo = host.shadowRoot?.querySelector(".floating-toolbar button");
-      undo?.removeAttribute("aria-label");
-    });
-
-    expect(await violations(page)).toEqual([
-      expect.objectContaining({ id: "button-name" }),
-    ]);
-  });
-
   test("pass with Columns, empty Columns and no Block selected", async ({
     page,
   }) => {
@@ -972,11 +976,36 @@ test.describe("automated accessibility checks", () => {
     expect(await violations(page)).toEqual([]);
   });
 
+  test("pass with a Row, the Rows tab, a Heading and the narrow notice showing", async ({
+    page,
+  }) => {
+    await openBlocks(page, ["heading", "text"]);
+
+    await selectRow(page, 1);
+    await expect(layoutOption(page, "100")).toBeVisible();
+    expect(await violations(page)).toEqual([]);
+
+    await openTab(page, "Rows");
+    expect(await violations(page)).toEqual([]);
+
+    await canvas(page).getByRole("group", { name: "Heading Block" }).focus();
+    await expect(page.getByLabel("Level", { exact: true })).toBeVisible();
+    expect(await violations(page)).toEqual([]);
+
+    await page.setViewportSize({ height: 800, width: 390 });
+    await expect(
+      canvas(page).getByText("Editing needs more room")
+    ).toBeVisible();
+    expect(await violations(page)).toEqual([]);
+  });
+
   test("pass with the Preview open", async ({ page }) => {
     await open(page, [[["A"]]]);
     await page.getByRole("button", { name: "Preview" }).click();
     await expect(page.getByTitle("Email preview")).toBeVisible();
 
-    expect(await violations(page)).toEqual([]);
+    expect(
+      await violations(page, "mail-quilt", { excludeIframe: true })
+    ).toEqual([]);
   });
 });

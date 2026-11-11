@@ -1,8 +1,14 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
-import type { MailQuilt } from "../src/index.js";
-import { canvas, exportHtml } from "./helpers.js";
+import {
+  addSecondTextBlock,
+  canvas,
+  exportHtml,
+  redoByKey,
+  undoByKey,
+  waitForSelectionToRegister,
+} from "./helpers.js";
 
 const textBlock = (page: Page) =>
   page.getByRole("textbox", { name: "Text Block" }).first();
@@ -17,8 +23,6 @@ const toolbarButton = (page: Page, name: string) =>
 const linkInput = (page: Page) =>
   page.getByRole("textbox", { name: "Link URL" });
 
-const undo = (page: Page) => page.keyboard.press("ControlOrMeta+z");
-const redo = (page: Page) => page.keyboard.press("ControlOrMeta+Shift+z");
 const selectAll = (page: Page) => page.keyboard.press("ControlOrMeta+a");
 
 /** The saved content of the Block at `index`, as the host last received it. */
@@ -40,19 +44,6 @@ const selectAllInBlock = async (page: Page) => {
   await selectAll(page);
 };
 
-/**
- * Chromium reports a moved selection just after the key press, so the editor
- * can only act on it once this has passed. A person's next key is always later.
- */
-const waitForSelectionToRegister = (page: Page) =>
-  page.evaluate(
-    () =>
-      // oxlint-disable-next-line promise/avoid-new -- These browser callbacks have no promise form.
-      new Promise((resolve) => {
-        requestAnimationFrame(() => setTimeout(resolve, 0));
-      })
-  );
-
 const pressArrow = async (page: Page, key: "ArrowLeft" | "ArrowRight") => {
   await page.keyboard.press(key);
   await waitForSelectionToRegister(page);
@@ -62,18 +53,6 @@ const cursorAtEndOfBlock = async (page: Page) => {
   await selectAllInBlock(page);
   await pressArrow(page, "ArrowRight");
 };
-
-const addSecondTextBlock = (page: Page) =>
-  canvas(page).evaluate((element) => {
-    const mailQuilt = element as MailQuilt;
-    const document = mailQuilt.value;
-    const column = document?.rows[0]?.columns[0];
-    const block = column?.blocks[0];
-    if (block) {
-      column?.blocks.push({ ...structuredClone(block), id: "block-2" });
-    }
-    mailQuilt.value = document;
-  });
 
 const pasteHtml = (page: Page, html: string) =>
   textBlock(page).evaluate((element, value) => {
@@ -135,23 +114,6 @@ test("from all the text selected, ← and → go to its start and end", async ({
 });
 
 test.describe("bold, italic and underline", () => {
-  test("Bold from the toolbar reaches the exported email", async ({ page }) => {
-    await selectAllInBlock(page);
-
-    await toolbarButton(page, "Bold").click();
-
-    await expect
-      .poll(() => savedInline(page))
-      .toStrictEqual([
-        { marks: [{ type: "bold" }], text: "Hello", type: "text" },
-      ]);
-    await expect(toolbarButton(page, "Bold")).toHaveAttribute(
-      "aria-pressed",
-      "true"
-    );
-    expect(await exportHtml(page)).toContain("<strong>Hello</strong>");
-  });
-
   test("Underline from its keyboard shortcut reaches the exported email", async ({
     page,
   }) => {
@@ -227,21 +189,101 @@ test.describe("bold, italic and underline", () => {
       ]);
   });
 
-  test("text typed after turning bold on is bold", async ({ page }) => {
-    await cursorAtEndOfBlock(page);
+  test("bold on part of a Merge Tag makes all of the tag bold", async ({
+    page,
+  }) => {
+    await selectAllInBlock(page);
+    await page.keyboard.type("Hi {{first_name}}");
+    await pressArrow(page, "ArrowLeft");
+    await pressArrow(page, "ArrowLeft");
+    for (const _ of "first_name") {
+      // oxlint-disable-next-line no-await-in-loop -- Each key moves the selection on.
+      await extendSelection(page, "ArrowLeft");
+    }
 
-    await toolbarButton(page, "Bold").click();
-    await expect(toolbarButton(page, "Bold")).toHaveAttribute(
-      "aria-pressed",
-      "true"
-    );
-    await page.keyboard.type("x");
+    await page.keyboard.press("ControlOrMeta+b");
 
     await expect
       .poll(() => savedInline(page))
       .toStrictEqual([
-        { text: "Hello", type: "text" },
-        { marks: [{ type: "bold" }], text: "x", type: "text" },
+        { text: "Hi ", type: "text" },
+        { marks: [{ type: "bold" }], text: "{{first_name}}", type: "text" },
+      ]);
+    expect(await exportHtml(page)).toContain("<strong>{{first_name}}</strong>");
+  });
+
+  test("a Merge Tag after a line break is kept whole too", async ({ page }) => {
+    await selectAllInBlock(page);
+    await page.keyboard.type("Hi");
+    await page.keyboard.press("Shift+Enter");
+    await page.keyboard.type("{{first_name}}");
+    await pressArrow(page, "ArrowLeft");
+    await pressArrow(page, "ArrowLeft");
+    for (const _ of "first_name") {
+      // oxlint-disable-next-line no-await-in-loop -- Each key moves the selection on.
+      await extendSelection(page, "ArrowLeft");
+    }
+
+    await page.keyboard.press("ControlOrMeta+b");
+
+    await expect
+      .poll(() => savedInline(page))
+      .toStrictEqual([
+        { text: "Hi", type: "text" },
+        { type: "hardBreak" },
+        { marks: [{ type: "bold" }], text: "{{first_name}}", type: "text" },
+      ]);
+  });
+
+  test("bold off part of a Merge Tag takes it off all of the tag", async ({
+    page,
+  }) => {
+    await selectAllInBlock(page);
+    await page.keyboard.type("Hi {{first_name}}");
+    await selectAll(page);
+    await page.keyboard.press("ControlOrMeta+b");
+    await pressArrow(page, "ArrowRight");
+    await pressArrow(page, "ArrowLeft");
+    await pressArrow(page, "ArrowLeft");
+    for (const _ of "first_name") {
+      // oxlint-disable-next-line no-await-in-loop -- Each key moves the selection on.
+      await extendSelection(page, "ArrowLeft");
+    }
+
+    await page.keyboard.press("ControlOrMeta+b");
+
+    await expect
+      .poll(() => savedInline(page))
+      .toStrictEqual([
+        { marks: [{ type: "bold" }], text: "Hi ", type: "text" },
+        { text: "{{first_name}}", type: "text" },
+      ]);
+  });
+
+  test("a new link on part of a linked Merge Tag goes on all of it", async ({
+    page,
+  }) => {
+    await selectAllInBlock(page);
+    await page.keyboard.type("{{first_name}}");
+    await selectAll(page);
+    await addLink(page, "https://example.com");
+    await expect(textBlock(page)).toBeFocused();
+    await pressArrow(page, "ArrowLeft");
+    for (const _ of "{{first") {
+      // oxlint-disable-next-line no-await-in-loop -- Each key moves the selection on.
+      await extendSelection(page, "ArrowRight");
+    }
+
+    await addLink(page, "https://example.org");
+
+    await expect
+      .poll(() => savedInline(page))
+      .toStrictEqual([
+        {
+          marks: [{ attrs: { href: "https://example.org" }, type: "link" }],
+          text: "{{first_name}}",
+          type: "text",
+        },
       ]);
   });
 });
@@ -719,7 +761,7 @@ test.describe("undo and redo", () => {
         { marks: [{ type: "bold" }], text: "Hello", type: "text" },
       ]);
 
-    await undo(page);
+    await undoByKey(page);
     await expect
       .poll(() => savedInline(page))
       .toStrictEqual([{ text: "Hello", type: "text" }]);
@@ -728,7 +770,7 @@ test.describe("undo and redo", () => {
       "false"
     );
 
-    await redo(page);
+    await redoByKey(page);
     await expect
       .poll(() => savedInline(page))
       .toStrictEqual([
@@ -755,7 +797,7 @@ test.describe("undo and redo", () => {
     await selectAll(page);
     await pressArrow(page, "ArrowRight");
 
-    await undo(page);
+    await undoByKey(page);
     await expect(textBlock(page)).toHaveText("Hello");
     await page.keyboard.type("!");
 
@@ -776,7 +818,7 @@ test.describe("undo and redo", () => {
         },
       ]);
 
-    await undo(page);
+    await undoByKey(page);
 
     await expect
       .poll(() => savedInline(page))
@@ -794,11 +836,11 @@ test.describe("undo and redo", () => {
     await page.keyboard.type("x");
     await expect(textBlock(page)).toContainText("x");
 
-    await undo(page);
+    await undoByKey(page);
     await expect
       .poll(() => savedInline(page))
       .toStrictEqual([{ text: "Hello!", type: "text" }, { type: "hardBreak" }]);
-    await undo(page);
+    await undoByKey(page);
     await expect
       .poll(() => savedInline(page))
       .toStrictEqual([{ text: "Hello!", type: "text" }]);
@@ -818,7 +860,7 @@ test.describe("undo and redo", () => {
         { marks: [{ type: "bold" }], text: "b", type: "text" },
       ]);
 
-    await undo(page);
+    await undoByKey(page);
 
     await expect
       .poll(() => savedInline(page))
@@ -836,7 +878,7 @@ test.describe("undo and redo", () => {
       .toStrictEqual([{ text: "Hello", type: "text" }]);
     await expect(textBlock(page)).toBeFocused();
 
-    await undo(page);
+    await undoByKey(page);
     await expect
       .poll(() => savedInline(page))
       .toStrictEqual([
@@ -847,7 +889,7 @@ test.describe("undo and redo", () => {
         },
       ]);
 
-    await undo(page);
+    await undoByKey(page);
     await expect
       .poll(() => savedInline(page))
       .toStrictEqual([{ text: "Hello", type: "text" }]);

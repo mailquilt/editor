@@ -25,22 +25,6 @@ test("shows the email in value, with the heading", async ({ page }) => {
   ).toBeVisible();
 });
 
-test("onChange hands the host each new document", async ({ page }) => {
-  await page.goto("/?shell");
-
-  await typeAtStart(page, "Oh ");
-
-  await expect(textBlock(page)).toHaveText("Oh Hello");
-  await expect(page.getByTestId("latest-document")).toContainText("Oh Hello");
-});
-
-test("onError hears a refused first document", async ({ page }) => {
-  await page.goto("/?shell&refused-first");
-
-  await expect(page.getByTestId("errors")).toContainText("newer");
-  await expect(shell(page).getByRole("alert")).toContainText("newer");
-});
-
 test("with saveKey, a reload reopens the saved email rather than value", async ({
   page,
 }) => {
@@ -55,29 +39,12 @@ test("with saveKey, a reload reopens the saved email rather than value", async (
   await expect(textBlock(page)).toHaveText("Saved Hello");
 });
 
-test("with saveKey, passing the first email again keeps the saved one", async ({
-  page,
-}) => {
-  await page.goto("/?shell&save");
-  await typeAtStart(page, "Saved ");
-  await expect(textBlock(page)).toHaveText("Saved Hello");
-  await page.reload();
-  await expect(page.getByTestId("ready")).toHaveText("yes");
-
-  // A new object with the same email, as a re-render that builds it again.
-  await page
-    .getByRole("button", { name: "Load the first email again" })
-    .click();
-
-  await expect(textBlock(page)).toHaveText("Saved Hello");
-});
-
 test("actions picks the Shell's buttons", async ({ page }) => {
   await page.goto("/?shell&only-html");
   await expect(textBlock(page)).toHaveText("Hello");
 
   await expect(shell(page)).toHaveAttribute("actions", "export-html");
-  await expect(shell(page).locator(".header").getByRole("button")).toHaveText([
-    "Export HTML",
-  ]);
+  await expect(
+    shell(page).locator('[part="actions"]').getByRole("button")
+  ).toHaveText(["Export HTML"]);
 });

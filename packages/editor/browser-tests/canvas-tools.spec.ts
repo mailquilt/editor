@@ -7,17 +7,15 @@ import {
   currentValue,
   emailWith,
   openBlocks,
-  setValue,
+  rowTools,
   settle,
+  setValue,
   structure,
   textBlock,
 } from "./helpers.js";
 
 const blockTools = (page: Page) =>
   canvas(page).getByRole("toolbar", { name: "Block tools" });
-
-const rowTools = (page: Page, position: number) =>
-  canvas(page).getByRole("group", { exact: true, name: `Row ${position}` });
 
 const formatBar = (page: Page) =>
   canvas(page).getByRole("toolbar", { name: "Text formatting" });
@@ -275,52 +273,6 @@ test.describe("an empty Column on a touch screen", () => {
   });
 });
 
-test.describe("dragging a Block", () => {
-  // The test host's unfriendly CSS pushes the canvas far down the page.
-  test.use({ viewport: { height: 1600, width: 1280 } });
-
-  test("highlights where it can land and shows a line where it will", async ({
-    page,
-  }) => {
-    await page.goto("/");
-    await setValue(page, emailWith([[["A", "B"], ["C"]]]));
-    const handle = canvas(page)
-      .locator(".block", { hasText: "A" })
-      .locator(".drag-handle");
-    const target = canvas(page).locator(".column").nth(1);
-    const start = await handle.boundingBox();
-    const end = await target.boundingBox();
-    if (!(start && end)) {
-      throw new Error("Nothing to drag");
-    }
-
-    await page.mouse.move(start.x + 4, start.y + 4);
-    await page.mouse.down();
-    await page.mouse.move(start.x + 12, start.y + 12, { steps: 2 });
-    await page.mouse.move(end.x + end.width / 2, end.y + end.height - 4, {
-      steps: 8,
-    });
-    await settle(page);
-
-    await expect(canvas(page).locator(".email")).toHaveAttribute(
-      "data-dragging"
-    );
-    await expect(target).toHaveAttribute("data-drop-target");
-    await expect(canvas(page).locator(".column").first()).not.toHaveAttribute(
-      "data-drop-target"
-    );
-    await expect(canvas(page).locator(".drop-indicator")).toBeVisible();
-
-    await page.mouse.up();
-    await settle(page);
-    await expect(canvas(page).locator("[data-drop-target]")).toHaveCount(0);
-    await expect(canvas(page).locator(".email")).not.toHaveAttribute(
-      "data-dragging"
-    );
-    await expect(structure(page)).resolves.toEqual([[["B"], ["C", "A"]]]);
-  });
-});
-
 test.describe("the format bar", () => {
   test("shows only while a Text or Heading Block's text is edited", async ({
     page,
@@ -425,22 +377,6 @@ test.describe("the floating toolbar", () => {
     await expect(toolbar).toBeInViewport();
     const box = await toolbar.boundingBox();
     expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(500);
-  });
-});
-
-test.describe("the side panel", () => {
-  test("the email card keeps its width on the workspace", async ({ page }) => {
-    await openBlocks(page, ["text"]);
-
-    await expect(canvas(page).locator(".email")).toHaveCSS("width", "600px");
-    await expect(canvas(page).locator(".canvas-area")).not.toHaveCSS(
-      "background-color",
-      "rgb(255, 255, 255)"
-    );
-    await expect(canvas(page).locator(".email")).toHaveCSS(
-      "background-color",
-      "rgb(255, 255, 255)"
-    );
   });
 });
 

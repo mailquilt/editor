@@ -160,12 +160,12 @@ export class MailQuiltShell extends LitElement {
   /** Whether the email to open has been chosen, which waits for the first update. */
   #started = false;
   /** The `value` set before then. */
-  #pendingValue: BlocksDocument | undefined;
+  #pendingValue: unknown;
   /**
    * Set while the saved email stands in for the host's first email, which it
    * holds once the host has set one. See the `value` setter.
    */
-  #savedStandsIn: { replaced: BlocksDocument | undefined } | undefined;
+  #savedStandsIn: { replaced: unknown } | undefined;
   /** Gives the editor the height the email scrolls in, for its side panel. */
   readonly #bodyObserver = new ResizeObserver(([entry]) => {
     this.#editor.style.setProperty(
@@ -186,7 +186,6 @@ export class MailQuiltShell extends LitElement {
       Reflect.deleteProperty(this, "value");
       this.value = value;
     }
-    this.heading = "Email";
     this.#editor.addEventListener("mq-change", ({ detail }) => {
       this.#keep(detail.document);
     });
@@ -195,8 +194,11 @@ export class MailQuiltShell extends LitElement {
     });
   }
 
-  get value() {
-    return this.#started ? this.#editor.value : this.#pendingValue;
+  get value(): BlocksDocument | undefined {
+    // Before it starts, what the host set, which the editor checks on start.
+    return this.#started
+      ? this.#editor.value
+      : (this.#pendingValue as BlocksDocument | undefined);
   }
 
   /**
@@ -205,7 +207,7 @@ export class MailQuiltShell extends LitElement {
    * or that first email again leaves the saved email open, as a host that
    * renders again, or sets its email late, does.
    */
-  set value(document: BlocksDocument | undefined) {
+  set value(document: unknown) {
     if (!this.#started) {
       this.#pendingValue = document;
       return;
@@ -334,7 +336,7 @@ export class MailQuiltShell extends LitElement {
   }
 
   /** Whether the saved email stays open in place of this `value`. */
-  #savedStandsInFor(document: BlocksDocument | undefined) {
+  #savedStandsInFor(document: unknown) {
     const standIn = this.#savedStandsIn;
     if (!standIn) {
       return false;
@@ -402,6 +404,10 @@ export class MailQuiltShell extends LitElement {
   }
 
   readonly #exportHtmlFile = async () => {
+    if (!this.value) {
+      this.#showNotice("There's no email to export.");
+      return;
+    }
     try {
       downloadFile("email.html", "text/html", await this.exportHtml());
       this.#showNotice(undefined);

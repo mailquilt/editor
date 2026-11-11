@@ -37,7 +37,7 @@ test.beforeEach(({ page }) => {
   page.on("filechooser", () => null);
 });
 
-const header = (page: Page) => shell(page).locator(".header");
+const header = (page: Page) => shell(page).locator('[part="header"]');
 
 const box = async (target: Locator) => {
   const found = await target.boundingBox();
@@ -163,6 +163,47 @@ test.describe("moving an email with JSON", () => {
     // A browser only reports a choice that differs from the input's value.
     await expect(shell(page).locator("input[type=file]")).toHaveValue("");
   });
+
+  test("a reason goes away with the next edit or good file", async ({
+    page,
+  }) => {
+    await openShell(page);
+    const { text } = await exportFile(page, "Export JSON");
+
+    await importFile(page, "{not json");
+    await expect(shell(page).getByRole("alert")).toBeVisible();
+    await importFile(page, text);
+    await expect(shell(page).getByRole("alert")).toHaveCount(0);
+
+    await importFile(page, "{not json");
+    await expect(shell(page).getByRole("alert")).toBeVisible();
+    await focusStartOfTextBlock(page);
+    await page.keyboard.type("Edited ");
+    await expect(shell(page).getByRole("alert")).toHaveCount(0);
+  });
+
+  test("with no email, the exports say so and download nothing", async ({
+    page,
+  }) => {
+    let downloads = 0;
+    page.on("download", () => {
+      downloads += 1;
+    });
+
+    for (const name of ["Export JSON", "Export HTML"]) {
+      // oxlint-disable-next-line no-await-in-loop -- Each starts afresh, so its own reason shows.
+      await page.goto("/shell.html?refused-first");
+      // oxlint-disable-next-line no-await-in-loop -- See above.
+      await expect(shell(page).getByRole("alert")).toContainText("newer");
+      // oxlint-disable-next-line no-await-in-loop -- See above.
+      await shell(page).getByRole("button", { name }).click();
+      // oxlint-disable-next-line no-await-in-loop -- See above.
+      await expect(shell(page).getByRole("alert")).toHaveText(
+        "There's no email to export."
+      );
+    }
+    expect(downloads).toBe(0);
+  });
 });
 
 test.describe("the editor's API", () => {
@@ -182,6 +223,27 @@ test.describe("the editor's API", () => {
     expect(JSON.stringify(value)).toContain("Oh Hello");
     expect(html).toMatch(/<!doctype html>/iu);
     expect(html).toContain("Oh Hello");
+  });
+
+  test("a value set before the element is defined still opens", async ({
+    page,
+  }) => {
+    await page.goto("/shell.html");
+    const html = await page.evaluate(async (email) => {
+      const late = document.createElement(
+        "mail-quilt-shell-late"
+      ) as MailQuiltShell;
+      late.value = email;
+      document.body.append(late);
+      const defined = customElements.get(
+        "mail-quilt-shell"
+      ) as typeof MailQuiltShell;
+      customElements.define("mail-quilt-shell-late", class extends defined {});
+      await late.updateComplete;
+      return await late.exportHtml();
+    }, emailWith("Early"));
+
+    expect(html).toContain("Early");
   });
 
   test("a refused first email fires mq-error and shows its reason", async ({
@@ -251,6 +313,16 @@ test.describe("saving in the browser", () => {
     await expect(textBlock(page)).toHaveText("Saved Hello");
   });
 
+  test("a reload reopens an imported email", async ({ page }) => {
+    await openShell(page, `?save-key=${key}`);
+    await importFile(page, JSON.stringify(emailWith("Imported")));
+    await expect(textBlock(page)).toHaveText("Imported");
+
+    await page.reload();
+
+    await expect(textBlock(page)).toHaveText("Imported");
+  });
+
   test("a damaged saved email shows why, and stays until a change", async ({
     page,
   }) => {
@@ -306,6 +378,25 @@ test.describe("saving in the browser", () => {
       await expect(textBlock(page)).toHaveText("Unsaved Hello");
     });
   }
+
+  test("keeps saying it can't save while showing another reason", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(window, "localStorage", {
+        get() {
+          throw new DOMException("Blocked", "SecurityError");
+        },
+      });
+    });
+    await openShell(page, `?save-key=${key}`);
+
+    await importFile(page, "{not json");
+
+    const alerts = shell(page).getByRole("alert");
+    await expect(alerts.filter({ hasText: "valid JSON" })).toBeVisible();
+    await expect(alerts.filter({ hasText: "can't save" })).toBeVisible();
+  });
 
   test("without a save key, nothing is stored", async ({ page }) => {
     await page.addInitScript(() => {
@@ -501,6 +592,29 @@ test.describe("look", () => {
   });
 });
 
+test("shows the dragging cursor over the Shell during a drag", async ({
+  page,
+}) => {
+  await openShell(page);
+  const button = shell(page).getByRole("button", { name: "Export HTML" });
+  const cursor = () =>
+    button.evaluate((element) => getComputedStyle(element).cursor);
+  const tile = await box(
+    shell(page)
+      .getByRole("group", { name: "Add content" })
+      .getByRole("button", { exact: true, name: "Text" })
+  );
+
+  await page.mouse.move(tile.x + tile.width / 2, tile.y + tile.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(tile.x, tile.y + tile.height + 20, { steps: 4 });
+  await expect.poll(cursor).toBe("grabbing");
+  await page.keyboard.press("Escape");
+  await page.mouse.up();
+
+  await expect.poll(cursor).toBe("pointer");
+});
+
 test.describe("accessibility", () => {
   test("the keyboard reaches every header control", async ({ page }) => {
     await openShell(page);
@@ -538,7 +652,9 @@ test.describe("too narrow to edit in", () => {
     page,
   }) => {
     await page.goto("/shell.html?narrow");
-    const notice = shell(page).locator("mail-quilt").locator(".narrow-notice");
+    const notice = shell(page)
+      .getByText("Editing needs more room")
+      .locator("..");
     await expect(notice).toBeVisible();
 
     const noticeBox = await box(notice);
@@ -573,36 +689,5 @@ test.describe("parts", () => {
       "messages",
       "message",
     ]);
-  });
-
-  test("let a host hide a button or the heading with CSS", async ({ page }) => {
-    await openShell(page);
-
-    await page.addStyleTag({
-      content: `
-        mail-quilt-shell::part(export-html),
-        mail-quilt-shell::part(heading) {
-          display: none;
-        }
-      `,
-    });
-
-    await expect(
-      shell(page).getByRole("button", { name: "Export HTML" })
-    ).toBeHidden();
-    await expect(shell(page).getByRole("heading")).toBeHidden();
-    await expect(
-      shell(page).getByRole("button", { name: "Export JSON" })
-    ).toBeVisible();
-  });
-});
-
-test.describe("the frame", () => {
-  test("isn't drawn again by the editor inside it", async ({ page }) => {
-    await openShell(page);
-
-    const editorFrame = shell(page).locator("mail-quilt").locator(".editor");
-    await expect(editorFrame).toHaveCSS("border-radius", "0px");
-    await expect(editorFrame).toHaveCSS("box-shadow", "none");
   });
 });

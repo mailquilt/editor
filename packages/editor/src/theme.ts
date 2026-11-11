@@ -185,20 +185,23 @@ export const uiStyles = css`
     width: 1px;
   }
 
+  /* Over a popover's own styles too. See tooltips.ts. */
   .tooltip {
     background: var(--mq-color-tooltip);
+    border: 0;
     border-radius: var(--mq-radius-small);
     box-shadow: var(--mq-shadow);
     color: var(--mq-color-on-tooltip);
     font-size: var(--mq-font-size-small);
     font-weight: 500;
-    left: 0;
+    inset: 0 auto auto 0;
+    margin: 0;
     max-width: 240px;
+    overflow: visible;
     padding: 5px 8px;
     /* So it never covers a control that's pressed. See tooltips.ts. */
     pointer-events: none;
     position: fixed;
-    top: 0;
     white-space: nowrap;
     z-index: 20;
   }

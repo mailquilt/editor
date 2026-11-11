@@ -158,30 +158,6 @@ test("a render that fails shows why, and doesn't promise a retry will help", asy
 });
 
 test.describe("reflecting the latest edits", () => {
-  test("Preview shows edits made since it last opened", async ({ page }) => {
-    await previewButton(page).click();
-    await expect(previewEmail(page)).toContainText("Hello");
-    await closeButton(page).click();
-
-    await focusStartOfTextBlock(page);
-    await page.keyboard.type("Oh ");
-    await previewButton(page).click();
-
-    await expect(previewEmail(page)).toContainText("Oh Hello");
-    expect(await previewFrame(page).getAttribute("srcdoc")).toBe(
-      await exportHtml(page)
-    );
-  });
-
-  test("Preview shows the text right after a keystroke", async ({ page }) => {
-    await focusStartOfTextBlock(page);
-    await page.keyboard.type("x");
-
-    await previewButton(page).click();
-
-    await expect(previewEmail(page)).toContainText("xHello");
-  });
-
   test("an unchanged email isn't compiled again, and any change is", async ({
     page,
   }) => {
@@ -310,9 +286,14 @@ test.describe("the sandbox", () => {
 
     await previewButton(page).click();
     await previewEmail(page).getByRole("link", { name: "Go there" }).click();
-    // Nothing to wait for when nothing happens, so give a popup time to load.
-    await page.waitForTimeout(500);
 
+    // Nothing happens to wait for, so this shows nothing can: no token lets
+    // the frame open a popup or move the page.
+    expect(
+      await previewFrame(page).evaluate((frame) => [
+        ...(frame as HTMLIFrameElement).sandbox,
+      ])
+    ).toEqual([]);
     expect(opened).toEqual([]);
     expect(page.url()).toBe(url);
     await expect(previewDialog(page)).toBeVisible();

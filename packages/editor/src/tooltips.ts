@@ -1,7 +1,7 @@
 import { contains } from "./geometry.js";
 
 /** What has a tooltip: the attribute holds its words. */
-export const TOOLTIP_TRIGGERS = "[data-tooltip]";
+const TOOLTIP_TRIGGERS = "[data-tooltip]";
 
 /** Space between a control and its tooltip, and the tooltip and the window's edge. */
 const GAP_PX = 6;
@@ -25,6 +25,10 @@ const triggerOf = (target: EventTarget | null) =>
  *
  * It takes no pointer events, so it can never cover a control that's pressed.
  * Whether the pointer is over it comes from where the pointer is instead.
+ *
+ * Where the browser has popovers, it's in the top layer, like the copy that a
+ * drag shows, so that a host page that transforms the editor can't move it
+ * away from its control.
  */
 export const createTooltips = (
   root: ShadowRoot,
@@ -34,6 +38,17 @@ export const createTooltips = (
   let focused: HTMLElement | undefined;
   /** Escape or a press closed it, until hover or focus moves to another control. */
   let dismissed: HTMLElement | undefined;
+  const isPopover = typeof tooltip.showPopover === "function";
+  if (isPopover) {
+    tooltip.popover = "manual";
+  }
+
+  const show = (open: boolean) => {
+    tooltip.hidden = !open;
+    if (isPopover && tooltip.isConnected) {
+      tooltip.togglePopover(open);
+    }
+  };
 
   const place = (trigger: HTMLElement) => {
     const box = trigger.getBoundingClientRect();
@@ -51,11 +66,11 @@ export const createTooltips = (
   const update = () => {
     const trigger = hovered ?? focused;
     if (!trigger?.isConnected || trigger === dismissed) {
-      tooltip.hidden = true;
+      show(false);
       return;
     }
     tooltip.textContent = trigger.dataset.tooltip ?? "";
-    tooltip.hidden = false;
+    show(true);
     place(trigger);
   };
 

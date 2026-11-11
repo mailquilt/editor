@@ -594,7 +594,6 @@ export class MailQuilt extends LitElement {
       .column.empty:hover .placeholder,
       .placeholder:focus-within,
       .email[data-dragging] .column[data-drop-target] .placeholder {
-        background: var(--mq-color-surface);
         border-color: var(--mq-color-accent);
         color: var(--mq-color-accent-strong);
       }
@@ -924,7 +923,7 @@ export class MailQuilt extends LitElement {
        */
       .email:has(.row-frame:hover)
         .row-frame:not(:hover)
-        > .row-toolbar:not(:focus-within) {
+        > .row-toolbar:not(:has(:focus-visible)) {
         opacity: 0;
         pointer-events: none;
       }
@@ -1299,7 +1298,6 @@ export class MailQuilt extends LitElement {
 
       .tile:hover,
       .layout-tile:hover {
-        background: var(--mq-color-surface);
         box-shadow:
           inset 0 0 0 1px var(--mq-color-text),
           var(--mq-shadow-small);
@@ -1331,7 +1329,6 @@ export class MailQuilt extends LitElement {
         height: 40px;
       }
 
-      /* Shown in place of the editor where there's no room to edit. */
       /* In the editor's place, so it fills any height the host gives too. */
       .narrow-notice {
         align-items: center;
@@ -1509,15 +1506,6 @@ export class MailQuilt extends LitElement {
         margin: 0;
       }
 
-      .announcement {
-        clip-path: inset(50%);
-        height: 1px;
-        overflow: hidden;
-        position: absolute;
-        white-space: nowrap;
-        width: 1px;
-      }
-
       /* A closed dialog relies on the browser's display: none, so no all: initial. */
       .preview {
         background: var(--mq-color-surface);
@@ -1600,6 +1588,8 @@ export class MailQuilt extends LitElement {
   #panelTab: PanelTab = "content";
   /** What had focus in the editor when the current update began. */
   #focusedBeforeUpdate: Element | null | undefined;
+  /** Set while `updated` gives focus back, which selects nothing new. */
+  #restoringFocus = false;
   #formats: TextFormats | undefined;
   /** Text in the settings panel that isn't the document's value. */
   readonly #drafts = new Map<string, FieldDraft>();
@@ -1647,7 +1637,7 @@ export class MailQuilt extends LitElement {
     }
   }
 
-  get value() {
+  get value(): BlocksDocument | undefined {
     return this.#editor?.getDocument();
   }
 
@@ -1655,9 +1645,10 @@ export class MailQuilt extends LitElement {
    * A document with the same content as the last one received or sent out
    * changes nothing, so a controlled host keeps its undo history and cursor. Any
    * other document loads and clears undo history. A document that can't be
-   * trusted fires `mq-error`, and the current email stays as it was.
+   * trusted fires `mq-error`, and the current email stays as it was. Any value
+   * is checked, such as a saved email read back from JSON, so any is allowed.
    */
-  set value(document: BlocksDocument | undefined) {
+  set value(document: unknown) {
     // Checked first, because a controlled host does this after every keystroke.
     if (isSameDocument(document, this.#lastKnownDocument)) {
       return;
@@ -1793,7 +1784,9 @@ export class MailQuilt extends LitElement {
             ] as HTMLButtonElement[]
           ).find((button) => !button.disabled)
         : undefined;
+      this.#restoringFocus = true;
       (tool ?? block ?? view ?? rowTool ?? this.#floatingToolbar)?.focus();
+      this.#restoringFocus = false;
     }
     if (this.isConnected && this.shadowRoot) {
       this.#syncTooltips(this.shadowRoot);
@@ -1810,7 +1803,7 @@ export class MailQuilt extends LitElement {
 
     return html`
       ${this.#renderPreview()}
-      <div class="announcement" role="status">
+      <div class="visually-hidden" role="status">
         ${keyed(this.#announcementId, html`<span>${this.#announcement}</span>`)}
       </div>
       <p hidden id="block-keys">
@@ -1959,7 +1952,8 @@ export class MailQuilt extends LitElement {
             class="icon-button danger"
             data-tooltip="Delete Row"
             type="button"
-            @click=${() => this.#apply({ rowId: row.id, type: "removeRow" })}
+            @click=${({ detail }: MouseEvent) =>
+              this.#deleteRow(row.id, detail === 0)}
           >
             ${ICONS.delete}
           </button>
@@ -2081,7 +2075,8 @@ export class MailQuilt extends LitElement {
           data-tooltip="Delete Block"
           tabindex="-1"
           type="button"
-          @click=${this.#deleteSelectedBlock}
+          @click=${({ detail }: MouseEvent) =>
+            this.#deleteSelectedBlock(detail === 0)}
         >
           ${ICONS.delete}
         </button>
@@ -2593,6 +2588,10 @@ export class MailQuilt extends LitElement {
   }
 
   #selectBlock(blockId: string) {
+    // The Block is selected already, and the panel stays as it was left.
+    if (this.#restoringFocus) {
+      return;
+    }
     this.#activeBlockId = blockId;
     this.#selectedRowId = undefined;
     this.#showProperties = true;
@@ -2606,6 +2605,9 @@ export class MailQuilt extends LitElement {
    * button takes focus, so typing can't go on in a Block's text.
    */
   async #selectRow(rowId: string) {
+    // From the keyboard, as from the Rows tab, the focus ring follows.
+    const focusVisible =
+      this.shadowRoot?.activeElement?.matches(":focus-visible") ?? false;
     this.#clearBlockSelection();
     this.#selectedRowId = rowId;
     this.#showProperties = true;
@@ -2615,7 +2617,7 @@ export class MailQuilt extends LitElement {
       .querySelector(`.row-frame[data-row-selected] .row-toolbar`)
       ?.querySelector<HTMLElement>('[aria-label="Select Row"]');
     if (button && this.shadowRoot?.activeElement !== button) {
-      button.focus({ focusVisible: false } as FocusOptions);
+      button.focus({ focusVisible } as FocusOptions);
     }
   }
 
@@ -2807,10 +2809,13 @@ export class MailQuilt extends LitElement {
     control: HTMLInputElement | HTMLSelectElement
   ) {
     const key = draftKey(section, field);
+    const value = fieldValue(field, control);
+    // An image URL that failed may load now, so entering it again tries again.
+    if (typeof value === "string") {
+      this.#failedImages.delete(value);
+    }
     // Rejections are expected here, as they're what a person typed.
-    const result = this.#editor?.apply(
-      section.command({ [field.key]: fieldValue(field, control) })
-    );
+    const result = this.#editor?.apply(section.command({ [field.key]: value }));
     if (result?.ok || result?.unchanged) {
       this.#drafts.delete(key);
     } else {
@@ -2872,8 +2877,8 @@ export class MailQuilt extends LitElement {
       : findBlockPosition(document, this.#activeBlockId);
   }
 
-  /** After the selected Block's Row, or else at the end. */
-  #addRow(layout: RowLayout) {
+  /** After the selected Block's Row, or else at the end, and selects it. */
+  async #addRow(layout: RowLayout) {
     const document = this.#editor?.getDocument();
     if (!document) {
       return;
@@ -2885,11 +2890,17 @@ export class MailQuilt extends LitElement {
       selectedRow === -1
         ? this.#selectedPosition(document)?.rowIndex
         : selectedRow;
-    this.#apply({
+    const result = this.#tryCommand({
       index: rowIndex === undefined ? document.rows.length : rowIndex + 1,
       layout,
       type: "insertRow",
     });
+    if (result) {
+      this.#publishStructure();
+      if (result.createdId !== undefined) {
+        await this.#selectRow(result.createdId);
+      }
+    }
   }
 
   #onWorkspacePointerdown({ currentTarget, target }: PointerEvent) {
@@ -2938,9 +2949,49 @@ export class MailQuilt extends LitElement {
     return this.renderRoot.querySelector<HTMLElement>(`#tab-${tab}`);
   }
 
-  #deleteSelectedBlock() {
-    if (this.#activeBlockId !== undefined) {
-      this.#apply({ blockId: this.#activeBlockId, type: "removeBlock" });
+  /**
+   * From the keyboard, focus goes to the next Block, or else the one before, as
+   * it would be lost. A button pressed with a key clicks with a `detail` of 0.
+   */
+  async #deleteSelectedBlock(fromKeyboard: boolean) {
+    const document = this.#editor?.getDocument();
+    const blockId = this.#activeBlockId;
+    if (!document || blockId === undefined) {
+      return;
+    }
+    const neighbour =
+      neighbourBlockId(document, blockId, "down") ??
+      neighbourBlockId(document, blockId, "up");
+    if (this.#tryCommand({ blockId, type: "removeBlock" })) {
+      this.#announce("Block deleted.");
+      this.#publishStructure();
+      await this.updateComplete;
+      if (fromKeyboard && neighbour !== undefined) {
+        this.#blockElement(neighbour)?.focus();
+      }
+    }
+  }
+
+  /**
+   * From the keyboard, focus goes to the next Row's tools, or else the one
+   * before, as it would be lost.
+   */
+  async #deleteRow(rowId: string, fromKeyboard: boolean) {
+    const rows = this.#editor?.getDocument().rows ?? [];
+    const index = rows.findIndex(({ id }) => id === rowId);
+    const neighbour = rows[index + 1] ?? rows[index - 1];
+    if (this.#tryCommand({ rowId, type: "removeRow" })) {
+      this.#announce("Row deleted.");
+      this.#publishStructure();
+      await this.updateComplete;
+      if (fromKeyboard && neighbour) {
+        this.renderRoot
+          .querySelector(
+            `.row-frame[data-row-id="${CSS.escape(neighbour.id)}"] .row-toolbar`
+          )
+          ?.querySelector<HTMLElement>('[aria-label="Select Row"]')
+          ?.focus();
+      }
     }
   }
 
@@ -3006,21 +3057,6 @@ export class MailQuilt extends LitElement {
     if ("rowId" in source) {
       this.#announceRowMove(source.rowId);
       this.#publishStructure();
-      await this.updateComplete;
-      // Lit may move the Row's element when it reorders the Rows, which takes focus
-      // from anything in it. The selection stays, so it gets focus back: in its
-      // text if that's where it was, or on the selected Row's tools.
-      if (!this.shadowRoot?.activeElement) {
-        const block =
-          this.#activeBlockId === undefined
-            ? undefined
-            : this.#blockElement(this.#activeBlockId);
-        const view = this.#editingText ? this.#activeView : undefined;
-        const rowTool = this.renderRoot.querySelector<HTMLElement>(
-          ".row-frame[data-row-selected] .row-toolbar button"
-        );
-        (view ?? block ?? rowTool ?? this.#floatingToolbar)?.focus();
-      }
       return;
     }
     if ("rowLayout" in source) {
@@ -3212,9 +3248,15 @@ export class MailQuilt extends LitElement {
       return;
     }
     const direction = arrowDirection(event);
-    if (event.altKey && (direction === "up" || direction === "down")) {
-      event.preventDefault();
+    if (!(event.altKey && direction)) {
+      return;
+    }
+    // Alt+Left would go back in history.
+    event.preventDefault();
+    if (direction === "up" || direction === "down") {
       this.#moveRow(rowId, direction);
+    } else {
+      this.#announce(`The Row can't move ${direction}.`);
     }
   }
 

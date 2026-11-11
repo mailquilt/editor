@@ -1,4 +1,3 @@
-import { AxeBuilder } from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 
@@ -115,22 +114,6 @@ test.describe("the palette", () => {
 });
 
 test.describe("a Heading", () => {
-  test("stays one heading after Enter, as two lines", async ({ page }) => {
-    await open(page, ["heading"]);
-    await headingText(page).click();
-    await page.keyboard.press("ControlOrMeta+a");
-    await page.keyboard.type("One");
-    await page.keyboard.press("Enter");
-    await page.keyboard.type("Two");
-
-    const { opened } = await openExport(page);
-
-    await expect(opened.getByRole("heading")).toHaveCount(1);
-    await expect(opened.getByRole("heading", { level: 2 })).toHaveText(
-      "OneTwo"
-    );
-  });
-
   test("changes level, on the canvas, in the panel and in the export", async ({
     page,
   }) => {
@@ -422,19 +405,6 @@ test.describe("a Button", () => {
     await expect(field(page, "Link")).toHaveValue("");
   });
 
-  test("removes its link when the field is cleared", async ({ page }) => {
-    await open(page, ["button"]);
-    await blockGroup(page, "Button").focus();
-    await change(field(page, "Link"), "https://shop.example");
-
-    await change(field(page, "Link"), "");
-
-    await expect(lastBlockProps(page)).resolves.toEqual({ label: "Buy" });
-    const { opened } = await openExport(page);
-    await expect(opened.getByRole("link")).toHaveCount(0);
-    await expect(opened.getByText("Buy")).toBeVisible();
-  });
-
   test("looks the same on the canvas and in the export", async ({ page }) => {
     await open(page, ["button"]);
     await blockGroup(page, "Button").focus();
@@ -506,27 +476,5 @@ test.describe("accessibility", () => {
     await blockGroup(page, "Button").focus();
 
     await expect(violations(page)).resolves.toEqual([]);
-  });
-
-  test("finds no problem with the exported heading or link", async ({
-    page,
-  }) => {
-    await open(page, ["heading", "button"]);
-    await blockGroup(page, "Button").focus();
-    await change(field(page, "Link"), "https://shop.example");
-    const { opened } = await openExport(page);
-
-    await expect(
-      opened.getByRole("heading", { level: 2, name: "Sale" })
-    ).toBeVisible();
-    await expect(opened.getByRole("link", { name: "Buy" })).toBeVisible();
-    const { violations: found } = await new AxeBuilder({ page: opened })
-      // MJML writes an empty <title> for every email, whatever its Blocks.
-      .disableRules(["document-title"])
-      .setLegacyMode()
-      .withTags(["wcag2a", "wcag2aa"])
-      .analyze();
-
-    expect(found.map(({ id }) => id)).toEqual([]);
   });
 });

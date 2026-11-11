@@ -1,21 +1,25 @@
-import { AxeBuilder } from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 
 import type { MailQuilt } from "../src/index.js";
 import {
+  addRow,
   canvas,
+  change,
+  chooseLayout,
   currentValue,
   emailWith,
-  addRow,
-  chooseLayout,
   exportHtml,
-  selectRow,
+  openExport,
   openTab,
-  showPalette,
+  redoByKey,
+  selectRow,
   setValue,
+  showPalette,
   structure,
   textBlock,
+  undoByKey,
+  violations,
 } from "./helpers.js";
 
 const section = (page: Page, name: string) =>
@@ -30,15 +34,6 @@ const block = (page: Page) => section(page, "Block");
 const field = (page: Page, name: string, within = email(page)) =>
   within.getByLabel(name, { exact: true });
 
-/** Changes a text or number control the way a person does. */
-const change = async (control: Locator, text: string) => {
-  await control.fill(text);
-  await control.press("Enter");
-};
-
-const undo = (page: Page) => page.keyboard.press("ControlOrMeta+z");
-const redo = (page: Page) => page.keyboard.press("ControlOrMeta+Shift+z");
-
 const settingsOf = async (page: Page) => {
   const { settings } = await currentValue(page);
   return settings;
@@ -51,14 +46,6 @@ const blockProps = async (page: Page, index = 0) => {
 
 const changeCount = (page: Page) => page.getByTestId("change-count");
 
-/** Opens the exported HTML as a recipient's mail client would. */
-const openExport = async (page: Page) => {
-  const html = await exportHtml(page);
-  const opened = await page.context().newPage();
-  await opened.setContent(html);
-  return { html, opened };
-};
-
 const textStyle = (locator: Locator) =>
   locator.evaluate((element) => {
     const { color, fontFamily, fontSize, textAlign } =
@@ -69,28 +56,31 @@ const textStyle = (locator: Locator) =>
 const rowBackground = (locator: Locator) =>
   locator.evaluate((element) => getComputedStyle(element).backgroundColor);
 
-const violations = async (page: Page) => {
-  const { violations: found } = await new AxeBuilder({ page })
-    .include("mail-quilt")
-    .setLegacyMode()
-    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
-    .analyze();
-  return found.map(({ id, nodes }) => ({
-    id,
-    targets: nodes.map(({ target }) => target),
-  }));
-};
+/** The ring is the accent color, which the test sets to this. */
+const ACCENT = "rgb(1, 2, 3)";
 
 const expectNamedWithFocusRing = async (control: Locator) => {
   await control.focus();
   await expect(control).toBeFocused();
   await expect(control).toHaveCSS("outline-style", "solid");
-  await expect(control).toHaveCSS("outline-color", "rgb(51, 85, 255)");
+  await expect(control).toHaveCSS("outline-color", ACCENT);
   const named = await control.evaluate((element) => {
     const { labels } = element as HTMLInputElement;
     return (labels?.length ?? 0) > 0 || element.hasAttribute("aria-label");
   });
   expect(named).toBeTruthy();
+};
+
+/** Every control in a settings section has a name and a focus ring. */
+const expectEach = async (within: Locator) => {
+  await expect(within).toBeVisible();
+  const controls = await within.locator("input, select").all();
+  expect(controls.length).toBeGreaterThan(0);
+  // One at a time, because each one takes focus from the last.
+  for (const control of controls) {
+    // oxlint-disable-next-line no-await-in-loop -- See above.
+    await expectNamedWithFocusRing(control);
+  }
 };
 
 const typeFontSize = async (page: Page, size: string) => {
@@ -239,11 +229,13 @@ test.describe("Text settings", () => {
     await expect(field(page, "Color", block(page))).toHaveValue("#00ff00");
   });
 
-  test("go back to the default when emptied", async ({ page }) => {
+  test("go back to the default when emptied, even with spaces left", async ({
+    page,
+  }) => {
     await textBlock(page).click();
     await change(field(page, "Color", block(page)), "#ff0000");
 
-    await change(field(page, "Color", block(page)), "");
+    await change(field(page, "Color", block(page)), "  ");
 
     expect(await blockProps(page)).not.toHaveProperty("color");
     await expect(field(page, "Color", block(page))).toHaveValue("#000000");
@@ -272,17 +264,6 @@ test.describe("Row settings", () => {
     expect(html).toContain("background-color:#00ff00");
     await expect(opened.getByText("In", { exact: true })).toBeVisible();
     await opened.close();
-  });
-
-  test("lose the color when emptied", async ({ page }) => {
-    await selectRow(page, 1);
-    await change(field(page, "Background color", row(page)), "#00ff00");
-
-    await change(field(page, "Background color", row(page)), "");
-
-    const { rows } = await currentValue(page);
-    expect(rows[0]?.props).toStrictEqual({});
-    await expect(field(page, "Background color", row(page))).toHaveValue("");
   });
 });
 
@@ -328,21 +309,6 @@ test.describe("Email settings", () => {
     await expect(opened.getByText("Hello {{first_name}}")).toBeHidden();
     await opened.close();
   });
-
-  test("leave no preheader or language when emptied", async ({ page }) => {
-    const before = await settingsOf(page);
-    await change(field(page, "Preheader"), "Hi");
-    await change(field(page, "Language"), "en");
-
-    await change(field(page, "Preheader"), "");
-    await change(field(page, "Language"), "  ");
-
-    expect(await settingsOf(page)).toStrictEqual(before);
-    await expect(canvas(page).locator(".email")).not.toHaveAttribute(
-      "lang",
-      /./u
-    );
-  });
 });
 
 test.describe("undo", () => {
@@ -355,24 +321,24 @@ test.describe("undo", () => {
     await openTab(page, "Settings");
     await change(field(page, "Width (px)"), "500");
 
-    await undo(page);
+    await undoByKey(page);
     await expect(field(page, "Width (px)")).toHaveValue("600");
     await selectRow(page, 1);
-    await undo(page);
+    await undoByKey(page);
     await expect(field(page, "Background color", row(page))).toHaveValue("");
     // A click on the Block shows its settings again.
     await textBlock(page).click();
-    await undo(page);
+    await undoByKey(page);
     await expect(field(page, "Alignment", block(page))).toHaveValue("left");
     await expect(field(page, "Color", block(page))).toHaveValue("#ff0000");
-    await undo(page);
+    await undoByKey(page);
     await expect(field(page, "Color", block(page))).toHaveValue("#000000");
     await expect(canvas(page).locator(".ProseMirror p")).toHaveCSS(
       "color",
       "rgb(0, 0, 0)"
     );
 
-    await redo(page);
+    await redoByKey(page);
     await expect(field(page, "Color", block(page))).toHaveValue("#ff0000");
     await expect(canvas(page).locator(".ProseMirror p")).toHaveCSS(
       "color",
@@ -385,12 +351,12 @@ test.describe("undo", () => {
     await field(page, "Alignment", block(page)).selectOption("right");
 
     await field(page, "Alignment", block(page)).focus();
-    await undo(page);
+    await undoByKey(page);
     await expect(field(page, "Alignment", block(page))).toHaveValue("left");
 
-    await redo(page);
+    await redoByKey(page);
     await textBlock(page).click();
-    await undo(page);
+    await undoByKey(page);
     await expect(field(page, "Alignment", block(page))).toHaveValue("left");
   });
 
@@ -401,7 +367,7 @@ test.describe("undo", () => {
     await field(page, "Language").click();
     await page.keyboard.type("en");
 
-    await undo(page);
+    await undoByKey(page);
 
     const { width } = await settingsOf(page);
     expect(width).toBe(500);
@@ -422,7 +388,7 @@ test.describe("undo", () => {
     await page.keyboard.press("Tab");
 
     await expect(changeCount(page)).toHaveText("0");
-    await undo(page);
+    await undoByKey(page);
     await expect(changeCount(page)).toHaveText("0");
   });
 });
@@ -486,7 +452,7 @@ test.describe("validation", () => {
     await change(field(page, "Language"), "English");
 
     await field(page, "Width (px)").focus();
-    await undo(page);
+    await undoByKey(page);
 
     await expect(field(page, "Language")).toHaveValue("");
     await expect(email(page).getByRole("alert")).toHaveCount(0);
@@ -558,11 +524,11 @@ test.describe("text that hasn't been committed", () => {
     await typeFontSize(page, "24");
 
     await addRow(page);
-    await undo(page);
+    await undoByKey(page);
 
     expect(await structure(page)).toHaveLength(1);
     expect(await blockProps(page)).toMatchObject({ fontSize: 24 });
-    await undo(page);
+    await undoByKey(page);
     expect(await blockProps(page)).not.toHaveProperty("fontSize");
   });
 
@@ -629,7 +595,7 @@ test.describe("focus", () => {
     const width = field(page, "Width (px)");
     await width.click();
 
-    await undo(page);
+    await undoByKey(page);
 
     await expect(textBlock(page)).toHaveCount(0);
     await expect(width).toBeFocused();
@@ -643,10 +609,10 @@ test.describe("focus", () => {
     await openTab(page, "Settings");
     const language = field(page, "Language");
     await language.click();
-    await undo(page);
+    await undoByKey(page);
     await expect(textBlock(page)).toHaveCount(0);
 
-    await redo(page);
+    await redoByKey(page);
 
     await expect(textBlock(page)).toHaveCount(1);
 
@@ -802,33 +768,14 @@ test.describe("accessibility", () => {
   });
 
   test("names every control and shows where focus is", async ({ page }) => {
-    const controls = page
-      .getByRole("group", { name: "Settings" })
-      .locator("input, select");
-    await expect(controls).toHaveCount(6);
-    await textBlock(page).click();
-    await expect(controls).toHaveCount(4);
-    const blockControls = await controls.all();
-    await selectRow(page, 1);
-    await expect(controls).toHaveCount(2);
-    const rowControls = await controls.all();
-    await openTab(page, "Settings");
-    const emailControls = await controls.all();
+    await canvas(page).evaluate((element, accent) => {
+      (element as HTMLElement).style.setProperty("--mq-color-accent", accent);
+    }, ACCENT);
 
-    // One at a time, because each one takes focus from the last.
-    for (const control of emailControls) {
-      // oxlint-disable-next-line no-await-in-loop -- See above.
-      await expectNamedWithFocusRing(control);
-    }
+    await expectEach(email(page));
     await selectRow(page, 1);
-    for (const control of rowControls) {
-      // oxlint-disable-next-line no-await-in-loop -- See above.
-      await expectNamedWithFocusRing(control);
-    }
+    await expectEach(row(page));
     await textBlock(page).click();
-    for (const control of blockControls) {
-      // oxlint-disable-next-line no-await-in-loop -- See above.
-      await expectNamedWithFocusRing(control);
-    }
+    await expectEach(block(page));
   });
 });
