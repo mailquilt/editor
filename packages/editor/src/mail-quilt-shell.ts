@@ -186,7 +186,6 @@ export class MailQuiltShell extends LitElement {
       Reflect.deleteProperty(this, "value");
       this.value = value;
     }
-    this.heading = "Email";
     this.#editor.addEventListener("mq-change", ({ detail }) => {
       this.#keep(detail.document);
     });

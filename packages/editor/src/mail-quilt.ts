@@ -594,7 +594,6 @@ export class MailQuilt extends LitElement {
       .column.empty:hover .placeholder,
       .placeholder:focus-within,
       .email[data-dragging] .column[data-drop-target] .placeholder {
-        background: var(--mq-color-surface);
         border-color: var(--mq-color-accent);
         color: var(--mq-color-accent-strong);
       }
@@ -1299,7 +1298,6 @@ export class MailQuilt extends LitElement {
 
       .tile:hover,
       .layout-tile:hover {
-        background: var(--mq-color-surface);
         box-shadow:
           inset 0 0 0 1px var(--mq-color-text),
           var(--mq-shadow-small);
@@ -1331,7 +1329,6 @@ export class MailQuilt extends LitElement {
         height: 40px;
       }
 
-      /* Shown in place of the editor where there's no room to edit. */
       /* In the editor's place, so it fills any height the host gives too. */
       .narrow-notice {
         align-items: center;
@@ -1507,15 +1504,6 @@ export class MailQuilt extends LitElement {
 
       .ProseMirror p {
         margin: 0;
-      }
-
-      .announcement {
-        clip-path: inset(50%);
-        height: 1px;
-        overflow: hidden;
-        position: absolute;
-        white-space: nowrap;
-        width: 1px;
       }
 
       /* A closed dialog relies on the browser's display: none, so no all: initial. */
@@ -1815,7 +1803,7 @@ export class MailQuilt extends LitElement {
 
     return html`
       ${this.#renderPreview()}
-      <div class="announcement" role="status">
+      <div class="visually-hidden" role="status">
         ${keyed(this.#announcementId, html`<span>${this.#announcement}</span>`)}
       </div>
       <p hidden id="block-keys">
@@ -3064,21 +3052,6 @@ export class MailQuilt extends LitElement {
     if ("rowId" in source) {
       this.#announceRowMove(source.rowId);
       this.#publishStructure();
-      await this.updateComplete;
-      // Lit may move the Row's element when it reorders the Rows, which takes focus
-      // from anything in it. The selection stays, so it gets focus back: in its
-      // text if that's where it was, or on the selected Row's tools.
-      if (!this.shadowRoot?.activeElement) {
-        const block =
-          this.#activeBlockId === undefined
-            ? undefined
-            : this.#blockElement(this.#activeBlockId);
-        const view = this.#editingText ? this.#activeView : undefined;
-        const rowTool = this.renderRoot.querySelector<HTMLElement>(
-          ".row-frame[data-row-selected] .row-toolbar button"
-        );
-        (view ?? block ?? rowTool ?? this.#floatingToolbar)?.focus();
-      }
       return;
     }
     if ("rowLayout" in source) {
