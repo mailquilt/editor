@@ -89,6 +89,21 @@ describe("limited rich text", () => {
     expect(loadDocument(email).ok).toBeFalsy();
   });
 
+  it("refuses anything but paragraphs at the top level", () => {
+    const email = createEmail();
+    const block = email.rows[0]?.columns[0]?.blocks[0];
+    if (block) {
+      block.props = {
+        content: {
+          content: [{ attrs: { level: 1 }, type: "heading" }],
+          type: "doc",
+        },
+      };
+    }
+
+    expect(loadDocument(email).ok).toBeFalsy();
+  });
+
   it("refuses an executable link, naming the problem", () => {
     const result = loadDocument(emailWithInline(linkTo("javascript:alert(1)")));
 
