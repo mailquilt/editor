@@ -1,7 +1,7 @@
 import { planCommand } from "./commands.js";
 import type { Command } from "./commands.js";
 import type { BlocksDocument } from "./document.js";
-import { loadDocument } from "./load-document.js";
+import { isSameDocument, loadDocument } from "./load-document.js";
 import { applyOperation, reverseOperation } from "./operations.js";
 import type { Operation, PropsTarget } from "./operations.js";
 
@@ -102,7 +102,15 @@ export const createEditor = ({
             operation.type === "setProps" &&
             isSameTarget(last, operation)
           ) {
-            openStep[openStep.length - 1] = { ...last, props: operation.props };
+            // Back where it started, as when a character is typed and deleted.
+            if (isSameDocument(operation.props, last.previousProps)) {
+              openStep.pop();
+            } else {
+              openStep[openStep.length - 1] = {
+                ...last,
+                props: operation.props,
+              };
+            }
           } else {
             openStep.push(operation);
           }
@@ -111,6 +119,11 @@ export const createEditor = ({
         undoStack.push(operations);
       }
       openMergeKey = mergeKey;
+      // A step that changes nothing would make an undo seem to do nothing.
+      if (openStep?.length === 0) {
+        undoStack.pop();
+        openMergeKey = undefined;
+      }
       redoStack.length = 0;
       notify(operations);
       return createdId === undefined ? { ok: true } : { createdId, ok: true };
