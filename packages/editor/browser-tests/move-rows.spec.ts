@@ -200,7 +200,7 @@ test.describe("moving a selected Row from the keyboard", () => {
 
 const rowFrame = (page: Page, position: number) =>
   canvas(page)
-    .locator(".row-frame:not([data-dnd-placeholder])")
+    .locator(".row-frame:not([data-drag-ghost])")
     .nth(position - 1);
 
 const boxOf = async (locator: Locator) => {
@@ -269,6 +269,9 @@ test.describe("dragging a Row", () => {
       // A Row only ever lands between Rows, never in a Column.
       await expect(canvas(page).locator("[data-drop-target]")).toHaveCount(0);
       await letGo(page);
+      await expect(
+        canvas(page).locator("[data-drag-ghost], [data-drag-source]")
+      ).toHaveCount(0);
 
       await expect(structure(page)).resolves.toEqual([
         [["Two"]],

@@ -115,7 +115,7 @@ Keyboard, drag and drop, and the document path are part of `0.1.0`. AI, MCP, CLI
 | Language | TypeScript, strict mode |
 | Editor UI | Lit Web Component (see ADR 0002) |
 | Validation | Valibot, used internally. It also generates JSON Schema when AI and MCP need it |
-| Drag and drop | `@dnd-kit/dom` with `Draggable` and `Droppable`, not `Sortable` (see ADR 0002) |
+| Drag and drop | The editor's own pointer events (see ADR 0002) |
 | Rich text | Tiptap core |
 | HTML editor | CodeMirror (later) |
 | Email output | MJML |
@@ -702,7 +702,7 @@ Planning and build flow: `grill-with-docs` → `to-spec` → `to-tickets` → `i
 
 | Risk | Plan |
 |---|---|
-| Drag and drop or rich text misbehaves in Shadow DOM | A throwaway test passed (ADR 0002). If a later case fails, replace dnd-kit with custom pointer events for dragging, or try an iframe canvas before light DOM for text editing |
+| Drag and drop or rich text misbehaves in Shadow DOM | A throwaway test passed (ADR 0002). Dragging uses the editor's own pointer events. If text editing fails in a later case, try an iframe canvas before light DOM |
 | The maintainer knows React but not Lit, Vue or Svelte | Keep Lit limited to rendering and state, with logic in plain TypeScript. Keep Vue and Svelte wrappers thin and covered by browser tests |
 | The vision is too large for a solo project | Ship a small `0.1.0` and keep each release usable |
 | Canvas and exported HTML differ | Provide a real preview and test against rendered output |

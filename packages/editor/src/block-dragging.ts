@@ -1,17 +1,3 @@
-import { pointerIntersection } from "@dnd-kit/collision";
-import {
-  AutoScroller,
-  Cursor,
-  DragDropManager,
-  Draggable,
-  Droppable,
-  Feedback,
-  PointerActivationConstraints,
-  PointerSensor,
-  Scroller,
-} from "@dnd-kit/dom";
-import { getScrollableAncestors } from "@dnd-kit/dom/utilities";
-
 import { contains } from "./geometry.js";
 
 /**
@@ -30,48 +16,272 @@ export type DropPlace =
   | { rowIndex: number };
 
 export interface BlockDragging {
-  /** Matches the draggable and droppable elements to what's on the canvas now. */
-  sync: () => void;
   isDragging: () => boolean;
   destroy: () => void;
 }
 
-/** The copy that dnd-kit leaves behind while dragging has the same attributes. */
-const NOT_PLACEHOLDER = ":not([data-dnd-placeholder])";
-export const BLOCKS = `.block${NOT_PLACEHOLDER}`;
-const ROWS = `.row-frame${NOT_PLACEHOLDER}`;
+interface Point {
+  x: number;
+  y: number;
+}
+
+/** The copy that follows the pointer has the same classes, and so does what's in it. */
+const NOT_GHOST = ":not([data-drag-ghost], [data-drag-ghost] *)";
+export const BLOCKS = `.block${NOT_GHOST}`;
+const ROWS = `.row-frame${NOT_GHOST}`;
+
+/** A press alone stays a click, however long it lasts. */
+const START_DISTANCE_PX = 5;
+
+/** How far outside the editor a drop still counts, as space below the email. */
+const DROP_MARGIN_PX = 40;
+
+/** Near an edge, within this share of a scroll container, a drag scrolls it. */
+const SCROLL_EDGE = 0.2;
+/** How far a frame scrolls with the pointer right at the edge. */
+const SCROLL_SPEED_PX = 25;
+/** How far beside a scroll container the pointer can be and still scroll it. */
+const SCROLL_TOLERANCE_PX = 10;
 
 /** A Row, new or on the canvas, which only ever lands between Rows. */
-const isRowSource = (data: unknown) =>
-  typeof data === "object" &&
-  data !== null &&
-  ("rowLayout" in data || "rowId" in data);
+const isRowSource = (source: DragSource) =>
+  "rowLayout" in source || "rowId" in source;
+
+/** A Block or Row already in the email, rather than a new one. */
+const isOnCanvas = (source: DragSource) =>
+  "blockId" in source || "rowId" in source;
 
 const midpointY = (element: Element) => {
   const { bottom, top } = element.getBoundingClientRect();
   return (top + bottom) / 2;
 };
 
-/** How far outside the editor a drop still counts, as space below the email. */
-const DROP_MARGIN_PX = 40;
+interface Grab {
+  element: HTMLElement;
+  source: DragSource;
+  /** The toolbar its handle is in: a Row's, or a selected Block's. */
+  toolbar?: Element;
+}
 
-const removeExcept = (
-  entities: Map<string, Draggable | Droppable>,
-  ids: Set<string>
-) => {
-  for (const [id, entity] of entities) {
-    if (!ids.has(id)) {
-      entity.destroy();
-      entities.delete(id);
+/**
+ * What a press on `target` picks up: a Block by its handle, a Row by its handle
+ * or its tag, or an item in the palette or the Rows tab.
+ */
+const grabAt = (target: Element): Grab | undefined => {
+  const handle = target.closest(".drag-handle");
+  const row = (handle?.closest(".row-toolbar") ?? target.closest(".row-tag"))
+    ?.parentElement;
+  if (row?.matches(ROWS)) {
+    return {
+      element: row,
+      source: { rowId: row.dataset.rowId as string },
+      toolbar: row.querySelector(":scope > .row-toolbar") ?? undefined,
+    };
+  }
+  const block = handle?.closest<HTMLElement>(BLOCKS);
+  if (handle && block) {
+    return {
+      element: block,
+      source: { blockId: block.dataset.blockId as string },
+      toolbar: handle.closest(".block-toolbar") ?? undefined,
+    };
+  }
+  const tile = target.closest<HTMLElement>(
+    "[data-block-type], [data-row-layout]"
+  );
+  if (tile) {
+    const { blockType, rowLayout } = tile.dataset;
+    return {
+      element: tile,
+      source:
+        blockType === undefined
+          ? { rowLayout: rowLayout as string }
+          : { blockType },
+    };
+  }
+  return undefined;
+};
+
+/** How much the host page scales a length, such as with a CSS transform. */
+const scaleOf = (onScreen: number, laidOut: number) =>
+  Math.abs(onScreen - laidOut) > 1 ? onScreen / laidOut : 1;
+
+/**
+ * A copy of what's dragged, fixed to the window. Where the browser has popovers,
+ * it's in the top layer, so that nothing on the host page clips it or covers it.
+ * It sits beside the original, so the same styles apply, and it's the same size
+ * on screen, even on a page that scales the editor, which the top layer leaves out.
+ */
+const createGhost = (element: HTMLElement) => {
+  const { height, left, top, width } = element.getBoundingClientRect();
+  const scaleX = scaleOf(width, element.offsetWidth);
+  const scaleY = scaleOf(height, element.offsetHeight);
+  const ghost = element.cloneNode(true) as HTMLElement;
+  ghost.dataset.dragGhost = "";
+  ghost.inert = true;
+  ghost.setAttribute("aria-hidden", "true");
+  // Inline, because the editor's own styles position Blocks and Rows.
+  Object.assign(ghost.style, {
+    bottom: "auto",
+    boxSizing: "border-box",
+    height: `${height / scaleY}px`,
+    left: `${left}px`,
+    margin: "0",
+    pointerEvents: "none",
+    position: "fixed",
+    right: "auto",
+    scale: `${scaleX} ${scaleY}`,
+    top: `${top}px`,
+    transformOrigin: "0 0",
+    width: `${width / scaleX}px`,
+    zIndex: "2147483647",
+  });
+  element.after(ghost);
+  if (typeof ghost.showPopover === "function") {
+    ghost.popover = "manual";
+    ghost.showPopover();
+  }
+  return ghost;
+};
+
+interface ScrollContainer {
+  element: Element;
+  /** The ways its styles let it scroll, as script can scroll hidden overflow. */
+  sideways: boolean;
+  upAndDown: boolean;
+}
+
+const SCROLLS = /auto|scroll|overlay/u;
+
+/**
+ * The host's scroll containers, innermost first, then the page. They're found
+ * from the host, because the canvas has none of its own.
+ */
+const scrollContainersOf = (host: Element) => {
+  const containers: ScrollContainer[] = [];
+  let element: Element | null = host;
+  while (element) {
+    // The page's own overflow is the window's, which comes last.
+    if (element !== document.body && element !== document.documentElement) {
+      const { overflowX, overflowY } = getComputedStyle(element);
+      const sideways = SCROLLS.test(overflowX);
+      const upAndDown = SCROLLS.test(overflowY);
+      if (sideways || upAndDown) {
+        containers.push({ element, sideways, upAndDown });
+      }
+    }
+    const root = element.getRootNode();
+    element =
+      element.parentElement ?? (root instanceof ShadowRoot ? root.host : null);
+  }
+  // The browser itself won't scroll the window the way the page hides.
+  containers.push({
+    element: document.scrollingElement ?? document.documentElement,
+    sideways: true,
+    upAndDown: true,
+  });
+  return containers;
+};
+
+/** Back near the start edge, on near the end, faster closer to it. */
+const scrollSpeed = (at: number, start: number, end: number) => {
+  const edge = (end - start) * SCROLL_EDGE;
+  if (edge <= 0) {
+    return 0;
+  }
+  if (at <= start + edge) {
+    return (-SCROLL_SPEED_PX * (start + edge - at)) / edge;
+  }
+  if (at >= end - edge) {
+    return (SCROLL_SPEED_PX * (at - (end - edge))) / edge;
+  }
+  return 0;
+};
+
+/**
+ * Scrolls the innermost container that can still go the way the pointer asks.
+ * Past an edge still scrolls, as the pointer may leave the window. Whether it
+ * moved is read back, which also holds for right-to-left scrolling.
+ */
+const autoScroll = (containers: ScrollContainer[], { x, y }: Point) => {
+  for (const { element, sideways, upAndDown } of containers) {
+    const { bottom, left, right, top } =
+      element === document.scrollingElement
+        ? { bottom: innerHeight, left: 0, right: innerWidth, top: 0 }
+        : element.getBoundingClientRect();
+    const { scrollLeft, scrollTop } = element;
+    if (
+      upAndDown &&
+      x >= left - SCROLL_TOLERANCE_PX &&
+      x <= right + SCROLL_TOLERANCE_PX
+    ) {
+      element.scrollTop += scrollSpeed(y, top, bottom);
+    }
+    if (
+      sideways &&
+      y >= top - SCROLL_TOLERANCE_PX &&
+      y <= bottom + SCROLL_TOLERANCE_PX
+    ) {
+      element.scrollLeft += scrollSpeed(x, left, right);
+    }
+    if (element.scrollTop !== scrollTop || element.scrollLeft !== scrollLeft) {
+      return;
     }
   }
 };
 
 /**
- * Drags the Blocks and palette items under `root`, using `Draggable` and
- * `Droppable` but not `Sortable`, which has an open Shadow DOM issue (ADR 0002).
- * The drop position comes from the pointer when the drag ends, so nothing moves
- * until then, and the indicator shows the same answer on the way there.
+ * Shows the dragging cursor over the host page and the editor alike, whatever
+ * cursor their own styles ask for. An adopted style sheet, unlike a <style>
+ * element, works under a Content Security Policy that blocks inline styles.
+ * Returns what puts the usual cursors back.
+ */
+const showGrabbingCursor = (root: ShadowRoot) => {
+  const sheet = new CSSStyleSheet();
+  sheet.replaceSync("* { cursor: grabbing !important; }");
+  const owners = [document, root];
+  for (const owner of owners) {
+    owner.adoptedStyleSheets = [...owner.adoptedStyleSheets, sheet];
+  }
+  return () => {
+    for (const owner of owners) {
+      owner.adoptedStyleSheets = owner.adoptedStyleSheets.filter(
+        (each) => each !== sheet
+      );
+    }
+  };
+};
+
+/**
+ * The release that ends a drag clicks the page's body, where the pointer is
+ * captured, which isn't something the user pressed.
+ */
+const stopReleaseClick = (click: MouseEvent) => {
+  if (click.target === document.body && click.detail > 0) {
+    click.preventDefault();
+    click.stopImmediatePropagation();
+  }
+};
+
+interface Press {
+  grab: Grab;
+  /** Where the press was, which the copy keeps under the pointer. */
+  from: Point;
+  listeners: AbortController;
+}
+
+interface Drag {
+  ghost: HTMLElement;
+  pointer: Point;
+  scrollContainers: ScrollContainer[];
+  restoreCursor: () => void;
+}
+
+/**
+ * Drags Blocks, Rows and palette items with pointer events. The drop position
+ * comes from the pointer when the drag ends, so nothing moves until then, and
+ * the indicator shows the same answer on the way there. The keyboard has its
+ * own way to move each one, through the same Commands.
  */
 export const createBlockDragging = ({
   onDrop,
@@ -80,34 +290,17 @@ export const createBlockDragging = ({
   onDrop: (source: DragSource, place: DropPlace) => void;
   root: ShadowRoot;
 }): BlockDragging => {
-  const manager = new DragDropManager({
-    // Not PreventSelection, which would clear the cursor in the Block being edited.
-    // A press on a handle or palette item doesn't start a selection anyway.
-    plugins: [AutoScroller, Cursor, Feedback],
-    // Only the pointer drags. Keyboard moves won't go through a dragged Block.
-    sensors: [
-      PointerSensor.configure({
-        // A press alone stays a click, however long it lasts.
-        activationConstraints: () => [
-          new PointerActivationConstraints.Distance({ value: 5 }),
-        ],
-        // A Row drags by its tag as well as its handle.
-        activatorElements: (source) => [
-          source.handle ?? source.element,
-          source.element?.querySelector(":scope > .row-tag") ?? undefined,
-        ],
-      }),
-    ],
-  });
-  const draggables = new Map<string, Draggable>();
+  /** A press that may still turn into a drag, and the drag once it has. */
+  let press: Press | undefined;
+  let drag: Drag | undefined;
+  let frame = 0;
   /**
-   * The selected Block's toolbar, where its handle is, until the pointer first
-   * leaves it. It's outside the Block, so letting go there after a short drag
-   * would otherwise land somewhere else. Once the drag has gone further, it
-   * lands there like anywhere else.
+   * The selected Block's or Row's toolbar, where its handle is, until the
+   * pointer first leaves it. It's outside the Block, so letting go there after
+   * a short drag would otherwise land somewhere else. Once the drag has gone
+   * further, it lands there like anywhere else.
    */
   let startedOn: DOMRect | undefined;
-  const droppables = new Map<string, Droppable>();
 
   /**
    * Where a drop would land now, and the line that shows it. Blocks are counted
@@ -116,34 +309,27 @@ export const createBlockDragging = ({
    * go of a palette item that barely moved adds nothing, or on the floating
    * toolbar.
    */
-  const landing = () => {
-    const { position, source } = manager.dragOperation;
-    const pointer = position.current;
+  const landing = ({ element, source }: Grab, pointer: Point) => {
     const email = root.querySelector(".email");
     const controls = root.querySelectorAll(".side-panel, .floating-toolbar");
     if (
       !email ||
       (startedOn && contains(startedOn, pointer)) ||
-      [...controls].some((element) => contains(element, pointer)) ||
+      [...controls].some((control) => contains(control, pointer)) ||
       !contains(root.host, pointer, DROP_MARGIN_PX)
     ) {
       return;
     }
-    // Worked out here, because dnd-kit's own target lags behind the pointer.
-    const [collision] = manager.collisionObserver.computeCollisions();
-    const droppable =
-      collision && manager.registry.droppables.get(collision.id);
-    const column =
-      droppable?.element?.isConnected && !isRowSource(source?.data)
-        ? droppable.element
-        : undefined;
+    const column = isRowSource(source)
+      ? undefined
+      : [...email.querySelectorAll<HTMLElement>(`.column${NOT_GHOST}`)].find(
+          (each) => contains(each, pointer)
+        );
     const parent = column ?? email;
     const items = [...parent.querySelectorAll(column ? BLOCKS : ROWS)].filter(
-      (element) => element !== source?.element
+      (each) => each !== element
     );
-    const index = items.filter(
-      (element) => midpointY(element) < pointer.y
-    ).length;
+    const index = items.filter((each) => midpointY(each) < pointer.y).length;
     const next = items[index];
     const box = parent.getBoundingClientRect();
     return {
@@ -157,7 +343,7 @@ export const createBlockDragging = ({
           box.top,
       },
       place: column
-        ? { columnId: String(droppable?.id), index }
+        ? { columnId: column.dataset.columnId as string, index }
         : { rowIndex: index },
     };
   };
@@ -169,7 +355,7 @@ export const createBlockDragging = ({
     if (!(email && indicator)) {
       return;
     }
-    const landsIn = target?.column as HTMLElement | undefined;
+    const landsIn = target?.column;
     for (const column of email.querySelectorAll<HTMLElement>(
       "[data-drop-target]"
     )) {
@@ -190,194 +376,193 @@ export const createBlockDragging = ({
     }
   };
 
-  const syncDraggable = (
-    id: string,
-    element: Element,
-    data: DragSource,
-    handle?: Element
-  ) => {
-    const draggable = draggables.get(id);
-    if (draggable) {
-      // Giving the dragged one a new element would make dnd-kit lift that element
-      // and never put it down, so it waits for the drag to finish.
-      if (!draggable.isDragSource) {
-        draggable.element = element;
-        draggable.handle = handle;
-      }
+  /**
+   * Lets go of a press. If it had become a drag, that ends, and if `drop`, what
+   * it brought lands where the pointer is.
+   */
+  const release = (drop: boolean) => {
+    const ended = press;
+    const dragged = drag;
+    press = undefined;
+    drag = undefined;
+    ended?.listeners.abort();
+    if (!(ended && dragged)) {
       return;
     }
-    draggables.set(
-      id,
-      new Draggable(
-        {
-          data,
-          element,
-          handle,
-          id,
-          plugins: [
-            Feedback.configure({
-              // The drop puts the Block in its new place, with nothing to animate.
-              dropAnimation: null,
-              // The palette keeps its button while a copy follows the pointer.
-              feedback: handle ? "default" : "clone",
-            }),
-          ],
-        },
-        manager
-      )
-    );
-  };
-
-  const syncElements = () => {
-    const draggableIds = new Set<string>();
-    for (const element of root.querySelectorAll<HTMLElement>(BLOCKS)) {
-      const blockId = element.dataset.blockId as string;
-      draggableIds.add(blockId);
-      syncDraggable(
-        blockId,
-        element,
-        { blockId },
-        element.querySelector(".drag-handle") as Element
-      );
-    }
-    for (const element of root.querySelectorAll<HTMLElement>(
-      `[data-block-type]${NOT_PLACEHOLDER}`
-    )) {
-      const blockType = element.dataset.blockType as string;
-      const id = `palette:${blockType}`;
-      draggableIds.add(id);
-      syncDraggable(id, element, { blockType });
-    }
-    for (const element of root.querySelectorAll<HTMLElement>(ROWS)) {
-      const rowId = element.dataset.rowId as string;
-      const id = `row:${rowId}`;
-      draggableIds.add(id);
-      syncDraggable(
-        id,
-        element,
-        { rowId },
-        element.querySelector(":scope > .row-toolbar .drag-handle") as Element
-      );
-    }
-    for (const element of root.querySelectorAll<HTMLElement>(
-      `[data-row-layout]${NOT_PLACEHOLDER}`
-    )) {
-      const rowLayout = element.dataset.rowLayout as string;
-      const id = `layout:${rowLayout}`;
-      draggableIds.add(id);
-      syncDraggable(id, element, { rowLayout });
-    }
-    const { source } = manager.dragOperation;
-    if (source) {
-      draggableIds.add(String(source.id));
-    }
-    removeExcept(draggables, draggableIds);
-
-    const columnIds = new Set<string>();
-    for (const element of root.querySelectorAll<HTMLElement>(".column")) {
-      const id = element.dataset.columnId as string;
-      columnIds.add(id);
-      const droppable = droppables.get(id);
-      if (droppable) {
-        droppable.element = element;
-      } else {
-        droppables.set(
-          id,
-          new Droppable(
-            { collisionDetector: pointerIntersection, element, id },
-            manager
-          )
-        );
-      }
-    }
-    removeExcept(droppables, columnIds);
-  };
-
-  // dnd-kit stops looking for these at the Shadow DOM boundary, which leaves it
-  // nothing to scroll while the pointer is over the canvas.
-  let scrollable: Set<Element> | null = null;
-  const scroller = manager.registry.plugins.get(Scroller);
-  if (scroller) {
-    scroller.getScrollableElements = () => scrollable;
-  }
-
-  // Every frame, because scrolling moves what's under a pointer that keeps still.
-  let frame = 0;
-  const trackPointer = () => {
-    if (
-      startedOn &&
-      !contains(startedOn, manager.dragOperation.position.current)
-    ) {
-      startedOn = undefined;
-    }
-    showIndicator(landing());
-    frame = requestAnimationFrame(trackPointer);
-  };
-  manager.monitor.addEventListener("dragstart", () => {
-    const email = root.querySelector<HTMLElement>(".email");
-    if (email) {
-      // Which, so that only a Block's drag highlights the Columns.
-      email.dataset.dragging = isRowSource(manager.dragOperation.source?.data)
-        ? "row"
-        : "block";
-    }
-    scrollable = getScrollableAncestors(root.host, {
-      escapeShadowDOM: true,
-      excludeElement: false,
-    });
-    trackPointer();
-  });
-
-  // Lifting a Block takes it out of the page before its placeholder comes in. With
-  // a tall one, Firefox and WebKit would see a shorter page and scroll up to fit.
-  manager.monitor.addEventListener("beforedragstart", () => {
-    const email = root.querySelector<HTMLElement>(".email");
-    if (email) {
-      email.style.minHeight = `${email.getBoundingClientRect().height}px`;
-    }
-    // Before the Block is lifted, which takes its toolbar along.
-    const { source } = manager.dragOperation;
-    startedOn = (source as Draggable | null)?.handle
-      ?.closest(".block-toolbar, .row-toolbar")
-      ?.getBoundingClientRect();
-  });
-
-  let syncTimer: ReturnType<typeof setTimeout> | undefined;
-  manager.monitor.addEventListener("dragend", ({ canceled, nativeEvent }) => {
     cancelAnimationFrame(frame);
+    const { grab } = ended;
+    // An undo during the drag can take away the Block being dragged.
+    const place =
+      drop && grab.element.isConnected
+        ? landing(grab, dragged.pointer)?.place
+        : undefined;
+    startedOn = undefined;
+    dragged.ghost.remove();
+    delete grab.element.dataset.dragSource;
+    dragged.restoreCursor();
     showIndicator();
     const email = root.querySelector<HTMLElement>(".email");
     if (email) {
       delete email.dataset.dragging;
-      email.style.removeProperty("min-height");
     }
-    const { position, source } = manager.dragOperation;
-    // An undo during the drag can take away the Block being dragged.
-    if (!canceled && source?.element?.isConnected) {
-      // The pointer may have moved since the last frame, and the page scrolled.
-      if (nativeEvent instanceof PointerEvent) {
-        position.current = { x: nativeEvent.clientX, y: nativeEvent.clientY };
-      }
-      for (const droppable of droppables.values()) {
-        droppable.refreshShape();
-      }
-      const place = landing()?.place;
-      if (place) {
-        onDrop(source.data as DragSource, place);
-      }
+    if (place) {
+      onDrop(grab.source, place);
     }
-    // Once the drag has finished, for the element that had to wait.
-    syncTimer = setTimeout(syncElements, 0);
-  });
+  };
+
+  // Every frame, because scrolling moves what's under a pointer that keeps still.
+  const onFrame = () => {
+    if (!(press && drag)) {
+      return;
+    }
+    const { from, grab } = press;
+    const { ghost, pointer, scrollContainers } = drag;
+    // An undo, or a new email, can take away what's being dragged.
+    if (!grab.element.isConnected) {
+      release(false);
+      return;
+    }
+    if (startedOn && !contains(startedOn, pointer)) {
+      startedOn = undefined;
+    }
+    ghost.style.translate = `${pointer.x - from.x}px ${pointer.y - from.y}px`;
+    autoScroll(scrollContainers, pointer);
+    showIndicator(landing(grab, pointer));
+    frame = requestAnimationFrame(onFrame);
+  };
+
+  const start = ({ grab, listeners }: Press, event: PointerEvent) => {
+    try {
+      // So that the drag goes on outside the editor, and even the window.
+      document.body.setPointerCapture(event.pointerId);
+    } catch {
+      release(false);
+      return;
+    }
+    // Before it's hidden along with its Block or Row.
+    startedOn = grab.toolbar?.getBoundingClientRect();
+    drag = {
+      ghost: createGhost(grab.element),
+      pointer: { x: event.clientX, y: event.clientY },
+      restoreCursor: showGrabbingCursor(root),
+      scrollContainers: scrollContainersOf(root.host),
+    };
+    // A Block or Row leaves its place empty, but stays in it, so that its text
+    // keeps its editor, focus and cursor. The palette keeps its item.
+    if (isOnCanvas(grab.source)) {
+      grab.element.dataset.dragSource = "";
+    }
+    const email = root.querySelector<HTMLElement>(".email");
+    if (email) {
+      // Which, so that only a Block's drag highlights the Columns.
+      email.dataset.dragging = isRowSource(grab.source) ? "row" : "block";
+    }
+    const { signal } = listeners;
+    // Escape cancels the drag. This listens first, as controls such as the
+    // format bar handle Escape themselves and stop it there.
+    window.addEventListener(
+      "keydown",
+      (keydown) => {
+        if (keydown.key === "Escape") {
+          keydown.preventDefault();
+          keydown.stopPropagation();
+          release(false);
+        }
+      },
+      { capture: true, signal }
+    );
+    // A long press on a touch screen would open a menu and end the drag.
+    document.addEventListener(
+      "contextmenu",
+      (contextmenu) => contextmenu.preventDefault(),
+      { signal }
+    );
+    onFrame();
+  };
+
+  const onPointerdown = (event: Event) => {
+    if (
+      press ||
+      !(event instanceof PointerEvent) ||
+      !event.isPrimary ||
+      event.button !== 0 ||
+      !(event.target instanceof Element)
+    ) {
+      return;
+    }
+    const grab = grabAt(event.target);
+    if (!grab) {
+      return;
+    }
+    const { pointerId } = event;
+    const listeners = new AbortController();
+    const { signal } = listeners;
+    press = { from: { x: event.clientX, y: event.clientY }, grab, listeners };
+    window.addEventListener(
+      "pointermove",
+      (move) => {
+        if (move.pointerId !== pointerId || !press) {
+          return;
+        }
+        const pointer = { x: move.clientX, y: move.clientY };
+        if (drag) {
+          move.preventDefault();
+          drag.pointer = pointer;
+        } else if (
+          Math.hypot(pointer.x - press.from.x, pointer.y - press.from.y) >
+          START_DISTANCE_PX
+        ) {
+          start(press, move);
+        }
+      },
+      { signal }
+    );
+    window.addEventListener(
+      "pointerup",
+      (up) => {
+        if (up.pointerId !== pointerId) {
+          return;
+        }
+        if (drag) {
+          up.preventDefault();
+          up.stopPropagation();
+          // Where it was let go, which may be ahead of the last frame.
+          drag.pointer = { x: up.clientX, y: up.clientY };
+          window.addEventListener("click", stopReleaseClick, { capture: true });
+          setTimeout(() => {
+            window.removeEventListener("click", stopReleaseClick, {
+              capture: true,
+            });
+          }, 0);
+        }
+        release(true);
+      },
+      { capture: true, signal }
+    );
+    window.addEventListener(
+      "pointercancel",
+      (cancel) => {
+        if (cancel.pointerId === pointerId) {
+          release(false);
+        }
+      },
+      { signal }
+    );
+    // The browser's own dragging of a picture or a link would take over.
+    window.addEventListener(
+      "dragstart",
+      (dragstart) => dragstart.preventDefault(),
+      { capture: true, signal }
+    );
+  };
+
+  root.addEventListener("pointerdown", onPointerdown);
 
   return {
     destroy: () => {
-      // First, because this ends any drag, which sets the timer.
-      manager.destroy();
-      cancelAnimationFrame(frame);
-      clearTimeout(syncTimer);
+      root.removeEventListener("pointerdown", onPointerdown);
+      release(false);
     },
-    isDragging: () => manager.dragOperation.status.dragging,
-    sync: syncElements,
+    isDragging: () => drag !== undefined,
   };
 };

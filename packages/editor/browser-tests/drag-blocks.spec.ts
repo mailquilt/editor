@@ -15,7 +15,7 @@ import {
 } from "./helpers.js";
 
 const blockElement = (page: Page, text: string) =>
-  canvas(page).locator(".block:not([data-dnd-placeholder])", {
+  canvas(page).locator(".block:not([data-drag-ghost])", {
     has: page
       .getByRole("textbox", { name: "Text Block" })
       .getByText(text, { exact: true }),
@@ -267,7 +267,7 @@ test.describe("moving a Block by its handle", () => {
     );
 
     await expect(
-      canvas(page).locator("[data-dnd-placeholder], [data-dnd-dragging]")
+      canvas(page).locator("[data-drag-ghost], [data-drag-source]")
     ).toHaveCount(0);
     await expect(canvas(page).locator(".block[popover]")).toHaveCount(0);
     await expect(textBlock(page)).toHaveCount(3);
@@ -286,6 +286,32 @@ test.describe("moving a Block by its handle", () => {
     expect(await structure(page)).toStrictEqual([[["One", "Two"], ["Three"]]]);
     await expect(changeCount(page)).toHaveText(changes as string);
     await expect(dropIndicator(page)).toBeHidden();
+    await expect(
+      canvas(page).locator("[data-drag-ghost], [data-drag-source]")
+    ).toHaveCount(0);
+  });
+
+  test("Escape cancels the drag from the format bar too", async ({ page }) => {
+    await load(page, [[["One", "Two"], ["Three"]]]);
+    await blockElement(page, "One").getByRole("textbox").click();
+    await page.keyboard.press("Alt+F10");
+    const bold = canvas(page)
+      .getByRole("toolbar", { name: "Text formatting" })
+      .getByRole("button", { name: "Bold" });
+    await expect(bold).toBeFocused();
+    const changes = await changeCount(page).textContent();
+
+    await pickUp(page, handleOf(page, "Two"));
+    await moveTo(page, await topOf(blockElement(page, "Three")));
+    await page.keyboard.press("Escape");
+    await expect(dropIndicator(page)).toBeHidden();
+    await page.mouse.up();
+    await settle(page);
+
+    expect(await structure(page)).toStrictEqual([[["One", "Two"], ["Three"]]]);
+    await expect(changeCount(page)).toHaveText(changes as string);
+    // The Escape was the drag's, so the format bar keeps focus.
+    await expect(bold).toBeFocused();
   });
 
   test("dropping where it started changes nothing", async ({ page }) => {
@@ -308,7 +334,7 @@ test.describe("moving a Block by its handle", () => {
     await pickUp(page, handleOf(page, "Two"));
     const to = await bottomOf(blockElement(page, "Three"));
 
-    // No frame comes, so dnd-kit only ever knows the pointer as it was before.
+    // No frame comes, so the last one saw the pointer as it was before.
     await page.evaluate(() => {
       window.requestAnimationFrame = () => 0;
     });
@@ -336,7 +362,7 @@ test.describe("moving a Block by its handle", () => {
     await page.mouse.move(x + 100, y + height - 2);
     await page.mouse.down();
     await moveTo(page, await bottomOf(blockElement(page, "Three")));
-    await expect(canvas(page).locator("[data-dnd-dragging]")).toHaveCount(0);
+    await expect(canvas(page).locator("[data-drag-ghost]")).toHaveCount(0);
     await page.mouse.up();
 
     expect(await structure(page)).toStrictEqual([[["One", "Two"], ["Three"]]]);
@@ -410,7 +436,7 @@ test.describe("selecting text with the mouse", () => {
     await page.mouse.move(x + 16, y + 26);
     await page.mouse.down();
     await moveTo(page, await bottomOf(blockElement(page, "Three")));
-    await expect(canvas(page).locator("[data-dnd-dragging]")).toHaveCount(0);
+    await expect(canvas(page).locator("[data-drag-ghost]")).toHaveCount(0);
     await expect(dropIndicator(page)).toBeHidden();
     await page.mouse.up();
     await settle(page);
@@ -439,7 +465,7 @@ test.describe("while dragging", () => {
   test("the Block follows the pointer", async ({ page }) => {
     await load(page, [[["One", "Two"], ["Three"]]]);
     await pickUp(page, handleOf(page, "Two"));
-    const lifted = canvas(page).locator(".block[data-dnd-dragging]");
+    const lifted = canvas(page).locator(".block[data-drag-ghost]");
     const first = await boxOf(lifted);
 
     await page.mouse.move(700, 900, { steps: 8 });
@@ -453,6 +479,48 @@ test.describe("while dragging", () => {
     expect(third.y - second.y).toBeCloseTo(100, 0);
     expect(second.x).not.toBeCloseTo(first.x, 0);
     await expect(lifted).toContainText("Two");
+    await page.keyboard.press("Escape");
+  });
+
+  test("the Block stays under the pointer on a scrolled page", async ({
+    page,
+  }) => {
+    await load(page, [[["One", "Two"], ["Three"]]]);
+    await page.evaluate(() => window.scrollBy(0, 200));
+    expect(await scrollTop(page)).toBeGreaterThanOrEqual(100);
+    const start = await centerOf(handleOf(page, "Two"));
+
+    await pickUp(page, handleOf(page, "Two"));
+
+    // Where pickUp left the pointer.
+    const pointer = { x: start.x + 8, y: start.y + 8 };
+    const lifted = await boxOf(canvas(page).locator(".block[data-drag-ghost]"));
+    expect(pointer.x).toBeGreaterThan(lifted.x);
+    expect(pointer.x).toBeLessThan(lifted.x + lifted.width);
+    expect(pointer.y).toBeGreaterThan(lifted.y);
+    expect(pointer.y).toBeLessThan(lifted.y + lifted.height);
+    await page.keyboard.press("Escape");
+  });
+
+  test("the Block keeps its size on a page that scales the editor", async ({
+    page,
+  }) => {
+    await load(page, [[["One", "Two"]]]);
+    await canvas(page).evaluate((element) => {
+      element.style.transform = "scale(0.5)";
+      element.style.transformOrigin = "0 0";
+    });
+    const before = await boxOf(blockElement(page, "One"));
+    const text = await boxOf(blockElement(page, "One").getByRole("textbox"));
+
+    await pickUp(page, handleOf(page, "One"));
+
+    const lifted = canvas(page).locator(".block[data-drag-ghost]");
+    const after = await boxOf(lifted);
+    expect(after.width).toBeCloseTo(before.width, 0);
+    expect(after.height).toBeCloseTo(before.height, 0);
+    const copied = await boxOf(lifted.locator(".ProseMirror"));
+    expect(copied.height).toBeCloseTo(text.height, 0);
     await page.keyboard.press("Escape");
   });
 
@@ -747,7 +815,7 @@ test.describe("dragging from the palette", () => {
     await openTab(page, "Content");
     expect(await boxOf(paletteText(page))).toStrictEqual(before);
     await expect(
-      canvas(page).locator("[data-dnd-placeholder], [data-dnd-dragging]")
+      canvas(page).locator("[data-drag-ghost], [data-drag-source]")
     ).toHaveCount(0);
   });
 
@@ -1103,6 +1171,58 @@ test.describe("auto-scrolling", () => {
     await page.mouse.up();
   });
 
+  test("a container scrolls sideways near its edge", async ({ page }) => {
+    await load(page, [[["One"]]]);
+    await canvas(page).evaluate((element) => {
+      const scroller = document.createElement("section");
+      scroller.id = "scroller";
+      scroller.style.cssText =
+        "height: 500px; overflow: auto; position: fixed; top: 0; left: 0; width: 600px; background: white; z-index: 10";
+      element.style.width = "1400px";
+      element.replaceWith(scroller);
+      scroller.append(element);
+    });
+    await expect(textBlock(page).first()).toBeVisible();
+    const containerLeft = () =>
+      page.evaluate(() => document.querySelector("#scroller")?.scrollLeft ?? 0);
+    const handle = handleOf(page, "One");
+    await handle.hover();
+
+    await pickUp(page, handle);
+    await page.mouse.move(595, 250, { steps: 8 });
+
+    await expect.poll(containerLeft).toBeGreaterThan(100);
+    await page.keyboard.press("Escape");
+    await page.mouse.up();
+  });
+
+  test("a container doesn't scroll the way it hides", async ({ page }) => {
+    await load(page, [[["One"]]]);
+    await canvas(page).evaluate((element) => {
+      const scroller = document.createElement("section");
+      scroller.id = "scroller";
+      scroller.style.cssText =
+        "height: 500px; overflow-x: hidden; overflow-y: auto; position: fixed; top: 0; left: 0; width: 600px; background: white; z-index: 10";
+      element.style.width = "1400px";
+      element.replaceWith(scroller);
+      scroller.append(element);
+    });
+    await expect(textBlock(page).first()).toBeVisible();
+    const handle = handleOf(page, "One");
+    await handle.hover();
+
+    await pickUp(page, handle);
+    await page.mouse.move(595, 250, { steps: 8 });
+    await settle(page);
+    await settle(page);
+
+    expect(
+      await page.evaluate(() => document.querySelector("#scroller")?.scrollLeft)
+    ).toBe(0);
+    await page.keyboard.press("Escape");
+    await page.mouse.up();
+  });
+
   test("the indicator keeps up while the page scrolls", async ({ page }) => {
     await load(page, [[manyBlocks]]);
     await page.evaluate(() => {
@@ -1201,6 +1321,11 @@ test.describe("a Block that's removed or replaced", () => {
     await moveTo(page, await topOf(blockElement(page, "Two")));
     await undo(page);
     await settle(page);
+    // The undo made the Block anew, so the drag of the old one is over.
+    await expect(
+      canvas(page).locator("[data-drag-ghost], [data-drag-source]")
+    ).toHaveCount(0);
+    await expect(dropIndicator(page)).toBeHidden();
     await page.mouse.up();
     await settle(page);
 
@@ -1264,5 +1389,72 @@ test.describe("a Block that's removed or replaced", () => {
     );
 
     expect(await structure(page)).toStrictEqual([[["Two", "One"]]]);
+  });
+});
+
+/** A finger that presses at `from`, moves to `to` and lifts. */
+const touchDrag = async (page: Page, from: Point, to: Point) => {
+  const session = await page.context().newCDPSession(page);
+  await session.send("Input.dispatchTouchEvent", {
+    touchPoints: [from],
+    type: "touchStart",
+  });
+  const steps = 12;
+  for (let step = 1; step <= steps; step += 1) {
+    // oxlint-disable-next-line no-await-in-loop -- One move at a time.
+    await session.send("Input.dispatchTouchEvent", {
+      touchPoints: [
+        {
+          x: from.x + ((to.x - from.x) * step) / steps,
+          y: from.y + ((to.y - from.y) * step) / steps,
+        },
+      ],
+      type: "touchMove",
+    });
+    // oxlint-disable-next-line no-await-in-loop -- See above.
+    await settle(page);
+  }
+  await session.send("Input.dispatchTouchEvent", {
+    touchPoints: [],
+    type: "touchEnd",
+  });
+};
+
+test.describe("on a touch screen", () => {
+  test.skip(
+    ({ browserName }) => browserName !== "chromium",
+    "Only Chromium can emulate a phone."
+  );
+  test.use({ hasTouch: true, isMobile: true });
+
+  test("a Block's handle drags it, and the page doesn't scroll", async ({
+    page,
+  }) => {
+    await load(page, [[["One", "Two"]]]);
+    const before = await scrollTop(page);
+
+    await touchDrag(
+      page,
+      await centerOf(handleOf(page, "One")),
+      await bottomOf(blockElement(page, "Two"))
+    );
+
+    await expect.poll(() => structure(page)).toStrictEqual([[["Two", "One"]]]);
+    expect(await scrollTop(page)).toBe(before);
+    await expect(
+      canvas(page).locator("[data-drag-ghost], [data-drag-source]")
+    ).toHaveCount(0);
+  });
+
+  test("a palette item drags a new Block in", async ({ page }) => {
+    await load(page, [[["One"]]]);
+
+    await touchDrag(
+      page,
+      await centerOf(paletteText(page)),
+      await bottomOf(blockElement(page, "One"))
+    );
+
+    await expect.poll(() => structure(page)).toStrictEqual([[["One", ""]]]);
   });
 });

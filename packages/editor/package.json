@@ -19,8 +19,6 @@
     "test": "playwright test"
   },
   "dependencies": {
-    "@dnd-kit/collision": "^0.5.3",
-    "@dnd-kit/dom": "^0.5.3",
     "@mailquilt/core": "workspace:*",
     "@mailquilt/renderer": "workspace:*",
     "@tiptap/core": "^3.32.3",
