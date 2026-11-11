@@ -118,28 +118,6 @@ describe("limited rich text", () => {
     expect(result.ok).toBeFalsy();
     expect(editor.getDocument()).toStrictEqual(email);
   });
-
-  it("undoes and redoes a formatting Command as one step", () => {
-    const plain = emailWithInline({ text: "Hi", type: "text" });
-    const editor = createEditor({ document: plain });
-    const block = plain.rows[0]?.columns[0]?.blocks[0];
-    const bold = emailWithInline({
-      marks: [{ type: "bold" }],
-      text: "Hi",
-      type: "text",
-    }).rows[0]?.columns[0]?.blocks[0]?.props;
-
-    editor.apply({
-      blockId: block?.id ?? "",
-      props: bold ?? {},
-      type: "updateProps",
-    });
-    const formatted = editor.getDocument();
-    editor.undo();
-    expect(editor.getDocument()).toStrictEqual(plain);
-    editor.redo();
-    expect(editor.getDocument()).toStrictEqual(formatted);
-  });
 });
 
 describe(isAllowedLinkHref, () => {

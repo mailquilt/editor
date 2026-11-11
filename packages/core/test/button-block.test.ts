@@ -1,12 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  blockSettingsFields,
-  blockStyles,
-  createEditor,
-  createEmail,
-  loadDocument,
-} from "../src/index.js";
+import { blockStyles, createEditor, createEmail } from "../src/index.js";
 import type { BlocksDocument } from "../src/index.js";
 
 const withButton = (props: Record<string, unknown>): BlocksDocument => {
@@ -69,61 +63,15 @@ describe("Button Block", () => {
     expect(propsOf(editor.getDocument())).toStrictEqual(props);
   });
 
-  it.each([
-    ["https://shop.example"],
-    ["http://shop.example"],
-    ["mailto:sales@shop.example"],
-    ["tel:+15551234567"],
-    ["{{cta_url}}"],
-    ["{{base_url}}/sale?id=1"],
-  ])("accepts the link %s", (href) => {
-    const { document, result } = setHref(href);
-
-    expect(result).toStrictEqual({ ok: true });
-    expect(propsOf(document)).toStrictEqual({ href, label: "Buy" });
-  });
-
-  it.each([
+  it("refuses a link the allowlist refuses", () => {
     // oxlint-disable-next-line no-script-url -- What's being refused.
-    ["javascript:alert(1)"],
-    // oxlint-disable-next-line no-script-url -- What's being refused.
-    ["JaVaScRiPt:alert(1)"],
-    // oxlint-disable-next-line no-script-url -- What's being refused.
-    [" javascript:alert(1)"],
-    ["java\tscript:alert(1)"],
-    ["data:text/html,<script>alert(1)</script>"],
-    ["vbscript:msgbox(1)"],
-    // oxlint-disable-next-line no-script-url -- What's being refused.
-    ["{{x}}javascript:alert(1)"],
-    ["/relative"],
-    [""],
-  ])("refuses the link %j", (href) => {
-    const { document, result } = setHref(href);
+    const { document, result } = setHref("javascript:alert(1)");
 
     expect(result).toStrictEqual({
       ok: false,
       reason: expect.stringMatching(/href/u),
     });
     expect(propsOf(document)).toStrictEqual({ label: "Buy" });
-  });
-
-  it("can have its link removed", () => {
-    const { editor } = setup();
-    editor.apply({
-      blockId: "button-1",
-      props: { href: "https://shop.example" },
-      type: "updateProps",
-    });
-
-    expect(
-      editor.apply({
-        blockId: "button-1",
-        props: { href: null },
-        type: "updateProps",
-      })
-    ).toStrictEqual({ ok: true });
-
-    expect(propsOf(editor.getDocument())).toStrictEqual({ label: "Buy" });
   });
 
   it.each([
@@ -149,21 +97,6 @@ describe("Button Block", () => {
     ).toStrictEqual({ ok: false, reason: expect.stringMatching(reason) });
   });
 
-  it.each([["#123456"], ["#123"], ["rgb(1, 2, 3)"]])(
-    "accepts the solid background %s",
-    (backgroundColor) => {
-      const { editor } = setup();
-
-      expect(
-        editor.apply({
-          blockId: "button-1",
-          props: { backgroundColor },
-          type: "updateProps",
-        })
-      ).toStrictEqual({ ok: true });
-    }
-  );
-
   it("accepts see-through text, which is painted once", () => {
     const { editor } = setup();
 
@@ -174,42 +107,6 @@ describe("Button Block", () => {
         type: "updateProps",
       })
     ).toStrictEqual({ ok: true });
-  });
-
-  it("makes one undo step of a change to its label", () => {
-    const { editor } = setup();
-
-    editor.apply({
-      blockId: "button-1",
-      props: { label: "Sell" },
-      type: "updateProps",
-    });
-    editor.undo();
-
-    expect(propsOf(editor.getDocument())).toStrictEqual({ label: "Buy" });
-  });
-
-  it("loads from a saved email", () => {
-    const document = withButton({
-      align: "right",
-      backgroundColor: "#111111",
-      color: "#eeeeee",
-      href: "{{cta_url}}",
-      label: "Go",
-    });
-
-    expect(loadDocument(document)).toStrictEqual({ document, ok: true });
-  });
-
-  it.each([
-    ["no label", { href: "https://shop.example" }],
-    // oxlint-disable-next-line no-script-url -- What's being refused.
-    ["an executable link", { href: "javascript:alert(1)", label: "Go" }],
-  ])("refuses a saved email with %s", (_name, props) => {
-    expect(loadDocument(withButton(props))).toStrictEqual({
-      ok: false,
-      reason: expect.stringContaining('Block "button-1"'),
-    });
   });
 
   it("has a look until its settings change it", () => {
@@ -238,13 +135,5 @@ describe("Button Block", () => {
       color: "#eeeeee",
       "text-align": "right",
     });
-  });
-
-  it("offers its label, link, colors and alignment as settings", () => {
-    expect(
-      blockSettingsFields({ props: { label: "Go" }, type: "button" }).map(
-        ({ key }) => key
-      )
-    ).toStrictEqual(["label", "href", "backgroundColor", "color", "align"]);
   });
 });

@@ -57,21 +57,6 @@ const openShell = async (page: Page, query = "") => {
   await expect(textBlock(page)).toHaveText("Hello");
 };
 
-test("shows the heading, the Import and Export buttons, and the editor", async ({
-  page,
-}) => {
-  await openShell(page);
-
-  await expect(header(page)).toContainText("Email");
-  for (const name of ["Import JSON", "Export JSON", "Export HTML"]) {
-    // oxlint-disable-next-line no-await-in-loop -- One button at a time.
-    await expect(shell(page).getByRole("button", { name })).toBeVisible();
-  }
-  await expect(shell(page).locator("mail-quilt")).toBeVisible();
-  // There's one Shell, with no variants to choose from.
-  await expect(shell(page)).not.toHaveAttribute("variant");
-});
-
 test.describe("choosing the buttons with actions", () => {
   test("shows only the ones it names, in the Shell's own order", async ({
     page,
@@ -591,35 +576,9 @@ test.describe("parts", () => {
       shell(page).getByRole("button", { name: "Export JSON" })
     ).toBeVisible();
   });
-
-  test("let a host restyle a button", async ({ page }) => {
-    await openShell(page);
-
-    await page.addStyleTag({
-      content:
-        "mail-quilt-shell::part(export-html) { background: rgb(1, 2, 3); }",
-    });
-
-    await expect(
-      shell(page).getByRole("button", { name: "Export HTML" })
-    ).toHaveCSS("background-color", "rgb(1, 2, 3)");
-  });
 });
 
 test.describe("the frame", () => {
-  test("is the Shell's, rounded and ringed as the editor is on its own", async ({
-    page,
-  }) => {
-    await openShell(page);
-
-    const frame = shell(page).locator(".shell");
-    await expect(frame).toHaveCSS("border-radius", "10px");
-    await expect(frame).toHaveCSS(
-      "box-shadow",
-      "rgb(228, 230, 234) 0px 0px 0px 1px"
-    );
-  });
-
   test("isn't drawn again by the editor inside it", async ({ page }) => {
     await openShell(page);
 

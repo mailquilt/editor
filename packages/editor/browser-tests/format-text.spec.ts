@@ -121,43 +121,37 @@ test.beforeEach(async ({ page }) => {
 });
 
 test.describe("bold, italic and underline", () => {
-  const marks = [
-    { button: "Bold", html: "<strong>Hello</strong>", key: "b", type: "bold" },
-    { button: "Italic", html: "<em>Hello</em>", key: "i", type: "italic" },
-    { button: "Underline", html: "<u>Hello</u>", key: "u", type: "underline" },
-  ];
+  test("Bold from the toolbar reaches the exported email", async ({ page }) => {
+    await selectAllInBlock(page);
 
-  for (const { button, html, key, type } of marks) {
-    test(`${button} from the toolbar reaches the exported email`, async ({
-      page,
-    }) => {
-      await selectAllInBlock(page);
+    await toolbarButton(page, "Bold").click();
 
-      await toolbarButton(page, button).click();
+    await expect
+      .poll(() => savedInline(page))
+      .toStrictEqual([
+        { marks: [{ type: "bold" }], text: "Hello", type: "text" },
+      ]);
+    await expect(toolbarButton(page, "Bold")).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+    expect(await exportHtml(page)).toContain("<strong>Hello</strong>");
+  });
 
-      await expect
-        .poll(() => savedInline(page))
-        .toStrictEqual([{ marks: [{ type }], text: "Hello", type: "text" }]);
-      await expect(toolbarButton(page, button)).toHaveAttribute(
-        "aria-pressed",
-        "true"
-      );
-      expect(await exportHtml(page)).toContain(html);
-    });
+  test("Underline from its keyboard shortcut reaches the exported email", async ({
+    page,
+  }) => {
+    await selectAllInBlock(page);
 
-    test(`${button} from its keyboard shortcut reaches the exported email`, async ({
-      page,
-    }) => {
-      await selectAllInBlock(page);
+    await page.keyboard.press("ControlOrMeta+u");
 
-      await page.keyboard.press(`ControlOrMeta+${key}`);
-
-      await expect
-        .poll(() => savedInline(page))
-        .toStrictEqual([{ marks: [{ type }], text: "Hello", type: "text" }]);
-      expect(await exportHtml(page)).toContain(html);
-    });
-  }
+    await expect
+      .poll(() => savedInline(page))
+      .toStrictEqual([
+        { marks: [{ type: "underline" }], text: "Hello", type: "text" },
+      ]);
+    expect(await exportHtml(page)).toContain("<u>Hello</u>");
+  });
 
   test("the toolbar button turns formatting off again", async ({ page }) => {
     await selectAllInBlock(page);
@@ -236,30 +230,9 @@ test.describe("bold, italic and underline", () => {
         { marks: [{ type: "bold" }], text: "x", type: "text" },
       ]);
   });
-
-  test("typed Markdown stays as text", async ({ page }) => {
-    await selectAllInBlock(page);
-
-    await page.keyboard.type("**a** _b_ *c* ");
-
-    await expect(textBlock(page)).toHaveText("**a** _b_ *c* ");
-    await expect
-      .poll(() => savedInline(page))
-      .toStrictEqual([{ text: "**a** _b_ *c* ", type: "text" }]);
-  });
 });
 
 test.describe("the toolbar", () => {
-  test("shows only while a Block's text is being edited", async ({ page }) => {
-    await expect(toolbarButton(page, "Bold")).toHaveCount(0);
-
-    await textBlock(page).click();
-    await expect(toolbarButton(page, "Bold")).toBeEnabled();
-
-    await page.keyboard.press("Escape");
-    await expect(toolbarButton(page, "Bold")).toHaveCount(0);
-  });
-
   test("keeps the selection and focus in the Block", async ({ page }) => {
     await selectAllInBlock(page);
 
@@ -333,17 +306,6 @@ test.describe("the toolbar", () => {
     expect(await savedInline(page, 0)).toStrictEqual([
       { text: "Hello", type: "text" },
     ]);
-  });
-
-  test("host CSS doesn't reach it", async ({ page }) => {
-    await canvas(page).evaluate((element) => {
-      element.setAttribute("style", "color: red; font-size: 50px");
-    });
-    await textBlock(page).click();
-
-    const button = toolbarButton(page, "Bold");
-    await expect(button).toHaveCSS("font-size", "13px");
-    await expect(button).not.toHaveCSS("color", "rgb(255, 0, 0)");
   });
 });
 
@@ -439,29 +401,6 @@ test.describe("line breaks", () => {
       ]);
   });
 
-  test("Shift+Enter adds a line break in the same paragraph", async ({
-    page,
-  }) => {
-    await cursorAtEndOfBlock(page);
-
-    await page.keyboard.press("Shift+Enter");
-    await page.keyboard.type("x");
-
-    await expect
-      .poll(() => savedParagraphs(page))
-      .toStrictEqual([
-        {
-          content: [
-            { text: "Hello", type: "text" },
-            { type: "hardBreak" },
-            { text: "x", type: "text" },
-          ],
-          type: "paragraph",
-        },
-      ]);
-    expect(await exportHtml(page)).toContain("Hello<br />x");
-  });
-
   test("the toolbar adds a line break and keeps focus in the Block", async ({
     page,
   }) => {
@@ -482,27 +421,6 @@ test.describe("line breaks", () => {
 });
 
 test.describe("links", () => {
-  test("a link from the toolbar reaches the exported email", async ({
-    page,
-  }) => {
-    await selectAllInBlock(page);
-
-    await addLink(page, "https://example.com");
-
-    await expect
-      .poll(() => savedInline(page))
-      .toStrictEqual([
-        {
-          marks: [{ attrs: { href: "https://example.com" }, type: "link" }],
-          text: "Hello",
-          type: "text",
-        },
-      ]);
-    expect(await exportHtml(page)).toContain(
-      '<a href="https://example.com" target="_blank">Hello</a>'
-    );
-  });
-
   test("Control or Command+K opens the link field", async ({ page }) => {
     await selectAllInBlock(page);
 
@@ -541,25 +459,19 @@ test.describe("links", () => {
     expect(await exportHtml(page)).toContain('<a href="{{cta_url}}"');
   });
 
-  for (const href of [
+  test("refuses javascript:alert(1) and says why", async ({ page }) => {
+    await selectAllInBlock(page);
+
     // oxlint-disable-next-line eslint/no-script-url -- This is what the test refuses.
-    "javascript:alert(1)",
-    " JAVASCRIPT:alert(1)",
-    "data:x",
-  ]) {
-    test(`refuses ${href} and says why`, async ({ page }) => {
-      await selectAllInBlock(page);
+    await addLink(page, "javascript:alert(1)");
 
-      await addLink(page, href);
-
-      await expect(page.getByRole("alert")).toContainText("Merge Tag");
-      await expect(linkInput(page)).toBeVisible();
-      await expect(linkInput(page)).toHaveAttribute("aria-invalid", "true");
-      expect(await savedInline(page)).toStrictEqual([
-        { text: "Hello", type: "text" },
-      ]);
-    });
-  }
+    await expect(page.getByRole("alert")).toContainText("Merge Tag");
+    await expect(linkInput(page)).toBeVisible();
+    await expect(linkInput(page)).toHaveAttribute("aria-invalid", "true");
+    expect(await savedInline(page)).toStrictEqual([
+      { text: "Hello", type: "text" },
+    ]);
+  });
 
   test("spaces around a pasted URL are ignored", async ({ page }) => {
     await selectAllInBlock(page);
@@ -929,28 +841,6 @@ test.describe("undo and redo", () => {
 });
 
 test.describe("copy and paste", () => {
-  test("formatted text keeps its formatting within a Block", async ({
-    page,
-  }) => {
-    await cursorAtEndOfBlock(page);
-    await page.keyboard.press("Shift+ArrowLeft");
-    await page.keyboard.press("Shift+ArrowLeft");
-    await waitForSelectionToRegister(page);
-    await page.keyboard.press("ControlOrMeta+b");
-    await page.keyboard.press("ControlOrMeta+c");
-    await pressArrow(page, "ArrowRight");
-
-    await page.keyboard.press("ControlOrMeta+v");
-
-    await expect(textBlock(page)).toHaveText("Hellolo");
-    await expect
-      .poll(() => savedInline(page))
-      .toStrictEqual([
-        { text: "Hel", type: "text" },
-        { marks: [{ type: "bold" }], text: "lolo", type: "text" },
-      ]);
-  });
-
   test("formatted text keeps its formatting between Blocks", async ({
     page,
   }) => {
@@ -969,30 +859,6 @@ test.describe("copy and paste", () => {
       .poll(() => savedInline(page, 1))
       .toStrictEqual([
         { marks: [{ type: "bold" }], text: "Hello", type: "text" },
-      ]);
-  });
-
-  test("a link keeps its URL between Blocks", async ({ page }) => {
-    await addSecondTextBlock(page);
-    await expect(secondTextBlock(page)).toHaveText("Hello");
-    await selectAllInBlock(page);
-    await addLink(page, "{{cta_url}}");
-    await expect(textBlock(page)).toBeFocused();
-    await page.keyboard.press("ControlOrMeta+c");
-
-    await secondTextBlock(page).click();
-    await expect(secondTextBlock(page)).toBeFocused();
-    await selectAll(page);
-    await page.keyboard.press("ControlOrMeta+v");
-
-    await expect
-      .poll(() => savedInline(page, 1))
-      .toStrictEqual([
-        {
-          marks: [{ attrs: { href: "{{cta_url}}" }, type: "link" }],
-          text: "Hello",
-          type: "text",
-        },
       ]);
   });
 

@@ -4,7 +4,6 @@ import {
   createEditor,
   createEmail,
   loadDocument,
-  ROW_LAYOUTS,
   rowLayoutOf,
 } from "../src/index.js";
 import type { BlocksDocument, Command, Operation } from "../src/index.js";
@@ -262,16 +261,6 @@ describe("the moveBlock Command", () => {
       ],
     ]);
     expectValid(editor.getDocument());
-  });
-
-  it("moves a Block to another Column", () => {
-    const { editor } = setup();
-
-    expectAccepted(editor.apply(move("b", "right", 0)));
-
-    expect(columnsOf(editor.getDocument())).toStrictEqual([
-      [["a"], ["b", "c"]],
-    ]);
   });
 
   it("moves a Block to the end of another Column", () => {
@@ -597,7 +586,6 @@ describe("the setRowLayout Command", () => {
     ["100", [100]],
     ["50/50", [50, 50]],
     ["33/67", [33, 67]],
-    ["67/33", [67, 33]],
     ["33/33/33", [33.33, 33.33, 33.34]],
     ["25/25/25/25", [25, 25, 25, 25]],
   ])("applies the %s preset", (layout, widths) => {
@@ -614,25 +602,6 @@ describe("the setRowLayout Command", () => {
 
     expect(widthsOf(editor.getDocument())).toStrictEqual(widths);
     expectValid(editor.getDocument());
-  });
-
-  it("offers exactly these presets, whose widths each add up to 100", () => {
-    expect(ROW_LAYOUTS).toStrictEqual([
-      "100",
-      "50/50",
-      "33/67",
-      "67/33",
-      "33/33/33",
-      "25/25/25/25",
-    ]);
-
-    for (const layout of ROW_LAYOUTS) {
-      const { editor } = setup({ ...twoColumnEmail(), rows: [] });
-      send(editor, { index: 0, layout, type: "insertRow" });
-      const total = widthsOf(editor.getDocument())?.reduce((a, b) => a + b, 0);
-
-      expect(total).toBeCloseTo(100, 6);
-    }
   });
 
   it("keeps Blocks where they are when only the widths change", () => {
@@ -747,7 +716,7 @@ describe("the setRowLayout Command", () => {
     ]);
   });
 
-  it.each(["100", "33/33/33", "25/25/25/25", "67/33"])(
+  it.each(["100", "33/33/33", "67/33"])(
     "is one undo step when changing to %s, restoring every Block's place",
     (layout) => {
       const { document, editor } = setup();

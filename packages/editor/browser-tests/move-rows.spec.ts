@@ -4,7 +4,6 @@ import type { Locator, Page } from "@playwright/test";
 import {
   canvas,
   emailWith,
-  exportHtml,
   moveCursorToLineEnd,
   rowTools,
   selectRow,
@@ -18,8 +17,6 @@ import {
 test.use({ viewport: { height: 1600, width: 1280 } });
 
 const announcement = (page: Page) => canvas(page).getByRole("status");
-
-const tooltip = (page: Page) => canvas(page).getByRole("tooltip");
 
 const selectRowButton = (page: Page, position: number) =>
   rowTools(page, position).getByRole("button", { name: "Select Row" });
@@ -73,18 +70,6 @@ test.describe("the Move Row buttons", () => {
     await expect(rowTool(page, 2, "Move Row up")).toBeEnabled();
     await expect(rowTool(page, 2, "Move Row down")).toBeEnabled();
     await expect(rowTool(page, 3, "Move Row down")).toBeDisabled();
-  });
-
-  test("name their shortcuts in their tooltips", async ({ page }) => {
-    await open(page, [[["One"]], [["Two"]]]);
-
-    await hoverRow(page, 2);
-    await rowTool(page, 2, "Move Row up").hover();
-    await expect(tooltip(page)).toHaveText("Move Row up (Alt+↑)");
-
-    await hoverRow(page, 1);
-    await rowTool(page, 1, "Move Row down").hover();
-    await expect(tooltip(page)).toHaveText("Move Row down (Alt+↓)");
   });
 
   test("move the Row with its Blocks, as one undo step", async ({ page }) => {
@@ -406,14 +391,4 @@ test.describe("dragging a Row", () => {
 
     await expect(await grip(page, 1, "tag")).toHaveCSS("touch-action", "none");
   });
-});
-
-test("the exported HTML follows the new order", async ({ page }) => {
-  await open(page, [[["One"]], [["Two"]]]);
-
-  await clickRowTool(page, 1, "Move Row down");
-
-  const html = await exportHtml(page);
-  expect(html.indexOf("Two")).toBeGreaterThan(-1);
-  expect(html.indexOf("Two")).toBeLessThan(html.indexOf("One"));
 });

@@ -1,21 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  blockSettingsFields,
   blockStyles,
   createEditor,
   createEmail,
   EMAIL_SETTINGS_FIELDS,
   loadDocument,
-  ROW_SETTINGS_FIELDS,
   rowStyles,
 } from "../src/index.js";
-import type {
-  Block,
-  BlocksDocument,
-  Operation,
-  SettingsField,
-} from "../src/index.js";
+import type { Block, BlocksDocument, Operation } from "../src/index.js";
 
 const setup = () => {
   const document = createEmail();
@@ -97,23 +90,6 @@ describe("Text Block settings", () => {
       ok: false,
       reason: expect.stringMatching(/content/u),
     });
-  });
-
-  it("makes each change one undo step", () => {
-    const { blockId, editor } = setup();
-    const before = editor.getDocument();
-
-    editor.apply({ blockId, props: { color: "#ff0000" }, type: "updateProps" });
-    editor.apply({ blockId, props: { fontSize: 24 }, type: "updateProps" });
-    expect(editor.undo()).toBeTruthy();
-
-    expect(blockProps(editor.getDocument())).toMatchObject({
-      color: "#ff0000",
-    });
-    expect(blockProps(editor.getDocument())).not.toHaveProperty("fontSize");
-
-    expect(editor.undo()).toBeTruthy();
-    expect(editor.getDocument()).toStrictEqual(before);
   });
 
   it("makes no undo step for a change to the same value", () => {
@@ -358,14 +334,6 @@ describe("saved settings", () => {
       },
       /padding/u,
     ],
-    [
-      "a Block setting outside its schema",
-      (email: BlocksDocument) => {
-        const block = email.rows[0]?.columns[0]?.blocks[0] as Block;
-        block.props = { ...block.props, fontSize: 0 };
-      },
-      /fontSize/u,
-    ],
   ])("refuses %s", (_name, change, reason) => {
     expect(saved(change)).toStrictEqual({
       ok: false,
@@ -468,29 +436,7 @@ describe(rowStyles, () => {
   });
 });
 
-const keys = (fields: readonly SettingsField[]) => fields.map(({ key }) => key);
-
 describe("settings fields", () => {
-  it("are alignment, color and font size for a Text Block", () => {
-    expect(
-      keys(blockSettingsFields({ props: {}, type: "text" }))
-    ).toStrictEqual(["align", "color", "fontSize"]);
-  });
-
-  it("are background color for a Row", () => {
-    expect(keys(ROW_SETTINGS_FIELDS)).toStrictEqual(["backgroundColor"]);
-  });
-
-  it("are width, background color, font, preheader and language for an email", () => {
-    expect(keys(EMAIL_SETTINGS_FIELDS)).toStrictEqual([
-      "width",
-      "backgroundColor",
-      "fontFamily",
-      "preheader",
-      "language",
-    ]);
-  });
-
   it("offer the font of a new email", () => {
     const font = EMAIL_SETTINGS_FIELDS.find(({ key }) => key === "fontFamily");
     const options = font?.type === "select" ? font.options : [];

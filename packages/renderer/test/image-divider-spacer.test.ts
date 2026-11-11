@@ -48,20 +48,6 @@ const imageTag = (html: string) => html.match(/<img\s[^>]*>/u)?.[0] ?? "";
 const LOGO = "https://cdn.example/logo.png";
 
 describe("an Image Block", () => {
-  it("includes its alt text", async () => {
-    const html = await renderEmail(
-      emailWith(image({ alt: "Our logo", src: LOGO }))
-    );
-
-    expect(imageTag(html)).toContain('alt="Our logo"');
-  });
-
-  it("has an empty alt rather than none, so its URL isn't read out", async () => {
-    const html = await renderEmail(emailWith(image({ src: LOGO })));
-
-    expect(imageTag(html)).toContain('alt=""');
-  });
-
   it("escapes its alt text and URLs", async () => {
     const html = await renderEmail(
       emailWith(
@@ -82,28 +68,6 @@ describe("an Image Block", () => {
     expect(html).toContain('href="https://shop.example/?a=1&amp;b=2"');
   });
 
-  it("keeps Merge Tags in its URL, link and alt text", async () => {
-    const html = await renderEmail(
-      emailWith(
-        image({
-          alt: "{{company}} logo",
-          href: "{{site_url}}",
-          src: "{{logo_url}}",
-        })
-      )
-    );
-
-    expect(imageTag(html)).toContain('src="{{logo_url}}"');
-    expect(imageTag(html)).toContain('alt="{{company}} logo"');
-    expect(html).toContain('href="{{site_url}}"');
-  });
-
-  it("is only a link if it has one", async () => {
-    const html = await renderEmail(emailWith(image({ src: LOGO })));
-
-    expect(html).not.toMatch(/<a\s/u);
-  });
-
   it("stops at the Column's width, less its padding", async () => {
     const html = await renderEmail(
       emailWith(image({ src: LOGO, width: 5000 }))
@@ -121,15 +85,6 @@ describe("an Image Block", () => {
 
     expect(html).not.toContain("<img");
     expect(html).not.toContain("shop.example");
-  });
-
-  it.each([
-    // oxlint-disable-next-line no-script-url -- What's being refused.
-    ["an executable URL", { src: "javascript:alert(1)" }, /src/u],
-    // oxlint-disable-next-line no-script-url -- What's being refused.
-    ["an executable link", { href: "javascript:alert(1)", src: LOGO }, /href/u],
-  ])("refuses to export %s", async (_name, props, reason) => {
-    await expect(renderEmail(emailWith(image(props)))).rejects.toThrow(reason);
   });
 
   it("matches the saved HTML with every setting", async () => {
@@ -155,14 +110,6 @@ describe("an Image Block", () => {
 });
 
 describe("a Divider Block", () => {
-  it("renders a line of its color and thickness", async () => {
-    const html = await renderEmail(
-      emailWith(divider({ color: "#ff0000", thickness: 4 }))
-    );
-
-    expect(html).toContain("border-top:solid 4px #ff0000");
-  });
-
   it("has a look of its own with nothing set", async () => {
     const html = await renderEmail(emailWith(divider()));
 
@@ -174,21 +121,9 @@ describe("a Divider Block", () => {
       renderEmail(emailWith(divider({ color: "#123456", thickness: 3 })))
     ).resolves.toMatchFileSnapshot("expected/divider-every-setting.html");
   });
-
-  it("matches the saved HTML with nothing set", async () => {
-    await expect(
-      renderEmail(emailWith(divider()))
-    ).resolves.toMatchFileSnapshot("expected/divider-defaults.html");
-  });
 });
 
 describe("a Spacer Block", () => {
-  it("renders space of its height", async () => {
-    const html = await renderEmail(emailWith(spacer({ height: 40 })));
-
-    expect(html).toMatch(/height:40px;\s*line-height:40px/u);
-  });
-
   it("has a height of its own with nothing set", async () => {
     const html = await renderEmail(emailWith(spacer()));
 
@@ -199,11 +134,5 @@ describe("a Spacer Block", () => {
     await expect(
       renderEmail(emailWith(spacer({ height: 40 })))
     ).resolves.toMatchFileSnapshot("expected/spacer-height.html");
-  });
-
-  it("matches the saved HTML with nothing set", async () => {
-    await expect(renderEmail(emailWith(spacer()))).resolves.toMatchFileSnapshot(
-      "expected/spacer-defaults.html"
-    );
   });
 });

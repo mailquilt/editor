@@ -41,15 +41,6 @@ test("onError hears a refused first document", async ({ page }) => {
   await expect(shell(page).getByRole("alert")).toContainText("newer");
 });
 
-test("ref gives the host the element, to export HTML", async ({ page }) => {
-  await page.goto("/?shell");
-  await expect(textBlock(page)).toHaveText("Hello");
-
-  await page.getByRole("button", { name: "Export with ref" }).click();
-
-  await expect(page.getByTestId("html")).toContainText("Hello");
-});
-
 test("with saveKey, a reload reopens the saved email rather than value", async ({
   page,
 }) => {

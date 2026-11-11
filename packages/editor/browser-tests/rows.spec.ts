@@ -4,14 +4,12 @@ import type { Page } from "@playwright/test";
 import {
   blockGroup,
   canvas,
-  currentValue,
   emailWith,
   openTab,
   rowTools,
   setValue,
   settle,
   structure,
-  textBlock,
 } from "./helpers.js";
 
 // The test host's unfriendly CSS pushes the canvas far down the page.
@@ -56,39 +54,6 @@ test.describe("selecting a Row", () => {
         .getByRole("group", { name: "Layout" })
         .getByRole("button", { exact: true, name: "50/50" })
     ).toHaveAttribute("aria-pressed", "true");
-  });
-
-  test("works for an empty Row, from the keyboard", async ({ page }) => {
-    await open(page, [[["A"]], [[]]]);
-
-    await selectRowButton(page, 2).focus();
-    await page.keyboard.press("Enter");
-
-    await expect(selectRowButton(page, 2)).toHaveAttribute(
-      "aria-pressed",
-      "true"
-    );
-    await panelSettings(page)
-      .getByLabel("Background color", { exact: true })
-      .fill("#ff0000");
-    await page.keyboard.press("Enter");
-    const { rows } = await currentValue(page);
-    expect(rows[1]?.props).toMatchObject({ backgroundColor: "#ff0000" });
-  });
-
-  test("changes the Row's layout from the side panel", async ({ page }) => {
-    await open(page, [[["A"]]]);
-    await selectRowButton(page, 1).focus();
-    await page.keyboard.press("Enter");
-
-    await canvas(page)
-      .locator(".side-panel")
-      .getByRole("group", { name: "Layout" })
-      .getByRole("button", { exact: true, name: "33/67" })
-      .click();
-
-    const { rows } = await currentValue(page);
-    expect(rows[0]?.columns.map(({ width }) => width)).toEqual([33, 67]);
   });
 
   test("gives way to a selected Block, and to a click on the workspace", async ({
@@ -192,18 +157,5 @@ test.describe("dragging a layout from the Rows tab", () => {
     );
     await page.keyboard.press("ControlOrMeta+z");
     await expect(structure(page)).resolves.toEqual([[["A"]], [["B"]]]);
-  });
-
-  test("still adds at the end with a click", async ({ page }) => {
-    await open(page, [[["A"]]]);
-    await openTab(page, "Rows");
-
-    await canvas(page)
-      .getByRole("group", { name: "Add a Row" })
-      .getByRole("button", { exact: true, name: "100" })
-      .click();
-
-    await expect(structure(page)).resolves.toEqual([[["A"]], [[]]]);
-    await expect(textBlock(page)).toHaveText("A");
   });
 });

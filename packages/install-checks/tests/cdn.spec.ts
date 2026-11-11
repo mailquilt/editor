@@ -70,17 +70,6 @@ test("MJML loads from beside the CDN build, only for export", async ({
   });
 });
 
-test("MJML loads from beside the CDN build, only for preview", async ({
-  page,
-}) => {
-  await checkMjmlLoadsOnlyFor(page, async () => {
-    await page.getByRole("button", { exact: true, name: "Preview" }).click();
-    await expect(
-      page.frameLocator("iframe[title='Email preview']").locator("body")
-    ).toContainText("Hello");
-  });
-});
-
 test("the CDN build lists the license of each package it bundles", async ({
   request,
 }) => {

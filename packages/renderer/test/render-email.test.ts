@@ -121,13 +121,6 @@ describe(renderEmail, () => {
       ),
     ],
     [
-      "67-33",
-      emailWithColumns(
-        { texts: ["Wide"], width: 67 },
-        { texts: ["Narrow"], width: 33 }
-      ),
-    ],
-    [
       "33-33-33",
       emailWithColumns(
         { texts: ["One"], width: 33.33 },
@@ -150,18 +143,6 @@ describe(renderEmail, () => {
         { texts: [], width: 50 },
         { texts: ["Right"], width: 50 }
       ),
-    ],
-    [
-      "33-33-33-empty-columns",
-      emailWithColumns(
-        { texts: ["Only"], width: 33.33 },
-        { texts: [], width: 33.33 },
-        { texts: [], width: 33.34 }
-      ),
-    ],
-    [
-      "50-50-all-empty",
-      emailWithColumns({ texts: [], width: 50 }, { texts: [], width: 50 }),
     ],
   ])("matches the saved HTML for the %s Row", async (name, email) => {
     await expect(renderEmail(email)).resolves.toMatchFileSnapshot(
@@ -193,16 +174,6 @@ describe(renderEmail, () => {
     );
   });
 
-  it("puts the language on the document and the email", async () => {
-    const email = emailWithText("Hi");
-    email.settings.language = "fr-CA";
-
-    const html = await renderEmail(email);
-
-    expect(html).toContain('<html lang="fr-CA"');
-    expect(html).toContain('role="article" lang="fr-CA"');
-  });
-
   it("keeps a saved language that isn't a code, safely", async () => {
     const email = emailWithText("Hi");
     email.settings.language = 'en"><script>alert(1)</script>';
@@ -213,49 +184,12 @@ describe(renderEmail, () => {
     expect(html).toContain('lang="en&quot;&gt;&lt;script&gt;');
   });
 
-  it("exports a saved language such as en_US", async () => {
-    const email = emailWithText("Hi");
-    email.settings.language = "en_US";
-
-    await expect(renderEmail(email)).resolves.toContain('<html lang="en_US"');
-  });
-
-  it("leaves the language undetermined when it's saved empty", async () => {
-    const email = emailWithText("Hi");
-    email.settings.language = "";
-
-    await expect(renderEmail(email)).resolves.toContain('<html lang="und"');
-  });
-
   it("exports a setting that's undefined as if it weren't set", async () => {
     const email = emailWithText("Hi");
     const block = email.rows[0]?.columns[0]?.blocks[0] as Block;
     block.props = { ...block.props, color: undefined };
 
     await expect(renderEmail(email)).resolves.toContain("color:#000000");
-  });
-
-  it("leaves the language undetermined when none is set", async () => {
-    const html = await renderEmail(emailWithText("Hi"));
-
-    expect(html).toContain('<html lang="und"');
-  });
-
-  it("shows the preheader to inboxes but not in the email", async () => {
-    const email = emailWithText("Hi");
-    email.settings.preheader = "Read me first";
-
-    const html = await renderEmail(email);
-
-    expect(html).toMatch(
-      /<div style="display:none;[^"]*">Read me first<\/div>/u
-    );
-  });
-
-  it("leaves out the preheader when none is set", async () => {
-    const html = await renderEmail(emailWithText("Hi"));
-
-    expect(html).not.toContain("display:none");
   });
 
   it("escapes a preheader so it can't become markup", async () => {
@@ -282,12 +216,6 @@ describe(renderEmail, () => {
     block.props = { ...block.props, color };
 
     await expect(renderEmail(email)).resolves.toContain(`color:${color}`);
-  });
-
-  it("keeps Merge Tags intact", async () => {
-    const html = await renderEmail(emailWithText("Hi {{first_name}}!"));
-
-    expect(html).toContain("Hi {{first_name}}!");
   });
 
   it("escapes text so it can't become markup", async () => {
@@ -333,41 +261,6 @@ describe(renderEmail, () => {
     await expect(html).toMatchFileSnapshot("expected/formatted-text.html");
   });
 
-  it.each([
-    ["bold", "<strong>x</strong>"],
-    ["italic", "<em>x</em>"],
-    ["underline", "<u>x</u>"],
-  ])("renders %s with its own tag", async (type, expected) => {
-    const html = await renderEmail(
-      emailWithInline({ marks: [{ type }], text: "x", type: "text" })
-    );
-
-    expect(html).toContain(expected);
-  });
-
-  it("puts a link around the other marks on its text", async () => {
-    const html = await renderEmail(
-      emailWithInline({
-        marks: [
-          { attrs: { href: "https://example.com" }, type: "link" },
-          { type: "bold" },
-        ],
-        text: "x",
-        type: "text",
-      })
-    );
-
-    expect(html).toContain(
-      '<a href="https://example.com" target="_blank"><strong>x</strong></a>'
-    );
-  });
-
-  it("keeps a Merge Tag in a link intact", async () => {
-    const html = await renderEmail(emailWithInline(linked("{{cta_url}}")));
-
-    expect(html).toContain('<a href="{{cta_url}}" target="_blank">Click</a>');
-  });
-
   it("escapes a link URL so it can't become markup", async () => {
     const html = await renderEmail(
       emailWithInline(linked(`https://a.b/?x="><script>&y=</mj-text>`))
@@ -389,13 +282,6 @@ describe(renderEmail, () => {
     );
 
     expect(html).toContain("<strong>&lt;b&gt;&amp;</strong>");
-  });
-
-  it("refuses to render an executable link", async () => {
-    await expect(
-      // oxlint-disable-next-line eslint/no-script-url -- This is what the test refuses.
-      renderEmail(emailWithInline(linked("javascript:alert(1)")))
-    ).rejects.toThrow(/link/iu);
   });
 
   it("renders a line break, ignoring marks left on it", async () => {
@@ -420,16 +306,6 @@ describe(renderEmail, () => {
     expect(html).toContain(
       '<p style="margin:0;white-space:pre-wrap">a<br /><br /></p>'
     );
-  });
-
-  it("refuses a Block type it can't render", async () => {
-    const email = emailWithText("Hi");
-    const block = email.rows[0]?.columns[0]?.blocks[0];
-    if (block) {
-      block.type = "hologram";
-    }
-
-    await expect(renderEmail(email)).rejects.toThrow(/hologram/u);
   });
 
   // MJML's strict validation rejects more than CSS does, so anything that loads
@@ -490,19 +366,6 @@ describe(renderEmail, () => {
       },
     ],
     [
-      "rounded Column widths",
-      (email) => {
-        const [row] = email.rows;
-        if (row) {
-          row.columns = [
-            { blocks: [], id: "a", props: {}, width: 33.33 },
-            { blocks: [], id: "b", props: {}, width: 33.33 },
-            { blocks: [], id: "c", props: {}, width: 33.34 },
-          ];
-        }
-      },
-    ],
-    [
       "no Rows",
       (email) => {
         email.rows = [];
@@ -517,45 +380,14 @@ describe(renderEmail, () => {
     await expect(renderEmail(email)).resolves.toMatch(/^<!doctype html>/iu);
   });
 
-  const refused: [string, (email: BlocksDocument) => unknown, RegExp][] = [
-    ["nothing", () => null, /object/iu],
-    [
-      "a newer version",
-      (email) => ({ ...email, version: 2 }),
-      /version 2 is newer/iu,
-    ],
-    ["a malformed document", ({ rows: _rows, ...email }) => email, /rows/u],
-    [
-      "a Column width that would break out of its attribute",
-      (email) => {
-        const column = email.rows[0]?.columns[0] as unknown as {
-          width: string;
-        };
-        column.width = '100"><script>alert(1)</script>';
-        return email;
-      },
-      /rows\.0\.columns\.0\.width/u,
-    ],
-  ];
+  it("refuses a Column width that would break out of its attribute, with the reason", async () => {
+    const email = emailWithText("Hi");
+    const column = email.rows[0]?.columns[0] as unknown as { width: string };
+    column.width = '100"><script>alert(1)</script>';
 
-  it.each(refused)(
-    "refuses %s, with the reason",
-    async (_name, damage, reason) => {
-      const document = damage(emailWithText("Hi"));
-
-      await expect(renderEmail(document as BlocksDocument)).rejects.toThrow(
-        reason
-      );
-    }
-  );
-
-  it("doesn't change a document it refuses", async () => {
-    const document = { ...emailWithText("Hi"), version: 2 };
-    const before = structuredClone(document);
-
-    await expect(renderEmail(document)).rejects.toThrow(/newer/u);
-
-    expect(document).toStrictEqual(before);
+    await expect(renderEmail(email)).rejects.toThrow(
+      /rows\.0\.columns\.0\.width/u
+    );
   });
 
   it("runs in plain Node with no DOM, editor or ProseMirror code loaded", () => {

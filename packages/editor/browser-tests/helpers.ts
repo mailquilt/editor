@@ -178,12 +178,6 @@ export const blockTool = (page: Page, name: string) =>
     .getByRole("toolbar", { name: "Block tools" })
     .getByRole("button", { exact: true, name });
 
-/** The format bar, which shows while a Block's text is being edited. */
-export const formatButton = (page: Page, name: string) =>
-  canvas(page)
-    .getByRole("toolbar", { name: "Text formatting" })
-    .getByRole("button", { exact: true, name });
-
 export const blockGroup = (page: Page, name: string) =>
   canvas(page).getByRole("group", { name: `${name} Block` });
 

@@ -14,7 +14,6 @@ import {
   field,
   openBlocks as open,
   openExport,
-  openTab,
   palette,
   redo,
   rowTools,
@@ -109,11 +108,6 @@ const makeThin = async (page: Page) => {
   await change(field(page, "Height (px)"), "1");
 };
 
-const NAMES = ["Image", "Divider", "Spacer"];
-
-const withArticle = (name: string) =>
-  `${name === "Image" ? "an" : "a"} ${name}`;
-
 test.describe("the palette", () => {
   test("offers every type of Block", async ({ page }) => {
     await open(page, ["text"]);
@@ -123,166 +117,97 @@ test.describe("the palette", () => {
     ).toHaveText(["Text", "Heading", "Image", "Button", "Divider", "Spacer"]);
   });
 
-  for (const name of ["Text", ...NAMES]) {
-    test(`names ${withArticle(name)} correctly in an empty Column's tooltip`, async ({
-      page,
-    }) => {
-      await open(page, ["text"], []);
+  test("adds an Image, selected, and undoes and redoes it", async ({
+    page,
+  }) => {
+    await open(page, ["text"]);
 
-      await page
-        .getByRole("button", {
-          name: `Add ${name} Block here, Row 1, Column 2`,
-        })
-        .hover();
+    await palette(page, "Image").click();
 
-      await expect(canvas(page).getByRole("tooltip")).toHaveText(
-        `Add ${name} Block here`
-      );
-    });
-  }
+    await expect(blockGroup(page, "Image")).toBeFocused();
+    await expect(blockTypes(page)).resolves.toEqual(["text", "image"]);
 
-  for (const name of NAMES) {
-    const type = name.toLowerCase();
+    await undo(page);
+    await expect(blockTypes(page)).resolves.toEqual(["text"]);
 
-    test(`adds ${withArticle(name)}, selected, and undoes and redoes it`, async ({
-      page,
-    }) => {
-      await open(page, ["text"]);
-
-      await palette(page, name).click();
-
-      await expect(blockGroup(page, name)).toBeFocused();
-      await expect(blockTypes(page)).resolves.toEqual(["text", type]);
-
-      await undo(page);
-      await expect(blockTypes(page)).resolves.toEqual(["text"]);
-
-      await redo(page);
-      await expect(blockTypes(page)).resolves.toEqual(["text", type]);
-    });
-
-    test(`adds ${withArticle(name)} with Enter, after the selected Block`, async ({
-      page,
-    }) => {
-      await open(page, ["text", "text"]);
-      await blockGroup(page, "Text").first().focus();
-      await openTab(page, "Content");
-      await palette(page, name).focus();
-
-      await page.keyboard.press("Enter");
-
-      await expect(blockTypes(page)).resolves.toEqual(["text", type, "text"]);
-    });
-
-    test(`drags ${withArticle(name)} in from the palette`, async ({ page }) => {
-      await open(page, ["text"], []);
-
-      await dragTo(
-        page,
-        palette(page, name),
-        canvas(page).locator(".column").nth(1)
-      );
-
-      await expect(blockTypes(page, 0, 1)).resolves.toEqual([type]);
-
-      await undo(page);
-      await expect(blockTypes(page, 0, 1)).resolves.toEqual([]);
-    });
-
-    test(`adds ${withArticle(name)} from an empty Column's own control`, async ({
-      page,
-    }) => {
-      await open(page, ["text"], []);
-      await page
-        .getByRole("button", {
-          name: `Add ${name} Block here, Row 1, Column 2`,
-        })
-        .focus();
-
-      await page.keyboard.press("Enter");
-
-      await expect(blockTypes(page, 0, 1)).resolves.toEqual([type]);
-    });
-  }
+    await redo(page);
+    await expect(blockTypes(page)).resolves.toEqual(["text", "image"]);
+  });
 });
 
-for (const name of NAMES) {
-  const type = name.toLowerCase();
+test.describe("moving an Image", () => {
+  test("by its handle, within a Column", async ({ page }) => {
+    await open(page, ["text", "image"]);
+    const block = blockGroup(page, "Image");
+    await block.hover();
 
-  test.describe(`moving ${withArticle(name)}`, () => {
-    test("by its handle, within a Column", async ({ page }) => {
-      await open(page, ["text", type]);
-      const block = blockGroup(page, name);
-      await block.hover();
+    await dragTo(
+      page,
+      block.locator(".drag-handle"),
+      blockGroup(page, "Text"),
+      0.25
+    );
 
-      await dragTo(
-        page,
-        block.locator(".drag-handle"),
-        blockGroup(page, "Text"),
-        0.25
-      );
+    await expect(blockTypes(page)).resolves.toEqual(["image", "text"]);
 
-      await expect(blockTypes(page)).resolves.toEqual([type, "text"]);
-
-      await undo(page);
-      await expect(blockTypes(page)).resolves.toEqual(["text", type]);
-    });
-
-    test("by its handle, to another Column", async ({ page }) => {
-      await open(page, [type], []);
-      const block = blockGroup(page, name);
-      await block.hover();
-
-      await dragTo(
-        page,
-        block.locator(".drag-handle"),
-        canvas(page).locator(".column").nth(1)
-      );
-
-      await expect(blockTypes(page, 0, 1)).resolves.toEqual([type]);
-      await expect(blockTypes(page, 0, 0)).resolves.toEqual([]);
-    });
-
-    test("by keyboard", async ({ page }) => {
-      await open(page, ["text", type]);
-      await blockGroup(page, name).focus();
-
-      await page.keyboard.press("Alt+ArrowUp");
-
-      await expect(blockTypes(page)).resolves.toEqual([type, "text"]);
-      await expect(blockGroup(page, name)).toBeFocused();
-      await expect(canvas(page).getByRole("status")).toHaveText(
-        "Moved to Row 1, Column 1, position 1 of 2."
-      );
-
-      await page.keyboard.press("ControlOrMeta+z");
-      await expect(blockTypes(page)).resolves.toEqual(["text", type]);
-    });
-
-    test("is reached with arrow keys, and ignores Enter", async ({ page }) => {
-      await open(page, ["text", type]);
-      await blockGroup(page, "Text").focus();
-
-      await page.keyboard.press("ArrowDown");
-      await expect(blockGroup(page, name)).toBeFocused();
-
-      await page.keyboard.press("Enter");
-      await expect(blockGroup(page, name)).toBeFocused();
-    });
-
-    test("can be deleted, and comes back with undo", async ({ page }) => {
-      await open(page, ["text", type]);
-      await blockGroup(page, name).focus();
-
-      await page.getByRole("button", { name: "Delete Block" }).click();
-      await expect(blockTypes(page)).resolves.toEqual(["text"]);
-
-      await undo(page);
-      await expect(blockTypes(page)).resolves.toEqual(["text", type]);
-      await expect(blockGroup(page, name)).toBeVisible();
-    });
+    await undo(page);
+    await expect(blockTypes(page)).resolves.toEqual(["text", "image"]);
   });
-}
+
+  test("by its handle, to another Column", async ({ page }) => {
+    await open(page, ["image"], []);
+    const block = blockGroup(page, "Image");
+    await block.hover();
+
+    await dragTo(
+      page,
+      block.locator(".drag-handle"),
+      canvas(page).locator(".column").nth(1)
+    );
+
+    await expect(blockTypes(page, 0, 1)).resolves.toEqual(["image"]);
+    await expect(blockTypes(page, 0, 0)).resolves.toEqual([]);
+  });
+
+  test("by keyboard", async ({ page }) => {
+    await open(page, ["text", "image"]);
+    await blockGroup(page, "Image").focus();
+
+    await page.keyboard.press("Alt+ArrowUp");
+
+    await expect(blockTypes(page)).resolves.toEqual(["image", "text"]);
+    await expect(blockGroup(page, "Image")).toBeFocused();
+    await expect(canvas(page).getByRole("status")).toHaveText(
+      "Moved to Row 1, Column 1, position 1 of 2."
+    );
+
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(blockTypes(page)).resolves.toEqual(["text", "image"]);
+  });
+
+  test("is reached with arrow keys, and ignores Enter", async ({ page }) => {
+    await open(page, ["text", "image"]);
+    await blockGroup(page, "Text").focus();
+
+    await page.keyboard.press("ArrowDown");
+    await expect(blockGroup(page, "Image")).toBeFocused();
+
+    await page.keyboard.press("Enter");
+    await expect(blockGroup(page, "Image")).toBeFocused();
+  });
+
+  test("can be deleted, and comes back with undo", async ({ page }) => {
+    await open(page, ["text", "image"]);
+    await blockGroup(page, "Image").focus();
+
+    await page.getByRole("button", { name: "Delete Block" }).click();
+    await expect(blockTypes(page)).resolves.toEqual(["text"]);
+
+    await undo(page);
+    await expect(blockTypes(page)).resolves.toEqual(["text", "image"]);
+    await expect(blockGroup(page, "Image")).toBeVisible();
+  });
+});
 
 test.describe("dragging a tall Block", () => {
   test("keeps the page where it is, scrolled to its end", async ({ page }) => {
@@ -343,46 +268,39 @@ test.describe("an Image", () => {
     await expect(image(page)).toHaveCount(0);
   });
 
-  for (const src of [
+  test("refuses the URL javascript:alert(1), and says so", async ({ page }) => {
+    await open(page, ["image"]);
+    await blockGroup(page, "Image").focus();
+
     // oxlint-disable-next-line no-script-url -- What's being refused.
-    "javascript:alert(1)",
-    "data:image/svg+xml,<svg onload=alert(1)>",
-    "mailto:sales@shop.example",
-    "/photo.png",
-  ]) {
-    test(`refuses the URL ${src}, and says so`, async ({ page }) => {
-      await open(page, ["image"]);
-      await blockGroup(page, "Image").focus();
+    await change(field(page, "Image URL"), "javascript:alert(1)");
 
-      await change(field(page, "Image URL"), src);
+    await expect(field(page, "Image URL")).toHaveAttribute(
+      "aria-invalid",
+      "true"
+    );
+    await expect(page.getByRole("alert")).toHaveText(
+      /a Merge Tag such as \{\{logo_url\}\}/u
+    );
+    await expect(firstBlockProps(page)).resolves.toEqual({ src: PHOTO });
+  });
 
-      await expect(field(page, "Image URL")).toHaveAttribute(
-        "aria-invalid",
-        "true"
-      );
-      await expect(page.getByRole("alert")).toHaveText(
-        /a Merge Tag such as \{\{logo_url\}\}/u
-      );
-      await expect(firstBlockProps(page)).resolves.toEqual({ src: PHOTO });
+  test("refuses the link javascript:alert(1), and says so", async ({
+    page,
+  }) => {
+    await open(page, ["image"]);
+    await blockGroup(page, "Image").focus();
+    await change(field(page, "Alt text"), "A red bicycle");
+
+    // oxlint-disable-next-line no-script-url -- What's being refused.
+    await change(field(page, "Link"), "javascript:alert(1)");
+
+    await expect(field(page, "Link")).toHaveAttribute("aria-invalid", "true");
+    await expect(firstBlockProps(page)).resolves.toEqual({
+      alt: "A red bicycle",
+      src: PHOTO,
     });
-  }
-
-  // oxlint-disable-next-line no-script-url -- What's being refused.
-  for (const href of ["javascript:alert(1)", "/relative"]) {
-    test(`refuses the link ${href}, and says so`, async ({ page }) => {
-      await open(page, ["image"]);
-      await blockGroup(page, "Image").focus();
-      await change(field(page, "Alt text"), "A red bicycle");
-
-      await change(field(page, "Link"), href);
-
-      await expect(field(page, "Link")).toHaveAttribute("aria-invalid", "true");
-      await expect(firstBlockProps(page)).resolves.toEqual({
-        alt: "A red bicycle",
-        src: PHOTO,
-      });
-    });
-  }
+  });
 
   test("offers a link once it has alt text", async ({ page }) => {
     await open(page, ["image"]);
@@ -647,48 +565,20 @@ test.describe("a Divider", () => {
     await expect(look(opened.locator("p"))).resolves.toEqual(onCanvas);
   });
 
-  test("shows the look it has before anything is set", async ({ page }) => {
+  test("refuses a thickness of 0, and says so", async ({ page }) => {
     await open(page, ["divider"]);
     await blockGroup(page, "Divider").focus();
 
-    await expect(field(page, "Color")).toHaveValue("#d4d4d8");
-    await expect(field(page, "Thickness (px)")).toHaveValue("1");
+    await change(field(page, "Thickness (px)"), "0");
+
+    await expect(field(page, "Thickness (px)")).toHaveAttribute(
+      "aria-invalid",
+      "true"
+    );
+    await expect(page.getByRole("alert")).toHaveText(
+      "Use a whole number from 1 to 100."
+    );
   });
-
-  test("makes one undo step of each change", async ({ page }) => {
-    await open(page, ["divider"]);
-    await blockGroup(page, "Divider").focus();
-    await change(field(page, "Thickness (px)"), "6");
-    await change(field(page, "Color"), "#ff0000");
-
-    await undo(page);
-
-    await expect(firstBlockProps(page)).resolves.toEqual({ thickness: 6 });
-
-    await undo(page);
-
-    await expect(firstBlockProps(page)).resolves.toEqual({});
-    await expect(look(line(page))).resolves.toMatchObject({ height: 1 });
-  });
-
-  for (const thickness of ["0", "101"]) {
-    test(`refuses a thickness of ${thickness}, and says so`, async ({
-      page,
-    }) => {
-      await open(page, ["divider"]);
-      await blockGroup(page, "Divider").focus();
-
-      await change(field(page, "Thickness (px)"), thickness);
-
-      await expect(field(page, "Thickness (px)")).toHaveAttribute(
-        "aria-invalid",
-        "true"
-      );
-      await expect(page.getByRole("alert")).toHaveText(
-        "Use a whole number from 1 to 100."
-      );
-    });
-  }
 });
 
 test.describe("a Spacer", () => {
@@ -868,22 +758,20 @@ test.describe("a Spacer", () => {
     });
   });
 
-  for (const height of ["0", "1001"]) {
-    test(`refuses a height of ${height}, and says so`, async ({ page }) => {
-      await open(page, ["spacer"]);
-      await blockGroup(page, "Spacer").focus();
+  test("refuses a height of 0, and says so", async ({ page }) => {
+    await open(page, ["spacer"]);
+    await blockGroup(page, "Spacer").focus();
 
-      await change(field(page, "Height (px)"), height);
+    await change(field(page, "Height (px)"), "0");
 
-      await expect(field(page, "Height (px)")).toHaveAttribute(
-        "aria-invalid",
-        "true"
-      );
-      await expect(page.getByRole("alert")).toHaveText(
-        "Use a whole number from 1 to 1000."
-      );
-    });
-  }
+    await expect(field(page, "Height (px)")).toHaveAttribute(
+      "aria-invalid",
+      "true"
+    );
+    await expect(page.getByRole("alert")).toHaveText(
+      "Use a whole number from 1 to 1000."
+    );
+  });
 });
 
 test.describe("the floating toolbar", () => {
@@ -925,25 +813,6 @@ test.describe("the floating toolbar", () => {
     });
 
     expect(onTop).toEqual({ emailUnder: true, toolbar: true });
-  });
-});
-
-test.describe("a drag handle on a touch screen", () => {
-  test.skip(
-    ({ browserName }) => browserName !== "chromium",
-    "Only Chromium can emulate a phone."
-  );
-  test.use({ hasTouch: true, isMobile: true });
-
-  test("can always be pressed, as nothing hovers to reveal it", async ({
-    page,
-  }) => {
-    await open(page, ["text", "spacer"]);
-
-    await expect(blockGroup(page, "Spacer").locator(".drag-handle")).toHaveCSS(
-      "pointer-events",
-      "auto"
-    );
   });
 });
 

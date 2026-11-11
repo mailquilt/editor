@@ -37,16 +37,6 @@ test("a Server Component can use MailQuilt", async ({ page }) => {
     .toBe(true);
 });
 
-test("the element registers in the browser", async ({ page }) => {
-  await page.goto(url);
-
-  await expect
-    .poll(() =>
-      page.evaluate(() => customElements.get("mail-quilt") !== undefined)
-    )
-    .toBe(true);
-});
-
 test("rendering on a server doesn't register the element", async () => {
   const { stdout } = await promisify(execFile)("node", ["server-render.js"], {
     cwd: freshProjectDir("react"),

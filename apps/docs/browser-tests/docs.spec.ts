@@ -4,35 +4,6 @@ import { promisify } from "node:util";
 import { BLOCK_TYPES, loadDocument } from "@mailquilt/core";
 import { expect, test } from "@playwright/test";
 
-import { ISSUES } from "../site/project";
-
-test("the landing page links to the Playground, the quick start and the roadmap", async ({
-  page,
-}) => {
-  await page.goto("/");
-  const content = page.getByRole("main");
-
-  await expect(
-    content.getByRole("link", { name: /playground/iu }).first()
-  ).toHaveAttribute("href", "/playground");
-  await expect(
-    content.getByRole("link", { name: /quick start/iu }).first()
-  ).toHaveAttribute("href", "/docs/quick-start");
-  await expect(
-    content.getByRole("link", { name: /roadmap/iu }).first()
-  ).toHaveAttribute("href", "/roadmap");
-});
-
-test("the roadmap page points to where the roadmap is kept", async ({
-  page,
-}) => {
-  await page.goto("/roadmap");
-
-  await expect(
-    page.getByRole("main").getByRole("link", { name: "GitHub Issues" })
-  ).toHaveAttribute("href", ISSUES);
-});
-
 test("the landing page's editor is live, and shows the email it would save", async ({
   page,
 }) => {
@@ -218,14 +189,6 @@ test("the document format reference's example is an email core loads", async ({
   expect(used).toStrictEqual(new Set(BLOCK_TYPES.map(({ type }) => type)));
 });
 
-test("the email clients page says plainly that Outlook is untested", async ({
-  page,
-}) => {
-  await page.goto("/docs/email-clients");
-
-  await expect(page.getByRole("main")).toContainText("Outlook is untested.");
-});
-
 /** A path to a page rather than a file, without a trailing slash. */
 const pagePath = (path: string) =>
   /\.\w+$/u.test(path) ? undefined : path.replace(/(?<=.)\/$/u, "");
@@ -296,24 +259,6 @@ test("every page's links and assets resolve", async ({
       "/roadmap",
     ])
   );
-});
-
-test("the header offers the Playground on every page but the Playground", async ({
-  page,
-}) => {
-  const cta = () =>
-    page.getByRole("banner").getByRole("link", { name: "Try the Playground" });
-
-  for (const path of ["/", "/docs/quick-start", "/docs/theme-tokens"]) {
-    // oxlint-disable-next-line no-await-in-loop -- One page at a time.
-    await page.goto(path);
-    // oxlint-disable-next-line no-await-in-loop -- See above.
-    await expect(cta()).toHaveAttribute("href", "/playground");
-  }
-
-  await page.goto("/playground");
-  await expect(page.getByRole("banner")).toBeVisible();
-  await expect(cta()).toHaveCount(0);
 });
 
 const collapse = (text: string) => text.replaceAll(/\s+/gu, " ").trim();

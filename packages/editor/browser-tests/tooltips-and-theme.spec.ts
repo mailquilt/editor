@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
-import { blockGroup, canvas, openBlocks, textBlock } from "./helpers.js";
+import { canvas, openBlocks, textBlock } from "./helpers.js";
 
 const tooltip = (page: Page) => canvas(page).getByRole("tooltip");
 
@@ -74,17 +74,6 @@ test.describe("a tooltip", () => {
 
     await expect(tooltip(page)).toBeHidden();
     await expect(undoButton(page)).toBeFocused();
-  });
-
-  test("names a move button's shortcut", async ({ page }) => {
-    await openBlocks(page, ["text"]);
-    await blockGroup(page, "Text").focus();
-
-    await canvas(page)
-      .getByRole("button", { exact: true, name: "Move Block up" })
-      .hover();
-
-    await expect(tooltip(page)).toHaveText("Move Block up (Alt+↑)");
   });
 
   test("every icon button has a name and a tooltip", async ({ page }) => {

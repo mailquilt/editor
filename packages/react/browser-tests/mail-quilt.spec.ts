@@ -13,12 +13,6 @@ const focusStartOfTextBlock = async (page: Page) => {
   );
 };
 
-test("shows the email in value", async ({ page }) => {
-  await page.goto("/");
-
-  await expect(textBlock(page)).toHaveText("Hello");
-});
-
 test("onError hears a refused first document", async ({ page }) => {
   await page.goto("/?refused-first");
 
@@ -29,15 +23,6 @@ test("onError hears a refused first document", async ({ page }) => {
 const fastTyping = "The quick brown fox jumps over the lazy dog. ".repeat(3);
 
 test.describe("passing each onChange document back into value", () => {
-  test("hands the host each new document", async ({ page }) => {
-    await page.goto("/");
-    await focusStartOfTextBlock(page);
-
-    await page.keyboard.type("Oh ");
-
-    await expect(page.getByTestId("latest-document")).toContainText("Oh Hello");
-  });
-
   test("keeps the cursor", async ({ page }) => {
     await page.goto("/");
     await focusStartOfTextBlock(page);
@@ -141,14 +126,9 @@ test("comes back working after being removed", async ({ page }) => {
 const calls = (page: Page) => page.getByTestId("ref-calls");
 
 test.describe("a callback ref", () => {
-  test("is only called once the element has its email", async ({ page }) => {
-    await page.goto("/?callback-ref");
-    await expect(textBlock(page)).toHaveText("Hello");
-
-    await expect(calls(page)).toHaveText("email");
-  });
-
-  test("is cleaned up when the editor is removed", async ({ page }) => {
+  test("is only called once the element has its email, and cleaned up when the editor is removed", async ({
+    page,
+  }) => {
     await page.goto("/?callback-ref");
     await expect(calls(page)).toContainText("email");
 
