@@ -1,0 +1,25 @@
+name: Close outside pull requests
+
+# pull_request_target runs this repository's copy of the workflow, with a token
+# that can close the pull request. It never checks out or runs the pull
+# request's code, which is what makes that safe.
+on:
+  pull_request_target:
+    types: [opened, reopened]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  close:
+    if: ${{ !contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: gh pr close "$NUMBER" --repo "$REPOSITORY" --comment "$MESSAGE"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NUMBER: ${{ github.event.pull_request.number }}
+          REPOSITORY: ${{ github.repository }}
+          MESSAGE: >-
+            Thank you for this. Mail Quilt isn't accepting pull requests yet, so this one is closed. CONTRIBUTING.md explains why. If it fixes a bug or adds an idea, please open an issue for it instead.
