@@ -1,4 +1,4 @@
-import { contains } from "./geometry.js";
+import { contains, shadowRootsUpFrom } from "./geometry.js";
 
 /** What has a tooltip: the attribute holds its words. */
 const TOOLTIP_TRIGGERS = "[data-tooltip]";
@@ -21,17 +21,10 @@ const triggerOf = (target: EventTarget | null) =>
  * Where a scroll that moves a control can be heard. A scroll isn't composed, so
  * one inside a shadow root, such as the Shell's, never reaches the window.
  */
-const scrollTargetsOf = (root: ShadowRoot) => {
-  const targets: EventTarget[] = [window];
-  for (
-    let node: Node = root;
-    node instanceof ShadowRoot;
-    node = node.host.getRootNode()
-  ) {
-    targets.push(node);
-  }
-  return targets;
-};
+const scrollTargetsOf = (root: ShadowRoot): EventTarget[] => [
+  window,
+  ...shadowRootsUpFrom(root),
+];
 
 /**
  * One tooltip for every control under `root` with `data-tooltip`, meeting WCAG

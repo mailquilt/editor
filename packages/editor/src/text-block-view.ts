@@ -457,11 +457,6 @@ const cursorAfterChange = (
 /** Marks a focus change: true when the text gains focus, false when it loses it. */
 const FOCUSED = "mailquilt:focused";
 
-/**
- * Owns the DOM and ProseMirror view of one Block's text. Lit only places
- * `element` on the canvas, so the view survives re-renders. The editor keeps
- * the one undo history, so ProseMirror's isn't loaded.
- */
 /** Pasted or dropped text with no bold, for a Block that can't have it. */
 const withoutBold = (fragment: Fragment): Fragment =>
   Fragment.from(
@@ -472,6 +467,11 @@ const withoutBold = (fragment: Fragment): Fragment =>
     )
   );
 
+/**
+ * Owns the DOM and ProseMirror view of one Block's text. Lit only places
+ * `element` on the canvas, so the view survives re-renders. The editor keeps
+ * the one undo history, so ProseMirror's isn't loaded.
+ */
 export const createTextBlockView = ({
   canBold,
   content,

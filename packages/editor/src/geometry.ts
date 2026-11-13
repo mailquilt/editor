@@ -13,3 +13,19 @@ export const contains = (
     y <= bottom + margin
   );
 };
+
+/**
+ * `root` and each shadow root around it, up to the page. What the page has, such
+ * as a scroll event or a style sheet, doesn't reach inside them.
+ */
+export const shadowRootsUpFrom = (root: ShadowRoot) => {
+  const roots: ShadowRoot[] = [];
+  for (
+    let node: Node = root;
+    node instanceof ShadowRoot;
+    node = node.host.getRootNode()
+  ) {
+    roots.push(node);
+  }
+  return roots;
+};

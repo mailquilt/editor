@@ -1,6 +1,6 @@
 import type { Command, RowLayout } from "@mailquilt/core";
 
-import { contains } from "./geometry.js";
+import { contains, shadowRootsUpFrom } from "./geometry.js";
 
 /**
  * What a drag brings: a Block or Row on the canvas, a new Block from the palette,
@@ -274,14 +274,7 @@ const autoScroll = (
 const showGrabbingCursor = (root: ShadowRoot) => {
   const sheet = new CSSStyleSheet();
   sheet.replaceSync("* { cursor: grabbing !important; }");
-  const owners: (Document | ShadowRoot)[] = [document];
-  for (
-    let owner: Node = root;
-    owner instanceof ShadowRoot;
-    owner = owner.host.getRootNode()
-  ) {
-    owners.push(owner);
-  }
+  const owners = [document, ...shadowRootsUpFrom(root)];
   for (const owner of owners) {
     owner.adoptedStyleSheets = [...owner.adoptedStyleSheets, sheet];
   }
