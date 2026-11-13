@@ -101,6 +101,30 @@ describe("refusing a document", () => {
       /brand/u,
     ],
     [
+      "Row props that are a list",
+      (email) => {
+        email.rows[0].props = [];
+        return email;
+      },
+      /rows\.0\.props.*list/u,
+    ],
+    [
+      "Column props that are a list",
+      (email) => {
+        email.rows[0].columns[0].props = [];
+        return email;
+      },
+      /columns\.0\.props.*list/u,
+    ],
+    [
+      "Block props that are a list",
+      (email) => {
+        email.rows[0].columns[0].blocks[0].props = [];
+        return email;
+      },
+      /blocks\.0\.props.*list/u,
+    ],
+    [
       "an email width that isn't a positive number",
       (email) => {
         email.settings.width = "600px";

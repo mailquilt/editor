@@ -23,6 +23,12 @@ const COLUMN_WIDTH_TOLERANCE = 1e-6;
 
 const idSchema = v.pipe(v.string(), v.nonEmpty());
 
+// The object schemas let an array through, and would load `[]` as `{}`.
+const notAList = v.check<unknown>(
+  (input) => !Array.isArray(input),
+  "Expected an object, not a list"
+);
+
 // Strict at every level, so a field this version doesn't know is refused rather
 // than dropped, which would lose it at the host's next save.
 const documentSchema = v.strictObject({
@@ -37,12 +43,12 @@ const documentSchema = v.strictObject({
                 id: idSchema,
                 // Checked by validateProps, because v.record would silently drop
                 // a key such as "constructor".
-                props: v.unknown(),
+                props: v.pipe(v.unknown(), notAList),
                 type: v.string(),
               })
             ),
             id: idSchema,
-            props: v.strictObject({}),
+            props: v.pipe(v.unknown(), notAList, v.strictObject({})),
             width: v.pipe(v.number(), v.minValue(1), v.maxValue(100)),
           })
         ),
@@ -50,7 +56,7 @@ const documentSchema = v.strictObject({
         v.maxLength(4)
       ),
       id: idSchema,
-      props: rowPropsSchema,
+      props: v.pipe(v.unknown(), notAList, rowPropsSchema),
     })
   ),
   settings: emailSettingsSchema,

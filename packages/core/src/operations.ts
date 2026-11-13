@@ -132,7 +132,12 @@ export const applyOperation = (
       break;
     }
     case "remove": {
-      resolvePlacement(document, operation).list.splice(operation.index, 1);
+      const { item, list } = resolvePlacement(document, operation);
+      // As for a move: a stale index would otherwise remove another item.
+      if (list[operation.index]?.id !== item.id) {
+        throw new Error(`No "${item.id}" at index ${operation.index}`);
+      }
+      list.splice(operation.index, 1);
       break;
     }
     case "move": {
@@ -145,16 +150,14 @@ export const applyOperation = (
         document.rows.splice(to.index, 0, row);
         break;
       }
-      const { from, to } = operation;
-      const [block] = getColumn(document, from.columnId).blocks.splice(
-        from.index,
-        1
-      );
-      if (!block) {
+      const { blockId, from, to } = operation;
+      const blocks = getColumn(document, from.columnId).blocks;
+      if (blocks[from.index]?.id !== blockId) {
         throw new Error(
-          `No Block at index ${from.index} of "${from.columnId}"`
+          `No Block "${blockId}" at index ${from.index} of "${from.columnId}"`
         );
       }
+      const [block] = blocks.splice(from.index, 1) as [Block];
       getColumn(document, to.columnId).blocks.splice(to.index, 0, block);
       break;
     }

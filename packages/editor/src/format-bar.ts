@@ -111,7 +111,7 @@ const renderLinkForm = (
       // The link field has its own typing and undo, so its keys stop here,
       // before the format bar, the Block and the email act on them.
       event.stopPropagation();
-      if (event.key === "Escape") {
+      if (event.key === "Escape" && !isComposing(event)) {
         event.preventDefault();
         events.onCancelLink();
       }

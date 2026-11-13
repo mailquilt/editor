@@ -225,8 +225,12 @@ export class MailQuiltShell extends LitElement {
     this.#editor.value = document;
   }
 
-  /** As on `<mail-quilt>`. */
+  /** As on `<mail-quilt>`, and also straight after `value` is set. */
   async exportHtml() {
+    // The email reaches the editor at the first update, which can be yet to come.
+    if (!this.#started) {
+      this.#start();
+    }
     return await this.#editor.exportHtml();
   }
 
@@ -389,6 +393,13 @@ export class MailQuiltShell extends LitElement {
     const loaded = parseEmail(saved);
     if (!loaded.ok) {
       this.#notice = `Your saved email couldn't be opened: ${loaded.reason}`;
+      // The next change is saved over it, and it may only be from a newer
+      // version, so it's kept where nothing saves.
+      try {
+        localStorage.setItem(`${key}:unopened`, saved);
+      } catch {
+        // Then nothing can be saved over it either, and the Shell says so.
+      }
       return false;
     }
     this.#editor.value = loaded.document;
