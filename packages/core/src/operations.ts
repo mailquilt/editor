@@ -151,7 +151,7 @@ export const applyOperation = (
         break;
       }
       const { blockId, from, to } = operation;
-      const blocks = getColumn(document, from.columnId).blocks;
+      const { blocks } = getColumn(document, from.columnId);
       if (blocks[from.index]?.id !== blockId) {
         throw new Error(
           `No Block "${blockId}" at index ${from.index} of "${from.columnId}"`
