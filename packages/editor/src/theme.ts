@@ -1,17 +1,17 @@
 import { css } from "lit";
 
 /**
- * The editor's theme tokens: one light theme. A host overrides any of them on
- * the element itself, which wins over `:host`. The email card doesn't use them,
- * because it shows the email's own settings.
- */
-/**
  * The language of the editor's own words, on everything it draws, so that a
  * screen reader says them in English on any page. Only each Block's content
  * takes the email's language.
  */
 export const UI_LANG = "en";
 
+/**
+ * The editor's theme tokens: one light theme. A host overrides any of them on
+ * the element itself, which wins over `:host`. The email card doesn't use them,
+ * because it shows the email's own settings.
+ */
 export const themeTokens = css`
   :host {
     --mq-font-family:
