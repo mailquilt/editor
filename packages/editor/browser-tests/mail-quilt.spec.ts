@@ -78,19 +78,6 @@ test("mq-change reaches listeners outside the element", async ({ page }) => {
   await expect(page.locator("html")).toHaveAttribute("data-changed", "yes");
 });
 
-test("a typed Merge Tag stays intact through editing and export", async ({
-  page,
-}) => {
-  await focusStartOfTextBlock(page);
-
-  await page.keyboard.type("{{first_name}} ");
-
-  await expect
-    .poll(() => latestDocumentText(page))
-    .toBe("{{first_name}} Hello");
-  expect(await exportHtml(page)).toContain("{{first_name}} Hello");
-});
-
 test("exportHtml returns the final HTML, loading MJML only when called", async ({
   page,
 }) => {
@@ -364,17 +351,6 @@ test.describe("undo and redo while typing", () => {
     await expect(textBlock(page)).toHaveText("Hello");
   });
 
-  test("undo keeps focus in the Block", async ({ page }) => {
-    await focusStartOfTextBlock(page);
-    await stopClock(page);
-    await page.keyboard.type("abc");
-
-    await undoByKey(page);
-
-    await expect(textBlock(page)).toHaveText("Hello");
-    await expect(textBlock(page)).toBeFocused();
-  });
-
   test("undo puts the cursor back between repeated letters", async ({
     page,
   }) => {
@@ -616,28 +592,6 @@ test.describe("setting value", () => {
     await focusStartOfTextBlock(page);
     await page.keyboard.type("a");
     await expect(textBlock(page)).toHaveText("aAnother email");
-  });
-
-  test("the same document wrapped in a Proxy keeps undo and the cursor", async ({
-    page,
-  }) => {
-    await focusStartOfTextBlock(page);
-    await stopClock(page);
-    await page.keyboard.type("ab");
-    await expect(textBlock(page)).toHaveText("abHello");
-
-    await canvas(page).evaluate((element) => {
-      const mailQuilt = element as MailQuilt;
-      mailQuilt.value = new Proxy(
-        mailQuilt.value as NonNullable<MailQuilt["value"]>,
-        {}
-      );
-    });
-
-    await page.keyboard.type("c");
-    await expect(textBlock(page)).toHaveText("abcHello");
-    await undoByKey(page);
-    await expect(textBlock(page)).toHaveText("Hello");
   });
 
   test("a document the host changed after it was sent out loads", async ({

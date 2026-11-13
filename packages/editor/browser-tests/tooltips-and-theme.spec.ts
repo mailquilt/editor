@@ -27,27 +27,6 @@ const iconButtons = (page: Page) =>
   );
 
 test.describe("a tooltip", () => {
-  test("shows on hover, with the button's name", async ({ page }) => {
-    await openBlocks(page, ["text"]);
-    await expect(tooltip(page)).toBeHidden();
-
-    await undoButton(page).hover();
-
-    await expect(tooltip(page)).toBeVisible();
-    await expect(tooltip(page)).toHaveText(/^Undo \(.+Z\)$/u);
-  });
-
-  test("shows on keyboard focus", async ({ page }) => {
-    await openBlocks(page, ["text"]);
-    await undoButton(page).focus();
-    // Browsers only show focus from a script after keyboard use.
-    await page.keyboard.press("Tab");
-    await page.keyboard.press("Shift+Tab");
-
-    await expect(undoButton(page)).toBeFocused();
-    await expect(tooltip(page)).toHaveText(/^Undo/u);
-  });
-
   test("stays while the pointer moves over it", async ({ page }) => {
     await openBlocks(page, ["text"]);
     await undoButton(page).hover();

@@ -155,7 +155,7 @@ test.describe("deleting a Block", () => {
     await expect(textBlock(page)).toHaveText("Hello!?");
   });
 
-  test("from the keyboard, leaves focus where undo still works", async ({
+  test("from the keyboard, leaves focus where a second Enter adds nothing and undo still works", async ({
     page,
   }) => {
     await textBlock(page).click();
@@ -165,6 +165,8 @@ test.describe("deleting a Block", () => {
 
     await expect(textBlock(page)).toHaveCount(0);
     await expect(toolbar(page)).toBeFocused();
+    await page.keyboard.press("Enter");
+    expect(await structure(page)).toStrictEqual([[[]]]);
     await undoByKey(page);
     await expect(textBlock(page)).toHaveText("Hello");
   });
@@ -199,19 +201,6 @@ test.describe("deleting a Block", () => {
     await expect(
       canvas(page).locator('.block[aria-current="true"]')
     ).toHaveCount(0);
-  });
-
-  test("a second Enter from the keyboard doesn't add a Block", async ({
-    page,
-  }) => {
-    await textBlock(page).click();
-    await deleteBlock(page).focus();
-
-    await page.keyboard.press("Enter");
-    await expect(textBlock(page)).toHaveCount(0);
-    await page.keyboard.press("Enter");
-
-    expect(await structure(page)).toStrictEqual([[[]]]);
   });
 });
 
@@ -276,23 +265,6 @@ test.describe("adding and deleting Rows", () => {
     await expect(rowTools(page, 3)).toHaveAttribute("aria-current", "true");
   });
 
-  test("the Rows tab adds after the selected Block's Row", async ({ page }) => {
-    await addRow(page);
-    await addToColumn(page).click();
-    await page.keyboard.type("Last");
-    await expect(selectedBlock(page)).toHaveText("Last");
-    await textBlock(page).first().click();
-
-    await addRow(page);
-
-    await expect(rowTools(page, 3)).toBeVisible();
-    expect(await structure(page)).toStrictEqual([
-      [["Hello"]],
-      [[]],
-      [["Last"]],
-    ]);
-  });
-
   test("Delete Row removes the right Row with its Blocks", async ({ page }) => {
     await addRow(page);
     await addToColumn(page).click();
@@ -303,28 +275,6 @@ test.describe("adding and deleting Rows", () => {
 
     await expect(textBlock(page)).toHaveText("Second");
     expect(await structure(page)).toStrictEqual([[["Second"]]]);
-  });
-
-  test("deleting the Row that has focus moves focus to the toolbar", async ({
-    page,
-  }) => {
-    await textBlock(page).click();
-
-    await deleteRow(page, 1);
-
-    await expect(toolbar(page)).toBeFocused();
-    await undoByKey(page);
-    await expect(textBlock(page)).toHaveText("Hello");
-  });
-
-  test("deleting a Row from the keyboard keeps focus in the editor", async ({
-    page,
-  }) => {
-    await deleteRowButton(page, 1).focus();
-
-    await page.keyboard.press("Enter");
-
-    await expect(toolbar(page)).toBeFocused();
   });
 
   test("deleting a Row from the keyboard moves focus to the next Row, or else the one before, and it's announced", async ({

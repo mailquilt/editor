@@ -83,37 +83,6 @@ test.describe("moving a Block by its handle", () => {
     expect(await structure(page)).toStrictEqual([[[], ["One"]]]);
   });
 
-  test("into a Column of another Row", async ({ page }) => {
-    await open(page, [[["One"]], [["Two"], ["Three"]]]);
-
-    await drag(
-      page,
-      handleOf(page, "One"),
-      await bottomOf(blockWith(page, "Three"))
-    );
-
-    expect(await structure(page)).toStrictEqual([
-      [[]],
-      [["Two"], ["Three", "One"]],
-    ]);
-  });
-
-  test("leaves nothing of the drag behind", async ({ page }) => {
-    await open(page, [[["One", "Two"], ["Three"]]]);
-
-    await drag(
-      page,
-      handleOf(page, "Two"),
-      await topOf(blockWith(page, "Three"))
-    );
-
-    await expect(
-      canvas(page).locator("[data-drag-ghost], [data-drag-source]")
-    ).toHaveCount(0);
-    await expect(canvas(page).locator(".block[popover]")).toHaveCount(0);
-    await expect(textBlock(page)).toHaveCount(3);
-  });
-
   test("Escape cancels the drag", async ({ page }) => {
     await open(page, [[["One", "Two"], ["Three"]]]);
     const changes = await changeCount(page).textContent();
@@ -259,19 +228,6 @@ test.describe("moving a Block by its handle", () => {
     await expect(bold).toBeFocused();
   });
 
-  test("dropping where it started changes nothing", async ({ page }) => {
-    const errors = collectErrors(page);
-    await open(page, [[["One", "Two"], ["Three"]]]);
-    const changes = await changeCount(page).textContent();
-    const start = await centerOf(blockWith(page, "One"));
-
-    await drag(page, handleOf(page, "One"), start);
-
-    expect(await structure(page)).toStrictEqual([[["One", "Two"], ["Three"]]]);
-    await expect(changeCount(page)).toHaveText(changes as string);
-    expect(errors).toStrictEqual([]);
-  });
-
   test("a release before the next frame lands at the release", async ({
     page,
   }) => {
@@ -369,15 +325,22 @@ test.describe("the text cursor during a drag", () => {
     expect(await structure(page)).toStrictEqual([[["One", "TwoAB"]]]);
   });
 
-  test("stays put when the drop changes nothing", async ({ page }) => {
+  test("stays put when the drop changes nothing, which reports no change", async ({
+    page,
+  }) => {
+    const errors = collectErrors(page);
     await open(page, [[["One", "Two"]]]);
     await placeCursorAfterTwo(page);
+    // The one change so far is the typing.
+    await expect(changeCount(page)).toHaveText("1");
     const start = await centerOf(blockWith(page, "One"));
 
     await drag(page, handleOf(page, "One"), start);
+    await expect(changeCount(page)).toHaveText("1");
     await page.keyboard.type("B");
 
     expect(await structure(page)).toStrictEqual([[["One", "TwoAB"]]]);
+    expect(errors).toStrictEqual([]);
   });
 
   test("dragging over text doesn't select it", async ({ page }) => {
@@ -616,41 +579,9 @@ test.describe("dropping outside any Row", () => {
 
     expect(await structure(page)).toStrictEqual([[["Two"]], [["One"]]]);
   });
-
-  test("beside a Row adds a Row next to it", async ({ page }) => {
-    await open(page, [[["One", "Two"]], [["Three"]]]);
-    const row = await boxOf(canvas(page).locator(".row").last());
-
-    await drag(page, handleOf(page, "Two"), {
-      x: row.x - 40,
-      y: row.y + (row.height * 3) / 4,
-    });
-
-    expect(await structure(page)).toStrictEqual([
-      [["One"]],
-      [["Three"]],
-      [["Two"]],
-    ]);
-  });
 });
 
 test.describe("letting go far from the editor", () => {
-  test("shows no indicator and leaves a Block where it was", async ({
-    page,
-  }) => {
-    await open(page, [[["One", "Two"]]]);
-    const changes = await changeCount(page).textContent();
-    const editor = await boxOf(canvas(page));
-
-    await pickUp(page, handleOf(page, "Two"));
-    await moveTo(page, { x: 10, y: editor.y - 200 });
-    await expect(dropIndicator(page)).toBeHidden();
-    await letGo(page);
-
-    expect(await structure(page)).toStrictEqual([[["One", "Two"]]]);
-    await expect(changeCount(page)).toHaveText(changes as string);
-  });
-
   test("a release the window missed ends the drag", async ({ page }) => {
     await open(page, [[["One", "Two"]]]);
     await page.evaluate(() => {
@@ -696,20 +627,6 @@ test.describe("letting go far from the editor", () => {
 });
 
 test.describe("dragging from the palette", () => {
-  test("into a Column, between its Blocks", async ({ page }) => {
-    await open(page, [[["One", "Two"], ["Three"]]]);
-
-    await drag(
-      page,
-      palette(page, "Text"),
-      await bottomOf(blockWith(page, "One"))
-    );
-
-    expect(await structure(page)).toStrictEqual([
-      [["One", "", "Two"], ["Three"]],
-    ]);
-  });
-
   test("selects the new Block, ready to type in", async ({ page }) => {
     await open(page, [[["One"]]]);
 

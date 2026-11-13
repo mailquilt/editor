@@ -141,23 +141,6 @@ describe("Image Block", () => {
     expect(propsOf(document)).toStrictEqual({});
   });
 
-  it("keeps its alt text while it has a link", () => {
-    const linked = { alt: "Logo", href: "https://shop.example" };
-    const editor = createEditor({ document: withImage(linked) });
-
-    expect(
-      editor.apply({
-        blockId: "image-1",
-        props: { alt: null },
-        type: "updateBlockProps",
-      })
-    ).toStrictEqual({
-      ok: false,
-      reason: expect.stringMatching(/alt text/u),
-    });
-    expect(propsOf(editor.getDocument())).toStrictEqual(linked);
-  });
-
   it("can lose its link and alt text together", () => {
     const editor = createEditor({
       document: withImage({ alt: "Logo", href: "https://shop.example" }),

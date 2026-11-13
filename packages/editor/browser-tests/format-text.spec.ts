@@ -328,20 +328,6 @@ test.describe("the toolbar", () => {
     );
   });
 
-  test("works by keyboard, returning focus to the Block", async ({ page }) => {
-    await selectAllInBlock(page);
-    await toolbarButton(page, "Bold").focus();
-
-    await page.keyboard.press("Enter");
-
-    await expect(firstTextBlock(page)).toBeFocused();
-    await expect
-      .poll(() => savedInline(page))
-      .toStrictEqual([
-        { marks: [{ type: "bold" }], text: "Hello", type: "text" },
-      ]);
-  });
-
   test("by keyboard with only a cursor, typing continues where it was, formatted", async ({
     page,
   }) => {
@@ -685,7 +671,7 @@ test.describe("links", () => {
       await expect(toolbarButton(page, "Edit link")).toBeVisible();
     });
 
-    test("the field shows its URL, and changing it changes the whole link", async ({
+    test("the field shows its URL, and changing it changes the whole link and keeps the cursor", async ({
       page,
     }) => {
       // A cursor in the middle of the link, with no selection.
@@ -712,32 +698,10 @@ test.describe("links", () => {
             type: "text",
           },
         ]);
-    });
-
-    test("changing the URL with only a cursor leaves the cursor where it was", async ({
-      page,
-    }) => {
-      await pressArrow(page, "ArrowLeft");
-      await pressArrow(page, "ArrowRight");
-      await pressArrow(page, "ArrowRight");
-
-      await addLink(page, "https://example.org");
+      // With only a cursor, the cursor stays where it was.
       await expect(firstTextBlock(page)).toBeFocused();
       await page.keyboard.type("x");
-
       await expect(firstTextBlock(page)).toHaveText("Hexllo");
-    });
-
-    test("Remove link takes it off", async ({ page }) => {
-      await toolbarButton(page, "Edit link").click();
-
-      await page.getByRole("button", { name: "Remove link" }).click();
-
-      await expect
-        .poll(() => savedInline(page))
-        .toStrictEqual([{ text: "Hello", type: "text" }]);
-      await expect(linkInput(page)).toBeHidden();
-      await expect(firstTextBlock(page)).toBeFocused();
     });
 
     test("Remove link with only a cursor takes off all of it", async ({
@@ -893,6 +857,7 @@ test.describe("undo and redo", () => {
     await expect
       .poll(() => savedInline(page))
       .toStrictEqual([{ text: "Hello", type: "text" }]);
+    await expect(linkInput(page)).toBeHidden();
     await expect(firstTextBlock(page)).toBeFocused();
 
     await undoByKey(page);

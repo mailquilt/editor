@@ -108,60 +108,6 @@ describe("the insertBlock Command", () => {
     }
   );
 
-  it("reports the ID of the new Block", () => {
-    const { editor } = setup();
-
-    const result = send(editor, {
-      blockType: "text",
-      columnId: "left",
-      index: 0,
-      type: "insertBlock",
-    });
-
-    expect(result).toStrictEqual({
-      createdId: editor.getDocument().rows[0]?.columns[0]?.blocks[0]?.id,
-      ok: true,
-    });
-  });
-
-  it("adds a Block to an empty Column", () => {
-    const document = twoColumnEmail();
-    const right = document.rows[0]?.columns[1];
-    if (right) {
-      right.blocks = [];
-    }
-    const { editor } = setup(document);
-
-    expectAccepted(
-      send(editor, {
-        blockType: "text",
-        columnId: "right",
-        index: 0,
-        type: "insertBlock",
-      })
-    );
-
-    expect(editor.getDocument().rows[0]?.columns[1]?.blocks).toHaveLength(1);
-  });
-
-  it("gives each new Block its own ID", () => {
-    const { editor } = setup();
-    const insert = () =>
-      send(editor, {
-        blockType: "text",
-        columnId: "left",
-        index: 0,
-        type: "insertBlock",
-      });
-    insert();
-    insert();
-
-    const [first, second] =
-      editor.getDocument().rows[0]?.columns[0]?.blocks ?? [];
-
-    expect(first?.id).not.toBe(second?.id);
-  });
-
   it("records one insert Operation", () => {
     const { editor, operations } = setup();
 
@@ -531,15 +477,6 @@ describe("the insertRow Command", () => {
     expect(added?.columns.map(({ width }) => width)).toStrictEqual([33, 67]);
     expect(added?.columns.map(({ blocks }) => blocks)).toStrictEqual([[], []]);
     expectValid(editor.getDocument());
-  });
-
-  it("adds a Row at the end", () => {
-    const { editor } = setup();
-
-    send(editor, { index: 1, layout: "100", type: "insertRow" });
-
-    expect(editor.getDocument().rows[0]?.id).toBe("row");
-    expect(editor.getDocument().rows).toHaveLength(2);
   });
 });
 

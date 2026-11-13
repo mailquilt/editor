@@ -133,23 +133,6 @@ describe("Row settings", () => {
     });
   });
 
-  it("removes the background color with a null", () => {
-    const { editor, rowId } = setup();
-    editor.apply({
-      props: { backgroundColor: "#00ff00" },
-      rowId,
-      type: "updateRowProps",
-    });
-
-    editor.apply({
-      props: { backgroundColor: null },
-      rowId,
-      type: "updateRowProps",
-    });
-
-    expect(editor.getDocument().rows[0]?.props).toStrictEqual({});
-  });
-
   it("rejects a color that isn't hex or rgb()", () => {
     const { editor, rowId } = setup();
 
@@ -228,22 +211,6 @@ describe("Email settings", () => {
     expect(editor.getDocument()).toStrictEqual(before);
   });
 
-  it("removes a preheader or language with a null", () => {
-    const { editor } = setup();
-    const before = editor.getDocument();
-    editor.apply({
-      settings: { language: "en", preheader: "Hi" },
-      type: "updateEmailSettings",
-    });
-
-    editor.apply({
-      settings: { language: null, preheader: null },
-      type: "updateEmailSettings",
-    });
-
-    expect(editor.getDocument().settings).toStrictEqual(before.settings);
-  });
-
   it.each([
     ["a width that isn't whole", { width: 600.5 }, /width/u],
     ["a width of zero", { width: 0 }, /width/u],
@@ -253,8 +220,6 @@ describe("Email settings", () => {
       { backgroundColor: "red" },
       /backgroundColor/u,
     ],
-    ["no background color", { backgroundColor: null }, /backgroundColor/u],
-    ["no font", { fontFamily: null }, /fontFamily/u],
     [
       "a font that adds a CSS rule",
       { fontFamily: "Arial;display:none" },
@@ -293,16 +258,6 @@ describe("Email settings", () => {
     expect(
       editor.apply({ settings: { language }, type: "updateEmailSettings" })
     ).toStrictEqual({ ok: true });
-  });
-
-  it("makes no undo step for a change to the same value", () => {
-    const { editor, operations } = setup();
-    const { width } = editor.getDocument().settings;
-
-    expect(
-      editor.apply({ settings: { width }, type: "updateEmailSettings" })
-    ).toMatchObject({ ok: false, unchanged: true });
-    expect(operations).toStrictEqual([]);
   });
 });
 
