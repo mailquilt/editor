@@ -40,7 +40,7 @@ describe("applying a Command", () => {
     const result = editor.apply({
       blockId,
       props: { content: paragraph("Hello {{first_name}}") },
-      type: "updateProps",
+      type: "updateBlockProps",
     });
 
     expect(result).toStrictEqual({ ok: true });
@@ -57,7 +57,7 @@ describe("applying a Command", () => {
     editor.apply({
       blockId: firstBlock(document).id,
       props: { content: paragraph("Changed") },
-      type: "updateProps",
+      type: "updateBlockProps",
     });
 
     expect(document).toStrictEqual(before);
@@ -82,7 +82,7 @@ describe("rejecting a Command", () => {
     ],
     [
       "a Command that isn't an object",
-      () => "updateProps",
+      () => "updateBlockProps",
       /invalid command/iu,
     ],
     [
@@ -90,13 +90,13 @@ describe("rejecting a Command", () => {
       () => ({
         blockId: "missing",
         props: { content: paragraph("Hi") },
-        type: "updateProps",
+        type: "updateBlockProps",
       }),
       /no block.*missing/iu,
     ],
     [
       "props that aren't an object",
-      (blockId) => ({ blockId, props: [], type: "updateProps" }),
+      (blockId) => ({ blockId, props: [], type: "updateBlockProps" }),
       /props/iu,
     ],
     [
@@ -104,7 +104,7 @@ describe("rejecting a Command", () => {
       (blockId) => ({
         blockId,
         props: JSON.parse('{"constructor":"x"}'),
-        type: "updateProps",
+        type: "updateBlockProps",
       }),
       /constructor/iu,
     ],
@@ -113,7 +113,7 @@ describe("rejecting a Command", () => {
       (blockId) => ({
         blockId,
         props: { content: "<p>Hello</p>" },
-        type: "updateProps",
+        type: "updateBlockProps",
       }),
       /content/iu,
     ],

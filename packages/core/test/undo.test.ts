@@ -13,7 +13,11 @@ const setup = () => {
   const editor = createEditor({ document });
   const setText = (text: string, options?: { mergeKey: string }) =>
     editor.apply(
-      { blockId, props: { content: paragraph(text) }, type: "updateProps" },
+      {
+        blockId,
+        props: { content: paragraph(text) },
+        type: "updateBlockProps",
+      },
       options
     );
   return { blockId, document, editor, setText };
@@ -71,7 +75,7 @@ describe("the undo history", () => {
     const result = editor.apply({
       blockId,
       props: { colour: "red" },
-      type: "updateProps",
+      type: "updateBlockProps",
     });
 
     expect(result.ok).toBeFalsy();
@@ -180,7 +184,7 @@ describe("merging Commands into one undo step", () => {
     const { blockId, document, editor, setText } = setup();
     setText("H", { mergeKey: "typing" });
     editor.apply(
-      { blockId, props: { colour: "red" }, type: "updateProps" },
+      { blockId, props: { colour: "red" }, type: "updateBlockProps" },
       { mergeKey: "typing" }
     );
     setText("Hi", { mergeKey: "typing" });
@@ -205,7 +209,7 @@ describe("merging Commands into one undo step", () => {
       {
         blockId: added.ok ? (added.createdId ?? "") : "",
         props: { content: paragraph("B") },
-        type: "updateProps",
+        type: "updateBlockProps",
       },
       { mergeKey: "typing" }
     );
@@ -228,7 +232,7 @@ describe("merging Commands into one undo step", () => {
     const original = document.rows[0]?.columns[0]?.blocks[0]?.props ?? {};
     setText("A", { mergeKey: "typing" });
     editor.apply(
-      { blockId, props: original, type: "updateProps" },
+      { blockId, props: original, type: "updateBlockProps" },
       { mergeKey: "typing" }
     );
 
@@ -313,7 +317,11 @@ describe("subscribing to Operations", () => {
     const received: unknown[] = [];
     editor.subscribe((operations) => received.push(operations));
 
-    editor.apply({ blockId, props: { colour: "red" }, type: "updateProps" });
+    editor.apply({
+      blockId,
+      props: { colour: "red" },
+      type: "updateBlockProps",
+    });
     editor.undo();
     editor.redo();
 

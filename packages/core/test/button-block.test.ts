@@ -24,7 +24,7 @@ const setHref = (href: unknown) => {
   const result = editor.apply({
     blockId: "button-1",
     props: { href },
-    type: "updateProps",
+    type: "updateBlockProps",
   });
   return { document: editor.getDocument(), result };
 };
@@ -57,7 +57,7 @@ describe("Button Block", () => {
     };
 
     expect(
-      editor.apply({ blockId: "button-1", props, type: "updateProps" })
+      editor.apply({ blockId: "button-1", props, type: "updateBlockProps" })
     ).toStrictEqual({ ok: true });
 
     expect(propsOf(editor.getDocument())).toStrictEqual(props);
@@ -90,7 +90,7 @@ describe("Button Block", () => {
     const { editor } = setup();
 
     expect(
-      editor.apply({ blockId: "button-1", props, type: "updateProps" })
+      editor.apply({ blockId: "button-1", props, type: "updateBlockProps" })
     ).toStrictEqual({ ok: false, reason: expect.stringMatching(reason) });
   });
 
@@ -101,7 +101,7 @@ describe("Button Block", () => {
       editor.apply({
         blockId: "button-1",
         props: { color: "rgba(255, 255, 255, 0.5)" },
-        type: "updateProps",
+        type: "updateBlockProps",
       })
     ).toStrictEqual({ ok: true });
   });

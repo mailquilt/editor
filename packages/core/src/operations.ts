@@ -59,7 +59,10 @@ export type Operation =
 const columnsIn = (document: BlocksDocument) =>
   document.rows.flatMap(({ columns }) => columns);
 
-/** A Block and where it is, or undefined if it isn't in the document. */
+/**
+ * A Block and where it is, or undefined if it isn't in the document.
+ * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
+ */
 export const findBlockPosition = (
   document: BlocksDocument,
   blockId: string

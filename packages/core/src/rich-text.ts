@@ -15,8 +15,12 @@ const MERGE_TAG_URL = /^\{\{[^{}]+\}\}[^:/?#]*(?:[/?#]|$)/u;
 export const isAllowedLinkHref = (href: string) =>
   /^(?:https?:|mailto:|tel:)/iu.test(href) || MERGE_TAG_URL.test(href);
 
+/**
+ * What a person is told when a link is refused, matching `isAllowedLinkHref`.
+ * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
+ */
 export const INVALID_LINK =
-  "Use a URL starting with https://, http://, mailto: or tel:, or a Merge Tag such as {{cta_url}}.";
+  "Use a URL that starts with https:, http:, mailto: or tel:, such as https://example.com, or a Merge Tag such as {{cta_url}}.";
 
 export const linkHrefSchema = v.pipe(
   v.string(),
@@ -27,7 +31,7 @@ export const linkHrefSchema = v.pipe(
 );
 
 export const INVALID_IMAGE_URL =
-  "Use a URL starting with https:// or http://, or a Merge Tag such as {{logo_url}}.";
+  "Use a URL that starts with https: or http:, such as https://example.com/logo.png, or a Merge Tag such as {{logo_url}}.";
 
 /** Its own allowlist, so that a scheme added for links doesn't reach images. */
 export const imageSrcSchema = v.pipe(
@@ -88,6 +92,6 @@ export const richTextSchema = v.strictObject({
 export type RichTextDocument = v.InferOutput<typeof richTextSchema>;
 export type RichTextParagraph = v.InferOutput<typeof paragraphSchema>;
 type RichTextInline = v.InferOutput<typeof inlineSchema>;
-export type RichTextNode = Extract<RichTextInline, { type: "text" }>;
+export type RichTextText = Extract<RichTextInline, { type: "text" }>;
 export type RichTextHardBreak = Extract<RichTextInline, { type: "hardBreak" }>;
 export type RichTextMark = v.InferOutput<typeof marksSchema>[number];

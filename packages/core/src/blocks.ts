@@ -389,7 +389,10 @@ export const BLOCK_TYPES = [...blockDefinitions].map(([type, { label }]) => ({
   type,
 }));
 
-/** What a person calls a type of Block. */
+/**
+ * What a person calls a type of Block.
+ * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
+ */
 export const blockLabel = (type: string) =>
   blockDefinitions.get(type)?.label ?? type;
 
@@ -429,11 +432,18 @@ export const validateProps = (
       };
 };
 
-/** A Block's CSS, for both the canvas and the email output. */
+/**
+ * A Block's CSS, for both the canvas and the email output. Its props must be
+ * valid, as in a loaded document, because they're not checked again here.
+ * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
+ */
 export const blockStyles = ({ props, type }: Pick<Block, "props" | "type">) =>
   blockDefinitions.get(type)?.styles(props) ?? {};
 
-/** The settings panel's fields for a Block. */
+/**
+ * The settings panel's fields for a Block.
+ * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
+ */
 export const blockSettingsFields = ({
   props,
   type,

@@ -34,7 +34,7 @@ describe("Text Block settings", () => {
       editor.apply({
         blockId,
         props: { align: "center", color: "#ff0000", fontSize: 24 },
-        type: "updateProps",
+        type: "updateBlockProps",
       })
     ).toStrictEqual({ ok: true });
 
@@ -58,7 +58,7 @@ describe("Text Block settings", () => {
     const { blockId, editor, operations } = setup();
     const before = editor.getDocument();
 
-    const result = editor.apply({ blockId, props, type: "updateProps" });
+    const result = editor.apply({ blockId, props, type: "updateBlockProps" });
 
     expect(result).toStrictEqual({
       ok: false,
@@ -70,9 +70,13 @@ describe("Text Block settings", () => {
 
   it("goes back to the default when a null removes a setting", () => {
     const { blockId, editor } = setup();
-    editor.apply({ blockId, props: { color: "#ff0000" }, type: "updateProps" });
+    editor.apply({
+      blockId,
+      props: { color: "#ff0000" },
+      type: "updateBlockProps",
+    });
 
-    editor.apply({ blockId, props: { color: null }, type: "updateProps" });
+    editor.apply({ blockId, props: { color: null }, type: "updateBlockProps" });
 
     expect(blockProps(editor.getDocument())).not.toHaveProperty("color");
   });
@@ -83,7 +87,7 @@ describe("Text Block settings", () => {
     const result = editor.apply({
       blockId,
       props: { content: null },
-      type: "updateProps",
+      type: "updateBlockProps",
     });
 
     expect(result).toStrictEqual({
@@ -94,12 +98,16 @@ describe("Text Block settings", () => {
 
   it("makes no undo step for a change to the same value", () => {
     const { blockId, editor, operations } = setup();
-    editor.apply({ blockId, props: { color: "#ff0000" }, type: "updateProps" });
+    editor.apply({
+      blockId,
+      props: { color: "#ff0000" },
+      type: "updateBlockProps",
+    });
 
     const result = editor.apply({
       blockId,
       props: { color: "#ff0000" },
-      type: "updateProps",
+      type: "updateBlockProps",
     });
 
     expect(result).toMatchObject({ ok: false, unchanged: true });

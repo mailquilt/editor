@@ -1,7 +1,7 @@
-import type { BlocksDocument, RichTextNode } from "@mailquilt/core";
+import type { BlocksDocument, RichTextText } from "@mailquilt/core";
 
 /** An email with one Text Block, holding one piece of text. */
-export const emailWithInline = (inline: RichTextNode): BlocksDocument => ({
+export const emailWithInline = (inline: RichTextText): BlocksDocument => ({
   kind: "blocks",
   rows: [
     {

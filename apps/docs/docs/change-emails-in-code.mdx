@@ -31,7 +31,7 @@ A Command is a plain object with a `type`. `apply()` returns `{ ok: true }` when
 | --- | --- | --- |
 | `insertBlock` | `blockType`, `columnId`, `index` | Adds a Block to a Column. |
 | `insertBlockInNewRow` | `blockType`, `rowIndex` | Adds a Row with one Column, holding a new Block. |
-| `updateProps` | `blockId`, `props` | Changes a Block's content or settings. |
+| `updateBlockProps` | `blockId`, `props` | Changes a Block's content or settings. |
 | `moveBlock` | `blockId`, `columnId`, `index` | Moves a Block within its Column or to another. |
 | `moveBlockToNewRow` | `blockId`, `rowIndex` | Moves a Block into a new Row of its own. |
 | `removeBlock` | `blockId` | Removes a Block. |

@@ -118,7 +118,7 @@ describe("limited rich text", () => {
     const { props } = emailWithInline(linkTo("javascript:alert(1)")).rows[0]
       ?.columns[0]?.blocks[0] ?? { props: {} };
 
-    const result = editor.apply({ blockId, props, type: "updateProps" });
+    const result = editor.apply({ blockId, props, type: "updateBlockProps" });
 
     expect(result.ok).toBeFalsy();
     expect(editor.getDocument()).toStrictEqual(email);

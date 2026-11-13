@@ -19,6 +19,7 @@ interface FieldBase {
 /**
  * One control in the settings panel. Fields are data, so that one panel can show
  * every Block, Row and email setting.
+ * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
  */
 export type SettingsField = FieldBase &
   (
@@ -88,6 +89,10 @@ export const newLanguageSettingsSchema = v.strictObject({
   ),
 });
 
+/**
+ * The settings panel's fields for the email.
+ * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
+ */
 export const EMAIL_SETTINGS_FIELDS: readonly SettingsField[] = [
   {
     invalidMessage: "Use a whole number of pixels, 1 or more.",
@@ -137,6 +142,10 @@ export const rowPropsSchema = v.strictObject({
   backgroundColor: v.optional(colorSchema),
 });
 
+/**
+ * The settings panel's fields for a Row.
+ * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
+ */
 export const ROW_SETTINGS_FIELDS: readonly SettingsField[] = [
   {
     invalidMessage: INVALID_COLOR,
@@ -146,7 +155,11 @@ export const ROW_SETTINGS_FIELDS: readonly SettingsField[] = [
   },
 ];
 
-/** A Row's CSS, for both the canvas and the email output. */
+/**
+ * A Row's CSS, for both the canvas and the email output. Its props must be
+ * valid, as in a loaded document, because they're not checked again here.
+ * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
+ */
 export const rowStyles = ({
   props,
 }: Pick<Row, "props">): Record<string, string> => {

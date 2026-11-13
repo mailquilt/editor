@@ -167,10 +167,13 @@ export class MailQuiltShell extends LitElement {
    * holds once the host has set one. See the `value` setter.
    */
   #savedStandsIn: { replaced: unknown } | undefined;
-  /** Gives the editor the height the email scrolls in, for its side panel. */
+  /**
+   * Gives the editor the height the email scrolls in, for its side panel. The
+   * underscore keeps it apart from the theme tokens, as it isn't one.
+   */
   readonly #bodyObserver = new ResizeObserver(([entry]) => {
     this.#editor.style.setProperty(
-      "--mq-visible-height",
+      "--_mq-visible-height",
       `${entry?.target.clientHeight ?? 0}px`
     );
   });

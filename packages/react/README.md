@@ -10,10 +10,15 @@ npm install @mailquilt/react
 "use client";
 
 import { MailQuilt } from "@mailquilt/react";
-import type { MailQuiltElement } from "@mailquilt/react";
+import type { BlocksDocument, MailQuiltElement } from "@mailquilt/react";
 import { useRef, useState } from "react";
 
-export const Editor = ({ savedEmail }) => {
+interface EditorProps {
+  savedEmail?: BlocksDocument;
+  send: (html: string | undefined) => void;
+}
+
+export const Editor = ({ savedEmail, send }: EditorProps) => {
   const editor = useRef<MailQuiltElement>(null);
   const [email, setEmail] = useState(savedEmail);
 
@@ -25,7 +30,10 @@ export const Editor = ({ savedEmail }) => {
         ref={editor}
         value={email}
       />
-      <button onClick={async () => send(await editor.current?.exportHtml())}>
+      <button
+        type="button"
+        onClick={async () => send(await editor.current?.exportHtml())}
+      >
         Send
       </button>
     </>
