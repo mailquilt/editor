@@ -313,8 +313,12 @@ export const editorStyles = css`
     position: relative;
   }
 
-  /* Where a browser scrolls a focused Block to, clear of its tag and tools. */
+  /*
+   * Where a focused Block, and its tools, are scrolled to: clear of its tag above
+   * and of the floating toolbar below.
+   */
   .block,
+  .block-toolbar,
   .ProseMirror {
     scroll-margin-block: 48px 72px;
   }

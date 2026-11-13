@@ -751,6 +751,7 @@ export class MailQuilt extends LitElement {
   #onBlockFocus({ currentTarget }: FocusEvent, blockId: string) {
     this.#selectFocused(blockId, false);
     (currentTarget as HTMLElement).scrollIntoView({ block: "nearest" });
+    this.#revealBlock(blockId);
   }
 
   /**
@@ -1456,7 +1457,13 @@ export class MailQuilt extends LitElement {
    */
   async #revealBlock(blockId: string) {
     await this.updateComplete;
-    this.#blockElement(blockId)?.scrollIntoView({ block: "nearest" });
+    const block = this.#blockElement(blockId);
+    block?.scrollIntoView({ block: "nearest" });
+    // Its tools can reach past a thin Block, under the floating toolbar, which
+    // would hide the one with focus.
+    block
+      ?.querySelector(".block-toolbar")
+      ?.scrollIntoView({ block: "nearest" });
   }
 
   #blockElement(blockId: string) {
