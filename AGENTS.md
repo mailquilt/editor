@@ -26,3 +26,7 @@ Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root, both created
 ### Tests
 
 Before writing or changing tests, read `docs/agents/testing.md`.
+
+### Skills
+
+Which skills to install or write, and when: see `docs/agents/skills.md`.
