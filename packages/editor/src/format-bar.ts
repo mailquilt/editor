@@ -169,63 +169,69 @@ const renderLinkForm = (
 export const renderFormatBar = (
   { formats, linkForm }: FormatBarState,
   events: FormatBarEvents
-) => html`
-  <div
-    aria-label="Text formatting"
-    class="ui bar format-bar"
-    role="toolbar"
-    @keydown=${(event: KeyboardEvent) => {
-      // Escape goes back to the text, as from the link field.
-      if (event.key === "Escape" && !isComposing(event)) {
-        event.preventDefault();
-        event.stopPropagation();
-        events.onBack();
-        return;
-      }
-      onToolbarArrowKeys(event);
-    }}
-    @mousedown=${events.onControlMousedown}
-  >
-    ${MARK_BUTTONS.map(
-      ({ keys, label, mark }) => html`
-        <button
-          aria-label=${label}
-          aria-pressed=${formats?.[mark] ? "true" : "false"}
-          class="icon-button"
-          data-tooltip=${`${label} (${keys})`}
-          ?disabled=${!formats || (mark === "bold" && !formats.canBold)}
-          tabindex="-1"
-          type="button"
-          @click=${() => events.onToggleMark(mark)}
-        >
-          ${ICONS[mark]}
-        </button>
-      `
-    )}
-    <span class="separator"></span>
-    <button
-      aria-label="Link"
-      aria-pressed=${formats?.linkHref === undefined ? "false" : "true"}
-      class="icon-button"
-      data-tooltip=${`Link (${MOD_KEY}K)`}
-      ?disabled=${!formats}
-      tabindex="-1"
-      type="button"
-      @click=${events.onOpenLinkForm}
+) => {
+  // Its name, not a pressed state, says the text is in a link, as pressing it
+  // opens the link field rather than taking the link away.
+  const linkLabel = formats?.linkHref === undefined ? "Link" : "Edit link";
+  return html`
+    <div
+      aria-label="Text formatting"
+      class="ui bar format-bar"
+      role="toolbar"
+      @keydown=${(event: KeyboardEvent) => {
+        // Escape goes back to the text, as from the link field.
+        if (event.key === "Escape" && !isComposing(event)) {
+          event.preventDefault();
+          event.stopPropagation();
+          events.onBack();
+          return;
+        }
+        onToolbarArrowKeys(event);
+      }}
+      @mousedown=${events.onControlMousedown}
     >
-      ${ICONS.link}
-    </button>
-    <button
-      aria-label="Line break"
-      class="icon-button"
-      data-tooltip="Line break (Shift+Enter)"
-      ?disabled=${!formats}
-      tabindex="-1"
-      type="button"
-      @click=${events.onLineBreak}
-    >
-      ${ICONS.lineBreak}
-    </button>
-    ${linkForm ? renderLinkForm(linkForm.refusals, formats?.linkHref, events) : nothing}
-  </div>
-`;
+      ${MARK_BUTTONS.map(
+        ({ keys, label, mark }) => html`
+          <button
+            aria-label=${label}
+            aria-pressed=${formats?.[mark] ? "true" : "false"}
+            class="icon-button"
+            data-tooltip=${`${label} (${keys})`}
+            ?disabled=${!formats || (mark === "bold" && !formats.canBold)}
+            tabindex="-1"
+            type="button"
+            @click=${() => events.onToggleMark(mark)}
+          >
+            ${ICONS[mark]}
+          </button>
+        `
+      )}
+      <span class="separator"></span>
+      <button
+        aria-expanded=${linkForm ? "true" : "false"}
+        aria-label=${linkLabel}
+        class="icon-button"
+        ?data-active=${formats?.linkHref !== undefined}
+        data-tooltip=${`${linkLabel} (${MOD_KEY}K)`}
+        ?disabled=${!formats}
+        tabindex="-1"
+        type="button"
+        @click=${events.onOpenLinkForm}
+      >
+        ${ICONS.link}
+      </button>
+      <button
+        aria-label="Line break"
+        class="icon-button"
+        data-tooltip="Line break (Shift+Enter)"
+        ?disabled=${!formats}
+        tabindex="-1"
+        type="button"
+        @click=${events.onLineBreak}
+      >
+        ${ICONS.lineBreak}
+      </button>
+      ${linkForm ? renderLinkForm(linkForm.refusals, formats?.linkHref, events) : nothing}
+    </div>
+  `;
+};

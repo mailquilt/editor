@@ -152,7 +152,7 @@ const showRowTools = async (page: Page, position: number) => {
     .locator(".row-frame")
     .nth(position - 1);
   await frame.locator(".row").hover({ position: { x: 4, y: 4 } });
-  if ((await frame.locator('[aria-current="true"]').count()) > 0) {
+  if ((await frame.locator('.block[aria-current="true"]').count()) > 0) {
     await frame.locator(".row-tag").click();
   }
 };

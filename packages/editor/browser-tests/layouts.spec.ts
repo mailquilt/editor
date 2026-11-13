@@ -277,10 +277,7 @@ test.describe("adding and deleting Rows", () => {
 
     expect(await widths(page, 1)).toStrictEqual([50, 50]);
     expect(await widths(page, 2)).toStrictEqual([33, 67]);
-    await expect(selectRowButton(page, 3)).toHaveAttribute(
-      "aria-pressed",
-      "true"
-    );
+    await expect(rowTools(page, 3)).toHaveAttribute("aria-current", "true");
   });
 
   test("the Rows tab adds after the selected Block's Row", async ({ page }) => {

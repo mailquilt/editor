@@ -108,10 +108,7 @@ test.describe("moving a selected Row from the keyboard", () => {
 
     await page.keyboard.press("Alt+ArrowUp");
 
-    await expect(selectRowButton(page, 1)).toHaveAttribute(
-      "aria-pressed",
-      "true"
-    );
+    await expect(rowTools(page, 1)).toHaveAttribute("aria-current", "true");
     await expect(selectRowButton(page, 1)).toBeFocused();
     await expect(textBlock(page).first()).toHaveText("Two");
   });
@@ -142,10 +139,7 @@ test.describe("moving a selected Row from the keyboard", () => {
       [["Two"]],
       [["Three"]],
     ]);
-    await expect(selectRowButton(page, 2)).toHaveAttribute(
-      "aria-pressed",
-      "true"
-    );
+    await expect(rowTools(page, 2)).toHaveAttribute("aria-current", "true");
   });
 
   test("keeps it in view", async ({ page }) => {

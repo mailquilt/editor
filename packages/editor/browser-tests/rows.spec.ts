@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
 import {
+  rowTools,
   blockGroup,
   boxOf,
   canvas,
@@ -36,11 +37,10 @@ test.describe("selecting a Row", () => {
 
     await rowTag(page, 2).click();
 
-    await expect(selectRowButton(page, 2)).toHaveAttribute(
-      "aria-pressed",
-      "true"
-    );
-    await expect(canvas(page).locator('[aria-current="true"]')).toHaveCount(0);
+    await expect(rowTools(page, 2)).toHaveAttribute("aria-current", "true");
+    await expect(
+      canvas(page).locator('.block[aria-current="true"]')
+    ).toHaveCount(0);
     await expect(panelSettings(page).locator("legend")).toHaveText(["Row"]);
     await expect(
       canvas(page)
@@ -58,19 +58,13 @@ test.describe("selecting a Row", () => {
     await page.keyboard.press("Enter");
 
     await blockGroup(page, "Text").last().focus();
-    await expect(selectRowButton(page, 1)).toHaveAttribute(
-      "aria-pressed",
-      "false"
-    );
+    await expect(rowTools(page, 1)).not.toHaveAttribute("aria-current");
 
     await selectRowButton(page, 1).focus();
     await page.keyboard.press("Enter");
     const area = await boxOf(canvas(page).locator(".canvas-area"));
     await page.mouse.click(area.x + 10, area.y + 10);
-    await expect(selectRowButton(page, 1)).toHaveAttribute(
-      "aria-pressed",
-      "false"
-    );
+    await expect(rowTools(page, 1)).not.toHaveAttribute("aria-current");
     await expect(
       canvas(page).getByRole("tab", { name: "Content" })
     ).toBeVisible();
@@ -134,10 +128,7 @@ test.describe("dragging a layout from the Rows tab", () => {
       [[], []],
       [["B"]],
     ]);
-    await expect(selectRowButton(page, 2)).toHaveAttribute(
-      "aria-pressed",
-      "true"
-    );
+    await expect(rowTools(page, 2)).toHaveAttribute("aria-current", "true");
     await undoByKey(page);
     await expect(structure(page)).resolves.toEqual([[["A"]], [["B"]]]);
   });

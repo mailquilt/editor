@@ -126,7 +126,8 @@ export const uiStyles = css`
   }
 
   .icon-button[aria-pressed="true"],
-  .icon-button[aria-expanded="true"] {
+  .icon-button[aria-expanded="true"],
+  .icon-button[data-active] {
     background: var(--mq-color-accent-soft);
     color: var(--mq-color-accent-strong);
   }

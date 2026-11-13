@@ -648,7 +648,7 @@ export class MailQuilt extends LitElement {
        * Not while one of its Blocks is selected, which has tools of its own. Its
        * tag still shows on hover, and selects the Row.
        */
-      .row-frame:hover:not(:has([aria-current="true"])) > .row-toolbar,
+      .row-frame:hover:not(:has(.block[aria-current="true"])) > .row-toolbar,
       .row-frame[data-row-selected] > .row-toolbar,
       .row-toolbar:focus-within {
         opacity: 1;
@@ -1167,7 +1167,9 @@ export class MailQuilt extends LitElement {
   #renderRowToolbar(row: Row, index: number, count: number) {
     return html`
       <div
+        aria-current=${row.id === this.#selectedRowId ? "true" : nothing}
         aria-label=${`Row ${index + 1}`}
+        aria-orientation="vertical"
         class="ui row-toolbar"
         role="toolbar"
         @keydown=${(event: KeyboardEvent) =>
@@ -1178,8 +1180,8 @@ export class MailQuilt extends LitElement {
           ${renderDragHandle(this.#onHandleMousedown, "Drag Row")}
           <button
             aria-label="Select Row"
-            aria-pressed=${row.id === this.#selectedRowId ? "true" : "false"}
             class="icon-button"
+            ?data-active=${row.id === this.#selectedRowId}
             data-action="select-row"
             data-tooltip="Select Row"
             type="button"
