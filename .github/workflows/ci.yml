@@ -70,3 +70,14 @@ jobs:
           pnpm turbo run test --concurrency=1 --filter=@mailquilt/editor --filter=@mailquilt/react --filter=docs -- --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/2
         env:
           CI: true
+      # A failed try leaves its screenshot, error snapshot and retry trace, even
+      # when the retry passes. A run where nothing failed leaves none.
+      - if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.browser }}-${{ matrix.shard }}
+          path: |
+            packages/*/test-results/
+            apps/*/test-results/
+          if-no-files-found: ignore
+          retention-days: 14

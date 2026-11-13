@@ -5,7 +5,7 @@ The editor is a Lit Web Component that renders in Shadow DOM, with `@dnd-kit/dom
 ## Consequences
 
 - The drop position is worked out when the drag ends, so nothing on the canvas moves until then.
-- Block elements are created once and moved between Columns rather than re-rendered, so each text editor survives a move. Text is edited with ProseMirror directly since ADR 0003.
+- Each text editor's element is created once and moved between Columns rather than re-rendered, so it survives a move. The rest of a Block is drawn again in its new Column. Text is edited with ProseMirror directly since ADR 0003.
 - ProseMirror's base styles are defined inside the Shadow DOM.
 - Auto-scrolling uses the host element's scroll containers, outside the Shadow DOM. Browser tests cover this in Chromium, Firefox and WebKit.
 - Not yet tested: Japanese input in real Safari and Firefox, and touch. If text editing fails, the fallbacks are an iframe canvas, then light DOM.

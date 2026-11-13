@@ -3,9 +3,10 @@
   "extends": ["//"],
   "tasks": {
     "test": {
-      // The fresh projects are built from the quick-start and Shell code in the docs.
+      // The fresh projects are built from the docs' quick-start, Shell and server code.
       "inputs": [
         "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/apps/docs/docs/_code/**",
         "$TURBO_ROOT$/apps/docs/docs/_quick-start/**",
         "$TURBO_ROOT$/apps/docs/docs/_shell/**"
       ]

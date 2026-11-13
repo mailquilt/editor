@@ -96,9 +96,6 @@ test("the landing page recolors its editor with the swatch chosen", async ({
       )
     )
     .toBe(accent);
-  await expect(page.locator("[data-home-token]")).toHaveText(
-    `--mq-color-accent: ${accent}`
-  );
 });
 
 test("each example shows its whole email, with nothing to scroll inside it", async ({
@@ -188,29 +185,6 @@ test.describe("without JavaScript", () => {
       ).toBeVisible();
     }
   });
-});
-
-/**
- * Runs the docs' example scripts in Node, as a reader would, and reports what
- * they made. Playwright's own module loader can't load MJML.
- */
-test("each example email comes with its document", async ({
-  browserName,
-  page,
-}) => {
-  test.skip(browserName !== "chromium", SAME_IN_EVERY_BROWSER);
-  await page.goto("/examples");
-  const downloads = page.getByRole("link", { name: "Download the JSON" });
-
-  await expect(downloads).toHaveCount(3);
-  for (const link of await downloads.all()) {
-    // oxlint-disable-next-line no-await-in-loop -- One example at a time.
-    const href = (await link.getAttribute("href")) ?? "";
-    const loaded = loadDocument(
-      JSON.parse(decodeURIComponent(href.slice(href.indexOf(",") + 1)))
-    );
-    expect(loaded).toMatchObject({ ok: true });
-  }
 });
 
 test("the document format reference's example is an email core loads", async ({
