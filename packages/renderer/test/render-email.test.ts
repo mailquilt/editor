@@ -228,6 +228,20 @@ describe(renderEmail, () => {
     );
   });
 
+  it("keeps one link whatever order its text's marks were saved in", async () => {
+    const link = { attrs: { href: "https://x.test" }, type: "link" };
+    const html = await renderEmail(
+      emailWithInline(
+        { marks: [{ type: "bold" }, link], text: "Sale", type: "text" },
+        { marks: [link], text: " now", type: "text" }
+      )
+    );
+
+    expect(html).toContain(
+      '<a href="https://x.test" target="_blank"><strong>Sale</strong> now</a>'
+    );
+  });
+
   it("renders a line break, ignoring marks left on it", async () => {
     const html = await renderEmail(
       emailWithInline(

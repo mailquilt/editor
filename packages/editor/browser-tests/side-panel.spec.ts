@@ -43,7 +43,7 @@ test.describe("the side panel's tabs", () => {
 });
 
 test.describe("a selected Block's properties", () => {
-  test("give way to the tabs again from a visible control", async ({
+  test("give way to the tabs from a visible control, until the Block is clicked again", async ({
     page,
   }) => {
     await openBlocks(page, ["text"]);
@@ -55,6 +55,10 @@ test.describe("a selected Block's properties", () => {
     await expect(fieldset(page, "Block")).toHaveCount(0);
     // The Block stays selected, so what's chosen next goes after it.
     await expect(textBlock(page)).toBeFocused();
+
+    // Its text still has focus, so only the click can bring them back.
+    await textBlock(page).click();
+    await expect(fieldset(page, "Block")).toBeVisible();
   });
 
   test("give way from the keyboard, to the tab that was showing", async ({

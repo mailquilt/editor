@@ -9,7 +9,7 @@ npm install @mailquilt/editor   # the <mail-quilt> element, for any framework
 npm install @mailquilt/react    # or the React components
 ```
 
-The docs, with a quick start for a bundler, a CDN and React, are in [`apps/docs/docs`](apps/docs/docs).
+The docs, with a quick start for a bundler, a CDN and React, are at [editor.mailquilt.com](https://editor.mailquilt.com/docs). Their source is in [`apps/docs/docs`](apps/docs/docs).
 
 ## Packages
 

@@ -304,8 +304,10 @@ export const editorStyles = css`
     }
   }
 
+  /* In the placeholder's color, which turns to the accent as a drop target. */
   .placeholder .icon-button {
     border: 1px solid var(--mq-color-border);
+    color: inherit;
     height: 26px;
     width: 26px;
   }

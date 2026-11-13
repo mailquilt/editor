@@ -151,6 +151,7 @@ test.describe("theme tokens", () => {
     await canvas(page).evaluate((element) => {
       element.style.setProperty("--mq-color-workspace", "rgb(1, 2, 3)");
       element.style.setProperty("--mq-color-accent", "rgb(200, 0, 100)");
+      element.style.setProperty("--mq-color-text-muted", "rgb(4, 5, 6)");
       element.style.setProperty("--mq-font-family", "Georgia, serif");
     });
 
@@ -162,6 +163,14 @@ test.describe("theme tokens", () => {
       "font-family",
       "Georgia, serif"
     );
+    // At rest, a tab that isn't selected and an icon button are muted.
+    await expect(canvas(page).getByRole("tab", { name: "Rows" })).toHaveCSS(
+      "color",
+      "rgb(4, 5, 6)"
+    );
+    await expect(
+      canvas(page).getByRole("button", { exact: true, name: "Preview" })
+    ).toHaveCSS("color", "rgb(4, 5, 6)");
   });
 
   test("don't reach the email card, which shows the email's settings", async ({

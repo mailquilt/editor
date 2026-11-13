@@ -3,6 +3,9 @@
 export const DESCRIPTION =
   "A set of free, MIT-licensed packages for building email design into any web app: a drag-and-drop editor, and the document model and renderer it's built on.";
 
+/** Where the site is served. Canonical links, the sitemap and shared images use it. */
+export const SITE_URL = "https://editor.mailquilt.com";
+
 export const REPO = "https://github.com/mailquilt/editor";
 
 export const ISSUES = `${REPO}/issues`;

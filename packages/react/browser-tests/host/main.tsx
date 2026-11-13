@@ -77,6 +77,9 @@ const Host = () => {
       <button onClick={() => setShown((now) => !now)} type="button">
         Toggle editor
       </button>
+      <button onClick={() => setDocument(emailWith("Replaced"))} type="button">
+        Replace email
+      </button>
       <output data-testid="html">{html}</output>
       <output data-testid="errors">{errors.join("\n")}</output>
       <output data-testid="latest-document">{JSON.stringify(document)}</output>

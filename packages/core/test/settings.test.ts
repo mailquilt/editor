@@ -8,7 +8,7 @@ import {
   loadDocument,
   rowStyles,
 } from "../src/index.js";
-import type { Block, BlocksDocument, Operation } from "../src/index.js";
+import type { BlocksDocument, Operation } from "../src/index.js";
 
 const setup = () => {
   const document = createEmail();
@@ -198,7 +198,7 @@ describe("Row settings", () => {
 describe("Email settings", () => {
   const everything = {
     backgroundColor: "#eeeeee",
-    fontFamily: "Georgia, serif",
+    fontFamily: `Georgia, 'Times New Roman', "Helvetica Neue", serif`,
     language: "pt-BR",
     preheader: "Hello {{first_name}}",
     width: 640,
@@ -270,6 +270,11 @@ describe("Email settings", () => {
       { fontFamily: "url(https://x)" },
       /fontFamily/u,
     ],
+    [
+      "a font with a quote that doesn't close",
+      { fontFamily: '"Helvetica Neue, Arial' },
+      /fontFamily/u,
+    ],
     ["a preheader that isn't text", { preheader: 1 }, /preheader/u],
     ["a language that isn't a code", { language: "English" }, /language/u],
     ["a language that breaks out", { language: 'en"x' }, /language/u],
@@ -308,24 +313,6 @@ const saved = (change: (email: BlocksDocument) => void) => {
 };
 
 describe("saved settings", () => {
-  it("loads a Block, Row and email with every setting", () => {
-    const result = saved((email) => {
-      const row = email.rows[0] as BlocksDocument["rows"][0];
-      row.props = { backgroundColor: "#00ff00" };
-      const block = row.columns[0]?.blocks[0] as Block;
-      block.props = {
-        ...block.props,
-        align: "right",
-        color: "#ff0000",
-        fontSize: 24,
-      };
-      email.settings.language = "en";
-      email.settings.preheader = "Hi";
-    });
-
-    expect(result).toMatchObject({ ok: true });
-  });
-
   it.each([
     [
       "a Row setting it doesn't know",

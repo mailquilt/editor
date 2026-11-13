@@ -79,9 +79,8 @@ export const uiStyles = css`
     box-sizing: border-box;
   }
 
-  .ui button,
-  .ui input,
-  .ui select {
+  /* Without weight, so each control's own color and font win over these. */
+  :where(.ui) :where(button, input, select) {
     color: inherit;
     font: inherit;
   }
