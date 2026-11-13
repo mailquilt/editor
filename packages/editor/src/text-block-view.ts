@@ -12,7 +12,7 @@ import {
   splitBlockKeepMarks,
 } from "prosemirror-commands";
 import { keymap } from "prosemirror-keymap";
-import { Schema } from "prosemirror-model";
+import { Fragment, Schema, Slice } from "prosemirror-model";
 import type {
   Mark,
   MarkType,
@@ -70,7 +70,7 @@ const schema = new Schema({
     // Only the URL, as `core` requires. Parsing goes through core's check, so a
     // pasted link can't get past it.
     link: {
-      attrs: { href: { default: null } },
+      attrs: { href: {} },
       inclusive: false,
       parseDOM: [
         {
@@ -457,6 +457,16 @@ const FOCUSED = "mailquilt:focused";
  * `element` on the canvas, so the view survives re-renders. The editor keeps
  * the one undo history, so ProseMirror's isn't loaded.
  */
+/** Pasted or dropped text with no bold, for a Block that can't have it. */
+const withoutBold = (fragment: Fragment): Fragment =>
+  Fragment.from(
+    fragment.content.map((node) =>
+      node.isLeaf
+        ? node.mark(schema.marks.bold.removeFromSet(node.marks))
+        : node.copy(withoutBold(node.content))
+    )
+  );
+
 export const createTextBlockView = ({
   canBold,
   content,
@@ -563,6 +573,10 @@ export const createTextBlockView = ({
         keepMergeTagsWhole,
       ],
     }),
+    transformPasted: (slice) =>
+      canBold
+        ? slice
+        : new Slice(withoutBold(slice.content), slice.openStart, slice.openEnd),
   });
 
   /** Runs a command on the text, then puts focus back in it. */

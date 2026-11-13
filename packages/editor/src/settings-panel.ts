@@ -2,7 +2,6 @@ import type { Command, SettingsField } from "@mailquilt/core";
 import { css, html, nothing } from "lit";
 import { keyed } from "lit/directives/keyed.js";
 import { live } from "lit/directives/live.js";
-import { repeat } from "lit/directives/repeat.js";
 
 /** One group of controls, and what its fields change. */
 export interface SettingsSection {
@@ -49,14 +48,8 @@ export const settingsPanelStyles = css`
     flex-direction: column;
   }
 
-  /* One group of fields, set off from the next by a hairline. */
   .settings .section {
-    border-bottom: 1px solid var(--mq-color-border);
     padding: var(--mq-space-4) var(--mq-space-4) 20px;
-  }
-
-  .settings .section:last-child {
-    border-bottom: 0;
   }
 
   .settings fieldset {
@@ -450,7 +443,7 @@ const renderField = (
 
 /** The one settings panel: every control in it comes from fields that are data. */
 export const renderSettingsPanel = (
-  sections: SettingsSection[],
+  section: SettingsSection,
   events: SettingsPanelEvents
 ) => html`
   <div
@@ -459,18 +452,11 @@ export const renderSettingsPanel = (
     role="group"
     @keydown=${events.onKeydown}
   >
-    ${repeat(
-      sections,
-      // Keyed, so that a field with focus survives the others coming and going.
-      ({ id }) => id,
-      (section) => html`
-        <div class="section">
-          <fieldset>
-            <legend>${section.legend}</legend>
-            ${section.fields.map((field) => renderField(section, field, events))}
-          </fieldset>
-        </div>
-      `
-    )}
+    <div class="section">
+      <fieldset>
+        <legend>${section.legend}</legend>
+        ${section.fields.map((field) => renderField(section, field, events))}
+      </fieldset>
+    </div>
   </div>
 `;

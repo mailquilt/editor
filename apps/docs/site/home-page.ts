@@ -7,8 +7,10 @@ import { homeEmail } from "./home-email";
 import { emailShape, htmlSize } from "./measure";
 import { paintHtml, paintJson } from "./paint";
 
-/** Narrower than this, the editor would only show its own notice. */
+/** Narrower than this, the page shows the picture alone. */
 const WIDE_ENOUGH = "(min-width: 44rem)";
+/** `<mail-quilt>` shows only a notice when it's narrower than this. */
+const EDITOR_MIN_WIDTH_PX = 640;
 
 const find = <Element extends HTMLElement>(selector: string) =>
   document.querySelector<Element>(selector);
@@ -48,14 +50,12 @@ const wirePackages = () => {
       }
     }
   };
-  // The tabs are in reading order, two to a row.
+  // The tabs are in reading order, two to a row. Past an edge, nothing moves.
   const steps: Record<string, number> = {
     ArrowDown: 2,
     ArrowLeft: -1,
     ArrowRight: 1,
     ArrowUp: -2,
-    End: tabs.length,
-    Home: -tabs.length,
   };
   // Until now every panel could be read. From here, only the chosen one.
   const chosen = tabs.find(
@@ -67,9 +67,13 @@ const wirePackages = () => {
   for (const [index, tab] of tabs.entries()) {
     tab.addEventListener("click", () => select(tab));
     tab.addEventListener("keydown", (event) => {
-      const to = index + (steps[event.key] ?? 0);
-      const next = tabs[Math.min(Math.max(to, 0), tabs.length - 1)];
-      if (next && next !== tab && event.key in steps) {
+      const step = steps[event.key];
+      const next =
+        {
+          End: tabs.at(-1),
+          Home: tabs[0],
+        }[event.key] ?? (step === undefined ? undefined : tabs[index + step]);
+      if (next && next !== tab) {
         event.preventDefault();
         select(next);
         next.focus();
@@ -196,7 +200,11 @@ const start = () => {
   if (html) {
     showFirstMergeTag(html);
   }
-  if (matchMedia(WIDE_ENOUGH).matches) {
+  // A scrollbar can take the stage under the editor's width at the breakpoint.
+  if (
+    matchMedia(WIDE_ENOUGH).matches &&
+    stage.clientWidth >= EDITOR_MIN_WIDTH_PX
+  ) {
     // oxlint-disable-next-line promise/prefer-await-to-then -- Nothing here waits on the editor.
     startEditor(stage).catch(() => {
       // The picture of the editor stays where it is.

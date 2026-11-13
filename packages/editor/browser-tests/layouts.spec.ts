@@ -11,6 +11,7 @@ import {
   emailWith,
   exportHtml,
   layoutOption,
+  layoutTile,
   openTab,
   redoByKey,
   rowTools,
@@ -554,10 +555,7 @@ test.describe("structure changes and the rest of the editor", () => {
     await addRow(page);
     await expect(rowControls(page, 2)).toBeVisible();
     await openTab(page, "Rows");
-    await canvas(page)
-      .getByRole("group", { name: "Add a Row" })
-      .getByRole("button", { exact: true, name: "100" })
-      .focus();
+    await layoutTile(page, "100").focus();
 
     await undoByKey(page);
 

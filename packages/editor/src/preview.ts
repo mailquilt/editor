@@ -1,5 +1,7 @@
 import { css, html, nothing } from "lit";
 
+import { UI_LANG } from "./theme.js";
+
 export const previewStyles = css`
   /* A closed dialog relies on the browser's display: none, so no all: initial. */
   .preview {
@@ -19,8 +21,9 @@ export const previewStyles = css`
     width: calc(100vw - 32px);
   }
 
+  /* With its default too, as older browsers don't pass tokens to a backdrop. */
   .preview::backdrop {
-    background: rgb(16 24 40 / 55%);
+    background: var(--mq-color-backdrop, rgb(16 24 40 / 55%));
     backdrop-filter: blur(2px);
   }
 
@@ -99,7 +102,12 @@ export const renderPreview = (
   preview: Preview | undefined,
   { onClose, onClosed }: PreviewEvents
 ) => html`
-  <dialog aria-labelledby="preview-title" class="preview" @close=${onClosed}>
+  <dialog
+    aria-labelledby="preview-title"
+    class="preview"
+    lang=${UI_LANG}
+    @close=${onClosed}
+  >
     <div class="ui preview-panel">
       <div class="preview-header">
         <h2 id="preview-title">Preview</h2>

@@ -156,8 +156,12 @@ kbd {
   font-weight: 600;
 }
 
-/* The open page gets the dot from the logo's "i". */
-[data-blume-nav-tree] .blume-nav-link[aria-current="page"]::before {
+/*
+ * The dot from the logo's "i": on the open page in the sidebar, and on this
+ * project's own row on the comparison page, which places it.
+ */
+[data-blume-nav-tree] .blume-nav-link[aria-current="page"]::before,
+.ours::before {
   content: "";
   flex: none;
   width: 0.5rem;
@@ -215,8 +219,9 @@ kbd {
   font-weight: 600;
 }
 
-/* Links are ink, underlined in the logo's orange. */
-.prose :where(a):not(.blume-heading-anchor, [class*="rounded"]) {
+/* Links are ink, underlined in the logo's orange, in the docs and on site pages. */
+.prose :where(a):not(.blume-heading-anchor, [class*="rounded"]),
+.site-link {
   color: var(--blume-foreground);
   font-weight: 500;
   text-decoration: underline 1.5px var(--site-accent);
@@ -224,7 +229,8 @@ kbd {
   transition: color 120ms;
 }
 
-.prose :where(a):not(.blume-heading-anchor, [class*="rounded"]):hover {
+.prose :where(a):not(.blume-heading-anchor, [class*="rounded"]):hover,
+.site-link:hover {
   color: var(--site-accent-text);
 }
 

@@ -5,7 +5,9 @@ import {
   blockGroup,
   canvas,
   emailWith,
+  layoutTile,
   openTab,
+  palette,
   rowTools,
   setValue,
   settle,
@@ -90,10 +92,7 @@ test.describe("selecting a Row", () => {
     await page.keyboard.press("Enter");
     await openTab(page, "Content");
 
-    await canvas(page)
-      .getByRole("group", { name: "Add content" })
-      .getByRole("button", { exact: true, name: "Text" })
-      .click();
+    await palette(page, "Text").click();
 
     await expect(structure(page)).resolves.toEqual([
       [["A", ""], ["B"]],
@@ -107,10 +106,7 @@ test.describe("selecting a Row", () => {
     await page.keyboard.press("Enter");
     await openTab(page, "Rows");
 
-    await canvas(page)
-      .getByRole("group", { name: "Add a Row" })
-      .getByRole("button", { exact: true, name: "50/50" })
-      .click();
+    await layoutTile(page, "50/50").click();
 
     await expect(structure(page)).resolves.toEqual([
       [["A"]],
@@ -126,9 +122,7 @@ test.describe("dragging a layout from the Rows tab", () => {
   }) => {
     await open(page, [[["A"]], [["B"]]]);
     await openTab(page, "Rows");
-    const tile = canvas(page)
-      .getByRole("group", { name: "Add a Row" })
-      .getByRole("button", { exact: true, name: "50/50" });
+    const tile = layoutTile(page, "50/50");
     const from = await tile.boundingBox();
     const second = await canvas(page).locator(".row").nth(1).boundingBox();
     if (!(from && second)) {

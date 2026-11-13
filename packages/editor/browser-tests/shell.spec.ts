@@ -672,7 +672,7 @@ test("shows the dragging cursor over the Shell during a drag", async ({
   const tile = await box(
     shell(page)
       .getByRole("group", { name: "Add content" })
-      .getByRole("button", { exact: true, name: "Text" })
+      .getByRole("button", { exact: true, name: "Add Text Block" })
   );
 
   await page.mouse.move(tile.x + tile.width / 2, tile.y + tile.height / 2);

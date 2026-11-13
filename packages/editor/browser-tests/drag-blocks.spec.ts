@@ -507,7 +507,7 @@ test.describe("dropping outside any Row", () => {
   }) => {
     await load(page, [[["One", "Two"]]]);
     const controls = await boxOf(
-      page.getByRole("group", { exact: true, name: "Row 1" })
+      page.getByRole("toolbar", { exact: true, name: "Row 1" })
     );
 
     // Its top, which is above the middle of the Row.

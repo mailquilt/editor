@@ -155,8 +155,9 @@ test.describe("a Row on the canvas", () => {
 
     await page.keyboard.press("Shift+Tab");
 
+    // One stop for the whole toolbar, at its first tool.
     await expect(
-      rowTools(page, 2).getByRole("button", { name: "Delete Row" })
+      rowTools(page, 2).getByRole("button", { name: "Select Row" })
     ).toBeFocused();
     await expect(rowTools(page, 2)).toHaveCSS("opacity", "1");
   });
@@ -177,8 +178,8 @@ test.describe("a Row on the canvas", () => {
     await expect(select).toBeFocused();
 
     // Past Move Row up. Move Row down is disabled on the last Row.
-    await page.keyboard.press("Tab");
-    await page.keyboard.press("Tab");
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("ArrowRight");
     await expect(
       rowTools(page, 2).getByRole("button", { name: "Delete Row" })
     ).toBeFocused();
@@ -258,6 +259,8 @@ test.describe("the email's language", () => {
         imageAlt: langOf(".image-block img"),
         placeholder: langOf(".placeholder"),
         rowTools: langOf(".row-toolbar"),
+        sidePanel: langOf(".side-panel"),
+        status: langOf('[role="status"]'),
         text: langOf(".ProseMirror"),
       };
     });
@@ -270,6 +273,8 @@ test.describe("the email's language", () => {
       imageAlt: "de",
       placeholder: "en",
       rowTools: "en",
+      sidePanel: "en",
+      status: "en",
       text: "de",
     });
   });

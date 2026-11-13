@@ -52,6 +52,17 @@ export interface MailQuiltShellProps
 const loadEditor = () => import("@mailquilt/editor");
 
 /**
+ * Outside the hook, as React Compiler would otherwise take the element, which
+ * is held in state, for a value that mustn't change, and skip the hook.
+ */
+const setDocument = (
+  element: MailQuiltElement | MailQuiltShellElement,
+  value: BlocksDocument | undefined
+) => {
+  element.value = value;
+};
+
+/**
  * Connects `<mail-quilt>` or `<mail-quilt-shell>` to the props they share, once
  * the editor has loaded. Returns the ref for the rendered element.
  */
@@ -97,8 +108,7 @@ const useEditorElement = <
   // would then see an older document, load it and lose that key and undo history.
   useLayoutEffect(() => {
     if (editor) {
-      // oxlint-disable-next-line react/immutability -- Held in state, but it's an element, and this is how it takes a document.
-      editor.value = value;
+      setDocument(editor, value);
     }
   }, [editor, value]);
 

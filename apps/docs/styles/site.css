@@ -185,18 +185,6 @@
   font-size: 0.875em;
 }
 
-.site-link {
-  color: var(--blume-foreground);
-  font-weight: 500;
-  text-decoration: underline 1.5px var(--site-accent);
-  text-underline-offset: 0.22em;
-  transition: color 120ms;
-}
-
-.site-link:hover {
-  color: var(--site-accent-text);
-}
-
 .site-actions {
   display: flex;
   flex-wrap: wrap;
@@ -395,6 +383,15 @@
   .site-columns > :nth-child(n + 4) {
     border-top: 1px solid var(--blume-border);
   }
+}
+
+.site-columns .site-link {
+  display: inline-block;
+  margin-top: 0.875rem;
+}
+
+.site-columns .site-muted {
+  margin-top: 0.5rem;
 }
 
 /* A section that ends in columns gives its bottom padding to them. */

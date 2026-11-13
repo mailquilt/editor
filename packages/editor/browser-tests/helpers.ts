@@ -99,7 +99,13 @@ export const focusStartOfTextBlock = async (page: Page) => {
 export const palette = (page: Page, name: string) =>
   page
     .getByRole("group", { name: "Add content" })
-    .getByRole("button", { exact: true, name });
+    .getByRole("button", { exact: true, name: `Add ${name} Block` });
+
+/** The Rows tab's tile for a layout, with the tab showing. */
+export const layoutTile = (page: Page, layout: string) =>
+  canvas(page)
+    .getByRole("group", { name: "Add a Row" })
+    .getByRole("button", { exact: true, name: `Add ${layout} Row` });
 
 /**
  * Shows a side panel tab. A selected Block's settings take the tabs' place, so
@@ -125,14 +131,11 @@ export const showPalette = async (page: Page, name: string) => {
 /** Adds a Row with this layout from the Rows tab. */
 export const addRow = async (page: Page, layout = "100") => {
   await openTab(page, "Rows");
-  await canvas(page)
-    .getByRole("group", { name: "Add a Row" })
-    .getByRole("button", { exact: true, name: layout })
-    .click();
+  await layoutTile(page, layout).click();
 };
 
 export const rowTools = (page: Page, position: number) =>
-  canvas(page).getByRole("group", { exact: true, name: `Row ${position}` });
+  canvas(page).getByRole("toolbar", { exact: true, name: `Row ${position}` });
 
 /**
  * A Row's toolbar shows on hover, so the pointer goes there first. While one of

@@ -212,6 +212,31 @@ test.describe("Bold in a Heading, which is already bold", () => {
     });
   }
 
+  test("is left out of pasted text, which keeps its other formats", async ({
+    page,
+  }) => {
+    await open(page, ["heading"]);
+    await headingText(page).click();
+
+    await headingText(page).evaluate((element) => {
+      const clipboardData = new DataTransfer();
+      clipboardData.setData("text/html", "<strong><em>Big</em></strong>");
+      // Not a ClipboardEvent, whose constructor ignores this data in Firefox.
+      const event = new Event("paste", {
+        bubbles: true,
+        cancelable: true,
+        composed: true,
+      });
+      Object.defineProperty(event, "clipboardData", { value: clipboardData });
+      element.dispatchEvent(event);
+    });
+
+    await expect(headingText(page).locator("em")).toHaveText("Big");
+    const props = await lastBlockProps(page);
+    expect(JSON.stringify(props)).toContain("italic");
+    expect(JSON.stringify(props)).not.toContain("bold");
+  });
+
   test("stays on a saved Heading that has it, which still opens", async ({
     page,
   }) => {

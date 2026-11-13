@@ -142,8 +142,8 @@ test.describe("moving a selected Row from the keyboard", () => {
   }) => {
     await open(page, [[["One"]], [["Two"]], [["Three"]]]);
     await selectRow(page, 2);
-    await page.keyboard.press("Tab");
-    await page.keyboard.press("Tab");
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("ArrowRight");
     await expect(
       rowTools(page, 2).getByRole("button", { name: "Move Row down" })
     ).toBeFocused();

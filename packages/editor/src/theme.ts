@@ -5,6 +5,13 @@ import { css } from "lit";
  * the element itself, which wins over `:host`. The email card doesn't use them,
  * because it shows the email's own settings.
  */
+/**
+ * The language of the editor's own words, on everything it draws, so that a
+ * screen reader says them in English on any page. Only each Block's content
+ * takes the email's language.
+ */
+export const UI_LANG = "en";
+
 export const themeTokens = css`
   :host {
     --mq-font-family:
@@ -28,6 +35,7 @@ export const themeTokens = css`
     --mq-color-danger: #c42b1c;
     --mq-color-tooltip: #16181d;
     --mq-color-on-tooltip: #f7f7f8;
+    --mq-color-backdrop: rgb(16 24 40 / 55%);
 
     --mq-space-1: 4px;
     --mq-space-2: 8px;
