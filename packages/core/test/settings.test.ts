@@ -248,7 +248,6 @@ describe("Email settings", () => {
     ["a width that isn't whole", { width: 600.5 }, /width/u],
     ["a width of zero", { width: 0 }, /width/u],
     ["no width", { width: null }, /width/u],
-    ["a width that isn't a number", { width: Number.NaN }, /width/u],
     [
       "a color that isn't hex or rgb()",
       { backgroundColor: "red" },

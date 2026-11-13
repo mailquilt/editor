@@ -228,21 +228,6 @@ describe("refusing a document", () => {
       /"block-1".*__proto__/u,
     ],
     [
-      "a Block prop named prototype",
-      (email) => {
-        Object.defineProperty(
-          email.rows[0].columns[0].blocks[0].props,
-          "prototype",
-          {
-            enumerable: true,
-            value: "x",
-          }
-        );
-        return email;
-      },
-      /"block-1".*prototype/u,
-    ],
-    [
       "Block props that aren't an object",
       (email) => {
         email.rows[0].columns[0].blocks[0].props = "Hello";

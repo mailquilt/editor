@@ -168,6 +168,47 @@ test.describe("moving a Block by its handle", () => {
     ).toHaveCount(0);
   });
 
+  // As a browser does when a touch turns into scrolling the page.
+  test("a cancelled pointer cancels the drag, and the next one works", async ({
+    page,
+  }) => {
+    await load(page, [[["One", "Two"], ["Three"]]]);
+    const changes = await changeCount(page).textContent();
+    await page.evaluate(() => {
+      window.addEventListener(
+        "pointerdown",
+        ({ pointerId }) => {
+          document.body.dataset.pointerId = String(pointerId);
+        },
+        { capture: true }
+      );
+    });
+
+    await pickUp(page, handleOf(page, "Two"));
+    await moveTo(page, await topOf(blockElement(page, "Three")));
+    await page.evaluate(() => {
+      window.dispatchEvent(
+        new PointerEvent("pointercancel", {
+          pointerId: Number(document.body.dataset.pointerId),
+        })
+      );
+    });
+    await letGo(page);
+
+    expect(await structure(page)).toStrictEqual([[["One", "Two"], ["Three"]]]);
+    await expect(changeCount(page)).toHaveText(changes as string);
+    await expect(
+      canvas(page).locator("[data-drag-ghost], [data-drag-source]")
+    ).toHaveCount(0);
+
+    await drag(
+      page,
+      handleOf(page, "Two"),
+      await topOf(blockElement(page, "Three"))
+    );
+    expect(await structure(page)).toStrictEqual([[["One"], ["Two", "Three"]]]);
+  });
+
   test("Escape cancels the drag from the format bar too", async ({ page }) => {
     await load(page, [[["One", "Two"], ["Three"]]]);
     await blockElement(page, "One").getByRole("textbox").click();
@@ -382,7 +423,11 @@ test.describe("while dragging", () => {
     page,
   }) => {
     await load(page, [[["One", "Two"], ["Three"]]]);
-    await page.evaluate(() => window.scrollBy(0, 200));
+    await page.evaluate(() => {
+      // Taller than the window, whatever else the page has.
+      document.body.style.minHeight = "200vh";
+      window.scrollBy(0, 200);
+    });
     expect(await scrollTop(page)).toBeGreaterThanOrEqual(100);
     const start = await centerOf(handleOf(page, "Two"));
 

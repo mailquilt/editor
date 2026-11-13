@@ -25,7 +25,6 @@ const Host = () => {
   const canvas = useRef<MailQuilt>(null);
   const [document, setDocument] = useState(initialDocument);
   const [changeCount, setChangeCount] = useState(0);
-  const [renderCount, setRenderCount] = useState(0);
 
   useEffect(() => {
     const element = canvas.current;
@@ -40,13 +39,8 @@ const Host = () => {
   return (
     <main className="flex flex-col gap-4 p-8">
       <p data-testid="host-paragraph">Host page text</p>
-      <button
-        onClick={() => setRenderCount((count) => count + 1)}
-        type="button"
-      >
-        Re-render host
-      </button>
-      <output data-testid="render-count">{renderCount}</output>
+      {/* Only for Tailwind's reset to style, as a host's own button. */}
+      <button type="button">Host button</button>
       <output data-testid="change-count">{changeCount}</output>
       <output data-testid="latest-document">{JSON.stringify(document)}</output>
       <mail-quilt ref={canvas} value={document} />

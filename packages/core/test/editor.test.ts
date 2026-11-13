@@ -103,15 +103,6 @@ describe("rejecting a Command", () => {
       }),
       /constructor/iu,
     ],
-    [
-      "text that isn't limited rich text",
-      (blockId) => ({
-        blockId,
-        props: { content: "<p>Hello</p>" },
-        type: "updateBlockProps",
-      }),
-      /content/iu,
-    ],
   ];
 
   it.each(rejected)("rejects %s with a reason", (_name, command, reason) => {

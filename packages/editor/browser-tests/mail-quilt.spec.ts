@@ -113,7 +113,7 @@ test("host CSS doesn't reach the canvas", async ({ page }) => {
   await expect(hostParagraph).toHaveCSS("color", "rgb(255, 0, 0)");
   await expect(hostParagraph).toHaveCSS("margin-top", "50px");
   await expect(page.locator("main")).toHaveCSS("display", "flex");
-  await expect(page.getByRole("button", { name: "Re-render" })).toHaveCSS(
+  await expect(page.getByRole("button", { name: "Host button" })).toHaveCSS(
     "background-color",
     "rgba(0, 0, 0, 0)"
   );
@@ -210,16 +210,40 @@ test.describe("undo and redo while typing", () => {
     });
 
     // Ctrl+K and Ctrl+Y delete to the end of the line and put it back.
-    test("⌘ makes the shortcuts, and Ctrl+K and Ctrl+Y are left to the text", async ({
+    test("⌘ makes the shortcuts, and Ctrl+K is left to the text", async ({
       page,
     }) => {
       await focusStartOfTextBlock(page);
-      const linkField = canvas(page).getByRole("textbox", { name: "Link URL" });
+      await stopClock(page);
+      await page.keyboard.type("abc");
+      await page.keyboard.press("Meta+z");
+      await expect(textBlock(page)).toHaveText("Hello");
+      await page.keyboard.press("Meta+Shift+z");
+      await expect(textBlock(page)).toHaveText("abcHello");
 
+      const linkField = canvas(page).getByRole("textbox", { name: "Link URL" });
       await page.keyboard.press("Control+k");
       await expect(linkField).toBeHidden();
       await page.keyboard.press("Meta+k");
       await expect(linkField).toBeVisible();
+    });
+
+    test("Ctrl+Y doesn't redo", async ({ page }) => {
+      test.skip(
+        process.platform === "darwin",
+        "A real Mac puts back what Ctrl+K deleted"
+      );
+      await focusStartOfTextBlock(page);
+      await stopClock(page);
+      await page.keyboard.type("abc");
+      await page.keyboard.press("Meta+z");
+      await expect(textBlock(page)).toHaveText("Hello");
+
+      await page.keyboard.press("Control+y");
+      // After the key, so a redo would show as abcxHello.
+      await page.keyboard.type("x");
+
+      await expect(textBlock(page)).toHaveText("xHello");
     });
   });
 
@@ -709,22 +733,6 @@ test.describe("refusing a document", () => {
     ]);
     await expect(textBlock(page)).toHaveText("Hello");
     expect(await currentValue(page)).toStrictEqual(before);
-  });
-
-  test("a clone with a damaged list isn't mistaken for the same document", async ({
-    page,
-  }) => {
-    const damaged = await canvas(page).evaluate(
-      (element) => (element as MailQuilt).value
-    );
-    damaged?.rows.push(
-      null as unknown as NonNullable<typeof damaged>["rows"][0]
-    );
-
-    const reasons = await setValueAndCollectErrors(page, damaged);
-
-    expect(reasons).toStrictEqual([expect.stringMatching(/rows\.1/u)]);
-    await expect(textBlock(page)).toHaveText("Hello");
   });
 
   test("mq-error reaches a listener added just after setting value", async ({

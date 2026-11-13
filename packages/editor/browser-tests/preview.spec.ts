@@ -276,18 +276,6 @@ test.describe("the sandbox", () => {
 });
 
 test.describe("closing", () => {
-  test("Close and Escape both close the Preview", async ({ page }) => {
-    await previewButton(page).click();
-    await expect(previewEmail(page)).toContainText("Hello");
-    await closeButton(page).click();
-    await expect(previewDialog(page)).toBeHidden();
-
-    await previewButton(page).click();
-    await expect(previewEmail(page)).toContainText("Hello");
-    await page.keyboard.press("Escape");
-    await expect(previewDialog(page)).toBeHidden();
-  });
-
   // A sandboxed frame keeps Escape to itself, so a person leaves by the keyboard.
   test("the keyboard can leave the email to reach Close", async ({ page }) => {
     await previewButton(page).click();

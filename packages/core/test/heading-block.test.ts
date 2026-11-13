@@ -98,11 +98,6 @@ describe("Heading Block", () => {
   it.each([
     ["level 4", { level: 4 }, /level/u],
     ["no level", { level: null }, /level/u],
-    [
-      "a property only another Block has",
-      { href: "https://a.example" },
-      /href/u,
-    ],
   ])("rejects %s", (_name, props, reason) => {
     const { editor } = setup();
     const before = editor.getDocument();

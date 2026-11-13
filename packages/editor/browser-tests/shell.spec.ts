@@ -339,16 +339,9 @@ test.describe("the editor's API", () => {
     await expect(textBlock(page)).toHaveText("Hello");
   });
 
-  test("Export HTML downloads email.html", async ({ page }) => {
-    await openShell(page);
-
-    const { name, text } = await exportFile(page, "Export HTML");
-
-    expect(name).toBe("email.html");
-    expect(text).toContain("Hello");
-  });
-
-  test("a failed export says so, until one works", async ({ page }) => {
+  test("a failed export says so, until email.html downloads", async ({
+    page,
+  }) => {
     await openShell(page);
     // MJML loads on first export, so this is when that request can fail.
     await page.route("**/*.js", (route) => route.abort());
@@ -359,7 +352,9 @@ test.describe("the editor's API", () => {
       "couldn't be exported"
     );
     await page.unrouteAll();
-    await exportFile(page, "Export HTML");
+    const { name, text } = await exportFile(page, "Export HTML");
+    expect(name).toBe("email.html");
+    expect(text).toContain("Hello");
     await expect(shell(page).getByRole("alert")).toHaveCount(0);
   });
 });

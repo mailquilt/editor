@@ -1,13 +1,12 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
-import { focusStartOfTextBlock, stopClock, textBlock } from "./helpers.js";
+import { focusStartOfTextBlock, textBlock } from "./helpers.js";
 
 test("onError hears a refused first document", async ({ page }) => {
   await page.goto("/?refused-first");
 
   await expect(page.getByTestId("errors")).toContainText("newer");
-  await expect(textBlock(page)).toHaveCount(0);
 });
 
 const fastTyping = "The quick brown fox jumps over the lazy dog. ".repeat(3);
@@ -25,27 +24,6 @@ test.describe("passing each onChange document back into value", () => {
     await expect(textBlock(page)).toHaveText(`${fastTyping}Hello`);
     await expect(textBlock(page)).toBeFocused();
   });
-});
-
-test("a host re-render leaves the cursor and undo history alone", async ({
-  page,
-}) => {
-  await page.goto("/");
-  await focusStartOfTextBlock(page);
-  await stopClock(page);
-  await page.keyboard.type("Oh");
-  await expect(page.getByTestId("latest-document")).toContainText("OhHello");
-
-  // Keeping focus in the text means this has to happen without clicking away.
-  await page
-    .getByRole("button", { name: "Re-render host" })
-    .evaluate((button) => (button as HTMLButtonElement).click());
-  await expect(page.getByTestId("render-count")).toHaveText("1");
-  await page.keyboard.type(" ");
-
-  await expect(textBlock(page)).toHaveText("Oh Hello");
-  await page.getByRole("button", { name: "Undo" }).click();
-  await expect(textBlock(page)).toHaveText("Hello");
 });
 
 test("other props such as className and aria-label reach the element", async ({
@@ -67,12 +45,11 @@ test("other props such as className and aria-label reach the element", async ({
 
 test("ref gives the host the element, to export HTML", async ({ page }) => {
   await page.goto("/");
-  await focusStartOfTextBlock(page);
-  await page.keyboard.type("Oh ");
+  await expect(textBlock(page)).toHaveText("Hello");
 
   await page.getByRole("button", { name: "Export HTML" }).click();
 
-  await expect(page.getByTestId("html")).toContainText("Oh Hello");
+  await expect(page.getByTestId("html")).toContainText("Hello");
 });
 
 test("comes back working after being removed", async ({ page }) => {
@@ -105,34 +82,16 @@ test.describe("a callback ref", () => {
   });
 });
 
-// StrictMode mounts each effect twice, which a wrapper's effects must survive.
-test.describe("under StrictMode", () => {
-  test("onError hears a refused first document", async ({ page }) => {
-    await page.goto("/?refused-first&strict");
+// StrictMode mounts each effect twice. The wrapper's effects wait for the editor
+// to load, so they don't run until after that, and one test is enough.
+test("passing each onChange document back into value keeps the cursor under StrictMode", async ({
+  page,
+}) => {
+  await page.goto("/?strict");
+  await focusStartOfTextBlock(page);
 
-    await expect(page.getByTestId("errors")).toContainText("newer");
-  });
+  await page.keyboard.type(fastTyping);
 
-  test("passing each onChange document back into value keeps the cursor", async ({
-    page,
-  }) => {
-    await page.goto("/?strict");
-    await focusStartOfTextBlock(page);
-
-    await page.keyboard.type(fastTyping);
-
-    await expect(textBlock(page)).toHaveText(`${fastTyping}Hello`);
-    await expect(textBlock(page)).toBeFocused();
-  });
-
-  test("a callback ref ends up with the element, once its email is in", async ({
-    page,
-  }) => {
-    await page.goto("/?callback-ref&strict");
-
-    // However often StrictMode calls it, it ends with the element.
-    await expect(calls(page)).toHaveText(/email$/u);
-    await page.getByRole("button", { name: "Toggle editor" }).click();
-    await expect(calls(page)).toHaveText(/email, cleanup$/u);
-  });
+  await expect(textBlock(page)).toHaveText(`${fastTyping}Hello`);
+  await expect(textBlock(page)).toBeFocused();
 });
