@@ -42,7 +42,7 @@ With `save-key`, the Shell keeps the email in the browser's `localStorage` under
 - When the Shell opens, an email saved under the key opens instead of `value`. `value` is the email to start from when nothing is saved yet.
 - While the saved email is open, setting `value` to the starting email again leaves it open. If the Shell opened without a starting email, setting nothing leaves it open too, and the first email you set becomes the starting email. So a React component that renders again, or gets its starting email after the Shell opens, doesn't replace the person's work. Any other `value` works as on `<mail-quilt>`: a different email opens, and setting it to nothing empties the editor.
 - If the saved email can't be opened, such as one saved by a newer version of Mail Quilt, the message bar says why and `value` opens instead. The person's next change is saved over it, so its text is first copied to `<save-key>:unopened`, where nothing saves, and your app can still read it.
-- Each change is saved under the key. If the browser can't save, because storage is blocked or full, the message bar says so, and suggests Export JSON while that button shows.
+- Each change is saved under the key. With the Shell open in two tabs, each saves over the other, so the last change wins. If the browser can't save, because storage is blocked or full, the message bar says so, and suggests Export JSON while that button shows.
 
 Pick a key no other app on the same origin uses, such as one starting with your app's name. Set it before the Shell opens, as the examples do. If you change it later, the email saved under the new key opens. With nothing saved there, the current email stays and is saved under the new key from its next change. Removing the key stops the saving.
 

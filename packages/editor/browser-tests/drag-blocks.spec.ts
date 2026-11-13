@@ -138,6 +138,38 @@ test.describe("moving a Block by its handle", () => {
     ).toHaveCount(0);
   });
 
+  // White text on a dark email would otherwise be unreadable while it moves.
+  test("what's dragged keeps its Row's color behind it, or else the email's", async ({
+    page,
+  }) => {
+    await open(page, [[["One"]]]);
+    const email = emailWith([[["One"]], [["Two"]]]);
+    email.settings.backgroundColor = "#101010";
+    const [colored] = email.rows;
+    if (colored) {
+      colored.props = { backgroundColor: "#123456" };
+    }
+    await setValue(page, email);
+    const ghostBackground = (selector: string) =>
+      canvas(page)
+        .locator(selector)
+        .evaluate((element) => getComputedStyle(element).backgroundColor);
+
+    await pickUp(page, handleOf(page, "One"));
+    expect(await ghostBackground(".block[data-drag-ghost]")).toBe(
+      "rgb(18, 52, 86)"
+    );
+    await page.keyboard.press("Escape");
+    await letGo(page);
+
+    await pickUp(page, handleOf(page, "Two"));
+    expect(await ghostBackground(".block[data-drag-ghost]")).toBe(
+      "rgb(16, 16, 16)"
+    );
+    await page.keyboard.press("Escape");
+    await letGo(page);
+  });
+
   // A touch screen opens its menu for a long press that hasn't moved yet.
   test("a press on the handle keeps the menu shut until it's let go", async ({
     page,

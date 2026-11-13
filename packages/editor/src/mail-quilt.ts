@@ -212,7 +212,8 @@ export class MailQuilt extends LitElement {
     if (isSameDocument(document, this.#lastKnownDocument)) {
       return;
     }
-    if (document === undefined) {
+    // Null too, which is what JSON.parse gives for nothing saved.
+    if (document === undefined || document === null) {
       this.#show(undefined);
       return;
     }
@@ -396,6 +397,8 @@ export class MailQuilt extends LitElement {
             @beforeinput=${this.#onBeforeInput}
             @keydown=${this.#onEmailKeydown}
             style=${styleMap({
+              // Also for what's dragged, which has nothing behind it.
+              "--_mq-email-background": settings.backgroundColor,
               "background-color": settings.backgroundColor,
               "font-family": settings.fontFamily,
               width: `${settings.width}px`,

@@ -194,6 +194,27 @@ test.describe("theme tokens", () => {
   });
 });
 
+test("in forced colors, a selected tab and a pressed button are outlined", async ({
+  browserName,
+  page,
+}) => {
+  test.skip(browserName !== "chromium", "Only Chromium can emulate it");
+  await page.emulateMedia({ forcedColors: "active" });
+  await openBlocks(page, ["text"]);
+
+  await expect(canvas(page).getByRole("tab", { name: "Content" })).toHaveCSS(
+    "outline-style",
+    "solid"
+  );
+
+  await textBlock(page).click();
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.press("ControlOrMeta+b");
+  const bold = canvas(page).getByRole("button", { exact: true, name: "Bold" });
+  await expect(bold).toHaveAttribute("aria-pressed", "true");
+  await expect(bold).toHaveCSS("outline-style", "solid");
+});
+
 test("a host restyles the editor's frame through its part", async ({
   page,
 }) => {
