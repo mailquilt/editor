@@ -59,19 +59,12 @@ const firstEmail = () =>
 const Host = () => {
   const [document, setDocument] = useState(firstEmail);
   const [errors, setErrors] = useState<string[]>([]);
-  const [renderCount, setRenderCount] = useState(0);
   const [html, setHtml] = useState("");
   const [shown, setShown] = useState(true);
   const editor = useRef<MailQuiltElement>(null);
 
   return (
     <main>
-      <button
-        onClick={() => setRenderCount((count) => count + 1)}
-        type="button"
-      >
-        Re-render host
-      </button>
       <button
         onClick={async () =>
           setHtml((await editor.current?.exportHtml()) ?? "")
@@ -84,7 +77,6 @@ const Host = () => {
         Toggle editor
       </button>
       <output data-testid="html">{html}</output>
-      <output data-testid="render-count">{renderCount}</output>
       <output data-testid="errors">{errors.join("\n")}</output>
       <output data-testid="latest-document">{JSON.stringify(document)}</output>
       {shown && (

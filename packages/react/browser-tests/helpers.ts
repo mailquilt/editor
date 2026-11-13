@@ -22,14 +22,3 @@ export const focusStartOfTextBlock = async (page: Page) => {
       })
   );
 };
-
-/**
- * Keys typed within a second of each other are one undo step, and a slow run
- * could take longer than that. This stops the page's clock, so it can't. Timers
- * and frames wait too from then on.
- */
-export const stopClock = async (page: Page) => {
-  await page.clock.install();
-  const now = await page.evaluate(() => Date.now());
-  await page.clock.pauseAt(now + 1000);
-};

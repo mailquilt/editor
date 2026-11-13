@@ -15,6 +15,7 @@ import {
   emailWith,
   exportHtml,
   layoutOption,
+  moveCursorToLineEnd,
   openBlocks,
   rowTools,
   selectRow,
@@ -411,7 +412,7 @@ test.describe("choosing a layout", () => {
     const moved = textBlock(page).last();
     await expect(moved).toHaveAttribute("data-kept", "");
     await moved.click();
-    await page.keyboard.press("End");
+    await moveCursorToLineEnd(page);
     await page.keyboard.type("d");
     await expect(selectedBlock(page)).toHaveText("abcd");
     expect(await structure(page)).toStrictEqual([[["Hello", "abcd"]]]);

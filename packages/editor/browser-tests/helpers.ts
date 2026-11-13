@@ -12,7 +12,7 @@ export const textBlock = (page: Page) =>
 
 type Document = NonNullable<MailQuilt["value"]>;
 
-export { emailWith, emailWithInline } from "./host/email.js";
+export { emailWith } from "./host/email.js";
 
 /** An email with one Text Block, whose text is a link to `href`. */
 export const emailWithLink = (text: string, href: string) =>
@@ -113,7 +113,7 @@ export const openTab = async (page: Page, name: string) => {
 };
 
 /** The Content tab's tile for a type of Block, with the tab showing. */
-export const showPalette = async (page: Page, name: string) => {
+const showPalette = async (page: Page, name: string) => {
   await openTab(page, "Content");
   return palette(page, name);
 };

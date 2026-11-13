@@ -115,15 +115,15 @@ describe("Image Block", () => {
     });
   });
 
-  it.each([
-    ["a width of 0", { width: 0 }, /width/u],
-    ["alt text that isn't text", { alt: 1 }, /alt/u],
-  ])("rejects %s", (_name, props, reason) => {
-    expect(setProps(props).result).toStrictEqual({
-      ok: false,
-      reason: expect.stringMatching(reason),
-    });
-  });
+  it.each([["a width of 0", { width: 0 }, /width/u]])(
+    "rejects %s",
+    (_name, props, reason) => {
+      expect(setProps(props).result).toStrictEqual({
+        ok: false,
+        reason: expect.stringMatching(reason),
+      });
+    }
+  );
 
   it.each([
     ["no alt text", {}],

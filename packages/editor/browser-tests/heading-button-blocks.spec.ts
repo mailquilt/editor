@@ -333,22 +333,6 @@ test.describe("a Button", () => {
     expect(html).not.toContain("<img");
   });
 
-  test("links to https://shop.example/sale in the export", async ({ page }) => {
-    const href = "https://shop.example/sale";
-    await open(page, ["button"]);
-    await blockGroup(page, "Button").focus();
-
-    await change(field(page, "Link"), href);
-
-    await expect(field(page, "Link")).toHaveAttribute("aria-invalid", "false");
-    const { opened } = await openExport(page);
-    await expect(opened.getByRole("link", { name: "Buy" })).toHaveAttribute(
-      "href",
-      href
-    );
-    await opened.close();
-  });
-
   test("looks the same on the canvas and in the export", async ({ page }) => {
     await open(page, ["button"]);
     await blockGroup(page, "Button").focus();

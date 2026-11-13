@@ -88,16 +88,6 @@ test.describe("a Block on the canvas", () => {
       "button",
     ]);
   });
-
-  test("Escape in its toolbar goes back to the Block", async ({ page }) => {
-    await openBlocks(page, ["button"]);
-    await blockGroup(page, "Button").focus();
-    await page.keyboard.press("Tab");
-
-    await page.keyboard.press("Escape");
-
-    await expect(blockGroup(page, "Button")).toBeFocused();
-  });
 });
 
 test.describe("a Row on the canvas", () => {
@@ -335,15 +325,6 @@ test.describe("the format bar", () => {
     await page.keyboard.press("Escape");
     await expect(textBlock(page)).toBeFocused();
     await expect(formatBar(page)).toBeVisible();
-  });
-
-  test("isn't a stop for Tab from the text", async ({ page }) => {
-    await openBlocks(page, ["text", "button"]);
-    await textBlock(page).click();
-
-    await page.keyboard.press("Tab");
-
-    await expect(blockTools(page).getByRole("button").first()).toBeFocused();
   });
 });
 

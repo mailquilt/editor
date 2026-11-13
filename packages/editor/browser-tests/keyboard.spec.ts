@@ -261,19 +261,6 @@ test.describe("moving a Block with Alt+Arrow keys", () => {
     ).toBeVisible();
   });
 
-  test("stops at the edge of a Row", async ({ page }) => {
-    await open(page, [[["A"], ["B"]]]);
-    await blockWith(page, "A").focus();
-    const before = await changeCount(page).textContent();
-
-    await page.keyboard.press("Alt+ArrowLeft");
-    await blockWith(page, "B").focus();
-    await page.keyboard.press("Alt+ArrowRight");
-
-    await expect(structure(page)).resolves.toEqual([[["A"], ["B"]]]);
-    await expect(changeCount(page)).toHaveText(before as string);
-  });
-
   test("past the end of a Column, moves into the next Row", async ({
     page,
   }) => {
@@ -313,20 +300,6 @@ test.describe("moving a Block with Alt+Arrow keys", () => {
       [["B"]],
     ]);
     await expect(blockWith(page, "B")).toBeFocused();
-  });
-
-  test("a Block already in a Row of its own stays at the top or bottom", async ({
-    page,
-  }) => {
-    await open(page, [[["A"]], [["B"]]]);
-    const before = await changeCount(page).textContent();
-    await blockWith(page, "A").focus();
-    await page.keyboard.press("Alt+ArrowUp");
-    await blockWith(page, "B").focus();
-    await page.keyboard.press("Alt+ArrowDown");
-
-    await expect(structure(page)).resolves.toEqual([[["A"]], [["B"]]]);
-    await expect(changeCount(page)).toHaveText(before as string);
   });
 
   test("each move is one undo step, and focus stays on the Block", async ({
@@ -425,8 +398,13 @@ test.describe("announcing a move", () => {
     );
   });
 
-  test("says when a Block can't go further", async ({ page }) => {
+  // At a Row's edge, and alone in a Row at the top, where every press would
+  // otherwise add an empty Row.
+  test("says when a Block can't go further, and changes nothing", async ({
+    page,
+  }) => {
     await open(page, [[["A"]]]);
+    const before = await changeCount(page).textContent();
     await blockWith(page, "A").focus();
 
     await page.keyboard.press("Alt+ArrowLeft");
@@ -434,6 +412,8 @@ test.describe("announcing a move", () => {
 
     await page.keyboard.press("Alt+ArrowUp");
     await expect(announcement(page)).toHaveText("The Block can't move up.");
+    await expect(structure(page)).resolves.toEqual([[["A"]]]);
+    await expect(changeCount(page)).toHaveText(before as string);
   });
 
   test("the same words twice are still two announcements", async ({ page }) => {

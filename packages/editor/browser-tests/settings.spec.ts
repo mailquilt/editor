@@ -671,23 +671,20 @@ test.describe("input method composition", () => {
 });
 
 test.describe("the color picker", () => {
-  test("shows what's behind a Row with no color", async ({ page }) => {
+  // Over a dark email, so white is a change the picker can make.
+  test("shows what's behind a Row with no color, and can pick white", async ({
+    page,
+  }) => {
     const document = emailWith([[["Hi"]]]);
-    document.settings.backgroundColor = "#123456";
+    document.settings.backgroundColor = "#000";
     await setValue(page, document);
     await selectRow(page, 1);
 
     await expect(rowField(page, "Background color")).toHaveValue("");
+    // In full, as a color picker only takes six digits.
     await expect(rowField(page, "Background color picker")).toHaveValue(
-      "#123456"
+      "#000000"
     );
-  });
-
-  test("offers white on a Row over a dark email", async ({ page }) => {
-    const document = emailWith([[["Hi"]]]);
-    document.settings.backgroundColor = "#000000";
-    await setValue(page, document);
-    await selectRow(page, 1);
 
     await rowField(page, "Background color picker").fill("#ffffff");
 

@@ -105,25 +105,15 @@ describe(renderEmail, () => {
     await expect(html).toMatchFileSnapshot("expected/one-text-block.html");
   });
 
-  it.each([
-    [
-      "33-33-33",
-      emailWithColumns(
-        { texts: ["One"], width: 33.33 },
-        { texts: ["Two"], width: 33.33 },
-        { texts: ["Three"], width: 33.34 }
-      ),
-    ],
-    [
-      "50-50-empty-column",
-      emailWithColumns(
-        { texts: [], width: 50 },
-        { texts: ["Right"], width: 50 }
-      ),
-    ],
-  ])("matches the saved HTML for the %s Row", async (name, email) => {
+  it("matches the saved HTML for a 33/33/33 Row with an empty Column", async () => {
+    const email = emailWithColumns(
+      { texts: ["One"], width: 33.33 },
+      { texts: [], width: 33.33 },
+      { texts: ["Three"], width: 33.34 }
+    );
+
     await expect(renderEmail(email)).resolves.toMatchFileSnapshot(
-      `expected/columns-${name}.html`
+      "expected/columns-33-33-33-empty-column.html"
     );
   });
 
@@ -193,7 +183,10 @@ describe(renderEmail, () => {
     const block = row.columns[0]?.blocks[0] as Block;
     block.props = { ...block.props, color };
 
-    await expect(renderEmail(email)).resolves.toContain(`color:${color}`);
+    const html = await renderEmail(email);
+
+    expect(html).toContain(`;color:${color}`);
+    expect(html).toContain(`background-color:${color}`);
   });
 
   it("escapes text so it can't become markup", async () => {
