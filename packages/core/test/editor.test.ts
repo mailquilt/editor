@@ -96,8 +96,17 @@ describe("rejecting a Command", () => {
     ],
     [
       "props that aren't an object",
-      (blockId) => ({ blockId, props: "Hi", type: "updateProps" }),
+      (blockId) => ({ blockId, props: [], type: "updateProps" }),
       /props/iu,
+    ],
+    [
+      "a key the Block doesn't have, even one named like Object's own",
+      (blockId) => ({
+        blockId,
+        props: JSON.parse('{"constructor":"x"}'),
+        type: "updateProps",
+      }),
+      /constructor/iu,
     ],
     [
       "text that isn't limited rich text",

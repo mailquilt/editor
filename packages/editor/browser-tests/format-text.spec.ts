@@ -527,6 +527,14 @@ test.describe("links", () => {
     expect(await savedInline(page)).toStrictEqual([
       { text: "Hello", type: "text" },
     ]);
+
+    // The same reason again is a new alert, so it's read out again.
+    await page.getByRole("alert").evaluate((element) => {
+      element.dataset.seen = "true";
+    });
+    await linkInput(page).press("Enter");
+    await expect(page.getByRole("alert")).toBeVisible();
+    await expect(page.getByRole("alert")).not.toHaveAttribute("data-seen");
   });
 
   test("spaces around a pasted URL are ignored", async ({ page }) => {

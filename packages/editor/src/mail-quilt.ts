@@ -824,7 +824,7 @@ export class MailQuilt extends LitElement {
   /** Image URLs that didn't load, which the canvas stops trying to show. */
   readonly #failedImages = new Set<string>();
   /** Set while the link field is open. */
-  #linkForm: { error: boolean } | undefined;
+  #linkForm: { refusals: number } | undefined;
   /** Set while the Preview is open. */
   #preview: Preview | undefined;
   /** The current document's HTML, once the Preview has rendered it. */
@@ -1529,7 +1529,7 @@ export class MailQuilt extends LitElement {
     if (!this.#editingText) {
       view.focus();
     }
-    this.#linkForm = { error: false };
+    this.#linkForm = { refusals: 0 };
     this.requestUpdate();
     await this.updateComplete;
     const input =
@@ -1557,7 +1557,7 @@ export class MailQuilt extends LitElement {
 
   #submitLink(href: string) {
     if (!isAllowedLinkHref(href)) {
-      this.#linkForm = { error: true };
+      this.#linkForm = { refusals: (this.#linkForm?.refusals ?? 0) + 1 };
       this.requestUpdate();
       return;
     }
@@ -1657,19 +1657,23 @@ export class MailQuilt extends LitElement {
 
   #draftField(section: SettingsSection, field: SettingsField, text: string) {
     const key = draftKey(section, field);
-    const refused = this.#drafts.get(key)?.refused ?? false;
-    if (text === fieldText(field, section.values) && !refused) {
+    const refusals = this.#drafts.get(key)?.refusals ?? 0;
+    if (text === fieldText(field, section.values) && !refusals) {
       this.#drafts.delete(key);
     } else {
-      this.#drafts.set(key, { refused, text });
+      this.#drafts.set(key, { refusals, text });
     }
   }
 
-  /** Each commit is one undo step. What can't be accepted stays to be fixed. */
+  /**
+   * Each commit is one undo step. What can't be accepted stays to be fixed. A
+   * retry the person didn't ask for doesn't say again what they've been told.
+   */
   #commitField(
     section: SettingsSection,
     field: SettingsField,
-    control: HTMLInputElement | HTMLSelectElement
+    control: HTMLInputElement | HTMLSelectElement,
+    retry = false
   ) {
     const key = draftKey(section, field);
     const value = fieldValue(field, control);
@@ -1683,7 +1687,11 @@ export class MailQuilt extends LitElement {
     if (result?.ok || result?.unchanged) {
       this.#drafts.delete(key);
     } else {
-      this.#drafts.set(key, { refused: true, text: control.value });
+      const refusals = this.#drafts.get(key)?.refusals ?? 0;
+      this.#drafts.set(key, {
+        refusals: retry ? refusals : refusals + 1,
+        text: control.value,
+      });
     }
     if (result?.ok) {
       this.#retryRefusedFields(section);
@@ -1699,8 +1707,8 @@ export class MailQuilt extends LitElement {
       const control = this.renderRoot.querySelector<HTMLInputElement>(
         `[data-draft-key="${CSS.escape(key)}"]`
       );
-      if (control && this.#drafts.get(key)?.refused) {
-        this.#commitField(section, field, control);
+      if (control && this.#drafts.get(key)?.refusals) {
+        this.#commitField(section, field, control, true);
       }
     }
   }

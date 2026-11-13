@@ -383,6 +383,21 @@ describe("a saved language that isn't a code", () => {
     });
   });
 
+  it("is kept by an undefined, as JSON would drop that key", () => {
+    const editor = createEditor({ document: withLanguage("en_US") });
+    const before = editor.getDocument().settings;
+
+    editor.apply({
+      settings: { language: undefined, width: 640 },
+      type: "updateEmailSettings",
+    });
+
+    expect(editor.getDocument().settings).toStrictEqual({
+      ...before,
+      width: 640,
+    });
+  });
+
   it("can be replaced with a code", () => {
     const editor = createEditor({ document: withLanguage("en_US") });
 

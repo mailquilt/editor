@@ -426,6 +426,14 @@ test.describe("validation", () => {
     await expect(changeCount(page)).toHaveText("0");
     expect(messages).toStrictEqual([]);
 
+    // The same reason again is a new alert, so it's read out again.
+    await error.evaluate((element) => {
+      element.dataset.seen = "true";
+    });
+    await change(color, "blue");
+    await expect(error).toBeVisible();
+    await expect(error).not.toHaveAttribute("data-seen");
+
     await change(color, "#ff0000");
 
     await expect(error).toHaveCount(0);

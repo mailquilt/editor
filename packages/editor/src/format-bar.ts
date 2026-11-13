@@ -1,5 +1,6 @@
 import { INVALID_LINK } from "@mailquilt/core";
 import { css, html, nothing } from "lit";
+import { keyed } from "lit/directives/keyed.js";
 
 import { isComposing, MOD_KEY, onToolbarArrowKeys } from "./block-keyboard.js";
 import { ICONS } from "./icons.js";
@@ -75,8 +76,11 @@ const MARK_BUTTONS: { keys: string; label: string; mark: ToggleableMark }[] = [
 export interface FormatBarState {
   /** Unset while the text has nothing to format. */
   formats: TextFormats | undefined;
-  /** Set while the link field is open. */
-  linkForm: { error: boolean } | undefined;
+  /**
+   * Set while the link field is open. Each refusal counts, so the same one again
+   * is a new alert and is read out.
+   */
+  linkForm: { refusals: number } | undefined;
 }
 
 export interface FormatBarEvents {
@@ -95,7 +99,7 @@ export interface FormatBarEvents {
 const stopPropagation = (event: Event) => event.stopPropagation();
 
 const renderLinkForm = (
-  error: boolean,
+  refusals: number,
   href: string | undefined,
   events: FormatBarEvents
 ) => html`
@@ -121,8 +125,8 @@ const renderLinkForm = (
     <label>
       Link URL
       <input
-        aria-describedby=${error ? "link-error" : nothing}
-        aria-invalid=${error ? "true" : "false"}
+        aria-describedby=${refusals ? "link-error" : nothing}
+        aria-invalid=${refusals ? "true" : "false"}
         autocomplete="off"
         name="href"
         spellcheck="false"
@@ -148,8 +152,11 @@ const renderLinkForm = (
       Cancel
     </button>
     ${
-      error
-        ? html`<p id="link-error" role="alert">${INVALID_LINK}</p>`
+      refusals
+        ? keyed(
+            refusals,
+            html`<p id="link-error" role="alert">${INVALID_LINK}</p>`
+          )
         : nothing
     }
   </form>
@@ -219,6 +226,6 @@ export const renderFormatBar = (
     >
       ${ICONS.lineBreak}
     </button>
-    ${linkForm ? renderLinkForm(linkForm.error, formats?.linkHref, events) : nothing}
+    ${linkForm ? renderLinkForm(linkForm.refusals, formats?.linkHref, events) : nothing}
   </div>
 `;

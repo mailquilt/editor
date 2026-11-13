@@ -18,6 +18,22 @@ const triggerOf = (target: EventTarget | null) =>
     : undefined;
 
 /**
+ * Where a scroll that moves a control can be heard. A scroll isn't composed, so
+ * one inside a shadow root, such as the Shell's, never reaches the window.
+ */
+const scrollTargetsOf = (root: ShadowRoot) => {
+  const targets: EventTarget[] = [window];
+  for (
+    let node: Node = root;
+    node instanceof ShadowRoot;
+    node = node.host.getRootNode()
+  ) {
+    targets.push(node);
+  }
+  return targets;
+};
+
+/**
  * One tooltip for every control under `root` with `data-tooltip`, meeting WCAG
  * 2.2 SC 1.4.13: it opens on hover and on keyboard focus, stays while the
  * pointer is over it, and Escape closes it without moving focus or the pointer.
@@ -150,8 +166,15 @@ export const createTooltips = (
     [root, "keydown", onKeydown as EventListener, { capture: true }],
     [window, "pointermove", onPointerMove as EventListener, { passive: true }],
     [window, "pointerdown", onPointerDown, { capture: true }],
-    [window, "scroll", onScroll, { capture: true, passive: true }],
   ];
+  for (const target of scrollTargetsOf(root)) {
+    listeners.push([
+      target,
+      "scroll",
+      onScroll,
+      { capture: true, passive: true },
+    ]);
+  }
   for (const [target, type, listener, options] of listeners) {
     target.addEventListener(type, listener, options);
   }
