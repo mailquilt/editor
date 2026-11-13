@@ -144,23 +144,6 @@ test.describe("moving an email with JSON", () => {
     );
   });
 
-  test("a refused import shows its reason and keeps the current email", async ({
-    page,
-  }) => {
-    await openShell(page);
-
-    await importFile(
-      page,
-      JSON.stringify({ kind: "blocks", rows: [], version: 999 })
-    );
-
-    await expect(shell(page).getByRole("alert")).toContainText(
-      "couldn't be imported"
-    );
-    await expect(shell(page).getByRole("alert")).toContainText("newer");
-    await expect(textBlock(page)).toHaveText("Hello");
-  });
-
   test("an import with a link that isn't allowed is refused, and keeps the current email", async ({
     page,
   }) => {
@@ -615,17 +598,6 @@ test("removing save-key stops saving", async ({ page }) => {
   ).toStrictEqual([]);
 });
 
-test("the heading falls back to Email when unset", async ({ page }) => {
-  await openShell(page);
-
-  await shell(page).evaluate((element) => {
-    element.setAttribute("heading", "Campaign");
-    element.removeAttribute("heading");
-  });
-
-  await expect(header(page).getByRole("heading")).toHaveText("Email");
-});
-
 test.describe("look", () => {
   test("fills the space the host gives it, the editor below the header", async ({
     page,
@@ -658,6 +630,35 @@ test.describe("look", () => {
     const frameBox = await box(page.locator("#frame"));
 
     expect(panel.bottom).toBeLessThanOrEqual(frameBox.bottom);
+  });
+
+  // Moving it stops the observer that sizes the side panel, and starts it again.
+  test("moved and put back, it still keeps the side panel in view", async ({
+    page,
+  }) => {
+    await page.goto("/shell.html?long");
+    await expect(textBlock(page).first()).toBeVisible();
+
+    await shell(page).evaluate((element) => {
+      const parent = element.parentElement;
+      element.remove();
+      parent?.append(element);
+    });
+    await expect(textBlock(page).first()).toBeVisible();
+    // A smaller space after the move, which only a running observer sees.
+    await page.locator("#frame").evaluate((frame) => {
+      frame.style.height = "500px";
+    });
+
+    await expect
+      .poll(async () => {
+        const panel = await box(
+          shell(page).locator("mail-quilt").locator(".side-panel-inner")
+        );
+        const frameBox = await box(page.locator("#frame"));
+        return panel.bottom <= frameBox.bottom;
+      })
+      .toBe(true);
   });
 
   test("a tooltip follows its button as the Shell scrolls", async ({

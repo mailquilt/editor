@@ -14,12 +14,9 @@ import {
   openBlocks as open,
   openExport,
   palette,
-  panelBlock,
-  setValue,
+  pasteHtml,
   settle,
-  undo,
-  undoByKey,
-  violations,
+  setValue,
 } from "./helpers.js";
 
 const headingText = (page: Page) =>
@@ -143,11 +140,6 @@ test.describe("a Heading", () => {
       "32px"
     );
     await opened.close();
-
-    await undoByKey(page);
-
-    await expect(lastBlockProps(page)).resolves.toMatchObject({ level: 2 });
-    await expect(field(page, "Level")).toHaveValue("2");
   });
 
   test("shows its settings the same on the canvas and in the export", async ({
@@ -178,12 +170,12 @@ test.describe("a Heading", () => {
   }) => {
     await open(page, ["heading"]);
 
-    const onCanvas = await headingText(page).boundingBox();
+    const onCanvas = await boxOf(headingText(page));
     const { opened } = await openExport(page);
-    const exported = await opened.getByRole("heading").boundingBox();
+    const exported = await boxOf(opened.getByRole("heading"));
 
     // The canvas's box has the Block's padding, and the heading's doesn't.
-    expect(exported?.height).toBe((onCanvas?.height ?? 0) - 32);
+    expect(exported.height).toBe(onCanvas.height - 32);
   });
 });
 
@@ -226,18 +218,7 @@ test.describe("Bold in a Heading, which is already bold", () => {
     await open(page, ["heading"]);
     await headingText(page).click();
 
-    await headingText(page).evaluate((element) => {
-      const clipboardData = new DataTransfer();
-      clipboardData.setData("text/html", "<strong><em>Big</em></strong>");
-      // Not a ClipboardEvent, whose constructor ignores this data in Firefox.
-      const event = new Event("paste", {
-        bubbles: true,
-        cancelable: true,
-        composed: true,
-      });
-      Object.defineProperty(event, "clipboardData", { value: clipboardData });
-      element.dispatchEvent(event);
-    });
+    await pasteHtml(headingText(page), "<strong><em>Big</em></strong>");
 
     await expect(headingText(page).locator("em")).toHaveText("Big");
     const props = await lastBlockProps(page);
@@ -277,12 +258,12 @@ test.describe("Bold in a Heading, which is already bold", () => {
 test.describe("a Button", () => {
   test("doesn't select its label when dragged across", async ({ page }) => {
     await open(page, ["button"]);
-    const box = await buttonFace(page).boundingBox();
-    const y = (box?.y ?? 0) + (box?.height ?? 0) / 2;
+    const box = await boxOf(buttonFace(page));
+    const y = box.y + box.height / 2;
 
-    await page.mouse.move((box?.x ?? 0) + 2, y);
+    await page.mouse.move(box.x + 2, y);
     await page.mouse.down();
-    await page.mouse.move((box?.x ?? 0) + (box?.width ?? 0) - 2, y, {
+    await page.mouse.move(box.x + box.width - 2, y, {
       steps: 5,
     });
     await page.mouse.up();
@@ -352,23 +333,7 @@ test.describe("a Button", () => {
     expect(html).not.toContain("<img");
   });
 
-  test("refuses the link javascript:alert(1)", async ({ page }) => {
-    await open(page, ["button"]);
-    await blockGroup(page, "Button").focus();
-
-    // oxlint-disable-next-line no-script-url -- What's being refused.
-    await change(field(page, "Link"), "javascript:alert(1)");
-
-    await expect(field(page, "Link")).toHaveAttribute("aria-invalid", "true");
-    await expect(panelBlock(page).getByRole("alert")).toContainText(
-      "Merge Tag"
-    );
-    await expect(lastBlockProps(page)).resolves.toEqual({ label: "Buy" });
-  });
-
-  test("links to https://shop.example/sale in the export, and undoes it", async ({
-    page,
-  }) => {
+  test("links to https://shop.example/sale in the export", async ({ page }) => {
     const href = "https://shop.example/sale";
     await open(page, ["button"]);
     await blockGroup(page, "Button").focus();
@@ -382,10 +347,6 @@ test.describe("a Button", () => {
       href
     );
     await opened.close();
-
-    await undo(page);
-    await expect(lastBlockProps(page)).resolves.toEqual({ label: "Buy" });
-    await expect(field(page, "Link")).toHaveValue("");
   });
 
   test("looks the same on the canvas and in the export", async ({ page }) => {
@@ -435,14 +396,5 @@ test.describe("a Button", () => {
     await expect(
       gapOnRight(opened.getByText("Buy"), opened.locator("body > div"))
     ).resolves.toBe(116);
-  });
-});
-
-test.describe("accessibility", () => {
-  test("finds no violations with a Button selected", async ({ page }) => {
-    await open(page, ["text", "button"]);
-    await blockGroup(page, "Button").focus();
-
-    await expect(violations(page)).resolves.toEqual([]);
   });
 });

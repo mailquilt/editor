@@ -5,9 +5,11 @@ import {
   addRow,
   announcement,
   blockTool,
+  boxOf,
   canvas,
   changeCount,
   chooseLayout,
+  deleteBlock,
   emailWith,
   layoutOption,
   openBlocks,
@@ -29,8 +31,6 @@ const blockWith = (page: Page, text: string) =>
   canvas(page)
     .getByRole("group", { name: "Text Block" })
     .filter({ hasText: text });
-
-const deleteBlock = (page: Page) => blockTool(page, "Delete Block");
 
 /** Back to the side panel's tabs from the keyboard, the Block still selected. */
 const backToTabs = async (page: Page) => {
@@ -73,11 +73,11 @@ const controlsWithoutRing = (page: Page) =>
  * negative if they're cut off there.
  */
 const gapBelowTop = async (page: Page, text: string) => {
-  const block = await blockWith(page, text).boundingBox();
-  const toolbar = await blockWith(page, text)
-    .getByRole("toolbar", { name: "Block tools" })
-    .boundingBox();
-  return Math.min(block?.y ?? 0, toolbar?.y ?? 0);
+  const block = await boxOf(blockWith(page, text));
+  const toolbar = await boxOf(
+    blockWith(page, text).getByRole("toolbar", { name: "Block tools" })
+  );
+  return Math.min(block.y, toolbar.y);
 };
 
 /** Where the Block "L" is in the only Column of the only Row. */

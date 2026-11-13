@@ -3,6 +3,7 @@ import type { Page } from "@playwright/test";
 
 import {
   blockGroup,
+  blockTools,
   boxOf,
   canvas,
   centerOf,
@@ -18,9 +19,6 @@ import {
   textBlock,
   undoByKey,
 } from "./helpers.js";
-
-const blockTools = (page: Page) =>
-  canvas(page).getByRole("toolbar", { name: "Block tools" });
 
 const formatBar = (page: Page) =>
   canvas(page).getByRole("toolbar", { name: "Text formatting" });
@@ -382,8 +380,8 @@ test.describe("the floating toolbar", () => {
 
     const toolbar = canvas(page).getByRole("group", { name: "Email tools" });
     await expect(toolbar).toBeInViewport();
-    const box = await toolbar.boundingBox();
-    expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(500);
+    const box = await boxOf(toolbar);
+    expect(box.y + box.height).toBeLessThanOrEqual(500);
   });
 
   test("stays above the email when the page scrolls it underneath", async ({

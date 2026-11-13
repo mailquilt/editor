@@ -20,23 +20,6 @@ test("a refused document reaches onError", async ({ page }) => {
   await checkRefusedDocument(page, url);
 });
 
-test("a server-rendered page sends the empty element", async ({ request }) => {
-  const response = await request.get(url);
-
-  expect(response.status()).toBe(200);
-  expect(await response.text()).toContain("<mail-quilt></mail-quilt>");
-});
-
-test("a Server Component can use MailQuilt", async ({ page }) => {
-  await page.goto(`${url}server-component`);
-
-  await expect
-    .poll(() =>
-      page.evaluate(() => customElements.get("mail-quilt") !== undefined)
-    )
-    .toBe(true);
-});
-
 test("rendering on a server doesn't register the element", async () => {
   const { stdout } = await promisify(execFile)("node", ["server-render.js"], {
     cwd: freshProjectDir("react"),

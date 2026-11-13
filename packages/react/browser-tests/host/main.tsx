@@ -1,5 +1,5 @@
 import type { ComponentProps } from "react";
-import { useCallback, useRef, useState } from "react";
+import { StrictMode, useCallback, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 
 import { MailQuilt, MailQuiltShell } from "../../src/index.js";
@@ -165,5 +165,14 @@ const Chosen =
 
 const root = window.document.querySelector("#root");
 if (root) {
-  createRoot(root).render(<Chosen />);
+  // As Next's and Vite's own starters render an app while it's being built.
+  createRoot(root).render(
+    params.has("strict") ? (
+      <StrictMode>
+        <Chosen />
+      </StrictMode>
+    ) : (
+      <Chosen />
+    )
+  );
 }

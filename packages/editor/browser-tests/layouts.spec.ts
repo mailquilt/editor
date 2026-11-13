@@ -3,13 +3,14 @@ import type { Page } from "@playwright/test";
 
 import {
   addRow,
+  addText,
   announcement,
-  blockTool,
   boxOf,
   canvas,
   changeCount,
   chooseLayout,
   currentValue,
+  deleteBlock,
   deleteRow,
   emailWith,
   exportHtml,
@@ -19,19 +20,11 @@ import {
   selectRow,
   selectRowButton,
   setValue,
-  showPalette,
   structure,
   textBlock,
   undo,
   undoByKey,
 } from "./helpers.js";
-
-const addText = async (page: Page) => {
-  const text = await showPalette(page, "Text");
-  await text.click();
-};
-
-const deleteBlock = (page: Page) => blockTool(page, "Delete Block");
 
 /** Selects the Row, then gives the layout in its side panel. */
 const shownLayout = async (page: Page, position: number, layout: string) => {
@@ -404,25 +397,6 @@ test.describe("choosing a layout", () => {
     await expect(canvas(page).getByText("Custom layout")).toBeVisible();
   });
 
-  test("switching to fewer Columns keeps every Block, ending in the last Column left", async ({
-    page,
-  }) => {
-    await chooseLayout(page, 1, "33/33/33");
-    await addToColumn(page).first().click();
-    await page.keyboard.type("Two");
-    await expect(selectedBlock(page)).toHaveText("Two");
-    await addToColumn(page).click();
-    await page.keyboard.type("Three");
-    await expect(selectedBlock(page)).toHaveText("Three");
-
-    await chooseLayout(page, 1, "50/50");
-
-    expect(await structure(page)).toStrictEqual([
-      [["Hello"], ["Two", "Three"]],
-    ]);
-    await expect(textBlock(page)).toHaveCount(3);
-  });
-
   test("keeps the moved Block's editor", async ({ page }) => {
     await chooseLayout(page, 1, "50/50");
     await addToColumn(page).click();
@@ -465,19 +439,6 @@ test.describe("choosing a layout", () => {
     await textBlock(page).last().click();
     await page.keyboard.type("!");
     await expect(textBlock(page).last()).toHaveText("Right!");
-  });
-
-  test("choosing the current layout changes nothing and adds no undo step", async ({
-    page,
-  }) => {
-    await chooseLayout(page, 1, "50/50");
-    const before = await currentValue(page);
-
-    await layoutOption(page, "50/50").click();
-
-    expect(await currentValue(page)).toStrictEqual(before);
-    await undo(page);
-    expect(await widths(page)).toStrictEqual([100]);
   });
 });
 

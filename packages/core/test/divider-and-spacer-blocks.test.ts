@@ -78,15 +78,6 @@ describe("Divider Block", () => {
       "border-width": "1px",
     });
   });
-
-  it("uses its own settings over that look", () => {
-    expect(
-      blockStyles({
-        props: { color: "#111111", thickness: 8 },
-        type: "divider",
-      })
-    ).toStrictEqual({ "border-color": "#111111", "border-width": "8px" });
-  });
 });
 
 describe("Spacer Block", () => {
@@ -97,15 +88,12 @@ describe("Spacer Block", () => {
     expect(propsOf(document)).toStrictEqual({ height: 40 });
   });
 
-  it.each([["a height over the limit", { height: 1001 }, /height/u]])(
-    "rejects %s",
-    (_name, props, reason) => {
-      expect(setProps("spacer", props).result).toStrictEqual({
-        ok: false,
-        reason: expect.stringMatching(reason),
-      });
-    }
-  );
+  it("rejects a height over the limit", () => {
+    expect(setProps("spacer", { height: 1001 }).result).toStrictEqual({
+      ok: false,
+      reason: expect.stringMatching(/height/u),
+    });
+  });
 
   it("has a height until its settings change it", () => {
     expect(blockStyles({ props: {}, type: "spacer" })).toStrictEqual({

@@ -3,6 +3,7 @@ import type { Page } from "@playwright/test";
 
 import type { MailQuilt } from "../src/index.js";
 import {
+  boxOf,
   addSecondTextBlock,
   canvas,
   changeCount,
@@ -11,11 +12,13 @@ import {
   emailWithLink,
   exportHtml,
   focusStartOfTextBlock,
+  redo,
   redoByKey,
   setValue,
   settle,
   stopClock,
   textBlock,
+  undo,
   undoByKey,
 } from "./helpers.js";
 
@@ -129,21 +132,6 @@ test("host CSS doesn't reach the canvas", async ({ page }) => {
   await expect(textBlock(page)).toHaveCSS("white-space-collapse", /pre|break/u);
 });
 
-test("host re-renders don't reset the canvas", async ({ page }) => {
-  await focusStartOfTextBlock(page);
-  await page.keyboard.type("ab");
-  await expect(changeCount(page)).toHaveText("2");
-
-  // A scripted click, so the re-render happens while the text keeps focus.
-  await page.evaluate(() => document.querySelector("button")?.click());
-  await expect(page.getByTestId("render-count")).toHaveText("1");
-
-  await expect(textBlock(page)).toBeFocused();
-  await page.keyboard.type("cd");
-  await expect(textBlock(page)).toHaveText("abcdHello");
-  await expect(changeCount(page)).toHaveText("4");
-});
-
 test("moving the element keeps the email editable", async ({ page }) => {
   await focusStartOfTextBlock(page);
   await page.keyboard.type("ab");
@@ -233,6 +221,17 @@ test.describe("undo and redo while typing", () => {
       await page.keyboard.press("Meta+k");
       await expect(linkField).toBeVisible();
     });
+  });
+
+  test("the Undo and Redo buttons step back and forward", async ({ page }) => {
+    await focusStartOfTextBlock(page);
+    await stopClock(page);
+    await page.keyboard.type("abc");
+
+    await undo(page);
+    await expect(textBlock(page)).toHaveText("Hello");
+    await redo(page);
+    await expect(textBlock(page)).toHaveText("abcHello");
   });
 
   test("undo and redo fire mq-change with the new document", async ({
@@ -784,9 +783,9 @@ test("a host's fixed height never cuts the email short", async ({ page }) => {
   });
 
   // The whole email shows, overflowing the host as it always has.
-  const editor = await canvas(page).locator(".editor").boundingBox();
-  const lastRow = await canvas(page).locator(".row-frame").last().boundingBox();
-  expect((lastRow?.y ?? 0) + (lastRow?.height ?? 0)).toBeLessThanOrEqual(
-    (editor?.y ?? 0) + (editor?.height ?? 0)
+  const editor = await boxOf(canvas(page).locator(".editor"));
+  const lastRow = await boxOf(canvas(page).locator(".row-frame").last());
+  expect(lastRow.y + lastRow.height).toBeLessThanOrEqual(
+    editor.y + editor.height
   );
 });

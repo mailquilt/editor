@@ -53,12 +53,14 @@ test.describe("the Move Row buttons", () => {
 
   test("move the Row with its Blocks, as one undo step", async ({ page }) => {
     await open(page, [[["One"], ["Two"]], [["Three"]]]);
+    const before = Number(await changeCount(page).textContent());
 
     await clickRowTool(page, 1, "Move Row down");
     await expect(structure(page)).resolves.toEqual([
       [["Three"]],
       [["One"], ["Two"]],
     ]);
+    await expect(changeCount(page)).toHaveText(String(before + 1));
     await expect(announcement(page)).toHaveText(
       "Row moved to position 2 of 2."
     );
@@ -227,41 +229,6 @@ const belowMiddleOf = async (page: Page, position: number): Promise<Point> => {
   );
   return { x: x + width / 2, y: y + height * 0.75 };
 };
-
-test("each Row move fires one mq-change, by button, Alt+↓ or drag", async ({
-  page,
-}) => {
-  await open(page, [[["One"]], [["Two"]], [["Three"]]]);
-  const before = Number(await changeCount(page).textContent());
-
-  await clickRowTool(page, 1, "Move Row down");
-  await expect(structure(page)).resolves.toEqual([
-    [["Two"]],
-    [["One"]],
-    [["Three"]],
-  ]);
-  await expect(changeCount(page)).toHaveText(String(before + 1));
-
-  await selectRow(page, 1);
-  await page.keyboard.press("Alt+ArrowDown");
-  await expect(structure(page)).resolves.toEqual([
-    [["One"]],
-    [["Two"]],
-    [["Three"]],
-  ]);
-  await expect(changeCount(page)).toHaveText(String(before + 2));
-
-  const to = await belowMiddleOf(page, 3);
-  await pickUp(page, await grip(page, 1, "handle"));
-  await moveTo(page, to);
-  await letGo(page);
-  await expect(structure(page)).resolves.toEqual([
-    [["Two"]],
-    [["Three"]],
-    [["One"]],
-  ]);
-  await expect(changeCount(page)).toHaveText(String(before + 3));
-});
 
 test.describe("dragging a Row", () => {
   for (const by of ["handle", "tag"] as const) {

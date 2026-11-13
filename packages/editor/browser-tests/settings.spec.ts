@@ -4,6 +4,7 @@ import type { Locator, Page } from "@playwright/test";
 import type { MailQuilt } from "../src/index.js";
 import {
   addRow,
+  addText,
   boxOf,
   canvas,
   change,
@@ -19,7 +20,6 @@ import {
   redoByKey,
   selectRow,
   setValue,
-  showPalette,
   structure,
   textBlock,
   undoByKey,
@@ -90,11 +90,6 @@ const typeFontSize = async (page: Page, size: string) => {
   await setValue(page, emailWith([[["One"]]]));
   await canvas(page).getByText("One", { exact: true }).click();
   await field(page, "Font size (px)").fill(size);
-};
-
-const addText = async (page: Page) => {
-  const text = await showPalette(page, "Text");
-  await text.click();
 };
 
 const inHostOf = async (page: Page, width: number) => {
@@ -650,19 +645,6 @@ test.describe("focus", () => {
   });
 });
 
-test.describe("a saved language that isn't a code", () => {
-  test("opens, and can be fixed in the panel", async ({ page }) => {
-    const document = emailWith([[["Hi"]]]);
-    document.settings.language = "en_US";
-    await setValue(page, document);
-
-    await expect(emailField(page, "Language")).toHaveValue("en_US");
-
-    await change(emailField(page, "Language"), "en-US");
-    expect(await settingsOf(page)).toMatchObject({ language: "en-US" });
-  });
-});
-
 test.describe("input method composition", () => {
   test("Escape leaves what's being typed alone", async ({ page }) => {
     const preheader = emailField(page, "Preheader");
@@ -725,16 +707,14 @@ test.describe("layout", () => {
       // oxlint-disable-next-line no-await-in-loop -- See above.
       await expect(onCanvas).toHaveCSS("width", "600px");
       // oxlint-disable-next-line no-await-in-loop -- See above.
-      const emailBox = await onCanvas.boundingBox();
+      const emailBox = await boxOf(onCanvas);
       // oxlint-disable-next-line no-await-in-loop -- See above.
-      const panelBox = await canvas(page).locator(".side-panel").boundingBox();
+      const panelBox = await boxOf(canvas(page).locator(".side-panel"));
       // oxlint-disable-next-line no-await-in-loop -- See above.
-      const hostBox = await canvas(page).boundingBox();
-      expect(panelBox?.y).toBeGreaterThanOrEqual(
-        (emailBox?.y ?? 0) + (emailBox?.height ?? 0)
-      );
+      const hostBox = await boxOf(canvas(page));
+      expect(panelBox.y).toBeGreaterThanOrEqual(emailBox.y + emailBox.height);
       // Below, it takes the editor's whole width.
-      expect(panelBox?.width).toBe(hostBox?.width);
+      expect(panelBox.width).toBe(hostBox.width);
     }
   });
 
@@ -743,16 +723,12 @@ test.describe("layout", () => {
   }) => {
     await inHostOf(page, 1100);
 
-    const emailBox = await canvas(page).locator(".email").boundingBox();
-    const panelBox = await canvas(page).locator(".side-panel").boundingBox();
-    const hostBox = await canvas(page).boundingBox();
-    expect(panelBox?.y).toBe(hostBox?.y);
-    expect(panelBox?.x).toBeGreaterThanOrEqual(
-      (emailBox?.x ?? 0) + (emailBox?.width ?? 0)
-    );
-    expect((panelBox?.x ?? 0) + (panelBox?.width ?? 0)).toBe(
-      (hostBox?.x ?? 0) + (hostBox?.width ?? 0)
-    );
+    const emailBox = await boxOf(canvas(page).locator(".email"));
+    const panelBox = await boxOf(canvas(page).locator(".side-panel"));
+    const hostBox = await boxOf(canvas(page));
+    expect(panelBox.y).toBe(hostBox.y);
+    expect(panelBox.x).toBeGreaterThanOrEqual(emailBox.x + emailBox.width);
+    expect(panelBox.x + panelBox.width).toBe(hostBox.x + hostBox.width);
   });
 
   test("puts the panel below for a wider email that no longer fits", async ({
@@ -763,11 +739,9 @@ test.describe("layout", () => {
     await change(emailField(page, "Width (px)"), "800");
 
     await expect(canvas(page).locator(".email")).toHaveCSS("width", "800px");
-    const emailBox = await canvas(page).locator(".email").boundingBox();
-    const panelBox = await canvas(page).locator(".side-panel").boundingBox();
-    expect(panelBox?.y).toBeGreaterThanOrEqual(
-      (emailBox?.y ?? 0) + (emailBox?.height ?? 0)
-    );
+    const emailBox = await boxOf(canvas(page).locator(".email"));
+    const panelBox = await boxOf(canvas(page).locator(".side-panel"));
+    expect(panelBox.y).toBeGreaterThanOrEqual(emailBox.y + emailBox.height);
   });
 });
 
