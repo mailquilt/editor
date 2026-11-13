@@ -64,7 +64,7 @@ test("the landing page's editor stays inside its frame as the email grows", asyn
     // oxlint-disable-next-line no-await-in-loop -- As above.
     await editor
       .getByRole("group", { name: "Add a Row" })
-      .getByRole("button", { exact: true, name: "100" })
+      .getByRole("button", { exact: true, name: "Add 100 Row" })
       .click();
   }
 
@@ -118,6 +118,9 @@ test("the landing page shows one package at a time, chosen by its tab", async ({
   await expect(panels).toContainText("@mailquilt/editor");
 
   await page.getByRole("tab", { name: "core" }).click();
+  await expect(panels).toContainText("@mailquilt/core");
+  // On the bottom row, down goes nowhere.
+  await page.keyboard.press("ArrowDown");
   await expect(panels).toContainText("@mailquilt/core");
   await page.keyboard.press("End");
   await expect(panels).toContainText("@mailquilt/renderer");

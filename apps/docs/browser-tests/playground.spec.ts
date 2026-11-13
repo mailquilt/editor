@@ -11,12 +11,14 @@ test("starts with several Rows, so moving one can be tried straight away", async
 }) => {
   await page.goto(PLAYGROUND);
   await expect(textBlock(page)).toBeVisible();
-  await expect(page.getByRole("group", { name: /^Row \d+$/u })).toHaveCount(3);
+  await expect(page.getByRole("toolbar", { name: /^Row \d+$/u })).toHaveCount(
+    3
+  );
   const textBlockPlace = page.getByRole("group", { name: /^Text Block, Row/u });
   await expect(textBlockPlace).toHaveAccessibleName(/^Text Block, Row 2,/u);
 
   await page
-    .getByRole("group", { exact: true, name: "Row 1" })
+    .getByRole("toolbar", { exact: true, name: "Row 1" })
     .getByRole("button", { name: "Move Row down" })
     .focus();
   await page.keyboard.press("Enter");

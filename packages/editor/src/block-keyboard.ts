@@ -1,7 +1,5 @@
 import { findBlockPosition } from "@mailquilt/core";
-import type { BlocksDocument, Command, RowLayout } from "@mailquilt/core";
-
-import type { DragSource, DropPlace } from "./block-dragging.js";
+import type { BlocksDocument, Command } from "@mailquilt/core";
 
 export type Direction = "down" | "left" | "right" | "up";
 
@@ -247,30 +245,4 @@ export const moveRowCommand = (
   return index === -1 || to < 0 || to >= document.rows.length
     ? undefined
     : { index: to, rowId, type: "moveRow" };
-};
-
-/** The Command for a drop, which adds a Row if it landed outside any. */
-export const dropCommand = (source: DragSource, place: DropPlace): Command => {
-  if ("rowId" in source) {
-    return {
-      index: "rowIndex" in place ? place.rowIndex : 0,
-      rowId: source.rowId,
-      type: "moveRow",
-    };
-  }
-  if ("rowLayout" in source) {
-    return {
-      index: "rowIndex" in place ? place.rowIndex : 0,
-      layout: source.rowLayout as RowLayout,
-      type: "insertRow",
-    };
-  }
-  if ("blockId" in source) {
-    return "columnId" in place
-      ? { ...source, ...place, type: "moveBlock" }
-      : { ...source, ...place, type: "moveBlockToNewRow" };
-  }
-  return "columnId" in place
-    ? { ...source, ...place, type: "insertBlock" }
-    : { ...source, ...place, type: "insertBlockInNewRow" };
 };

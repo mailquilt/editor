@@ -531,15 +531,6 @@
   content: "%";
 }
 
-.site-columns .site-link {
-  display: inline-block;
-  margin-top: 0.875rem;
-}
-
-.site-columns .site-muted {
-  margin-top: 0.5rem;
-}
-
 /* A piece of the editor itself, above the words about it. */
 .home-specimen {
   display: flex;

@@ -281,6 +281,12 @@ export const sidePanelStyles = css`
       box-shadow 120ms;
   }
 
+  /* Dragged by touch too, which would otherwise scroll the panel. */
+  .tile,
+  .layout-tile {
+    touch-action: none;
+  }
+
   .tile {
     cursor: grab;
     min-height: 84px;
@@ -362,11 +368,7 @@ export interface SidePanelEvents {
   onAddRow: (layout: RowLayout) => void;
   /** Back from a Block's or Row's settings to the tabs. */
   onBack: () => void;
-  onChooseLayout: (
-    rowId: string,
-    layout: RowLayout,
-    current: RowLayout | undefined
-  ) => void;
+  onChooseLayout: (rowId: string, layout: RowLayout) => void;
   onControlMousedown: (event: MouseEvent) => void;
   onSelectTab: (tab: PanelTab) => void;
   settings: SettingsPanelEvents;
@@ -436,7 +438,7 @@ const renderRowProperties = (
                 aria-pressed=${layout === current ? "true" : "false"}
                 class="layout-option"
                 type="button"
-                @click=${() => events.onChooseLayout(row.id, layout, current)}
+                @click=${() => events.onChooseLayout(row.id, layout)}
               >
                 ${renderThumbnail(layout)}<span>${layout}</span>
               </button>
@@ -444,30 +446,24 @@ const renderRowProperties = (
           )}
         </div>
       </div>
-      ${renderSettingsPanel([section], events.settings)}
+      ${renderSettingsPanel(section, events.settings)}
     </div>
   `;
 };
 
-/** The selected Block's fields. A Row's show when the Row is selected. */
+/** The selected Block's fields. */
 const renderProperties = (
   { block, columnIndex, rowIndex }: BlockPlace,
   events: SidePanelEvents
 ) => {
-  const sections: SettingsSection[] = [
-    {
-      command: (props) => ({
-        blockId: block.id,
-        props,
-        type: "updateProps",
-      }),
-      fields: blockSettingsFields(block),
-      id: "block",
-      legend: "Block",
-      targetId: block.id,
-      values: block.props,
-    },
-  ];
+  const section: SettingsSection = {
+    command: (props) => ({ blockId: block.id, props, type: "updateProps" }),
+    fields: blockSettingsFields(block),
+    id: "block",
+    legend: "Block",
+    targetId: block.id,
+    values: block.props,
+  };
   return html`
     ${renderPanelHeader(
       blockIcon(block.type),
@@ -476,7 +472,7 @@ const renderProperties = (
       events
     )}
     <div class="panel-scroll">
-      ${renderSettingsPanel(sections, events.settings)}
+      ${renderSettingsPanel(section, events.settings)}
     </div>
   `;
 };
@@ -505,6 +501,7 @@ const renderTabPanel = (
           ${BLOCK_TYPES.map(
             ({ label, type }) => html`
               <button
+                aria-label=${`Add ${label} Block`}
                 class="tile"
                 data-block-type=${type}
                 type="button"
@@ -536,6 +533,7 @@ const renderTabPanel = (
           ${ROW_LAYOUTS.map(
             (layout) => html`
               <button
+                aria-label=${`Add ${layout} Row`}
                 class="layout-tile"
                 data-row-layout=${layout}
                 type="button"
@@ -550,16 +548,14 @@ const renderTabPanel = (
     }
     default: {
       return renderSettingsPanel(
-        [
-          {
-            command: (settings) => ({ settings, type: "updateEmailSettings" }),
-            fields: EMAIL_SETTINGS_FIELDS,
-            id: "email",
-            legend: "Email",
-            targetId: "",
-            values: { ...document.settings },
-          },
-        ],
+        {
+          command: (settings) => ({ settings, type: "updateEmailSettings" }),
+          fields: EMAIL_SETTINGS_FIELDS,
+          id: "email",
+          legend: "Email",
+          targetId: "",
+          values: { ...document.settings },
+        },
         events.settings
       );
     }

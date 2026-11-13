@@ -31,13 +31,12 @@ import {
   hasRichText,
   renderBlockContent,
 } from "./block-content.js";
-import { BLOCKS, createBlockDragging } from "./block-dragging.js";
+import { BLOCKS, createBlockDragging, dropCommand } from "./block-dragging.js";
 import type { BlockDragging, DragSource, DropPlace } from "./block-dragging.js";
 import {
   arrowDirection,
   blocksIn,
   columnLabel,
-  dropCommand,
   historyInput,
   historyShortcut,
   isComposing,
@@ -73,18 +72,12 @@ import { renderSidePanel, sidePanelStyles } from "./side-panel.js";
 import type { PanelTab, SidePanelEvents } from "./side-panel.js";
 import { createTextBlockView } from "./text-block-view.js";
 import type { TextBlockView, TextFormats } from "./text-block-view.js";
-import { themeTokens, uiStyles } from "./theme.js";
+import { themeTokens, UI_LANG, uiStyles } from "./theme.js";
 import { createTooltips } from "./tooltips.js";
 import type { Tooltips } from "./tooltips.js";
 
 /** Narrower than this, there's no room to edit, and a notice shows instead. */
 const MIN_EDITOR_WIDTH = 640;
-
-/**
- * The language of the editor's own words, on the email card, so that a Block's
- * label and tools have it. Only each Block's content takes the email's language.
- */
-const UI_LANG = "en";
 
 /** Typing after a gap this long starts a new undo step. */
 const TYPING_PAUSE_MS = 1000;
@@ -562,11 +555,6 @@ export class MailQuilt extends LitElement {
         }
       }
 
-      [data-block-type],
-      [data-row-layout] {
-        touch-action: none;
-      }
-
       /*
        * Down the selected Block's start side, outside it: in the gutter for the
        * first Column, and over the end of the Column before for the others, where
@@ -829,7 +817,7 @@ export class MailQuilt extends LitElement {
   #preview: Preview | undefined;
   /** The current document's HTML, once the Preview has rendered it. */
   #previewHtml: string | undefined;
-  /** Set while the element is connected and has rendered. */
+  /** Set while the element is connected. */
   #dragging: BlockDragging | undefined;
   #tooltips: { element: HTMLElement; tooltips: Tooltips } | undefined;
   /** What the screen reader last heard about a move. */
@@ -854,8 +842,8 @@ export class MailQuilt extends LitElement {
     onAddBlock: (blockType) => this.#addBlock(blockType),
     onAddRow: (layout) => this.#addRow(layout),
     onBack: () => this.#showTabs(),
-    onChooseLayout: (rowId, layout, current) =>
-      this.#chooseLayout(rowId, layout, current),
+    onChooseLayout: (rowId, layout) =>
+      this.#apply({ layout, rowId, type: "setRowLayout" }),
     onControlMousedown: (event) => this.#onControlMousedown(event),
     onSelectTab: (tab) => this.#selectTab(tab),
     settings: {
@@ -939,12 +927,10 @@ export class MailQuilt extends LitElement {
   override connectedCallback() {
     super.connectedCallback();
     this.#resizeObserver.observe(this);
-    if (this.shadowRoot) {
-      this.#dragging = createBlockDragging({
-        onDrop: (source, place) => this.#drop(source, place),
-        root: this.shadowRoot,
-      });
-    }
+    this.#dragging = createBlockDragging({
+      onDrop: (source, place) => this.#drop(source, place),
+      root: this.renderRoot as ShadowRoot,
+    });
     this.requestUpdate();
   }
 
@@ -1062,21 +1048,22 @@ export class MailQuilt extends LitElement {
 
     return html`
       ${renderPreview(this.#preview, this.#previewEvents)}
-      <div class="visually-hidden" role="status">
+      <div class="visually-hidden" lang=${UI_LANG} role="status">
         ${keyed(this.#announcementId, html`<span>${this.#announcement}</span>`)}
       </div>
-      <p hidden id="block-keys">
+      <p hidden id="block-keys" lang=${UI_LANG}>
         Press Enter to edit the text, and Escape to come back. In the text,
         press Alt+F10 to reach its formatting. Use arrow keys to select another
         Block, and Alt with arrow keys to move this one.
       </p>
-      <p hidden id="block-keys-no-text">
+      <p hidden id="block-keys-no-text" lang=${UI_LANG}>
         Use arrow keys to select another Block, and Alt with arrow keys to move
         this one.
       </p>
       ${this.#narrow ? this.#renderNarrowNotice() : nothing}
       <div
         class="ui editor"
+        lang=${UI_LANG}
         part="frame"
         ?data-collapsed=${this.#narrow}
         style=${styleMap({ "--email-width": `${settings.width}px` })}
@@ -1089,7 +1076,6 @@ export class MailQuilt extends LitElement {
         >
           <div
             class="email"
-            lang=${UI_LANG}
             @beforeinput=${this.#onBeforeInput}
             @keydown=${this.#onEmailKeydown}
             style=${styleMap({
@@ -1155,7 +1141,7 @@ export class MailQuilt extends LitElement {
    */
   #renderNarrowNotice() {
     return html`
-      <div class="ui narrow-notice" part="frame">
+      <div class="ui narrow-notice" lang=${UI_LANG} part="frame">
         <span class="notice-icon">${ICONS.monitor}</span>
         <p class="notice-title">Editing needs more room</p>
         <p class="notice-body">
@@ -1175,25 +1161,27 @@ export class MailQuilt extends LitElement {
   }
 
   /**
-   * Beside the Row, on hover, on focus, and while the Row is selected.
-   * Alt+↑ and Alt+↓ move the Row from here, as the Move buttons say.
+   * Beside the Row, on hover, on focus, and while the Row is selected. One stop
+   * for Tab, then arrow keys go along. Alt+↑ and Alt+↓ move the Row from here,
+   * as the Move buttons say.
    */
   #renderRowToolbar(row: Row, index: number, count: number) {
     return html`
       <div
         aria-label=${`Row ${index + 1}`}
         class="ui row-toolbar"
-        role="group"
+        role="toolbar"
         @keydown=${(event: KeyboardEvent) =>
           this.#onRowToolbarKeydown(event, row.id)}
         @mousedown=${this.#onControlMousedown}
       >
-        <div class="bar">
+        <div class="bar" @keydown=${onToolbarArrowKeys}>
           ${renderDragHandle(this.#onHandleMousedown, "Drag Row")}
           <button
             aria-label="Select Row"
             aria-pressed=${row.id === this.#selectedRowId ? "true" : "false"}
             class="icon-button"
+            data-action="select-row"
             data-tooltip="Select Row"
             type="button"
             @click=${() => this.#selectRow(row.id)}
@@ -1208,6 +1196,7 @@ export class MailQuilt extends LitElement {
                 class="icon-button"
                 data-tooltip=${`Move Row ${direction} (${keys})`}
                 ?disabled=${direction === "up" ? index === 0 : index === count - 1}
+                tabindex="-1"
                 type="button"
                 @click=${() => this.#moveRow(row.id, direction)}
               >
@@ -1219,6 +1208,7 @@ export class MailQuilt extends LitElement {
             aria-label="Delete Row"
             class="icon-button danger"
             data-tooltip="Delete Row"
+            tabindex="-1"
             type="button"
             @click=${({ detail }: MouseEvent) =>
               this.#deleteRow(row.id, detail === 0)}
@@ -1505,7 +1495,7 @@ export class MailQuilt extends LitElement {
     await this.updateComplete;
     const button = this.renderRoot
       .querySelector(`.row-frame[data-row-selected] .row-toolbar`)
-      ?.querySelector<HTMLElement>('[aria-label="Select Row"]');
+      ?.querySelector<HTMLElement>('[data-action="select-row"]');
     if (button && this.shadowRoot?.activeElement !== button) {
       button.focus({ focusVisible } as FocusOptions);
     }
@@ -1740,16 +1730,6 @@ export class MailQuilt extends LitElement {
     }
   }
 
-  #chooseLayout(
-    rowId: string,
-    layout: RowLayout,
-    current: RowLayout | undefined
-  ) {
-    if (layout !== current) {
-      this.#apply({ layout, rowId, type: "setRowLayout" });
-    }
-  }
-
   #selectedPosition(document: BlocksDocument) {
     return this.#selectedBlockId === undefined
       ? undefined
@@ -1861,7 +1841,7 @@ export class MailQuilt extends LitElement {
           .querySelector(
             `.row-frame[data-row-id="${CSS.escape(neighbour.id)}"] .row-toolbar`
           )
-          ?.querySelector<HTMLElement>('[aria-label="Select Row"]')
+          ?.querySelector<HTMLElement>('[data-action="select-row"]')
           ?.focus();
       }
     }

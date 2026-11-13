@@ -507,7 +507,7 @@ test.describe("dropping outside any Row", () => {
   }) => {
     await load(page, [[["One", "Two"]]]);
     const controls = await boxOf(
-      page.getByRole("group", { exact: true, name: "Row 1" })
+      page.getByRole("toolbar", { exact: true, name: "Row 1" })
     );
 
     // Its top, which is above the middle of the Row.
@@ -1093,11 +1093,22 @@ test.describe("auto-scrolling", () => {
 
     await pickUp(page, handle);
     await page.mouse.move(640, 590, { steps: 8 });
-    await expect.poll(() => scrollTop(page)).toBeGreaterThan(before + 300);
-    await settle(page);
-
-    const line = await boxOf(dropIndicator(page));
-    expect(Math.abs(line.y - 590)).toBeLessThan(60);
+    // Read in the page, as a slow browser can scroll to the email's end between
+    // one call from the test and the next, which leaves the pointer past it.
+    // Each frame scrolls and then moves the indicator, so the two agree.
+    const found = await page.waitForFunction(
+      (start) =>
+        (document.scrollingElement?.scrollTop ?? 0) > start + 300 && {
+          top: document
+            .querySelector("mail-quilt")
+            ?.shadowRoot?.querySelector(".drop-indicator")
+            ?.getBoundingClientRect().top,
+        },
+      before,
+      { polling: "raf" }
+    );
+    const { top } = (await found.jsonValue()) as { top?: number };
+    expect(Math.abs((top ?? Number.POSITIVE_INFINITY) - 590)).toBeLessThan(60);
     await page.keyboard.press("Escape");
     await page.mouse.up();
   });

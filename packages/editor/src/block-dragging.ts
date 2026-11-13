@@ -1,3 +1,5 @@
+import type { Command, RowLayout } from "@mailquilt/core";
+
 import { contains } from "./geometry.js";
 
 /**
@@ -14,6 +16,32 @@ export type DragSource =
 export type DropPlace =
   | { columnId: string; index: number }
   | { rowIndex: number };
+
+/** The Command for a drop, which adds a Row if it landed outside any. */
+export const dropCommand = (source: DragSource, place: DropPlace): Command => {
+  if ("rowId" in source) {
+    return {
+      index: "rowIndex" in place ? place.rowIndex : 0,
+      rowId: source.rowId,
+      type: "moveRow",
+    };
+  }
+  if ("rowLayout" in source) {
+    return {
+      index: "rowIndex" in place ? place.rowIndex : 0,
+      layout: source.rowLayout as RowLayout,
+      type: "insertRow",
+    };
+  }
+  if ("blockId" in source) {
+    return "columnId" in place
+      ? { ...source, ...place, type: "moveBlock" }
+      : { ...source, ...place, type: "moveBlockToNewRow" };
+  }
+  return "columnId" in place
+    ? { ...source, ...place, type: "insertBlock" }
+    : { ...source, ...place, type: "insertBlockInNewRow" };
+};
 
 export interface BlockDragging {
   isDragging: () => boolean;
@@ -38,8 +66,10 @@ const DROP_MARGIN_PX = 40;
 
 /** Near an edge, within this share of a scroll container, a drag scrolls it. */
 const SCROLL_EDGE = 0.2;
-/** How far a frame scrolls with the pointer right at the edge. */
-const SCROLL_SPEED_PX = 25;
+/** How far a second scrolls with the pointer right at the edge. */
+const SCROLL_SPEED_PX = 1500;
+/** The time a first frame takes, before there's one before it to go by. */
+const FRAME_SECONDS = 1 / 60;
 /** How far beside a scroll container the pointer can be and still scroll it. */
 const SCROLL_TOLERANCE_PX = 10;
 
@@ -203,7 +233,11 @@ const scrollSpeed = (at: number, start: number, end: number) => {
  * Past an edge still scrolls, as the pointer may leave the window. Whether it
  * moved is read back, which also holds for right-to-left scrolling.
  */
-const autoScroll = (containers: ScrollContainer[], { x, y }: Point) => {
+const autoScroll = (
+  containers: ScrollContainer[],
+  { x, y }: Point,
+  seconds: number
+) => {
   for (const { element, sideways, upAndDown } of containers) {
     const { bottom, left, right, top } =
       element === document.scrollingElement
@@ -215,14 +249,14 @@ const autoScroll = (containers: ScrollContainer[], { x, y }: Point) => {
       x >= left - SCROLL_TOLERANCE_PX &&
       x <= right + SCROLL_TOLERANCE_PX
     ) {
-      element.scrollTop += scrollSpeed(y, top, bottom);
+      element.scrollTop += scrollSpeed(y, top, bottom) * seconds;
     }
     if (
       sideways &&
       y >= top - SCROLL_TOLERANCE_PX &&
       y <= bottom + SCROLL_TOLERANCE_PX
     ) {
-      element.scrollLeft += scrollSpeed(x, left, right);
+      element.scrollLeft += scrollSpeed(x, left, right) * seconds;
     }
     if (element.scrollTop !== scrollTop || element.scrollLeft !== scrollLeft) {
       return;
@@ -288,6 +322,8 @@ interface Press {
 
 interface Drag {
   ghost: HTMLElement;
+  /** When the last frame ran, so a screen of any refresh rate scrolls as fast. */
+  lastFrame?: number;
   pointer: Point;
   scrollContainers: ScrollContainer[];
   restoreCursor: () => void;
@@ -437,10 +473,15 @@ export const createBlockDragging = ({
   };
 
   // Every frame, because scrolling moves what's under a pointer that keeps still.
-  const onFrame = () => {
+  const onFrame = (time: number) => {
     if (!(press && drag)) {
       return;
     }
+    const seconds =
+      drag.lastFrame === undefined
+        ? FRAME_SECONDS
+        : (time - drag.lastFrame) / 1000;
+    drag.lastFrame = time;
     const { from, grab } = press;
     const { ghost, pointer, scrollContainers } = drag;
     // An undo, or a new email, can take away what's being dragged.
@@ -452,7 +493,7 @@ export const createBlockDragging = ({
       startedOn = undefined;
     }
     ghost.style.translate = `${pointer.x - from.x}px ${pointer.y - from.y}px`;
-    autoScroll(scrollContainers, pointer);
+    autoScroll(scrollContainers, pointer, seconds);
     showIndicator(landing(grab, pointer, scrollContainers));
     frame = requestAnimationFrame(onFrame);
   };
@@ -520,7 +561,7 @@ export const createBlockDragging = ({
       (contextmenu) => contextmenu.preventDefault(),
       { signal }
     );
-    onFrame();
+    onFrame(performance.now());
   };
 
   const onPointerdown = (event: Event) => {
