@@ -24,4 +24,4 @@ packageExtensions:
       cheerio: ^1.2.0
 ```
 
-[Source and docs](https://github.com/mailquilt/editor) · MIT
+[Docs](https://editor.mailquilt.com/docs/render-on-a-server) · [Source](https://github.com/mailquilt/editor) · MIT

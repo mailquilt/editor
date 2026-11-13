@@ -369,7 +369,7 @@ export class MailQuiltShell extends LitElement {
     if (!standIn) {
       return false;
     }
-    if (standIn.replaced === undefined) {
+    if (standIn.replaced === undefined || standIn.replaced === null) {
       // The host's first email, or nothing yet.
       standIn.replaced = document;
       return true;

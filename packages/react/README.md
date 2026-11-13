@@ -14,7 +14,7 @@ import type { BlocksDocument, MailQuiltElement } from "@mailquilt/react";
 import { useRef, useState } from "react";
 
 interface EditorProps {
-  savedEmail?: BlocksDocument;
+  savedEmail: BlocksDocument;
   send: (html: string | undefined) => void;
 }
 
@@ -41,6 +41,8 @@ export const Editor = ({ savedEmail, send }: EditorProps) => {
 };
 ```
 
+Pass the email you saved for this person, or `createEmail()` from `@mailquilt/core` for a new one. Without an email, the editor is empty.
+
 On the server it renders an empty `<mail-quilt>`, and the editor loads in the browser.
 
-[Source and docs](https://github.com/mailquilt/editor) · MIT
+[Docs](https://editor.mailquilt.com/docs/quick-start#react) · [Source](https://github.com/mailquilt/editor) · MIT

@@ -35,4 +35,4 @@ For a page with no bundler, load the CDN build by its full path, with the versio
 
 In React, use [`@mailquilt/react`](https://www.npmjs.com/package/@mailquilt/react).
 
-[Source and docs](https://github.com/mailquilt/editor) · MIT
+[Docs](https://editor.mailquilt.com/docs/quick-start) · [Source](https://github.com/mailquilt/editor) · MIT

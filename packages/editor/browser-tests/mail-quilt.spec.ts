@@ -682,6 +682,14 @@ test.describe("setting value", () => {
     await setValue(page, saved);
     await expect(textBlock(page)).toHaveText("Hello");
   });
+
+  // As JSON.parse gives for nothing saved.
+  test("null empties it too, with no error", async ({ page }) => {
+    const reasons = await setValueAndCollectErrors(page, null);
+
+    expect(reasons).toStrictEqual([]);
+    await expect(textBlock(page)).toHaveCount(0);
+  });
 });
 
 test.describe("refusing a document", () => {

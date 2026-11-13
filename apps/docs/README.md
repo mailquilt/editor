@@ -16,7 +16,7 @@ The landing page, the docs and the Playground, built with [Blume](https://github
 
 ## Where the site is served
 
-The `SITE_URL` environment variable is the site's full address, and `.env.example` describes it. Without it, the site still builds, with no canonical links and no sitemap. The site is served from the root of that address.
+The site is served from the root of `SITE_URL` in `site/project.ts`. The packages' `homepage` and READMEs link to the same address.
 
 ## Before upgrading Blume
 

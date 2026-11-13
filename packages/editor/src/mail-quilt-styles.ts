@@ -304,8 +304,10 @@ export const editorStyles = css`
     }
   }
 
+  /* In the placeholder's color, which turns to the accent as a drop target. */
   .placeholder .icon-button {
     border: 1px solid var(--mq-color-border);
+    color: inherit;
     height: 26px;
     width: 26px;
   }
@@ -350,7 +352,7 @@ export const editorStyles = css`
   .block:hover::after,
   .block[aria-current="true"]::after {
     background: var(--mq-color-accent);
-    border-radius: 4px 4px 0 0;
+    border-radius: var(--mq-radius-small) var(--mq-radius-small) 0 0;
     bottom: 100%;
     color: var(--mq-color-on-accent);
     content: attr(data-label);
@@ -368,7 +370,6 @@ export const editorStyles = css`
 
   .block[aria-current="true"]::after {
     background: var(--mq-color-text);
-    border-radius: var(--mq-radius-small) var(--mq-radius-small) 0 0;
   }
 
   .email[data-dragging] .block::after {
@@ -392,9 +393,12 @@ export const editorStyles = css`
     opacity: 0;
   }
 
-  /* The Block that follows the pointer, which also shows what's under it. */
+  /*
+   * The Block that follows the pointer, which also shows what's under it. On its
+   * Row's color, or else the email's, as its text is meant to be read on that.
+   */
   .block[data-drag-ghost] {
-    background: #ffffff;
+    background: var(--_mq-row-background, var(--_mq-email-background));
     box-shadow: var(--mq-shadow);
     opacity: 0.85;
   }
@@ -561,9 +565,9 @@ export const editorStyles = css`
     color: var(--mq-color-text);
   }
 
-  /* The Row that follows the pointer, which also shows what's under it. */
+  /* The Row that follows the pointer, on the email's color, as for a Block. */
   .row-frame[data-drag-ghost] {
-    background: #ffffff;
+    background: var(--_mq-email-background);
     box-shadow: var(--mq-shadow);
     opacity: 0.85;
   }

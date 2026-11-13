@@ -51,7 +51,7 @@ npm install @mailquilt/react
 
 | Name | What it does |
 | --- | --- |
-| `value` | The email the editor shows. Set it to open an email, or to `undefined` to empty the editor. |
+| `value` | The email the editor shows. Set it to open an email, or to `undefined` or `null` to empty the editor. |
 | `mq-change` | An event fired after every change. The new email is in `event.detail.document`. |
 | `mq-error` | An event fired when the editor refuses an email, which then keeps the email it had. The reason is in `event.detail.reason`. The [document format](./document-format) page lists what the editor accepts. |
 | `exportHtml()` | Returns a promise of the email's HTML, ready to send. It rejects if the editor has no email. |
@@ -65,7 +65,7 @@ Opening a different email clears undo history. Setting `value` to the email the 
 Two things to get right:
 
 - **Only pass back the latest email.** An older one counts as a different email, so it opens and clears undo history. If you save each change to a server, don't set `value` from each response, or a slow response could replace what someone typed since.
-- **Listen for `mq-error` before the editor can refuse anything.** It fires just after the code that sets `value` finishes, and it isn't fired again. A listener added straight after setting `value`, as in the examples, hears it. One added later, such as in a React `useEffect`, misses it, and people see an empty editor with no explanation. The React component's `onError` is always listening in time.
+- **Listen for `mq-error` before the editor can refuse anything.** It fires just after the code that sets `value` finishes, and it isn't fired again. A listener added before setting `value`, as in the examples, or straight after it, hears it. One added later, such as in a React `useEffect`, misses it, and people see an empty editor with no explanation. The React component's `onError` is always listening in time.
 
 ## Content Security Policy
 

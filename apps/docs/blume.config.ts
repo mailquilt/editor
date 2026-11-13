@@ -2,15 +2,14 @@ import { defineConfig } from "blume";
 import { filesystem } from "blume/sources";
 
 import { codeDark, codeLight } from "./site/code-themes";
-import { DESCRIPTION, REPO, SOCIAL_IMAGE } from "./site/project";
+import { DESCRIPTION, REPO, SITE_URL, SOCIAL_IMAGE } from "./site/project";
 
 export default defineConfig({
   content: {
     // The docs live under /docs, which leaves / for the landing page.
     sources: [filesystem({ prefix: "docs", root: "docs" })],
   },
-  // The site's address comes from the environment. See .env.example.
-  deployment: { site: process.env.SITE_URL },
+  deployment: { site: SITE_URL },
   description: DESCRIPTION,
   // With no analytics to send them to, readers' answers would go nowhere.
   feedback: false,

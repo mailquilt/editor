@@ -146,7 +146,8 @@ export const sidePanelStyles = css`
     align-items: center;
     background: transparent;
     border: 0;
-    border-radius: 8px;
+    /* Inside the track's padding, so the corners stay even. */
+    border-radius: calc(var(--mq-radius) - 2px);
     color: var(--mq-color-text-muted);
     cursor: pointer;
     display: flex;

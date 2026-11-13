@@ -79,9 +79,8 @@ export const uiStyles = css`
     box-sizing: border-box;
   }
 
-  .ui button,
-  .ui input,
-  .ui select {
+  /* Without weight, so each control's own color and font win over these. */
+  :where(.ui) :where(button, input, select) {
     color: inherit;
     font: inherit;
   }
@@ -135,6 +134,21 @@ export const uiStyles = css`
   .icon-button:disabled {
     cursor: default;
     opacity: 0.45;
+  }
+
+  /*
+   * Forced colors, such as Windows High Contrast, drop backgrounds and shadows,
+   * which are all that show what's selected or on. An outline stays.
+   */
+  @media (forced-colors: active) {
+    .icon-button[aria-pressed="true"],
+    .icon-button[aria-expanded="true"],
+    .icon-button[data-active],
+    .tab[aria-selected="true"],
+    .layout-option[aria-pressed="true"] {
+      outline: 2px solid Highlight;
+      outline-offset: -2px;
+    }
   }
 
   .icon-button.danger:hover {

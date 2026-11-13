@@ -26,6 +26,15 @@ test.describe("passing each onChange document back into value", () => {
   });
 });
 
+test("a later value replaces the email in the editor", async ({ page }) => {
+  await page.goto("/");
+  await expect(textBlock(page)).toHaveText("Hello");
+
+  await page.getByRole("button", { name: "Replace email" }).click();
+
+  await expect(textBlock(page)).toHaveText("Replaced");
+});
+
 test("other props such as className and aria-label reach the element", async ({
   page,
 }) => {

@@ -305,6 +305,12 @@ const renderColumn = (
   </div>
 `;
 
+/** As in the export, and for what's dragged out of it, which has no Row behind it. */
+const rowLook = (row: Row) => {
+  const styles = rowStyles(row);
+  return { ...styles, "--_mq-row-background": styles["background-color"] };
+};
+
 /** The email's Rows, with their tools, Columns and Blocks. */
 export const renderRows = (
   rows: Row[],
@@ -329,7 +335,7 @@ export const renderRows = (
           Row
         </div>
         ${renderRowToolbar(row, rowIndex, rows.length, state, events)}
-        <div class="row" style=${styleMap(rowStyles(row))}>
+        <div class="row" style=${styleMap(rowLook(row))}>
           ${repeat(
             row.columns,
             (column) => column.id,

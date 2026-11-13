@@ -26,6 +26,14 @@ const MARK_TAGS = {
   underline: "u",
 } as const;
 
+/** The editor's order, which keeps a link around the other marks. */
+const MARK_ORDER: RichTextMark["type"][] = [
+  "link",
+  "bold",
+  "italic",
+  "underline",
+];
+
 const openTag = (mark: RichTextMark) =>
   mark.type === "link"
     ? `<a href="${escapeAttribute(mark.attrs.href)}" target="_blank">`
@@ -39,8 +47,8 @@ const isSameMark = (a: RichTextMark, b: RichTextMark) =>
 /**
  * A line's text and line breaks. Each mark stays open for as long as the text
  * next to it has it too, as on the canvas, or a link around partly bold text
- * would be several links. The first mark goes on the outside, and the editor's
- * schema lists links first, which keeps them around the other marks.
+ * would be several links. Marks go in the editor's order, whatever order they
+ * were saved in, so that one text's [bold, link] matches the next's [link].
  */
 const inlineToHtml = (inline: RichTextParagraph["content"] = []) => {
   const open: RichTextMark[] = [];
@@ -51,7 +59,9 @@ const inlineToHtml = (inline: RichTextParagraph["content"] = []) => {
     }
   };
   for (const node of inline) {
-    const marks = node.marks ?? [];
+    const marks = (node.marks ?? []).toSorted(
+      (a, b) => MARK_ORDER.indexOf(a.type) - MARK_ORDER.indexOf(b.type)
+    );
     let kept = 0;
     while (
       kept < open.length &&
