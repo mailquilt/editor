@@ -1,8 +1,9 @@
 import { AxeBuilder } from "@axe-core/playwright";
 import { expect } from "@playwright/test";
-import type { Locator, Page } from "@playwright/test";
+import type { BrowserContext, Locator, Page } from "@playwright/test";
 
 import type { MailQuilt } from "../src/index.js";
+import { emailWith, emailWithInline } from "./host/email.js";
 
 export const canvas = (page: Page) => page.locator("mail-quilt");
 
@@ -11,37 +12,15 @@ export const textBlock = (page: Page) =>
 
 type Document = NonNullable<MailQuilt["value"]>;
 
-const blockWith = (text: string) => ({
-  id: `block-${text}`,
-  props: {
-    content: {
-      content: [{ content: [{ text, type: "text" }], type: "paragraph" }],
-      type: "doc",
-    },
-  },
-  type: "text",
-});
+export { emailWith, emailWithInline } from "./host/email.js";
 
-/** An email from each Row's Columns, as the text of each Column's Blocks. */
-export const emailWith = (rows: string[][][]): Document => ({
-  kind: "blocks",
-  rows: rows.map((columns, rowIndex) => ({
-    columns: columns.map((texts, columnIndex) => ({
-      blocks: texts.map(blockWith),
-      id: `column-${rowIndex}-${columnIndex}`,
-      props: {},
-      width: 100 / columns.length,
-    })),
-    id: `row-${rowIndex}`,
-    props: {},
-  })),
-  settings: {
-    backgroundColor: "#ffffff",
-    fontFamily: "Arial, Helvetica, sans-serif",
-    width: 600,
-  },
-  version: 1,
-});
+/** An email with one Text Block, whose text is a link to `href`. */
+export const emailWithLink = (text: string, href: string) =>
+  emailWithInline({
+    marks: [{ attrs: { href }, type: "link" }],
+    text,
+    type: "text",
+  });
 
 export const currentValue = (page: Page) =>
   canvas(page).evaluate((element) => (element as MailQuilt).value as Document);
@@ -78,6 +57,23 @@ export const moveCursorToLineEnd = (page: Page) =>
     process.platform === "darwin" ? "Meta+ArrowRight" : "End"
   );
 
+/**
+ * Lets the page catch up with a key or a pointer move: a frame for a drag to
+ * act on the pointer, one more for what that changed, then a task, as Chromium
+ * reports a moved text selection just after the key press. A person's next
+ * action is always later than this.
+ */
+export const settle = (page: Page) =>
+  page.evaluate(
+    () =>
+      // oxlint-disable-next-line promise/avoid-new -- These browser callbacks have no promise form.
+      new Promise((resolve) => {
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => setTimeout(resolve, 0))
+        );
+      })
+  );
+
 /** Types at the start of the Text Block, so a lost cursor scrambles the text. */
 export const focusStartOfTextBlock = async (page: Page) => {
   await textBlock(page).click();
@@ -87,13 +83,7 @@ export const focusStartOfTextBlock = async (page: Page) => {
   );
   // ProseMirror learns of the moved cursor a moment later. A key it handles
   // itself, such as Enter, would act on the old position before then.
-  await page.evaluate(
-    () =>
-      // oxlint-disable-next-line promise/avoid-new -- These browser callbacks have no promise form.
-      new Promise((resolve) => {
-        requestAnimationFrame(() => setTimeout(resolve, 0));
-      })
-  );
+  await settle(page);
 };
 
 export const palette = (page: Page, name: string) =>
@@ -137,6 +127,22 @@ export const addRow = async (page: Page, layout = "100") => {
 export const rowTools = (page: Page, position: number) =>
   canvas(page).getByRole("toolbar", { exact: true, name: `Row ${position}` });
 
+export const selectRowButton = (page: Page, position: number) =>
+  rowTools(page, position).getByRole("button", { name: "Select Row" });
+
+/** What the editor last said to screen readers. */
+export const announcement = (page: Page) => canvas(page).getByRole("status");
+
+/** The test host's count of `mq-change` events. */
+export const changeCount = (page: Page) => page.getByTestId("change-count");
+
+/** Opens the test page with an email of these Rows of Text Blocks. */
+export const openEmail = async (page: Page, rows: string[][][]) => {
+  await page.goto("/");
+  await setValue(page, emailWith(rows));
+  await expect(textBlock(page).first()).toBeVisible();
+};
+
 /**
  * A Row's toolbar shows on hover, so the pointer goes there first. While one of
  * its Blocks is selected, it only shows once its tag has selected the Row.
@@ -154,9 +160,7 @@ const showRowTools = async (page: Page, position: number) => {
 /** Selects a Row from its toolbar, with the mouse, to show it in the side panel. */
 export const selectRow = async (page: Page, position: number) => {
   await showRowTools(page, position);
-  await rowTools(page, position)
-    .getByRole("button", { name: "Select Row" })
-    .click();
+  await selectRowButton(page, position).click();
 };
 
 /** A layout in the selected Row's side panel. */
@@ -214,19 +218,6 @@ export const redo = (page: Page) =>
 export const undoByKey = (page: Page) => page.keyboard.press("ControlOrMeta+z");
 export const redoByKey = (page: Page) =>
   page.keyboard.press("ControlOrMeta+Shift+z");
-
-/**
- * Chromium reports a moved selection just after the key press, so the editor
- * can only act on it once this has passed. A person's next key is always later.
- */
-export const waitForSelectionToRegister = (page: Page) =>
-  page.evaluate(
-    () =>
-      // oxlint-disable-next-line promise/avoid-new -- These browser callbacks have no promise form.
-      new Promise((resolve) => {
-        requestAnimationFrame(() => setTimeout(resolve, 0));
-      })
-  );
 
 /** A copy of the first Block, after it in its Column. */
 export const addSecondTextBlock = (page: Page) =>
@@ -307,51 +298,97 @@ export const openExport = async (page: Page) => {
   return { html, opened };
 };
 
-export const settle = (page: Page) =>
-  page.evaluate(
-    () =>
-      // oxlint-disable-next-line promise/avoid-new -- requestAnimationFrame only takes a callback.
-      new Promise((resolve) => {
-        requestAnimationFrame(() => requestAnimationFrame(resolve));
-      })
-  );
+/**
+ * Keys typed within a second of each other are one undo step, and a slow run
+ * could take longer than that. This stops the page's clock, so it can't. Timers
+ * and frames wait too from then on, so it comes after anything that settles.
+ */
+export const stopClock = async (page: Page) => {
+  await page.clock.install();
+  const now = await page.evaluate(() => Date.now());
+  await page.clock.pauseAt(now + 1000);
+};
 
-export const dragTo = async (
-  page: Page,
-  from: Locator,
-  to: Locator,
-  part = 0.75
-) => {
-  const start = await from.boundingBox();
-  const end = await to.boundingBox();
-  if (!(start && end)) {
+export interface Point {
+  x: number;
+  y: number;
+}
+
+export const boxOf = async (locator: Locator) => {
+  const box = await locator.boundingBox();
+  if (!box) {
     throw new Error("The element has no box");
   }
-  const startX = start.x + start.width / 2;
-  const startY = start.y + start.height / 2;
-  await page.mouse.move(startX, startY);
+  return box;
+};
+
+export const centerOf = async (locator: Locator): Promise<Point> => {
+  const { height, width, x, y } = await boxOf(locator);
+  return { x: x + width / 2, y: y + height / 2 };
+};
+
+/** The lower part of an element, so a drop there lands after it. */
+export const bottomOf = async (locator: Locator): Promise<Point> => {
+  const { height, width, x, y } = await boxOf(locator);
+  return { x: x + width / 2, y: y + (height * 3) / 4 };
+};
+
+/** Presses on an element, and moves just far enough to start a drag. */
+export const pickUp = async (page: Page, from: Locator) => {
+  const start = await centerOf(from);
+  await page.mouse.move(start.x, start.y);
   await page.mouse.down();
-  await page.mouse.move(startX + 8, startY + 8, { steps: 2 });
+  await page.mouse.move(start.x + 8, start.y + 8, { steps: 2 });
   await settle(page);
-  await page.mouse.move(end.x + end.width / 2, end.y + end.height * part, {
-    steps: 8,
-  });
+};
+
+export const moveTo = async (page: Page, { x, y }: Point) => {
+  await page.mouse.move(x, y, { steps: 8 });
   await settle(page);
+};
+
+export const letGo = async (page: Page) => {
   await page.mouse.up();
   await settle(page);
 };
 
+export const drag = async (page: Page, from: Locator, to: Point) => {
+  await pickUp(page, from);
+  await moveTo(page, to);
+  await letGo(page);
+};
+
+/** A 1×1 PNG, which any box scales it to: its height shows its width was kept. */
+const PIXEL = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAEBgIApD5fRAAAAABJRU5ErkJggg==",
+  "base64"
+);
+
+/**
+ * Serves every image from https://cdn.example, to the whole context, so that an
+ * export opened in a new page has its images too.
+ */
+export const serveImages = (context: BrowserContext) =>
+  context.route("https://cdn.example/**", (route) =>
+    route.fulfill({ body: PIXEL, contentType: "image/png" })
+  );
+
 /**
  * Legacy mode, because the default mode opens a new page to finish, which
  * hangs in Chromium and WebKit while the Preview's sandboxed iframe is showing.
- * The iframe itself, the email, can be left out too.
+ * The iframe itself, the email, can be left out too, and so can rules.
  */
 export const violations = async (
   page: Page,
   element = "mail-quilt",
-  { excludeIframe = false } = {}
+  {
+    excludeIframe = false,
+    skipRules = [],
+  }: { excludeIframe?: boolean; skipRules?: string[] } = {}
 ): Promise<{ id: string; targets: unknown[] }[]> => {
-  const builder = new AxeBuilder({ page }).include(element);
+  const builder = new AxeBuilder({ page })
+    .include(element)
+    .disableRules(skipRules);
   if (excludeIframe) {
     builder.exclude("iframe");
   }

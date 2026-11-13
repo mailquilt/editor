@@ -4,7 +4,7 @@ import { emailWith } from "./email.js";
 const params = new URLSearchParams(window.location.search);
 
 /** A newer version than this editor can read, so it's refused. */
-const refusedEmail = { ...emailWith("Refused"), version: 999 };
+const refusedEmail = { ...emailWith([[["Refused"]]]), version: 999 };
 
 const shell = document.createElement("mail-quilt-shell");
 const actions = params.get("actions");
@@ -24,7 +24,7 @@ frame?.append(shell);
 
 /** Many Rows, so the email is taller than the Shell and scrolls inside it. */
 const longEmail = () => {
-  const email = emailWith("Hello");
+  const email = emailWith([[["Hello"]]]);
   const [row] = email.rows;
   if (row) {
     email.rows = Array.from({ length: 30 }, (_, index) => ({
@@ -47,7 +47,7 @@ const firstEmail = () => {
   if (params.has("refused-first")) {
     return refusedEmail;
   }
-  return params.has("long") ? longEmail() : emailWith("Hello");
+  return params.has("long") ? longEmail() : emailWith([[["Hello"]]]);
 };
 
 // The listener straight after `value`, as the quick start does. A host that

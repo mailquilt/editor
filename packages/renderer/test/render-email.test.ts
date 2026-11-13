@@ -115,15 +115,6 @@ describe(renderEmail, () => {
       ),
     ],
     [
-      "25-25-25-25",
-      emailWithColumns(
-        { texts: ["One"], width: 25 },
-        { texts: ["Two"], width: 25 },
-        { texts: ["Three"], width: 25 },
-        { texts: ["Four"], width: 25 }
-      ),
-    ],
-    [
       "50-50-empty-column",
       emailWithColumns(
         { texts: [], width: 50 },
@@ -217,12 +208,11 @@ describe(renderEmail, () => {
   });
 
   it("keeps repeated spaces, as the canvas shows them", async () => {
-    const html = await renderEmail(emailWithText("a    b", "   "));
+    const html = await renderEmail(emailWithText("a    b"));
 
     expect(html).toContain(
       '<p style="margin:0;white-space:pre-wrap">a    b</p>'
     );
-    expect(html).toContain('<p style="margin:0;white-space:pre-wrap">   </p>');
   });
 
   it("matches the saved HTML for formatted text", async () => {

@@ -3,18 +3,24 @@ import type { Page } from "@playwright/test";
 
 import {
   addRow,
+  announcement,
   blockTool,
   canvas,
+  changeCount,
   chooseLayout,
   emailWith,
   layoutOption,
   openBlocks,
+  openEmail as open,
   openTab,
   palette,
+  redoByKey,
   selectRow,
   setValue,
+  stopClock,
   structure,
-  textBlock,
+  undo,
+  undoByKey,
   violations,
 } from "./helpers.js";
 
@@ -35,16 +41,8 @@ const backToTabs = async (page: Page) => {
   ).toBeFocused();
 };
 
-const open = async (page: Page, rows: string[][][]) => {
-  await page.goto("/");
-  await setValue(page, emailWith(rows));
-  await expect(textBlock(page).first()).toBeVisible();
-};
-
 const textOf = (page: Page, text: string) =>
   blockWith(page, text).getByRole("textbox", { name: "Text Block" });
-
-const announcement = (page: Page) => canvas(page).getByRole("status");
 
 const newBlockText = (page: Page) =>
   canvas(page).locator('[aria-current="true"]').getByRole("textbox");
@@ -198,14 +196,14 @@ test.describe("selecting a Block", () => {
     page,
   }) => {
     await open(page, [[["A", "B"]]]);
-    const before = await page.getByTestId("change-count").textContent();
+    const before = await changeCount(page).textContent();
     await blockWith(page, "A").focus();
 
     await page.keyboard.press("ArrowDown");
 
     await expect(blockWith(page, "B")).toBeFocused();
     await expect(structure(page)).resolves.toEqual([[["A", "B"]]]);
-    await expect(page.getByTestId("change-count")).toHaveText(before as string);
+    await expect(changeCount(page)).toHaveText(before as string);
   });
 });
 
@@ -266,14 +264,14 @@ test.describe("moving a Block with Alt+Arrow keys", () => {
   test("stops at the edge of a Row", async ({ page }) => {
     await open(page, [[["A"], ["B"]]]);
     await blockWith(page, "A").focus();
-    const before = await page.getByTestId("change-count").textContent();
+    const before = await changeCount(page).textContent();
 
     await page.keyboard.press("Alt+ArrowLeft");
     await blockWith(page, "B").focus();
     await page.keyboard.press("Alt+ArrowRight");
 
     await expect(structure(page)).resolves.toEqual([[["A"], ["B"]]]);
-    await expect(page.getByTestId("change-count")).toHaveText(before as string);
+    await expect(changeCount(page)).toHaveText(before as string);
   });
 
   test("past the end of a Column, moves into the next Row", async ({
@@ -321,14 +319,14 @@ test.describe("moving a Block with Alt+Arrow keys", () => {
     page,
   }) => {
     await open(page, [[["A"]], [["B"]]]);
-    const before = await page.getByTestId("change-count").textContent();
+    const before = await changeCount(page).textContent();
     await blockWith(page, "A").focus();
     await page.keyboard.press("Alt+ArrowUp");
     await blockWith(page, "B").focus();
     await page.keyboard.press("Alt+ArrowDown");
 
     await expect(structure(page)).resolves.toEqual([[["A"]], [["B"]]]);
-    await expect(page.getByTestId("change-count")).toHaveText(before as string);
+    await expect(changeCount(page)).toHaveText(before as string);
   });
 
   test("each move is one undo step, and focus stays on the Block", async ({
@@ -341,31 +339,17 @@ test.describe("moving a Block with Alt+Arrow keys", () => {
     await page.keyboard.press("Alt+ArrowUp");
     await expect(structure(page)).resolves.toEqual([[["A"]], [[], ["B"]]]);
 
-    await page.keyboard.press("ControlOrMeta+z");
+    await undoByKey(page);
     await expect(structure(page)).resolves.toEqual([[[], ["A", "B"]]]);
     await expect(blockWith(page, "A")).toBeFocused();
 
-    await page.keyboard.press("ControlOrMeta+z");
+    await undoByKey(page);
     await expect(structure(page)).resolves.toEqual([[["A"], ["B"]]]);
     await expect(blockWith(page, "A")).toBeFocused();
 
-    await page.keyboard.press("ControlOrMeta+Shift+z");
+    await redoByKey(page);
     await expect(structure(page)).resolves.toEqual([[[], ["A", "B"]]]);
     await expect(blockWith(page, "A")).toBeFocused();
-  });
-
-  test("the moved Block stays editable", async ({ page }) => {
-    await open(page, [[["A"], ["B"]]]);
-    await blockWith(page, "A").focus();
-    await page.keyboard.press("Alt+ArrowRight");
-
-    await page.keyboard.press("Enter");
-    await expect(
-      blockWith(page, "A").getByRole("textbox", { name: "Text Block" })
-    ).toBeFocused();
-    await page.keyboard.type("x");
-
-    await expect(structure(page)).resolves.toEqual([[[], ["xA", "B"]]]);
   });
 });
 
@@ -477,12 +461,12 @@ test.describe("announcing a move", () => {
     await blockWith(page, "A").focus();
     await page.keyboard.press("Alt+ArrowRight");
 
-    await page.keyboard.press("ControlOrMeta+z");
+    await undoByKey(page);
     await expect(announcement(page)).toHaveText(
       "Undo moved a Block to Row 1, Column 1, position 1 of 2."
     );
 
-    await page.keyboard.press("ControlOrMeta+Shift+z");
+    await redoByKey(page);
     await expect(announcement(page)).toHaveText(
       "Redo moved a Block to Row 1, Column 2, position 1 of 2."
     );
@@ -496,7 +480,7 @@ test.describe("announcing a move", () => {
     await page.keyboard.press("Alt+ArrowUp");
     await expect(structure(page)).resolves.toEqual([[["A"]], [["B"]]]);
 
-    await page.keyboard.press("ControlOrMeta+z");
+    await undoByKey(page);
 
     await expect(announcement(page)).toHaveText(
       "Undo moved a Block to Row 1, Column 1, position 1 of 2."
@@ -512,7 +496,7 @@ test.describe("announcing a move", () => {
     await addRow(page);
     await expect(announcement(page)).not.toBeEmpty();
 
-    await page.getByRole("button", { name: "Undo" }).click();
+    await undo(page);
 
     await expect(structure(page)).resolves.toEqual([[["B", "A"]]]);
     await expect(announcement(page)).toBeEmpty();
@@ -528,7 +512,7 @@ test.describe("announcing a move", () => {
     await chooseLayout(page, 1, "100");
     await expect(structure(page)).resolves.toEqual([[["A", "B", "C"]]]);
 
-    await page.getByRole("button", { name: "Undo" }).click();
+    await undo(page);
 
     await expect(structure(page)).resolves.toEqual([[["A"], ["B"], ["C"]]]);
     await expect(announcement(page)).toBeEmpty();
@@ -540,7 +524,7 @@ test.describe("announcing a move", () => {
     await page.keyboard.press("Alt+ArrowDown");
     await expect(announcement(page)).not.toBeEmpty();
     // The controlled host sets `value` from the move, which would replace this.
-    await expect(page.getByTestId("change-count")).toHaveText("1");
+    await expect(changeCount(page)).toHaveText("1");
 
     await setValue(page, emailWith([[["C"]]]));
 
@@ -691,7 +675,7 @@ test.describe("typing inside a Block", () => {
 
     await expect(textOf(page, "A")).toBeFocused();
     await expect(textOf(page, "A").locator("p")).toHaveCount(1);
-    await expect(page.getByTestId("change-count")).toHaveText("0");
+    await expect(changeCount(page)).toHaveText("0");
 
     await page.keyboard.press("Enter");
     await expect(textOf(page, "A").locator("p")).toHaveCount(2);
@@ -748,13 +732,14 @@ test.describe("Enter on a palette item", () => {
     await page.keyboard.press("Enter");
 
     await expect(newBlockText(page)).toBeFocused();
+    await stopClock(page);
     await page.keyboard.type("New");
     await expect(structure(page)).resolves.toEqual([
       [["A", "New", "B"], ["C"]],
     ]);
 
-    await page.getByRole("button", { name: "Undo" }).click();
-    await page.getByRole("button", { name: "Undo" }).click();
+    await undo(page);
+    await undo(page);
     await expect(structure(page)).resolves.toEqual([[["A", "B"], ["C"]]]);
   });
 
@@ -934,14 +919,14 @@ test.describe("labels and focus states", () => {
     }
     // oxlint-enable no-await-in-loop
 
-    await page.keyboard.press("ControlOrMeta+z");
+    await undoByKey(page);
     await page.evaluate(() => {
       window.scrollTo(0, document.documentElement.scrollHeight);
     });
     await expect(blockWith(page, "L")).not.toBeInViewport();
 
     // The neighbour is what moves in the DOM here, so focus alone wouldn't scroll.
-    await page.keyboard.press("ControlOrMeta+Shift+z");
+    await redoByKey(page);
 
     await expect(blockWith(page, "L")).toBeInViewport();
   });
@@ -960,7 +945,7 @@ test.describe("automated accessibility checks", () => {
     await open(page, [[["A", "B"], []]]);
     await blockWith(page, "A").focus();
     await page.keyboard.press("Alt+ArrowDown");
-    await expect(canvas(page).getByRole("status")).not.toBeEmpty();
+    await expect(announcement(page)).not.toBeEmpty();
 
     expect(await violations(page)).toEqual([]);
   });

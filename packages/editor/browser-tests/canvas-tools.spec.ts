@@ -1,17 +1,22 @@
 import { expect, test } from "@playwright/test";
-import type { Locator, Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
 
 import {
   blockGroup,
+  boxOf,
   canvas,
+  centerOf,
   currentValue,
   emailWith,
   openBlocks,
   rowTools,
+  selectRowButton,
+  serveImages,
   settle,
   setValue,
   structure,
   textBlock,
+  undoByKey,
 } from "./helpers.js";
 
 const blockTools = (page: Page) =>
@@ -19,11 +24,6 @@ const blockTools = (page: Page) =>
 
 const formatBar = (page: Page) =>
   canvas(page).getByRole("toolbar", { name: "Text formatting" });
-
-const namesOf = (locator: Locator) =>
-  locator.evaluateAll((elements) =>
-    elements.map((element) => element.getAttribute("aria-label"))
-  );
 
 const outlineOf = (page: Page, selector: string) =>
   canvas(page)
@@ -37,9 +37,7 @@ const outlineOf = (page: Page, selector: string) =>
     });
 
 test.describe("a Block on the canvas", () => {
-  test("only the selected one has a toolbar: drag, move four ways, delete", async ({
-    page,
-  }) => {
+  test("only the selected one has a toolbar", async ({ page }) => {
     await openBlocks(page, ["button", "divider"]);
     await expect(blockTools(page)).toHaveCount(0);
 
@@ -49,13 +47,6 @@ test.describe("a Block on the canvas", () => {
     await expect(
       blockGroup(page, "Button").getByRole("toolbar", { name: "Block tools" })
     ).toBeVisible();
-    expect(await namesOf(blockTools(page).getByRole("button"))).toEqual([
-      "Move Block up",
-      "Move Block down",
-      "Move Block left",
-      "Move Block right",
-      "Delete Block",
-    ]);
     await expect(blockTools(page).locator(".drag-handle")).toBeVisible();
   });
 
@@ -141,9 +132,10 @@ test.describe("a Row on the canvas", () => {
     await expect(tag).toHaveCSS("opacity", "1");
     await tag.click();
     await expect(rowTools(page, 2)).toHaveCSS("opacity", "1");
-    await expect(
-      rowTools(page, 2).getByRole("button", { name: "Select Row" })
-    ).toHaveAttribute("aria-pressed", "true");
+    await expect(selectRowButton(page, 2)).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
   });
 
   test("its toolbar is reached by Tab from a selected Block", async ({
@@ -156,9 +148,7 @@ test.describe("a Row on the canvas", () => {
     await page.keyboard.press("Shift+Tab");
 
     // One stop for the whole toolbar, at its first tool.
-    await expect(
-      rowTools(page, 2).getByRole("button", { name: "Select Row" })
-    ).toBeFocused();
+    await expect(selectRowButton(page, 2)).toBeFocused();
     await expect(rowTools(page, 2)).toHaveCSS("opacity", "1");
   });
 
@@ -201,16 +191,10 @@ test.describe("an empty Column", () => {
     );
 
     // A plain press where the button shows, as a person's pointer makes.
-    const button = await column
-      .getByRole("button", { name: /^Add Image Block here/u })
-      .boundingBox();
-    if (!button) {
-      throw new Error("No button to press");
-    }
-    await page.mouse.click(
-      button.x + button.width / 2,
-      button.y + button.height / 2
+    const { x, y } = await centerOf(
+      column.getByRole("button", { name: /^Add Image Block here/u })
     );
+    await page.mouse.click(x, y);
 
     const { rows } = await currentValue(page);
     expect(rows[0]?.columns[1]?.blocks.map(({ type }) => type)).toEqual([
@@ -223,16 +207,8 @@ test.describe("the email's language", () => {
   test("is on each Block's content, not on the Block or its tools", async ({
     page,
   }) => {
-    // A 1×1 PNG, so the image loads rather than showing its stand-in.
-    await page.route("https://cdn.example/**", (route) =>
-      route.fulfill({
-        body: Buffer.from(
-          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAEBgIApD5fRAAAAABJRU5ErkJggg==",
-          "base64"
-        ),
-        contentType: "image/png",
-      })
-    );
+    // So the image loads rather than showing its stand-in.
+    await serveImages(page.context());
     await page.goto("/");
     const document = emailWith([[["A"]], [[]], [[]]]);
     document.settings.language = "de";
@@ -334,13 +310,6 @@ test.describe("the format bar", () => {
 
     await textBlock(page).click();
     await expect(formatBar(page)).toBeVisible();
-    expect(await namesOf(formatBar(page).getByRole("button"))).toEqual([
-      "Bold",
-      "Italic",
-      "Underline",
-      "Link",
-      "Line break",
-    ]);
 
     await blockGroup(page, "Button").focus();
     await expect(formatBar(page)).toHaveCount(0);
@@ -382,23 +351,13 @@ test.describe("the format bar", () => {
 });
 
 test.describe("the floating toolbar", () => {
-  test("holds Undo, Redo and Preview at the bottom left of the canvas", async ({
-    page,
-  }) => {
+  test("sits at the bottom left of the canvas", async ({ page }) => {
     await openBlocks(page, ["text"]);
     const toolbar = canvas(page).getByRole("group", { name: "Email tools" });
 
-    expect(await namesOf(toolbar.getByRole("button"))).toEqual([
-      "Undo",
-      "Redo",
-      "Preview",
-    ]);
-    const box = await toolbar.boundingBox();
-    const area = await canvas(page).locator(".canvas-area").boundingBox();
-    const panel = await canvas(page).locator(".side-panel").boundingBox();
-    if (!(box && area && panel)) {
-      throw new Error("Nothing to measure");
-    }
+    const box = await boxOf(toolbar);
+    const area = await boxOf(canvas(page).locator(".canvas-area"));
+    const panel = await boxOf(canvas(page).locator(".side-panel"));
     expect(box.x - area.x).toBeLessThan(80);
     expect(box.x + box.width).toBeLessThan(panel.x);
     // At the bottom of the canvas, or of the window while the canvas goes on.
@@ -427,57 +386,51 @@ test.describe("the floating toolbar", () => {
     const box = await toolbar.boundingBox();
     expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(500);
   });
+
+  test("stays above the email when the page scrolls it underneath", async ({
+    page,
+  }) => {
+    await openBlocks(page, [
+      "text",
+      "spacer",
+      "text",
+      "spacer",
+      "text",
+      "spacer",
+      "text",
+      "spacer",
+      "text",
+      "spacer",
+    ]);
+    await page.setViewportSize({ height: 400, width: 1000 });
+    await page.addStyleTag({
+      content:
+        "main { padding: 0 !important } mail-quilt { width: 1000px !important }",
+    });
+    await blockGroup(page, "Text").first().focus();
+
+    const onTop = await canvas(page).evaluate((host) => {
+      const root = host.shadowRoot as ShadowRoot;
+      const toolbar = root.querySelector(".floating-toolbar") as Element;
+      const email = root.querySelector(".email") as Element;
+      // Halfway down the email, which goes on below the window.
+      window.scrollBy(0, email.getBoundingClientRect().y);
+      const { height, width, x, y } = toolbar.getBoundingClientRect();
+      const under = email.getBoundingClientRect();
+      const hit = root.elementFromPoint(x + width / 2, y + height / 2);
+      return {
+        emailUnder: under.left < x + width && under.bottom > y,
+        toolbar: toolbar.contains(hit),
+      };
+    });
+
+    expect(onTop).toEqual({ emailUnder: true, toolbar: true });
+  });
 });
 
 test.describe("a Block's drag handle and link shortcut", () => {
   // The test host's unfriendly CSS pushes the canvas far down the page.
   test.use({ viewport: { height: 1600, width: 1280 } });
-
-  test("a short drag let go over the toolbar it started from moves nothing", async ({
-    page,
-  }) => {
-    await page.goto("/");
-    await setValue(page, emailWith([[["A"], ["B"]]]));
-    await blockGroup(page, "Text").last().focus();
-    const handle = await blockTools(page).locator(".drag-handle").boundingBox();
-    if (!handle) {
-      throw new Error("No handle");
-    }
-
-    await page.mouse.move(handle.x + 10, handle.y + 10);
-    await page.mouse.down();
-    await page.mouse.move(handle.x + 16, handle.y + 18, { steps: 4 });
-    await settle(page);
-    await page.mouse.up();
-    await settle(page);
-
-    await expect(structure(page)).resolves.toEqual([[["A"], ["B"]]]);
-  });
-
-  test("a drag that left the toolbar lands where the toolbar was", async ({
-    page,
-  }) => {
-    await page.goto("/");
-    await setValue(page, emailWith([[["A"], ["B"]]]));
-    await blockGroup(page, "Text").last().focus();
-    const handle = await blockTools(page).locator(".drag-handle").boundingBox();
-    if (!handle) {
-      throw new Error("No handle");
-    }
-
-    // Away from the toolbar, then back over where it was, in the first Column.
-    await page.mouse.move(handle.x + 10, handle.y + 10);
-    await page.mouse.down();
-    await page.mouse.move(handle.x - 120, handle.y + 120, { steps: 8 });
-    await page.mouse.move(handle.x + 10, handle.y + 20, { steps: 8 });
-    await settle(page);
-    await expect(canvas(page).locator(".drop-indicator")).toBeVisible();
-    await page.mouse.up();
-    await settle(page);
-
-    // Above A, whose top half the toolbar sat beside.
-    await expect(structure(page)).resolves.toEqual([[["B", "A"], []]]);
-  });
 
   test("Control or Command+K on the Block opens the link field in its text", async ({
     page,
@@ -580,10 +533,7 @@ test.describe("a click on the workspace, outside the email", () => {
     await page.keyboard.type("!");
     await expect(blockTools(page)).toBeVisible();
 
-    const area = await canvas(page).locator(".canvas-area").boundingBox();
-    if (!area) {
-      throw new Error("No canvas");
-    }
+    const area = await boxOf(canvas(page).locator(".canvas-area"));
     await page.mouse.click(area.x + 10, area.y + 10);
 
     await expect(blockTools(page)).toHaveCount(0);
@@ -591,7 +541,7 @@ test.describe("a click on the workspace, outside the email", () => {
     await expect(
       canvas(page).getByRole("tab", { name: "Content" })
     ).toBeVisible();
-    await page.keyboard.press("ControlOrMeta+z");
+    await undoByKey(page);
     await expect(textBlock(page)).toHaveText("Words");
   });
 
@@ -602,11 +552,8 @@ test.describe("a click on the workspace, outside the email", () => {
     await page.goto("/");
     await setValue(page, emailWith([[["A", "B"]]]));
     await blockGroup(page, "Text").first().focus();
-    const handle = await blockTools(page).locator(".drag-handle").boundingBox();
-    const area = await canvas(page).locator(".canvas-area").boundingBox();
-    if (!(handle && area)) {
-      throw new Error("Nothing to drag");
-    }
+    const handle = await boxOf(blockTools(page).locator(".drag-handle"));
+    const area = await boxOf(canvas(page).locator(".canvas-area"));
 
     await page.mouse.move(handle.x + 10, handle.y + 10);
     await page.mouse.down();

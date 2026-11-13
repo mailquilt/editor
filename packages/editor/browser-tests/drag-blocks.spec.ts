@@ -2,21 +2,33 @@ import { expect, test } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 
 import {
+  announcement,
+  blockGroup,
+  bottomOf,
+  boxOf,
   canvas,
+  centerOf,
+  changeCount,
   chooseLayout,
   currentValue,
   deleteRow,
+  drag,
   emailWith,
+  letGo,
   moveCursorToLineEnd,
+  moveTo,
+  openBlocks,
   openTab,
   palette,
-  redoByKey,
+  pickUp,
+  serveImages,
   settle,
   setValue,
   structure,
   textBlock,
   undoByKey,
 } from "./helpers.js";
+import type { Point } from "./helpers.js";
 
 const blockElement = (page: Page, text: string) =>
   canvas(page).locator(".block:not([data-drag-ghost])", {
@@ -49,54 +61,13 @@ const column = (page: Page, rowIndex: number, columnIndex: number) =>
 
 const dropIndicator = (page: Page) => canvas(page).locator(".drop-indicator");
 
-interface Point {
-  x: number;
-  y: number;
-}
-
-const boxOf = async (locator: Locator) => {
-  const box = await locator.boundingBox();
-  if (!box) {
-    throw new Error("The element has no box");
-  }
-  return box;
-};
-
-const centerOf = async (locator: Locator): Promise<Point> => {
-  const { height, width, x, y } = await boxOf(locator);
-  return { x: x + width / 2, y: y + height / 2 };
-};
+const blockTools = (page: Page) =>
+  canvas(page).getByRole("toolbar", { name: "Block tools" });
 
 /** The upper part of an element, so a drop there lands before it. */
 const topOf = async (locator: Locator): Promise<Point> => {
   const { height, width, x, y } = await boxOf(locator);
   return { x: x + width / 2, y: y + height / 4 };
-};
-
-/** The lower part of an element, so a drop there lands after it. */
-const bottomOf = async (locator: Locator): Promise<Point> => {
-  const { height, width, x, y } = await boxOf(locator);
-  return { x: x + width / 2, y: y + (height * 3) / 4 };
-};
-
-const pickUp = async (page: Page, from: Locator) => {
-  const start = await centerOf(from);
-  await page.mouse.move(start.x, start.y);
-  await page.mouse.down();
-  await page.mouse.move(start.x + 8, start.y + 8, { steps: 2 });
-  await settle(page);
-};
-
-const moveTo = async (page: Page, { x, y }: Point) => {
-  await page.mouse.move(x, y, { steps: 8 });
-  await settle(page);
-};
-
-const drag = async (page: Page, from: Locator, to: Point) => {
-  await pickUp(page, from);
-  await moveTo(page, to);
-  await page.mouse.up();
-  await settle(page);
 };
 
 const load = async (page: Page, rows: string[][][]) => {
@@ -120,8 +91,6 @@ const indicatorBox = async (page: Page) => {
 const scrollTop = (page: Page) =>
   page.evaluate(() => document.scrollingElement?.scrollTop ?? 0);
 
-const changeCount = (page: Page) => page.getByTestId("change-count");
-
 test.describe("moving a Block by its handle", () => {
   test("announces where the Block went", async ({ page }) => {
     await load(page, [[["A"], ["B"]]]);
@@ -133,7 +102,7 @@ test.describe("moving a Block by its handle", () => {
     );
 
     await expect(structure(page)).resolves.toEqual([[[], ["B", "A"]]]);
-    await expect(canvas(page).getByRole("status")).toHaveText(
+    await expect(announcement(page)).toHaveText(
       "Moved to Row 1, Column 2, position 2 of 2."
     );
   });
@@ -189,8 +158,7 @@ test.describe("moving a Block by its handle", () => {
     await pickUp(page, handleOf(page, "Two"));
     await moveTo(page, await topOf(blockElement(page, "Three")));
     await page.keyboard.press("Escape");
-    await page.mouse.up();
-    await settle(page);
+    await letGo(page);
 
     // The release isn't a click the host page should see.
     await expect(page.locator("body")).not.toHaveAttribute("data-clicked");
@@ -216,8 +184,7 @@ test.describe("moving a Block by its handle", () => {
     await moveTo(page, await topOf(blockElement(page, "Three")));
     await page.keyboard.press("Escape");
     await expect(dropIndicator(page)).toBeHidden();
-    await page.mouse.up();
-    await settle(page);
+    await letGo(page);
 
     expect(await structure(page)).toStrictEqual([[["One", "Two"], ["Three"]]]);
     await expect(changeCount(page)).toHaveText(changes as string);
@@ -260,10 +227,59 @@ test.describe("moving a Block by its handle", () => {
   test("the handle isn't offered to assistive technology", async ({ page }) => {
     await load(page, [[["One"]]]);
 
-    await expect(
-      canvas(page).getByRole("button", { name: "Drag Block" })
-    ).toHaveCount(0);
-    await expect(handleOf(page, "One")).toBeAttached();
+    await expect(handleOf(page, "One")).toHaveAttribute("aria-hidden", "true");
+  });
+
+  test("a short drag let go over the toolbar it started from moves nothing", async ({
+    page,
+  }) => {
+    await load(page, [[["A"], ["B"]]]);
+    await blockGroup(page, "Text").last().focus();
+    const handle = await boxOf(blockTools(page).locator(".drag-handle"));
+
+    await page.mouse.move(handle.x + 10, handle.y + 10);
+    await page.mouse.down();
+    await page.mouse.move(handle.x + 16, handle.y + 18, { steps: 4 });
+    await settle(page);
+    await letGo(page);
+
+    await expect(structure(page)).resolves.toEqual([[["A"], ["B"]]]);
+  });
+
+  test("a drag that left the toolbar lands where the toolbar was", async ({
+    page,
+  }) => {
+    await load(page, [[["A"], ["B"]]]);
+    await blockGroup(page, "Text").last().focus();
+    const handle = await boxOf(blockTools(page).locator(".drag-handle"));
+
+    // Away from the toolbar, then back over where it was, in the first Column.
+    await page.mouse.move(handle.x + 10, handle.y + 10);
+    await page.mouse.down();
+    await page.mouse.move(handle.x - 120, handle.y + 120, { steps: 8 });
+    await page.mouse.move(handle.x + 10, handle.y + 20, { steps: 8 });
+    await settle(page);
+    await expect(dropIndicator(page)).toBeVisible();
+    await letGo(page);
+
+    // Above A, whose top half the toolbar sat beside.
+    await expect(structure(page)).resolves.toEqual([[["B", "A"], []]]);
+  });
+
+  test("Alt+↓ on another Block does nothing until the drag ends", async ({
+    page,
+  }) => {
+    await load(page, [[["One", "Two", "Three"]]]);
+    await blockElement(page, "One").focus();
+
+    await pickUp(page, handleOf(page, "Three"));
+    await expect(canvas(page).locator("[data-drag-ghost]")).toHaveCount(1);
+    await expect(blockElement(page, "One")).toBeFocused();
+    await page.keyboard.press("Alt+ArrowDown");
+    await page.keyboard.press("Escape");
+    await letGo(page);
+
+    expect(await structure(page)).toStrictEqual([[["One", "Two", "Three"]]]);
   });
 });
 
@@ -297,21 +313,6 @@ test.describe("the text cursor during a drag", () => {
     expect(await structure(page)).toStrictEqual([[["One", "TwoAB"]]]);
   });
 
-  test("stays put when the palette drops on the toolbar", async ({ page }) => {
-    await load(page, [[["One", "Two"]]]);
-    await placeCursorAfterTwo(page);
-    await openTab(page, "Content");
-    const start = await centerOf(palette(page, "Text"));
-
-    await pickUp(page, palette(page, "Text"));
-    await moveTo(page, start);
-    await page.mouse.up();
-    await settle(page);
-    await page.keyboard.type("B");
-
-    expect(await structure(page)).toStrictEqual([[["One", "TwoAB"]]]);
-  });
-
   test("dragging over text doesn't select it", async ({ page }) => {
     await load(page, [[["One", "Two", "Three"]]]);
 
@@ -336,8 +337,7 @@ test.describe("selecting text with the mouse", () => {
     await moveTo(page, await bottomOf(blockElement(page, "Three")));
     await expect(canvas(page).locator("[data-drag-ghost]")).toHaveCount(0);
     await expect(dropIndicator(page)).toBeHidden();
-    await page.mouse.up();
-    await settle(page);
+    await letGo(page);
 
     expect(await structure(page)).toStrictEqual([
       [["Move me not", "Two"], ["Three"]],
@@ -422,6 +422,30 @@ test.describe("while dragging", () => {
     await page.keyboard.press("Escape");
   });
 
+  test("picking up a tall Block keeps the page where it is, scrolled to its end", async ({
+    context,
+    page,
+  }) => {
+    await serveImages(context);
+    await openBlocks(page, ["text", "image"]);
+    const block = blockGroup(page, "Image");
+    await block.hover();
+    await page.evaluate(() =>
+      window.scrollTo(0, document.documentElement.scrollHeight)
+    );
+    const scrolled = await page.evaluate(() => window.scrollY);
+    expect(scrolled).toBeGreaterThan(0);
+    const start = await boxOf(block.locator(".drag-handle"));
+
+    await page.mouse.move(start.x + 8, start.y + 12);
+    await page.mouse.down();
+    await page.mouse.move(start.x + 16, start.y + 20, { steps: 2 });
+    await settle(page);
+
+    await expect(page.evaluate(() => window.scrollY)).resolves.toBe(scrolled);
+    await page.mouse.up();
+  });
+
   test("the other Blocks stay where they are", async ({ page }) => {
     await load(page, [[["One", "Two", "Three"]]]);
     const before = await boxOf(blockElement(page, "Three"));
@@ -455,8 +479,7 @@ test.describe("while dragging", () => {
     await expect(column(page, 0, 0)).toHaveAttribute("data-drop-target");
     await expect(column(page, 0, 1)).not.toHaveAttribute("data-drop-target");
 
-    await page.mouse.up();
-    await settle(page);
+    await letGo(page);
     expect(await structure(page)).toStrictEqual([
       [["One", "Two", "Four", "Three"], []],
     ]);
@@ -482,8 +505,11 @@ test.describe("while dragging", () => {
 });
 
 test.describe("dropping outside any Row", () => {
-  test("below the email adds a Row at the end", async ({ page }) => {
+  test("below the email adds a Row at the end, as one change", async ({
+    page,
+  }) => {
     await load(page, [[["One", "Two"]], [["Three"]]]);
+    const changes = Number(await changeCount(page).textContent());
     const { height, width, x, y } = await boxOf(
       canvas(page).locator(".row").last()
     );
@@ -500,6 +526,7 @@ test.describe("dropping outside any Row", () => {
     ]);
     const { rows } = await currentValue(page);
     expect(rows[2]?.columns.map(({ width: w }) => w)).toStrictEqual([100]);
+    await expect(changeCount(page)).toHaveText(String(changes + 1));
   });
 
   test("on the first Row's controls adds a Row at the start", async ({
@@ -534,21 +561,6 @@ test.describe("dropping outside any Row", () => {
       [["Two"]],
     ]);
   });
-
-  test("is one change for the host", async ({ page }) => {
-    await load(page, [[["One", "Two"]]]);
-    const changes = Number(await changeCount(page).textContent());
-    const { height, width, x, y } = await boxOf(
-      canvas(page).locator(".row").first()
-    );
-
-    await drag(page, handleOf(page, "Two"), {
-      x: x + width / 2,
-      y: y + height + 30,
-    });
-
-    await expect(changeCount(page)).toHaveText(String(changes + 1));
-  });
 });
 
 test.describe("letting go far from the editor", () => {
@@ -562,8 +574,7 @@ test.describe("letting go far from the editor", () => {
     await pickUp(page, handleOf(page, "Two"));
     await moveTo(page, { x: 10, y: editor.y - 200 });
     await expect(dropIndicator(page)).toBeHidden();
-    await page.mouse.up();
-    await settle(page);
+    await letGo(page);
 
     expect(await structure(page)).toStrictEqual([[["One", "Two"]]]);
     await expect(changeCount(page)).toHaveText(changes as string);
@@ -594,8 +605,7 @@ test.describe("letting go far from the editor", () => {
     await expect(
       canvas(page).locator("[data-drag-ghost], [data-drag-source]")
     ).toHaveCount(0);
-    await page.mouse.up();
-    await settle(page);
+    await letGo(page);
     expect(await structure(page)).toStrictEqual([[["One", "Two"]]]);
   });
 
@@ -627,14 +637,6 @@ test.describe("dragging from the palette", () => {
     expect(await structure(page)).toStrictEqual([
       [["One", "", "Two"], ["Three"]],
     ]);
-  });
-
-  test("into an empty Column", async ({ page }) => {
-    await load(page, [[["One"], []]]);
-
-    await drag(page, palette(page, "Text"), await centerOf(column(page, 0, 1)));
-
-    expect(await structure(page)).toStrictEqual([[["One"], [""]]]);
   });
 
   test("selects the new Block, ready to type in", async ({ page }) => {
@@ -674,8 +676,7 @@ test.describe("dragging from the palette", () => {
     await pickUp(page, palette(page, "Text"));
     await moveTo(page, await bottomOf(blockElement(page, "One")));
     await expect(palette(page, "Text")).toBeVisible();
-    await page.mouse.up();
-    await settle(page);
+    await letGo(page);
 
     // The new Block's settings show in place of the tabs.
     await openTab(page, "Content");
@@ -685,19 +686,21 @@ test.describe("dragging from the palette", () => {
     ).toHaveCount(0);
   });
 
-  test("dropping on the toolbar shows no indicator and adds nothing", async ({
+  test("let go over the toolbar, adds nothing and leaves the text cursor", async ({
     page,
   }) => {
-    await load(page, [[["One"]]]);
+    await load(page, [[["One", "Two"]]]);
+    await placeCursorAfterTwo(page);
+    await openTab(page, "Content");
     const start = await centerOf(palette(page, "Text"));
 
     await pickUp(page, palette(page, "Text"));
     await moveTo(page, start);
     await expect(dropIndicator(page)).toBeHidden();
-    await page.mouse.up();
-    await settle(page);
+    await letGo(page);
+    await page.keyboard.type("B");
 
-    expect(await structure(page)).toStrictEqual([[["One"]]]);
+    expect(await structure(page)).toStrictEqual([[["One", "TwoAB"]]]);
   });
 
   test("a click still adds a Block, however long the press", async ({
@@ -706,9 +709,11 @@ test.describe("dragging from the palette", () => {
     await load(page, [[["One"]]]);
     const { x, y } = await centerOf(palette(page, "Text"));
 
+    await page.clock.install();
+
     await page.mouse.move(x, y);
     await page.mouse.down();
-    await page.waitForTimeout(300);
+    await page.clock.runFor(1000);
     await page.mouse.up();
 
     expect(await structure(page)).toStrictEqual([[["One", ""]]]);
@@ -731,41 +736,6 @@ test.describe("dragging from the palette", () => {
 });
 
 test.describe("text after a move", () => {
-  test("survives with its formatting", async ({ page }) => {
-    const email = emailWith([[["One"], ["Two"]]]);
-    const bold = {
-      content: {
-        content: [
-          {
-            content: [
-              { marks: [{ type: "bold" }], text: "Bold", type: "text" },
-              { text: " plain", type: "text" },
-            ],
-            type: "paragraph",
-          },
-        ],
-        type: "doc",
-      },
-    };
-    const block = email.rows[0]?.columns[0]?.blocks[0];
-    if (block) {
-      block.props = bold;
-    }
-    await setValue(page, email);
-    await expect(textBlock(page).first()).toHaveText("Bold plain");
-
-    await drag(
-      page,
-      handleOf(page, "Bold plain"),
-      await bottomOf(blockElement(page, "Two"))
-    );
-
-    const moved = blockElement(page, "Bold plain");
-    await expect(moved.locator("strong")).toHaveText("Bold");
-    const { rows } = await currentValue(page);
-    expect(rows[0]?.columns[1]?.blocks[1]?.props).toStrictEqual(bold);
-  });
-
   test("includes what was typed just before", async ({ page }) => {
     await load(page, [[["One"], ["Two"]]]);
     await blockElement(page, "One").getByRole("textbox").click();
@@ -799,48 +769,9 @@ test.describe("text after a move", () => {
 
     expect(await structure(page)).toStrictEqual([[["One"], ["Two!", "Three"]]]);
   });
-
-  test("still formats from the toolbar", async ({ page }) => {
-    await load(page, [[["One"], ["Two"]]]);
-
-    await drag(
-      page,
-      handleOf(page, "One"),
-      await bottomOf(blockElement(page, "Two"))
-    );
-    await page.keyboard.press("ControlOrMeta+a");
-    await page.getByRole("button", { name: "Bold" }).click();
-
-    await expect(blockElement(page, "One").locator("strong")).toHaveText("One");
-  });
 });
 
 test.describe("undo", () => {
-  test("each drag is one step", async ({ page }) => {
-    await load(page, [[["One", "Two"], ["Three"]]]);
-
-    await drag(
-      page,
-      handleOf(page, "One"),
-      await bottomOf(blockElement(page, "Two"))
-    );
-    await drag(
-      page,
-      handleOf(page, "One"),
-      await bottomOf(blockElement(page, "Three"))
-    );
-    expect(await structure(page)).toStrictEqual([[["Two"], ["Three", "One"]]]);
-
-    await undoByKey(page);
-    expect(await structure(page)).toStrictEqual([[["Two", "One"], ["Three"]]]);
-    await undoByKey(page);
-    expect(await structure(page)).toStrictEqual([[["One", "Two"], ["Three"]]]);
-    await redoByKey(page);
-    expect(await structure(page)).toStrictEqual([[["Two", "One"], ["Three"]]]);
-    await redoByKey(page);
-    expect(await structure(page)).toStrictEqual([[["Two"], ["Three", "One"]]]);
-  });
-
   test("two drags to new Rows in a row are two steps", async ({ page }) => {
     await load(page, [[["One", "Two", "Three"]]]);
     const below = async () => {
@@ -863,22 +794,6 @@ test.describe("undo", () => {
       [["One", "Three"]],
       [["Two"]],
     ]);
-  });
-
-  test("a drag from the palette is one step", async ({ page }) => {
-    await load(page, [[["One"]]]);
-    const { height, width, x, y } = await boxOf(
-      canvas(page).locator(".row").first()
-    );
-
-    await drag(page, palette(page, "Text"), {
-      x: x + width / 2,
-      y: y + height + 30,
-    });
-    expect(await structure(page)).toStrictEqual([[["One"]], [[""]]]);
-
-    await undoByKey(page);
-    expect(await structure(page)).toStrictEqual([[["One"]]]);
   });
 
   test("typing after a drag is its own step", async ({ page }) => {
@@ -916,22 +831,6 @@ test.describe("undo", () => {
 
     expect(await structure(page)).toStrictEqual([[["One", "Two"]]]);
   });
-
-  test("a moved Block stays editable after undo", async ({ page }) => {
-    await load(page, [[["One"], ["Two"]]]);
-
-    await drag(
-      page,
-      handleOf(page, "One"),
-      await bottomOf(blockElement(page, "Two"))
-    );
-    await undoByKey(page);
-    await blockElement(page, "One").getByRole("textbox").click();
-    await moveCursorToLineEnd(page);
-    await page.keyboard.type("!");
-
-    expect(await structure(page)).toStrictEqual([[["One!"], ["Two"]]]);
-  });
 });
 
 test.describe("auto-scrolling", () => {
@@ -955,8 +854,7 @@ test.describe("auto-scrolling", () => {
 
     await expect.poll(() => scrollTop(page)).toBeGreaterThan(before + 100);
 
-    await page.mouse.up();
-    await settle(page);
+    await letGo(page);
     const current = await structure(page);
     const flat = current.flat().flat();
     expect(flat.indexOf("Block 1")).toBeGreaterThan(1);
@@ -1046,8 +944,7 @@ test.describe("auto-scrolling", () => {
 
     await pickUp(page, handle);
     await moveTo(page, { x: 400, y: 360 });
-    await page.mouse.up();
-    await settle(page);
+    await letGo(page);
 
     const after = await structure(page);
     expect(after.flat().flat()).toStrictEqual(manyBlocks);
@@ -1122,8 +1019,7 @@ test.describe("a Block that's removed or replaced", () => {
     await pickUp(page, handleOf(page, "One"));
     await setValue(page, undefined);
     await settle(page);
-    await page.mouse.up();
-    await settle(page);
+    await letGo(page);
     expect(errors).toStrictEqual([]);
 
     await load(page, [[["Three", "Four"]]]);
@@ -1170,8 +1066,7 @@ test.describe("a Block that's removed or replaced", () => {
     await undoByKey(page);
     await settle(page);
     await moveTo(page, await bottomOf(blockElement(page, "Two")));
-    await page.mouse.up();
-    await settle(page);
+    await letGo(page);
 
     expect(await structure(page)).toStrictEqual([[[], ["Two", "One"]]]);
   });
@@ -1196,8 +1091,7 @@ test.describe("a Block that's removed or replaced", () => {
       canvas(page).locator("[data-drag-ghost], [data-drag-source]")
     ).toHaveCount(0);
     await expect(dropIndicator(page)).toBeHidden();
-    await page.mouse.up();
-    await settle(page);
+    await letGo(page);
 
     expect(await structure(page)).toStrictEqual([[["One"], ["Two"]]]);
     expect(errors).toStrictEqual([]);

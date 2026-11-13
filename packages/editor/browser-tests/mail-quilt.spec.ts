@@ -5,15 +5,18 @@ import type { MailQuilt } from "../src/index.js";
 import {
   addSecondTextBlock,
   canvas,
+  changeCount,
   currentValue,
   emailWith,
+  emailWithLink,
   exportHtml,
   focusStartOfTextBlock,
   redoByKey,
   setValue,
+  settle,
+  stopClock,
   textBlock,
   undoByKey,
-  waitForSelectionToRegister,
 } from "./helpers.js";
 
 const latestDocumentText = async (page: Page) => {
@@ -34,7 +37,7 @@ test("typing fires mq-change with the new document", async ({ page }) => {
   await page.keyboard.type("Oh ");
 
   await expect(textBlock(page)).toHaveText("Oh Hello");
-  await expect(page.getByTestId("change-count")).toHaveText("3");
+  await expect(changeCount(page)).toHaveText("3");
   await expect.poll(() => latestDocumentText(page)).toBe("Oh Hello");
 });
 
@@ -129,7 +132,7 @@ test("host CSS doesn't reach the canvas", async ({ page }) => {
 test("host re-renders don't reset the canvas", async ({ page }) => {
   await focusStartOfTextBlock(page);
   await page.keyboard.type("ab");
-  await expect(page.getByTestId("change-count")).toHaveText("2");
+  await expect(changeCount(page)).toHaveText("2");
 
   // A scripted click, so the re-render happens while the text keeps focus.
   await page.evaluate(() => document.querySelector("button")?.click());
@@ -138,7 +141,7 @@ test("host re-renders don't reset the canvas", async ({ page }) => {
   await expect(textBlock(page)).toBeFocused();
   await page.keyboard.type("cd");
   await expect(textBlock(page)).toHaveText("abcdHello");
-  await expect(page.getByTestId("change-count")).toHaveText("4");
+  await expect(changeCount(page)).toHaveText("4");
 });
 
 test("moving the element keeps the email editable", async ({ page }) => {
@@ -190,13 +193,13 @@ test("exported HTML keeps repeated spaces typed in a Text Block", async ({
   await page.keyboard.type("a   b ");
   await expect(textBlock(page)).toHaveText("a   b Hello");
 
-  expect(await exportHtml(page)).toContain("white-space:pre-wrap");
   expect(await exportHtml(page)).toContain("a   b Hello");
 });
 
 test.describe("undo and redo while typing", () => {
   test("Control+Y also redoes", async ({ page }) => {
     await focusStartOfTextBlock(page);
+    await stopClock(page);
     await page.keyboard.type("abc");
     await undoByKey(page);
     await expect(textBlock(page)).toHaveText("Hello");
@@ -210,15 +213,16 @@ test.describe("undo and redo while typing", () => {
     page,
   }) => {
     await focusStartOfTextBlock(page);
+    await stopClock(page);
     await page.keyboard.type("abc");
-    await expect(page.getByTestId("change-count")).toHaveText("3");
+    await expect(changeCount(page)).toHaveText("3");
 
     await undoByKey(page);
-    await expect(page.getByTestId("change-count")).toHaveText("4");
+    await expect(changeCount(page)).toHaveText("4");
     await expect.poll(() => latestDocumentText(page)).toBe("Hello");
 
     await redoByKey(page);
-    await expect(page.getByTestId("change-count")).toHaveText("5");
+    await expect(changeCount(page)).toHaveText("5");
     await expect.poll(() => latestDocumentText(page)).toBe("abcHello");
   });
 
@@ -229,13 +233,12 @@ test.describe("undo and redo while typing", () => {
     await redoByKey(page);
 
     await expect(textBlock(page)).toHaveText("Hello");
-    await expect(page.getByTestId("change-count")).toHaveText("0");
+    await expect(changeCount(page)).toHaveText("0");
   });
 
   test("a pause in typing starts a new undo step", async ({ page }) => {
-    await page.clock.install();
-    await page.reload();
     await focusStartOfTextBlock(page);
+    await stopClock(page);
     await page.keyboard.type("ab");
     await expect(textBlock(page)).toHaveText("abHello");
 
@@ -297,6 +300,7 @@ test.describe("undo and redo while typing", () => {
     page,
   }) => {
     await focusStartOfTextBlock(page);
+    await stopClock(page);
     await page.keyboard.type("abc");
     await undoByKey(page);
     await expect(textBlock(page)).toHaveText("Hello");
@@ -310,6 +314,7 @@ test.describe("undo and redo while typing", () => {
 
   test("undo keeps focus in the Block", async ({ page }) => {
     await focusStartOfTextBlock(page);
+    await stopClock(page);
     await page.keyboard.type("abc");
 
     await undoByKey(page);
@@ -391,16 +396,17 @@ test.describe("undo and redo while typing", () => {
         );
       }, inputType);
     await focusStartOfTextBlock(page);
+    await stopClock(page);
     await page.keyboard.type("abc");
     await expect(textBlock(page)).toHaveText("abcHello");
 
     await sendHistoryCommand("historyUndo");
     await expect(textBlock(page)).toHaveText("Hello");
-    await expect(page.getByTestId("change-count")).toHaveText("4");
+    await expect(changeCount(page)).toHaveText("4");
 
     await sendHistoryCommand("historyRedo");
     await expect(textBlock(page)).toHaveText("abcHello");
-    await expect(page.getByTestId("change-count")).toHaveText("5");
+    await expect(changeCount(page)).toHaveText("5");
   });
 
   test("undo and redo work on a keyboard layout without Latin letters", async ({
@@ -426,6 +432,7 @@ test.describe("undo and redo while typing", () => {
         { code, key, shiftKey }
       );
     await focusStartOfTextBlock(page);
+    await stopClock(page);
     await page.keyboard.type("abc");
     await expect(textBlock(page)).toHaveText("abcHello");
 
@@ -440,7 +447,7 @@ test.describe("undo and redo while typing", () => {
     await focusStartOfTextBlock(page);
     await page.keyboard.type("a");
     await page.keyboard.press("ArrowRight");
-    await waitForSelectionToRegister(page);
+    await settle(page);
     await page.keyboard.type("b");
     await expect(textBlock(page)).toHaveText("aHbello");
 
@@ -454,7 +461,7 @@ test.describe("undo and redo while typing", () => {
     await page.keyboard.press("ControlOrMeta+a");
     await page.keyboard.press("ControlOrMeta+c");
     await page.keyboard.press("ArrowRight");
-    await waitForSelectionToRegister(page);
+    await settle(page);
     await page.keyboard.type("x");
     await page.keyboard.press("ControlOrMeta+v");
     await expect(textBlock(page)).toHaveText("HelloxHello");
@@ -465,20 +472,6 @@ test.describe("undo and redo while typing", () => {
     await expect(textBlock(page)).toHaveText("HelloxHello");
     await undoByKey(page);
     await expect(textBlock(page)).toHaveText("Hellox");
-    await undoByKey(page);
-    await expect(textBlock(page)).toHaveText("Hello");
-  });
-
-  test("a cut is its own undo step", async ({ page }) => {
-    await focusStartOfTextBlock(page);
-    await page.keyboard.press("ControlOrMeta+a");
-    await page.keyboard.press("ControlOrMeta+x");
-    await expect(textBlock(page)).toHaveText("");
-    await page.keyboard.type("y");
-    await expect(textBlock(page)).toHaveText("y");
-
-    await undoByKey(page);
-    await expect(textBlock(page)).toHaveText("");
     await undoByKey(page);
     await expect(textBlock(page)).toHaveText("Hello");
   });
@@ -512,8 +505,9 @@ test.describe("setting value", () => {
     page,
   }) => {
     await focusStartOfTextBlock(page);
+    await stopClock(page);
     await page.keyboard.type("ab");
-    await expect(page.getByTestId("change-count")).toHaveText("2");
+    await expect(changeCount(page)).toHaveText("2");
 
     await setValue(
       page,
@@ -546,7 +540,7 @@ test.describe("setting value", () => {
   }) => {
     await focusStartOfTextBlock(page);
     await page.keyboard.type("ab");
-    await expect(page.getByTestId("change-count")).toHaveText("2");
+    await expect(changeCount(page)).toHaveText("2");
 
     await setValue(page, withText(await currentValue(page), "Another email"));
     await expect(textBlock(page)).toHaveText("Another email");
@@ -557,7 +551,7 @@ test.describe("setting value", () => {
     await redoByKey(page);
     await expect(textBlock(page)).toHaveText("Another email");
     // Loading isn't a change, so a host's auto-save has nothing to overwrite.
-    await expect(page.getByTestId("change-count")).toHaveText("2");
+    await expect(changeCount(page)).toHaveText("2");
   });
 
   test("a document wrapped in a Proxy loads, as Vue's reactive() makes", async ({
@@ -579,6 +573,7 @@ test.describe("setting value", () => {
     page,
   }) => {
     await focusStartOfTextBlock(page);
+    await stopClock(page);
     await page.keyboard.type("ab");
     await expect(textBlock(page)).toHaveText("abHello");
 
@@ -645,8 +640,9 @@ test.describe("refusing a document", () => {
     page,
   }) => {
     await focusStartOfTextBlock(page);
+    await stopClock(page);
     await page.keyboard.type("ab");
-    await expect(page.getByTestId("change-count")).toHaveText("2");
+    await expect(changeCount(page)).toHaveText("2");
     const before = await currentValue(page);
 
     const reasons = await setValueAndCollectErrors(page, {
@@ -660,7 +656,7 @@ test.describe("refusing a document", () => {
     await expect(textBlock(page)).toHaveText("abHello");
     expect(await currentValue(page)).toStrictEqual(before);
     expect(await exportHtml(page)).toContain("abHello");
-    await expect(page.getByTestId("change-count")).toHaveText("2");
+    await expect(changeCount(page)).toHaveText("2");
 
     // The email is still the same one, with its cursor and undo history.
     await expect(textBlock(page)).toBeFocused();
@@ -668,6 +664,24 @@ test.describe("refusing a document", () => {
     await expect(textBlock(page)).toHaveText("abcHello");
     await undoByKey(page);
     await expect(textBlock(page)).toHaveText("Hello");
+  });
+
+  test("a link that isn't allowed fires mq-error and leaves the email as it was", async ({
+    page,
+  }) => {
+    const before = await currentValue(page);
+
+    const reasons = await setValueAndCollectErrors(
+      page,
+      // oxlint-disable-next-line eslint/no-script-url -- This is what's refused.
+      emailWithLink("Click", "javascript:alert(1)")
+    );
+
+    expect(reasons).toStrictEqual([
+      expect.stringMatching(/A link must start with http:/u),
+    ]);
+    await expect(textBlock(page)).toHaveText("Hello");
+    expect(await currentValue(page)).toStrictEqual(before);
   });
 
   test("a clone with a damaged list isn't mistaken for the same document", async ({

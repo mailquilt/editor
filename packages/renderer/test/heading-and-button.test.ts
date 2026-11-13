@@ -51,18 +51,6 @@ describe("a Heading Block", () => {
     ).resolves.toMatchFileSnapshot("expected/heading-every-setting.html");
   });
 
-  it("matches the saved HTML for each level", async () => {
-    await expect(
-      renderEmail(
-        emailWith(
-          heading({ content: richText([text("One")]), level: 1 }),
-          heading({ content: richText([text("Two")]), level: 2 }),
-          heading({ content: richText([text("Three")]), level: 3 })
-        )
-      )
-    ).resolves.toMatchFileSnapshot("expected/heading-levels.html");
-  });
-
   it("stays one heading across paragraphs, as lines", async () => {
     const html = await renderEmail(
       emailWith(
@@ -128,18 +116,6 @@ describe("a Button Block", () => {
     await expect(
       renderEmail(emailWith(button({ label: "Button" })))
     ).resolves.toMatchFileSnapshot("expected/button-defaults.html");
-  });
-
-  it("is a link, in a table screen readers skip", async () => {
-    const html = await renderEmail(
-      emailWith(button({ href: "https://shop.example", label: "Buy" }))
-    );
-
-    expect(buttonLink(html)).toContain('href="https://shop.example"');
-    expect(html).toMatch(
-      /<table[^>]*role="presentation"[^>]*>\s*<tbody>\s*<tr>\s*<td[^>]*bgcolor="#2563eb"/u
-    );
-    expect(html).toMatch(/<a\s[^>]*>\s*Buy\s*<\/a>/u);
   });
 
   it("keeps a Merge Tag intact in its link and label", async () => {

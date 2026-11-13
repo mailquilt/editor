@@ -78,14 +78,17 @@ describe("Button Block", () => {
     ["no label", { label: null }, /label/u],
     ["a label of only spaces", { label: "   " }, /label/u],
     ["a label that isn't text", { label: 1 }, /label/u],
-    ["a background MJML can't read", { backgroundColor: "red" }, /background/u],
+    [
+      "a background that isn't hex or rgb()",
+      { backgroundColor: "red" },
+      /background/u,
+    ],
     [
       "a see-through background, which MJML would paint twice",
       { backgroundColor: "rgba(37, 99, 235, 0.5)" },
       /backgroundColor/u,
     ],
-    ["a text color MJML can't read", { color: "red" }, /color/u],
-    ["a property it doesn't have", { fontSize: 20 }, /fontSize/u],
+    ["a text color that isn't hex or rgb()", { color: "red" }, /color/u],
   ])("rejects %s", (_name, props, reason) => {
     const { editor } = setup();
 

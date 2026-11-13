@@ -22,13 +22,13 @@ test("a refused document fires mq-error", async ({ page }) => {
   await checkRefusedDocument(page, url);
 });
 
-test("a plain JS project's Shell opens, saves, exports and refuses", async ({
+test("a plain JS project's Shell opens, saves and reopens", async ({
   page,
 }) => {
   await checkShell(page, `${url}shell/`);
 });
 
-test("the docs' server code builds and renders an email in Node", async () => {
+test("the docs' server code builds, renders and refuses an email in Node", async () => {
   const { stdout } = await promisify(execFile)(
     "node",
     [
@@ -36,12 +36,15 @@ test("the docs' server code builds and renders an email in Node", async () => {
       "--eval",
       `const { email } = await import("./server/build-an-email.js");
        const { htmlFor } = await import("./server/render.js");
-       console.log("RESULT" + JSON.stringify(await htmlFor(email)));`,
+       const refusal = await htmlFor({ kind: "blocks" }).catch(({ message }) => message);
+       console.log("RESULT" + JSON.stringify({ html: await htmlFor(email), refusal }));`,
     ],
     { cwd: freshProjectDir("plain-js") }
   );
+  const { html, refusal } = JSON.parse(
+    stdout.slice(stdout.indexOf("RESULT") + "RESULT".length)
+  );
 
-  expect(
-    JSON.parse(stdout.slice(stdout.indexOf("RESULT") + "RESULT".length))
-  ).toContain("{{first_name}}");
+  expect(html).toContain("{{first_name}}");
+  expect(refusal).toMatch(/^This email can't be sent/u);
 });

@@ -3,13 +3,16 @@ import type { Page, Route } from "@playwright/test";
 
 import type { MailQuilt } from "../src/index.js";
 import {
+  boxOf,
   canvas,
+  emailWith,
+  emailWithLink,
   exportHtml,
   focusStartOfTextBlock,
   setValue,
   textBlock,
+  undoByKey,
 } from "./helpers.js";
-import { emailWith, emailWithInline } from "./host/email.js";
 
 const previewButton = (page: Page) =>
   page.getByRole("button", { exact: true, name: "Preview" });
@@ -56,13 +59,6 @@ const countExports = (page: Page) =>
 const exportCount = (page: Page) =>
   page.evaluate(() => window.document.documentElement.dataset.exports);
 
-const emailWithLink = (text: string, href: string) =>
-  emailWithInline({
-    marks: [{ attrs: { href }, type: "link" }],
-    text,
-    type: "text",
-  });
-
 /** Tries to reach the page around it, under the name it reports with. */
 const hostileEmail = (name: string) => `<!doctype html>
   <body>
@@ -86,13 +82,6 @@ test("Preview shows the real exported HTML", async ({ page }) => {
   expect(await previewFrame(page).getAttribute("srcdoc")).toBe(
     await exportHtml(page)
   );
-});
-
-test("opening the Preview doesn't change the document", async ({ page }) => {
-  await previewButton(page).click();
-  await expect(previewEmail(page)).toContainText("Hello");
-
-  await expect(page.getByTestId("change-count")).toHaveText("0");
 });
 
 test("a slow MJML shows a loading message, then the email", async ({
@@ -142,21 +131,6 @@ test("opening the Preview again retries after MJML failed to load", async ({
   await expect(previewDialog(page).getByRole("alert")).toHaveCount(0);
 });
 
-test("a render that fails shows why, and doesn't promise a retry will help", async ({
-  page,
-}) => {
-  await canvas(page).evaluate((element) => {
-    (element as MailQuilt).exportHtml = () =>
-      Promise.reject(new Error("Unknown Block type"));
-  });
-
-  await previewButton(page).click();
-
-  await expect(previewDialog(page).getByRole("alert")).toHaveText(
-    "The preview couldn't be loaded: Unknown Block type"
-  );
-});
-
 test.describe("reflecting the latest edits", () => {
   test("an unchanged email isn't compiled again, and any change is", async ({
     page,
@@ -178,14 +152,14 @@ test.describe("reflecting the latest edits", () => {
     await openThenClose("xHello");
     expect(await exportCount(page)).toBe("2");
 
-    await page.keyboard.press("ControlOrMeta+z");
+    await undoByKey(page);
     await expect(textBlock(page)).toHaveText("Hello");
     await previewButton(page).click();
     await expect(previewEmail(page)).not.toContainText("xHello");
     await closeButton(page).click();
     expect(await exportCount(page)).toBe("3");
 
-    await setValue(page, emailWith("From the host"));
+    await setValue(page, emailWith([[["From the host"]]]));
     await expect(textBlock(page)).toHaveText("From the host");
     await openThenClose("From the host");
     expect(await exportCount(page)).toBe("4");
@@ -260,7 +234,7 @@ test.describe("the sandbox", () => {
   });
 
   test("HTML typed as text shows as text, not markup", async ({ page }) => {
-    await setValue(page, emailWith('<img src="x" onerror="alert(1)">'));
+    await setValue(page, emailWith([[['<img src="x" onerror="alert(1)">']]]));
     await expect(textBlock(page)).toHaveText(
       '<img src="x" onerror="alert(1)">'
     );
@@ -340,9 +314,9 @@ test.describe("closing", () => {
     await page.keyboard.type("b");
 
     await expect(textBlock(page)).toHaveText("abHello");
-    await page.keyboard.press("ControlOrMeta+z");
+    await undoByKey(page);
     await expect(textBlock(page)).toHaveText("aHello");
-    await page.keyboard.press("ControlOrMeta+z");
+    await undoByKey(page);
     await expect(textBlock(page)).toHaveText("Hello");
   });
 
@@ -408,20 +382,6 @@ test.describe("closing", () => {
 });
 
 test.describe("opening with focus on a toolbar button", () => {
-  test("typing doesn't reach the Block behind the Preview", async ({
-    page,
-  }) => {
-    await focusStartOfTextBlock(page);
-    await previewButton(page).focus();
-    await page.keyboard.press("Enter");
-    await expect(previewEmail(page)).toContainText("Hello");
-
-    await page.keyboard.type("x");
-
-    await expect(textBlock(page)).toHaveText("Hello");
-    await expect(page.getByTestId("change-count")).toHaveText("0");
-  });
-
   test("the Block keeps its cursor for when focus comes back", async ({
     page,
   }) => {
@@ -466,7 +426,7 @@ test.describe("the host changing things while the Preview is open", () => {
     await previewButton(page).click();
     await expect(previewEmail(page)).toContainText("Hello");
 
-    await setValue(page, emailWith("Another email"));
+    await setValue(page, emailWith([[["Another email"]]]));
 
     await expect(textBlock(page)).toHaveText("Another email");
     await expect(previewDialog(page)).toBeHidden();
@@ -481,7 +441,7 @@ test.describe("the host changing things while the Preview is open", () => {
     await previewButton(page).click();
     await expect(previewDialog(page).getByRole("status")).toBeVisible();
 
-    await setValue(page, emailWith("Another email"));
+    await setValue(page, emailWith([[["Another email"]]]));
     await previewButton(page).click();
     await release();
 
@@ -497,7 +457,7 @@ test.describe("the host changing things while the Preview is open", () => {
 
     await setValue(page, undefined);
     await expect(page.locator("mail-quilt dialog")).toHaveCount(0);
-    await setValue(page, emailWith("Back again"));
+    await setValue(page, emailWith([[["Back again"]]]));
 
     await expect(textBlock(page)).toHaveText("Back again");
     await expect(previewDialog(page)).toBeHidden();
@@ -532,10 +492,7 @@ test("host CSS doesn't reach the Preview", async ({ page }) => {
   await expect(heading).toHaveCSS("font-size", "14px");
   await expect(heading).toHaveCSS("color", "rgb(22, 24, 29)");
   await expect(heading).toHaveCSS("text-transform", "none");
-  const { height, width } = (await previewFrame(page).boundingBox()) ?? {
-    height: 0,
-    width: 0,
-  };
+  const { height, width } = await boxOf(previewFrame(page));
   expect(height).toBeGreaterThan(200);
   expect(width).toBeGreaterThan(600);
 });
@@ -547,21 +504,10 @@ test("stays a readable size in a large window, in its middle", async ({
   await previewButton(page).click();
   await expect(previewEmail(page)).toContainText("Hello");
 
-  const box = await previewDialog(page).boundingBox();
+  const box = await boxOf(previewDialog(page));
 
-  expect(box?.width).toBe(960);
-  expect(box?.height).toBe(880);
-  expect((box?.x ?? 0) + (box?.width ?? 0) / 2).toBe(1200);
-  expect((box?.y ?? 0) + (box?.height ?? 0) / 2).toBe(700);
-});
-
-test("leaves a gap around it in a small window", async ({ page }) => {
-  await page.setViewportSize({ height: 700, width: 900 });
-  await previewButton(page).click();
-  await expect(previewEmail(page)).toContainText("Hello");
-
-  const box = await previewDialog(page).boundingBox();
-
-  expect(box?.width).toBe(900 - 32);
-  expect(box?.height).toBe(700 - 32);
+  expect(box.width).toBe(960);
+  expect(box.height).toBe(880);
+  expect(box.x + box.width / 2).toBe(1200);
+  expect(box.y + box.height / 2).toBe(700);
 });

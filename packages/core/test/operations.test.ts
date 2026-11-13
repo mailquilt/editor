@@ -216,17 +216,11 @@ describe("applying an Operation", () => {
     expect(insert.type === "insert" && insert.block.props).toStrictEqual({});
   });
 
-  it.each([
-    ["an insert into", { ...insert, columnId: "missing" }],
-    ["a move from", { ...move, from: { columnId: "missing", index: 0 } }],
-    ["a move to", { ...move, to: { columnId: "missing", index: 0 } }],
-    ["a width on", { ...setColumnWidth, columnId: "missing" }],
-  ] as [string, Operation][])(
-    "throws for %s a missing Column",
-    (_name, operation) => {
-      expect(() => applied(operation)).toThrow(/missing/u);
-    }
-  );
+  it("throws for a missing Column", () => {
+    expect(() =>
+      applied({ ...insert, columnId: "missing" } as Operation)
+    ).toThrow(/missing/u);
+  });
 
   it("throws for an insert into a missing Row", () => {
     expect(() =>

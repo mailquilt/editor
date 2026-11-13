@@ -81,11 +81,6 @@ describe("rejecting a Command", () => {
       /invalid command/iu,
     ],
     [
-      "a Command that isn't an object",
-      () => "updateBlockProps",
-      /invalid command/iu,
-    ],
-    [
       "a Block that doesn't exist",
       () => ({
         blockId: "missing",

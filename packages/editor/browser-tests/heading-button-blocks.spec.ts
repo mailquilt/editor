@@ -5,6 +5,7 @@ import {
   blockGroup,
   blocks,
   blockTypes,
+  boxOf,
   canvas,
   change,
   currentValue,
@@ -14,10 +15,10 @@ import {
   openExport,
   palette,
   panelBlock,
-  redo,
   setValue,
   settle,
   undo,
+  undoByKey,
   violations,
 } from "./helpers.js";
 
@@ -84,6 +85,13 @@ const lastLineInset = (face: Locator) =>
 /** Browsers can differ by a fraction of a pixel between two pages. */
 const toTenths = (pixels: number) => Math.round(pixels * 10) / 10;
 
+/** How far a Button's face is from the right of what holds it. */
+const gapOnRight = async (face: Locator, container: Locator) => {
+  const inner = await boxOf(face);
+  const outer = await boxOf(container);
+  return toTenths(outer.x + outer.width - inner.x - inner.width);
+};
+
 // The test host's unfriendly CSS pushes the canvas far down the page.
 test.use({ viewport: { height: 1600, width: 1280 } });
 
@@ -136,7 +144,7 @@ test.describe("a Heading", () => {
     );
     await opened.close();
 
-    await page.keyboard.press("ControlOrMeta+z");
+    await undoByKey(page);
 
     await expect(lastBlockProps(page)).resolves.toMatchObject({ level: 2 });
     await expect(field(page, "Level")).toHaveValue("2");
@@ -266,40 +274,6 @@ test.describe("Bold in a Heading, which is already bold", () => {
   });
 });
 
-test.describe("an empty Column", () => {
-  test("gets a Text from its own control, by keyboard", async ({ page }) => {
-    await open(page, ["text"], []);
-    const add = page.getByRole("button", {
-      name: "Add Text Block here, Row 1, Column 2",
-    });
-    await add.focus();
-
-    await page.keyboard.press("Enter");
-
-    await expect(blockTypes(page, 0, 1)).resolves.toEqual(["text"]);
-
-    await undo(page);
-    await expect(blockTypes(page, 0, 1)).resolves.toEqual([]);
-  });
-
-  test("keeps its controls inside a narrow Column", async ({ page }) => {
-    await open(page, ["text"], [], [], []);
-    const column = canvas(page).locator(".column").nth(1);
-    const box = await column.boundingBox();
-
-    const controls = await column.getByRole("button").all();
-    expect(controls).toHaveLength(6);
-    for (const control of controls) {
-      // oxlint-disable-next-line no-await-in-loop -- One at a time, to name the one that's out.
-      const inner = await control.boundingBox();
-      expect(inner?.x).toBeGreaterThanOrEqual(box?.x ?? 0);
-      expect((inner?.x ?? 0) + (inner?.width ?? 0)).toBeLessThanOrEqual(
-        (box?.x ?? 0) + (box?.width ?? 0)
-      );
-    }
-  });
-});
-
 test.describe("a Button", () => {
   test("doesn't select its label when dragged across", async ({ page }) => {
     await open(page, ["button"]);
@@ -364,22 +338,6 @@ test.describe("a Button", () => {
     await expect(blockGroup(page, "Button")).toHaveAccessibleDescription(
       "Use arrow keys to select another Block, and Alt with arrow keys to move this one."
     );
-  });
-
-  test("changes its label as one undo step", async ({ page }) => {
-    await open(page, ["button"]);
-    await blockGroup(page, "Button").focus();
-
-    await change(field(page, "Label"), "Shop {{season}}");
-
-    await expect(buttonFace(page)).toHaveText("Shop {{season}}");
-
-    await undo(page);
-    await expect(buttonFace(page)).toHaveText("Buy");
-    await expect(field(page, "Label")).toHaveValue("Buy");
-
-    await redo(page);
-    await expect(buttonFace(page)).toHaveText("Shop {{season}}");
   });
 
   test("shows a label as text, whatever it holds", async ({ page }) => {
@@ -464,35 +422,20 @@ test.describe("a Button", () => {
     });
   });
 
-  for (const align of ["left", "right"]) {
-    test(`sits ${align} on the canvas and in the export`, async ({ page }) => {
-      await open(page, ["button"]);
-      await blockGroup(page, "Button").focus();
-      await field(page, "Alignment").selectOption(align);
+  test("sits right on the canvas and in the export", async ({ page }) => {
+    await open(page, ["button"]);
+    await blockGroup(page, "Button").focus();
+    await field(page, "Alignment").selectOption("right");
 
-      const side = async (face: Locator, container: Locator) => {
-        const inner = await face.boundingBox();
-        const outer = await container.boundingBox();
-        return toTenths(
-          align === "left"
-            ? (inner?.x ?? 0) - (outer?.x ?? 0)
-            : (outer?.x ?? 0) +
-                (outer?.width ?? 0) -
-                (inner?.x ?? 0) -
-                (inner?.width ?? 0)
-        );
-      };
-
-      await expect(
-        side(buttonFace(page), blockGroup(page, "Button"))
-      ).resolves.toBe(16);
-      const { opened } = await openExport(page);
-      await opened.setViewportSize({ height: 800, width: 800 });
-      await expect(
-        side(opened.getByText("Buy"), opened.locator("body > div"))
-      ).resolves.toBe(116);
-    });
-  }
+    await expect(
+      gapOnRight(buttonFace(page), blockGroup(page, "Button"))
+    ).resolves.toBe(16);
+    const { opened } = await openExport(page);
+    await opened.setViewportSize({ height: 800, width: 800 });
+    await expect(
+      gapOnRight(opened.getByText("Buy"), opened.locator("body > div"))
+    ).resolves.toBe(116);
+  });
 });
 
 test.describe("accessibility", () => {

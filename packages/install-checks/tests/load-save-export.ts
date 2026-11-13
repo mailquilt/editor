@@ -1,5 +1,3 @@
-import { readFile } from "node:fs/promises";
-
 import { expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
@@ -58,8 +56,9 @@ export const checkRefusedDocument = async (page: Page, url: string) => {
 };
 
 /**
- * Each fresh project's Shell page saves under
- * `my-app:email` and opening an email saying "Hello" when nothing is saved.
+ * Each fresh project's Shell page saves under `my-app:email`, opening an email
+ * saying "Hello" when nothing is saved. Its exports and refusals are the
+ * editor's own tests' to check; this proves the Shell works once installed.
  */
 export const checkShell = async (page: Page, url: string) => {
   const problems: string[] = [];
@@ -89,23 +88,6 @@ export const checkShell = async (page: Page, url: string) => {
     .toContain("Saved Hello");
 
   await page.reload();
-  await expect(text).toHaveText("Saved Hello");
-
-  const downloading = page.waitForEvent("download");
-  await shell.getByRole("button", { name: "Export HTML" }).click();
-  const download = await downloading;
-  expect(download.suggestedFilename()).toBe("email.html");
-  expect(await readFile(await download.path(), "utf-8")).toContain(
-    "Saved Hello"
-  );
-
-  await page.evaluate(() => {
-    const element = document.querySelector("mail-quilt-shell") as unknown as {
-      value: unknown;
-    };
-    element.value = { kind: "blocks", rows: [], version: 2 };
-  });
-  await expect(shell.getByRole("alert")).toContainText(/version 2 is newer/iu);
   await expect(text).toHaveText("Saved Hello");
 
   expect(problems).toStrictEqual([]);
