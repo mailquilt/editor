@@ -588,19 +588,22 @@ test.describe("a Spacer", () => {
 });
 
 test.describe("accessibility", () => {
-  for (const [name, type] of [
-    ["an Image", "image"],
-    ["a Divider", "divider"],
-    ["a Spacer", "spacer"],
-    ["a Button", "button"],
-  ] as const) {
-    test(`finds no violations with ${name} selected`, async ({ page }) => {
-      await open(page, [type, "text"]);
-      await canvas(page).locator(".block").first().focus();
+  // One page, each type of Block selected in turn, as tall as the window, so a
+  // Block near its bottom has its tools beside the floating toolbar. A selected
+  // Text Block and Heading are checked in keyboard.spec.ts.
+  test("finds no violations with each type of Block selected", async ({
+    page,
+  }) => {
+    await open(page, ["image", "divider", "spacer", "button", "text"]);
+    const selectable = canvas(page).locator(".block");
 
+    for (const index of [0, 1, 2, 3]) {
+      // oxlint-disable-next-line no-await-in-loop -- One selection at a time.
+      await selectable.nth(index).focus();
+      // oxlint-disable-next-line no-await-in-loop -- Checked with each selected.
       await expect(violations(page)).resolves.toEqual([]);
-    });
-  }
+    }
+  });
 
   test("finds no violations with an Image that has no URL", async ({
     page,
