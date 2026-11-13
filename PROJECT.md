@@ -71,8 +71,7 @@ Mail Quilt should integrate with email providers rather than compete with them.
 | Repository | `github.com/yourcodebuddy-in/mailquilt` |
 | npm scope | `@mailquilt/*` |
 | Custom element | `<mail-quilt>` |
-| Docs | A static site served from its root. Host and domain to be decided |
-| Custom domain | None; not buying one |
+| Docs | A static site served from its root, on a domain the maintainer chooses |
 
 Still to confirm: that the `@mailquilt` org can be created on npm (`@mailquilt/core` and `mailquilt` currently return 404, which does not prove the org is free) and that the name has no trademark conflict.
 
