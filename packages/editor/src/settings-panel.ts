@@ -156,12 +156,28 @@ export const settingsPanelStyles = css`
 
   .settings select {
     appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%235f6570' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.75' viewBox='0 0 24 24'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E");
-    background-position: right 8px center;
-    background-repeat: no-repeat;
     cursor: pointer;
     padding-inline-end: 32px;
     text-overflow: ellipsis;
+  }
+
+  .settings .select-field {
+    position: relative;
+  }
+
+  /* A mask, so the arrow is in the theme's muted text color. */
+  .settings .select-field::after {
+    background-color: var(--mq-color-text-muted);
+    content: "";
+    height: 16px;
+    inset-block: 0;
+    inset-inline-end: 8px;
+    margin-block: auto;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%23000' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.75' viewBox='0 0 24 24'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E")
+      center / 16px no-repeat;
+    pointer-events: none;
+    position: absolute;
+    width: 16px;
   }
 
   .settings [aria-invalid="true"] {
@@ -277,6 +293,11 @@ export const fieldText = (
   values: Record<string, unknown>
 ) => String(values[key] ?? fallback ?? "");
 
+// A focused number field would step with the wheel, though it has no arrows,
+// while the person only meant to scroll the panel.
+const leaveOnWheel = ({ currentTarget }: Event) =>
+  (currentTarget as HTMLInputElement).blur();
+
 /** What a control's text means. Empty asks for the property to be removed. */
 export const fieldValue = (
   field: SettingsField,
@@ -347,6 +368,7 @@ const renderField = (
       .value=${live(draft?.text ?? text)}
       @change=${onCommit}
       @input=${onInput}
+      @wheel=${type === "number" ? leaveOnWheel : nothing}
     />
   `;
 
@@ -382,22 +404,24 @@ const renderField = (
           ? field.options
           : [...field.options, { label: text, value: text }];
         return html`
-          <select
-            aria-describedby=${describedBy || nothing}
-            id=${id}
-            @change=${onCommit}
-          >
-            ${options.map(
-              ({ label, value }) => html`
-                <option
-                  .selected=${live(String(value) === text)}
-                  .value=${String(value)}
-                >
-                  ${label}
-                </option>
-              `
-            )}
-          </select>
+          <div class="select-field">
+            <select
+              aria-describedby=${describedBy || nothing}
+              id=${id}
+              @change=${onCommit}
+            >
+              ${options.map(
+                ({ label, value }) => html`
+                  <option
+                    .selected=${live(String(value) === text)}
+                    .value=${String(value)}
+                  >
+                    ${label}
+                  </option>
+                `
+              )}
+            </select>
+          </div>
         `;
       }
       default: {

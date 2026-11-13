@@ -178,8 +178,8 @@ export class MailQuilt extends LitElement {
       draftOf: (key) => this.#drafts.get(key),
       onCommit: (section, field, control) =>
         this.#commitField(section, field, control),
-      onInput: (section, field, { value }) =>
-        this.#draftField(section, field, value),
+      onInput: (section, field, control) =>
+        this.#draftField(section, field, control),
       onKeydown: (event) => this.#onSettingsKeydown(event),
     },
   };
@@ -980,10 +980,20 @@ export class MailQuilt extends LitElement {
     return result;
   }
 
-  #draftField(section: SettingsSection, field: SettingsField, text: string) {
+  #draftField(
+    section: SettingsSection,
+    field: SettingsField,
+    control: HTMLInputElement
+  ) {
     const key = draftKey(section, field);
     const refusals = this.#drafts.get(key)?.refusals ?? 0;
-    if (text === fieldText(field, section.values) && !refusals) {
+    const text = control.value;
+    // What isn't a number reads as empty, as if an empty field were unchanged.
+    if (
+      text === fieldText(field, section.values) &&
+      !refusals &&
+      !control.validity.badInput
+    ) {
       this.#drafts.delete(key);
     } else {
       this.#drafts.set(key, { refusals, text });
@@ -1045,6 +1055,11 @@ export class MailQuilt extends LitElement {
       event.preventDefault();
       event.stopPropagation();
       this.#drafts.delete(key);
+      // Its value already reads as empty, so rendering wouldn't clear it.
+      const control = event.target as HTMLInputElement;
+      if (control.validity.badInput) {
+        control.value = "";
+      }
       this.requestUpdate();
     }
   }

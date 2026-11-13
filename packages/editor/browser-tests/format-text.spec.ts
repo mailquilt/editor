@@ -302,6 +302,24 @@ test.describe("the toolbar", () => {
     await expect(firstTextBlock(page)).toHaveText("x");
   });
 
+  test("its buttons name their shortcuts", async ({ page }) => {
+    await selectAllInBlock(page);
+    const mod = process.platform === "darwin" ? "Meta" : "Control";
+
+    await expect(toolbarButton(page, "Bold")).toHaveAttribute(
+      "aria-keyshortcuts",
+      `${mod}+B`
+    );
+    await expect(toolbarButton(page, "Link")).toHaveAttribute(
+      "aria-keyshortcuts",
+      `${mod}+K`
+    );
+    await expect(toolbarButton(page, "Line break")).toHaveAttribute(
+      "aria-keyshortcuts",
+      "Shift+Enter"
+    );
+  });
+
   test("works by keyboard, returning focus to the Block", async ({ page }) => {
     await selectAllInBlock(page);
     await toolbarButton(page, "Bold").focus();

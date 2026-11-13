@@ -11,9 +11,11 @@ on:
 permissions:
   contents: read
 
+# A newer push to a pull request replaces its run. On main every commit is
+# checked to the end, as any of them could be released.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # Both jobs run in Playwright's own image, which has every browser and the
 # system libraries they need, so they install nothing from Ubuntu's package

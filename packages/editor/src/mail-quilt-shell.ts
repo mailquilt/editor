@@ -276,7 +276,11 @@ export class MailQuiltShell extends LitElement {
           <!-- A heading the host sets is in the host page's language. -->
           <h2
             class="heading"
-            lang=${this.heading === undefined ? UI_LANG : nothing}
+            lang=${
+              this.heading === undefined || this.heading === null
+                ? UI_LANG
+                : nothing
+            }
             part="heading"
           >
             ${this.heading ?? "Email"}

@@ -200,9 +200,13 @@ const scrollContainersOf = (host: Element) => {
         containers.push({ element, sideways, upAndDown });
       }
     }
+    // Up the tree as it's drawn, so through the slot another component shows
+    // it in, where that component's own scroll container can be.
     const root = element.getRootNode();
     element =
-      element.parentElement ?? (root instanceof ShadowRoot ? root.host : null);
+      element.assignedSlot ??
+      element.parentElement ??
+      (root instanceof ShadowRoot ? root.host : null);
   }
   // The browser itself won't scroll the window the way the page hides.
   containers.push({
