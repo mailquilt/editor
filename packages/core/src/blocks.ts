@@ -384,10 +384,10 @@ export const blockDefinitions = new Map<string, BlockDefinition>([
 ]);
 
 /** The types of Block a person can add, in the order the palette shows them. */
-export const BLOCK_TYPES = [...blockDefinitions].map(([type, { label }]) => ({
-  label,
-  type,
-}));
+export const BLOCK_TYPES: readonly {
+  readonly label: string;
+  readonly type: string;
+}[] = [...blockDefinitions].map(([type, { label }]) => ({ label, type }));
 
 /**
  * What a person calls a type of Block.
