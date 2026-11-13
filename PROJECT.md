@@ -453,8 +453,8 @@ Custom Blocks and settings fields, custom checker rules, image upload and media 
 - **Unit tests (Vitest):** Commands, undo and redo, migrations and the renderer.
 - **Browser tests (Playwright):** drag and drop, the keyboard, undo, settings, export and the React wrapper, in Chromium, Firefox and WebKit, with automated accessibility checks.
 - **Install checks:** the packed packages are installed in fresh plain JavaScript, CDN and Next.js projects, and tested there.
-- **Email clients:** real emails are sent to Gmail and Apple Mail before a release. Outlook isn't tested, and the docs say so. Other clients, and services such as Litmus, may come later.
-- **By hand, before a release:** keyboard and screen reader use, typing Japanese in Safari, Firefox and Chrome (automated tests can only simulate it in Chromium), and touch.
+- **Email clients:** `0.1.0` is checked with real emails in Gmail and Apple Mail. Outlook isn't tested, and the docs say so. Other clients, and services such as Litmus, may come later.
+- **By hand, for `0.1.0`:** keyboard and screen reader use, typing Japanese in Safari, Firefox and Chrome (automated tests can only simulate it in Chromium), and touch.
 
 [`docs/agents/testing.md`](docs/agents/testing.md) says how tests are written here.
 
