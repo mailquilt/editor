@@ -76,10 +76,28 @@ export const createEditor = ({
     current = next;
   };
 
+  // A listener can apply a Command of its own. Its change waits until every
+  // listener has heard of the one before, so each hears them in order.
+  const unheard: Operation[][] = [];
+  let notifying = false;
+
   /** Runs last, so listeners can't interrupt a change or see it half done. */
   const notify = (operations: Operation[]) => {
-    for (const listener of listeners) {
-      listener(structuredClone(operations));
+    unheard.push(operations);
+    if (notifying) {
+      return;
+    }
+    notifying = true;
+    try {
+      for (let next = unheard.shift(); next; next = unheard.shift()) {
+        for (const listener of listeners) {
+          listener(structuredClone(next));
+        }
+      }
+    } finally {
+      // A listener that throws leaves nothing to be heard out of turn later.
+      notifying = false;
+      unheard.length = 0;
     }
   };
 

@@ -571,6 +571,28 @@ test.describe("links", () => {
     await expect(textBlock(page)).toHaveText("x");
   });
 
+  test("Escape while composing leaves the field open, with what's typed", async ({
+    page,
+  }) => {
+    await selectAllInBlock(page);
+    await toolbarButton(page, "Link").click();
+    await linkInput(page).fill("https://example.com");
+
+    await linkInput(page).evaluate((element) => {
+      element.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          bubbles: true,
+          cancelable: true,
+          composed: true,
+          isComposing: true,
+          key: "Escape",
+        })
+      );
+    });
+
+    await expect(linkInput(page)).toHaveValue("https://example.com");
+  });
+
   test("in an empty Block with everything selected, the URL becomes the linked text", async ({
     page,
   }) => {

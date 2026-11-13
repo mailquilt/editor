@@ -430,6 +430,27 @@ describe("subscribing to Operations", () => {
     expect(editor.getDocument()).toStrictEqual(document);
   });
 
+  it("tells every listener of changes in the order they were made", () => {
+    const { editor, setText } = setup();
+    let isFirst = true;
+    editor.subscribe(() => {
+      if (isFirst) {
+        isFirst = false;
+        setText("From listener");
+      }
+    });
+    const heard: string[] = [];
+    editor.subscribe((operations) => {
+      heard.push(JSON.stringify(operations));
+    });
+
+    setText("First");
+
+    expect(heard).toHaveLength(2);
+    expect(heard[0]).toContain("First");
+    expect(heard[1]).toContain("From listener");
+  });
+
   it("keeps steps in order when a listener applies a Command", () => {
     const { document, editor, setText } = setup();
     let isFirst = true;

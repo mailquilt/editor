@@ -228,10 +228,17 @@ describe("applying an Operation", () => {
     ).toThrow(/missing/u);
   });
 
-  it("throws for a move of a Block that isn't there", () => {
+  it("throws for a move of a Block that isn't at its index", () => {
     expect(() =>
-      applied({ ...move, from: { columnId: "left", index: 5 } } as Operation)
-    ).toThrow(/index 5/u);
+      applied({ ...move, from: { columnId: "left", index: 1 } } as Operation)
+    ).toThrow(/"a" at index 1/u);
+  });
+
+  // The same check for Rows, Columns and Blocks, so one of them.
+  it("throws for a removal of a Block that isn't at its index", () => {
+    expect(() => applied({ ...remove, index: 0 } as Operation)).toThrow(
+      /"b" at index 0/u
+    );
   });
 
   it("throws for a set properties on a missing Block", () => {

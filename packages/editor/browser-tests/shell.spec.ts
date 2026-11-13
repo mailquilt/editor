@@ -284,6 +284,25 @@ test.describe("the editor's API", () => {
     expect(html).toContain("Oh Hello");
   });
 
+  test("exportHtml() works straight after the Shell is added", async ({
+    page,
+  }) => {
+    await page.goto("/shell.html");
+    const html = await page.evaluate(
+      async (email) => {
+        const added = document.createElement(
+          "mail-quilt-shell"
+        ) as MailQuiltShell;
+        added.value = email;
+        document.body.append(added);
+        return await added.exportHtml();
+      },
+      emailWith([[["Straight away"]]])
+    );
+
+    expect(html).toContain("Straight away");
+  });
+
   test("a value set before the element is defined still opens", async ({
     page,
   }) => {
@@ -388,7 +407,7 @@ test.describe("saving in the browser", () => {
     await expect(textBlock(page)).toHaveText("Imported");
   });
 
-  test("a damaged saved email shows why, and stays until a change", async ({
+  test("a damaged saved email shows why, and is kept apart from the next save", async ({
     page,
   }) => {
     await page.addInitScript(
@@ -407,6 +426,12 @@ test.describe("saving in the browser", () => {
 
     await expect.poll(() => saved(page)).toContain("New Hello");
     await expect(shell(page).getByRole("alert")).toHaveCount(0);
+    expect(
+      await page.evaluate(
+        (each) => localStorage.getItem(`${each}:unopened`),
+        key
+      )
+    ).toBe("{not json");
   });
 
   for (const { name, script } of [
