@@ -237,7 +237,8 @@ test.describe("the email's language", () => {
         rowTools: langOf(".row-toolbar"),
         sidePanel: langOf(".side-panel"),
         status: langOf('[role="status"]'),
-        text: langOf(".ProseMirror"),
+        text: langOf(".ProseMirror p"),
+        textBox: langOf(".ProseMirror"),
       };
     });
 
@@ -252,6 +253,7 @@ test.describe("the email's language", () => {
       sidePanel: "en",
       status: "en",
       text: "de",
+      textBox: "en",
     });
   });
 
@@ -265,7 +267,7 @@ test.describe("the email's language", () => {
 
     const lang = await canvas(page).evaluate((host) =>
       host.shadowRoot
-        ?.querySelector(".ProseMirror")
+        ?.querySelector(".ProseMirror p")
         ?.closest("[lang]")
         ?.getAttribute("lang")
     );

@@ -32,7 +32,7 @@ import {
   RemoveMarkStep,
   ReplaceStep,
 } from "prosemirror-transform";
-import { EditorView } from "prosemirror-view";
+import { Decoration, DecorationSet, EditorView } from "prosemirror-view";
 
 export type ToggleableMark = "bold" | "italic" | "underline";
 
@@ -49,6 +49,11 @@ export interface TextBlockView {
    * text that changed.
    */
   setContent: (content: RichTextDocument) => void;
+  /**
+   * The email's language, on each paragraph. The text box around them keeps the
+   * editor's, as its name is the editor's own.
+   */
+  setLang: (lang: string) => void;
   focus: () => void;
   formats: () => TextFormats;
   toggleMark: (mark: ToggleableMark) => void;
@@ -489,6 +494,8 @@ export const createTextBlockView = ({
   onTypingBreak: () => void;
 }): TextBlockView => {
   const element = document.createElement("div");
+  // Unknown until set, as in the export of an email with no language.
+  let lang = "";
   // Where bold would change nothing, its shortcut is still taken, or the
   // browser would make the text bold itself.
   const bold: Command = canBold
@@ -501,6 +508,17 @@ export const createTextBlockView = ({
       "aria-multiline": "true",
       role: "textbox",
       tabindex: "0",
+    },
+    decorations: ({ doc }) => {
+      const paragraphs: Decoration[] = [];
+      let offset = 0;
+      for (const paragraph of doc.content.content) {
+        paragraphs.push(
+          Decoration.node(offset, offset + paragraph.nodeSize, { lang })
+        );
+        offset += paragraph.nodeSize;
+      }
+      return DecorationSet.create(doc, paragraphs);
     },
     dispatchTransaction(this: EditorView, transaction: Transaction) {
       // The editor can still call a view it has taken down.
@@ -640,6 +658,13 @@ export const createTextBlockView = ({
           : Selection.near(tr.doc.resolve(cursor))
       );
       view.dispatch(tr.setMeta(FROM_HOST, true));
+    },
+    setLang: (next) => {
+      if (next !== lang) {
+        lang = next;
+        // Reads the decorations again.
+        view.updateState(view.state);
+      }
     },
     setLink: (href) =>
       run((state, dispatch) => {

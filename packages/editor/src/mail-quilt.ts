@@ -973,9 +973,8 @@ export class MailQuilt extends LitElement {
       }
     }
     this.#removeViewsExcept(new Set(blocks.map(({ id }) => id)));
-    // The text is the email's, unlike the Block's label around it.
     for (const view of this.#views.values()) {
-      view.element.lang = this.#emailLang;
+      view.setLang(this.#emailLang);
     }
     const rows = this.#rendered?.rows ?? [];
     if (

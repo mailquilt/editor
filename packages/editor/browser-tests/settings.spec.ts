@@ -283,7 +283,7 @@ test.describe("Email settings", () => {
     await expect
       .poll(() =>
         textBlock(page).evaluate((text) =>
-          text.closest("[lang]")?.getAttribute("lang")
+          text.querySelector("p")?.getAttribute("lang")
         )
       )
       .toBe("pt-BR");
