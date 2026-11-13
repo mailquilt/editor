@@ -174,8 +174,10 @@ test.describe("without JavaScript", () => {
   test.use({ javaScriptEnabled: false });
 
   test("the landing page still says what every package is for", async ({
+    browserName,
     page,
   }) => {
+    test.skip(browserName !== "chromium", SAME_IN_EVERY_BROWSER);
     await page.goto("/");
 
     for (const name of ["editor", "react", "core", "renderer"]) {

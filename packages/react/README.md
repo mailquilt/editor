@@ -26,7 +26,7 @@ export const Editor = ({ savedEmail, send }: EditorProps) => {
     <>
       <MailQuilt
         onChange={setEmail}
-        onError={({ reason }) => console.log(reason)}
+        onError={(reason) => console.log(reason)}
         ref={editor}
         value={email}
       />

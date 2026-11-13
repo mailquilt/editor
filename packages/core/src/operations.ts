@@ -84,6 +84,9 @@ export const findBlock = (document: BlocksDocument, blockId: string) =>
 export const findColumn = (document: BlocksDocument, columnId: string) =>
   columnsIn(document).find(({ id }) => id === columnId);
 
+export const findRow = (document: BlocksDocument, rowId: string) =>
+  document.rows.find(({ id }) => id === rowId);
+
 const getColumn = (document: BlocksDocument, columnId: string) => {
   const column = findColumn(document, columnId);
   if (!column) {
@@ -93,7 +96,7 @@ const getColumn = (document: BlocksDocument, columnId: string) => {
 };
 
 const getRow = (document: BlocksDocument, rowId: string) => {
-  const row = document.rows.find(({ id }) => id === rowId);
+  const row = findRow(document, rowId);
   if (!row) {
     throw new Error(`No Row with ID "${rowId}"`);
   }

@@ -53,6 +53,7 @@ const isSameTarget = (a: PropsTarget, b: PropsTarget) => {
   return "emailSettings" in b;
 };
 
+/** Throws if `document` isn't an email Mail Quilt accepts, with the reason. */
 export const createEditor = ({
   document: initialDocument,
 }: {

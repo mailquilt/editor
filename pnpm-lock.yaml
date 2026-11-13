@@ -95,10 +95,10 @@ importers:
   packages/editor:
     dependencies:
       '@mailquilt/core':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../core
       '@mailquilt/renderer':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../renderer
       lit:
         specifier: ^3.3.3
@@ -192,7 +192,7 @@ importers:
   packages/react:
     dependencies:
       '@mailquilt/editor':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../editor
     devDependencies:
       '@playwright/test':
@@ -229,7 +229,7 @@ importers:
   packages/renderer:
     dependencies:
       '@mailquilt/core':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../core
       cheerio:
         specifier: ^1.2.0

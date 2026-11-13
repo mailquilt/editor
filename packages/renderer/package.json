@@ -30,15 +30,16 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "scripts": {
     "build": "tsdown",
-    "check-types": "tsc --noEmit",
+    "check-types": "tsc --noEmit && tsc --noEmit -p test",
     "test": "vitest run"
   },
   "dependencies": {
-    "@mailquilt/core": "workspace:^",
+    "@mailquilt/core": "workspace:*",
     "cheerio": "^1.2.0",
     "mjml-browser": "^5.4.1"
   },

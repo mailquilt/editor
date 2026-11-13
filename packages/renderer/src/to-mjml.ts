@@ -1,4 +1,9 @@
-import { blockStyles, loadDocument, rowStyles } from "@mailquilt/core";
+import {
+  blockStyles,
+  EMAIL_LOOK,
+  loadDocument,
+  rowStyles,
+} from "@mailquilt/core";
 import type {
   Block,
   Column,
@@ -86,8 +91,6 @@ const richTextToHtml = ({ content }: RichTextDocument) =>
     })
     .join("");
 
-const LINE_HEIGHT = "1.5";
-
 /** MJML's attributes share their CSS names, apart from this one. */
 const mjmlAttributes = (styles: Record<string, string>) =>
   Object.entries(styles)
@@ -124,7 +127,7 @@ const headingToHtml = (block: Block, fontFamily: string) => {
   const tag = hasText(content) ? `h${level}` : "p";
   const styles = Object.entries({
     "font-family": fontFamily,
-    "line-height": LINE_HEIGHT,
+    "line-height": EMAIL_LOOK.lineHeight,
     ...blockStyles(block),
   })
     .map(([name, value]) => `${name}:${escapeAttribute(value)}`)
@@ -201,10 +204,10 @@ export const toMjml = (document: unknown) => {
     <mj-attributes>
       <mj-all font-family="${escapeAttribute(settings.fontFamily)}" />
       <mj-section padding="0" />
-      <mj-text line-height="${LINE_HEIGHT}" padding="16px" />
-      <mj-button font-size="16px" line-height="${LINE_HEIGHT}" padding="16px" />
-      <mj-image padding="16px" />
-      <mj-divider padding="16px" />
+      <mj-text line-height="${EMAIL_LOOK.lineHeight}" padding="${EMAIL_LOOK.blockPadding}" />
+      <mj-button font-size="${EMAIL_LOOK.fontSize}" line-height="${EMAIL_LOOK.lineHeight}" padding="${EMAIL_LOOK.blockPadding}" />
+      <mj-image padding="${EMAIL_LOOK.blockPadding}" />
+      <mj-divider padding="${EMAIL_LOOK.blockPadding}" />
     </mj-attributes>
   </mj-head>
   <mj-body background-color="${escapeAttribute(settings.backgroundColor)}" width="${settings.width}px">

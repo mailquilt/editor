@@ -33,7 +33,7 @@ export const Editor = () => {
           setEmail(next);
           localStorage.setItem("email", JSON.stringify(next));
         }}
-        onError={({ reason }) => setLoadError(reason)}
+        onError={setLoadError}
         ref={editor}
         value={email}
       />

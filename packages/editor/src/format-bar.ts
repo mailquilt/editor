@@ -4,6 +4,7 @@ import { keyed } from "lit/directives/keyed.js";
 
 import {
   isComposing,
+  LINE_BREAK_KEYS,
   MOD_KEY,
   MOD_SHORTCUT,
   onToolbarArrowKeys,
@@ -83,7 +84,7 @@ const MARK_BUTTONS: {
 ];
 
 export interface FormatBarState {
-  /** Unset while the text has nothing to format. */
+  /** Unset until the Block's text has its editor, and the buttons wait for it. */
   formats: TextFormats | undefined;
   /**
    * Set while the link field is open. Each refusal counts, so the same one again
@@ -235,7 +236,7 @@ export const renderFormatBar = (
         aria-keyshortcuts="Shift+Enter"
         aria-label="Line break"
         class="icon-button"
-        data-tooltip="Line break (Shift+Enter)"
+        data-tooltip=${`Line break (${LINE_BREAK_KEYS})`}
         ?disabled=${!formats}
         tabindex="-1"
         type="button"

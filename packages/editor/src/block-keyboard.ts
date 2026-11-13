@@ -1,5 +1,6 @@
-import { findBlockPosition } from "@mailquilt/core";
 import type { BlocksDocument, Command } from "@mailquilt/core";
+
+import { blocksIn, locate } from "./places.js";
 
 export type Direction = "down" | "left" | "right" | "up";
 
@@ -17,12 +18,16 @@ export const arrowDirection = (event: KeyboardEvent): Direction | undefined =>
     : ARROW_KEYS[event.key];
 
 // As ProseMirror decides it for Bold and the other text keys, so they all agree.
-const IS_MAC = /Mac|iPhone|iPod|iPad/u.test(navigator.platform);
+// A server importing the editor may have no navigator.
+const IS_MAC =
+  typeof navigator === "object" &&
+  /Mac|iPhone|iPod|iPad/u.test(navigator.platform);
 /** How a shortcut with Ctrl, or Command on Apple devices, is written. */
 export const MOD_KEY = IS_MAC ? "⌘" : "Ctrl+";
 /** The same key, as `aria-keyshortcuts` names it. */
 export const MOD_SHORTCUT = IS_MAC ? "Meta" : "Control";
 export const UNDO_KEYS = `${MOD_KEY}Z`;
+export const LINE_BREAK_KEYS = IS_MAC ? "⇧↩" : "Shift+Enter";
 export const REDO_KEYS = IS_MAC ? "⇧⌘Z" : "Ctrl+Y";
 export const UNDO_SHORTCUTS = `${MOD_SHORTCUT}+Z`;
 export const REDO_SHORTCUTS = IS_MAC
@@ -132,41 +137,6 @@ export const historyInput = (event: InputEvent) => {
   if (event.inputType === "historyRedo") {
     return "redo";
   }
-};
-
-/** Every Block in the email, in reading order. */
-export const blocksIn = (document: BlocksDocument) =>
-  document.rows.flatMap((row) => row.columns.flatMap(({ blocks }) => blocks));
-
-/** A Block, and its Column and Row with their indexes. */
-export const locate = (document: BlocksDocument, blockId: string) => {
-  const position = findBlockPosition(document, blockId);
-  const row = position && document.rows[position.rowIndex];
-  if (!(position && row)) {
-    return;
-  }
-  const columnIndex = row.columns.findIndex(
-    ({ id }) => id === position.columnId
-  );
-  const column = row.columns[columnIndex];
-  return column && { ...position, column, columnIndex, row };
-};
-
-export type BlockPlace = NonNullable<ReturnType<typeof locate>>;
-
-export const columnLabel = (rowIndex: number, columnIndex: number) =>
-  `Row ${rowIndex + 1}, Column ${columnIndex + 1}`;
-
-export const positionLabel = (index: number, count: number) =>
-  `position ${index + 1} of ${count}`;
-
-/** Where a Block is, in words. */
-export const placeLabel = (document: BlocksDocument, blockId: string) => {
-  const place = locate(document, blockId);
-  return (
-    place &&
-    `${columnLabel(place.rowIndex, place.columnIndex)}, ${positionLabel(place.index, place.column.blocks.length)}`
-  );
 };
 
 /**

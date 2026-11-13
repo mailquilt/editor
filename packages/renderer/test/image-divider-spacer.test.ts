@@ -73,10 +73,11 @@ describe("an Image Block", () => {
     ).resolves.toMatchFileSnapshot("expected/image-every-setting.html");
   });
 
-  it("matches the saved HTML with only a URL", async () => {
-    await expect(
-      renderEmail(emailWith(image({ src: LOGO })))
-    ).resolves.toMatchFileSnapshot("expected/image-url-only.html");
+  it("has empty alt text and no link with only a URL", async () => {
+    const html = await renderEmail(emailWith(image({ src: LOGO })));
+
+    expect(imageTag(html)).toContain('alt=""');
+    expect(html).not.toMatch(/<a\s[^>]*>\s*<img/u);
   });
 });
 

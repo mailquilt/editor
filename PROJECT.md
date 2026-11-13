@@ -89,7 +89,7 @@ HTML mode ─────────────────────> "html
 - **The document is the source of truth.** An email is stored as JSON, not HTML. The HTML is generated from it.
 - **Every edit is a Command.** A Command is a request that can be refused. An accepted one produces Operations and is one undo step. Undo applies the reverse Operations.
 - **Operations are a small, fixed set:** insert, remove, move, set properties and set a Column's width. Moving is its own Operation, so collaboration can later tell a move from a delete and a new Block.
-- **Commands are plain JSON.** Setting properties merges them like JSON Merge Patch, and `null` removes one where the schema allows it.
+- **Commands are plain JSON.** Setting properties merges their top-level keys, so a nested value is replaced whole, and `null` removes one where the schema allows it.
 - **There's one undo history.** Typing in a Block merges into one undo step until the user pauses or leaves it.
 - **`core` and `renderer` need no browser.** They run on a server without a DOM or a UI framework, and a server can render an email without loading any editor code.
 - **The interface is written once.** The editor is a Web Component, and each framework wrapper stays thin.
@@ -498,6 +498,9 @@ To release, version on a branch, so CI checks the exact commit that's published:
 
 ```bash
 pnpm changeset version   # bumps versions and writes the changelogs
+# The CDN links name the version, and no check can tell they're out of date.
+git grep -l "@mailquilt/editor@" -- PROJECT.md apps packages
+# Set each to the new version, and move what shipped out of the roadmap's "Now".
 git add -A && git commit -m "chore: release"
 # Push, open a pull request, and merge it once CI passes. Then, on main:
 git pull

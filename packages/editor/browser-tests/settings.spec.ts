@@ -10,6 +10,7 @@ import {
   change,
   changeCount,
   chooseLayout,
+  collectErrors,
   currentValue,
   emailWith,
   exportHtml,
@@ -394,12 +395,7 @@ test.describe("undo", () => {
 
 test.describe("validation", () => {
   test("refuses a bad value and explains", async ({ page }) => {
-    const messages: string[] = [];
-    page.on("console", (message) => {
-      if (message.type() === "error") {
-        messages.push(message.text());
-      }
-    });
+    const errors = collectErrors(page);
     await textBlock(page).click();
     const before = await currentValue(page);
     const color = field(page, "Color");
@@ -417,7 +413,7 @@ test.describe("validation", () => {
     await expect(color).toHaveValue("red");
     expect(await currentValue(page)).toStrictEqual(before);
     await expect(changeCount(page)).toHaveText("0");
-    expect(messages).toStrictEqual([]);
+    expect(errors).toStrictEqual([]);
 
     // The same reason again is a new alert, so it's read out again.
     await error.evaluate((element) => {

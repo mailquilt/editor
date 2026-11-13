@@ -9,6 +9,7 @@ import {
   emailWithLink,
   exportHtml,
   focusStartOfTextBlock,
+  latestDocument,
   setValue,
   textBlock,
   undoByKey,
@@ -397,12 +398,7 @@ test.describe("the host changing things while the Preview is open", () => {
     await previewButton(page).click();
     await expect(previewEmail(page)).toContainText("Hello");
 
-    await setValue(
-      page,
-      JSON.parse(
-        (await page.getByTestId("latest-document").textContent()) ?? ""
-      )
-    );
+    await setValue(page, await latestDocument(page));
 
     await expect(previewEmail(page)).toContainText("Hello");
     await expect(previewDialog(page)).toBeVisible();

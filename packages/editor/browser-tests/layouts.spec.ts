@@ -5,6 +5,7 @@ import {
   addRow,
   addText,
   announcement,
+  blockWith,
   boxOf,
   canvas,
   changeCount,
@@ -172,20 +173,16 @@ test.describe("deleting a Block", () => {
     page,
   }) => {
     await setValue(page, emailWith([[["A", "B", "C"]]]));
-    const block = (text: string) =>
-      canvas(page)
-        .getByRole("group", { name: "Text Block" })
-        .filter({ hasText: text });
-    await block("B").focus();
+    await blockWith(page, "B").focus();
 
     await deleteBlock(page).focus();
     await page.keyboard.press("Enter");
-    await expect(block("C")).toBeFocused();
+    await expect(blockWith(page, "C")).toBeFocused();
     await expect(announcement(page)).toHaveText("Block deleted.");
 
     await deleteBlock(page).focus();
     await page.keyboard.press("Enter");
-    await expect(block("A")).toBeFocused();
+    await expect(blockWith(page, "A")).toBeFocused();
     expect(await structure(page)).toStrictEqual([[["A"]]]);
   });
 
@@ -193,10 +190,7 @@ test.describe("deleting a Block", () => {
     page,
   }) => {
     await setValue(page, emailWith([[["A", "B"]]]));
-    await canvas(page)
-      .getByRole("group", { name: "Text Block" })
-      .filter({ hasText: "A" })
-      .click();
+    await blockWith(page, "A").click();
 
     await deleteBlock(page).click();
 
@@ -264,11 +258,19 @@ test.describe("adding and deleting Rows", () => {
   test("the Rows tab selects the Row it adds, so the next goes after it", async ({
     page,
   }) => {
-    await textBlock(page).click();
+    // A Row after the selected one, so that "after it" isn't also the end.
+    await setValue(page, emailWith([[["A"]], [["B"]]]));
+    await blockWith(page, "A").getByRole("textbox").click();
 
     await addRow(page, "50/50");
     await addRow(page, "33/67");
 
+    expect(await structure(page)).toStrictEqual([
+      [["A"]],
+      [[], []],
+      [[], []],
+      [["B"]],
+    ]);
     expect(await widths(page, 1)).toStrictEqual([50, 50]);
     expect(await widths(page, 2)).toStrictEqual([33, 67]);
     await expect(rowTools(page, 3)).toHaveAttribute("aria-current", "true");

@@ -7,8 +7,13 @@ const textBlock = (page: Page) =>
   page.getByRole("textbox", { name: "Text Block" });
 
 test("starts with several Rows, so moving one can be tried straight away", async ({
+  browserName,
   page,
 }) => {
+  test.skip(
+    browserName !== "chromium",
+    "Checks content, so Chromium alone runs it."
+  );
   await page.goto(PLAYGROUND);
   await expect(textBlock(page)).toBeVisible();
   await expect(page.getByRole("toolbar", { name: /^Row \d+$/u })).toHaveCount(

@@ -1,7 +1,14 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
-import { boxOf, canvas, centerOf, openBlocks, textBlock } from "./helpers.js";
+import {
+  boxOf,
+  canvas,
+  centerOf,
+  openBlocks,
+  settle,
+  textBlock,
+} from "./helpers.js";
 
 const tooltip = (page: Page) => canvas(page).getByRole("tooltip");
 
@@ -94,6 +101,28 @@ test.describe("a tooltip", () => {
 
     await expect(tooltip(page)).toBeHidden();
     await expect(undoButton(page)).toBeFocused();
+  });
+
+  test("closes on a press, and doesn't open while the pointer is held", async ({
+    page,
+  }) => {
+    await openBlocks(page, ["text"]);
+    const preview = canvas(page).getByRole("button", {
+      exact: true,
+      name: "Preview",
+    });
+    await preview.hover();
+    await expect(tooltip(page)).toHaveText("Preview");
+
+    await page.mouse.down();
+    await expect(tooltip(page)).toBeHidden();
+
+    // Undo shows its tooltip on hover, as above, but not with a button held.
+    const { x, y } = await centerOf(undoButton(page));
+    await page.mouse.move(x, y, { steps: 4 });
+    await settle(page);
+    await expect(tooltip(page)).toBeHidden();
+    await page.mouse.up();
   });
 
   test("every icon button has a name and a tooltip", async ({ page }) => {

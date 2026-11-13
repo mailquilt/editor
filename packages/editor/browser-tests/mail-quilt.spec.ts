@@ -12,6 +12,7 @@ import {
   emailWithLink,
   exportHtml,
   focusStartOfTextBlock,
+  latestDocument,
   redo,
   redoByKey,
   setValue,
@@ -22,11 +23,13 @@ import {
   undoByKey,
 } from "./helpers.js";
 
+/** The text of the first Block, as the host last received it. */
 const latestDocumentText = async (page: Page) => {
-  const text = await page.getByTestId("latest-document").textContent();
-  const document = JSON.parse(text ?? "null");
-  return document.rows[0].columns[0].blocks[0].props.content.content[0]
-    .content[0].text as string;
+  const { rows } = await latestDocument(page);
+  const props = rows[0]?.columns[0]?.blocks[0]?.props as
+    | { content: { content: { content: { text: string }[] }[] } }
+    | undefined;
+  return props?.content.content[0]?.content[0]?.text;
 };
 
 test.beforeEach(async ({ page }) => {
@@ -560,12 +563,7 @@ test.describe("setting value", () => {
     await page.keyboard.type("ab");
     await expect(changeCount(page)).toHaveText("2");
 
-    await setValue(
-      page,
-      JSON.parse(
-        (await page.getByTestId("latest-document").textContent()) ?? ""
-      )
-    );
+    await setValue(page, await latestDocument(page));
 
     await expect(textBlock(page)).toBeFocused();
     await page.keyboard.type("c");

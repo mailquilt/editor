@@ -5,6 +5,7 @@ import {
   addRow,
   announcement,
   blockTool,
+  blockWith,
   boxOf,
   canvas,
   changeCount,
@@ -25,12 +26,6 @@ import {
   undoByKey,
   violations,
 } from "./helpers.js";
-
-/** A Block itself, as opposed to the text inside it. */
-const blockWith = (page: Page, text: string) =>
-  canvas(page)
-    .getByRole("group", { name: "Text Block" })
-    .filter({ hasText: text });
 
 /** Back to the side panel's tabs from the keyboard, the Block still selected. */
 const backToTabs = async (page: Page) => {
@@ -326,36 +321,33 @@ test.describe("moving a Block with Alt+Arrow keys", () => {
   });
 });
 
-const moveButton = (page: Page, direction: string) =>
-  page.getByRole("button", { name: `Move Block ${direction}` });
-
 test.describe("moving a Block with toolbar buttons", () => {
   test("from the keyboard, focus stays on the button for the next press", async ({
     page,
   }) => {
     await open(page, [[["A", "B", "C"], []]]);
     await blockWith(page, "A").focus();
-    await moveButton(page, "down").focus();
+    await blockTool(page, "Move Block down").focus();
 
     await page.keyboard.press("Enter");
     await expect(structure(page)).resolves.toEqual([[["B", "A", "C"], []]]);
-    await expect(moveButton(page, "down")).toBeFocused();
+    await expect(blockTool(page, "Move Block down")).toBeFocused();
 
     await page.keyboard.press("Enter");
     await expect(structure(page)).resolves.toEqual([[["B", "C", "A"], []]]);
-    await expect(moveButton(page, "down")).toBeFocused();
+    await expect(blockTool(page, "Move Block down")).toBeFocused();
 
-    await moveButton(page, "right").focus();
+    await blockTool(page, "Move Block right").focus();
     await page.keyboard.press("Enter");
     await expect(structure(page)).resolves.toEqual([[["B", "C"], ["A"]]]);
 
-    await moveButton(page, "left").focus();
+    await blockTool(page, "Move Block left").focus();
     await page.keyboard.press("Enter");
     await expect(structure(page)).resolves.toEqual([[["A", "B", "C"], []]]);
 
-    await moveButton(page, "down").focus();
+    await blockTool(page, "Move Block down").focus();
     await page.keyboard.press("Enter");
-    await moveButton(page, "up").focus();
+    await blockTool(page, "Move Block up").focus();
     await page.keyboard.press("Enter");
     await expect(structure(page)).resolves.toEqual([[["A", "B", "C"], []]]);
   });
@@ -367,7 +359,7 @@ test.describe("moving a Block with toolbar buttons", () => {
     await blockWith(page, "A").getByRole("textbox").click();
     await page.keyboard.type("x");
 
-    await moveButton(page, "down").click();
+    await blockTool(page, "Move Block down").click();
 
     await expect(structure(page)).resolves.toEqual([[["B", "Ax"]]]);
     await expect(blockWith(page, "Ax").getByRole("textbox")).toBeFocused();
@@ -392,7 +384,7 @@ test.describe("announcing a move", () => {
       "Moved to Row 1, Column 2, position 2 of 2."
     );
 
-    await moveButton(page, "down").click();
+    await blockTool(page, "Move Block down").click();
     await expect(announcement(page)).toHaveText(
       "Moved to Row 2, Column 1, position 1 of 2."
     );
@@ -588,7 +580,10 @@ test.describe("typing inside a Block", () => {
 
     await page.keyboard.press("Escape");
 
-    await expect(blockWith(page, "A").getByRole("textbox")).toBeFocused();
+    // The only text, not found by what it says, as the composition is in it.
+    await expect(
+      canvas(page).getByRole("textbox", { name: "Text Block" })
+    ).toBeFocused();
   });
 
   test("Escape from the text stops at the editor, and then reaches the host", async ({
@@ -795,11 +790,11 @@ test.describe("labels and focus states", () => {
     await open(page, [[["A"]]]);
     await blockWith(page, "A").focus();
 
-    await expect(moveButton(page, "up")).toHaveAttribute(
+    await expect(blockTool(page, "Move Block up")).toHaveAttribute(
       "aria-keyshortcuts",
       "Alt+ArrowUp"
     );
-    await moveButton(page, "up").hover();
+    await blockTool(page, "Move Block up").hover();
     await expect(canvas(page).getByRole("tooltip")).toHaveText(
       "Move Block up (Alt+↑)"
     );
@@ -839,7 +834,7 @@ test.describe("labels and focus states", () => {
         (element) => getComputedStyle(element).outlineWidth
       );
     const focused = await outlineWidth();
-    await moveButton(page, "up").focus();
+    await blockTool(page, "Move Block up").focus();
 
     expect(await outlineWidth()).not.toBe(focused);
   });

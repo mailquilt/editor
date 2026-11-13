@@ -1,11 +1,20 @@
 import * as v from "valibot";
 
 /**
+ * A Merge Tag, such as `{{first_name}}`.
+ * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
+ */
+export const MERGE_TAG = /\{\{[^{}]+\}\}/u;
+
+/**
  * A Merge Tag must come first and be complete. Whatever follows it can't have a
  * colon before the path, query or fragment, because the tag's value could be
  * empty or finish a scheme, as in `{{x}}javascript:alert(1)`.
  */
-const MERGE_TAG_URL = /^\{\{[^{}]+\}\}[^:/?#]*(?:[/?#]|$)/u;
+const MERGE_TAG_URL = new RegExp(
+  `^${MERGE_TAG.source}[^:/?#]*(?:[/?#]|$)`,
+  "u"
+);
 
 /**
  * An allowlist, because email has no use for any other scheme or a relative URL.

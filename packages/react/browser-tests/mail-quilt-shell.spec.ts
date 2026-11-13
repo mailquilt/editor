@@ -39,3 +39,24 @@ test("actions picks the Shell's buttons", async ({ page }) => {
     shell(page).locator('[part="actions"]').getByRole("button")
   ).toHaveText(["Export HTML"]);
 });
+
+// Once the Shell is defined, React sets some props as properties and others,
+// such as save-key, as attributes.
+test("heading, actions and saveKey can change after the Shell has started", async ({
+  page,
+}) => {
+  await page.goto("/?shell");
+  await expect(page.getByTestId("ready")).toHaveText("yes");
+
+  await page.getByRole("button", { name: "Change props" }).click();
+
+  await expect(shell(page).getByRole("heading")).toHaveText("Renamed");
+  await expect(
+    shell(page).locator('[part="actions"]').getByRole("button")
+  ).toHaveText(["Export JSON"]);
+  await focusStartOfTextBlock(page);
+  await page.keyboard.type("Saved ");
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem("react-test:other")))
+    .toContain("Saved Hello");
+});

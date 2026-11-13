@@ -170,12 +170,19 @@ test.describe("a Heading", () => {
   }) => {
     await open(page, ["heading"]);
 
-    const onCanvas = await boxOf(headingText(page));
+    // The canvas's text box has the Block's padding, and the heading doesn't.
+    const onCanvas = await headingText(page).evaluate((element) => {
+      const { paddingBottom, paddingTop } = getComputedStyle(element);
+      return (
+        element.getBoundingClientRect().height -
+        Number(paddingTop.replace("px", "")) -
+        Number(paddingBottom.replace("px", ""))
+      );
+    });
     const { opened } = await openExport(page);
     const exported = await boxOf(opened.getByRole("heading"));
 
-    // The canvas's box has the Block's padding, and the heading's doesn't.
-    expect(exported.height).toBe(onCanvas.height - 32);
+    expect(exported.height).toBe(onCanvas);
   });
 });
 

@@ -19,19 +19,12 @@ export type DropPlace =
 
 /** The Command for a drop, which adds a Row if it landed outside any. */
 export const dropCommand = (source: DragSource, place: DropPlace): Command => {
-  if ("rowId" in source) {
-    return {
-      index: "rowIndex" in place ? place.rowIndex : 0,
-      rowId: source.rowId,
-      type: "moveRow",
-    };
-  }
-  if ("rowLayout" in source) {
-    return {
-      index: "rowIndex" in place ? place.rowIndex : 0,
-      layout: source.rowLayout as RowLayout,
-      type: "insertRow",
-    };
+  if ("rowId" in source || "rowLayout" in source) {
+    // A Row only lands between Rows, as `landing` finds no Column for one.
+    const { rowIndex: index } = place as { rowIndex: number };
+    return "rowId" in source
+      ? { index, rowId: source.rowId, type: "moveRow" }
+      : { index, layout: source.rowLayout as RowLayout, type: "insertRow" };
   }
   if ("blockId" in source) {
     return "columnId" in place
@@ -552,12 +545,6 @@ export const createBlockDragging = ({
       },
       { capture: true, signal }
     );
-    // A long press on a touch screen would open a menu and end the drag.
-    document.addEventListener(
-      "contextmenu",
-      (contextmenu) => contextmenu.preventDefault(),
-      { signal }
-    );
     onFrame(performance.now());
   };
 
@@ -634,6 +621,13 @@ export const createBlockDragging = ({
       "dragstart",
       (dragstart) => dragstart.preventDefault(),
       { capture: true, signal }
+    );
+    // From the press, as a touch screen opens its menu for a long press that
+    // hasn't moved yet, and then cancels the pointer.
+    document.addEventListener(
+      "contextmenu",
+      (contextmenu) => contextmenu.preventDefault(),
+      { signal }
     );
   };
 

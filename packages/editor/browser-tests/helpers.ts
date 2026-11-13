@@ -136,6 +136,24 @@ export const announcement = (page: Page) => canvas(page).getByRole("status");
 /** The test host's count of `mq-change` events. */
 export const changeCount = (page: Page) => page.getByTestId("change-count");
 
+/** The document the test host last received in an `mq-change`. */
+export const latestDocument = async (page: Page) =>
+  JSON.parse(
+    (await page.getByTestId("latest-document").textContent()) ?? ""
+  ) as Document;
+
+/** Everything the page reports as going wrong, from here on. */
+export const collectErrors = (page: Page) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error") {
+      errors.push(message.text());
+    }
+  });
+  return errors;
+};
+
 /** Opens the test page with an email of these Rows of Text Blocks. */
 export const openEmail = async (page: Page, rows: string[][][]) => {
   await page.goto("/");
@@ -221,6 +239,15 @@ export const deleteBlock = (page: Page) => blockTool(page, "Delete Block");
 
 export const blockGroup = (page: Page, name: string) =>
   canvas(page).getByRole("group", { name: `${name} Block` });
+
+/**
+ * A Text Block itself, as opposed to the text inside it, found by its exact
+ * text. A drag's copy of it is hidden from screen readers, so it's left out.
+ */
+export const blockWith = (page: Page, text: string) =>
+  blockGroup(page, "Text").filter({
+    has: textBlock(page).getByText(text, { exact: true }),
+  });
 
 export const panelBlock = (page: Page) =>
   page

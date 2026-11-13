@@ -30,15 +30,16 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "scripts": {
     "build": "tsdown",
-    "check-types": "tsc --noEmit",
+    "check-types": "tsc --noEmit && tsc --noEmit -p browser-tests",
     "test": "playwright test"
   },
   "dependencies": {
-    "@mailquilt/editor": "workspace:^"
+    "@mailquilt/editor": "workspace:*"
   },
   "devDependencies": {
     "@playwright/test": "^1.65.0",

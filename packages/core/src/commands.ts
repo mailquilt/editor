@@ -6,7 +6,7 @@ import {
   parseProps,
   validateProps,
 } from "./blocks.js";
-import { createId } from "./create-email.js";
+import { createId } from "./document.js";
 import type { BlocksDocument, Column, Row } from "./document.js";
 import { isSameDocument } from "./load-document.js";
 import {
@@ -14,6 +14,7 @@ import {
   findBlock,
   findBlockPosition,
   findColumn,
+  findRow,
 } from "./operations.js";
 import type { Operation, PropsTarget } from "./operations.js";
 import {
@@ -147,16 +148,23 @@ const commandSchema = v.variant("type", [
 export type Command = v.InferOutput<typeof commandSchema>;
 
 /** What an accepted Command does to the document. */
-export type CommandPlan =
+type CommandPlan =
   | { ok: true; operations: Operation[]; createdId?: string }
   | { ok: false; reason: string; unchanged?: true };
 
 const rejected = (reason: string) => ({ ok: false as const, reason });
 
+/** Refused only because the email is already that way. */
+const unchanged = (reason: string) => ({
+  ok: false as const,
+  reason,
+  unchanged: true as const,
+});
+
 /**
- * Plans what `changes` makes of `current`. A null removes a property, as in JSON
- * Merge Patch, so that a Command stays plain JSON. The schema decides whether that
- * property can go.
+ * Plans what `changes` makes of `current`. Only the top-level keys merge, so a
+ * nested value is replaced whole. A null removes a property, so that a Command
+ * stays plain JSON, and the schema decides whether that property can go.
  */
 const planProps = (
   target: PropsTarget,
@@ -172,7 +180,7 @@ const planProps = (
     return rejected(validated.reason);
   }
   if (isSameDocument(validated.props, current)) {
-    return { ok: false, reason: "Nothing would change", unchanged: true };
+    return unchanged("Nothing would change");
   }
   return {
     ok: true,
@@ -205,7 +213,7 @@ const planUpdateRowProps = (
   rowId: string,
   props: Record<string, unknown>
 ): CommandPlan => {
-  const row = document.rows.find(({ id }) => id === rowId);
+  const row = findRow(document, rowId);
   return row
     ? planProps({ rowId }, row.props, props, (merged) =>
         parseProps(rowPropsSchema, merged, `Row "${rowId}"`)
@@ -244,11 +252,8 @@ const planInsertBlock = (
       `Index ${index} is past the end of Column "${columnId}", which has ${column.blocks.length} Blocks`
     );
   }
-  const block = {
-    id: createId(),
-    props: structuredClone(definition.defaults),
-    type: blockType,
-  };
+  // Not a copy of the defaults, as inserting the Block copies it.
+  const block = { id: createId(), props: definition.defaults, type: blockType };
   return {
     createdId: block.id,
     ok: true,
@@ -294,11 +299,7 @@ const planMoveBlock = (
     );
   }
   if (sameColumn && from.index === index) {
-    return {
-      ok: false,
-      reason: `Block "${blockId}" is already at index ${index}`,
-      unchanged: true,
-    };
+    return unchanged(`Block "${blockId}" is already at index ${index}`);
   }
   return {
     ok: true,
@@ -379,11 +380,7 @@ const planMoveBlockToNewRow = (
     row.columns[0]?.blocks.length === 1 &&
     (rowIndex === from.rowIndex || rowIndex === from.rowIndex + 1)
   ) {
-    return {
-      ok: false,
-      reason: `Block "${blockId}" is already alone in its Row`,
-      unchanged: true,
-    };
+    return unchanged(`Block "${blockId}" is already alone in its Row`);
   }
   return planInNewRow(document, rowIndex, (withRow, columnId) =>
     planMoveBlock(withRow, blockId, columnId, 0)
@@ -417,11 +414,7 @@ const planMoveRow = (
     );
   }
   if (from === index) {
-    return {
-      ok: false,
-      reason: `Row "${rowId}" is already at index ${index}`,
-      unchanged: true,
-    };
+    return unchanged(`Row "${rowId}" is already at index ${index}`);
   }
   return {
     ok: true,
@@ -438,16 +431,12 @@ const planSetRowLayout = (
   layout: RowLayout,
   rowId: string
 ): CommandPlan => {
-  const row = document.rows.find(({ id }) => id === rowId);
+  const row = findRow(document, rowId);
   if (!row) {
     return rejected(`No Row with ID "${rowId}"`);
   }
   if (rowLayoutOf(row) === layout) {
-    return {
-      ok: false,
-      reason: `Row "${rowId}" already has the layout "${layout}"`,
-      unchanged: true,
-    };
+    return unchanged(`Row "${rowId}" already has the layout "${layout}"`);
   }
 
   const widths = LAYOUT_WIDTHS[layout];

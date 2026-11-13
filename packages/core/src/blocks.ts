@@ -433,6 +433,17 @@ export const validateProps = (
 };
 
 /**
+ * What every Block shares, on the canvas and in the email output: the space
+ * around its content, and the size and height of its text unless it sets its own.
+ * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
+ */
+export const EMAIL_LOOK = {
+  blockPadding: "16px",
+  fontSize: `${TEXT_LOOK.fontSize}px`,
+  lineHeight: "1.5",
+} as const;
+
+/**
  * A Block's CSS, for both the canvas and the email output. Its props must be
  * valid, as in a loaded document, because they're not checked again here.
  * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
