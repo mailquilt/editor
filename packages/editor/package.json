@@ -1,7 +1,7 @@
 {
   "name": "@mailquilt/editor",
   "version": "0.0.0",
-  "description": "The <mail-quilt> email editor Web Component.",
+  "description": "The <mail-quilt> email editor and <mail-quilt-shell> editor page, as Web Components.",
   "keywords": [
     "drag-and-drop",
     "email",

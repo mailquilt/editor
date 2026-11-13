@@ -15,4 +15,13 @@ const html = await renderEmail(email);
 
 `renderEmail` rejects with the reason if the email isn't one Mail Quilt accepts. MJML loads the first time you call it.
 
+MJML needs `cheerio` without listing it, so this package lists it and relies on it being hoisted, as npm and pnpm do by default. With Yarn Plug'n'Play, or pnpm with `hoist=false`, add it for `mjml-browser` with `packageExtensions`, in `.yarnrc.yml` or `pnpm-workspace.yaml`:
+
+```yaml
+packageExtensions:
+  mjml-browser@5:
+    dependencies:
+      cheerio: ^1.2.0
+```
+
 [Source and docs](https://github.com/yourcodebuddy-in/mailquilt) · MIT

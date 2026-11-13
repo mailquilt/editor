@@ -7,7 +7,7 @@ description: Put a ready-made email editor page in your app, with a header, Expo
 
 ## What it has
 
-The header has the heading and up to three buttons. **Export HTML** downloads the email as `email.html`, ready to send. **Export JSON** downloads it as `email.json`, the [document format](./document-format) the editor saves. **Import JSON** opens a `.json` file. If the editor refuses it, the message bar says why and the current email stays.
+The header has the heading and up to three buttons. **Export HTML** downloads the email as `email.html`, ready to send. **Export JSON** downloads it as `email.json`, the [document format](./document-format) the editor saves. **Import JSON** opens a `.json` file in place of the current email, which undo can't bring back, and with `save-key` it's saved straight away. If the editor refuses it, the message bar says why and the current email stays.
 
 The message bar shows emails the editor refuses, exports that fail and saves that fail. Screen readers announce each message. The [Playground](/playground) is a Shell.
 

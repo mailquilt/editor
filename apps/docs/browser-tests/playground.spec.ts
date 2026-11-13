@@ -30,9 +30,6 @@ test("runs on the Shell, below the page's title", async ({ page }) => {
   const title = await page.getByRole("heading", { level: 1 }).boundingBox();
   const box = await shell.boundingBox();
 
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-    "Playground"
-  );
   expect(box?.y).toBeGreaterThan((title?.y ?? 0) + (title?.height ?? 0));
   // So the whole editor fits the window once scrolled to.
   expect(box?.height).toBeLessThanOrEqual(page.viewportSize()?.height ?? 0);

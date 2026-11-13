@@ -62,6 +62,30 @@ import Playground from "../islands/Playground.tsx";
     padding: 0 1rem 1.5rem;
   }
 
+  .editor :global(.playground) {
+    container-type: inline-size;
+    padding: 1rem 0;
+  }
+
+  /*
+   * The Shell's height leaves room for the 4rem docs header and the space around
+   * it, so it fits the window once scrolled to, and the email scrolls inside it.
+   * Never shorter than the editor's own 600px and the Shell's 48px header, or the
+   * Shell would scroll by a few pixels. Narrower than the 640px the editor needs,
+   * as on a phone, it only shows a notice, so it takes that notice's height.
+   */
+  .editor :global(.playground-shell) {
+    height: calc(100dvh - 6rem);
+    min-height: calc(600px + 48px);
+  }
+
+  @container (width < 640px) {
+    .editor :global(.playground-shell) {
+      height: auto;
+      min-height: 0;
+    }
+  }
+
   @media (min-width: 60rem) {
     .intro {
       padding: 1.5rem 1.5rem 0;
