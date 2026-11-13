@@ -16,13 +16,23 @@ export const arrowDirection = (event: KeyboardEvent): Direction | undefined =>
     ? undefined
     : ARROW_KEYS[event.key];
 
-const IS_MAC = /Mac|iPhone|iPad/u.test(navigator.userAgent);
+// As ProseMirror decides it for Bold and the other text keys, so they all agree.
+const IS_MAC = /Mac|iPhone|iPod|iPad/u.test(navigator.platform);
 /** How a shortcut with Ctrl, or Command on Apple devices, is written. */
 export const MOD_KEY = IS_MAC ? "⌘" : "Ctrl+";
 export const UNDO_KEYS = `${MOD_KEY}Z`;
 export const REDO_KEYS = IS_MAC ? "⇧⌘Z" : "Ctrl+Y";
-export const UNDO_SHORTCUTS = "Control+Z Meta+Z";
-export const REDO_SHORTCUTS = "Control+Y Control+Shift+Z Meta+Shift+Z";
+export const UNDO_SHORTCUTS = IS_MAC ? "Meta+Z" : "Control+Z";
+export const REDO_SHORTCUTS = IS_MAC
+  ? "Meta+Shift+Z"
+  : "Control+Y Control+Shift+Z";
+
+/**
+ * Command on Apple devices, and Ctrl elsewhere. Not either, because on a Mac
+ * Ctrl+K and Ctrl+Y delete to the end of the line and put it back.
+ */
+const hasModKey = (event: KeyboardEvent) =>
+  IS_MAC ? event.metaKey : event.ctrlKey;
 
 export const MOVE_BUTTONS: {
   direction: Direction;
@@ -93,18 +103,18 @@ const shortcutKey = (event: KeyboardEvent) =>
 
 export const isLinkShortcut = (event: KeyboardEvent) =>
   !(event.isComposing || event.altKey || event.shiftKey) &&
-  (event.metaKey || event.ctrlKey) &&
+  hasModKey(event) &&
   shortcutKey(event) === "k";
 
 export const historyShortcut = (event: KeyboardEvent) => {
-  if (event.isComposing || event.altKey) {
+  if (event.isComposing || event.altKey || !hasModKey(event)) {
     return;
   }
   const key = shortcutKey(event);
-  if (key === "z" && (event.metaKey || event.ctrlKey)) {
+  if (key === "z") {
     return event.shiftKey ? "redo" : "undo";
   }
-  if (key === "y" && event.ctrlKey && !event.metaKey && !event.shiftKey) {
+  if (key === "y" && !IS_MAC && !event.shiftKey) {
     return "redo";
   }
 };

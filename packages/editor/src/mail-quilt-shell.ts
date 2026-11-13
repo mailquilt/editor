@@ -6,7 +6,7 @@ import { keyed } from "lit/directives/keyed.js";
 
 import "./mail-quilt.js";
 import type { MailQuilt } from "./mail-quilt.js";
-import { themeTokens, uiStyles } from "./theme.js";
+import { themeTokens, UI_LANG, uiStyles } from "./theme.js";
 
 /** The Shell's own buttons, in the order the header shows them. */
 export type ShellAction = "export-html" | "export-json" | "import-json";
@@ -269,8 +269,15 @@ export class MailQuiltShell extends LitElement {
     return html`
       <div class="ui shell">
         <div class="header" part="header">
-          <h2 class="heading" part="heading">${this.heading ?? "Email"}</h2>
-          <div class="actions" part="actions">
+          <!-- A heading the host sets is in the host page's language. -->
+          <h2
+            class="heading"
+            lang=${this.heading === undefined ? UI_LANG : nothing}
+            part="heading"
+          >
+            ${this.heading ?? "Email"}
+          </h2>
+          <div class="actions" lang=${UI_LANG} part="actions">
             ${
               shows("import-json")
                 ? html`
@@ -321,7 +328,7 @@ export class MailQuiltShell extends LitElement {
             }
           </div>
         </div>
-        <div class="messages" part="messages">
+        <div class="messages" lang=${UI_LANG} part="messages">
           ${
             this.#cantSave
               ? html`<p part="message" role="alert">${cantSave}</p>`

@@ -89,7 +89,10 @@ const copiedText = (page: Page) =>
   });
 
 const addLink = async (page: Page, href: string) => {
-  await toolbarButton(page, "Link").click();
+  // "Edit link" when the text is in a link already.
+  await toolbarButton(page, "Link")
+    .or(toolbarButton(page, "Edit link"))
+    .click();
   await linkInput(page).fill(href);
   await page.keyboard.press("Enter");
 };
@@ -648,10 +651,7 @@ test.describe("links", () => {
       await selectAllInBlock(page);
       await addLink(page, "https://example.com");
       await expect(textBlock(page)).toBeFocused();
-      await expect(toolbarButton(page, "Link")).toHaveAttribute(
-        "aria-pressed",
-        "true"
-      );
+      await expect(toolbarButton(page, "Edit link")).toBeVisible();
     });
 
     test("the field shows its URL, and changing it changes the whole link", async ({
@@ -661,12 +661,13 @@ test.describe("links", () => {
       await pressArrow(page, "ArrowLeft");
       await pressArrow(page, "ArrowRight");
       await pressArrow(page, "ArrowRight");
-      await expect(toolbarButton(page, "Link")).toHaveAttribute(
-        "aria-pressed",
+      await expect(toolbarButton(page, "Edit link")).toBeVisible();
+
+      await toolbarButton(page, "Edit link").click();
+      await expect(toolbarButton(page, "Edit link")).toHaveAttribute(
+        "aria-expanded",
         "true"
       );
-
-      await toolbarButton(page, "Link").click();
       await expect(linkInput(page)).toHaveValue("https://example.com");
       await linkInput(page).fill("https://example.org");
       await page.keyboard.press("Enter");
@@ -697,7 +698,7 @@ test.describe("links", () => {
     });
 
     test("Remove link takes it off", async ({ page }) => {
-      await toolbarButton(page, "Link").click();
+      await toolbarButton(page, "Edit link").click();
 
       await page.getByRole("button", { name: "Remove link" }).click();
 
@@ -720,7 +721,7 @@ test.describe("links", () => {
       await pressArrow(page, "ArrowRight");
       await pressArrow(page, "ArrowRight");
 
-      await toolbarButton(page, "Link").click();
+      await toolbarButton(page, "Edit link").click();
       await page.getByRole("button", { name: "Remove link" }).click();
 
       await expect
@@ -856,7 +857,7 @@ test.describe("undo and redo", () => {
     await selectAllInBlock(page);
     await addLink(page, "https://example.com");
     await expect(textBlock(page)).toBeFocused();
-    await toolbarButton(page, "Link").click();
+    await toolbarButton(page, "Edit link").click();
     await page.getByRole("button", { name: "Remove link" }).click();
     await expect
       .poll(() => savedInline(page))

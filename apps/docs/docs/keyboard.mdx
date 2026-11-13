@@ -25,7 +25,7 @@ Hold Alt and press an arrow key to move the selected Block. The same keys work w
 
 | Key | What it does |
 | --- | --- |
-| <kbd>Alt</kbd> + <kbd>Up</kbd> <kbd>Down</kbd> | Moves the Block up or down its Column. Past the end of the Column, it moves into the next Row. Past the top or bottom of the email, it gets a Row of its own. |
+| <kbd>Alt</kbd> + <kbd>Up</kbd> <kbd>Down</kbd> | Moves the Block up or down its Column. Past the end of the Column, it moves into the next Row. Past the top or bottom of the email, it gets a Row of its own, unless it's alone in its Row already, when it stays and the editor says it can't move. |
 | <kbd>Alt</kbd> + <kbd>Left</kbd> <kbd>Right</kbd> | Moves the Block into the next Column, including an empty one. It stops at the edge of its Row. |
 
 Each move is one step for undo, and focus stays on the Block, so the next press moves it again.
@@ -56,6 +56,10 @@ In the side panel's Rows tab, press Enter on a layout to add a Row with it after
 
 ## Editing text
 
+<kbd>⌘</kbd> is for a Mac, and <kbd>Ctrl</kbd> for everything else. On a Mac,
+<kbd>Ctrl</kbd> + <kbd>K</kbd> and <kbd>Ctrl</kbd> + <kbd>Y</kbd> keep their
+usual meaning in text: delete to the end of the line, and put it back.
+
 | Key | What it does |
 | --- | --- |
 | <kbd>Enter</kbd> | Starts a new paragraph. |
@@ -73,7 +77,7 @@ In the side panel's Rows tab, press Enter on a layout to add a Row with it after
 | --- | --- |
 | <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>Z</kbd> | Undoes the last change. |
 | <kbd>Shift</kbd> + <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>Z</kbd> | Redoes it. |
-| <kbd>Ctrl</kbd> + <kbd>Y</kbd> | Also redoes it. |
+| <kbd>Ctrl</kbd> + <kbd>Y</kbd> | Also redoes it, except on a Mac. |
 
 ## Preview
 

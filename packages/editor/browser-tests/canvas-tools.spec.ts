@@ -132,10 +132,7 @@ test.describe("a Row on the canvas", () => {
     await expect(tag).toHaveCSS("opacity", "1");
     await tag.click();
     await expect(rowTools(page, 2)).toHaveCSS("opacity", "1");
-    await expect(selectRowButton(page, 2)).toHaveAttribute(
-      "aria-pressed",
-      "true"
-    );
+    await expect(rowTools(page, 2)).toHaveAttribute("aria-current", "true");
   });
 
   test("its toolbar is reached by Tab from a selected Block", async ({
@@ -164,7 +161,7 @@ test.describe("a Row on the canvas", () => {
     await select.focus();
     await expect(rowTools(page, 2)).toHaveCSS("opacity", "1");
     await page.keyboard.press("Enter");
-    await expect(select).toHaveAttribute("aria-pressed", "true");
+    await expect(rowTools(page, 2)).toHaveAttribute("aria-current", "true");
     await expect(select).toBeFocused();
 
     // Past Move Row up. Move Row down is disabled on the last Row.

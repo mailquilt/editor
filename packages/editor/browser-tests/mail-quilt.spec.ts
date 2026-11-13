@@ -198,6 +198,7 @@ test("exported HTML keeps repeated spaces typed in a Text Block", async ({
 
 test.describe("undo and redo while typing", () => {
   test("Control+Y also redoes", async ({ page }) => {
+    test.skip(process.platform === "darwin", "On a Mac, Ctrl+Y edits the text");
     await focusStartOfTextBlock(page);
     await stopClock(page);
     await page.keyboard.type("abc");
@@ -207,6 +208,31 @@ test.describe("undo and redo while typing", () => {
     await page.keyboard.press("Control+y");
 
     await expect(textBlock(page)).toHaveText("abcHello");
+  });
+
+  test.describe("on a Mac", () => {
+    test.beforeEach(async ({ page }) => {
+      await page.addInitScript(() => {
+        Object.defineProperty(Navigator.prototype, "platform", {
+          get: () => "MacIntel",
+        });
+      });
+      await page.goto("/");
+      await expect(textBlock(page)).toHaveText("Hello");
+    });
+
+    // Ctrl+K and Ctrl+Y delete to the end of the line and put it back.
+    test("⌘ makes the shortcuts, and Ctrl+K and Ctrl+Y are left to the text", async ({
+      page,
+    }) => {
+      await focusStartOfTextBlock(page);
+      const linkField = canvas(page).getByRole("textbox", { name: "Link URL" });
+
+      await page.keyboard.press("Control+k");
+      await expect(linkField).toBeHidden();
+      await page.keyboard.press("Meta+k");
+      await expect(linkField).toBeVisible();
+    });
   });
 
   test("undo and redo fire mq-change with the new document", async ({
@@ -424,12 +450,14 @@ test.describe("undo and redo while typing", () => {
               bubbles: true,
               cancelable: true,
               composed: true,
-              ctrlKey: true,
               ...init,
             })
           );
         },
-        { code, key, shiftKey }
+        // As Playwright's ControlOrMeta picks it, so as the editor expects.
+        process.platform === "darwin"
+          ? { code, key, metaKey: true, shiftKey }
+          : { code, ctrlKey: true, key, shiftKey }
       );
     await focusStartOfTextBlock(page);
     await stopClock(page);
