@@ -376,6 +376,41 @@ test.describe("an Image", () => {
     await expect(box(opened.locator("img"))).resolves.toEqual(onCanvas);
   });
 
+  // Its Width is a number field with nothing saved, where what isn't a number
+  // reads as empty too.
+  test("Escape clears what isn't a number from an empty Width", async ({
+    page,
+  }) => {
+    await open(page, ["image"]);
+    await blockGroup(page, "Image").focus();
+    const width = field(page, "Width (px)");
+    const isBadInput = () =>
+      width.evaluate((element: HTMLInputElement) => element.validity.badInput);
+    await width.click();
+    await page.keyboard.type("-");
+    expect(await isBadInput()).toBe(true);
+
+    await page.keyboard.press("Escape");
+
+    expect(await isBadInput()).toBe(false);
+  });
+
+  test("scrolling over the focused Width leaves it as it is", async ({
+    page,
+  }) => {
+    await open(page, ["image"]);
+    await blockGroup(page, "Image").focus();
+    const width = field(page, "Width (px)");
+    await change(width, "100");
+
+    await width.focus();
+    await width.hover();
+    await page.mouse.wheel(0, -200);
+
+    await expect(width).not.toBeFocused();
+    await expect(width).toHaveValue("100");
+  });
+
   test("takes up the same space on the canvas as in the export", async ({
     page,
   }) => {

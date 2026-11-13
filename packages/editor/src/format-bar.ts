@@ -2,7 +2,12 @@ import { INVALID_LINK } from "@mailquilt/core";
 import { css, html, nothing } from "lit";
 import { keyed } from "lit/directives/keyed.js";
 
-import { isComposing, MOD_KEY, onToolbarArrowKeys } from "./block-keyboard.js";
+import {
+  isComposing,
+  MOD_KEY,
+  MOD_SHORTCUT,
+  onToolbarArrowKeys,
+} from "./block-keyboard.js";
 import { ICONS } from "./icons.js";
 import type { TextFormats, ToggleableMark } from "./text-block-view.js";
 
@@ -67,10 +72,14 @@ export const formatBarStyles = css`
   }
 `;
 
-const MARK_BUTTONS: { keys: string; label: string; mark: ToggleableMark }[] = [
-  { keys: `${MOD_KEY}B`, label: "Bold", mark: "bold" },
-  { keys: `${MOD_KEY}I`, label: "Italic", mark: "italic" },
-  { keys: `${MOD_KEY}U`, label: "Underline", mark: "underline" },
+const MARK_BUTTONS: {
+  key: string;
+  label: string;
+  mark: ToggleableMark;
+}[] = [
+  { key: "B", label: "Bold", mark: "bold" },
+  { key: "I", label: "Italic", mark: "italic" },
+  { key: "U", label: "Underline", mark: "underline" },
 ];
 
 export interface FormatBarState {
@@ -191,12 +200,13 @@ export const renderFormatBar = (
       @mousedown=${events.onControlMousedown}
     >
       ${MARK_BUTTONS.map(
-        ({ keys, label, mark }) => html`
+        ({ key, label, mark }) => html`
           <button
+            aria-keyshortcuts=${`${MOD_SHORTCUT}+${key}`}
             aria-label=${label}
             aria-pressed=${formats?.[mark] ? "true" : "false"}
             class="icon-button"
-            data-tooltip=${`${label} (${keys})`}
+            data-tooltip=${`${label} (${MOD_KEY}${key})`}
             ?disabled=${!formats || (mark === "bold" && !formats.canBold)}
             tabindex="-1"
             type="button"
@@ -209,6 +219,7 @@ export const renderFormatBar = (
       <span class="separator"></span>
       <button
         aria-expanded=${linkForm ? "true" : "false"}
+        aria-keyshortcuts=${`${MOD_SHORTCUT}+K`}
         aria-label=${linkLabel}
         class="icon-button"
         ?data-active=${formats?.linkHref !== undefined}
@@ -221,6 +232,7 @@ export const renderFormatBar = (
         ${ICONS.link}
       </button>
       <button
+        aria-keyshortcuts="Shift+Enter"
         aria-label="Line break"
         class="icon-button"
         data-tooltip="Line break (Shift+Enter)"
