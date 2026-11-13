@@ -1,15 +1,6 @@
 import { textBlock } from "./blocks.js";
+import { createId, DOCUMENT_VERSION } from "./document.js";
 import type { BlocksDocument } from "./document.js";
-
-export const DOCUMENT_VERSION = 1;
-
-export const createId = () => {
-  // getRandomValues, unlike randomUUID, also works on plain-HTTP host pages.
-  const bytes = crypto.getRandomValues(new Uint8Array(9));
-  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join(
-    ""
-  );
-};
 
 /** Creates a new email with one Row, one Column and one empty Text Block. */
 export const createEmail = (): BlocksDocument => ({

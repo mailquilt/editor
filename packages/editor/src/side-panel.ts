@@ -12,9 +12,10 @@ import { css, html, nothing } from "lit";
 import type { TemplateResult } from "lit";
 import { styleMap } from "lit/directives/style-map.js";
 
-import { columnLabel, onToolbarArrowKeys } from "./block-keyboard.js";
-import type { BlockPlace } from "./block-keyboard.js";
+import { onToolbarArrowKeys } from "./block-keyboard.js";
 import { blockIcon, ICONS } from "./icons.js";
+import { columnLabel } from "./places.js";
+import type { BlockPlace } from "./places.js";
 import { renderSettingsPanel } from "./settings-panel.js";
 import type { SettingsPanelEvents, SettingsSection } from "./settings-panel.js";
 
@@ -393,7 +394,7 @@ const renderPanelHeader = (
     </button>
     <span class="type-badge">${icon}</span>
     <div class="panel-heading">
-      <p class="panel-title">${title}</p>
+      <h2 class="panel-title">${title}</h2>
       <p class="panel-subtitle">${subtitle}</p>
     </div>
   </div>

@@ -1,3 +1,14 @@
+/** The version of the saved format that this code writes. */
+export const DOCUMENT_VERSION = 1;
+
+export const createId = () => {
+  // getRandomValues, unlike randomUUID, also works on plain-HTTP host pages.
+  const bytes = crypto.getRandomValues(new Uint8Array(9));
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join(
+    ""
+  );
+};
+
 export interface EmailSettings {
   width: number;
   backgroundColor: string;

@@ -1,6 +1,6 @@
-import { blockStyles } from "@mailquilt/core";
+import { blockStyles, EMAIL_LOOK } from "@mailquilt/core";
 import type { Block } from "@mailquilt/core";
-import { css, html, nothing } from "lit";
+import { css, html, nothing, unsafeCSS } from "lit";
 import { styleMap } from "lit/directives/style-map.js";
 
 import { blockIcon } from "./icons.js";
@@ -10,7 +10,7 @@ export const blockContentStyles = css`
   .button-block,
   .image-block,
   .divider-block {
-    padding: 16px;
+    padding: ${unsafeCSS(EMAIL_LOOK.blockPadding)};
   }
 
   /* Like MJML: it fills the Column, and a width it's given stops at the Column. */

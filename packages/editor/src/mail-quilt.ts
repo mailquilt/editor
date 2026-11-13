@@ -1,65 +1,49 @@
 import {
-  BLOCK_TYPES,
   blockLabel,
-  blockStyles,
   createEditor,
   isAllowedLinkHref,
   isSameDocument,
   loadDocument,
-  rowStyles,
 } from "@mailquilt/core";
 import type {
-  Block,
   BlocksDocument,
-  Column,
   Command,
   Editor,
   Operation,
   RichTextDocument,
-  Row,
   RowLayout,
   SettingsField,
 } from "@mailquilt/core";
 import { renderEmail } from "@mailquilt/renderer";
 import { html, LitElement, nothing } from "lit";
 import { keyed } from "lit/directives/keyed.js";
-import { repeat } from "lit/directives/repeat.js";
 import { styleMap } from "lit/directives/style-map.js";
 
-import {
-  blockContentStyles,
-  hasRichText,
-  renderBlockContent,
-} from "./block-content.js";
+import { blockContentStyles, hasRichText } from "./block-content.js";
 import { BLOCKS, createBlockDragging, dropCommand } from "./block-dragging.js";
 import type { BlockDragging, DragSource, DropPlace } from "./block-dragging.js";
 import {
   arrowDirection,
-  blocksIn,
-  columnLabel,
   historyInput,
   historyShortcut,
   isComposing,
   isLinkShortcut,
-  locate,
-  MOVE_BUTTONS,
   moveCommand,
   moveRowCommand,
   neighbourBlockId,
-  onToolbarArrowKeys,
-  placeLabel,
-  positionLabel,
-  REDO_KEYS,
-  REDO_SHORTCUTS,
-  ROW_MOVE_BUTTONS,
-  UNDO_KEYS,
-  UNDO_SHORTCUTS,
 } from "./block-keyboard.js";
 import type { Direction } from "./block-keyboard.js";
-import { formatBarStyles, renderFormatBar } from "./format-bar.js";
+import {
+  MIN_EDITOR_WIDTH,
+  renderFloatingToolbar,
+  renderNarrowNotice,
+  renderRows,
+} from "./canvas.js";
+import type { CanvasEvents, CanvasState } from "./canvas.js";
+import { formatBarStyles } from "./format-bar.js";
 import type { FormatBarEvents } from "./format-bar.js";
-import { blockIcon, ICONS } from "./icons.js";
 import { editorStyles } from "./mail-quilt-styles.js";
+import { blocksIn, locate, placeLabel, positionLabel } from "./places.js";
 import { previewStyles, renderPreview } from "./preview.js";
 import type { Preview, PreviewEvents } from "./preview.js";
 import {
@@ -77,26 +61,8 @@ import { themeTokens, UI_LANG, uiStyles } from "./theme.js";
 import { createTooltips } from "./tooltips.js";
 import type { Tooltips } from "./tooltips.js";
 
-/** Narrower than this, there's no room to edit, and a notice shows instead. */
-const MIN_EDITOR_WIDTH = 640;
-
 /** Typing after a gap this long starts a new undo step. */
 const TYPING_PAUSE_MS = 1000;
-
-/** Only a pointer drags, so this isn't offered to assistive technology. */
-const renderDragHandle = (
-  onMousedown: (event: MouseEvent) => void,
-  tooltip = "Drag Block"
-) => html`
-  <div
-    aria-hidden="true"
-    class="drag-handle"
-    data-tooltip=${tooltip}
-    @mousedown=${onMousedown}
-  >
-    ${ICONS.grip}
-  </div>
-`;
 
 type MoveOperation = Extract<Operation, { type: "move" }>;
 
@@ -158,13 +124,8 @@ export class MailQuilt extends LitElement {
   #pressedOnWorkspace = false;
   /** Too narrow to edit in, as on a phone or in a narrow part of a page. */
   #narrow = false;
-  readonly #resizeObserver = new ResizeObserver(([entry]) => {
-    const narrow = (entry?.contentRect.width ?? 0) < MIN_EDITOR_WIDTH;
-    if (narrow !== this.#narrow) {
-      this.#narrow = narrow;
-      this.requestUpdate();
-    }
-  });
+  /** Made on the page, as a server rendering the editor has no ResizeObserver. */
+  #resizeObserver: ResizeObserver | undefined;
 
   readonly #sidePanelEvents: SidePanelEvents = {
     onAddBlock: (blockType) => this.#addBlock(blockType),
@@ -193,6 +154,28 @@ export class MailQuilt extends LitElement {
     onRemoveLink: () => this.#removeLink(),
     onSubmitLink: (href) => this.#submitLink(href),
     onToggleMark: (mark) => this.#selectedView?.toggleMark(mark),
+  };
+
+  readonly #canvasEvents: CanvasEvents = {
+    formatBar: this.#formatBarEvents,
+    onAddBlock: (blockType, place) => this.#addBlock(blockType, place),
+    onBlockClick: (event) => this.#onBlockClick(event),
+    onBlockFocus: (event, blockId) => this.#onBlockFocus(event, blockId),
+    onBlockFocusout: () => this.#onBlockFocusout(),
+    onBlockKeydown: (event) => this.#onBlockKeydown(event),
+    onControlMousedown: (event) => this.#onControlMousedown(event),
+    onDeleteRow: (rowId, fromKeyboard) => this.#deleteRow(rowId, fromKeyboard),
+    onDeleteSelectedBlock: (fromKeyboard) =>
+      this.#deleteSelectedBlock(fromKeyboard),
+    onHandleMousedown: (event) => this.#onHandleMousedown(event),
+    onImageError: (src) => this.#onImageError(src),
+    onMoveRow: (rowId, direction) => this.#moveRow(rowId, direction),
+    onMoveSelectedBlock: (direction) => this.#moveSelectedBlock(direction),
+    onOpenPreview: (event) => this.#openPreview(event),
+    onRowToolbarKeydown: (event, rowId) =>
+      this.#onRowToolbarKeydown(event, rowId),
+    onSelectRow: (rowId) => this.#selectRow(rowId),
+    onStepHistory: (step) => this.#stepHistory(step),
   };
 
   readonly #previewEvents: PreviewEvents = {
@@ -254,6 +237,13 @@ export class MailQuilt extends LitElement {
 
   override connectedCallback() {
     super.connectedCallback();
+    this.#resizeObserver ??= new ResizeObserver(([entry]) => {
+      const narrow = (entry?.contentRect.width ?? 0) < MIN_EDITOR_WIDTH;
+      if (narrow !== this.#narrow) {
+        this.#narrow = narrow;
+        this.requestUpdate();
+      }
+    });
     this.#resizeObserver.observe(this);
     this.#dragging = createBlockDragging({
       onDrop: (source, place) => this.#drop(source, place),
@@ -264,7 +254,7 @@ export class MailQuilt extends LitElement {
 
   override disconnectedCallback() {
     super.disconnectedCallback();
-    this.#resizeObserver.disconnect();
+    this.#resizeObserver?.disconnect();
     this.#dragging?.destroy();
     this.#dragging = undefined;
     this.#tooltips?.tooltips.destroy();
@@ -387,7 +377,7 @@ export class MailQuilt extends LitElement {
         Use arrow keys to select another Block, and Alt with arrow keys to move
         this one.
       </p>
-      ${this.#narrow ? this.#renderNarrowNotice() : nothing}
+      ${this.#narrow ? renderNarrowNotice(this.#canvasEvents.onOpenPreview) : nothing}
       <div
         class="ui editor"
         lang=${UI_LANG}
@@ -411,41 +401,10 @@ export class MailQuilt extends LitElement {
               width: `${settings.width}px`,
             })}
           >
-            ${repeat(
-              rows,
-              (row) => row.id,
-              (row, rowIndex) => html`
-                <div
-                  class="row-frame"
-                  data-row-id=${row.id}
-                  ?data-row-selected=${row.id === this.#selectedRowId}
-                >
-                  <div
-                    aria-hidden="true"
-                    class="ui row-tag"
-                    @click=${() => this.#selectRow(row.id)}
-                    @mousedown=${this.#onHandleMousedown}
-                  >
-                    Row
-                  </div>
-                  ${this.#renderRowToolbar(row, rowIndex, rows.length)}
-                  <div class="row" style=${styleMap(rowStyles(row))}>
-                    ${repeat(
-                      row.columns,
-                      (column) => column.id,
-                      (column, columnIndex) =>
-                        this.#renderColumn(
-                          column,
-                          columnLabel(rowIndex, columnIndex)
-                        )
-                    )}
-                  </div>
-                </div>
-              `
-            )}
+            ${renderRows(rows, this.#canvasState, this.#canvasEvents)}
             <div class="drop-indicator" hidden></div>
           </div>
-          ${this.#renderFloatingToolbar()}
+          ${renderFloatingToolbar(this.#canvasEvents)}
         </div>
         ${renderSidePanel(
           {
@@ -462,271 +421,16 @@ export class MailQuilt extends LitElement {
     `;
   }
 
-  /**
-   * On a phone there's no room for the canvas and the side panel. The editor
-   * stays as it is, so nothing is lost, and the email can still be previewed.
-   */
-  #renderNarrowNotice() {
-    return html`
-      <div class="ui narrow-notice" lang=${UI_LANG} part="frame">
-        <span class="notice-icon">${ICONS.monitor}</span>
-        <p class="notice-title">Editing needs more room</p>
-        <p class="notice-body">
-          Make the editor at least ${MIN_EDITOR_WIDTH}px wide, such as by
-          widening the window, to change this email. You can still preview it
-          here.
-        </p>
-        <button
-          class="text-button primary"
-          type="button"
-          @click=${this.#openPreview}
-        >
-          ${ICONS.preview}<span>Preview email</span>
-        </button>
-      </div>
-    `;
-  }
-
-  /**
-   * Beside the Row, on hover, on focus, and while the Row is selected. One stop
-   * for Tab, then arrow keys go along. Alt+↑ and Alt+↓ move the Row from here,
-   * as the Move buttons say.
-   */
-  #renderRowToolbar(row: Row, index: number, count: number) {
-    return html`
-      <div
-        aria-current=${row.id === this.#selectedRowId ? "true" : nothing}
-        aria-label=${`Row ${index + 1}`}
-        aria-orientation="vertical"
-        class="ui row-toolbar"
-        role="toolbar"
-        @keydown=${(event: KeyboardEvent) =>
-          this.#onRowToolbarKeydown(event, row.id)}
-        @mousedown=${this.#onControlMousedown}
-      >
-        <div class="bar" @keydown=${onToolbarArrowKeys}>
-          ${renderDragHandle(this.#onHandleMousedown, "Drag Row")}
-          <button
-            aria-label="Select Row"
-            class="icon-button"
-            ?data-active=${row.id === this.#selectedRowId}
-            data-action="select-row"
-            data-tooltip="Select Row"
-            type="button"
-            @click=${() => this.#selectRow(row.id)}
-          >
-            ${ICONS.select}
-          </button>
-          ${ROW_MOVE_BUTTONS.map(
-            ({ direction, keys, shortcut }) => html`
-              <button
-                aria-keyshortcuts=${shortcut}
-                aria-label=${`Move Row ${direction}`}
-                class="icon-button"
-                data-tooltip=${`Move Row ${direction} (${keys})`}
-                ?disabled=${direction === "up" ? index === 0 : index === count - 1}
-                tabindex="-1"
-                type="button"
-                @click=${() => this.#moveRow(row.id, direction)}
-              >
-                ${ICONS[direction]}
-              </button>
-            `
-          )}
-          <button
-            aria-label="Delete Row"
-            class="icon-button danger"
-            data-tooltip="Delete Row"
-            tabindex="-1"
-            type="button"
-            @click=${({ detail }: MouseEvent) =>
-              this.#deleteRow(row.id, detail === 0)}
-          >
-            ${ICONS.delete}
-          </button>
-        </div>
-      </div>
-    `;
-  }
-
-  #renderColumn({ blocks, id, width }: Column, place: string) {
-    return html`
-      <div
-        class=${blocks.length === 0 ? "column empty" : "column"}
-        data-column-id=${id}
-        style=${styleMap({ width: `${width}%` })}
-      >
-        ${repeat(
-          blocks,
-          (block) => block.id,
-          (block, blockIndex) =>
-            this.#renderBlock(
-              block,
-              `${place}, ${positionLabel(blockIndex, blocks.length)}`
-            )
-        )}
-        ${
-          blocks.length === 0
-            ? html`
-                <div class="ui placeholder">
-                  <div class="placeholder-label">
-                    <span class="placeholder-icon">${ICONS.plus}</span>
-                    <p>Drop a Block here</p>
-                  </div>
-                  <div class="add-blocks">
-                    ${BLOCK_TYPES.map(
-                      ({ label, type }) => html`
-                        <button
-                          aria-label=${`Add ${label} Block here, ${place}`}
-                          class="icon-button"
-                          data-tooltip=${`Add ${label} Block here`}
-                          type="button"
-                          @click=${() => this.#addBlock(type, { columnId: id, index: 0 })}
-                        >
-                          ${blockIcon(type)}
-                        </button>
-                      `
-                    )}
-                  </div>
-                </div>
-              `
-            : nothing
-        }
-      </div>
-    `;
-  }
-
-  #renderBlock(block: Block, place: string) {
-    const selected = block.id === this.#selectedBlockId;
-    const rich = hasRichText(block);
-    return html`
-      <div
-        aria-current=${selected ? "true" : nothing}
-        aria-describedby=${rich ? "block-keys" : "block-keys-no-text"}
-        aria-label=${`${blockLabel(block.type)} Block, ${place}`}
-        class="block"
-        data-block-id=${block.id}
-        data-label=${blockLabel(block.type)}
-        role="group"
-        style=${styleMap(rich ? blockStyles(block) : {})}
-        tabindex="0"
-        @click=${this.#onBlockClick}
-        @focus=${(event: FocusEvent) => this.#onBlockFocus(event, block.id)}
-        @focusout=${this.#onBlockFocusout}
-        @keydown=${this.#onBlockKeydown}
-      >
-        ${selected ? nothing : renderDragHandle(this.#onHandleMousedown)}
-        ${rich ? this.#views.get(block.id)?.element : nothing}
-        ${renderBlockContent(
-          block,
-          this.#emailLang,
-          this.#failedImages,
-          this.#onImageError
-        )}
-        ${selected ? this.#renderBlockToolbar() : nothing}
-        ${
-          selected && rich && this.#editingText
-            ? renderFormatBar(
-                {
-                  formats: this.#formats,
-                  linkForm: this.#linkForm,
-                },
-                this.#formatBarEvents
-              )
-            : nothing
-        }
-      </div>
-    `;
-  }
-
-  /** The selected Block's tools. One stop for Tab, then arrow keys go along. */
-  #renderBlockToolbar() {
-    return html`
-      <div
-        aria-label="Block tools"
-        aria-orientation="vertical"
-        class="ui bar block-toolbar"
-        role="toolbar"
-        @keydown=${onToolbarArrowKeys}
-        @mousedown=${this.#onControlMousedown}
-      >
-        ${renderDragHandle(this.#onHandleMousedown)}
-        <span class="separator"></span>
-        ${MOVE_BUTTONS.map(
-          ({ direction, keys, shortcut }, index) => html`
-            <button
-              aria-keyshortcuts=${shortcut}
-              aria-label=${`Move Block ${direction}`}
-              class="icon-button"
-              data-action=${`move-${direction}`}
-              data-tooltip=${`Move Block ${direction} (${keys})`}
-              tabindex=${index === 0 ? "0" : "-1"}
-              type="button"
-              @click=${() => this.#moveSelectedBlock(direction)}
-            >
-              ${ICONS[direction]}
-            </button>
-          `
-        )}
-        <span class="separator"></span>
-        <button
-          aria-label="Delete Block"
-          class="icon-button danger"
-          data-action="delete"
-          data-tooltip="Delete Block"
-          tabindex="-1"
-          type="button"
-          @click=${({ detail }: MouseEvent) =>
-            this.#deleteSelectedBlock(detail === 0)}
-        >
-          ${ICONS.delete}
-        </button>
-      </div>
-    `;
-  }
-
-  /** Away from the side panel, so it never covers the settings. */
-  #renderFloatingToolbar() {
-    return html`
-      <div
-        aria-label="Email tools"
-        class="ui bar floating-toolbar"
-        role="group"
-        tabindex="-1"
-        @mousedown=${this.#onControlMousedown}
-      >
-        <button
-          aria-keyshortcuts=${UNDO_SHORTCUTS}
-          aria-label="Undo"
-          class="icon-button"
-          data-tooltip=${`Undo (${UNDO_KEYS})`}
-          type="button"
-          @click=${() => this.#stepHistory("undo")}
-        >
-          ${ICONS.undo}
-        </button>
-        <button
-          aria-keyshortcuts=${REDO_SHORTCUTS}
-          aria-label="Redo"
-          class="icon-button"
-          data-tooltip=${`Redo (${REDO_KEYS})`}
-          type="button"
-          @click=${() => this.#stepHistory("redo")}
-        >
-          ${ICONS.redo}
-        </button>
-        <span class="separator"></span>
-        <button
-          aria-label="Preview"
-          class="icon-button"
-          data-tooltip="Preview"
-          type="button"
-          @click=${this.#openPreview}
-        >
-          ${ICONS.preview}
-        </button>
-      </div>
-    `;
+  get #canvasState(): CanvasState {
+    return {
+      editingText: this.#editingText,
+      emailLang: this.#emailLang,
+      failedImages: this.#failedImages,
+      formatBar: { formats: this.#formats, linkForm: this.#linkForm },
+      selectedBlockId: this.#selectedBlockId,
+      selectedRowId: this.#selectedRowId,
+      textOf: (blockId) => this.#views.get(blockId)?.element,
+    };
   }
 
   /** On each Block's content. With none set, it's unknown, as in the export. */

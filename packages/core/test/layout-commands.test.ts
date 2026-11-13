@@ -436,6 +436,31 @@ describe("a Command for what's already so", () => {
     expect(operations).toStrictEqual([]);
   });
 
+  it("moves a Block alone in its Column when its Row has other Columns", () => {
+    const { editor } = setup({
+      ...createEmail(),
+      rows: [
+        {
+          columns: [
+            { blocks: [block("a")], id: "left", props: {}, width: 50 },
+            { blocks: [block("c")], id: "right", props: {}, width: 50 },
+          ],
+          id: "row",
+          props: {},
+        },
+      ],
+    });
+
+    expectAccepted(
+      editor.apply({ blockId: "a", rowIndex: 0, type: "moveBlockToNewRow" })
+    );
+
+    expect(columnsOf(editor.getDocument())).toStrictEqual([
+      [["a"]],
+      [[], ["c"]],
+    ]);
+  });
+
   it("says a Row already has the layout it's asked for", () => {
     const { editor, operations } = setup();
 

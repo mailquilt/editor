@@ -1,4 +1,4 @@
-import { isAllowedLinkHref } from "@mailquilt/core";
+import { isAllowedLinkHref, MERGE_TAG } from "@mailquilt/core";
 import type { RichTextDocument } from "@mailquilt/core";
 import {
   baseKeymap,
@@ -358,11 +358,10 @@ const changesFormatting = ({ steps }: Transaction) =>
         step.slice.content.firstChild?.type.name === "hardBreak")
   );
 
-/** Marks a change the host made, which isn't the user's to report. */
-const FROM_HOST = "mailquilt:fromHost";
+/** Marks what `setContent` shows, as on undo, which isn't the user's to report. */
+const FROM_SET_CONTENT = "mailquilt:fromSetContent";
 
-/** A Merge Tag, as `core` finds one. */
-const MERGE_TAG = /\{\{[^{}]+\}\}/gu;
+const MERGE_TAGS = new RegExp(MERGE_TAG.source, "gu");
 
 /**
  * Keeps a Merge Tag whole, since a mark over part of one splits it in the HTML.
@@ -376,7 +375,7 @@ const keepMergeTagsWhole = new Plugin({
     if (
       !transactions.some(
         (transaction) =>
-          transaction.docChanged && !transaction.getMeta(FROM_HOST)
+          transaction.docChanged && !transaction.getMeta(FROM_SET_CONTENT)
       )
     ) {
       return null;
@@ -397,7 +396,7 @@ const keepMergeTagsWhole = new Plugin({
       if (!node.isTextblock) {
         return true;
       }
-      for (const { 0: tag, index } of node.textContent.matchAll(MERGE_TAG)) {
+      for (const { 0: tag, index } of node.textContent.matchAll(MERGE_TAGS)) {
         const from = pos + 1 + index;
         const to = from + tag.length;
         const texts: ProseMirrorNode[] = [];
@@ -547,7 +546,7 @@ export const createTextBlockView = ({
       } else if (focused === false) {
         onTypingBreak();
       }
-      if (transaction.getMeta(FROM_HOST) || before.doc.eq(after.doc)) {
+      if (transaction.getMeta(FROM_SET_CONTENT) || before.doc.eq(after.doc)) {
         return;
       }
       // ProseMirror marks a paste, cut or drop, which are never typing.
@@ -657,7 +656,7 @@ export const createTextBlockView = ({
           ? selection.getBookmark().resolve(tr.doc)
           : Selection.near(tr.doc.resolve(cursor))
       );
-      view.dispatch(tr.setMeta(FROM_HOST, true));
+      view.dispatch(tr.setMeta(FROM_SET_CONTENT, true));
     },
     setLang: (next) => {
       if (next !== lang) {

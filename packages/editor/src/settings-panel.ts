@@ -378,7 +378,9 @@ const renderField = (
         return html`
           <div class="color">
             <input
+              aria-describedby=${describedBy || nothing}
               aria-label=${`${field.label} picker`}
+              ?disabled=${field.disabled ?? false}
               type="color"
               .value=${live(hexColor(text || (section.unsetColor ?? "")))}
               @change=${onCommit}

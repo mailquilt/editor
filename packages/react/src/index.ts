@@ -24,7 +24,8 @@ export type {
 
 interface EditorProps<Element> {
   onChange?: (document: BlocksDocument) => void;
-  onError?: (error: { reason: string }) => void;
+  /** Why the editor refused a document, as `mq-error` says it. */
+  onError?: (reason: string) => void;
   /** The element, once the editor has loaded in the browser. */
   ref?: Ref<Element>;
   value?: BlocksDocument;
@@ -99,7 +100,7 @@ const useEditorElement = <
       return;
     }
     const listener = ({ detail }: HTMLElementEventMap["mq-error"]) =>
-      onError(detail);
+      onError(detail.reason);
     editor.addEventListener("mq-error", listener);
     return () => editor.removeEventListener("mq-error", listener);
   }, [editor, onError]);

@@ -31,16 +31,17 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "scripts": {
     "build": "tsdown",
-    "check-types": "tsc --noEmit",
+    "check-types": "tsc --noEmit && tsc --noEmit -p browser-tests",
     "test": "playwright test"
   },
   "dependencies": {
-    "@mailquilt/core": "workspace:^",
-    "@mailquilt/renderer": "workspace:^",
+    "@mailquilt/core": "workspace:*",
+    "@mailquilt/renderer": "workspace:*",
     "lit": "^3.3.3",
     "prosemirror-commands": "^1.7.2",
     "prosemirror-keymap": "^1.2.3",

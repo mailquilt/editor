@@ -5,6 +5,7 @@ import {
   addSecondTextBlock,
   canvas,
   exportHtml,
+  latestDocument,
   pasteHtml,
   redoByKey,
   settle,
@@ -26,17 +27,24 @@ const linkInput = (page: Page) =>
 
 const selectAll = (page: Page) => page.keyboard.press("ControlOrMeta+a");
 
+interface SavedParagraph {
+  content?: { marks?: { type: string }[]; text?: string; type: string }[];
+  type: string;
+}
+
 /** The saved content of the Block at `index`, as the host last received it. */
 const savedParagraphs = async (page: Page, index = 0) => {
-  const text = await page.getByTestId("latest-document").textContent();
+  const { rows } = await latestDocument(page);
   // A Block added by setting `value` is missing until the next mq-change.
-  return JSON.parse(text ?? "null").rows[0].columns[0].blocks[index]?.props
-    .content.content;
+  const props = rows[0]?.columns[0]?.blocks[index]?.props as
+    | { content: { content: SavedParagraph[] } }
+    | undefined;
+  return props?.content.content;
 };
 
 const savedInline = async (page: Page, index = 0) => {
   const paragraphs = await savedParagraphs(page, index);
-  return paragraphs?.[0].content;
+  return paragraphs?.[0]?.content;
 };
 
 const selectAllInBlock = async (page: Page) => {
@@ -530,8 +538,10 @@ test.describe("links", () => {
 
   test("spaces around a pasted URL are ignored", async ({ page }) => {
     await selectAllInBlock(page);
+    await toolbarButton(page, "Link").click();
+    await linkInput(page).fill("  https://example.com ");
 
-    await addLink(page, "  https://example.com ");
+    await toolbarButton(page, "Apply").click();
 
     await expect
       .poll(() => savedInline(page))
@@ -552,6 +562,17 @@ test.describe("links", () => {
     await linkInput(page).fill("https://example.com");
 
     await page.keyboard.press("Escape");
+
+    await expect(linkInput(page)).toBeHidden();
+    await expect(firstTextBlock(page)).toBeFocused();
+    expect(await savedInline(page)).toStrictEqual([
+      { text: "Hello", type: "text" },
+    ]);
+
+    // Cancel does the same.
+    await toolbarButton(page, "Link").click();
+    await linkInput(page).fill("https://example.com");
+    await toolbarButton(page, "Cancel").click();
 
     await expect(linkInput(page)).toBeHidden();
     await expect(firstTextBlock(page)).toBeFocused();
@@ -964,10 +985,7 @@ test.describe("copy and paste", () => {
 
     // The host shows the saved email a render after the canvas has it.
     await expect(page.getByTestId("latest-document")).toContainText("Title");
-    const paragraphs: {
-      content?: { marks?: { type: string }[]; type: string }[];
-      type: string;
-    }[] = await savedParagraphs(page);
+    const paragraphs = (await savedParagraphs(page)) ?? [];
     const inline = paragraphs.flatMap(({ content }) => content ?? []);
 
     expect(new Set(paragraphs.map(({ type }) => type))).toStrictEqual(

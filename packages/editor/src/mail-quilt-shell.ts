@@ -169,14 +169,10 @@ export class MailQuiltShell extends LitElement {
   #savedStandsIn: { replaced: unknown } | undefined;
   /**
    * Gives the editor the height the email scrolls in, for its side panel. The
-   * underscore keeps it apart from the theme tokens, as it isn't one.
+   * underscore keeps it apart from the theme tokens, as it isn't one. Made on
+   * the page, as a server rendering the Shell has no ResizeObserver.
    */
-  readonly #bodyObserver = new ResizeObserver(([entry]) => {
-    this.#editor.style.setProperty(
-      "--_mq-visible-height",
-      `${entry?.target.clientHeight ?? 0}px`
-    );
-  });
+  #bodyObserver: ResizeObserver | undefined;
   /** Set while the browser can't save the email. */
   #cantSave = false;
   /** The latest refused email or failed export, until the next change. */
@@ -241,7 +237,7 @@ export class MailQuiltShell extends LitElement {
 
   override disconnectedCallback() {
     super.disconnectedCallback();
-    this.#bodyObserver.disconnect();
+    this.#bodyObserver?.disconnect();
   }
 
   protected override willUpdate(changed: PropertyValues<this>) {
@@ -385,6 +381,12 @@ export class MailQuiltShell extends LitElement {
   #observeBody() {
     const body = this.renderRoot.querySelector(".body");
     if (body) {
+      this.#bodyObserver ??= new ResizeObserver(([entry]) => {
+        this.#editor.style.setProperty(
+          "--_mq-visible-height",
+          `${entry?.target.clientHeight ?? 0}px`
+        );
+      });
       this.#bodyObserver.observe(body);
     }
   }

@@ -1,65 +1,33 @@
 import { execFileSync } from "node:child_process";
 
+import { BLOCK_TYPES, createEditor } from "@mailquilt/core";
 import type { Block, BlocksDocument } from "@mailquilt/core";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, onTestFinished, vi } from "vitest";
 
 import { renderEmail } from "../src/index.js";
+import { emailWith } from "./email-with.js";
 
-const emailWithText = (...paragraphs: string[]): BlocksDocument => ({
-  kind: "blocks",
-  rows: [
-    {
-      columns: [
-        {
-          blocks: [
-            {
-              id: "block-1",
-              props: {
-                content: {
-                  content: paragraphs.map((text) =>
-                    text
-                      ? {
-                          content: [{ text, type: "text" }],
-                          type: "paragraph",
-                        }
-                      : { type: "paragraph" }
-                  ),
-                  type: "doc",
-                },
-              },
-              type: "text",
-            },
-          ],
-          id: "column-1",
-          props: {},
-          width: 100,
-        },
-      ],
-      id: "row-1",
-      props: {},
-    },
-  ],
-  settings: {
-    backgroundColor: "#f4f4f5",
-    fontFamily: "Arial, Helvetica, sans-serif",
-    width: 600,
-  },
-  version: 1,
-});
-
-const emailWithInline = (...inline: unknown[]): BlocksDocument => {
-  const email = emailWithText("");
-  const block = email.rows[0]?.columns[0]?.blocks[0];
-  if (block) {
-    block.props = {
-      content: {
-        content: [{ content: inline, type: "paragraph" }],
-        type: "doc",
-      },
-    };
-  }
+/** A Text Block's email, on a background other than white. */
+const emailWithParagraphs = (paragraphs: unknown[]): BlocksDocument => {
+  const email = emailWith({
+    props: { content: { content: paragraphs, type: "doc" } },
+    type: "text",
+  });
+  email.settings.backgroundColor = "#f4f4f5";
   return email;
 };
+
+const emailWithText = (...paragraphs: string[]) =>
+  emailWithParagraphs(
+    paragraphs.map((text) =>
+      text
+        ? { content: [{ text, type: "text" }], type: "paragraph" }
+        : { type: "paragraph" }
+    )
+  );
+
+const emailWithInline = (...inline: unknown[]) =>
+  emailWithParagraphs([{ content: inline, type: "paragraph" }]);
 
 const linked = (href: string, text = "Click") => ({
   marks: [{ attrs: { href }, type: "link" }],
@@ -363,6 +331,41 @@ describe(renderEmail, () => {
       /rows\.0\.columns\.0\.width/u
     );
   });
+
+  it("refuses a document before loading MJML", async () => {
+    vi.resetModules();
+    onTestFinished(() => {
+      vi.doUnmock(import("mjml-browser"));
+      vi.resetModules();
+    });
+    let loadedMjml = false;
+    vi.doMock(import("mjml-browser"), () => {
+      loadedMjml = true;
+      return { default: vi.fn<() => Promise<{ html: string }>>() };
+    });
+    const fresh = await import("../src/index.js");
+
+    await expect(fresh.renderEmail({ kind: "blocks" })).rejects.toThrow(
+      /Expected "rows"/u
+    );
+
+    expect(loadedMjml).toBeFalsy();
+  });
+
+  // A Block type core accepts but this package can't render would only fail on
+  // export.
+  it.each(BLOCK_TYPES.map(({ type }) => type))(
+    "renders a %s Block with its defaults",
+    async (blockType) => {
+      const editor = createEditor({ document: emailWithText("") });
+      const columnId = editor.getDocument().rows[0]?.columns[0]?.id ?? "";
+      editor.apply({ blockType, columnId, index: 0, type: "insertBlock" });
+
+      await expect(renderEmail(editor.getDocument())).resolves.toContain(
+        "<!doctype html>"
+      );
+    }
+  );
 
   it("runs in plain Node with no DOM, editor or ProseMirror code loaded", () => {
     // Runs the built package in its own process, because the test runner's own

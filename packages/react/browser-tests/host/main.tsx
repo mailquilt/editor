@@ -6,6 +6,7 @@ import { MailQuilt, MailQuiltShell } from "../../src/index.js";
 import type {
   MailQuiltElement,
   MailQuiltShellElement,
+  ShellAction,
 } from "../../src/index.js";
 
 type Document = NonNullable<ComponentProps<typeof MailQuilt>["value"]>;
@@ -84,7 +85,7 @@ const Host = () => {
           aria-label="Newsletter"
           className="host-editor"
           onChange={(next) => setDocument(next)}
-          onError={({ reason }) => setErrors((all) => [...all, reason])}
+          onError={(reason) => setErrors((all) => [...all, reason])}
           ref={editor}
           value={document}
         />
@@ -126,24 +127,36 @@ const CallbackRefHost = () => {
 const ShellHost = () => {
   const [document, setDocument] = useState(firstEmail);
   const [ready, setReady] = useState(false);
+  const [changed, setChanged] = useState(false);
   // The wrapper hands over the element only after it has set `value`.
   const attach = useCallback((element: MailQuiltShellElement | null) => {
     setReady(element !== null);
   }, []);
   const params = new URLSearchParams(window.location.search);
-  const save = params.has("save");
+  let actions: ShellAction[] | undefined;
+  let saveKey: string | undefined;
+  if (changed) {
+    actions = ["export-json"];
+    saveKey = "react-test:other";
+  } else {
+    actions = params.has("only-html") ? ["export-html"] : undefined;
+    saveKey = params.has("save") ? "react-test:email" : undefined;
+  }
 
   return (
     <main style={{ display: "grid", gridTemplateRows: "auto 700px" }}>
       <output data-testid="ready">{ready ? "yes" : "no"}</output>
+      <button onClick={() => setChanged(true)} type="button">
+        Change props
+      </button>
       <MailQuiltShell
-        actions={params.has("only-html") ? ["export-html"] : undefined}
+        actions={actions}
         aria-label="Newsletter"
         className="host-editor"
-        heading="Campaign"
+        heading={changed ? "Renamed" : "Campaign"}
         onChange={(next) => setDocument(next)}
         ref={attach}
-        saveKey={save ? "react-test:email" : undefined}
+        saveKey={saveKey}
         value={document}
       />
     </main>

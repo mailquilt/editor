@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { createEditor, createEmail } from "../src/index.js";
+import type { Operation } from "../src/index.js";
 
 const paragraph = (text: string) => ({
   content: [{ content: [{ text, type: "text" }], type: "paragraph" }],
@@ -269,6 +270,34 @@ describe("merging Commands into one undo step", () => {
     }
   );
 
+  it("keeps the rest of a step when one Block's changes end where they started", () => {
+    const { blockId, document, editor, setText } = setup();
+    const original = document.rows[0]?.columns[0]?.blocks[0]?.props ?? {};
+    editor.apply(
+      {
+        props: { backgroundColor: "#ff0000" },
+        rowId: document.rows[0]?.id ?? "",
+        type: "updateRowProps",
+      },
+      { mergeKey: "typing" }
+    );
+    setText("A", { mergeKey: "typing" });
+    editor.apply(
+      { blockId, props: original, type: "updateBlockProps" },
+      { mergeKey: "typing" }
+    );
+    const undone: Operation[][] = [];
+    editor.subscribe((operations) => undone.push(operations));
+
+    expect(editor.undo()).toBeTruthy();
+    expect(editor.getDocument()).toStrictEqual(document);
+    // The Block's change is gone from the step, so only the Row's is undone.
+    expect(undone).toStrictEqual([
+      [expect.objectContaining({ rowId: document.rows[0]?.id })],
+    ]);
+    expect(editor.undo()).toBeFalsy();
+  });
+
   it("starts a new step after changes that ended where they started", () => {
     const { editor, setText } = setup();
     setText("X");
@@ -428,6 +457,33 @@ describe("subscribing to Operations", () => {
     unsubscribe();
     editor.undo();
     expect(editor.getDocument()).toStrictEqual(document);
+  });
+
+  it("drops a change queued by a listener when a later listener throws", () => {
+    const { editor, setText } = setup();
+    let isFirst = true;
+    const unsubscribeFirst = editor.subscribe(() => {
+      if (isFirst) {
+        isFirst = false;
+        setText("From listener");
+      }
+    });
+    const unsubscribeThrowing = editor.subscribe(() => {
+      throw new Error("Listener failed");
+    });
+    expect(() => setText("First")).toThrow("Listener failed");
+    unsubscribeFirst();
+    unsubscribeThrowing();
+    const heard: string[] = [];
+    editor.subscribe((operations) => {
+      heard.push(JSON.stringify(operations));
+    });
+
+    setText("Next");
+
+    // Only the new change, not the one left over from before.
+    expect(heard).toHaveLength(1);
+    expect(heard[0]).toContain("Next");
   });
 
   it("tells every listener of changes in the order they were made", () => {

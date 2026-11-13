@@ -1,4 +1,5 @@
-import { css } from "lit";
+import { EMAIL_LOOK } from "@mailquilt/core";
+import { css, unsafeCSS } from "lit";
 
 /** The editor's own canvas, Rows, Blocks and toolbars. Its panels have their own. */
 export const editorStyles = css`
@@ -81,8 +82,8 @@ export const editorStyles = css`
     box-sizing: border-box;
     color: #000000;
     display: block;
-    font-size: 16px;
-    line-height: 1.5;
+    font-size: ${unsafeCSS(EMAIL_LOOK.fontSize)};
+    line-height: ${unsafeCSS(EMAIL_LOOK.lineHeight)};
     margin: 0 auto;
     max-width: 100%;
     position: relative;
@@ -652,7 +653,7 @@ export const editorStyles = css`
   .ProseMirror {
     font-variant-ligatures: none;
     overflow-wrap: break-word;
-    padding: 16px;
+    padding: ${unsafeCSS(EMAIL_LOOK.blockPadding)};
     position: relative;
     white-space: pre-wrap;
     white-space: break-spaces;

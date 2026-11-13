@@ -1,9 +1,10 @@
 import { toMjml } from "./to-mjml.js";
 
 /**
- * Any value, such as JSON read from a database, as it's checked first: the
- * promise rejects with the reason if it isn't an email Mail Quilt accepts. MJML
- * loads the first time it's called.
+ * Renders a saved email as HTML for email clients. `document` can be any value,
+ * such as JSON read from a database, because it's checked first: the promise
+ * rejects with the reason if it isn't an email Mail Quilt accepts. MJML loads the
+ * first time it's called.
  */
 export const renderEmail = async (document: unknown) => {
   // First, so that a refused document never loads MJML.

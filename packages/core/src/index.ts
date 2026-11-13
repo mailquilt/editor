@@ -3,6 +3,7 @@ export {
   blockLabel,
   blockSettingsFields,
   blockStyles,
+  EMAIL_LOOK,
 } from "./blocks.js";
 export { createEmail } from "./create-email.js";
 export type {
@@ -12,7 +13,7 @@ export type {
   EmailSettings,
   Row,
 } from "./document.js";
-export { INVALID_LINK, isAllowedLinkHref } from "./rich-text.js";
+export { INVALID_LINK, isAllowedLinkHref, MERGE_TAG } from "./rich-text.js";
 export type {
   RichTextDocument,
   RichTextHardBreak,

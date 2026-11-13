@@ -10,6 +10,7 @@ import {
   currentValue,
   emailWith,
   openBlocks,
+  openEmail,
   rowTools,
   selectRowButton,
   serveImages,
@@ -104,8 +105,7 @@ test.describe("a Row on the canvas", () => {
   test("hides its toolbar while one of its Blocks is selected, even on hover", async ({
     page,
   }) => {
-    await page.goto("/");
-    await setValue(page, emailWith([[["A"]], [["B"]]]));
+    await openEmail(page, [[["A"]], [["B"]]]);
     await page.mouse.move(0, 0);
 
     await blockGroup(page, "Text").last().focus();
@@ -126,8 +126,7 @@ test.describe("a Row on the canvas", () => {
   test("its toolbar is reached by Tab from a selected Block", async ({
     page,
   }) => {
-    await page.goto("/");
-    await setValue(page, emailWith([[["A"]], [["B"]]]));
+    await openEmail(page, [[["A"]], [["B"]]]);
     await blockGroup(page, "Text").last().focus();
 
     await page.keyboard.press("Shift+Tab");
@@ -140,11 +139,8 @@ test.describe("a Row on the canvas", () => {
   test("an empty Row is selected and deleted from the keyboard", async ({
     page,
   }) => {
-    await page.goto("/");
-    await setValue(page, emailWith([[["A"]], [[]]]));
-    const select = rowTools(page, 2).getByRole("button", {
-      name: "Select Row",
-    });
+    await openEmail(page, [[["A"]], [[]]]);
+    const select = selectRowButton(page, 2);
 
     await select.focus();
     await expect(rowTools(page, 2)).toHaveCSS("opacity", "1");
@@ -245,10 +241,7 @@ test.describe("the email's language", () => {
   test("is unknown on the content of an email that has none", async ({
     page,
   }) => {
-    await page.goto("/");
-    await setValue(page, emailWith([[["A"]]]));
-
-    await expect(textBlock(page)).toBeVisible();
+    await openEmail(page, [[["A"]]]);
 
     const lang = await canvas(page).evaluate((host) =>
       host.shadowRoot
@@ -281,6 +274,11 @@ test.describe("an empty Column on a touch screen", () => {
     await expect(column.locator(".placeholder-label")).toHaveCSS(
       "opacity",
       "0"
+    );
+    // With no hover to show it, a Block's drag handle always shows.
+    await expect(blockGroup(page, "Button").locator(".drag-handle")).toHaveCSS(
+      "opacity",
+      "1"
     );
   });
 });
@@ -348,11 +346,9 @@ test.describe("the floating toolbar", () => {
 
   test("stays in view at the bottom of a long email", async ({ page }) => {
     await page.setViewportSize({ height: 500, width: 1280 });
-    await page.goto("/");
-    await setValue(
-      page,
-      emailWith([[["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]]])
-    );
+    await openEmail(page, [
+      [["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]],
+    ]);
 
     // The host page's own text is above the editor.
     await canvas(page).evaluate((element) => {
@@ -426,8 +422,7 @@ test.describe("a Block's drag handle and link shortcut", () => {
   test("a click on another Block's handle leaves the tabs showing", async ({
     page,
   }) => {
-    await page.goto("/");
-    await setValue(page, emailWith([[["A", "B"]]]));
+    await openEmail(page, [[["A", "B"]]]);
     await blockGroup(page, "Text").first().focus();
     await canvas(page)
       .getByRole("button", { exact: true, name: "Back" })
@@ -527,8 +522,7 @@ test.describe("a click on the workspace, outside the email", () => {
     page,
   }) => {
     await page.setViewportSize({ height: 1600, width: 1280 });
-    await page.goto("/");
-    await setValue(page, emailWith([[["A", "B"]]]));
+    await openEmail(page, [[["A", "B"]]]);
     await blockGroup(page, "Text").first().focus();
     const handle = await boxOf(blockTools(page).locator(".drag-handle"));
     const area = await boxOf(canvas(page).locator(".canvas-area"));

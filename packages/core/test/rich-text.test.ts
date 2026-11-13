@@ -58,10 +58,15 @@ describe("limited rich text", () => {
   });
 
   it.each([
-    ["a mark it doesn't know", { marks: [{ type: "strike" }], text: "x" }],
+    [
+      "a mark it doesn't know",
+      { marks: [{ type: "strike" }], text: "x" },
+      /marks\.0\.type.*"strike"/u,
+    ],
     [
       "a mark with attributes it doesn't know",
       { marks: [{ attrs: { color: "red" }, type: "bold" }], text: "x" },
+      /marks\.0\.attrs/u,
     ],
     [
       "a link with attributes it doesn't know",
@@ -71,22 +76,31 @@ describe("limited rich text", () => {
         ],
         text: "x",
       },
+      /marks\.0\.attrs\.target/u,
     ],
-    ["a link with no URL", { marks: [{ type: "link" }], text: "x" }],
+    [
+      "a link with no URL",
+      { marks: [{ type: "link" }], text: "x" },
+      /marks\.0\.attrs/u,
+    ],
     [
       "the same mark twice",
       { marks: [{ type: "bold" }, { type: "bold" }], text: "x" },
+      /same mark twice/u,
     ],
-  ])("refuses %s", (_name, node) => {
+  ])("refuses %s", (_name, node, reason) => {
     expect(
-      loadDocument(emailWithInline({ ...node, type: "text" })).ok
-    ).toBeFalsy();
+      loadDocument(emailWithInline({ ...node, type: "text" }))
+    ).toStrictEqual({ ok: false, reason: expect.stringMatching(reason) });
   });
 
   it("refuses an inline node it doesn't know", () => {
     const email = emailWithInline({ attrs: { src: "x" }, type: "image" });
 
-    expect(loadDocument(email).ok).toBeFalsy();
+    expect(loadDocument(email)).toStrictEqual({
+      ok: false,
+      reason: expect.stringMatching(/content\.0\.type.*"image"/u),
+    });
   });
 
   it("refuses anything but paragraphs at the top level", () => {
@@ -101,7 +115,12 @@ describe("limited rich text", () => {
       };
     }
 
-    expect(loadDocument(email).ok).toBeFalsy();
+    expect(loadDocument(email)).toStrictEqual({
+      ok: false,
+      reason: expect.stringMatching(
+        /Expected "paragraph" but received "heading"/u
+      ),
+    });
   });
 
   it("refuses an executable link, naming the problem", () => {

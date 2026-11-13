@@ -1,7 +1,7 @@
 import * as v from "valibot";
 
 import { describeIssues, validateProps } from "./blocks.js";
-import { DOCUMENT_VERSION } from "./create-email.js";
+import { DOCUMENT_VERSION } from "./document.js";
 import type { BlocksDocument } from "./document.js";
 import { emailSettingsSchema, rowPropsSchema } from "./settings.js";
 

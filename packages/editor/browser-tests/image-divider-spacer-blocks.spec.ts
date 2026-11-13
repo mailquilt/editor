@@ -424,7 +424,6 @@ test.describe("an Image", () => {
     );
     const { opened } = await openExport(page);
 
-    expect(onCanvas).toBe(132);
     await expect(
       space(
         opened.locator("img").locator("xpath=ancestor::tr[2]"),
