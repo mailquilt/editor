@@ -5,7 +5,7 @@ This document explains what Mail Quilt is for, how it's designed, and where it's
 - To use the packages, read the [docs](apps/docs/docs).
 - Words such as Block, Row, Command and Merge Tag are defined in [`GLOSSARY.md`](GLOSSARY.md).
 - The main design decisions, and why they were made, are in [`docs/adr/`](docs/adr).
-- Plans and progress are tracked in [GitHub Issues](https://github.com/yourcodebuddy-in/mailquilt/issues).
+- Plans and progress are tracked in [GitHub Issues](https://github.com/mailquilt/editor/issues).
 
 **Status:** `0.1.0` is the first release. While Mail Quilt is on `0.x`, the API can still change between minor versions. Sections marked _planned_ describe intended designs, not promises, and can change before they're built.
 
@@ -61,7 +61,7 @@ In `0.1.0`, people build emails by dragging Blocks into Rows and Columns, or wit
 
 ### Non-goals
 
-Mail Quilt designs emails. It works alongside email services rather than competing with them, so it doesn't do:
+The editor designs emails. It works alongside whatever sends them, so it doesn't do the following. Sending and lists belong in a separate Mail Quilt project, with its own repository.
 
 - Sending, contact lists or audiences
 - Campaign analytics or A/B testing

@@ -8,14 +8,14 @@
     "email-builder",
     "email-editor"
   ],
-  "homepage": "https://github.com/yourcodebuddy-in/mailquilt#readme",
+  "homepage": "https://github.com/mailquilt/editor#readme",
   "bugs": {
-    "url": "https://github.com/yourcodebuddy-in/mailquilt/issues"
+    "url": "https://github.com/mailquilt/editor/issues"
   },
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yourcodebuddy-in/mailquilt.git",
+    "url": "git+https://github.com/mailquilt/editor.git",
     "directory": "packages/core"
   },
   "files": [

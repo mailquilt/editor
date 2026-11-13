@@ -43,4 +43,4 @@ export const Editor = ({ savedEmail, send }: EditorProps) => {
 
 On the server it renders an empty `<mail-quilt>`, and the editor loads in the browser.
 
-[Source and docs](https://github.com/yourcodebuddy-in/mailquilt) · MIT
+[Source and docs](https://github.com/mailquilt/editor) · MIT

@@ -13,7 +13,7 @@ This block is written and re-added by `turbo` before repository-scoped commands 
 
 ### Issue tracker
 
-Issues and specs are tracked in GitHub Issues at `yourcodebuddy-in/mailquilt`, using the `gh` CLI. See `docs/agents/issue-tracker.md`.
+Issues and specs are tracked in GitHub Issues at `mailquilt/editor`, using the `gh` CLI. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 

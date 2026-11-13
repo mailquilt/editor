@@ -41,7 +41,7 @@ Run one package's task with a filter, such as `pnpm --filter @mailquilt/core tes
 - `docs/adr/` records the main design decisions.
 - `docs/agents/testing.md` says how tests are written here.
 
-Issues and plans are in [GitHub Issues](https://github.com/yourcodebuddy-in/mailquilt/issues).
+Issues and plans are in [GitHub Issues](https://github.com/mailquilt/editor/issues).
 
 ## License
 
