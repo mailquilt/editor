@@ -242,6 +242,24 @@ describe(renderEmail, () => {
     expect(html).not.toContain("<script>");
   });
 
+  it("keeps a link one link across bold text and a line break in it", async () => {
+    const link = { attrs: { href: "https://x.test" }, type: "link" };
+    const html = await renderEmail(
+      emailWithInline(
+        { marks: [link], text: "Shop the ", type: "text" },
+        { marks: [link, { type: "bold" }], text: "sale", type: "text" },
+        { marks: [link], type: "hardBreak" },
+        { marks: [link], text: "now", type: "text" },
+        { text: " or ", type: "text" },
+        linked("https://y.test", "later")
+      )
+    );
+
+    expect(html).toContain(
+      '<a href="https://x.test" target="_blank">Shop the <strong>sale</strong><br />now</a> or <a href="https://y.test" target="_blank">later</a>'
+    );
+  });
+
   it("renders a line break, ignoring marks left on it", async () => {
     const html = await renderEmail(
       emailWithInline(

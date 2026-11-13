@@ -3,9 +3,7 @@ import type {
   Block,
   Column,
   RichTextDocument,
-  RichTextHardBreak,
   RichTextMark,
-  RichTextText,
   RichTextParagraph,
   Row,
 } from "@mailquilt/core";
@@ -16,36 +14,60 @@ const escapeText = (text: string) =>
 const escapeAttribute = (value: string) =>
   escapeText(value).replaceAll('"', "&quot;");
 
-const wrapInMark = (html: string, mark: RichTextMark) => {
-  switch (mark.type) {
-    case "bold": {
-      return `<strong>${html}</strong>`;
-    }
-    case "italic": {
-      return `<em>${html}</em>`;
-    }
-    case "underline": {
-      return `<u>${html}</u>`;
-    }
-    case "link": {
-      return `<a href="${escapeAttribute(mark.attrs.href)}" target="_blank">${html}</a>`;
-    }
-    default: {
-      throw new Error("Unknown mark");
-    }
-  }
-};
+const MARK_TAGS = {
+  bold: "strong",
+  italic: "em",
+  link: "a",
+  underline: "u",
+} as const;
 
-const inlineToHtml = (node: RichTextHardBreak | RichTextText) => {
-  if (node.type === "hardBreak") {
-    return "<br />";
+const openTag = (mark: RichTextMark) =>
+  mark.type === "link"
+    ? `<a href="${escapeAttribute(mark.attrs.href)}" target="_blank">`
+    : `<${MARK_TAGS[mark.type]}>`;
+
+const isSameMark = (a: RichTextMark, b: RichTextMark) =>
+  a.type === "link" && b.type === "link"
+    ? a.attrs.href === b.attrs.href
+    : a.type === b.type;
+
+/**
+ * A line's text and line breaks. Each mark stays open for as long as the text
+ * next to it has it too, as on the canvas, or a link around partly bold text
+ * would be several links. The first mark goes on the outside, and the editor's
+ * schema lists links first, which keeps them around the other marks.
+ */
+const inlineToHtml = (inline: RichTextParagraph["content"] = []) => {
+  const open: RichTextMark[] = [];
+  let html = "";
+  const closeFrom = (index: number) => {
+    for (const mark of open.splice(index).toReversed()) {
+      html += `</${MARK_TAGS[mark.type]}>`;
+    }
+  };
+  for (const node of inline) {
+    const marks = node.marks ?? [];
+    let kept = 0;
+    while (
+      kept < open.length &&
+      kept < marks.length &&
+      isSameMark(open[kept] as RichTextMark, marks[kept] as RichTextMark)
+    ) {
+      kept += 1;
+    }
+    closeFrom(kept);
+    if (node.type === "hardBreak") {
+      // It keeps a mark open across it, but opens none of its own.
+      html += "<br />";
+    } else {
+      for (const mark of marks.slice(kept)) {
+        html += openTag(mark);
+        open.push(mark);
+      }
+      html += escapeText(node.text);
+    }
   }
-  let html = escapeText(node.text);
-  // Inner marks first, so that the first mark goes on the outside. The editor's
-  // schema lists links first, which keeps them around the other marks.
-  for (const mark of (node.marks ?? []).toReversed()) {
-    html = wrapInMark(html, mark);
-  }
+  closeFrom(0);
   return html;
 };
 
@@ -57,7 +79,7 @@ const richTextToHtml = ({ content }: RichTextDocument) =>
   content
     .map((paragraph) => {
       const inline = paragraph.content ?? [];
-      const html = inline.map(inlineToHtml).join("");
+      const html = inlineToHtml(inline);
       // A last empty line takes up space on the canvas, but a <br /> at the end
       // of a paragraph doesn't make one on its own. Nor does an empty paragraph.
       return `<p style="margin:0;white-space:pre-wrap">${html}${endsWithoutText(inline) ? "<br />" : ""}</p>`;
@@ -94,7 +116,7 @@ const headingToHtml = (block: Block, fontFamily: string) => {
     level: number;
   };
   const lines = content.content
-    .map((paragraph) => (paragraph.content ?? []).map(inlineToHtml).join(""))
+    .map((paragraph) => inlineToHtml(paragraph.content))
     .join("<br />");
   const lastLine = endsWithoutText(content.content.at(-1)?.content)
     ? "<br />"

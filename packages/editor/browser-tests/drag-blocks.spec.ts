@@ -920,19 +920,27 @@ test.describe("auto-scrolling", () => {
     await page.mouse.up();
   });
 
-  test("a scrolling container around the editor scrolls", async ({ page }) => {
+  // The other tests have the container as the editor's parent.
+  test("a container in another component's shadow root, around its slot, scrolls", async ({
+    page,
+  }) => {
     await load(page, [[manyBlocks]]);
     await canvas(page).evaluate((element) => {
-      const scroller = document.createElement("section");
-      scroller.id = "scroller";
-      scroller.style.cssText =
-        "height: 400px; overflow: auto; position: fixed; top: 0; left: 0; width: 800px; background: white; z-index: 10";
-      element.replaceWith(scroller);
-      scroller.append(element);
+      const wrapper = document.createElement("div");
+      wrapper.id = "wrapper";
+      wrapper.attachShadow({ mode: "open" }).innerHTML =
+        '<section style="height: 400px; overflow: auto; position: fixed; top: 0; left: 0; width: 800px; background: white; z-index: 10"><slot></slot></section>';
+      element.replaceWith(wrapper);
+      wrapper.append(element);
     });
     await expect(textBlock(page).first()).toBeVisible();
     const containerTop = () =>
-      page.evaluate(() => document.querySelector("#scroller")?.scrollTop ?? 0);
+      page.evaluate(
+        () =>
+          document
+            .querySelector("#wrapper")
+            ?.shadowRoot?.querySelector("section")?.scrollTop ?? 0
+      );
     const handle = handleOf(page, "Block 1");
     await handle.hover();
 

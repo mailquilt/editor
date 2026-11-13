@@ -494,11 +494,13 @@ Not yet confirmed:
 - A bad release is fixed by publishing a new version, and deprecating the bad one if needed.
 - Each change goes through a short-lived branch and a pull request, with messages such as `feat(core): add moveBlock command` or `fix(editor): keep selection after undo`.
 
-To release:
+To release, version on a branch, so CI checks the exact commit that's published:
 
 ```bash
 pnpm changeset version   # bumps versions and writes the changelogs
 git add -A && git commit -m "chore: release"
+# Push, open a pull request, and merge it once CI passes. Then, on main:
+git pull
 pnpm release             # builds, then publishes to npm and tags the release
 git push --follow-tags
 ```

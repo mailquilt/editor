@@ -20,9 +20,11 @@ export const arrowDirection = (event: KeyboardEvent): Direction | undefined =>
 const IS_MAC = /Mac|iPhone|iPod|iPad/u.test(navigator.platform);
 /** How a shortcut with Ctrl, or Command on Apple devices, is written. */
 export const MOD_KEY = IS_MAC ? "⌘" : "Ctrl+";
+/** The same key, as `aria-keyshortcuts` names it. */
+export const MOD_SHORTCUT = IS_MAC ? "Meta" : "Control";
 export const UNDO_KEYS = `${MOD_KEY}Z`;
 export const REDO_KEYS = IS_MAC ? "⇧⌘Z" : "Ctrl+Y";
-export const UNDO_SHORTCUTS = IS_MAC ? "Meta+Z" : "Control+Z";
+export const UNDO_SHORTCUTS = `${MOD_SHORTCUT}+Z`;
 export const REDO_SHORTCUTS = IS_MAC
   ? "Meta+Shift+Z"
   : "Control+Y Control+Shift+Z";
