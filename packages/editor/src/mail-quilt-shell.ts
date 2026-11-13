@@ -2,6 +2,7 @@ import { isSameDocument, loadDocument } from "@mailquilt/core";
 import type { BlocksDocument, LoadResult } from "@mailquilt/core";
 import { css, html, LitElement, nothing, unsafeCSS } from "lit";
 import type { PropertyValues } from "lit";
+import { keyed } from "lit/directives/keyed.js";
 
 import "./mail-quilt.js";
 import type { MailQuilt } from "./mail-quilt.js";
@@ -177,6 +178,8 @@ export class MailQuiltShell extends LitElement {
   #cantSave = false;
   /** The latest refused email or failed export, until the next change. */
   #notice: string | undefined;
+  /** Counts notices, so the same one again is a new alert and is read out. */
+  #noticeId = 0;
 
   constructor() {
     super();
@@ -237,10 +240,15 @@ export class MailQuiltShell extends LitElement {
   protected override willUpdate(changed: PropertyValues<this>) {
     if (!this.#started) {
       this.#start();
-    } else if (changed.has("saveKey") && this.saveKey) {
-      // Another key keeps another email. With none saved there, the current
-      // email is saved under it from its next change.
-      this.#openSavedEmail(this.saveKey);
+    } else if (changed.has("saveKey")) {
+      if (this.saveKey) {
+        // Another key keeps another email. With none saved there, the current
+        // email is saved under it from its next change.
+        this.#openSavedEmail(this.saveKey);
+      } else {
+        // Nothing is saved any more, so nothing can fail to be.
+        this.#cantSave = false;
+      }
     }
   }
 
@@ -251,13 +259,9 @@ export class MailQuiltShell extends LitElement {
   protected override render() {
     const named = this.actions?.split(/\s+/u);
     const shows = (action: ShellAction) => named?.includes(action) ?? true;
-    const messages = [
-      this.#cantSave &&
-        (shows("export-json")
-          ? "This browser can't save your email here. Export it as JSON to keep it."
-          : "This browser can't save your email here."),
-      this.#notice,
-    ].filter(Boolean);
+    const cantSave = shows("export-json")
+      ? "This browser can't save your email here. Export it as JSON to keep it."
+      : "This browser can't save your email here.";
 
     return html`
       <div class="ui shell">
@@ -315,9 +319,19 @@ export class MailQuiltShell extends LitElement {
           </div>
         </div>
         <div class="messages" part="messages">
-          ${messages.map(
-            (message) => html`<p part="message" role="alert">${message}</p>`
-          )}
+          ${
+            this.#cantSave
+              ? html`<p part="message" role="alert">${cantSave}</p>`
+              : nothing
+          }
+          ${
+            this.#notice
+              ? keyed(
+                  this.#noticeId,
+                  html`<p part="message" role="alert">${this.#notice}</p>`
+                )
+              : nothing
+          }
         </div>
         <div class="body">${this.#editor}</div>
       </div>
@@ -395,10 +409,14 @@ export class MailQuiltShell extends LitElement {
     this.#showNotice(undefined);
   }
 
-  /** Renders only when the message changes, as this runs on every keystroke. */
+  /**
+   * Clearing renders only when there's a notice, as it runs on every keystroke.
+   * A notice always renders, so the same one again is read out again.
+   */
   #showNotice(notice: string | undefined) {
-    if (notice !== this.#notice) {
+    if (notice !== undefined || this.#notice !== undefined) {
       this.#notice = notice;
+      this.#noticeId += 1;
       this.requestUpdate();
     }
   }

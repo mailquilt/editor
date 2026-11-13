@@ -4,7 +4,13 @@ import { expect, test } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 
 import type { MailQuiltShell } from "../src/index.js";
-import { focusStartOfTextBlock, textBlock, violations } from "./helpers.js";
+import {
+  canvas,
+  focusStartOfTextBlock,
+  rowTools,
+  textBlock,
+  violations,
+} from "./helpers.js";
 import { emailWith } from "./host/email.js";
 
 const shell = (page: Page) => page.locator("mail-quilt-shell");
@@ -153,6 +159,22 @@ test.describe("moving an email with JSON", () => {
     );
     await expect(shell(page).getByRole("alert")).toContainText("newer");
     await expect(textBlock(page)).toHaveText("Hello");
+  });
+
+  test("the same reason again is a new alert, read out again", async ({
+    page,
+  }) => {
+    await openShell(page);
+    await importFile(page, "{not json");
+    const alert = shell(page).getByRole("alert");
+    await alert.evaluate((element) => {
+      element.dataset.seen = "true";
+    });
+
+    await importFile(page, "{not json");
+
+    await expect(alert).toContainText("valid JSON");
+    await expect(alert).not.toHaveAttribute("data-seen");
   });
 
   test("the same file, once fixed, can be chosen again", async ({ page }) => {
@@ -398,6 +420,26 @@ test.describe("saving in the browser", () => {
     await expect(alerts.filter({ hasText: "can't save" })).toBeVisible();
   });
 
+  test("stops saying it can't save once save-key is removed", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(window, "localStorage", {
+        get() {
+          throw new DOMException("Blocked", "SecurityError");
+        },
+      });
+    });
+    await openShell(page, `?save-key=${key}`);
+    await expect(shell(page).getByRole("alert")).toContainText("can't save");
+
+    await shell(page).evaluate((element) =>
+      element.removeAttribute("save-key")
+    );
+
+    await expect(shell(page).getByRole("alert")).toHaveCount(0);
+  });
+
   test("without a save key, nothing is stored", async ({ page }) => {
     await page.addInitScript(() => {
       const touched: string[] = [];
@@ -548,6 +590,34 @@ test.describe("look", () => {
     const frameBox = await box(page.locator("#frame"));
 
     expect(panel.bottom).toBeLessThanOrEqual(frameBox.bottom);
+  });
+
+  test("a tooltip follows its button as the Shell scrolls", async ({
+    page,
+  }) => {
+    await page.goto("/shell.html?long");
+    await expect(textBlock(page).first()).toBeVisible();
+    await rowTools(page, 2).getByRole("button", { name: "Select Row" }).focus();
+    // Browsers only show focus from a script after keyboard use.
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Shift+Tab");
+    const tooltip = canvas(page).getByRole("tooltip");
+    await expect(tooltip).toBeVisible();
+    const before = await box(tooltip);
+
+    await shell(page).evaluate((element) => {
+      const body = element.shadowRoot?.querySelector(".body");
+      if (body) {
+        body.scrollTop += 40;
+      }
+    });
+
+    await expect
+      .poll(async () => {
+        const { top } = await box(tooltip);
+        return Math.round(top);
+      })
+      .toBe(Math.round(before.top - 40));
   });
 
   test("a token set on the Shell restyles its header and the editor", async ({

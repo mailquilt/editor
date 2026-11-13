@@ -58,19 +58,37 @@ const indexSchema = v.pipe(v.number(), v.safeInteger(), v.minValue(0));
 
 const layoutSchema = v.picklist(ROW_LAYOUTS);
 
+/**
+ * Changes to a Block's, Row's or the email's properties. Not v.record, which
+ * accepts an array and silently drops a key such as "constructor". An undefined
+ * changes nothing, as the key would be gone once the Command is JSON.
+ */
+const changesSchema = v.pipe(
+  v.custom<Record<string, unknown>>(
+    (input) =>
+      typeof input === "object" && input !== null && !Array.isArray(input),
+    "Expected an object"
+  ),
+  v.transform((changes) =>
+    Object.fromEntries(
+      Object.entries(changes).filter(([, value]) => value !== undefined)
+    )
+  )
+);
+
 const commandSchema = v.variant("type", [
   v.strictObject({
     blockId: v.string(),
-    props: v.record(v.string(), v.unknown()),
+    props: changesSchema,
     type: v.literal("updateProps"),
   }),
   v.strictObject({
-    props: v.record(v.string(), v.unknown()),
+    props: changesSchema,
     rowId: v.string(),
     type: v.literal("updateRowProps"),
   }),
   v.strictObject({
-    settings: v.record(v.string(), v.unknown()),
+    settings: changesSchema,
     type: v.literal("updateEmailSettings"),
   }),
   v.strictObject({
@@ -341,6 +359,34 @@ const planInNewRow = (
     : blockPlan;
 };
 
+/**
+ * A Block alone in a one-Column Row already has a Row of its own, so a new Row
+ * right before or after that one would only leave it empty.
+ */
+const planMoveBlockToNewRow = (
+  document: BlocksDocument,
+  blockId: string,
+  rowIndex: number
+): CommandPlan => {
+  const from = findBlockPosition(document, blockId);
+  const row = from && document.rows[from.rowIndex];
+  if (
+    from &&
+    row?.columns.length === 1 &&
+    row.columns[0]?.blocks.length === 1 &&
+    (rowIndex === from.rowIndex || rowIndex === from.rowIndex + 1)
+  ) {
+    return {
+      ok: false,
+      reason: `Block "${blockId}" is already alone in its Row`,
+      unchanged: true,
+    };
+  }
+  return planInNewRow(document, rowIndex, (withRow, columnId) =>
+    planMoveBlock(withRow, blockId, columnId, 0)
+  );
+};
+
 const planRemoveRow = (
   document: BlocksDocument,
   rowId: string
@@ -487,9 +533,7 @@ export const planCommand = (
       );
     }
     case "moveBlockToNewRow": {
-      return planInNewRow(document, output.rowIndex, (withRow, columnId) =>
-        planMoveBlock(withRow, output.blockId, columnId, 0)
-      );
+      return planMoveBlockToNewRow(document, output.blockId, output.rowIndex);
     }
     case "insertBlockInNewRow": {
       return planInNewRow(document, output.rowIndex, (withRow, columnId) =>

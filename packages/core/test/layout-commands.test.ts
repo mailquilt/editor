@@ -431,6 +431,26 @@ describe("a Command for what's already so", () => {
     expect(editor.apply(move("a", "nope", 0))).not.toHaveProperty("unchanged");
   });
 
+  it("says a Block alone in its Row already has a Row of its own", () => {
+    const { editor, operations } = setup({
+      ...createEmail(),
+      rows: [
+        {
+          columns: [{ blocks: [block("a")], id: "c", props: {}, width: 100 }],
+          id: "row",
+          props: {},
+        },
+      ],
+    });
+
+    for (const rowIndex of [0, 1]) {
+      expect(
+        editor.apply({ blockId: "a", rowIndex, type: "moveBlockToNewRow" })
+      ).toMatchObject({ ok: false, unchanged: true });
+    }
+    expect(operations).toStrictEqual([]);
+  });
+
   it("says a Row already has the layout it's asked for", () => {
     const { editor, operations } = setup();
 

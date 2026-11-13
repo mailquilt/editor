@@ -1,5 +1,6 @@
 import type { Command, SettingsField } from "@mailquilt/core";
 import { css, html, nothing } from "lit";
+import { keyed } from "lit/directives/keyed.js";
 import { live } from "lit/directives/live.js";
 import { repeat } from "lit/directives/repeat.js";
 
@@ -20,8 +21,11 @@ export interface SettingsSection {
 /** Text in a field that isn't the document's value. */
 export interface FieldDraft {
   text: string;
-  /** The last try to commit it was refused. */
-  refused: boolean;
+  /**
+   * How many times a person's tries to commit it were refused, or 0. Each one
+   * counts, so the same refusal again is a new alert and is read out.
+   */
+  refusals: number;
 }
 
 export interface SettingsPanelEvents {
@@ -312,7 +316,8 @@ const renderField = (
   const errorId = `${id}-error`;
   const key = draftKey(section, field);
   const draft = events.draftOf(key);
-  const refused = draft?.refused ?? false;
+  const refusals = draft?.refusals ?? 0;
+  const refused = refusals > 0;
   const text = fieldText(field, section.values);
   const describedBy = [
     field.description ? descriptionId : "",
@@ -429,11 +434,14 @@ const renderField = (
       }
       ${
         refused
-          ? html`
-              <p class="error" id=${errorId} role="alert">
-                ${field.invalidMessage}
-              </p>
-            `
+          ? keyed(
+              refusals,
+              html`
+                <p class="error" id=${errorId} role="alert">
+                  ${field.invalidMessage}
+                </p>
+              `
+            )
           : nothing
       }
     </div>
