@@ -24,8 +24,8 @@ const COLUMN_WIDTH_TOLERANCE = 1e-6;
 const idSchema = v.pipe(v.string(), v.nonEmpty());
 
 // The object schemas let an array through, and would load `[]` as `{}`.
-const notAList = v.check<unknown>(
-  (input) => !Array.isArray(input),
+const notAList = v.check(
+  (input: unknown) => !Array.isArray(input),
   "Expected an object, not a list"
 );
 
