@@ -1,9 +1,11 @@
-import type { BlocksDocument } from "@mailquilt/core";
-
 import { toMjml } from "./to-mjml.js";
 
-/** MJML loads the first time it's called. */
-export const renderEmail = async (document: BlocksDocument) => {
+/**
+ * Any value, such as JSON read from a database, as it's checked first: the
+ * promise rejects with the reason if it isn't an email Mail Quilt accepts. MJML
+ * loads the first time it's called.
+ */
+export const renderEmail = async (document: unknown) => {
   // First, so that a refused document never loads MJML.
   const mjml = toMjml(document);
   // `mjml-browser` requires `cheerio` but doesn't list it, so this package does,

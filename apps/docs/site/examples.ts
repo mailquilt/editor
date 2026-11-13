@@ -11,7 +11,7 @@ import type {
   BlocksDocument,
   RichTextDocument,
   RichTextHardBreak,
-  RichTextNode,
+  RichTextText,
   Row,
 } from "@mailquilt/core";
 
@@ -28,8 +28,8 @@ const LINE = "#e4e4e7";
 const WASH = "#f4f4f5";
 const PAPER = "#ffffff";
 
-const plain = (text: string): RichTextNode => ({ text, type: "text" });
-const strong = (text: string): RichTextNode => ({
+const plain = (text: string): RichTextText => ({ text, type: "text" });
+const strong = (text: string): RichTextText => ({
   marks: [{ type: "bold" }],
   text,
   type: "text",
@@ -37,7 +37,7 @@ const strong = (text: string): RichTextNode => ({
 const BREAK: RichTextHardBreak = { type: "hardBreak" };
 
 /** One paragraph whose lines are parts joined by line breaks. */
-const lines = (...parts: RichTextNode[]): RichTextDocument => ({
+const lines = (...parts: RichTextText[]): RichTextDocument => ({
   content: [
     {
       content: parts.flatMap((part, index) =>

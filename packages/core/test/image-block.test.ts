@@ -25,7 +25,7 @@ const setProps = (props: Record<string, unknown>) => {
   const result = editor.apply({
     blockId: "image-1",
     props,
-    type: "updateProps",
+    type: "updateBlockProps",
   });
   return { document: editor.getDocument(), result };
 };
@@ -150,7 +150,7 @@ describe("Image Block", () => {
       editor.apply({
         blockId: "image-1",
         props: { alt: null },
-        type: "updateProps",
+        type: "updateBlockProps",
       })
     ).toStrictEqual({
       ok: false,
@@ -168,7 +168,7 @@ describe("Image Block", () => {
       editor.apply({
         blockId: "image-1",
         props: { alt: null, href: null },
-        type: "updateProps",
+        type: "updateBlockProps",
       })
     ).toStrictEqual({ ok: true });
   });

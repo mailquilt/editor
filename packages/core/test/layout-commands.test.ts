@@ -223,7 +223,11 @@ describe("the removeBlock Command", () => {
       ],
       type: "doc",
     };
-    send(editor, { blockId: "a", props: { content }, type: "updateProps" });
+    send(editor, {
+      blockId: "a",
+      props: { content },
+      type: "updateBlockProps",
+    });
 
     send(editor, { blockId: "a", type: "removeBlock" });
     editor.undo();
@@ -282,7 +286,11 @@ describe("the moveBlock Command", () => {
       type: "doc",
     };
     expectAccepted(
-      editor.apply({ blockId: "a", props: { content }, type: "updateProps" })
+      editor.apply({
+        blockId: "a",
+        props: { content },
+        type: "updateBlockProps",
+      })
     );
 
     expectAccepted(editor.apply(move("a", "right", 0)));

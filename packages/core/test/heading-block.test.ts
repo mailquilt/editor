@@ -82,7 +82,7 @@ describe("Heading Block", () => {
           fontSize: 40,
           level: 3,
         },
-        type: "updateProps",
+        type: "updateBlockProps",
       })
     ).toStrictEqual({ ok: true });
 
@@ -106,7 +106,7 @@ describe("Heading Block", () => {
     const result = editor.apply({
       blockId: "heading-1",
       props,
-      type: "updateProps",
+      type: "updateBlockProps",
     });
 
     expect(result).toStrictEqual({

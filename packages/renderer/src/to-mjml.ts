@@ -1,12 +1,11 @@
 import { blockStyles, loadDocument, rowStyles } from "@mailquilt/core";
 import type {
   Block,
-  BlocksDocument,
   Column,
   RichTextDocument,
   RichTextHardBreak,
   RichTextMark,
-  RichTextNode,
+  RichTextText,
   RichTextParagraph,
   Row,
 } from "@mailquilt/core";
@@ -37,7 +36,7 @@ const wrapInMark = (html: string, mark: RichTextMark) => {
   }
 };
 
-const inlineToHtml = (node: RichTextHardBreak | RichTextNode) => {
+const inlineToHtml = (node: RichTextHardBreak | RichTextText) => {
   if (node.type === "hardBreak") {
     return "<br />";
   }
@@ -162,7 +161,7 @@ const rowToMjml = (row: Row, fontFamily: string) =>
   `<mj-section${mjmlAttributes(rowStyles(row))}>${row.columns.map((column) => columnToMjml(column, fontFamily)).join("")}</mj-section>`;
 
 /** Throws if the document can't be trusted, and renders migrated older ones. */
-export const toMjml = (document: BlocksDocument) => {
+export const toMjml = (document: unknown) => {
   const loaded = loadDocument(document);
   if (!loaded.ok) {
     throw new Error(loaded.reason);

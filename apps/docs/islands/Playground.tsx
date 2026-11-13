@@ -35,7 +35,7 @@ const createStarterEmail = () => {
   ];
   for (const [blockId, props] of changes) {
     if (blockId !== undefined) {
-      editor.apply({ blockId, props, type: "updateProps" });
+      editor.apply({ blockId, props, type: "updateBlockProps" });
     }
   }
   return editor.getDocument();

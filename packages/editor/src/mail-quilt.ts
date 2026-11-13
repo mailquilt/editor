@@ -1928,7 +1928,7 @@ export class MailQuilt extends LitElement {
     }
     this.#lastTypedAt = now;
     this.#apply(
-      { blockId, props: { content }, type: "updateProps" },
+      { blockId, props: { content }, type: "updateBlockProps" },
       { mergeKey: `${blockId}:${this.#typingSession}`, render: false }
     );
   }
@@ -2333,10 +2333,15 @@ if (!customElements.get("mail-quilt")) {
   customElements.define("mail-quilt", MailQuilt);
 }
 
+/** Fired with the new document after each change. */
+export type MailQuiltChangeEvent = CustomEvent<{ document: BlocksDocument }>;
+/** Fired when a document set as `value` is refused, with why. */
+export type MailQuiltErrorEvent = CustomEvent<{ reason: string }>;
+
 declare global {
   interface HTMLElementEventMap {
-    "mq-change": CustomEvent<{ document: BlocksDocument }>;
-    "mq-error": CustomEvent<{ reason: string }>;
+    "mq-change": MailQuiltChangeEvent;
+    "mq-error": MailQuiltErrorEvent;
   }
 
   interface HTMLElementTagNameMap {

@@ -17,8 +17,8 @@ export type {
   RichTextDocument,
   RichTextHardBreak,
   RichTextMark,
-  RichTextNode,
   RichTextParagraph,
+  RichTextText,
 } from "./rich-text.js";
 export type { Command, RowLayout } from "./commands.js";
 export { ROW_LAYOUTS, rowLayoutOf } from "./commands.js";

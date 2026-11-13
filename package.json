@@ -7,7 +7,8 @@
     "check-types": "turbo run check-types",
     "test": "turbo run test",
     "lint": "ultracite check",
-    "fix": "ultracite fix"
+    "fix": "ultracite fix",
+    "release": "turbo run build && changeset publish"
   },
   "devDependencies": {
     "@changesets/cli": "^3.0.3",

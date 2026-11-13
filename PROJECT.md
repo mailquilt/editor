@@ -489,7 +489,7 @@ import { createEditor } from "@mailquilt/core";
 import { renderEmail } from "@mailquilt/renderer";
 
 const editor = createEditor({ document });
-editor.apply({ type: "updateProps", blockId: "abc", props: { alt: "Company logo" } });
+editor.apply({ type: "updateBlockProps", blockId: "abc", props: { alt: "Company logo" } });
 const html = await renderEmail(editor.getDocument());
 ```
 

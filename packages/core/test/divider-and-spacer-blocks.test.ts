@@ -23,7 +23,7 @@ const setProps = (type: string, props: Record<string, unknown>) => {
   const result = editor.apply({
     blockId: "block-1",
     props,
-    type: "updateProps",
+    type: "updateBlockProps",
   });
   return { document: editor.getDocument(), result };
 };

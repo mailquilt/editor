@@ -103,9 +103,9 @@ export const sidePanelStyles = css`
     flex-direction: column;
     /*
      * No taller than the window, or than the part of a Shell the email
-     * scrolls in, which the Shell gives as --mq-visible-height.
+     * scrolls in, which the Shell gives as --_mq-visible-height.
      */
-    max-height: min(100dvh, var(--mq-visible-height, 100dvh));
+    max-height: min(100dvh, var(--_mq-visible-height, 100dvh));
     min-width: 0;
     overflow: hidden;
     position: sticky;
@@ -457,7 +457,11 @@ const renderProperties = (
   events: SidePanelEvents
 ) => {
   const section: SettingsSection = {
-    command: (props) => ({ blockId: block.id, props, type: "updateProps" }),
+    command: (props) => ({
+      blockId: block.id,
+      props,
+      type: "updateBlockProps",
+    }),
     fields: blockSettingsFields(block),
     id: "block",
     legend: "Block",

@@ -13,7 +13,7 @@ const [textBlock] = firstRow.columns[0].blocks;
 editor.apply({
   blockId: textBlock.id,
   props: { content: paragraph("Hi {{first_name}}, your order has shipped.") },
-  type: "updateProps",
+  type: "updateBlockProps",
 });
 
 // A Command that adds something returns the ID of what it added.
@@ -26,7 +26,7 @@ if (heading.ok) {
   editor.apply({
     blockId: heading.createdId,
     props: { content: paragraph("On its way") },
-    type: "updateProps",
+    type: "updateBlockProps",
   });
 }
 
@@ -34,7 +34,7 @@ if (heading.ok) {
 const refused = editor.apply({
   blockId: textBlock.id,
   props: { color: "not a color" },
-  type: "updateProps",
+  type: "updateBlockProps",
 });
 console.log(refused.ok, refused.reason);
 

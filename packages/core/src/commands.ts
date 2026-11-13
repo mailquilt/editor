@@ -44,7 +44,10 @@ const LAYOUT_WIDTHS: Record<RowLayout, readonly number[]> = {
   "67/33": [67, 33],
 };
 
-/** The preset a Row uses. A saved email may have other widths, so none. */
+/**
+ * The preset a Row uses. A saved email may have other widths, so none.
+ * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
+ */
 export const rowLayoutOf = ({ columns }: Row) =>
   ROW_LAYOUTS.find((layout) => {
     const widths = LAYOUT_WIDTHS[layout];
@@ -80,7 +83,7 @@ const commandSchema = v.variant("type", [
   v.strictObject({
     blockId: v.string(),
     props: changesSchema,
-    type: v.literal("updateProps"),
+    type: v.literal("updateBlockProps"),
   }),
   v.strictObject({
     props: changesSchema,
@@ -184,7 +187,7 @@ const planProps = (
   };
 };
 
-const planUpdateProps = (
+const planUpdateBlockProps = (
   document: BlocksDocument,
   blockId: string,
   props: Record<string, unknown>
@@ -504,8 +507,8 @@ export const planCommand = (
   }
   const { output } = parsed;
   switch (output.type) {
-    case "updateProps": {
-      return planUpdateProps(document, output.blockId, output.props);
+    case "updateBlockProps": {
+      return planUpdateBlockProps(document, output.blockId, output.props);
     }
     case "updateRowProps": {
       return planUpdateRowProps(document, output.rowId, output.props);
