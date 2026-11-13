@@ -3,22 +3,20 @@ import type { Page } from "@playwright/test";
 
 import {
   blockGroup,
+  boxOf,
   canvas,
-  emailWith,
   layoutTile,
+  openEmail as open,
   openTab,
   palette,
-  rowTools,
-  setValue,
+  selectRowButton,
   settle,
   structure,
+  undoByKey,
 } from "./helpers.js";
 
 // The test host's unfriendly CSS pushes the canvas far down the page.
 test.use({ viewport: { height: 1600, width: 1280 } });
-
-const selectRowButton = (page: Page, position: number) =>
-  rowTools(page, position).getByRole("button", { name: "Select Row" });
 
 const rowTag = (page: Page, position: number) =>
   canvas(page)
@@ -28,12 +26,6 @@ const rowTag = (page: Page, position: number) =>
 
 const panelSettings = (page: Page) =>
   canvas(page).getByRole("group", { name: "Settings" });
-
-const open = async (page: Page, rows: string[][][]) => {
-  await page.goto("/");
-  await setValue(page, emailWith(rows));
-  await expect(canvas(page).locator(".row").first()).toBeVisible();
-};
 
 test.describe("selecting a Row", () => {
   test("its tag selects it, and the panel shows its settings", async ({
@@ -73,8 +65,8 @@ test.describe("selecting a Row", () => {
 
     await selectRowButton(page, 1).focus();
     await page.keyboard.press("Enter");
-    const area = await canvas(page).locator(".canvas-area").boundingBox();
-    await page.mouse.click((area?.x ?? 0) + 10, (area?.y ?? 0) + 10);
+    const area = await boxOf(canvas(page).locator(".canvas-area"));
+    await page.mouse.click(area.x + 10, area.y + 10);
     await expect(selectRowButton(page, 1)).toHaveAttribute(
       "aria-pressed",
       "false"
@@ -123,11 +115,8 @@ test.describe("dragging a layout from the Rows tab", () => {
     await open(page, [[["A"]], [["B"]]]);
     await openTab(page, "Rows");
     const tile = layoutTile(page, "50/50");
-    const from = await tile.boundingBox();
-    const second = await canvas(page).locator(".row").nth(1).boundingBox();
-    if (!(from && second)) {
-      throw new Error("Nothing to drag");
-    }
+    const from = await boxOf(tile);
+    const second = await boxOf(canvas(page).locator(".row").nth(1));
 
     await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
     await page.mouse.down();
@@ -149,7 +138,7 @@ test.describe("dragging a layout from the Rows tab", () => {
       "aria-pressed",
       "true"
     );
-    await page.keyboard.press("ControlOrMeta+z");
+    await undoByKey(page);
     await expect(structure(page)).resolves.toEqual([[["A"]], [["B"]]]);
   });
 });

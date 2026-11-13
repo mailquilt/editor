@@ -239,6 +239,36 @@ describe("merging Commands into one undo step", () => {
     expect(editor.undo()).toBeFalsy();
   });
 
+  it.each([
+    [
+      "a Row's",
+      (rowId: string, color: string | null) => ({
+        props: { backgroundColor: color },
+        rowId,
+        type: "updateRowProps" as const,
+      }),
+    ],
+    [
+      "the email's",
+      (_rowId: string, color: string | null) => ({
+        settings: { backgroundColor: color ?? "#ffffff" },
+        type: "updateEmailSettings" as const,
+      }),
+    ],
+  ])(
+    "leaves no step when %s settings end where they started",
+    (_name, command) => {
+      const { document, editor } = setup();
+      const rowId = document.rows[0]?.id ?? "";
+      expect(document.settings.backgroundColor).toBe("#ffffff");
+
+      editor.apply(command(rowId, "#ff0000"), { mergeKey: "settings" });
+      editor.apply(command(rowId, null), { mergeKey: "settings" });
+
+      expect(editor.undo()).toBeFalsy();
+    }
+  );
+
   it("starts a new step after changes that ended where they started", () => {
     const { editor, setText } = setup();
     setText("X");

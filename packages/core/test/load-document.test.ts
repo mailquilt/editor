@@ -149,6 +149,14 @@ describe("refusing a document", () => {
       /settings\.backgroundColor.*color/u,
     ],
     [
+      "a background color with CSS after it",
+      (email) => {
+        email.settings.backgroundColor = "#fff;background:url(x)";
+        return email;
+      },
+      /settings\.backgroundColor.*color/u,
+    ],
+    [
       "a background color that's a Merge Tag",
       (email) => {
         email.settings.backgroundColor = "{{brand}}";

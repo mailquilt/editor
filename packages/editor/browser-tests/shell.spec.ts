@@ -5,13 +5,15 @@ import type { Locator, Page } from "@playwright/test";
 
 import type { MailQuiltShell } from "../src/index.js";
 import {
+  boxOf,
   canvas,
+  emailWith,
+  emailWithLink,
   focusStartOfTextBlock,
-  rowTools,
+  selectRowButton,
   textBlock,
   violations,
 } from "./helpers.js";
-import { emailWith } from "./host/email.js";
 
 const shell = (page: Page) => page.locator("mail-quilt-shell");
 
@@ -45,11 +47,9 @@ test.beforeEach(({ page }) => {
 
 const header = (page: Page) => shell(page).locator('[part="header"]');
 
+/** An element's box, with where it starts and ends going down. */
 const box = async (target: Locator) => {
-  const found = await target.boundingBox();
-  if (!found) {
-    throw new Error("The element has no box");
-  }
+  const found = await boxOf(target);
   return { ...found, bottom: found.y + found.height, top: found.y };
 };
 
@@ -161,6 +161,43 @@ test.describe("moving an email with JSON", () => {
     await expect(textBlock(page)).toHaveText("Hello");
   });
 
+  test("an import with a link that isn't allowed is refused, and keeps the current email", async ({
+    page,
+  }) => {
+    await openShell(page);
+
+    await importFile(
+      page,
+      // oxlint-disable-next-line eslint/no-script-url -- This is what's refused.
+      JSON.stringify(emailWithLink("Click", "javascript:alert(1)"))
+    );
+
+    await expect(shell(page).getByRole("alert")).toContainText(
+      "couldn't be imported"
+    );
+    await expect(shell(page).getByRole("alert")).toContainText(
+      "A link must start with http:"
+    );
+    await expect(textBlock(page)).toHaveText("Hello");
+  });
+
+  test("a file that can't be read is refused, and says so", async ({
+    page,
+  }) => {
+    await openShell(page);
+    await page.evaluate(() => {
+      Blob.prototype.text = () =>
+        Promise.reject(new DOMException("Gone", "NotReadableError"));
+    });
+
+    await importFile(page, JSON.stringify(emailWith([[["Imported"]]])));
+
+    await expect(shell(page).getByRole("alert")).toHaveText(
+      "That file couldn't be imported: The file couldn't be read"
+    );
+    await expect(textBlock(page)).toHaveText("Hello");
+  });
+
   test("the same reason again is a new alert, read out again", async ({
     page,
   }) => {
@@ -251,19 +288,25 @@ test.describe("the editor's API", () => {
     page,
   }) => {
     await page.goto("/shell.html");
-    const html = await page.evaluate(async (email) => {
-      const late = document.createElement(
-        "mail-quilt-shell-late"
-      ) as MailQuiltShell;
-      late.value = email;
-      document.body.append(late);
-      const defined = customElements.get(
-        "mail-quilt-shell"
-      ) as typeof MailQuiltShell;
-      customElements.define("mail-quilt-shell-late", class extends defined {});
-      await late.updateComplete;
-      return await late.exportHtml();
-    }, emailWith("Early"));
+    const html = await page.evaluate(
+      async (email) => {
+        const late = document.createElement(
+          "mail-quilt-shell-late"
+        ) as MailQuiltShell;
+        late.value = email;
+        document.body.append(late);
+        const defined = customElements.get(
+          "mail-quilt-shell"
+        ) as typeof MailQuiltShell;
+        customElements.define(
+          "mail-quilt-shell-late",
+          class extends defined {}
+        );
+        await late.updateComplete;
+        return await late.exportHtml();
+      },
+      emailWith([[["Early"]]])
+    );
 
     expect(html).toContain("Early");
   });
@@ -337,7 +380,7 @@ test.describe("saving in the browser", () => {
 
   test("a reload reopens an imported email", async ({ page }) => {
     await openShell(page, `?save-key=${key}`);
-    await importFile(page, JSON.stringify(emailWith("Imported")));
+    await importFile(page, JSON.stringify(emailWith([[["Imported"]]])));
     await expect(textBlock(page)).toHaveText("Imported");
 
     await page.reload();
@@ -473,7 +516,7 @@ test.describe("a saved email standing in for the host's", () => {
   const saveFirst = async (page: Page) => {
     await page.addInitScript(
       ({ each, email }) => localStorage.setItem(each, JSON.stringify(email)),
-      { each: key, email: emailWith("Saved") }
+      { each: key, email: emailWith([[["Saved"]]]) }
     );
   };
 
@@ -483,7 +526,7 @@ test.describe("a saved email standing in for the host's", () => {
     await expect(textBlock(page)).toHaveText("Saved");
 
     // A copy, as a re-render that builds the email again would pass.
-    await setShellValue(page, emailWith("Hello"));
+    await setShellValue(page, emailWith([[["Hello"]]]));
 
     await expect(textBlock(page)).toHaveText("Saved");
   });
@@ -496,7 +539,7 @@ test.describe("a saved email standing in for the host's", () => {
     await expect(textBlock(page)).toHaveText("Saved");
 
     await setShellValue(page, undefined);
-    await setShellValue(page, emailWith("Hello"));
+    await setShellValue(page, emailWith([[["Hello"]]]));
 
     await expect(textBlock(page)).toHaveText("Saved");
   });
@@ -506,10 +549,10 @@ test.describe("a saved email standing in for the host's", () => {
     await page.goto(`/shell.html?save-key=${key}`);
     await expect(textBlock(page)).toHaveText("Saved");
 
-    await setShellValue(page, emailWith("Other"));
+    await setShellValue(page, emailWith([[["Other"]]]));
     await expect(textBlock(page)).toHaveText("Other");
     // The host can go back to its first email once it has opened another.
-    await setShellValue(page, emailWith("Hello"));
+    await setShellValue(page, emailWith([[["Hello"]]]));
 
     await expect(textBlock(page)).toHaveText("Hello");
   });
@@ -518,7 +561,7 @@ test.describe("a saved email standing in for the host's", () => {
 test("a new save-key opens the email saved under it", async ({ page }) => {
   await page.addInitScript(
     (email) => localStorage.setItem("test:second", JSON.stringify(email)),
-    emailWith("Second")
+    emailWith([[["Second"]]])
   );
   await openShell(page, "?save-key=test:first");
 
@@ -597,7 +640,7 @@ test.describe("look", () => {
   }) => {
     await page.goto("/shell.html?long");
     await expect(textBlock(page).first()).toBeVisible();
-    await rowTools(page, 2).getByRole("button", { name: "Select Row" }).focus();
+    await selectRowButton(page, 2).focus();
     // Browsers only show focus from a script after keyboard use.
     await page.keyboard.press("Tab");
     await page.keyboard.press("Shift+Tab");

@@ -72,9 +72,6 @@ const Host = () => {
       >
         Re-render host
       </button>
-      <button onClick={() => setDocument(emailWith("Other"))} type="button">
-        Load another email
-      </button>
       <button
         onClick={async () =>
           setHtml((await editor.current?.exportHtml()) ?? "")

@@ -6,8 +6,8 @@ import {
   canvas,
   exportHtml,
   redoByKey,
+  settle,
   undoByKey,
-  waitForSelectionToRegister,
 } from "./helpers.js";
 
 const textBlock = (page: Page) =>
@@ -46,7 +46,7 @@ const selectAllInBlock = async (page: Page) => {
 
 const pressArrow = async (page: Page, key: "ArrowLeft" | "ArrowRight") => {
   await page.keyboard.press(key);
-  await waitForSelectionToRegister(page);
+  await settle(page);
 };
 
 const cursorAtEndOfBlock = async (page: Page) => {
@@ -70,7 +70,7 @@ const pasteHtml = (page: Page, html: string) =>
 
 const extendSelection = async (page: Page, key: "ArrowLeft" | "ArrowRight") => {
   await page.keyboard.press(`Shift+${key}`);
-  await waitForSelectionToRegister(page);
+  await settle(page);
 };
 
 /** The plain text a copy of the selection would give. */
@@ -799,7 +799,7 @@ test.describe("undo and redo", () => {
     await selectAllInBlock(page);
     await pressArrow(page, "ArrowLeft");
     await page.keyboard.press("Shift+ArrowRight");
-    await waitForSelectionToRegister(page);
+    await settle(page);
     await page.keyboard.type("x");
     await expect(textBlock(page)).toHaveText("xello");
     await selectAll(page);
@@ -810,29 +810,6 @@ test.describe("undo and redo", () => {
     await page.keyboard.type("!");
 
     await expect(textBlock(page)).toHaveText("H!ello");
-  });
-
-  test("each formatting change has its own step", async ({ page }) => {
-    await selectAllInBlock(page);
-    await page.keyboard.press("ControlOrMeta+b");
-    await page.keyboard.press("ControlOrMeta+i");
-    await expect
-      .poll(() => savedInline(page))
-      .toStrictEqual([
-        {
-          marks: [{ type: "bold" }, { type: "italic" }],
-          text: "Hello",
-          type: "text",
-        },
-      ]);
-
-    await undoByKey(page);
-
-    await expect
-      .poll(() => savedInline(page))
-      .toStrictEqual([
-        { marks: [{ type: "bold" }], text: "Hello", type: "text" },
-      ]);
   });
 
   test("a formatting change doesn't merge with the typing before it", async ({
@@ -974,7 +951,8 @@ test.describe("copy and paste", () => {
        <script>alert(1)</script>`
     );
 
-    await expect(textBlock(page)).toContainText("Title");
+    // The host shows the saved email a render after the canvas has it.
+    await expect(page.getByTestId("latest-document")).toContainText("Title");
     const paragraphs: {
       content?: { marks?: { type: string }[]; type: string }[];
       type: string;

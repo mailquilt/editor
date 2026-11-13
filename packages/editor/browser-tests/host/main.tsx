@@ -18,7 +18,7 @@ declare module "react" {
   }
 }
 
-const initialDocument = emailWith("Hello");
+const initialDocument = emailWith([[["Hello"]]]);
 
 /** A controlled host: every `mq-change` goes into state and back into `value`. */
 const Host = () => {

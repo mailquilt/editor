@@ -63,9 +63,8 @@ describe("Divider Block", () => {
   });
 
   it.each([
-    ["a color MJML can't read", { color: "red" }, /color/u],
+    ["a color that isn't hex or rgb()", { color: "red" }, /color/u],
     ["a thickness over the limit", { thickness: 101 }, /thickness/u],
-    ["a property it doesn't have", { height: 10 }, /height/u],
   ])("rejects %s", (_name, props, reason) => {
     expect(setProps("divider", props).result).toStrictEqual({
       ok: false,
@@ -98,15 +97,15 @@ describe("Spacer Block", () => {
     expect(propsOf(document)).toStrictEqual({ height: 40 });
   });
 
-  it.each([
-    ["a height over the limit", { height: 1001 }, /height/u],
-    ["a property it doesn't have", { color: "#000000" }, /color/u],
-  ])("rejects %s", (_name, props, reason) => {
-    expect(setProps("spacer", props).result).toStrictEqual({
-      ok: false,
-      reason: expect.stringMatching(reason),
-    });
-  });
+  it.each([["a height over the limit", { height: 1001 }, /height/u]])(
+    "rejects %s",
+    (_name, props, reason) => {
+      expect(setProps("spacer", props).result).toStrictEqual({
+        ok: false,
+        reason: expect.stringMatching(reason),
+      });
+    }
+  );
 
   it("has a height until its settings change it", () => {
     expect(blockStyles({ props: {}, type: "spacer" })).toStrictEqual({

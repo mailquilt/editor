@@ -48,12 +48,11 @@ describe("Text Block settings", () => {
 
   it.each([
     ["an unknown alignment", { align: "middle" }, /align/u],
-    ["a color MJML can't read", { color: "red" }, /color/u],
+    ["a color that isn't hex or rgb()", { color: "red" }, /color/u],
     ["a font size that isn't a number", { fontSize: "24px" }, /fontSize/u],
     ["a fractional font size", { fontSize: 12.5 }, /fontSize/u],
     ["a font size of zero", { fontSize: 0 }, /fontSize/u],
     ["a font size past the limit", { fontSize: 201 }, /fontSize/u],
-    ["a property it doesn't have", { colour: "#ff0000" }, /colour/u],
   ])("rejects %s", (_name, props, reason) => {
     const { blockId, editor, operations } = setup();
     const before = editor.getDocument();
@@ -159,11 +158,10 @@ describe("Row settings", () => {
 
   it.each([
     [
-      "a color MJML can't read",
+      "a color that isn't hex or rgb()",
       { backgroundColor: "green" },
       /backgroundColor/u,
     ],
-    ["a property it doesn't have", { padding: 8 }, /padding/u],
   ])("rejects %s", (_name, props, reason) => {
     const { editor, operations, rowId } = setup();
 
@@ -184,7 +182,7 @@ describe("Row settings", () => {
     ).toStrictEqual({ ok: false, reason: 'No Row with ID "nope"' });
   });
 
-  it("reports serializable Operations", () => {
+  it("reports its change as a setProps Operation for the Row", () => {
     const { editor, operations, rowId } = setup();
 
     editor.apply({
@@ -193,7 +191,7 @@ describe("Row settings", () => {
       type: "updateRowProps",
     });
 
-    expect(structuredClone(operations)).toStrictEqual([
+    expect(operations).toStrictEqual([
       [
         {
           previousProps: {},
@@ -260,7 +258,11 @@ describe("Email settings", () => {
     ["a width of zero", { width: 0 }, /width/u],
     ["no width", { width: null }, /width/u],
     ["a width that isn't a number", { width: Number.NaN }, /width/u],
-    ["a color MJML can't read", { backgroundColor: "red" }, /backgroundColor/u],
+    [
+      "a color that isn't hex or rgb()",
+      { backgroundColor: "red" },
+      /backgroundColor/u,
+    ],
     ["no background color", { backgroundColor: null }, /backgroundColor/u],
     ["no font", { fontFamily: null }, /fontFamily/u],
     [
@@ -342,7 +344,7 @@ describe("saved settings", () => {
 
   it.each([
     [
-      "a Row color MJML can't read",
+      "a Row color that isn't hex or rgb()",
       (email: BlocksDocument) => {
         (email.rows[0] as BlocksDocument["rows"][0]).props = {
           backgroundColor: "green",

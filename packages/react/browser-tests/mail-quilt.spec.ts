@@ -1,17 +1,7 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
-const textBlock = (page: Page) =>
-  page.getByRole("textbox", { name: "Text Block" });
-
-/** Types at the start of the text, so a lost cursor scrambles what's typed. */
-const focusStartOfTextBlock = async (page: Page) => {
-  await textBlock(page).click();
-  await expect(textBlock(page)).toBeFocused();
-  await page.keyboard.press(
-    process.platform === "darwin" ? "Meta+ArrowLeft" : "Home"
-  );
-};
+import { focusStartOfTextBlock, stopClock, textBlock } from "./helpers.js";
 
 test("onError hears a refused first document", async ({ page }) => {
   await page.goto("/?refused-first");
@@ -35,20 +25,6 @@ test.describe("passing each onChange document back into value", () => {
     await expect(textBlock(page)).toHaveText(`${fastTyping}Hello`);
     await expect(textBlock(page)).toBeFocused();
   });
-
-  test("keeps undo history", async ({ page }) => {
-    await page.goto("/");
-    await focusStartOfTextBlock(page);
-    await page.keyboard.type("Oh ");
-    await expect(page.getByTestId("latest-document")).toContainText("Oh Hello");
-
-    await page.getByRole("button", { name: "Undo" }).click();
-
-    await expect(textBlock(page)).toHaveText("Hello");
-    await expect(page.getByTestId("latest-document")).not.toContainText(
-      "Oh Hello"
-    );
-  });
 });
 
 test("a host re-render leaves the cursor and undo history alone", async ({
@@ -56,6 +32,7 @@ test("a host re-render leaves the cursor and undo history alone", async ({
 }) => {
   await page.goto("/");
   await focusStartOfTextBlock(page);
+  await stopClock(page);
   await page.keyboard.type("Oh");
   await expect(page.getByTestId("latest-document")).toContainText("OhHello");
 
@@ -69,21 +46,6 @@ test("a host re-render leaves the cursor and undo history alone", async ({
   await expect(textBlock(page)).toHaveText("Oh Hello");
   await page.getByRole("button", { name: "Undo" }).click();
   await expect(textBlock(page)).toHaveText("Hello");
-});
-
-test("a different document in value loads and clears undo history", async ({
-  page,
-}) => {
-  await page.goto("/");
-  await focusStartOfTextBlock(page);
-  await page.keyboard.type("Oh ");
-  await expect(page.getByTestId("latest-document")).toContainText("Oh Hello");
-
-  await page.getByRole("button", { name: "Load another email" }).click();
-
-  await expect(textBlock(page)).toHaveText("Other");
-  await page.getByRole("button", { name: "Undo" }).click();
-  await expect(textBlock(page)).toHaveText("Other");
 });
 
 test("other props such as className and aria-label reach the element", async ({

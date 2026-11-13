@@ -1,19 +1,9 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
-const textBlock = (page: Page) =>
-  page.getByRole("textbox", { name: "Text Block" });
+import { focusStartOfTextBlock, textBlock } from "./helpers.js";
 
 const shell = (page: Page) => page.locator("mail-quilt-shell");
-
-const typeAtStart = async (page: Page, text: string) => {
-  await textBlock(page).click();
-  await expect(textBlock(page)).toBeFocused();
-  await page.keyboard.press(
-    process.platform === "darwin" ? "Meta+ArrowLeft" : "Home"
-  );
-  await page.keyboard.type(text);
-};
 
 test("shows the email in value, with the heading", async ({ page }) => {
   await page.goto("/?shell");
@@ -29,7 +19,8 @@ test("with saveKey, a reload reopens the saved email rather than value", async (
   page,
 }) => {
   await page.goto("/?shell&save");
-  await typeAtStart(page, "Saved ");
+  await focusStartOfTextBlock(page);
+  await page.keyboard.type("Saved ");
   await expect(textBlock(page)).toHaveText("Saved Hello");
 
   await page.reload();

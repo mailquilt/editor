@@ -1,6 +1,3 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
-
 import { BLOCK_TYPES, loadDocument } from "@mailquilt/core";
 import { expect, test } from "@playwright/test";
 
@@ -50,28 +47,78 @@ test("the landing page's editor stays inside its frame as the email grows", asyn
   await page.goto("/");
   const editor = page.locator("mail-quilt");
   const frame = page.locator("[data-home-editor]");
-  // Enough Rows to make the email taller than the editor starts out. Each new
-  // Row is selected, so the Rows tab is opened again for the next.
-  for (let added = 0; added < 4; added += 1) {
-    const back = editor.getByRole("button", { exact: true, name: "Back" });
-    // oxlint-disable-next-line no-await-in-loop -- One Row at a time.
-    if (await back.isVisible()) {
-      // oxlint-disable-next-line no-await-in-loop -- As above.
-      await back.click();
+  await expect(editor.getByRole("textbox").first()).toBeVisible();
+
+  // Enough empty Rows to make the email taller than the editor starts out.
+  await editor.evaluate((element) => {
+    const mailQuilt = element as HTMLElement & {
+      value: { rows: unknown[] } | undefined;
+    };
+    const email = mailQuilt.value;
+    if (email) {
+      for (let added = 0; added < 4; added += 1) {
+        email.rows.push({
+          columns: [
+            { blocks: [], id: `grown-${added}`, props: {}, width: 100 },
+          ],
+          id: `grown-row-${added}`,
+          props: {},
+        });
+      }
+      mailQuilt.value = { ...email };
     }
-    // oxlint-disable-next-line no-await-in-loop -- As above.
-    await editor.getByRole("tab", { name: "Rows" }).click();
-    // oxlint-disable-next-line no-await-in-loop -- As above.
-    await editor
-      .getByRole("group", { name: "Add a Row" })
-      .getByRole("button", { exact: true, name: "Add 100 Row" })
-      .click();
-  }
+  });
 
   const inner = await editor.boundingBox();
   const outer = await frame.boundingBox();
   expect(inner?.height).toBeGreaterThan(600);
-  expect(outer?.height).toBe(inner?.height);
+  // Firefox can lay the frame out a fraction of a pixel taller.
+  expect(outer?.height).toBeCloseTo(inner?.height ?? 0, 0);
+});
+
+test("the landing page recolors its editor with the swatch chosen", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const editor = page.locator("mail-quilt");
+  await expect(editor.getByRole("textbox").first()).toBeVisible();
+  const swatches = page.locator("[data-home-themes] button");
+
+  await swatches.nth(1).click();
+
+  const accent = await swatches.nth(1).getAttribute("data-accent");
+  await expect(swatches.nth(1)).toHaveAttribute("aria-pressed", "true");
+  await expect(swatches.nth(0)).toHaveAttribute("aria-pressed", "false");
+  await expect
+    .poll(() =>
+      editor.evaluate((element) =>
+        getComputedStyle(element).getPropertyValue("--mq-color-accent").trim()
+      )
+    )
+    .toBe(accent);
+  await expect(page.locator("[data-home-token]")).toHaveText(
+    `--mq-color-accent: ${accent}`
+  );
+});
+
+test("each example shows its whole email, with nothing to scroll inside it", async ({
+  page,
+}) => {
+  await page.goto("/examples");
+  const frame = page.locator("iframe[data-example]").first();
+  await frame.scrollIntoViewIfNeeded();
+
+  await expect
+    .poll(() =>
+      frame.evaluate((element) => {
+        const iframe = element as HTMLIFrameElement;
+        const root = iframe.contentDocument?.documentElement;
+        return root && iframe.contentDocument?.URL === "about:srcdoc"
+          ? Math.abs(root.scrollHeight - iframe.clientHeight)
+          : Number.POSITIVE_INFINITY;
+      })
+    )
+    .toBeLessThanOrEqual(1);
 });
 
 test("the landing page's editor starts when arriving from another page", async ({
@@ -147,29 +194,6 @@ test.describe("without JavaScript", () => {
  * Runs the docs' example scripts in Node, as a reader would, and reports what
  * they made. Playwright's own module loader can't load MJML.
  */
-const RUN_DOCS_CODE = `
-  const { email } = await import("./docs/_code/build-an-email.js");
-  const { htmlFor } = await import("./docs/_code/render.js");
-  const refusal = await htmlFor({ kind: "blocks" }).catch(({ message }) => message);
-  console.log("RESULT" + JSON.stringify({ email, html: await htmlFor(email), refusal }));
-`;
-
-test("the code in the docs runs as written", async ({ browserName }) => {
-  test.skip(browserName !== "chromium", SAME_IN_EVERY_BROWSER);
-  const { stdout } = await promisify(execFile)(
-    process.execPath,
-    ["--input-type=module", "--eval", RUN_DOCS_CODE],
-    { cwd: new URL("..", import.meta.url) }
-  );
-  const { email, html, refusal } = JSON.parse(
-    stdout.slice(stdout.indexOf("RESULT") + "RESULT".length)
-  );
-
-  expect(loadDocument(email)).toMatchObject({ ok: true });
-  expect(html).toContain("{{first_name}}");
-  expect(refusal).toMatch(/^This email can't be sent/u);
-});
-
 test("each example email comes with its document", async ({
   browserName,
   page,

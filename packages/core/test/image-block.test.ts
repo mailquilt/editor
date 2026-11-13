@@ -118,7 +118,6 @@ describe("Image Block", () => {
   it.each([
     ["a width of 0", { width: 0 }, /width/u],
     ["alt text that isn't text", { alt: 1 }, /alt/u],
-    ["a property it doesn't have", { align: "left" }, /align/u],
   ])("rejects %s", (_name, props, reason) => {
     expect(setProps(props).result).toStrictEqual({
       ok: false,

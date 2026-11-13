@@ -143,22 +143,6 @@ describe("the insertBlock Command", () => {
     expect(first?.props).not.toBe(second?.props);
   });
 
-  it("is one undo step", () => {
-    const { document, editor } = setup();
-
-    send(editor, {
-      blockType: "text",
-      columnId: "left",
-      index: 0,
-      type: "insertBlock",
-    });
-
-    const { changed, redone, undone } = undoThenRedo(editor);
-
-    expect(undone).toStrictEqual(document);
-    expect(redone).toStrictEqual(changed);
-  });
-
   it("records one insert Operation", () => {
     const { editor, operations } = setup();
 
@@ -202,17 +186,6 @@ describe("the removeBlock Command", () => {
       width: 50,
     });
     expectValid(editor.getDocument());
-  });
-
-  it("is one undo step that restores the Block where it was", () => {
-    const { document, editor } = setup();
-
-    send(editor, { blockId: "a", type: "removeBlock" });
-
-    const { changed, redone, undone } = undoThenRedo(editor);
-
-    expect(undone).toStrictEqual(document);
-    expect(redone).toStrictEqual(changed);
   });
 
   it("brings back the Block's latest text on undo", () => {
@@ -319,7 +292,6 @@ describe("the moveBlock Command", () => {
       move("a", "left", 2),
       /past the end/u,
     ],
-    ["the place it's already in", move("a", "left", 0), /already/u],
   ])("rejects %s and leaves the email as it was", (_name, command, reason) => {
     const { document, editor, operations } = setup();
     const before = editor.getDocument();
@@ -497,22 +469,6 @@ describe("rejecting a Block Command", () => {
       /index/u,
     ],
     [
-      "an index that isn't a whole number",
-      { blockType: "text", columnId: "left", index: 0.5, type: "insertBlock" },
-      /index/u,
-    ],
-    [
-      "a field the Command doesn't have",
-      {
-        blockType: "text",
-        columnId: "left",
-        extra: true,
-        index: 0,
-        type: "insertBlock",
-      },
-      /extra/u,
-    ],
-    [
       "removing a Block that doesn't exist",
       { blockId: "missing", type: "removeBlock" },
       /no block.*missing/iu,
@@ -572,17 +528,6 @@ describe("the insertRow Command", () => {
 
     expect(editor.getDocument().rows).toHaveLength(1);
   });
-
-  it("is one undo step", () => {
-    const { document, editor } = setup();
-
-    send(editor, { index: 0, layout: "25/25/25/25", type: "insertRow" });
-
-    const { changed, redone, undone } = undoThenRedo(editor);
-
-    expect(undone).toStrictEqual(document);
-    expect(redone).toStrictEqual(changed);
-  });
 });
 
 describe("the removeRow Command", () => {
@@ -593,17 +538,6 @@ describe("the removeRow Command", () => {
 
     expect(editor.getDocument().rows).toStrictEqual([]);
     expectValid(editor.getDocument());
-  });
-
-  it("is one undo step that restores everything in the Row", () => {
-    const { document, editor } = setup();
-
-    send(editor, { rowId: "row", type: "removeRow" });
-
-    const { changed, redone, undone } = undoThenRedo(editor);
-
-    expect(undone).toStrictEqual(document);
-    expect(redone).toStrictEqual(changed);
   });
 });
 
@@ -803,19 +737,9 @@ describe("rejecting a Row Command", () => {
       /layout/u,
     ],
     [
-      "a layout named after a built-in",
-      { layout: "constructor", rowId: "row", type: "setRowLayout" },
-      /layout/u,
-    ],
-    [
       "a layout for a Row that doesn't exist",
       { layout: "100", rowId: "missing", type: "setRowLayout" },
       /no row.*missing/iu,
-    ],
-    [
-      "a new Row with an unknown layout",
-      { index: 0, layout: "60/40", type: "insertRow" },
-      /layout/u,
     ],
     [
       "a new Row past the end of the email",

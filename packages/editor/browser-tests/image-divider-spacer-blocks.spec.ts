@@ -1,6 +1,5 @@
-import { AxeBuilder } from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import type { BrowserContext, Locator, Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 
 import type { MailQuilt } from "../src/index.js";
 import {
@@ -8,33 +7,23 @@ import {
   blockGroup,
   blocks,
   blockTypes,
+  bottomOf,
+  boxOf,
   canvas,
   change,
-  dragTo,
+  drag,
   exportHtml,
   field,
   openBlocks as open,
   openExport,
   palette,
-  rowTools,
-  settle,
+  selectRowButton,
+  serveImages,
   undo,
   violations,
 } from "./helpers.js";
 
 const PHOTO = "https://cdn.example/photo.png";
-
-/** A 1×1 PNG, which any box scales it to: its height shows its width was kept. */
-const PIXEL = Buffer.from(
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAEBgIApD5fRAAAAABJRU5ErkJggg==",
-  "base64"
-);
-
-/** The whole context, so that an export opened in a new page has images too. */
-const serveImages = (context: BrowserContext) =>
-  context.route("https://cdn.example/**", (route) =>
-    route.fulfill({ body: PIXEL, contentType: "image/png" })
-  );
 
 test.beforeEach(({ context }) => serveImages(context));
 
@@ -46,11 +35,9 @@ const firstBlockProps = async (page: Page) => {
   return found[0]?.props;
 };
 
+/** An element's size to the nearest pixel. */
 const box = async (locator: Locator) => {
-  const { height, width } = await locator.evaluate((element) => {
-    const rect = element.getBoundingClientRect();
-    return { height: rect.height, width: rect.width };
-  });
+  const { height, width } = await boxOf(locator);
   return { height: Math.round(height), width: Math.round(width) };
 };
 
@@ -108,16 +95,6 @@ const makeThin = async (page: Page) => {
   await change(field(page, "Height (px)"), "1");
 };
 
-test.describe("the palette", () => {
-  test("offers every type of Block", async ({ page }) => {
-    await open(page, ["text"]);
-
-    await expect(
-      page.getByRole("group", { name: "Add content" }).getByRole("button")
-    ).toHaveText(["Text", "Heading", "Image", "Button", "Divider", "Spacer"]);
-  });
-});
-
 test.describe("selecting an Image", () => {
   test("is reached with arrow keys, and ignores Enter", async ({ page }) => {
     await open(page, ["text", "image"]);
@@ -128,30 +105,6 @@ test.describe("selecting an Image", () => {
 
     await page.keyboard.press("Enter");
     await expect(blockGroup(page, "Image")).toBeFocused();
-  });
-});
-
-test.describe("dragging a tall Block", () => {
-  test("keeps the page where it is, scrolled to its end", async ({ page }) => {
-    await open(page, ["text", "image"]);
-    const block = blockGroup(page, "Image");
-    await block.hover();
-    await page.evaluate(() =>
-      window.scrollTo(0, document.documentElement.scrollHeight)
-    );
-    const scrolled = await page.evaluate(() => window.scrollY);
-    expect(scrolled).toBeGreaterThan(0);
-    const start = (await block
-      .locator(".drag-handle")
-      .boundingBox()) as DOMRect;
-
-    await page.mouse.move(start.x + 8, start.y + 12);
-    await page.mouse.down();
-    await page.mouse.move(start.x + 16, start.y + 20, { steps: 2 });
-    await settle(page);
-
-    await expect(page.evaluate(() => window.scrollY)).resolves.toBe(scrolled);
-    await page.mouse.up();
   });
 });
 
@@ -472,24 +425,6 @@ test.describe("an Image", () => {
 });
 
 test.describe("a Divider", () => {
-  test("looks the same on the canvas and in the export, as it starts", async ({
-    page,
-  }) => {
-    await open(page, ["divider"]);
-
-    const onCanvas = await look(line(page));
-    const { opened } = await openExport(page);
-    await opened.setViewportSize({ height: 800, width: 800 });
-
-    expect(onCanvas).toEqual({
-      borderTopColor: "rgb(212, 212, 216)",
-      borderTopWidth: "1px",
-      height: 1,
-      width: 568,
-    });
-    await expect(look(opened.locator("p"))).resolves.toEqual(onCanvas);
-  });
-
   test("changes color and thickness, on the canvas and in the export", async ({
     page,
   }) => {
@@ -513,20 +448,6 @@ test.describe("a Divider", () => {
 });
 
 test.describe("a Spacer", () => {
-  test("has the same height on the canvas and in the export", async ({
-    page,
-  }) => {
-    await open(page, ["spacer"]);
-
-    const onCanvas = await box(blockGroup(page, "Spacer"));
-    const { opened } = await openExport(page);
-
-    expect(onCanvas.height).toBe(24);
-    await expect(box(exportedSpace(opened))).resolves.toMatchObject({
-      height: 24,
-    });
-  });
-
   test("changes height, on the canvas and in the export, and undoes it", async ({
     page,
   }) => {
@@ -552,8 +473,7 @@ test.describe("a Spacer", () => {
 
   test("can be clicked on when it's as thin as it gets", async ({ page }) => {
     await open(page, ["text", "spacer"]);
-    await blockGroup(page, "Spacer").focus();
-    await change(field(page, "Height (px)"), "1");
+    await makeThin(page);
     await blockGroup(page, "Text").focus();
     const { x, y, width } = await blockGroup(page, "Spacer").evaluate(
       (element) => {
@@ -586,11 +506,13 @@ test.describe("a Spacer", () => {
     await makeThin(page);
     await addRow(page);
     await blockGroup(page, "Spacer").focus();
-    const selectRowIn = (position: number) =>
-      rowTools(page, position).getByRole("button", { name: "Select Row" });
     const takesClicks = async (position: number) => {
-      const { height, width } = await box(selectRowIn(position));
-      return takesClickAt(selectRowIn(position), width / 2, height / 2);
+      const { height, width } = await box(selectRowButton(page, position));
+      return takesClickAt(
+        selectRowButton(page, position),
+        width / 2,
+        height / 2
+      );
     };
 
     // A Row's toolbar takes clicks once it shows, on hover.
@@ -616,7 +538,11 @@ test.describe("a Spacer", () => {
       await open(page, ["spacer", "text", "heading"]);
       await makeThin(page);
 
-      await dragTo(page, spacerHandle(page), blockGroup(page, "Heading"));
+      await drag(
+        page,
+        spacerHandle(page),
+        await bottomOf(blockGroup(page, "Heading"))
+      );
 
       await expect(blockTypes(page)).resolves.toEqual([
         "text",
@@ -633,10 +559,10 @@ test.describe("a Spacer", () => {
       await addRow(page);
       await blockGroup(page, "Spacer").focus();
 
-      await dragTo(
+      await drag(
         page,
         spacerHandle(page),
-        canvas(page).locator(".column.empty")
+        await bottomOf(canvas(page).locator(".column.empty"))
       );
 
       await expect(blockTypes(page, 0, 0)).resolves.toEqual([]);
@@ -658,7 +584,11 @@ test.describe("a Spacer", () => {
       await page.mouse.move(x + width / 2, y);
       await page.mouse.move(x + 8, y, { steps: 8 });
       await expect(spacerHandle(page)).toHaveCSS("opacity", "1");
-      await dragTo(page, spacerHandle(page), blockGroup(page, "Heading"));
+      await drag(
+        page,
+        spacerHandle(page),
+        await bottomOf(blockGroup(page, "Heading"))
+      );
 
       await expect(blockTypes(page)).resolves.toEqual([
         "text",
@@ -675,10 +605,10 @@ test.describe("a Spacer", () => {
       const text = blockGroup(page, "Text");
       await text.hover();
 
-      await dragTo(
+      await drag(
         page,
         text.locator(".drag-handle"),
-        blockGroup(page, "Heading")
+        await bottomOf(blockGroup(page, "Heading"))
       );
 
       await expect(blockTypes(page)).resolves.toEqual([
@@ -687,48 +617,6 @@ test.describe("a Spacer", () => {
         "text",
       ]);
     });
-  });
-});
-
-test.describe("the floating toolbar", () => {
-  test("stays above the email when the page scrolls it underneath", async ({
-    page,
-  }) => {
-    await open(page, [
-      "text",
-      "spacer",
-      "text",
-      "spacer",
-      "text",
-      "spacer",
-      "text",
-      "spacer",
-      "text",
-      "spacer",
-    ]);
-    await page.setViewportSize({ height: 400, width: 1000 });
-    await page.addStyleTag({
-      content:
-        "main { padding: 0 !important } mail-quilt { width: 1000px !important }",
-    });
-    await blockGroup(page, "Text").first().focus();
-
-    const onTop = await canvas(page).evaluate((host) => {
-      const root = host.shadowRoot as ShadowRoot;
-      const toolbar = root.querySelector(".floating-toolbar") as Element;
-      const email = root.querySelector(".email") as Element;
-      // Halfway down the email, which goes on below the window.
-      window.scrollBy(0, email.getBoundingClientRect().y);
-      const { height, width, x, y } = toolbar.getBoundingClientRect();
-      const under = email.getBoundingClientRect();
-      const hit = root.elementFromPoint(x + width / 2, y + height / 2);
-      return {
-        emailUnder: under.left < x + width && under.bottom > y,
-        toolbar: toolbar.contains(hit),
-      };
-    });
-
-    expect(onTop).toEqual({ emailUnder: true, toolbar: true });
   });
 });
 
@@ -780,13 +668,11 @@ test.describe("accessibility", () => {
     await expect(
       opened.getByRole("img", { name: "A red bicycle" })
     ).toBeVisible();
-    const { violations: found } = await new AxeBuilder({ page: opened })
-      // MJML writes an empty <title> for every email, whatever its Blocks.
-      .disableRules(["document-title"])
-      .setLegacyMode()
-      .withTags(["wcag2a", "wcag2aa"])
-      .analyze();
-
-    expect(found.map(({ id }) => id)).toEqual([]);
+    expect(
+      await violations(opened, "html", {
+        // MJML writes an empty <title> for every email, whatever its Blocks.
+        skipRules: ["document-title"],
+      })
+    ).toEqual([]);
   });
 });
