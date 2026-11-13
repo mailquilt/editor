@@ -36,7 +36,7 @@ pnpm lint         # pnpm fix formats and fixes what it can
 
 Run one package's task with a filter, such as `pnpm --filter @mailquilt/core test`. The browser tests need Playwright's browsers: `pnpm --filter @mailquilt/editor exec playwright install`.
 
-- `PROJECT.md` describes what Mail Quilt is for and what ships first.
+- `PROJECT.md` explains what Mail Quilt is for, how it's designed, and where it's going.
 - `GLOSSARY.md` defines the words the code and docs use.
 - `docs/adr/` records the main design decisions.
 - `docs/agents/testing.md` says how tests are written here.
