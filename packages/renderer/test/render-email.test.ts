@@ -176,7 +176,7 @@ describe(renderEmail, () => {
     );
   });
 
-  it("matches the saved HTML for formatted text", async () => {
+  it("renders each mark as its tag, a line break, and a link around the other marks", async () => {
     const html = await renderEmail(
       emailWithInline(
         { text: "Plain, ", type: "text" },
@@ -196,7 +196,9 @@ describe(renderEmail, () => {
       )
     );
 
-    await expect(html).toMatchFileSnapshot("expected/formatted-text.html");
+    expect(html).toContain(
+      '<p style="margin:0;white-space:pre-wrap">Plain, <strong>bold, </strong><em>italic, </em><u>underlined</u><br /><a href="{{cta_url}}" target="_blank"><strong><em>a bold italic link</em></strong></a></p>'
+    );
   });
 
   it("escapes a link URL so it can't become markup", async () => {

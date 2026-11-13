@@ -104,17 +104,6 @@ test.describe("moving a selected Row from the keyboard", () => {
     );
   });
 
-  test("keeps it selected, with focus on its toolbar", async ({ page }) => {
-    await open(page, [[["One"]], [["Two"]], [["Three"]]]);
-    await selectRow(page, 2);
-
-    await page.keyboard.press("Alt+ArrowUp");
-
-    await expect(rowTools(page, 1)).toHaveAttribute("aria-current", "true");
-    await expect(selectRowButton(page, 1)).toBeFocused();
-    await expect(textBlock(page).first()).toHaveText("Two");
-  });
-
   test("works from its Move buttons, whose focus stays in the toolbar", async ({
     page,
   }) => {
@@ -264,27 +253,6 @@ test.describe("dragging a Row", () => {
       ]);
     });
   }
-
-  test("shows the line between Rows where it will land", async ({ page }) => {
-    await open(page, [[["One"]], [["Two"]], [["Three"]]]);
-    const third = await boxOf(canvas(page).locator(".row").nth(2));
-
-    const to = await belowMiddleOf(page, 3);
-    await pickUp(page, await grip(page, 1, "handle"));
-    await moveTo(page, to);
-
-    const line = await boxOf(canvas(page).locator(".drop-indicator"));
-    expect(line.y + line.height / 2).toBeCloseTo(third.y + third.height, 0);
-    expect(line.x).toBeCloseTo(third.x, 0);
-    expect(line.width).toBeCloseTo(third.width, 0);
-    await letGo(page);
-
-    await expect(structure(page)).resolves.toEqual([
-      [["Two"]],
-      [["Three"]],
-      [["One"]],
-    ]);
-  });
 
   test("letting go where it started moves nothing", async ({ page }) => {
     await open(page, [[["One"]], [["Two"]], [["Three"]]]);

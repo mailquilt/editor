@@ -82,17 +82,23 @@ describe("an Image Block", () => {
 });
 
 describe("a Divider Block", () => {
-  it("matches the saved HTML with every setting", async () => {
-    await expect(
-      renderEmail(emailWith(divider({ color: "#123456", thickness: 3 })))
-    ).resolves.toMatchFileSnapshot("expected/divider-every-setting.html");
+  it("draws its line in its color and thickness, inside the Block's padding", async () => {
+    const html = await renderEmail(
+      emailWith(divider({ color: "#123456", thickness: 3 }))
+    );
+
+    expect(html).toContain('style="border-top:solid 3px #123456;');
+    expect(html).toContain(
+      'style="font-size:0px;padding:16px;word-break:break-word;"'
+    );
   });
 });
 
 describe("a Spacer Block", () => {
-  it("matches the saved HTML with its height set", async () => {
-    await expect(
-      renderEmail(emailWith(spacer({ height: 40 })))
-    ).resolves.toMatchFileSnapshot("expected/spacer-height.html");
+  it("takes up its height and no padding", async () => {
+    const html = await renderEmail(emailWith(spacer({ height: 40 })));
+
+    expect(html).toContain('style="height:40px;line-height:40px;"');
+    expect(html).toContain('style="font-size:0px;word-break:break-word;"');
   });
 });

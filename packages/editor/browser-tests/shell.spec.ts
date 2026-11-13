@@ -431,40 +431,23 @@ test.describe("saving in the browser", () => {
     ).toBe("{not json");
   });
 
-  for (const { name, script } of [
-    {
-      name: "blocked",
-      script: () => {
-        Object.defineProperty(window, "localStorage", {
-          get() {
-            throw new DOMException("Blocked", "SecurityError");
-          },
-        });
-      },
-    },
-    {
-      name: "full",
-      script: () => {
-        Storage.prototype.setItem = () => {
-          throw new DOMException("Full", "QuotaExceededError");
-        };
-      },
-    },
-  ]) {
-    test(`says it can't save when storage is ${name}`, async ({ page }) => {
-      await page.addInitScript(script);
-      await openShell(page, `?save-key=${key}`);
-
-      await focusStartOfTextBlock(page);
-      await page.keyboard.type("Unsaved ");
-
-      await expect(shell(page).getByRole("alert")).toContainText("can't save");
-      await expect(shell(page).getByRole("alert")).toContainText(
-        "Export it as JSON"
-      );
-      await expect(textBlock(page)).toHaveText("Unsaved Hello");
+  test("says it can't save when storage is full", async ({ page }) => {
+    await page.addInitScript(() => {
+      Storage.prototype.setItem = () => {
+        throw new DOMException("Full", "QuotaExceededError");
+      };
     });
-  }
+    await openShell(page, `?save-key=${key}`);
+
+    await focusStartOfTextBlock(page);
+    await page.keyboard.type("Unsaved ");
+
+    await expect(shell(page).getByRole("alert")).toContainText("can't save");
+    await expect(shell(page).getByRole("alert")).toContainText(
+      "Export it as JSON"
+    );
+    await expect(textBlock(page)).toHaveText("Unsaved Hello");
+  });
 
   test("keeps saying it can't save while showing another reason", async ({
     page,

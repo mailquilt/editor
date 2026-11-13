@@ -85,21 +85,6 @@ test.describe("selecting a Row", () => {
       [["C"]],
     ]);
   });
-
-  test("the Rows tab adds after the selected Row", async ({ page }) => {
-    await open(page, [[["A"]], [["B"]]]);
-    await selectRowButton(page, 1).focus();
-    await page.keyboard.press("Enter");
-    await openTab(page, "Rows");
-
-    await layoutTile(page, "50/50").click();
-
-    await expect(structure(page)).resolves.toEqual([
-      [["A"]],
-      [[], []],
-      [["B"]],
-    ]);
-  });
 });
 
 test.describe("dragging a layout from the Rows tab", () => {

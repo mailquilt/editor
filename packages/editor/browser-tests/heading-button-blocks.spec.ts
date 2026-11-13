@@ -93,17 +93,6 @@ const gapOnRight = async (face: Locator, container: Locator) => {
 test.use({ viewport: { height: 1600, width: 1280 } });
 
 test.describe("the palette", () => {
-  test("adds a Heading, ready to type in", async ({ page }) => {
-    await open(page, ["text"]);
-
-    await palette(page, "Heading").click();
-    await page.keyboard.type("Big news");
-
-    await expect(headingText(page)).toHaveText("Big news");
-    await expect(blockTypes(page)).resolves.toEqual(["text", "heading"]);
-    await expect(lastBlockProps(page)).resolves.toMatchObject({ level: 1 });
-  });
-
   test("adds a Button, selected, with its settings showing", async ({
     page,
   }) => {

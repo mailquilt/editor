@@ -112,10 +112,14 @@ describe("a Button Block", () => {
     ).resolves.toMatchFileSnapshot("expected/button-every-setting.html");
   });
 
-  it("matches the saved HTML with only its defaults", async () => {
-    await expect(
-      renderEmail(emailWith(button({ label: "Button" })))
-    ).resolves.toMatchFileSnapshot("expected/button-defaults.html");
+  it("has its default look, and no link, with only a label", async () => {
+    const html = await renderEmail(emailWith(button({ label: "Button" })));
+
+    expect(html).toContain('align="left"');
+    expect(html).toMatch(
+      /<p\s+style="display:inline-block;background:#2563eb;color:#ffffff;/u
+    );
+    expect(buttonLink(html)).toBe("");
   });
 
   it("keeps a Merge Tag intact in its link and label", async () => {

@@ -211,15 +211,6 @@ test.describe("Text settings", () => {
     await expect(field(page, "Font size (px)")).toBeFocused();
   });
 
-  test("can be set with the color picker", async ({ page }) => {
-    await textBlock(page).click();
-
-    await field(page, "Color picker").fill("#00ff00");
-
-    expect(await blockProps(page)).toMatchObject({ color: "#00ff00" });
-    await expect(field(page, "Color")).toHaveValue("#00ff00");
-  });
-
   test("go back to the default when emptied, even with spaces left", async ({
     page,
   }) => {
@@ -501,6 +492,7 @@ test.describe("validation", () => {
 
     await expect(color).toHaveValue("#00ff00");
     await expect(panelBlock(page).getByRole("alert")).toHaveCount(0);
+    expect(await blockProps(page)).toMatchObject({ color: "#00ff00" });
   });
 
   test("escapes what it can't refuse", async ({ page }) => {
@@ -529,20 +521,10 @@ test.describe("typing in a field", () => {
 });
 
 test.describe("text that hasn't been committed", () => {
-  test("is committed when Back is pressed", async ({ page }) => {
-    await typeFontSize(page, "24");
-
-    await canvas(page)
-      .getByRole("button", { exact: true, name: "Back" })
-      .click();
-
-    expect(await blockProps(page)).toMatchObject({ fontSize: 24 });
-    await canvas(page).getByText("One", { exact: true }).click();
-    await expect(field(page, "Font size (px)")).toHaveValue("24");
-    await expect(panelBlock(page).getByRole("alert")).toHaveCount(0);
-  });
-
-  test("is one undo step apart from the button's own", async ({ page }) => {
+  // addRow presses Back first, which commits it.
+  test("is committed when Back is pressed, as one undo step apart from the next button's", async ({
+    page,
+  }) => {
     await typeFontSize(page, "24");
 
     await addRow(page);

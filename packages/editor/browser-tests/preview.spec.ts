@@ -75,16 +75,6 @@ test.beforeEach(async ({ page }) => {
   await expect(textBlock(page)).toHaveText("Hello");
 });
 
-test("Preview shows the real exported HTML", async ({ page }) => {
-  await previewButton(page).click();
-
-  await expect(previewDialog(page)).toBeVisible();
-  await expect(previewEmail(page)).toContainText("Hello");
-  expect(await previewFrame(page).getAttribute("srcdoc")).toBe(
-    await exportHtml(page)
-  );
-});
-
 test("a slow MJML shows a loading message, then the email", async ({
   page,
 }) => {

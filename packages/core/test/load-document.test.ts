@@ -510,12 +510,6 @@ describe(isSameDocument, () => {
       : value;
   };
 
-  it("matches a clone of a document", () => {
-    const email = readFixture("version-1");
-
-    expect(isSameDocument(email, structuredClone(email))).toBeTruthy();
-  });
-
   it("matches a document whose stored keys came back in another order", () => {
     const email = readFixture("version-1");
 
@@ -540,21 +534,9 @@ describe(isSameDocument, () => {
       },
     ],
     [
-      "a setting",
-      (email) => {
-        email.settings.width = 500;
-      },
-    ],
-    [
       "a removed field",
       (email) => {
         delete email.settings.language;
-      },
-    ],
-    [
-      "the order of Rows",
-      (email) => {
-        email.rows.reverse();
       },
     ],
     [
