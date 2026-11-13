@@ -189,10 +189,35 @@ export const deleteRow = async (page: Page, position: number) => {
 };
 
 /** The selected Block's toolbar, on the canvas. */
+export const blockTools = (page: Page) =>
+  canvas(page).getByRole("toolbar", { name: "Block tools" });
+
+export const addText = async (page: Page) => {
+  const text = await showPalette(page, "Text");
+  await text.click();
+};
+
+/** Pastes HTML into some text, as a paste from another app would. */
+export const pasteHtml = (target: Locator, html: string) =>
+  target.evaluate((element, value) => {
+    const clipboardData = new DataTransfer();
+    clipboardData.setData("text/html", value);
+    // Not a ClipboardEvent, whose constructor ignores this data in Firefox.
+    const event = new Event("paste", {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+    });
+    Object.defineProperty(event, "clipboardData", { value: clipboardData });
+    element.dispatchEvent(event);
+  }, html);
+
 export const blockTool = (page: Page, name: string) =>
   canvas(page)
     .getByRole("toolbar", { name: "Block tools" })
     .getByRole("button", { exact: true, name });
+
+export const deleteBlock = (page: Page) => blockTool(page, "Delete Block");
 
 export const blockGroup = (page: Page, name: string) =>
   canvas(page).getByRole("group", { name: `${name} Block` });

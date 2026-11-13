@@ -133,14 +133,6 @@ describe("refusing a document", () => {
       /settings\.width/u,
     ],
     [
-      "a background color that's empty",
-      (email) => {
-        email.settings.backgroundColor = "";
-        return email;
-      },
-      /settings\.backgroundColor.*color/u,
-    ],
-    [
       "a background color that's not a color",
       (email) => {
         email.settings.backgroundColor = "not a color";

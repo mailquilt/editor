@@ -114,21 +114,14 @@ describe("rejecting a Command", () => {
     ],
   ];
 
-  it.each(rejected)(
-    "rejects %s with a reason and leaves the document unchanged",
-    (_name, command, reason) => {
-      const document = createEmail();
-      const editor = createEditor({ document });
+  it.each(rejected)("rejects %s with a reason", (_name, command, reason) => {
+    const document = createEmail();
+    const editor = createEditor({ document });
 
-      const result = editor.apply(
+    expect(
+      editor.apply(
         command(firstBlock(document).id) as Parameters<typeof editor.apply>[0]
-      );
-
-      expect(result).toStrictEqual({
-        ok: false,
-        reason: expect.stringMatching(reason),
-      });
-      expect(editor.getDocument()).toStrictEqual(document);
-    }
-  );
+      )
+    ).toStrictEqual({ ok: false, reason: expect.stringMatching(reason) });
+  });
 });

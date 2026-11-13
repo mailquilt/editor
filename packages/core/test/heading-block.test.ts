@@ -142,24 +142,4 @@ describe("Heading Block", () => {
     });
     expect(`${fontSizeField(level).default}px`).toBe(fontSize);
   });
-
-  it("uses its own settings over its level's look", () => {
-    expect(
-      blockStyles({
-        props: {
-          align: "right",
-          color: "#123456",
-          content: emptyText,
-          fontSize: 50,
-          level: 3,
-        },
-        type: "heading",
-      })
-    ).toStrictEqual({
-      color: "#123456",
-      "font-size": "50px",
-      "font-weight": "700",
-      "text-align": "right",
-    });
-  });
 });

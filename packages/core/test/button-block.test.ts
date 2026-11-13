@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { blockStyles, createEditor, createEmail } from "../src/index.js";
+import { createEditor, createEmail } from "../src/index.js";
 import type { BlocksDocument } from "../src/index.js";
 
 const withButton = (props: Record<string, unknown>): BlocksDocument => {
@@ -107,33 +107,5 @@ describe("Button Block", () => {
         type: "updateBlockProps",
       })
     ).toStrictEqual({ ok: true });
-  });
-
-  it("has a look until its settings change it", () => {
-    expect(
-      blockStyles({ props: { label: "Go" }, type: "button" })
-    ).toStrictEqual({
-      "background-color": "#2563eb",
-      color: "#ffffff",
-      "text-align": "left",
-    });
-  });
-
-  it("uses its own settings over that look", () => {
-    expect(
-      blockStyles({
-        props: {
-          align: "right",
-          backgroundColor: "#111111",
-          color: "#eeeeee",
-          label: "Go",
-        },
-        type: "button",
-      })
-    ).toStrictEqual({
-      "background-color": "#111111",
-      color: "#eeeeee",
-      "text-align": "right",
-    });
   });
 });

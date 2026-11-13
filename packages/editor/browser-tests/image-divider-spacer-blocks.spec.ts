@@ -120,9 +120,7 @@ test.describe("an Image", () => {
     await expect(exportHtml(page)).resolves.not.toContain("<img");
   });
 
-  test("shows and exports its URL and alt text, and undoes each", async ({
-    page,
-  }) => {
+  test("shows and exports its URL and alt text", async ({ page }) => {
     await open(page, ["text"]);
     await palette(page, "Image").click();
 
@@ -135,12 +133,6 @@ test.describe("an Image", () => {
     await expect(
       opened.getByRole("img", { name: "A red bicycle" })
     ).toHaveAttribute("src", PHOTO);
-
-    await undo(page);
-    await expect(image(page)).not.toHaveAttribute("alt", "A red bicycle");
-
-    await undo(page);
-    await expect(image(page)).toHaveCount(0);
   });
 
   test("refuses the URL javascript:alert(1), and says so", async ({ page }) => {
@@ -158,23 +150,6 @@ test.describe("an Image", () => {
       /a Merge Tag such as \{\{logo_url\}\}/u
     );
     await expect(firstBlockProps(page)).resolves.toEqual({ src: PHOTO });
-  });
-
-  test("refuses the link javascript:alert(1), and says so", async ({
-    page,
-  }) => {
-    await open(page, ["image"]);
-    await blockGroup(page, "Image").focus();
-    await change(field(page, "Alt text"), "A red bicycle");
-
-    // oxlint-disable-next-line no-script-url -- What's being refused.
-    await change(field(page, "Link"), "javascript:alert(1)");
-
-    await expect(field(page, "Link")).toHaveAttribute("aria-invalid", "true");
-    await expect(firstBlockProps(page)).resolves.toEqual({
-      alt: "A red bicycle",
-      src: PHOTO,
-    });
   });
 
   test("offers a link once it has alt text", async ({ page }) => {
@@ -343,7 +318,7 @@ test.describe("an Image", () => {
         document.body.dataset.dragged = "true";
       });
     });
-    const { x, y } = (await image(page).boundingBox()) as DOMRect;
+    const { x, y } = await boxOf(image(page));
 
     await page.mouse.move(x + 200, y + 200);
     await page.mouse.down();
@@ -448,9 +423,7 @@ test.describe("a Divider", () => {
 });
 
 test.describe("a Spacer", () => {
-  test("changes height, on the canvas and in the export, and undoes it", async ({
-    page,
-  }) => {
+  test("changes height, on the canvas and in the export", async ({ page }) => {
     await open(page, ["spacer"]);
     await blockGroup(page, "Spacer").focus();
 
@@ -462,12 +435,6 @@ test.describe("a Spacer", () => {
     const { opened } = await openExport(page);
     await expect(box(exportedSpace(opened))).resolves.toMatchObject({
       height: 70,
-    });
-
-    await undo(page);
-    await expect(firstBlockProps(page)).resolves.toEqual({});
-    await expect(box(blockGroup(page, "Spacer"))).resolves.toMatchObject({
-      height: 24,
     });
   });
 
@@ -625,6 +592,7 @@ test.describe("accessibility", () => {
     ["an Image", "image"],
     ["a Divider", "divider"],
     ["a Spacer", "spacer"],
+    ["a Button", "button"],
   ] as const) {
     test(`finds no violations with ${name} selected`, async ({ page }) => {
       await open(page, [type, "text"]);

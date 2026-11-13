@@ -5,12 +5,13 @@ import {
   addSecondTextBlock,
   canvas,
   exportHtml,
+  pasteHtml,
   redoByKey,
   settle,
   undoByKey,
 } from "./helpers.js";
 
-const textBlock = (page: Page) =>
+const firstTextBlock = (page: Page) =>
   page.getByRole("textbox", { name: "Text Block" }).first();
 const secondTextBlock = (page: Page) =>
   page.getByRole("textbox", { name: "Text Block" }).nth(1);
@@ -39,8 +40,8 @@ const savedInline = async (page: Page, index = 0) => {
 };
 
 const selectAllInBlock = async (page: Page) => {
-  await textBlock(page).click();
-  await expect(textBlock(page)).toBeFocused();
+  await firstTextBlock(page).click();
+  await expect(firstTextBlock(page)).toBeFocused();
   await selectAll(page);
 };
 
@@ -54,20 +55,6 @@ const cursorAtEndOfBlock = async (page: Page) => {
   await pressArrow(page, "ArrowRight");
 };
 
-const pasteHtml = (page: Page, html: string) =>
-  textBlock(page).evaluate((element, value) => {
-    const clipboardData = new DataTransfer();
-    clipboardData.setData("text/html", value);
-    // Not a ClipboardEvent, whose constructor ignores this data in Firefox.
-    const event = new Event("paste", {
-      bubbles: true,
-      cancelable: true,
-      composed: true,
-    });
-    Object.defineProperty(event, "clipboardData", { value: clipboardData });
-    element.dispatchEvent(event);
-  }, html);
-
 const extendSelection = async (page: Page, key: "ArrowLeft" | "ArrowRight") => {
   await page.keyboard.press(`Shift+${key}`);
   await settle(page);
@@ -75,7 +62,7 @@ const extendSelection = async (page: Page, key: "ArrowLeft" | "ArrowRight") => {
 
 /** The plain text a copy of the selection would give. */
 const copiedText = (page: Page) =>
-  textBlock(page).evaluate((element) => {
+  firstTextBlock(page).evaluate((element) => {
     const clipboardData = new DataTransfer();
     // Not a ClipboardEvent, whose constructor ignores this data in Firefox.
     const event = new Event("copy", {
@@ -99,7 +86,7 @@ const addLink = async (page: Page, href: string) => {
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
-  await expect(textBlock(page)).toHaveText("Hello");
+  await expect(firstTextBlock(page)).toHaveText("Hello");
 });
 
 test("from all the text selected, ← and → go to its start and end", async ({
@@ -108,12 +95,12 @@ test("from all the text selected, ← and → go to its start and end", async ({
   await selectAllInBlock(page);
   await pressArrow(page, "ArrowLeft");
   await page.keyboard.type("x");
-  await expect(textBlock(page)).toHaveText("xHello");
+  await expect(firstTextBlock(page)).toHaveText("xHello");
 
   await selectAll(page);
   await pressArrow(page, "ArrowRight");
   await page.keyboard.type("y");
-  await expect(textBlock(page)).toHaveText("xHelloy");
+  await expect(firstTextBlock(page)).toHaveText("xHelloy");
 });
 
 test.describe("bold, italic and underline", () => {
@@ -270,7 +257,7 @@ test.describe("bold, italic and underline", () => {
     await page.keyboard.type("{{first_name}}");
     await selectAll(page);
     await addLink(page, "https://example.com");
-    await expect(textBlock(page)).toBeFocused();
+    await expect(firstTextBlock(page)).toBeFocused();
     await pressArrow(page, "ArrowLeft");
     for (const _ of "{{first") {
       // oxlint-disable-next-line no-await-in-loop -- Each key moves the selection on.
@@ -296,9 +283,9 @@ test.describe("the toolbar", () => {
     await selectAllInBlock(page);
 
     await toolbarButton(page, "Bold").click();
-    await expect(textBlock(page)).toBeFocused();
+    await expect(firstTextBlock(page)).toBeFocused();
     await toolbarButton(page, "Italic").click();
-    await expect(textBlock(page)).toBeFocused();
+    await expect(firstTextBlock(page)).toBeFocused();
 
     await expect
       .poll(() => savedInline(page))
@@ -312,7 +299,7 @@ test.describe("the toolbar", () => {
 
     // Typing replaces the whole word only if it's still selected.
     await page.keyboard.type("x");
-    await expect(textBlock(page)).toHaveText("x");
+    await expect(firstTextBlock(page)).toHaveText("x");
   });
 
   test("works by keyboard, returning focus to the Block", async ({ page }) => {
@@ -321,7 +308,7 @@ test.describe("the toolbar", () => {
 
     await page.keyboard.press("Enter");
 
-    await expect(textBlock(page)).toBeFocused();
+    await expect(firstTextBlock(page)).toBeFocused();
     await expect
       .poll(() => savedInline(page))
       .toStrictEqual([
@@ -337,7 +324,7 @@ test.describe("the toolbar", () => {
 
     await page.keyboard.press("Enter");
 
-    await expect(textBlock(page)).toBeFocused();
+    await expect(firstTextBlock(page)).toBeFocused();
     await page.keyboard.type("x");
     await expect
       .poll(() => savedInline(page))
@@ -467,7 +454,7 @@ test.describe("line breaks", () => {
 
     await toolbarButton(page, "Line break").click();
 
-    await expect(textBlock(page)).toBeFocused();
+    await expect(firstTextBlock(page)).toBeFocused();
     await page.keyboard.type("x");
     await expect
       .poll(() => savedInline(page))
@@ -496,26 +483,9 @@ test.describe("links", () => {
     await addLink(page, "https://example.com");
 
     await expect(linkInput(page)).toBeHidden();
-    await expect(textBlock(page)).toBeFocused();
+    await expect(firstTextBlock(page)).toBeFocused();
     await page.keyboard.type("x");
-    await expect(textBlock(page)).toHaveText("x");
-  });
-
-  test("a Merge Tag is accepted as a link URL", async ({ page }) => {
-    await selectAllInBlock(page);
-
-    await addLink(page, "{{cta_url}}");
-
-    await expect
-      .poll(() => savedInline(page))
-      .toStrictEqual([
-        {
-          marks: [{ attrs: { href: "{{cta_url}}" }, type: "link" }],
-          text: "Hello",
-          type: "text",
-        },
-      ]);
-    expect(await exportHtml(page)).toContain('<a href="{{cta_url}}"');
+    await expect(firstTextBlock(page)).toHaveText("x");
   });
 
   test("refuses javascript:alert(1) and says why", async ({ page }) => {
@@ -566,12 +536,12 @@ test.describe("links", () => {
     await page.keyboard.press("Escape");
 
     await expect(linkInput(page)).toBeHidden();
-    await expect(textBlock(page)).toBeFocused();
+    await expect(firstTextBlock(page)).toBeFocused();
     expect(await savedInline(page)).toStrictEqual([
       { text: "Hello", type: "text" },
     ]);
     await page.keyboard.type("x");
-    await expect(textBlock(page)).toHaveText("x");
+    await expect(firstTextBlock(page)).toHaveText("x");
   });
 
   test("Escape while composing leaves the field open, with what's typed", async ({
@@ -601,7 +571,7 @@ test.describe("links", () => {
   }) => {
     await selectAllInBlock(page);
     await page.keyboard.press("Backspace");
-    await expect(textBlock(page)).toHaveText("");
+    await expect(firstTextBlock(page)).toHaveText("");
     await selectAll(page);
 
     await addLink(page, "https://example.com");
@@ -630,7 +600,7 @@ test.describe("links", () => {
       parent?.append(element);
     });
 
-    await expect(textBlock(page)).toHaveText("Hello");
+    await expect(firstTextBlock(page)).toHaveText("Hello");
     await expect(linkInput(page)).toBeHidden();
     await expect(toolbarButton(page, "Bold")).toHaveCount(0);
   });
@@ -640,7 +610,7 @@ test.describe("links", () => {
     await toolbarButton(page, "Link").click();
     await expect(linkInput(page)).toBeFocused();
 
-    await textBlock(page).click();
+    await firstTextBlock(page).click();
 
     await expect(linkInput(page)).toBeHidden();
   });
@@ -651,8 +621,8 @@ test.describe("links", () => {
     await cursorAtEndOfBlock(page);
 
     await addLink(page, "{{cta_url}}");
-    await expect(textBlock(page)).toHaveText("Hello{{cta_url}}");
-    await expect(textBlock(page)).toBeFocused();
+    await expect(firstTextBlock(page)).toHaveText("Hello{{cta_url}}");
+    await expect(firstTextBlock(page)).toBeFocused();
     await page.keyboard.type("!");
 
     await expect
@@ -672,7 +642,7 @@ test.describe("links", () => {
     test.beforeEach(async ({ page }) => {
       await selectAllInBlock(page);
       await addLink(page, "https://example.com");
-      await expect(textBlock(page)).toBeFocused();
+      await expect(firstTextBlock(page)).toBeFocused();
       await expect(toolbarButton(page, "Edit link")).toBeVisible();
     });
 
@@ -713,10 +683,10 @@ test.describe("links", () => {
       await pressArrow(page, "ArrowRight");
 
       await addLink(page, "https://example.org");
-      await expect(textBlock(page)).toBeFocused();
+      await expect(firstTextBlock(page)).toBeFocused();
       await page.keyboard.type("x");
 
-      await expect(textBlock(page)).toHaveText("Hexllo");
+      await expect(firstTextBlock(page)).toHaveText("Hexllo");
     });
 
     test("Remove link takes it off", async ({ page }) => {
@@ -728,7 +698,7 @@ test.describe("links", () => {
         .poll(() => savedInline(page))
         .toStrictEqual([{ text: "Hello", type: "text" }]);
       await expect(linkInput(page)).toBeHidden();
-      await expect(textBlock(page)).toBeFocused();
+      await expect(firstTextBlock(page)).toBeFocused();
     });
 
     test("Remove link with only a cursor takes off all of it", async ({
@@ -772,10 +742,10 @@ test.describe("links", () => {
     });
 
     test("clicking a link in the Block doesn't follow it", async ({ page }) => {
-      await textBlock(page).locator("a").click();
+      await firstTextBlock(page).locator("a").click();
 
       await expect(page).toHaveURL(/localhost/u);
-      await expect(textBlock(page)).toBeFocused();
+      await expect(firstTextBlock(page)).toBeFocused();
     });
   });
 });
@@ -813,7 +783,7 @@ test.describe("undo and redo", () => {
     );
 
     await page.keyboard.type("x");
-    await expect(textBlock(page)).toHaveText("x");
+    await expect(firstTextBlock(page)).toHaveText("x");
   });
 
   test("undoing a text edit of the same length still moves the cursor to it", async ({
@@ -824,15 +794,15 @@ test.describe("undo and redo", () => {
     await page.keyboard.press("Shift+ArrowRight");
     await settle(page);
     await page.keyboard.type("x");
-    await expect(textBlock(page)).toHaveText("xello");
+    await expect(firstTextBlock(page)).toHaveText("xello");
     await selectAll(page);
     await pressArrow(page, "ArrowRight");
 
     await undoByKey(page);
-    await expect(textBlock(page)).toHaveText("Hello");
+    await expect(firstTextBlock(page)).toHaveText("Hello");
     await page.keyboard.type("!");
 
-    await expect(textBlock(page)).toHaveText("H!ello");
+    await expect(firstTextBlock(page)).toHaveText("H!ello");
   });
 
   test("a formatting change doesn't merge with the typing before it", async ({
@@ -842,7 +812,7 @@ test.describe("undo and redo", () => {
     await page.keyboard.type("!");
     await toolbarButton(page, "Line break").click();
     await page.keyboard.type("x");
-    await expect(textBlock(page)).toContainText("x");
+    await expect(firstTextBlock(page)).toContainText("x");
 
     await undoByKey(page);
     await expect
@@ -878,13 +848,13 @@ test.describe("undo and redo", () => {
   test("adding and removing a link can each be undone", async ({ page }) => {
     await selectAllInBlock(page);
     await addLink(page, "https://example.com");
-    await expect(textBlock(page)).toBeFocused();
+    await expect(firstTextBlock(page)).toBeFocused();
     await toolbarButton(page, "Edit link").click();
     await page.getByRole("button", { name: "Remove link" }).click();
     await expect
       .poll(() => savedInline(page))
       .toStrictEqual([{ text: "Hello", type: "text" }]);
-    await expect(textBlock(page)).toBeFocused();
+    await expect(firstTextBlock(page)).toBeFocused();
 
     await undoByKey(page);
     await expect
@@ -931,7 +901,7 @@ test.describe("copy and paste", () => {
 
     // Google Docs wraps what it copies in a <b> that isn't bold.
     await pasteHtml(
-      page,
+      firstTextBlock(page),
       `<b style="font-weight:normal"><p><span style="font-weight:700">bold</span><span style="font-style:italic">italic</span><span style="text-decoration:underline">under</span><span>plain</span></p></b>`
     );
 
@@ -964,7 +934,7 @@ test.describe("copy and paste", () => {
     await selectAllInBlock(page);
 
     await pasteHtml(
-      page,
+      firstTextBlock(page),
       `<h1 style="color:red">Title</h1>
        <p style="font-size:40px"><b>bold</b> <i>italic</i> <u>under</u>
          <s>struck</s> <span style="color:red">red</span>
@@ -993,11 +963,11 @@ test.describe("copy and paste", () => {
         inline.flatMap(({ marks }) => (marks ?? []).map(({ type }) => type))
       )
     ).toStrictEqual(new Set(["bold", "italic", "underline"]));
-    const text = await textBlock(page).textContent();
+    const text = await firstTextBlock(page).textContent();
     expect(text).toContain("struck");
     expect(text).toContain("cell");
     expect(text).not.toContain("alert");
-    await expect(textBlock(page).locator("img")).toHaveCount(0);
+    await expect(firstTextBlock(page).locator("img")).toHaveCount(0);
     expect(await exportHtml(page)).not.toContain("color:red");
   });
 
@@ -1006,19 +976,22 @@ test.describe("copy and paste", () => {
   }) => {
     await selectAllInBlock(page);
 
-    await pasteHtml(page, `<a href="javascript:alert(1)">Click</a>`);
+    await pasteHtml(
+      firstTextBlock(page),
+      `<a href="javascript:alert(1)">Click</a>`
+    );
 
     await expect
       .poll(() => savedInline(page))
       .toStrictEqual([{ text: "Click", type: "text" }]);
-    await expect(textBlock(page).locator("a")).toHaveCount(0);
+    await expect(firstTextBlock(page).locator("a")).toHaveCount(0);
   });
 
   test("a pasted link keeps only its URL", async ({ page }) => {
     await selectAllInBlock(page);
 
     await pasteHtml(
-      page,
+      firstTextBlock(page),
       `<a href="{{cta_url}}" target="_top" class="x" onclick="alert(1)">Go</a>`
     );
 

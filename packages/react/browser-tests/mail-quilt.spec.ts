@@ -104,3 +104,35 @@ test.describe("a callback ref", () => {
     await expect(calls(page)).toHaveText("email, cleanup");
   });
 });
+
+// StrictMode mounts each effect twice, which a wrapper's effects must survive.
+test.describe("under StrictMode", () => {
+  test("onError hears a refused first document", async ({ page }) => {
+    await page.goto("/?refused-first&strict");
+
+    await expect(page.getByTestId("errors")).toContainText("newer");
+  });
+
+  test("passing each onChange document back into value keeps the cursor", async ({
+    page,
+  }) => {
+    await page.goto("/?strict");
+    await focusStartOfTextBlock(page);
+
+    await page.keyboard.type(fastTyping);
+
+    await expect(textBlock(page)).toHaveText(`${fastTyping}Hello`);
+    await expect(textBlock(page)).toBeFocused();
+  });
+
+  test("a callback ref ends up with the element, once its email is in", async ({
+    page,
+  }) => {
+    await page.goto("/?callback-ref&strict");
+
+    // However often StrictMode calls it, it ends with the element.
+    await expect(calls(page)).toHaveText(/email$/u);
+    await page.getByRole("button", { name: "Toggle editor" }).click();
+    await expect(calls(page)).toHaveText(/email, cleanup$/u);
+  });
+});

@@ -4,6 +4,7 @@ import type { Locator, Page } from "@playwright/test";
 import {
   announcement,
   blockGroup,
+  blockTools,
   bottomOf,
   boxOf,
   canvas,
@@ -60,9 +61,6 @@ const column = (page: Page, rowIndex: number, columnIndex: number) =>
     .nth(columnIndex);
 
 const dropIndicator = (page: Page) => canvas(page).locator(".drop-indicator");
-
-const blockTools = (page: Page) =>
-  canvas(page).getByRole("toolbar", { name: "Block tools" });
 
 /** The upper part of an element, so a drop there lands before it. */
 const topOf = async (locator: Locator): Promise<Point> => {
