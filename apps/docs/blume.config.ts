@@ -16,8 +16,8 @@ export default defineConfig({
   feedback: false,
   github: {
     dir: "apps/docs",
-    owner: "yourcodebuddy-in",
-    repo: "mailquilt",
+    owner: "mailquilt",
+    repo: "editor",
   },
   // The wordmark is part of the image, so there is no text beside it.
   logo: {
