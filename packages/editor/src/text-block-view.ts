@@ -580,8 +580,10 @@ export const createTextBlockView = ({
         keymap({
           ArrowLeft: collapseSelectAll(false),
           ArrowRight: collapseSelectAll(true),
-          // With Caps Lock on, these still match, from the key's own code.
+          "Mod-B": bold,
           "Mod-Enter": insertHardBreak,
+          "Mod-I": toggleMarkCommand(schema.marks.italic),
+          "Mod-U": toggleMarkCommand(schema.marks.underline),
           "Mod-b": bold,
           "Mod-i": toggleMarkCommand(schema.marks.italic),
           "Mod-u": toggleMarkCommand(schema.marks.underline),

@@ -865,6 +865,28 @@ test.describe("auto-scrolling", () => {
     await page.mouse.up();
   });
 
+  test("picking up a Block near the top of the window doesn't scroll the page", async ({
+    page,
+  }) => {
+    await open(page, [[manyBlocks]]);
+    const handle = handleOf(page, "Block 10");
+    await blockWith(page, "Block 10").scrollIntoViewIfNeeded();
+    await handle.hover();
+    // Its handle 100px from the top: near it, but not at it.
+    const { y } = await centerOf(handle);
+    await page.evaluate((by) => window.scrollBy(0, by), y - 100);
+    await handle.hover();
+    const before = await scrollTop(page);
+
+    await pickUp(page, handle);
+    await settle(page);
+    await settle(page);
+
+    expect(await scrollTop(page)).toBe(before);
+    await page.keyboard.press("Escape");
+    await page.mouse.up();
+  });
+
   // The other tests have the container as the editor's parent.
   test("a container in another component's shadow root, around its slot, scrolls", async ({
     page,

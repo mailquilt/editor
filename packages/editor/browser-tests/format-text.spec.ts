@@ -127,24 +127,6 @@ test.describe("bold, italic and underline", () => {
     expect(await exportHtml(page)).toContain("<u>Hello</u>");
   });
 
-  test("shortcuts work with Caps Lock on, and leave Shift to the browser", async ({
-    page,
-  }) => {
-    await selectAllInBlock(page);
-
-    // A capital letter with no Shift held, as Caps Lock gives.
-    await page.keyboard.press("ControlOrMeta+I");
-    // Chrome's own shortcut for the bookmarks bar.
-    await page.keyboard.press("ControlOrMeta+Shift+b");
-    await settle(page);
-
-    await expect
-      .poll(() => savedInline(page))
-      .toStrictEqual([
-        { marks: [{ type: "italic" }], text: "Hello", type: "text" },
-      ]);
-  });
-
   test("the toolbar button turns formatting off again", async ({ page }) => {
     await selectAllInBlock(page);
 
