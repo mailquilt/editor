@@ -77,7 +77,15 @@ test("the CDN build lists the license of each package it bundles", async ({
   expect(response.ok()).toBe(true);
   const licenses = await response.text();
 
-  for (const name of ["cheerio", "lit", "mjml-browser", "prosemirror-view"]) {
+  // lodash and juice are inside mjml-browser's own file.
+  for (const name of [
+    "cheerio",
+    "juice",
+    "lit",
+    "lodash",
+    "mjml-browser",
+    "prosemirror-view",
+  ]) {
     expect(licenses).toMatch(new RegExp(`^${name}@`, "mu"));
   }
   expect(licenses).toContain("Permission is hereby granted");

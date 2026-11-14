@@ -25,9 +25,6 @@ const rowTag = (page: Page, position: number) =>
     .nth(position - 1)
     .locator(".row-tag");
 
-const panelSettings = (page: Page) =>
-  canvas(page).getByRole("group", { name: "Settings" });
-
 test.describe("selecting a Row", () => {
   test("its tag selects it, and the panel shows its settings", async ({
     page,
@@ -41,7 +38,9 @@ test.describe("selecting a Row", () => {
     await expect(
       canvas(page).locator('.block[aria-current="true"]')
     ).toHaveCount(0);
-    await expect(panelSettings(page).locator("legend")).toHaveText(["Row"]);
+    await expect(canvas(page).locator(".side-panel legend")).toHaveText([
+      "Row",
+    ]);
     await expect(
       canvas(page)
         .locator(".side-panel")

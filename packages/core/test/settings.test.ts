@@ -235,6 +235,7 @@ describe("Email settings", () => {
       { fontFamily: "url(https://x)" },
       /fontFamily/u,
     ],
+    ["no font name", { fontFamily: " , " }, /fontFamily/u],
     [
       "a font with a quote that doesn't close",
       { fontFamily: '"Helvetica Neue, Arial' },

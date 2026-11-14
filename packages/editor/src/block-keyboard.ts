@@ -71,12 +71,11 @@ const TOOLBAR_KEYS = new Set([
 
 /**
  * Arrow keys, Home and End go along a toolbar's own buttons, either way up. With
- * a modifier they're left alone, as Alt+↑ is a shortcut to move a Block.
+ * a modifier they're left alone, as Alt+↑ is a shortcut to move a Block. Tab
+ * leaves from the toolbar's one stop, wherever the arrow keys got to, so
+ * Shift+Tab doesn't land back on that stop.
  */
 export const onToolbarArrowKeys = (event: KeyboardEvent) => {
-  if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
-    return;
-  }
   const toolbar = event.currentTarget as HTMLElement;
   const buttons = [
     ...toolbar.querySelectorAll<HTMLButtonElement>(
@@ -84,7 +83,21 @@ export const onToolbarArrowKeys = (event: KeyboardEvent) => {
     ),
   ];
   const index = buttons.indexOf(event.target as HTMLButtonElement);
-  if (!TOOLBAR_KEYS.has(event.key) || index === -1) {
+  if (index === -1) {
+    return;
+  }
+  if (event.key === "Tab") {
+    // Focus moves on from wherever it is once this returns.
+    buttons.find((button) => button.tabIndex === 0)?.focus();
+    return;
+  }
+  if (
+    event.altKey ||
+    event.ctrlKey ||
+    event.metaKey ||
+    event.shiftKey ||
+    !TOOLBAR_KEYS.has(event.key)
+  ) {
     return;
   }
   event.preventDefault();
@@ -108,13 +121,17 @@ const shortcutKey = (event: KeyboardEvent) =>
     ? event.key.toLowerCase()
     : event.code.replace("Key", "").toLowerCase();
 
+/** WebKit can end a composition first, and then report the key as 229. */
+export const isComposing = (event: KeyboardEvent) =>
+  event.isComposing || event.keyCode === 229;
+
 export const isLinkShortcut = (event: KeyboardEvent) =>
-  !(event.isComposing || event.altKey || event.shiftKey) &&
+  !(isComposing(event) || event.altKey || event.shiftKey) &&
   hasModKey(event) &&
   shortcutKey(event) === "k";
 
 export const historyShortcut = (event: KeyboardEvent) => {
-  if (event.isComposing || event.altKey || !hasModKey(event)) {
+  if (isComposing(event) || event.altKey || !hasModKey(event)) {
     return;
   }
   const key = shortcutKey(event);
@@ -125,10 +142,6 @@ export const historyShortcut = (event: KeyboardEvent) => {
     return "redo";
   }
 };
-
-/** WebKit can end a composition first, and then report the key as 229. */
-export const isComposing = (event: KeyboardEvent) =>
-  event.isComposing || event.keyCode === 229;
 
 export const historyInput = (event: InputEvent) => {
   if (event.inputType === "historyUndo") {

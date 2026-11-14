@@ -472,12 +472,7 @@ export const renderSettingsPanel = (
   section: SettingsSection,
   events: SettingsPanelEvents
 ) => html`
-  <div
-    aria-label="Settings"
-    class="settings"
-    role="group"
-    @keydown=${events.onKeydown}
-  >
+  <div class="settings" @keydown=${events.onKeydown}>
     <div class="section">
       <fieldset>
         <legend>${section.legend}</legend>

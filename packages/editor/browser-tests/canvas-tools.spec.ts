@@ -134,6 +134,17 @@ test.describe("a Row on the canvas", () => {
     // One stop for the whole toolbar, at its first tool.
     await expect(selectRowButton(page, 2)).toBeFocused();
     await expect(rowTools(page, 2)).toHaveCSS("opacity", "1");
+
+    // Shift+Tab from further along leaves it, rather than going back to that stop.
+    await page.keyboard.press("ArrowRight");
+    await expect(
+      rowTools(page, 2).getByRole("button", { name: "Move Row up" })
+    ).toBeFocused();
+    await page.keyboard.press("Shift+Tab");
+    await expect(selectRowButton(page, 2)).not.toBeFocused();
+    await expect(
+      rowTools(page, 2).getByRole("button", { name: "Move Row up" })
+    ).not.toBeFocused();
   });
 
   test("an empty Row is selected and deleted from the keyboard", async ({
@@ -320,6 +331,9 @@ test.describe("the format bar", () => {
 
     await page.keyboard.press("Alt+F10");
     await expect(bold).toBeFocused();
+    // The first only closes Bold's tooltip.
+    await page.keyboard.press("Escape");
+    await expect(bold).toBeFocused();
     await page.keyboard.press("Escape");
     await expect(textBlock(page)).toBeFocused();
     await expect(formatBar(page)).toBeVisible();
@@ -464,6 +478,23 @@ test.describe("on a screen too narrow to edit in", () => {
         .frameLocator("iframe")
         .getByText("Hello")
     ).toBeVisible();
+  });
+
+  test("stays out of sight with a size the host gives the frame", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await page.addStyleTag({
+      content:
+        "mail-quilt::part(frame) { flex-grow: 1; height: 700px; min-height: 700px }",
+    });
+    await expect(notice(page)).toBeVisible();
+
+    await expect(
+      canvas(page)
+        .locator(".editor")
+        .evaluate((editor) => editor.getBoundingClientRect().height)
+    ).resolves.toBe(0);
   });
 
   test("gives the editor back, with the same email, once there's room", async ({

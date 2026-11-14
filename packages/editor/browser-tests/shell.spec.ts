@@ -80,6 +80,12 @@ test("a heading the host sets is in the page's language, and Email is in English
   });
   await expect(heading).toHaveText("Email");
   await expect(heading).toHaveAttribute("lang", "en");
+
+  await shell(page).evaluate((element) => {
+    element.setAttribute("heading", "");
+  });
+  await expect(heading).toHaveText("Email");
+  await expect(heading).toHaveAttribute("lang", "en");
 });
 
 test.describe("choosing the buttons with actions", () => {
@@ -547,6 +553,35 @@ test.describe("a saved email standing in for the host's", () => {
     await setShellValue(page, emailWith([[["Hello"]]]));
 
     await expect(textBlock(page)).toHaveText("Saved");
+  });
+
+  test("gives way to a different email set straight after exportHtml()", async ({
+    page,
+  }) => {
+    await saveFirst(page);
+    await page.goto("/shell.html");
+    const opened = await page.evaluate(
+      async ({ each, first, other }) => {
+        const added = document.createElement(
+          "mail-quilt-shell"
+        ) as MailQuiltShell;
+        added.setAttribute("save-key", each);
+        added.value = first;
+        document.body.append(added);
+        const exporting = added.exportHtml();
+        added.value = other;
+        await exporting;
+        await added.updateComplete;
+        return JSON.stringify(added.value);
+      },
+      {
+        each: key,
+        first: emailWith([[["Hello"]]]),
+        other: emailWith([[["Other"]]]),
+      }
+    );
+
+    expect(opened).toContain("Other");
   });
 
   test("gives way to a different email from the host", async ({ page }) => {

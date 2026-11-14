@@ -284,12 +284,6 @@ describe(renderEmail, () => {
       },
     ],
     [
-      "an empty font family",
-      (email) => {
-        email.settings.fontFamily = "";
-      },
-    ],
-    [
       "the narrowest Column",
       (email) => {
         const [row] = email.rows;

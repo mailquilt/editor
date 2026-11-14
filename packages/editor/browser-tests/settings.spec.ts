@@ -28,9 +28,7 @@ import {
 } from "./helpers.js";
 
 const section = (page: Page, name: string) =>
-  page
-    .getByRole("group", { name: "Settings" })
-    .getByRole("group", { exact: true, name });
+  page.getByRole("group", { exact: true, name });
 
 const email = (page: Page) => section(page, "Email");
 const row = (page: Page) => section(page, "Row");

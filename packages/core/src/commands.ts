@@ -176,7 +176,7 @@ const planProps = (
     ([, value]) => value !== null
   );
   const validated = validate(Object.fromEntries(merged));
-  if (!validated.valid) {
+  if (!validated.ok) {
     return rejected(validated.reason);
   }
   if (isSameDocument(validated.props, current)) {

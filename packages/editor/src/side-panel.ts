@@ -355,7 +355,7 @@ const renderThumbnail = (layout: RowLayout) => html`
   </span>
 `;
 
-export interface SidePanelState {
+interface SidePanelState {
   document: BlocksDocument;
   /** The selected Block, and where it is. */
   selectedBlock: BlockPlace | undefined;
@@ -427,7 +427,7 @@ const renderRowProperties = (
     )}
     <div class="panel-scroll">
       <div class="panel-section">
-        <p class="panel-section-title" id="row-layout-title">Layout</p>
+        <h3 class="panel-section-title" id="row-layout-title">Layout</h3>
         <div
           aria-labelledby="row-layout-title"
           class="layout-choices"
@@ -492,7 +492,7 @@ const renderTabPanel = (
     case "content": {
       return html`
         <div class="panel-intro">
-          <p class="panel-section-title">Blocks</p>
+          <h3 class="panel-section-title">Blocks</h3>
           <p class="panel-hint">
             Drag one onto the email, or choose one to add it after the selected
             Block, into the selected Row, or at the end.
@@ -524,7 +524,7 @@ const renderTabPanel = (
     case "rows": {
       return html`
         <div class="panel-intro">
-          <p class="panel-section-title">Layouts</p>
+          <h3 class="panel-section-title">Layouts</h3>
           <p class="panel-hint">
             Drag one between Rows, or choose one to add it after the selected
             Row, or at the end of the email.

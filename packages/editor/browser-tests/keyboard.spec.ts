@@ -20,6 +20,7 @@ import {
   redoByKey,
   selectRow,
   setValue,
+  settle,
   stopClock,
   structure,
   undo,
@@ -635,6 +636,38 @@ test.describe("typing inside a Block", () => {
     });
 
     await expect(textOf(page, "A")).toBeFocused();
+  });
+
+  test("Ctrl/⌘+Z that an input method handled doesn't undo", async ({
+    browserName,
+    page,
+  }) => {
+    test.skip(
+      browserName === "firefox",
+      "Firefox doesn't let a script set an event's keyCode"
+    );
+    await open(page, [[["A"]]]);
+    await textOf(page, "A").click();
+    await page.keyboard.type("B");
+    await expect(structure(page)).resolves.toEqual([[["AB"]]]);
+
+    // Both modifiers, so it's the shortcut on any platform.
+    await textOf(page, "AB").evaluate((text) => {
+      text.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          bubbles: true,
+          code: "KeyZ",
+          composed: true,
+          ctrlKey: true,
+          key: "Process",
+          keyCode: 229,
+          metaKey: true,
+        })
+      );
+    });
+    await settle(page);
+
+    await expect(structure(page)).resolves.toEqual([[["AB"]]]);
   });
 
   test("holding Enter on a Block goes to its text and adds nothing", async ({

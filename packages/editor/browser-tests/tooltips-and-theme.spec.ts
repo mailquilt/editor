@@ -2,6 +2,8 @@ import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
 import {
+  blockGroup,
+  blockTools,
   boxOf,
   canvas,
   centerOf,
@@ -80,6 +82,28 @@ test.describe("a tooltip", () => {
 
     await expect(tooltip(page)).toBeHidden();
     await expect(undoButton(page)).toBeFocused();
+  });
+
+  test("Escape on a Block tool only closes its tooltip, then goes back to the Block", async ({
+    page,
+  }) => {
+    await openBlocks(page, ["text"]);
+    await page.mouse.move(0, 0);
+    await blockGroup(page, "Text").focus();
+    const moveUp = blockTools(page).getByRole("button", {
+      name: "Move Block up",
+    });
+    await moveUp.focus();
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("ArrowUp");
+    await expect(tooltip(page)).toHaveText(/Move Block up/u);
+
+    await page.keyboard.press("Escape");
+    await expect(tooltip(page)).toBeHidden();
+    await expect(moveUp).toBeFocused();
+
+    await page.keyboard.press("Escape");
+    await expect(blockGroup(page, "Text")).toBeFocused();
   });
 
   test("closes on a press, and doesn't open while the pointer is held", async ({

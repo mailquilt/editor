@@ -429,8 +429,8 @@ Mail Quilt won't host real-time collaboration, but it will give developers what 
 - A documented example, probably with Yjs
 
 ```ts
-editor.subscribe((operation) => transport.send(operation));
-transport.onMessage((operation) => editor.applyRemote(operation));
+editor.subscribe((operations) => transport.send(operations));
+transport.onMessage((operations) => editor.applyRemote(operations));
 editor.setPresence(user.id, { selectedBlockId: "abc" });
 ```
 

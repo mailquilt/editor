@@ -1,8 +1,16 @@
 {
   "extends": "../tsconfig.json",
   "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "lib": ["es2023", "DOM", "DOM.Iterable"],
     "types": ["node"]
   },
-  "include": [".", "../playwright.config.ts", "../tsdown.config.ts"],
+  "include": [
+    ".",
+    "../licenses.ts",
+    "../playwright.config.ts",
+    "../scripts",
+    "../tsdown.config.ts"
+  ],
   "exclude": ["host/dist"]
 }

@@ -412,10 +412,10 @@ export const parseProps = (
 ) => {
   const result = v.safeParse(schema, props);
   return result.success
-    ? { props: result.output, valid: true as const }
+    ? { ok: true as const, props: result.output }
     : {
+        ok: false as const,
         reason: `Invalid props for ${owner}: ${describeIssues(result.issues)}`,
-        valid: false as const,
       };
 };
 
@@ -427,8 +427,8 @@ export const validateProps = (
   return definition
     ? parseProps(definition.schema, props, `Block "${block.id}"`)
     : {
+        ok: false as const,
         reason: `Block "${block.id}" has unknown type "${block.type}"`,
-        valid: false as const,
       };
 };
 

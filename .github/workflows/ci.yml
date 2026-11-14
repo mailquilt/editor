@@ -45,6 +45,14 @@ jobs:
       - run: pnpm turbo run test --filter=@mailquilt/core --filter=@mailquilt/renderer --filter=@repo/install-checks
         env:
           CI: true
+      # core and renderer support Node 22 too, so what runs in Node runs there
+      # again. Turbo's cache doesn't know the Node version, hence --force.
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: pnpm turbo run test --force --filter=@mailquilt/core --filter=@mailquilt/renderer --filter=@repo/install-checks
+        env:
+          CI: true
 
   browsers:
     name: Browser tests (${{ matrix.browser }} ${{ matrix.shard }}/2)

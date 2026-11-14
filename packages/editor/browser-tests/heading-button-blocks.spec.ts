@@ -193,20 +193,18 @@ test.describe("Bold in a Heading, which is already bold", () => {
     await expect(page.getByRole("button", { name: "Bold" })).toBeEnabled();
   });
 
-  for (const keys of ["ControlOrMeta+b", "ControlOrMeta+Shift+b"]) {
-    test(`does nothing with ${keys}`, async ({ page }) => {
-      await open(page, ["heading"]);
-      await headingText(page).click();
-      await page.keyboard.press("ControlOrMeta+a");
+  test("does nothing with its shortcut", async ({ page }) => {
+    await open(page, ["heading"]);
+    await headingText(page).click();
+    await page.keyboard.press("ControlOrMeta+a");
 
-      await page.keyboard.press(keys);
-      await settle(page);
+    await page.keyboard.press("ControlOrMeta+b");
+    await settle(page);
 
-      const props = await lastBlockProps(page);
-      expect(JSON.stringify(props)).not.toContain("bold");
-      await expect(headingText(page).locator("strong")).toHaveCount(0);
-    });
-  }
+    const props = await lastBlockProps(page);
+    expect(JSON.stringify(props)).not.toContain("bold");
+    await expect(headingText(page).locator("strong")).toHaveCount(0);
+  });
 
   test("is left out of pasted text, which keeps its other formats", async ({
     page,

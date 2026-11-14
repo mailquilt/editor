@@ -152,7 +152,7 @@ export class MailQuiltShell extends LitElement {
    * them show. Names the Shell doesn't know are ignored.
    */
   declare actions: string | null | undefined;
-  /** "Email" when unset. */
+  /** "Email" when unset or empty. */
   declare heading: string | null | undefined;
   /** Where the email is kept in the browser. Without it, nothing is stored. */
   declare saveKey: string | null | undefined;
@@ -243,7 +243,8 @@ export class MailQuiltShell extends LitElement {
   protected override willUpdate(changed: PropertyValues<this>) {
     if (!this.#started) {
       this.#start();
-    } else if (changed.has("saveKey")) {
+    } else if (changed.has("saveKey") && this.hasUpdated) {
+      // At the first update, save-key is already what `exportHtml()` started with.
       if (this.saveKey) {
         // Another key keeps another email. With none saved there, the current
         // email is saved under it from its next change.
@@ -272,14 +273,10 @@ export class MailQuiltShell extends LitElement {
           <!-- A heading the host sets is in the host page's language. -->
           <h2
             class="heading"
-            lang=${
-              this.heading === undefined || this.heading === null
-                ? UI_LANG
-                : nothing
-            }
+            lang=${this.heading ? nothing : UI_LANG}
             part="heading"
           >
-            ${this.heading ?? "Email"}
+            ${this.heading || "Email"}
           </h2>
           <div class="actions" lang=${UI_LANG} part="actions">
             ${

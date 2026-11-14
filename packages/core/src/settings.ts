@@ -62,11 +62,11 @@ export const emailSettingsSchema = v.strictObject({
   backgroundColor: colorSchema,
   // Font names only, as both outputs put it in CSS, where a ; or : would add
   // rules of its own. A quote has to close, or the rest of the style would be
-  // read as part of the name.
+  // read as part of the name. With no name at all, the export has no font.
   fontFamily: v.pipe(
     v.string(),
     v.regex(
-      /^(?:[\w ,-]|'[\w ,"-]*'|"[\w ,'-]*")*$/u,
+      /^(?=.*\w)(?:[\w ,-]|'[\w ,"-]*'|"[\w ,'-]*")*$/u,
       "Must be a list of font names"
     )
   ),

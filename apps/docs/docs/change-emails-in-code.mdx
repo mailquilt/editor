@@ -64,7 +64,7 @@ editor.undo();
 editor.redo();
 ```
 
-To make several Commands one step, give them the same `mergeKey`. The editor does this while someone types, so that a word is undone at once rather than a letter at a time. If the changes end where they started, as when someone types a letter and deletes it, they leave no step to undo.
+To make several Commands one step, give them the same `mergeKey`. The editor does this while someone types, so that a word is undone at once rather than a letter at a time. If property changes end where they started, as when someone types a letter and deletes it, they leave no step to undo.
 
 ```js
 editor.apply(first, { mergeKey: "import" });

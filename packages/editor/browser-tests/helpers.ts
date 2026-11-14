@@ -250,9 +250,7 @@ export const blockWith = (page: Page, text: string) =>
   });
 
 export const panelBlock = (page: Page) =>
-  page
-    .getByRole("group", { name: "Settings" })
-    .getByRole("group", { exact: true, name: "Block" });
+  page.getByRole("group", { exact: true, name: "Block" });
 
 export const field = (page: Page, name: string) =>
   panelBlock(page).getByLabel(name, { exact: true });

@@ -58,7 +58,10 @@ export interface TextBlockView {
   formats: () => TextFormats;
   toggleMark: (mark: ToggleableMark) => void;
   insertLineBreak: () => void;
-  /** Links the selected text. With none, adds the URL as the linked text. */
+  /**
+   * Links the selected text. With none, changes the link the cursor is in, or
+   * else adds the URL as the linked text.
+   */
   setLink: (href: string) => void;
   removeLink: () => void;
   destroy: () => void;
@@ -577,10 +580,8 @@ export const createTextBlockView = ({
         keymap({
           ArrowLeft: collapseSelectAll(false),
           ArrowRight: collapseSelectAll(true),
-          "Mod-B": bold,
+          // With Caps Lock on, these still match, from the key's own code.
           "Mod-Enter": insertHardBreak,
-          "Mod-I": toggleMarkCommand(schema.marks.italic),
-          "Mod-U": toggleMarkCommand(schema.marks.underline),
           "Mod-b": bold,
           "Mod-i": toggleMarkCommand(schema.marks.italic),
           "Mod-u": toggleMarkCommand(schema.marks.underline),

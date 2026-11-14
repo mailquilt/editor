@@ -279,6 +279,25 @@ test.describe("closing", () => {
     await expect(previewDialog(page)).toBeHidden();
   });
 
+  test("Escape closes it and goes no further, so a host's dialog stays open", async ({
+    page,
+  }) => {
+    await page.evaluate(() => {
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          document.documentElement.dataset.hostEscape = "reached";
+        }
+      });
+    });
+    await previewButton(page).click();
+    await expect(previewEmail(page)).toContainText("Hello");
+
+    await page.keyboard.press("Escape");
+
+    await expect(previewDialog(page)).toBeHidden();
+    await expect(page.locator("html")).not.toHaveAttribute("data-host-escape");
+  });
+
   test("the Block keeps its cursor and undo history after the Preview", async ({
     page,
   }) => {
