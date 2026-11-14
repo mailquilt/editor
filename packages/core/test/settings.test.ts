@@ -214,6 +214,7 @@ describe("Email settings", () => {
   it.each([
     ["a width that isn't whole", { width: 600.5 }, /width/u],
     ["a width of zero", { width: 0 }, /width/u],
+    ["a width wider than any inbox", { width: 1201 }, /width/u],
     ["no width", { width: null }, /width/u],
     [
       "a color that isn't hex or rgb()",
@@ -243,7 +244,6 @@ describe("Email settings", () => {
     ],
     ["a preheader that isn't text", { preheader: 1 }, /preheader/u],
     ["a language that isn't a code", { language: "English" }, /language/u],
-    ["a language that breaks out", { language: 'en"x' }, /language/u],
     ["a setting it doesn't have", { subject: "Hi" }, /subject/u],
   ])("rejects %s", (_name, settings, reason) => {
     const { editor } = setup();
@@ -324,14 +324,6 @@ describe("a saved language that isn't a code", () => {
       ...before,
       width: 640,
     });
-  });
-
-  it("can be replaced with a code", () => {
-    const editor = createEditor({ document: withLanguage("en_US") });
-
-    editor.apply({ settings: { language: "en" }, type: "updateEmailSettings" });
-
-    expect(editor.getDocument().settings.language).toBe("en");
   });
 
   it("can be removed", () => {

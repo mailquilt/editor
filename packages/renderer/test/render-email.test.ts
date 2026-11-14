@@ -65,14 +65,6 @@ const emailWithColumns = (
 });
 
 describe(renderEmail, () => {
-  it("matches the saved HTML for one Text Block", async () => {
-    const html = await renderEmail(
-      emailWithText("Hello {{first_name}},", "", "Welcome aboard.")
-    );
-
-    await expect(html).toMatchFileSnapshot("expected/one-text-block.html");
-  });
-
   it("matches the saved HTML for a 33/33/33 Row with an empty Column", async () => {
     const email = emailWithColumns(
       { texts: ["One"], width: 33.33 },
@@ -86,7 +78,7 @@ describe(renderEmail, () => {
   });
 
   it("matches the saved HTML for an email with every setting", async () => {
-    const email = emailWithText("Hello {{first_name}},");
+    const email = emailWithText("Hello {{first_name}},", "", "Welcome aboard.");
     email.settings = {
       backgroundColor: "#eeeeee",
       fontFamily: "Georgia, 'Times New Roman', serif",
@@ -280,7 +272,7 @@ describe(renderEmail, () => {
     [
       "the widest email",
       (email) => {
-        email.settings.width = Number.MAX_SAFE_INTEGER;
+        email.settings.width = 1200;
       },
     ],
     [

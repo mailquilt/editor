@@ -150,7 +150,7 @@ The [document format reference](apps/docs/docs/document-format.mdx) lists every 
 - **Links are limited** to `http:`, `https:`, `mailto:`, `tel:` and Merge Tags such as `{{cta_url}}`, so a link can't run code. Image URLs are limited to `http:`, `https:` and Merge Tags.
 - **An Image without a URL** shows a placeholder on the canvas and is left out of the export. An Image needs alt text before it can have a link, because alt text is all that can name that link.
 - **Documents that can't be trusted are refused, never repaired:** malformed ones, unknown Block types and versions newer than the package supports. Nothing changes them, so a host's auto-save can't overwrite the original.
-- **Whatever loads also exports,** so values follow what MJML accepts. Colors are `#rgb`, `#rrggbb`, `rgb()` or `rgba()`, the email width is a whole number of pixels, and a Column is at least 1% wide. A language set by a Command must be a code such as `en` or `pt-BR`. A saved one loads whatever it is, so the email can still be opened and fixed, and the renderer escapes it.
+- **Whatever loads also exports,** so values follow what MJML accepts. Colors are `#rgb`, `#rrggbb`, `rgb()` or `rgba()`, the email width is a whole number of pixels up to 1200, and a Column is at least 1% wide. A language set by a Command must be a code such as `en` or `pt-BR`. A saved one loads whatever it is, so the email can still be opened and fixed, and the renderer escapes it.
 
 ### Planned additions
 

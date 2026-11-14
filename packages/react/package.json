@@ -33,6 +33,9 @@
     },
     "./package.json": "./package.json"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsdown",
     "check-types": "tsc --noEmit && tsc --noEmit -p browser-tests",

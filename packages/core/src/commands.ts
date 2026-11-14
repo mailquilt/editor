@@ -80,6 +80,37 @@ const changesSchema = v.pipe(
   )
 );
 
+/** A request to change an email. It can be rejected. */
+export type Command =
+  | {
+      type: "updateBlockProps";
+      blockId: string;
+      props: Record<string, unknown>;
+    }
+  | { type: "updateRowProps"; rowId: string; props: Record<string, unknown> }
+  | { type: "updateEmailSettings"; settings: Record<string, unknown> }
+  | { type: "insertBlock"; blockType: string; columnId: string; index: number }
+  | { type: "removeBlock"; blockId: string }
+  | {
+      type: "moveBlock";
+      blockId: string;
+      columnId: string;
+      /** Where the Block goes once it has left its current place. */
+      index: number;
+    }
+  | { type: "moveBlockToNewRow"; blockId: string; rowIndex: number }
+  | { type: "insertBlockInNewRow"; blockType: string; rowIndex: number }
+  | { type: "insertRow"; index: number; layout: RowLayout }
+  | { type: "removeRow"; rowId: string }
+  | {
+      type: "moveRow";
+      /** Where the Row goes once it has left its current place. */
+      index: number;
+      rowId: string;
+    }
+  | { type: "setRowLayout"; layout: RowLayout; rowId: string };
+
+// Written out above, so hosts see Commands rather than the library's types.
 const commandSchema = v.variant("type", [
   v.strictObject({
     blockId: v.string(),
@@ -108,7 +139,6 @@ const commandSchema = v.variant("type", [
   v.strictObject({
     blockId: v.string(),
     columnId: v.string(),
-    /** Where the Block goes once it has left its current place. */
     index: indexSchema,
     type: v.literal("moveBlock"),
   }),
@@ -132,7 +162,6 @@ const commandSchema = v.variant("type", [
     type: v.literal("removeRow"),
   }),
   v.strictObject({
-    /** Where the Row goes once it has left its current place. */
     index: indexSchema,
     rowId: v.string(),
     type: v.literal("moveRow"),
@@ -142,10 +171,7 @@ const commandSchema = v.variant("type", [
     rowId: v.string(),
     type: v.literal("setRowLayout"),
   }),
-]);
-
-/** A request to change an email. It can be rejected. */
-export type Command = v.InferOutput<typeof commandSchema>;
+]) satisfies v.GenericSchema<unknown, Command>;
 
 /** What an accepted Command does to the document. */
 type CommandPlan =

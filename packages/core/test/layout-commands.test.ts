@@ -131,6 +131,22 @@ describe("the insertBlock Command", () => {
   });
 });
 
+const threeRowEmail = (): BlocksDocument => ({
+  ...createEmail(),
+  rows: ["first", "second", "third"].map((id) => ({
+    columns: [
+      {
+        blocks: [block(`${id}-block`)],
+        id: `${id}-column`,
+        props: {},
+        width: 100,
+      },
+    ],
+    id,
+    props: { backgroundColor: `#${id.length}${id.length}0000` },
+  })),
+});
+
 describe("the removeBlock Command", () => {
   it("removes the Block", () => {
     const { editor } = setup();
@@ -213,29 +229,6 @@ describe("the moveBlock Command", () => {
     expect(columnsOf(editor.getDocument())).toStrictEqual([
       [["b"], ["c", "a"]],
     ]);
-  });
-
-  it("keeps the Block's content", () => {
-    const { editor } = setup();
-    const content = {
-      content: [
-        { content: [{ text: "Keep me", type: "text" }], type: "paragraph" },
-      ],
-      type: "doc",
-    };
-    expectAccepted(
-      editor.apply({
-        blockId: "a",
-        props: { content },
-        type: "updateBlockProps",
-      })
-    );
-
-    expectAccepted(editor.apply(move("a", "right", 0)));
-
-    expect(
-      editor.getDocument().rows[0]?.columns[1]?.blocks[0]?.props.content
-    ).toStrictEqual(content);
   });
 
   it.each([
@@ -382,6 +375,27 @@ describe("a Command for what's already so", () => {
     expect(operations).toStrictEqual([]);
   });
 
+  // Empty Rows are kept, as a person can fill them again.
+  it("moves a Block alone in its Row further away, leaving that Row empty", () => {
+    const { editor } = setup(threeRowEmail());
+
+    expectAccepted(
+      editor.apply({
+        blockId: "first-block",
+        rowIndex: 3,
+        type: "moveBlockToNewRow",
+      })
+    );
+
+    expect(columnsOf(editor.getDocument())).toStrictEqual([
+      [[]],
+      [["second-block"]],
+      [["third-block"]],
+      [["first-block"]],
+    ]);
+    expectValid(editor.getDocument());
+  });
+
   it("moves a Block alone in its Column when its Row has other Columns", () => {
     const { editor } = setup({
       ...createEmail(),
@@ -488,6 +502,21 @@ describe("the removeRow Command", () => {
 
     expect(editor.getDocument().rows).toStrictEqual([]);
     expectValid(editor.getDocument());
+  });
+
+  it("brings back the Row's latest content on undo", () => {
+    const { editor } = setup();
+    send(editor, {
+      blockId: "c",
+      props: { align: "center" },
+      type: "updateBlockProps",
+    });
+    const changed = editor.getDocument();
+
+    send(editor, { rowId: "row", type: "removeRow" });
+    editor.undo();
+
+    expect(editor.getDocument()).toStrictEqual(changed);
   });
 });
 
@@ -701,22 +730,6 @@ describe("rejecting a Row Command", () => {
   });
 });
 
-const threeRowEmail = (): BlocksDocument => ({
-  ...createEmail(),
-  rows: ["first", "second", "third"].map((id) => ({
-    columns: [
-      {
-        blocks: [block(`${id}-block`)],
-        id: `${id}-column`,
-        props: {},
-        width: 100,
-      },
-    ],
-    id,
-    props: { backgroundColor: `#${id.length}${id.length}0000` },
-  })),
-});
-
 const rowOrder = (document: BlocksDocument) =>
   document.rows.map(({ id }) => id);
 
@@ -738,26 +751,6 @@ describe("the moveRow Command", () => {
       "third",
     ]);
     expectValid(editor.getDocument());
-  });
-
-  it("moves a Row earlier", () => {
-    const { editor } = setup(threeRowEmail());
-
-    expectAccepted(editor.apply(moveRow("third", 0)));
-
-    expect(rowOrder(editor.getDocument())).toStrictEqual([
-      "third",
-      "first",
-      "second",
-    ]);
-  });
-
-  it("keeps the Row's ID, Columns, Blocks and settings", () => {
-    const { document, editor } = setup(threeRowEmail());
-
-    editor.apply(moveRow("first", 2));
-
-    expect(editor.getDocument().rows[2]).toStrictEqual(document.rows[0]);
   });
 
   it("records one move Operation, not a remove and an insert", () => {

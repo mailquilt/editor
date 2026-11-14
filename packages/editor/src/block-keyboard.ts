@@ -1,7 +1,3 @@
-import type { BlocksDocument, Command } from "@mailquilt/core";
-
-import { blocksIn, locate } from "./places.js";
-
 export type Direction = "down" | "left" | "right" | "up";
 
 const ARROW_KEYS: Record<string, Direction> = {
@@ -60,15 +56,6 @@ export const ROW_MOVE_BUTTONS = MOVE_BUTTONS.filter(
     button.direction === "up" || button.direction === "down"
 );
 
-const TOOLBAR_KEYS = new Set([
-  "ArrowDown",
-  "ArrowLeft",
-  "ArrowRight",
-  "ArrowUp",
-  "End",
-  "Home",
-]);
-
 /**
  * Arrow keys, Home and End go along a toolbar's own buttons, either way up. With
  * a modifier they're left alone, as Alt+↑ is a shortcut to move a Block. Tab
@@ -91,20 +78,13 @@ export const onToolbarArrowKeys = (event: KeyboardEvent) => {
     buttons.find((button) => button.tabIndex === 0)?.focus();
     return;
   }
-  if (
-    event.altKey ||
-    event.ctrlKey ||
-    event.metaKey ||
-    event.shiftKey ||
-    !TOOLBAR_KEYS.has(event.key)
-  ) {
+  if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
     return;
   }
-  event.preventDefault();
   const last = buttons.length - 1;
   const previous = index === 0 ? last : index - 1;
   const following = index === last ? 0 : index + 1;
-  const next = {
+  const next: number | undefined = {
     ArrowDown: following,
     ArrowLeft: previous,
     ArrowRight: following,
@@ -112,7 +92,10 @@ export const onToolbarArrowKeys = (event: KeyboardEvent) => {
     End: last,
     Home: 0,
   }[event.key];
-  buttons[next ?? index]?.focus();
+  if (next !== undefined) {
+    event.preventDefault();
+    buttons[next]?.focus();
+  }
 };
 
 /** Layouts without Latin letters report their own, so use the key's position. */
@@ -150,94 +133,4 @@ export const historyInput = (event: InputEvent) => {
   if (event.inputType === "historyRedo") {
     return "redo";
   }
-};
-
-/**
- * The Block that arrow keys select next. Up and down follow reading order, which
- * reaches every Block. Left and right go to the nearest Column with Blocks in it,
- * as close as it has to the same position.
- */
-export const neighbourBlockId = (
-  document: BlocksDocument,
-  blockId: string,
-  direction: Direction
-) => {
-  if (direction === "up" || direction === "down") {
-    const ids = blocksIn(document).map(({ id }) => id);
-    return ids[ids.indexOf(blockId) + (direction === "down" ? 1 : -1)];
-  }
-  const place = locate(document, blockId);
-  if (!place) {
-    return;
-  }
-  const { columnIndex, row } = place;
-  const columns =
-    direction === "right"
-      ? row.columns.slice(columnIndex + 1)
-      : // oxlint-disable-next-line unicorn/no-array-reverse -- This package's ES2022 target has no toReversed, and slice made this a copy.
-        row.columns.slice(0, columnIndex).reverse();
-  const blocks = columns.find((column) => column.blocks.length > 0)?.blocks;
-  return blocks?.[Math.min(place.index, blocks.length - 1)]?.id;
-};
-
-/**
- * The Command that moves a Block one step, or nothing if it can't go further. Up
- * and down leave a Column's end for the Row beyond, the same as dragging across,
- * then a Row of its own past the top or bottom of the email. A Block that already
- * has one stays, because every press would otherwise add an empty Row.
- */
-export const moveCommand = (
-  document: BlocksDocument,
-  blockId: string,
-  direction: Direction
-): Command | undefined => {
-  const place = locate(document, blockId);
-  if (!place) {
-    return;
-  }
-  const { column, columnIndex, index, row, rowIndex } = place;
-  const moveTo = (columnId: string, at: number): Command => ({
-    blockId,
-    columnId,
-    index: at,
-    type: "moveBlock",
-  });
-
-  if (direction === "left" || direction === "right") {
-    const target = row.columns[columnIndex + (direction === "right" ? 1 : -1)];
-    return target && moveTo(target.id, Math.min(index, target.blocks.length));
-  }
-
-  const down = direction === "down";
-  const nextIndex = index + (down ? 1 : -1);
-  if (nextIndex >= 0 && nextIndex < column.blocks.length) {
-    return moveTo(column.id, nextIndex);
-  }
-  const nextRow = document.rows[rowIndex + (down ? 1 : -1)];
-  if (nextRow) {
-    const target =
-      nextRow.columns[Math.min(columnIndex, nextRow.columns.length - 1)];
-    return target && moveTo(target.id, down ? 0 : target.blocks.length);
-  }
-  if (row.columns.length === 1 && column.blocks.length === 1) {
-    return;
-  }
-  return {
-    blockId,
-    rowIndex: down ? document.rows.length : 0,
-    type: "moveBlockToNewRow",
-  };
-};
-
-/** The Command that moves a Row one step, or nothing at either end. */
-export const moveRowCommand = (
-  document: BlocksDocument,
-  rowId: string,
-  direction: "down" | "up"
-): Command | undefined => {
-  const index = document.rows.findIndex(({ id }) => id === rowId);
-  const to = index + (direction === "up" ? -1 : 1);
-  return index === -1 || to < 0 || to >= document.rows.length
-    ? undefined
-    : { index: to, rowId, type: "moveRow" };
 };

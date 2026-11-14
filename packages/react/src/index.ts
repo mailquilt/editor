@@ -53,8 +53,8 @@ export interface MailQuiltShellProps
 const loadEditor = () => import("@mailquilt/editor");
 
 /**
- * Outside the hook, as React Compiler reads setting a property of the element,
- * which is held in state, as changing state, and leaves the hook uncompiled.
+ * Outside the hook, as React Compiler's lint rule, react/immutability, reads
+ * setting a property of the element, which is held in state, as changing state.
  */
 const setDocument = (
   element: MailQuiltElement | MailQuiltShellElement,

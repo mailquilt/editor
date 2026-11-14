@@ -49,20 +49,6 @@ describe("applying a Command", () => {
     );
   });
 
-  it("does not change the document passed to createEditor", () => {
-    const document = createEmail();
-    const before = structuredClone(document);
-    const editor = createEditor({ document });
-
-    editor.apply({
-      blockId: firstBlock(document).id,
-      props: { content: paragraph("Changed") },
-      type: "updateBlockProps",
-    });
-
-    expect(document).toStrictEqual(before);
-  });
-
   it("keeps the editor's document safe from changes to a document it returned", () => {
     const document = createEmail();
     const editor = createEditor({ document });

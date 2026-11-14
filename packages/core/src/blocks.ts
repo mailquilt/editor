@@ -12,6 +12,9 @@ import {
   colorSchema,
   INVALID_COLOR,
   INVALID_SOLID_COLOR,
+  pixelField,
+  pixelSchema,
+  wholePixelsSchema,
   solidColorSchema,
 } from "./settings.js";
 import type { SettingsField } from "./settings.js";
@@ -19,11 +22,6 @@ import type { SettingsField } from "./settings.js";
 const MAX_FONT_SIZE = 200;
 
 const alignSchema = v.picklist(["left", "center", "right"]);
-
-/** A whole number of pixels, 1 or more. */
-const wholePixelsSchema = v.pipe(v.number(), v.safeInteger(), v.minValue(1));
-
-const pixelSchema = (max: number) => v.pipe(wholePixelsSchema, v.maxValue(max));
 
 const fontSizeSchema = pixelSchema(MAX_FONT_SIZE);
 
@@ -49,25 +47,6 @@ const colorField = (
   key,
   label,
   type: "color",
-});
-
-const pixelField = (
-  key: string,
-  label: string,
-  fallback?: number,
-  max?: number
-): SettingsField => ({
-  default: fallback,
-  invalidMessage:
-    max === undefined
-      ? "Use a whole number of pixels, 1 or more."
-      : `Use a whole number from 1 to ${max}.`,
-  key,
-  label,
-  max,
-  min: 1,
-  type: "number",
-  unit: "px",
 });
 
 const fontSizeField = (fallback: number) =>

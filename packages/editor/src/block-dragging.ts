@@ -17,9 +17,15 @@ export type DropPlace =
   | { columnId: string; index: number }
   | { rowIndex: number };
 
+/** A Row, new or on the canvas, which only ever lands between Rows. */
+const isRowSource = (
+  source: DragSource
+): source is { rowId: string } | { rowLayout: string } =>
+  "rowLayout" in source || "rowId" in source;
+
 /** The Command for a drop, which adds a Row if it landed outside any. */
 export const dropCommand = (source: DragSource, place: DropPlace): Command => {
-  if ("rowId" in source || "rowLayout" in source) {
+  if (isRowSource(source)) {
     // A Row only lands between Rows, as `landing` finds no Column for one.
     const { rowIndex: index } = place as { rowIndex: number };
     return "rowId" in source
@@ -70,10 +76,6 @@ const SCROLL_SPEED_PX = 1500;
 const FRAME_SECONDS = 1 / 60;
 /** How far beside a scroll container the pointer can be and still scroll it. */
 const SCROLL_TOLERANCE_PX = 10;
-
-/** A Row, new or on the canvas, which only ever lands between Rows. */
-const isRowSource = (source: DragSource) =>
-  "rowLayout" in source || "rowId" in source;
 
 /** A Block or Row already in the email, rather than a new one. */
 const isOnCanvas = (source: DragSource) =>

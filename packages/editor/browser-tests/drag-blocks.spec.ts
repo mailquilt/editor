@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import type { Locator, Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
 
 import {
   announcement,
@@ -29,7 +29,9 @@ import {
   settle,
   setValue,
   structure,
+  TALL_VIEWPORT,
   textBlock,
+  topOf,
   undoByKey,
 } from "./helpers.js";
 import type { Point } from "./helpers.js";
@@ -46,14 +48,7 @@ const column = (page: Page, rowIndex: number, columnIndex: number) =>
 
 const dropIndicator = (page: Page) => canvas(page).locator(".drop-indicator");
 
-/** The upper part of an element, so a drop there lands before it. */
-const topOf = async (locator: Locator): Promise<Point> => {
-  const { height, width, x, y } = await boxOf(locator);
-  return { x: x + width / 2, y: y + height / 4 };
-};
-
-// The test host's unfriendly CSS pushes the canvas far down the page.
-test.use({ viewport: { height: 1600, width: 1280 } });
+test.use({ viewport: TALL_VIEWPORT });
 
 const indicatorBox = async (page: Page) => {
   await expect(dropIndicator(page)).toBeVisible();
@@ -359,10 +354,10 @@ test.describe("the text cursor during a drag", () => {
 test.describe("selecting text with the mouse", () => {
   test("from the first letter never moves the Block", async ({ page }) => {
     await open(page, [[["Move me not", "Two"], ["Three"]]]);
-    const { x, y } = await boxOf(blockWith(page, "Move me not"));
+    const line = await boxOf(textBlock(page).first().locator("p"));
 
-    // Text starts 16px in, at the end of the handle.
-    await page.mouse.move(x + 16, y + 26);
+    // Its first letter, where the text starts at the end of the handle.
+    await page.mouse.move(line.x + 1, line.y + line.height / 2);
     await page.mouse.down();
     await moveTo(page, await bottomOf(blockWith(page, "Three")));
     await expect(canvas(page).locator("[data-drag-ghost]")).toHaveCount(0);

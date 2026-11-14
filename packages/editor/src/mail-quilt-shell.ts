@@ -50,7 +50,7 @@ const downloadFile = (name: string, type: string, text: string) => {
  */
 export class MailQuiltShell extends LitElement {
   static override properties = {
-    actions: { reflect: true },
+    actions: {},
     heading: {},
     saveKey: { attribute: "save-key" },
   };
@@ -197,10 +197,12 @@ export class MailQuiltShell extends LitElement {
   }
 
   get value(): BlocksDocument | undefined {
-    // Before it starts, what the host set, which the editor checks on start.
-    return this.#started
-      ? this.#editor.value
-      : (this.#pendingValue as BlocksDocument | undefined);
+    if (this.#started) {
+      return this.#editor.value;
+    }
+    // Before it starts, what the host set, as the editor will have it.
+    const loaded = loadDocument(this.#pendingValue);
+    return loaded.ok ? loaded.document : undefined;
   }
 
   /**

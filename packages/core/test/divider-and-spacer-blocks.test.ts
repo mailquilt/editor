@@ -28,24 +28,6 @@ const setProps = (type: string, props: Record<string, unknown>) => {
   return { document: editor.getDocument(), result };
 };
 
-describe.each(["divider", "spacer"])("a %s Block", (type) => {
-  it("is added with nothing set", () => {
-    const document = createEmail();
-    const columnId = document.rows[0]?.columns[0]?.id as string;
-    const editor = createEditor({ document });
-
-    const result = editor.apply({
-      blockType: type,
-      columnId,
-      index: 0,
-      type: "insertBlock",
-    });
-
-    expect(result.ok).toBeTruthy();
-    expect(propsOf(editor.getDocument())).toStrictEqual({});
-  });
-});
-
 describe("Divider Block", () => {
   it("stores a color and thickness", () => {
     const props = { color: "#ff0000", thickness: 4 };

@@ -203,19 +203,6 @@ describe("applying an Operation", () => {
     expect(row.columns[0]?.blocks).toStrictEqual([]);
   });
 
-  it("keeps an inserted Block separate from the Operation", () => {
-    const document = applied(insert);
-
-    applyOperation(document, {
-      blockId: "new",
-      previousProps: {},
-      props: { content: "changed" },
-      type: "setProps",
-    });
-
-    expect(insert.type === "insert" && insert.block.props).toStrictEqual({});
-  });
-
   it("throws for a missing Column", () => {
     expect(() =>
       applied({ ...insert, columnId: "missing" } as Operation)

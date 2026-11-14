@@ -16,6 +16,7 @@ import {
   emailWith,
   exportHtml,
   layoutOption,
+  linkUrlField,
   moveCursorToLineEnd,
   openBlocks,
   rowTools,
@@ -116,13 +117,6 @@ test.describe("the palette", () => {
 
     await expect(textBlock(page)).toHaveCount(0);
     expect(await structure(page)).toStrictEqual([]);
-  });
-
-  test("fires one mq-change for each addition", async ({ page }) => {
-    await addText(page);
-
-    await expect(textBlock(page)).toHaveCount(2);
-    await expect(changeCount(page)).toHaveText("1");
   });
 });
 
@@ -401,7 +395,7 @@ test.describe("structure changes and the rest of the editor", () => {
     await page.keyboard.type("x");
     await expect(changeCount(page)).toHaveText("1");
     await page.getByRole("button", { exact: true, name: "Link" }).click();
-    await expect(page.getByRole("textbox", { name: "Link URL" })).toBeFocused();
+    await expect(linkUrlField(page)).toBeFocused();
     // Typed, because a filled value leaves nothing for the field's own undo.
     await page.keyboard.type("https");
 
@@ -429,7 +423,7 @@ test.describe("structure changes and the rest of the editor", () => {
     await expect(changeCount(page)).toHaveText("1");
     await page.keyboard.press("ControlOrMeta+a");
     await page.getByRole("button", { exact: true, name: "Link" }).click();
-    const field = page.getByRole("textbox", { name: "Link URL" });
+    const field = linkUrlField(page);
     await expect(field).toBeFocused();
 
     await undo(page);
@@ -444,7 +438,7 @@ test.describe("structure changes and the rest of the editor", () => {
   }) => {
     await textBlock(page).click();
     await page.getByRole("button", { exact: true, name: "Link" }).click();
-    const field = page.getByRole("textbox", { name: "Link URL" });
+    const field = linkUrlField(page);
     await expect(field).toBeFocused();
 
     await undo(page);

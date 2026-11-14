@@ -10,6 +10,15 @@ export const canvas = (page: Page) => page.locator("mail-quilt");
 export const textBlock = (page: Page) =>
   page.getByRole("textbox", { name: "Text Block" });
 
+/** The test host's unfriendly CSS pushes the canvas far down the page. */
+export const TALL_VIEWPORT = { height: 1600, width: 1280 };
+
+export const linkUrlField = (page: Page) =>
+  page.getByRole("textbox", { name: "Link URL" });
+
+export const previewButton = (page: Page) =>
+  page.getByRole("button", { exact: true, name: "Preview" });
+
 type Document = NonNullable<MailQuilt["value"]>;
 
 export { emailWith } from "./host/email.js";
@@ -161,17 +170,32 @@ export const openEmail = async (page: Page, rows: string[][][]) => {
   await expect(textBlock(page).first()).toBeVisible();
 };
 
-/**
- * A Row's toolbar shows on hover, so the pointer goes there first. While one of
- * its Blocks is selected, it only shows once its tag has selected the Row.
- */
-const showRowTools = async (page: Page, position: number) => {
-  const frame = canvas(page)
+const rowFrame = (page: Page, position: number) =>
+  canvas(page)
     .locator(".row-frame")
     .nth(position - 1);
-  await frame.locator(".row").hover({ position: { x: 4, y: 4 } });
-  if ((await frame.locator('.block[aria-current="true"]').count()) > 0) {
-    await frame.locator(".row-tag").click();
+
+export const rowTag = (page: Page, position: number) =>
+  rowFrame(page, position).locator(".row-tag");
+
+/** A Row's toolbar shows on hover, so the pointer goes there first. */
+export const hoverRow = (page: Page, position: number) =>
+  rowFrame(page, position)
+    .locator(".row")
+    .hover({ position: { x: 4, y: 4 } });
+
+/**
+ * Shows a Row's toolbar. While one of its Blocks is selected, it only shows
+ * once its tag has selected the Row.
+ */
+const showRowTools = async (page: Page, position: number) => {
+  await hoverRow(page, position);
+  if (
+    (await rowFrame(page, position)
+      .locator('.block[aria-current="true"]')
+      .count()) > 0
+  ) {
+    await rowTag(page, position).click();
   }
 };
 
@@ -375,6 +399,12 @@ export const boxOf = async (locator: Locator) => {
 export const centerOf = async (locator: Locator): Promise<Point> => {
   const { height, width, x, y } = await boxOf(locator);
   return { x: x + width / 2, y: y + height / 2 };
+};
+
+/** The upper part of an element, so a drop there lands before it. */
+export const topOf = async (locator: Locator): Promise<Point> => {
+  const { height, width, x, y } = await boxOf(locator);
+  return { x: x + width / 2, y: y + height / 4 };
 };
 
 /** The lower part of an element, so a drop there lands after it. */

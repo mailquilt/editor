@@ -8,6 +8,7 @@ import {
   canvas,
   centerOf,
   openBlocks,
+  previewButton,
   settle,
   textBlock,
 } from "./helpers.js";
@@ -171,9 +172,7 @@ test.describe("theme tokens", () => {
       "color",
       "rgb(4, 5, 6)"
     );
-    await expect(
-      canvas(page).getByRole("button", { exact: true, name: "Preview" })
-    ).toHaveCSS("color", "rgb(4, 5, 6)");
+    await expect(previewButton(page)).toHaveCSS("color", "rgb(4, 5, 6)");
   });
 
   test("don't reach the email card, which shows the email's settings", async ({

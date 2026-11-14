@@ -89,18 +89,39 @@ const paragraphSchema = v.strictObject({
   type: v.literal("paragraph"),
 });
 
-export const richTextSchema = v.strictObject({
-  content: v.pipe(v.array(paragraphSchema), v.nonEmpty()),
-  type: v.literal("doc"),
-});
+export type RichTextMark =
+  | { type: "bold" }
+  | { type: "italic" }
+  | { type: "underline" }
+  | { type: "link"; attrs: { href: string } };
+
+export interface RichTextText {
+  type: "text";
+  text: string;
+  marks?: RichTextMark[];
+}
+
+export interface RichTextHardBreak {
+  type: "hardBreak";
+  marks?: RichTextMark[];
+}
+
+export interface RichTextParagraph {
+  type: "paragraph";
+  content?: (RichTextText | RichTextHardBreak)[];
+}
 
 /**
  * Text is stored as limited ProseMirror JSON (ADR 0001), so it can be validated
  * like any other property without loading ProseMirror.
  */
-export type RichTextDocument = v.InferOutput<typeof richTextSchema>;
-export type RichTextParagraph = v.InferOutput<typeof paragraphSchema>;
-type RichTextInline = v.InferOutput<typeof inlineSchema>;
-export type RichTextText = Extract<RichTextInline, { type: "text" }>;
-export type RichTextHardBreak = Extract<RichTextInline, { type: "hardBreak" }>;
-export type RichTextMark = v.InferOutput<typeof marksSchema>[number];
+export interface RichTextDocument {
+  type: "doc";
+  content: RichTextParagraph[];
+}
+
+// The types are written out above, so hosts see them rather than the library's.
+export const richTextSchema = v.strictObject({
+  content: v.pipe(v.array(paragraphSchema), v.nonEmpty()),
+  type: v.literal("doc"),
+}) satisfies v.GenericSchema<unknown, RichTextDocument>;

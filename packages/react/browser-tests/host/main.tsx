@@ -1,5 +1,5 @@
 import type { ComponentProps } from "react";
-import { StrictMode, useCallback, useRef, useState } from "react";
+import { StrictMode, useCallback, useState } from "react";
 import { createRoot } from "react-dom/client";
 
 import { MailQuilt, MailQuiltShell } from "../../src/index.js";
@@ -60,36 +60,30 @@ const firstEmail = () =>
 const Host = () => {
   const [document, setDocument] = useState(firstEmail);
   const [errors, setErrors] = useState<string[]>([]);
-  const [html, setHtml] = useState("");
+  const [changes, setChanges] = useState(0);
   const [shown, setShown] = useState(true);
-  const editor = useRef<MailQuiltElement>(null);
 
   return (
     <main>
-      <button
-        onClick={async () =>
-          setHtml((await editor.current?.exportHtml()) ?? "")
-        }
-        type="button"
-      >
-        Export HTML
-      </button>
       <button onClick={() => setShown((now) => !now)} type="button">
         Toggle editor
       </button>
       <button onClick={() => setDocument(emailWith("Replaced"))} type="button">
         Replace email
       </button>
-      <output data-testid="html">{html}</output>
+      <output data-testid="change-count">{changes}</output>
       <output data-testid="errors">{errors.join("\n")}</output>
       <output data-testid="latest-document">{JSON.stringify(document)}</output>
       {shown && (
         <MailQuilt
           aria-label="Newsletter"
           className="host-editor"
-          onChange={(next) => setDocument(next)}
+          // A new function each render, so the wrapper replaces its listener.
+          onChange={(next) => {
+            setDocument(next);
+            setChanges((count) => count + 1);
+          }}
           onError={(reason) => setErrors((all) => [...all, reason])}
-          ref={editor}
           value={document}
         />
       )}
@@ -141,9 +135,10 @@ const ShellHost = () => {
   if (changed) {
     actions = ["export-json"];
     saveKey = "react-test:other";
-  } else {
-    actions = params.has("only-html") ? ["export-html"] : undefined;
-    saveKey = params.has("save") ? "react-test:email" : undefined;
+  } else if (params.has("only-html")) {
+    actions = ["export-html"];
+  } else if (params.has("no-actions")) {
+    actions = [];
   }
 
   return (

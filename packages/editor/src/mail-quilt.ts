@@ -12,7 +12,6 @@ import type {
   Operation,
   RichTextDocument,
   RowLayout,
-  SettingsField,
 } from "@mailquilt/core";
 import { renderEmail } from "@mailquilt/renderer";
 import { html, LitElement, nothing } from "lit";
@@ -28,9 +27,6 @@ import {
   historyShortcut,
   isComposing,
   isLinkShortcut,
-  moveCommand,
-  moveRowCommand,
-  neighbourBlockId,
 } from "./block-keyboard.js";
 import type { Direction } from "./block-keyboard.js";
 import {
@@ -43,16 +39,17 @@ import type { CanvasEvents, CanvasState } from "./canvas.js";
 import { formatBarStyles } from "./format-bar.js";
 import type { FormatBarEvents } from "./format-bar.js";
 import { editorStyles } from "./mail-quilt-styles.js";
-import { blocksIn, locate, placeLabel, positionLabel } from "./places.js";
-import { previewStyles, renderPreview } from "./preview.js";
-import type { Preview, PreviewEvents } from "./preview.js";
 import {
-  draftKey,
-  fieldText,
-  fieldValue,
-  settingsPanelStyles,
-} from "./settings-panel.js";
-import type { FieldDraft, SettingsSection } from "./settings-panel.js";
+  blocksIn,
+  locate,
+  moveCommand,
+  moveRowCommand,
+  neighbourBlockId,
+  placeLabel,
+  positionLabel,
+} from "./places.js";
+import { createPreview, previewStyles, renderPreview } from "./preview.js";
+import { createSettingsDrafts, settingsPanelStyles } from "./settings-panel.js";
 import { renderSidePanel, sidePanelStyles } from "./side-panel.js";
 import type { PanelTab, SidePanelEvents } from "./side-panel.js";
 import { createTextBlockView } from "./text-block-view.js";
@@ -99,18 +96,31 @@ export class MailQuilt extends LitElement {
   /** Set while `updated` gives focus back, which selects nothing new. */
   #restoringFocus = false;
   #formats: TextFormats | undefined;
-  /** Text in the settings panel that isn't the document's value. */
-  readonly #drafts = new Map<string, FieldDraft>();
+  readonly #drafts = createSettingsDrafts({
+    apply: (command) => this.#apply(command, { refusable: true }),
+    controlOf: (key) =>
+      this.renderRoot.querySelector<HTMLInputElement>(
+        `[data-draft-key="${CSS.escape(key)}"]`
+      ),
+    onEnter: (value) => {
+      // An image URL that failed may load now, so entering it again tries again.
+      if (typeof value === "string") {
+        this.#failedImages.delete(value);
+      }
+    },
+    requestUpdate: () => this.requestUpdate(),
+  });
   /** One copy of the document for each update, as `value` makes a new one. */
   #rendered: BlocksDocument | undefined;
   /** Image URLs that didn't load, which the canvas stops trying to show. */
   readonly #failedImages = new Set<string>();
   /** Set while the link field is open. */
   #linkForm: { refusals: number } | undefined;
-  /** Set while the Preview is open. */
-  #preview: Preview | undefined;
-  /** The current document's HTML, once the Preview has rendered it. */
-  #previewHtml: string | undefined;
+  readonly #preview = createPreview({
+    dialog: () => this.renderRoot.querySelector<HTMLDialogElement>(".preview"),
+    exportHtml: () => this.exportHtml(),
+    requestUpdate: () => this.requestUpdate(),
+  });
   /** Set while the element is connected. */
   #dragging: BlockDragging | undefined;
   #tooltips: { element: HTMLElement; tooltips: Tooltips } | undefined;
@@ -135,14 +145,7 @@ export class MailQuilt extends LitElement {
       this.#apply({ layout, rowId, type: "setRowLayout" }),
     onControlMousedown: (event) => this.#onControlMousedown(event),
     onSelectTab: (tab) => this.#selectTab(tab),
-    settings: {
-      draftOf: (key) => this.#drafts.get(key),
-      onCommit: (section, field, control) =>
-        this.#commitField(section, field, control),
-      onInput: (section, field, control) =>
-        this.#draftField(section, field, control),
-      onKeydown: (event) => this.#onSettingsKeydown(event),
-    },
+    settings: this.#drafts.events,
   };
 
   readonly #formatBarEvents: FormatBarEvents = {
@@ -176,11 +179,6 @@ export class MailQuilt extends LitElement {
       this.#onRowToolbarKeydown(event, rowId),
     onSelectRow: (rowId) => this.#selectRow(rowId),
     onStepHistory: (step) => this.#stepHistory(step),
-  };
-
-  readonly #previewEvents: PreviewEvents = {
-    onClose: () => this.#closePreview(),
-    onClosed: () => this.#onPreviewClose(),
   };
 
   constructor() {
@@ -365,7 +363,7 @@ export class MailQuilt extends LitElement {
     const selected = this.#selectedPosition(document);
 
     return html`
-      ${renderPreview(this.#preview, this.#previewEvents)}
+      ${renderPreview(this.#preview.shown, this.#preview.events)}
       <div class="visually-hidden" lang=${UI_LANG} role="status">
         ${keyed(this.#announcementId, html`<span>${this.#announcement}</span>`)}
       </div>
@@ -597,63 +595,19 @@ export class MailQuilt extends LitElement {
     this.#selectedView?.setLink(href);
   }
 
-  get #previewDialog() {
-    return this.renderRoot.querySelector<HTMLDialogElement>(".preview");
-  }
-
-  /** Shows the document as it is now, compiling it only if it has changed. */
   async #openPreview({ currentTarget }: Event) {
     // Toolbar buttons don't take focus from a mouse press, and the dialog returns
     // focus to whatever had it.
     if (!this.shadowRoot?.activeElement) {
       (currentTarget as HTMLElement).focus();
     }
-
-    const cached = this.#previewHtml;
-    const preview: Preview = {};
-    if (cached !== undefined) {
-      preview.result = { html: cached };
-    }
-    this.#preview = preview;
-    this.#previewDialog?.showModal();
-    this.requestUpdate();
-    if (cached !== undefined) {
-      return;
-    }
-
-    try {
-      const email = await this.exportHtml();
-      preview.result = { html: email };
-      // Closed in the meantime, so the document may have changed since.
-      if (this.#preview === preview) {
-        this.#previewHtml = email;
-      }
-    } catch (error) {
-      console.error("<mail-quilt> couldn't render the preview", error);
-      preview.result = {
-        failure: error instanceof Error ? error.message : String(error),
-      };
-    }
-    this.requestUpdate();
+    await this.#preview.open();
   }
 
-  #closePreview() {
-    this.#previewDialog?.close();
-  }
-
-  #onPreviewClose() {
-    // This event is queued, so it can arrive after the next opening.
-    if (this.#previewDialog?.open) {
-      return;
-    }
-    this.#preview = undefined;
-    this.requestUpdate();
-  }
-
-  readonly #onImageError = (src: string) => {
+  #onImageError(src: string) {
     this.#failedImages.add(src);
     this.requestUpdate();
-  };
+  }
 
   /**
    * Applies a Command and reports a change with `mq-change`. A rejection is a bug
@@ -687,102 +641,12 @@ export class MailQuilt extends LitElement {
     return result;
   }
 
-  #draftField(
-    section: SettingsSection,
-    field: SettingsField,
-    control: HTMLInputElement
-  ) {
-    const key = draftKey(section, field);
-    const refusals = this.#drafts.get(key)?.refusals ?? 0;
-    const text = control.value;
-    // What isn't a number reads as empty, as if an empty field were unchanged.
-    if (
-      text === fieldText(field, section.values) &&
-      !refusals &&
-      !control.validity.badInput
-    ) {
-      this.#drafts.delete(key);
-    } else {
-      this.#drafts.set(key, { refusals, text });
-    }
-  }
-
-  /**
-   * Each commit is one undo step. What can't be accepted stays to be fixed. A
-   * retry the person didn't ask for doesn't say again what they've been told.
-   */
-  #commitField(
-    section: SettingsSection,
-    field: SettingsField,
-    control: HTMLInputElement | HTMLSelectElement,
-    retry = false
-  ) {
-    const key = draftKey(section, field);
-    const value = fieldValue(field, control);
-    // An image URL that failed may load now, so entering it again tries again.
-    if (typeof value === "string") {
-      this.#failedImages.delete(value);
-    }
-    const result = this.#apply(section.command({ [field.key]: value }), {
-      refusable: true,
-    });
-    if (result?.ok || result?.unchanged) {
-      this.#drafts.delete(key);
-    } else {
-      const refusals = this.#drafts.get(key)?.refusals ?? 0;
-      this.#drafts.set(key, {
-        refusals: retry ? refusals : refusals + 1,
-        text: control.value,
-      });
-    }
-    if (result?.ok) {
-      this.#retryRefusedFields(section);
-    } else {
-      this.requestUpdate();
-    }
-  }
-
-  /** A change to one field can make what another was refused for fine. */
-  #retryRefusedFields(section: SettingsSection) {
-    for (const field of section.fields) {
-      const key = draftKey(section, field);
-      const control = this.renderRoot.querySelector<HTMLInputElement>(
-        `[data-draft-key="${CSS.escape(key)}"]`
-      );
-      if (control && this.#drafts.get(key)?.refusals) {
-        this.#commitField(section, field, control, true);
-      }
-    }
-  }
-
-  /** Escape takes back what was typed in a settings field. */
-  #onSettingsKeydown(event: KeyboardEvent) {
-    const key = this.#draftKeyOf(event);
-    if (key !== undefined && event.key === "Escape" && !isComposing(event)) {
-      event.preventDefault();
-      event.stopPropagation();
-      this.#drafts.delete(key);
-      // Its value already reads as empty, so rendering wouldn't clear it.
-      const control = event.target as HTMLInputElement;
-      if (control.validity.badInput) {
-        control.value = "";
-      }
-      this.requestUpdate();
-    }
-  }
-
-  /** The settings field the key was pressed in, while it holds a draft. */
-  #draftKeyOf({ target }: KeyboardEvent) {
-    const key = (target as HTMLElement).dataset.draftKey;
-    return key !== undefined && this.#drafts.has(key) ? key : undefined;
-  }
-
   /**
    * Undo and redo, from anywhere in the editor. Text being typed in a settings
    * field has the field's own undo, like the link field, which keeps its keys.
    */
   #onEditorKeydown(event: KeyboardEvent) {
-    if (this.#draftKeyOf(event) === undefined) {
+    if (this.#drafts.draftKeyOf(event) === undefined) {
       this.#runHistoryStep(event, historyShortcut(event));
     }
   }
@@ -989,10 +853,7 @@ export class MailQuilt extends LitElement {
     // WebKit types into a Block's selection, and undoes there too, even with focus
     // on the dialog, a control, the link field or the Block itself.
     const active = this.shadowRoot?.activeElement;
-    if (
-      this.#previewDialog?.open ||
-      (active && !active.closest(".ProseMirror"))
-    ) {
+    if (this.#preview.isOpen || (active && !active.closest(".ProseMirror"))) {
       event.preventDefault();
       return;
     }
@@ -1102,13 +963,11 @@ export class MailQuilt extends LitElement {
       return;
     }
     const command = moveCommand(document, blockId, direction);
-    if (!command) {
-      this.#announce(`The Block can't move ${direction}.`);
-      return;
-    }
-    if (this.#apply(command)?.ok) {
+    if (command && this.#apply(command)?.ok) {
       this.#announceMove(blockId);
       this.#revealBlock(blockId);
+    } else {
+      this.#announce(`The Block can't move ${direction}.`);
     }
   }
 
@@ -1221,13 +1080,13 @@ export class MailQuilt extends LitElement {
    * the floating toolbar takes it, because keyboard undo only reaches the editor
    * from inside.
    */
-  readonly #onHandleMousedown = (event: MouseEvent) => {
+  #onHandleMousedown(event: MouseEvent) {
     event.preventDefault();
     this.#commitFocusedField();
     if (!this.shadowRoot?.activeElement) {
       this.#floatingToolbar?.focus();
     }
-  };
+  }
 
   get #floatingToolbar() {
     return this.renderRoot.querySelector<HTMLElement>(".floating-toolbar");
@@ -1318,7 +1177,7 @@ export class MailQuilt extends LitElement {
 
   #show(document: BlocksDocument | undefined) {
     this.#lastKnownDocument = document;
-    this.#previewHtml = undefined;
+    this.#preview.forget();
     this.#announcement = "";
     this.#drafts.clear();
     // A URL that failed before may load now, as its image may have been
@@ -1332,7 +1191,7 @@ export class MailQuilt extends LitElement {
   #emitChange(document: BlocksDocument) {
     // A copy, because the host owns what it receives and may change it.
     this.#lastKnownDocument = structuredClone(document);
-    this.#previewHtml = undefined;
+    this.#preview.forget();
     this.dispatchEvent(
       new CustomEvent("mq-change", {
         bubbles: true,
@@ -1378,12 +1237,7 @@ export class MailQuilt extends LitElement {
     this.#views.clear();
     // The toolbar's state describes those views and their selections.
     this.#select(undefined);
-    // The Preview shows the old document. A removed dialog also stays `open`, so
-    // it would come back without being modal.
-    if (this.#preview) {
-      this.#previewDialog?.close();
-      this.#preview = undefined;
-    }
+    this.#preview.end();
   }
 }
 

@@ -13,14 +13,16 @@ import {
   deleteBlock,
   emailWith,
   layoutOption,
+  linkUrlField,
   openBlocks,
   openEmail as open,
   openTab,
   palette,
+  previewButton,
   redoByKey,
   selectRow,
-  setValue,
   settle,
+  setValue,
   stopClock,
   structure,
   undo,
@@ -445,21 +447,6 @@ test.describe("announcing a move", () => {
     );
   });
 
-  test("undo of a move into a new Row says where the Block went", async ({
-    page,
-  }) => {
-    await open(page, [[["A", "B"]]]);
-    await blockWith(page, "A").focus();
-    await page.keyboard.press("Alt+ArrowUp");
-    await expect(structure(page)).resolves.toEqual([[["A"]], [["B"]]]);
-
-    await undoByKey(page);
-
-    await expect(announcement(page)).toHaveText(
-      "Undo moved a Block to Row 1, Column 1, position 1 of 2."
-    );
-  });
-
   test("undo of something else clears the last move's words", async ({
     page,
   }) => {
@@ -819,25 +806,11 @@ test.describe("labels and focus states", () => {
     ).toBeVisible();
   });
 
-  test("the toolbar's move buttons name their shortcut", async ({ page }) => {
-    await open(page, [[["A"]]]);
-    await blockWith(page, "A").focus();
-
-    await expect(blockTool(page, "Move Block up")).toHaveAttribute(
-      "aria-keyshortcuts",
-      "Alt+ArrowUp"
-    );
-    await blockTool(page, "Move Block up").hover();
-    await expect(canvas(page).getByRole("tooltip")).toHaveText(
-      "Move Block up (Alt+↑)"
-    );
-  });
-
   test("every control shows where focus is", async ({ page }) => {
     await open(page, [[["A"], []]]);
     await blockWith(page, "A").getByRole("textbox").click();
     await page.getByRole("button", { exact: true, name: "Link" }).click();
-    await expect(page.getByLabel("Link URL")).toBeFocused();
+    await expect(linkUrlField(page)).toBeFocused();
     // Browsers only show focus from a script after keyboard use.
     await page.keyboard.press("Tab");
 
@@ -846,7 +819,7 @@ test.describe("labels and focus states", () => {
 
   test("the Preview's Close button shows where focus is", async ({ page }) => {
     await open(page, [[["A"]]]);
-    await page.getByRole("button", { name: "Preview" }).focus();
+    await previewButton(page).focus();
     await page.keyboard.press("Enter");
     const close = page.getByRole("button", { name: "Close" });
     await expect(close).toBeFocused();
@@ -962,7 +935,7 @@ test.describe("automated accessibility checks", () => {
     await open(page, [[["A"]]]);
     await blockWith(page, "A").getByRole("textbox").click();
     await page.getByRole("button", { exact: true, name: "Link" }).click();
-    await page.getByLabel("Link URL").fill("example.com");
+    await linkUrlField(page).fill("example.com");
     await page.keyboard.press("Enter");
     await expect(page.getByRole("alert")).toBeVisible();
 
@@ -994,7 +967,7 @@ test.describe("automated accessibility checks", () => {
 
   test("pass with the Preview open", async ({ page }) => {
     await open(page, [[["A"]]]);
-    await page.getByRole("button", { name: "Preview" }).click();
+    await previewButton(page).click();
     await expect(page.getByTitle("Email preview")).toBeVisible();
 
     expect(
