@@ -310,23 +310,32 @@ test.describe("the editor's API", () => {
     expect(html).toContain("Straight away");
   });
 
-  test("before it starts, value is the email as the editor will have it", async ({
+  test("before it starts, value is the email the editor opens", async ({
     page,
   }) => {
+    await page.addInitScript(
+      (email) => localStorage.setItem("test:saved", JSON.stringify(email)),
+      emailWith([[["Saved"]]])
+    );
     await page.goto("/shell.html");
     const email = emailWith([[["Early"]]]);
 
     const read = await page.evaluate((first) => {
-      const unstarted = document.createElement(
-        "mail-quilt-shell"
-      ) as MailQuiltShell;
-      unstarted.value = first;
-      const opened = unstarted.value;
-      unstarted.value = { ...first, version: 999 };
-      return { opened, refused: unstarted.value ?? null };
+      const unstarted = (saveKey?: string) => {
+        const created = document.createElement(
+          "mail-quilt-shell"
+        ) as MailQuiltShell;
+        if (saveKey) {
+          created.setAttribute("save-key", saveKey);
+        }
+        created.value = first;
+        return created.value;
+      };
+      return { plain: unstarted(), saved: unstarted("test:saved") };
     }, email);
 
-    expect(read).toStrictEqual({ opened: email, refused: null });
+    expect(read.plain).toStrictEqual(email);
+    expect(JSON.stringify(read.saved)).toContain("Saved");
   });
 
   test("a value set before the element is defined still opens", async ({
@@ -378,6 +387,8 @@ test.describe("the editor's API", () => {
     await expect(shell(page).getByRole("alert")).toContainText(
       "couldn't be exported"
     );
+    // The reason, without the name of the error it came in.
+    await expect(shell(page).getByRole("alert")).not.toContainText("TypeError");
     await page.unrouteAll();
     const { name, text } = await exportFile(page, "Export HTML");
     expect(name).toBe("email.html");
@@ -586,6 +597,30 @@ test.describe("a saved email standing in for the host's", () => {
     expect(opened).toContain("Other");
   });
 
+  test("opens when save-key is set after exportHtml() started the Shell", async ({
+    page,
+  }) => {
+    await saveFirst(page);
+    await page.goto("/shell.html");
+    const opened = await page.evaluate(
+      async ({ each, first }) => {
+        const added = document.createElement(
+          "mail-quilt-shell"
+        ) as MailQuiltShell;
+        added.value = first;
+        document.body.append(added);
+        const exporting = added.exportHtml();
+        added.setAttribute("save-key", each);
+        await exporting;
+        await added.updateComplete;
+        return JSON.stringify(added.value);
+      },
+      { each: key, first: emailWith([[["Hello"]]]) }
+    );
+
+    expect(opened).toContain("Saved");
+  });
+
   test("gives way to a different email from the host", async ({ page }) => {
     await saveFirst(page);
     await page.goto(`/shell.html?save-key=${key}`);
@@ -620,6 +655,31 @@ test("a new save-key opens the email saved under it", async ({ page }) => {
 });
 
 test.describe("look", () => {
+  // On this page, as the editor's own test page loads Tailwind, whose reset
+  // hides anything hidden whatever its own styles say.
+  test("hidden hides it, and <mail-quilt> too", async ({ page }) => {
+    await openShell(page);
+
+    await page.evaluate(
+      (email) => {
+        const editor = document.createElement("mail-quilt");
+        editor.id = "alone";
+        editor.value = email;
+        document.body.append(editor);
+        for (const element of [
+          editor,
+          document.querySelector("mail-quilt-shell"),
+        ]) {
+          element?.setAttribute("hidden", "");
+        }
+      },
+      emailWith([[["Alone"]]])
+    );
+
+    await expect(shell(page)).toBeHidden();
+    await expect(page.locator("#alone")).toBeHidden();
+  });
+
   test("fills the space the host gives it, the editor below the header", async ({
     page,
   }) => {

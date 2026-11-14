@@ -27,6 +27,7 @@ import {
   historyShortcut,
   isComposing,
   isLinkShortcut,
+  isPageHistoryArrow,
 } from "./block-keyboard.js";
 import type { Direction } from "./block-keyboard.js";
 import {
@@ -60,6 +61,17 @@ import type { Tooltips } from "./tooltips.js";
 
 /** Typing after a gap this long starts a new undo step. */
 const TYPING_PAUSE_MS = 1000;
+
+/**
+ * A file dropped on the editor would open in the tab, in place of the page and
+ * the email. Dragged text still moves.
+ */
+const refuseFiles = (event: DragEvent) => {
+  if (event.dataTransfer?.types.includes("Files")) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "none";
+  }
+};
 
 type MoveOperation = Extract<Operation, { type: "move" }>;
 
@@ -240,7 +252,9 @@ export class MailQuilt extends LitElement {
       const narrow = (entry?.contentRect.width ?? 0) < MIN_EDITOR_WIDTH;
       if (narrow !== this.#narrow) {
         this.#narrow = narrow;
-        this.requestUpdate();
+        // A frame later, as changing size inside this callback is reported as a
+        // ResizeObserver loop error.
+        requestAnimationFrame(() => this.requestUpdate());
       }
     });
     this.#resizeObserver.observe(this);
@@ -384,6 +398,8 @@ export class MailQuilt extends LitElement {
         ?data-collapsed=${this.#narrow}
         style=${styleMap({ "--email-width": `${settings.width}px` })}
         @keydown=${this.#onEditorKeydown}
+        @dragover=${refuseFiles}
+        @drop=${refuseFiles}
       >
         <div
           class="canvas-area"
@@ -790,9 +806,14 @@ export class MailQuilt extends LitElement {
   async #showPlaced(blockId: string | undefined) {
     this.#select(blockId === undefined ? undefined : { blockId });
     await this.updateComplete;
+    if (blockId === undefined) {
+      return;
+    }
     if (this.#selectedView) {
       this.#selectedView.focus();
-    } else if (blockId !== undefined) {
+      // Unlike focus on the Block, focus in its text doesn't scroll.
+      this.#revealBlock(blockId);
+    } else {
       this.#blockElement(blockId)?.focus();
     }
   }
@@ -873,8 +894,10 @@ export class MailQuilt extends LitElement {
       return;
     }
     if (isLinkShortcut(event)) {
-      // Browsers use this one to focus their search or address bar.
+      // Browsers use this one to focus their search or address bar, and a host
+      // page may use it for its own search.
       event.preventDefault();
+      event.stopPropagation();
       this.#openLinkForm();
     }
   }
@@ -923,6 +946,9 @@ export class MailQuilt extends LitElement {
         // Block, it reaches the host.
         event.stopPropagation();
         block.focus();
+      } else if (event.altKey && isPageHistoryArrow(direction)) {
+        // In the text and its format bar, these would leave the page.
+        event.preventDefault();
       }
       return;
     }
@@ -1119,8 +1145,10 @@ export class MailQuilt extends LitElement {
     if (!step) {
       return;
     }
-    // The browser's own undo would change the text behind the document's back.
+    // The browser's own undo would change the text behind the document's back,
+    // and a host page's own undo would act on the same keys.
     event.preventDefault();
+    event.stopPropagation();
     this.#stepHistory(step);
   }
 

@@ -508,6 +508,12 @@ test.describe("on a screen too narrow to edit in", () => {
     page,
   }) => {
     await page.goto("/");
+    // Not a page error or a console message, so collectErrors can't see it.
+    await page.evaluate(() => {
+      const reported: string[] = [];
+      Object.assign(window, { reported });
+      window.addEventListener("error", ({ message }) => reported.push(message));
+    });
     // As a flex item that isn't stretched takes the width of what's inside, up
     // to the width there is.
     await page.addStyleTag({
@@ -520,6 +526,9 @@ test.describe("on a screen too narrow to edit in", () => {
 
     await expect(notice(page)).toHaveCount(0);
     await expect(textBlock(page)).toHaveText("Hello");
+    await expect(
+      page.evaluate(() => Reflect.get(window, "reported"))
+    ).resolves.toEqual([]);
   });
 });
 

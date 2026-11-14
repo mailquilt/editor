@@ -253,7 +253,10 @@ const planUpdateEmailSettings = (
 ): CommandPlan =>
   planProps({ emailSettings: true }, document.settings, settings, (merged) =>
     parseProps(
-      "language" in settings ? newLanguageSettingsSchema : emailSettingsSchema,
+      // A saved language sent back unchanged keeps its pass.
+      "language" in settings && settings.language !== document.settings.language
+        ? newLanguageSettingsSchema
+        : emailSettingsSchema,
       merged,
       "the email's settings"
     )

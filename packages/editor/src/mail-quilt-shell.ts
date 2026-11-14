@@ -1,7 +1,6 @@
 import { isSameDocument, loadDocument } from "@mailquilt/core";
 import type { BlocksDocument, LoadResult } from "@mailquilt/core";
 import { css, html, LitElement, nothing, unsafeCSS } from "lit";
-import type { PropertyValues } from "lit";
 import { keyed } from "lit/directives/keyed.js";
 
 import "./mail-quilt.js";
@@ -63,6 +62,10 @@ export class MailQuiltShell extends LitElement {
       :host {
         display: block;
         height: 100%;
+      }
+
+      :host([hidden]) {
+        display: none;
       }
 
       /* Framed as the editor is, so it reads as one component on the page. */
@@ -160,6 +163,8 @@ export class MailQuiltShell extends LitElement {
   readonly #editor: MailQuilt = document.createElement("mail-quilt");
   /** Whether the email to open has been chosen, which waits for the first update. */
   #started = false;
+  /** The `save-key` the email last opened from, to tell when it changes. */
+  #startedKey: string | null | undefined;
   /** The `value` set before then. */
   #pendingValue: unknown;
   /**
@@ -197,12 +202,12 @@ export class MailQuiltShell extends LitElement {
   }
 
   get value(): BlocksDocument | undefined {
-    if (this.#started) {
-      return this.#editor.value;
+    // Started early if need be, as for `exportHtml()`, so this is the email the
+    // editor opens: with `save-key`, the saved one.
+    if (!this.#started) {
+      this.#start();
     }
-    // Before it starts, what the host set, as the editor will have it.
-    const loaded = loadDocument(this.#pendingValue);
-    return loaded.ok ? loaded.document : undefined;
+    return this.#editor.value;
   }
 
   /**
@@ -242,11 +247,12 @@ export class MailQuiltShell extends LitElement {
     this.#bodyObserver?.disconnect();
   }
 
-  protected override willUpdate(changed: PropertyValues<this>) {
+  protected override willUpdate() {
     if (!this.#started) {
       this.#start();
-    } else if (changed.has("saveKey") && this.hasUpdated) {
-      // At the first update, save-key is already what `exportHtml()` started with.
+    } else if (this.saveKey !== this.#startedKey) {
+      // Also a key set after `exportHtml()` or `value` started the Shell early.
+      this.#startedKey = this.saveKey;
       if (this.saveKey) {
         // Another key keeps another email. With none saved there, the current
         // email is saved under it from its next change.
@@ -354,6 +360,7 @@ export class MailQuiltShell extends LitElement {
   /** The email saved under `save-key` opens instead of `value`, if it can be. */
   #start() {
     this.#started = true;
+    this.#startedKey = this.saveKey;
     if (this.saveKey && this.#openSavedEmail(this.saveKey)) {
       this.#savedStandsIn = { replaced: this.#pendingValue };
     } else {
@@ -456,7 +463,8 @@ export class MailQuiltShell extends LitElement {
       downloadFile("email.html", "text/html", await this.exportHtml());
       this.#showNotice(undefined);
     } catch (error) {
-      this.#showNotice(`The HTML couldn't be exported: ${String(error)}`);
+      const reason = error instanceof Error ? error.message : String(error);
+      this.#showNotice(`The HTML couldn't be exported: ${reason}`);
     }
   };
 

@@ -112,8 +112,13 @@ const reasons = [
 
   <section class="site-section">
     <div class="site-wrap">
-      <h2 class="site-h2">At a glance</h2>
-      <div class="site-scroll glance">
+      <h2 class="site-h2" id="at-a-glance">At a glance</h2>
+      <!-- Focusable, so the keyboard can scroll it where it's too wide. -->
+      <div
+        aria-labelledby="at-a-glance"
+        class="site-scroll glance"
+        role="region"
+        tabindex="0">
         <table class="site-table">
           <thead>
             <tr>

@@ -9,6 +9,10 @@ export const editorStyles = css`
     flex-direction: column;
   }
 
+  :host([hidden]) {
+    display: none;
+  }
+
   /*
    * The canvas, then the side panel docked on its right. In a host too narrow
    * for both, the panel goes below rather than squeeze the email. Framed,
@@ -172,6 +176,7 @@ export const editorStyles = css`
 
   .row-frame[data-row-selected] > .row-tag {
     background: var(--mq-color-text);
+    color: var(--mq-color-surface);
   }
 
   .email[data-dragging] .row-tag {
@@ -371,6 +376,7 @@ export const editorStyles = css`
 
   .block[aria-current="true"]::after {
     background: var(--mq-color-text);
+    color: var(--mq-color-surface);
   }
 
   .email[data-dragging] .block::after {

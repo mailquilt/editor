@@ -70,19 +70,19 @@ test.describe("a tooltip", () => {
     ).toBeLessThan(10);
   });
 
-  test("closes with Escape, without moving focus or the pointer", async ({
+  test("closes with Escape while hovered, with focus outside the editor", async ({
     page,
   }) => {
     await openBlocks(page, ["text"]);
-    await undoButton(page).focus();
-    await page.keyboard.press("Tab");
-    await page.keyboard.press("Shift+Tab");
+    await page.evaluate(() => {
+      (document.activeElement as HTMLElement | null)?.blur();
+    });
+    await undoButton(page).hover();
     await expect(tooltip(page)).toBeVisible();
 
     await page.keyboard.press("Escape");
 
     await expect(tooltip(page)).toBeHidden();
-    await expect(undoButton(page)).toBeFocused();
   });
 
   test("Escape on a Block tool only closes its tooltip, then goes back to the Block", async ({
@@ -229,6 +229,28 @@ test("a host restyles the editor's frame through its part", async ({
 
   await expect(frame).toHaveCSS("border-radius", "0px");
   await expect(frame).toHaveCSS("box-shadow", "none");
+});
+
+test("a selected Block's tag stays readable with dark theme tokens", async ({
+  page,
+}) => {
+  await openBlocks(page, ["text"]);
+  await page.addStyleTag({
+    content:
+      "mail-quilt { --mq-color-surface: #16181d; --mq-color-text: #f7f7f8; }",
+  });
+
+  await blockGroup(page, "Text").focus();
+
+  await expect(
+    blockGroup(page, "Text").evaluate((block) => {
+      const { backgroundColor, color } = getComputedStyle(block, "::after");
+      return { backgroundColor, color };
+    })
+  ).resolves.toEqual({
+    backgroundColor: "rgb(247, 247, 248)",
+    color: "rgb(22, 24, 29)",
+  });
 });
 
 test.describe("on a dark host page", () => {
