@@ -133,10 +133,17 @@ export const createTooltips = (
     }
   };
 
-  /** Left to go on, so that Escape still does what it does with no tooltip. */
+  /**
+   * On the control with focus, Escape only closes its tooltip, as it would
+   * otherwise also move focus. Over another control, it goes on, so that Escape
+   * still does what it does with no tooltip.
+   */
   const onKeydown = (event: KeyboardEvent) => {
     if (event.key === "Escape" && !tooltip.hidden) {
       dismissed = hovered ?? focused;
+      if (dismissed === focused) {
+        event.stopPropagation();
+      }
       update();
     }
   };

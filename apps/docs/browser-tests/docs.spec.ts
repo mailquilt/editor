@@ -77,8 +77,13 @@ test("the landing page's editor stays inside its frame as the email grows", asyn
 });
 
 test("the landing page recolors its editor with the swatch chosen", async ({
+  browserName,
   page,
 }) => {
+  test.skip(
+    browserName !== "chromium",
+    "Checks the page's own script, which is the same in every browser."
+  );
   await page.goto("/");
   const editor = page.locator("mail-quilt");
   await expect(editor.getByRole("textbox").first()).toBeVisible();

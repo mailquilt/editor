@@ -3,8 +3,8 @@ import type { Page } from "@playwright/test";
 
 import type { MailQuilt } from "../src/index.js";
 import {
-  boxOf,
   addSecondTextBlock,
+  boxOf,
   canvas,
   changeCount,
   currentValue,
@@ -13,10 +13,11 @@ import {
   exportHtml,
   focusStartOfTextBlock,
   latestDocument,
+  linkUrlField,
   redo,
   redoByKey,
-  setValue,
   settle,
+  setValue,
   stopClock,
   textBlock,
   undo,
@@ -211,7 +212,7 @@ test.describe("undo and redo while typing", () => {
       await page.keyboard.press("Meta+Shift+z");
       await expect(textBlock(page)).toHaveText("abcHello");
 
-      const linkField = canvas(page).getByRole("textbox", { name: "Link URL" });
+      const linkField = linkUrlField(page);
       await page.keyboard.press("Control+k");
       await expect(linkField).toBeHidden();
       await page.keyboard.press("Meta+k");
@@ -318,6 +319,7 @@ test.describe("undo and redo while typing", () => {
     page,
   }) => {
     await addSecondTextBlock(page);
+    await stopClock(page);
     const first = textBlock(page).first();
     const second = textBlock(page).last();
     await first.click();

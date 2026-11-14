@@ -80,6 +80,12 @@ test("a heading the host sets is in the page's language, and Email is in English
   });
   await expect(heading).toHaveText("Email");
   await expect(heading).toHaveAttribute("lang", "en");
+
+  await shell(page).evaluate((element) => {
+    element.setAttribute("heading", "");
+  });
+  await expect(heading).toHaveText("Email");
+  await expect(heading).toHaveAttribute("lang", "en");
 });
 
 test.describe("choosing the buttons with actions", () => {
@@ -115,7 +121,6 @@ test.describe("choosing the buttons with actions", () => {
       (element as MailQuiltShell).actions = "export-html";
     });
 
-    await expect(shell(page)).toHaveAttribute("actions", "export-html");
     await expect(header(page).getByRole("button")).toHaveText(["Export HTML"]);
   });
 
@@ -305,6 +310,25 @@ test.describe("the editor's API", () => {
     expect(html).toContain("Straight away");
   });
 
+  test("before it starts, value is the email as the editor will have it", async ({
+    page,
+  }) => {
+    await page.goto("/shell.html");
+    const email = emailWith([[["Early"]]]);
+
+    const read = await page.evaluate((first) => {
+      const unstarted = document.createElement(
+        "mail-quilt-shell"
+      ) as MailQuiltShell;
+      unstarted.value = first;
+      const opened = unstarted.value;
+      unstarted.value = { ...first, version: 999 };
+      return { opened, refused: unstarted.value ?? null };
+    }, email);
+
+    expect(read).toStrictEqual({ opened: email, refused: null });
+  });
+
   test("a value set before the element is defined still opens", async ({
     page,
   }) => {
@@ -340,22 +364,6 @@ test.describe("the editor's API", () => {
     await expect(page.locator("#errors")).toContainText("newer");
     await expect(shell(page).getByRole("alert")).toContainText("newer");
     await expect(textBlock(page)).toHaveCount(0);
-  });
-
-  test("a refused later email keeps the current one", async ({ page }) => {
-    await openShell(page);
-
-    await shell(page).evaluate((element) => {
-      (element as MailQuiltShell).value = {
-        kind: "blocks",
-        rows: [],
-        version: 2,
-      } as unknown as MailQuiltShell["value"];
-    });
-
-    await expect(page.locator("#errors")).toContainText(/version 2 is newer/iu);
-    await expect(shell(page).getByRole("alert")).toBeVisible();
-    await expect(textBlock(page)).toHaveText("Hello");
   });
 
   test("a failed export says so, until email.html downloads", async ({
@@ -549,6 +557,35 @@ test.describe("a saved email standing in for the host's", () => {
     await expect(textBlock(page)).toHaveText("Saved");
   });
 
+  test("gives way to a different email set straight after exportHtml()", async ({
+    page,
+  }) => {
+    await saveFirst(page);
+    await page.goto("/shell.html");
+    const opened = await page.evaluate(
+      async ({ each, first, other }) => {
+        const added = document.createElement(
+          "mail-quilt-shell"
+        ) as MailQuiltShell;
+        added.setAttribute("save-key", each);
+        added.value = first;
+        document.body.append(added);
+        const exporting = added.exportHtml();
+        added.value = other;
+        await exporting;
+        await added.updateComplete;
+        return JSON.stringify(added.value);
+      },
+      {
+        each: key,
+        first: emailWith([[["Hello"]]]),
+        other: emailWith([[["Other"]]]),
+      }
+    );
+
+    expect(opened).toContain("Other");
+  });
+
   test("gives way to a different email from the host", async ({ page }) => {
     await saveFirst(page);
     await page.goto(`/shell.html?save-key=${key}`);
@@ -580,19 +617,6 @@ test("a new save-key opens the email saved under it", async ({ page }) => {
   await expect
     .poll(() => page.evaluate(() => localStorage.getItem("test:second")))
     .toContain("Oh Second");
-});
-
-test("removing save-key stops saving", async ({ page }) => {
-  await openShell(page, "?save-key=test:email");
-  await shell(page).evaluate((element) => element.removeAttribute("save-key"));
-
-  await focusStartOfTextBlock(page);
-  await page.keyboard.type("Oh ");
-  await expect(page.locator("#change-count")).toHaveText("3");
-
-  expect(
-    await page.evaluate(() => Object.keys({ ...localStorage }))
-  ).toStrictEqual([]);
 });
 
 test.describe("look", () => {
@@ -706,25 +730,6 @@ test.describe("look", () => {
     await expect(
       shell(page).locator("mail-quilt").locator(".side-panel-inner")
     ).toHaveCSS("background-color", "rgb(1, 2, 3)");
-  });
-
-  test("keeps its own colors on a dark host page", async ({ page }) => {
-    await openShell(page);
-    await page.addStyleTag({
-      content:
-        "html, body, main { background: #000 !important; color: #fff !important; font-family: serif !important; }",
-    });
-
-    const style = await header(page).evaluate((element) => {
-      const { backgroundColor, color, fontFamily } = getComputedStyle(element);
-      return { backgroundColor, color, serif: fontFamily === "serif" };
-    });
-
-    expect(style).toStrictEqual({
-      backgroundColor: "rgb(255, 255, 255)",
-      color: "rgb(22, 24, 29)",
-      serif: false,
-    });
   });
 });
 

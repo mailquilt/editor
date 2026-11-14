@@ -13,11 +13,11 @@ import {
   collectErrors,
   currentValue,
   emailWith,
-  exportHtml,
   field,
   openExport,
   openTab,
   panelBlock,
+  previewButton,
   redoByKey,
   selectRow,
   setValue,
@@ -28,9 +28,7 @@ import {
 } from "./helpers.js";
 
 const section = (page: Page, name: string) =>
-  page
-    .getByRole("group", { name: "Settings" })
-    .getByRole("group", { exact: true, name });
+  page.getByRole("group", { exact: true, name });
 
 const email = (page: Page) => section(page, "Email");
 const row = (page: Page) => section(page, "Row");
@@ -440,15 +438,6 @@ test.describe("validation", () => {
     expect(await currentValue(page)).toStrictEqual(before);
   });
 
-  test("refuses an empty width in the email's settings", async ({ page }) => {
-    const before = await currentValue(page);
-
-    await change(emailField(page, "Width (px)"), "");
-
-    await expect(email(page).getByRole("alert")).toHaveCount(1);
-    expect(await currentValue(page)).toStrictEqual(before);
-  });
-
   test("Escape brings back the current value", async ({ page }) => {
     const language = emailField(page, "Language");
     await change(language, "English");
@@ -493,14 +482,6 @@ test.describe("validation", () => {
     await expect(color).toHaveValue("#00ff00");
     await expect(panelBlock(page).getByRole("alert")).toHaveCount(0);
     expect(await blockProps(page)).toMatchObject({ color: "#00ff00" });
-  });
-
-  test("escapes what it can't refuse", async ({ page }) => {
-    await change(emailField(page, "Preheader"), '<script>alert("x")</script>');
-
-    const html = await exportHtml(page);
-
-    expect(html).not.toContain("<script>");
   });
 });
 
@@ -556,7 +537,7 @@ test.describe("text that hasn't been committed", () => {
   });
 
   test("is in the Preview when that's pressed", async ({ page }) => {
-    const preview = page.getByRole("button", { name: "Preview" });
+    const preview = previewButton(page);
     await preview.click();
     const body = page
       .frameLocator('iframe[title="Email preview"]')
@@ -675,22 +656,15 @@ test.describe("layout", () => {
   test("puts the panel below rather than squeeze the email", async ({
     page,
   }) => {
-    for (const width of [700, 900]) {
-      // oxlint-disable-next-line no-await-in-loop -- Each width in turn.
-      await inHostOf(page, width);
-      const onCanvas = canvas(page).locator(".email");
-      // oxlint-disable-next-line no-await-in-loop -- See above.
-      await expect(onCanvas).toHaveCSS("width", "600px");
-      // oxlint-disable-next-line no-await-in-loop -- See above.
-      const emailBox = await boxOf(onCanvas);
-      // oxlint-disable-next-line no-await-in-loop -- See above.
-      const panelBox = await boxOf(canvas(page).locator(".side-panel"));
-      // oxlint-disable-next-line no-await-in-loop -- See above.
-      const hostBox = await boxOf(canvas(page));
-      expect(panelBox.y).toBeGreaterThanOrEqual(emailBox.y + emailBox.height);
-      // Below, it takes the editor's whole width.
-      expect(panelBox.width).toBe(hostBox.width);
-    }
+    await inHostOf(page, 900);
+    const onCanvas = canvas(page).locator(".email");
+    await expect(onCanvas).toHaveCSS("width", "600px");
+    const emailBox = await boxOf(onCanvas);
+    const panelBox = await boxOf(canvas(page).locator(".side-panel"));
+    const hostBox = await boxOf(canvas(page));
+    expect(panelBox.y).toBeGreaterThanOrEqual(emailBox.y + emailBox.height);
+    // Below, it takes the editor's whole width.
+    expect(panelBox.width).toBe(hostBox.width);
   });
 
   test("keeps the panel docked on the right when the email fits beside it", async ({

@@ -23,7 +23,18 @@ Most apps install one package. Which one depends on whether you want the editor,
 | `@mailquilt/renderer` | The core.                                     |
 | `@mailquilt/core`     | Nothing else from Mail Quilt.                 |
 
-`core` and `renderer` need no DOM, so they run in Node 24 or later as well as in a browser. Installing `renderer` on a server doesn't bring the editor with it.
+`core` and `renderer` need no DOM, so they run in Node 22 or later as well as in a browser. Installing `renderer` on a server doesn't bring the editor with it.
+
+### With Yarn Plug'n'Play
+
+MJML, which `renderer` uses, needs `cheerio` without listing it. npm and pnpm find it anyway, as they hoist it by default. With Yarn Plug'n'Play, or pnpm with `hoist=false`, add it for MJML in `.yarnrc.yml` or `pnpm-workspace.yaml`, for any of the packages but `core`:
+
+```yaml
+packageExtensions:
+  mjml-browser@5:
+    dependencies:
+      cheerio: ^1.2.0
+```
 
 ## The editor in your app
 

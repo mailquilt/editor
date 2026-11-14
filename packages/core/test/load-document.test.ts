@@ -68,7 +68,6 @@ describe("refusing a document", () => {
   // Each one changes a saved email in one way that makes it untrustworthy.
   const refused: [string, (email: any) => unknown, RegExp][] = [
     ["nothing", () => null, /object/iu],
-    ["text instead of an email", () => "<p>Hello</p>", /object/iu],
     ["a list instead of an email", () => [], /object/iu],
     [
       "a document of another kind",

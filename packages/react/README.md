@@ -41,7 +41,7 @@ export const Editor = ({ savedEmail, send }: EditorProps) => {
 };
 ```
 
-Pass the email you saved for this person, or `createEmail()` from `@mailquilt/core` for a new one. Without an email, the editor is empty.
+Pass the email you saved for this person, or `createEmail()` for a new one, from `@mailquilt/core`, which you install too: `npm install @mailquilt/core`. Without an email, the editor is empty.
 
 On the server it renders an empty `<mail-quilt>`, and the editor loads in the browser.
 

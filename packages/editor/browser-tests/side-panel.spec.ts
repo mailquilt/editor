@@ -13,9 +13,7 @@ const back = (page: Page) =>
   canvas(page).getByRole("button", { exact: true, name: "Back" });
 
 const fieldset = (page: Page, name: string) =>
-  canvas(page)
-    .getByRole("group", { name: "Settings" })
-    .getByRole("group", { exact: true, name });
+  canvas(page).getByRole("group", { exact: true, name });
 
 test.describe("the side panel's tabs", () => {
   test("follow the ARIA tabs pattern from the keyboard", async ({ page }) => {
@@ -27,6 +25,10 @@ test.describe("the side panel's tabs", () => {
     await expect(tab(page, "Rows")).toHaveAttribute("aria-selected", "true");
     await expect(tabPanel(page, "Rows")).toBeVisible();
     await expect(tabPanel(page, "Content")).toHaveCount(0);
+    // Its title is a heading, for a screen reader's list of them.
+    await expect(
+      tabPanel(page, "Rows").getByRole("heading", { level: 3 })
+    ).toHaveText("Layouts");
 
     await page.keyboard.press("End");
     await expect(tab(page, "Settings")).toBeFocused();

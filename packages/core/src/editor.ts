@@ -22,8 +22,8 @@ export interface ApplyOptions {
   /**
    * Joins this Command to the undo step made by the Command just before it, if
    * that one had the same key. Undo and redo end a step, so it can't be joined.
-   * Changes that end where they started leave no step, and the next Command
-   * with the key starts a new one.
+   * Property changes that end where they started leave no step, and the next
+   * Command with the key starts a new one.
    */
   mergeKey?: string;
 }

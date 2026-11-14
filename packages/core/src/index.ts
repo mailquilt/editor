@@ -31,6 +31,7 @@ export { findBlockPosition } from "./operations.js";
 export type { Operation } from "./operations.js";
 export {
   EMAIL_SETTINGS_FIELDS,
+  hexColor,
   ROW_SETTINGS_FIELDS,
   rowStyles,
 } from "./settings.js";

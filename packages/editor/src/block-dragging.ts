@@ -17,9 +17,15 @@ export type DropPlace =
   | { columnId: string; index: number }
   | { rowIndex: number };
 
+/** A Row, new or on the canvas, which only ever lands between Rows. */
+const isRowSource = (
+  source: DragSource
+): source is { rowId: string } | { rowLayout: string } =>
+  "rowLayout" in source || "rowId" in source;
+
 /** The Command for a drop, which adds a Row if it landed outside any. */
 export const dropCommand = (source: DragSource, place: DropPlace): Command => {
-  if ("rowId" in source || "rowLayout" in source) {
+  if (isRowSource(source)) {
     // A Row only lands between Rows, as `landing` finds no Column for one.
     const { rowIndex: index } = place as { rowIndex: number };
     return "rowId" in source
@@ -57,18 +63,19 @@ const START_DISTANCE_PX = 5;
 /** How far outside the editor a drop still counts, as space below the email. */
 const DROP_MARGIN_PX = 40;
 
-/** Near an edge, within this share of a scroll container, a drag scrolls it. */
+/**
+ * Near an edge, within this share of a scroll container and no further than
+ * SCROLL_EDGE_PX, a drag scrolls it. A tall window's share would scroll as soon
+ * as a Block near its top or bottom is picked up.
+ */
 const SCROLL_EDGE = 0.2;
-/** How far a second scrolls with the pointer right at the edge. */
+const SCROLL_EDGE_PX = 60;
+/** How far a second scrolls with the pointer at the edge or past it. */
 const SCROLL_SPEED_PX = 1500;
 /** The time a first frame takes, before there's one before it to go by. */
 const FRAME_SECONDS = 1 / 60;
 /** How far beside a scroll container the pointer can be and still scroll it. */
 const SCROLL_TOLERANCE_PX = 10;
-
-/** A Row, new or on the canvas, which only ever lands between Rows. */
-const isRowSource = (source: DragSource) =>
-  "rowLayout" in source || "rowId" in source;
 
 /** A Block or Row already in the email, rather than a new one. */
 const isOnCanvas = (source: DragSource) =>
@@ -212,15 +219,15 @@ const scrollContainersOf = (host: Element) => {
 
 /** Back near the start edge, on near the end, faster closer to it. */
 const scrollSpeed = (at: number, start: number, end: number) => {
-  const edge = (end - start) * SCROLL_EDGE;
+  const edge = Math.min((end - start) * SCROLL_EDGE, SCROLL_EDGE_PX);
   if (edge <= 0) {
     return 0;
   }
   if (at <= start + edge) {
-    return (-SCROLL_SPEED_PX * (start + edge - at)) / edge;
+    return -SCROLL_SPEED_PX * Math.min((start + edge - at) / edge, 1);
   }
   if (at >= end - edge) {
-    return (SCROLL_SPEED_PX * (at - (end - edge))) / edge;
+    return SCROLL_SPEED_PX * Math.min((at - (end - edge)) / edge, 1);
   }
   return 0;
 };

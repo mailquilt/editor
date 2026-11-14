@@ -1,7 +1,10 @@
-import type { Command, SettingsField } from "@mailquilt/core";
+import { hexColor } from "@mailquilt/core";
+import type { ApplyResult, Command, SettingsField } from "@mailquilt/core";
 import { css, html, nothing } from "lit";
 import { keyed } from "lit/directives/keyed.js";
 import { live } from "lit/directives/live.js";
+
+import { isComposing } from "./block-keyboard.js";
 
 /** One group of controls, and what its fields change. */
 export interface SettingsSection {
@@ -18,7 +21,7 @@ export interface SettingsSection {
 }
 
 /** Text in a field that isn't the document's value. */
-export interface FieldDraft {
+interface FieldDraft {
   text: string;
   /**
    * How many times a person's tries to commit it were refused, or 0. Each one
@@ -264,31 +267,11 @@ const NO_COLOR = "#ffffff";
 /** Short controls sit beside their label. Text that runs long gets the row. */
 const INLINE_TYPES = new Set<string>(["color", "number", "select"]);
 
-/** A color input only takes #rrggbb, and the text field shows what was saved. */
-const hexColor = (color: string) => {
-  if (/^#[\da-f]{3}$/iu.test(color)) {
-    return color.replaceAll(/[\da-f]/giu, "$&$&").toLowerCase();
-  }
-  if (color.startsWith("#")) {
-    return color.toLowerCase();
-  }
-  const channels = color.match(/\d{1,3}/gu)?.slice(0, 3);
-  return channels
-    ? `#${channels
-        .map((channel) =>
-          Math.min(Number(channel), 255).toString(16).padStart(2, "0")
-        )
-        .join("")}`
-    : NO_COLOR;
-};
-
-export const draftKey = (
-  { id, targetId }: SettingsSection,
-  { key }: SettingsField
-) => `${id}:${targetId}:${key}`;
+const draftKey = ({ id, targetId }: SettingsSection, { key }: SettingsField) =>
+  `${id}:${targetId}:${key}`;
 
 /** What a field shows when nothing different has been typed into it. */
-export const fieldText = (
+const fieldText = (
   { default: fallback, key }: SettingsField,
   values: Record<string, unknown>
 ) => String(values[key] ?? fallback ?? "");
@@ -299,7 +282,7 @@ const leaveOnWheel = ({ currentTarget }: Event) =>
   (currentTarget as HTMLInputElement).blur();
 
 /** What a control's text means. Empty asks for the property to be removed. */
-export const fieldValue = (
+const fieldValue = (
   field: SettingsField,
   control: HTMLInputElement | HTMLSelectElement
 ) => {
@@ -382,7 +365,9 @@ const renderField = (
               aria-label=${`${field.label} picker`}
               ?disabled=${field.disabled ?? false}
               type="color"
-              .value=${live(hexColor(text || (section.unsetColor ?? "")))}
+              .value=${live(
+                hexColor(text || (section.unsetColor ?? "")) ?? NO_COLOR
+              )}
               @change=${onCommit}
             />
             ${textControl("text")}
@@ -472,12 +457,7 @@ export const renderSettingsPanel = (
   section: SettingsSection,
   events: SettingsPanelEvents
 ) => html`
-  <div
-    aria-label="Settings"
-    class="settings"
-    role="group"
-    @keydown=${events.onKeydown}
-  >
+  <div class="settings" @keydown=${events.onKeydown}>
     <div class="section">
       <fieldset>
         <legend>${section.legend}</legend>
@@ -486,3 +466,99 @@ export const renderSettingsPanel = (
     </div>
   </div>
 `;
+
+interface DraftsHost {
+  /** Applies what a person typed, which can be refused. */
+  apply: (command: Command) => ApplyResult | undefined;
+  /** The control that holds the draft. */
+  controlOf: (key: string) => HTMLInputElement | null;
+  /** Each value a person enters, before it's applied. */
+  onEnter: (value: unknown) => void;
+  requestUpdate: () => void;
+}
+
+/** Text in the settings panel that isn't the document's value. */
+export const createSettingsDrafts = (host: DraftsHost) => {
+  const drafts = new Map<string, FieldDraft>();
+
+  /** The settings field the key was pressed in, while it holds a draft. */
+  const draftKeyOf = ({ target }: KeyboardEvent) => {
+    const key = (target as HTMLElement).dataset.draftKey;
+    return key !== undefined && drafts.has(key) ? key : undefined;
+  };
+
+  /**
+   * Each commit is one undo step. What can't be accepted stays to be fixed. A
+   * retry the person didn't ask for doesn't say again what they've been told.
+   */
+  const commit = (
+    section: SettingsSection,
+    field: SettingsField,
+    control: HTMLInputElement | HTMLSelectElement,
+    retry: boolean
+  ) => {
+    const key = draftKey(section, field);
+    const value = fieldValue(field, control);
+    host.onEnter(value);
+    const result = host.apply(section.command({ [field.key]: value }));
+    if (result?.ok || result?.unchanged) {
+      drafts.delete(key);
+    } else {
+      const refusals = drafts.get(key)?.refusals ?? 0;
+      drafts.set(key, {
+        refusals: retry ? refusals : refusals + 1,
+        text: control.value,
+      });
+    }
+    if (result?.ok) {
+      // A change to one field can make what another was refused for fine.
+      for (const other of section.fields) {
+        const otherKey = draftKey(section, other);
+        const otherControl = host.controlOf(otherKey);
+        if (otherControl && drafts.get(otherKey)?.refusals) {
+          commit(section, other, otherControl, true);
+        }
+      }
+    } else {
+      host.requestUpdate();
+    }
+  };
+
+  const events: SettingsPanelEvents = {
+    draftOf: (key) => drafts.get(key),
+    onCommit: (section, field, control) =>
+      commit(section, field, control, false),
+    onInput: (section, field, control) => {
+      const key = draftKey(section, field);
+      const refusals = drafts.get(key)?.refusals ?? 0;
+      const text = control.value;
+      // What isn't a number reads as empty, as if an empty field were unchanged.
+      if (
+        text === fieldText(field, section.values) &&
+        !refusals &&
+        !control.validity.badInput
+      ) {
+        drafts.delete(key);
+      } else {
+        drafts.set(key, { refusals, text });
+      }
+    },
+    /** Escape takes back what was typed in a settings field. */
+    onKeydown: (event) => {
+      const key = draftKeyOf(event);
+      if (key !== undefined && event.key === "Escape" && !isComposing(event)) {
+        event.preventDefault();
+        event.stopPropagation();
+        drafts.delete(key);
+        // Its value already reads as empty, so rendering wouldn't clear it.
+        const control = event.target as HTMLInputElement;
+        if (control.validity.badInput) {
+          control.value = "";
+        }
+        host.requestUpdate();
+      }
+    },
+  };
+
+  return { clear: () => drafts.clear(), draftKeyOf, events };
+};

@@ -19,6 +19,7 @@ import {
   palette,
   selectRowButton,
   serveImages,
+  TALL_VIEWPORT,
   undo,
   violations,
 } from "./helpers.js";
@@ -27,8 +28,7 @@ const PHOTO = "https://cdn.example/photo.png";
 
 test.beforeEach(({ context }) => serveImages(context));
 
-// The test host's unfriendly CSS pushes the canvas far down the page.
-test.use({ viewport: { height: 1600, width: 1280 } });
+test.use({ viewport: TALL_VIEWPORT });
 
 const firstBlockProps = async (page: Page) => {
   const found = await blocks(page);

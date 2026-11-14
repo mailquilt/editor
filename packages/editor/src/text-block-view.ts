@@ -58,7 +58,10 @@ export interface TextBlockView {
   formats: () => TextFormats;
   toggleMark: (mark: ToggleableMark) => void;
   insertLineBreak: () => void;
-  /** Links the selected text. With none, adds the URL as the linked text. */
+  /**
+   * Links the selected text. With none, changes the link the cursor is in, or
+   * else adds the URL as the linked text.
+   */
   setLink: (href: string) => void;
   removeLink: () => void;
   destroy: () => void;

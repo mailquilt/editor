@@ -11,21 +11,6 @@ test("onError hears a refused first document", async ({ page }) => {
 
 const fastTyping = "The quick brown fox jumps over the lazy dog. ".repeat(3);
 
-test.describe("passing each onChange document back into value", () => {
-  test("keeps the cursor", async ({ page }) => {
-    await page.goto("/");
-    await focusStartOfTextBlock(page);
-
-    // As fast as it goes, so keys land between each commit and its effects. A
-    // document that reaches `value` after the next key would load, losing that
-    // key, the cursor and undo history.
-    await page.keyboard.type(fastTyping);
-
-    await expect(textBlock(page)).toHaveText(`${fastTyping}Hello`);
-    await expect(textBlock(page)).toBeFocused();
-  });
-});
-
 test("a later value replaces the email in the editor", async ({ page }) => {
   await page.goto("/");
   await expect(textBlock(page)).toHaveText("Hello");
@@ -52,13 +37,16 @@ test("other props such as className and aria-label reach the element", async ({
   }
 });
 
-test("ref gives the host the element, to export HTML", async ({ page }) => {
+test("a new onChange each render replaces the last, so each edit calls it once", async ({
+  page,
+}) => {
   await page.goto("/");
-  await expect(textBlock(page)).toHaveText("Hello");
+  await focusStartOfTextBlock(page);
 
-  await page.getByRole("button", { name: "Export HTML" }).click();
+  await page.keyboard.type("Oh ");
 
-  await expect(page.getByTestId("html")).toContainText("Hello");
+  await expect(page.getByTestId("latest-document")).toContainText("Oh Hello");
+  await expect(page.getByTestId("change-count")).toHaveText("3");
 });
 
 test("comes back working after being removed", async ({ page }) => {
@@ -91,14 +79,16 @@ test.describe("a callback ref", () => {
   });
 });
 
-// StrictMode mounts each effect twice. The wrapper's effects wait for the editor
-// to load, so they don't run until after that, and one test is enough.
-test("passing each onChange document back into value keeps the cursor under StrictMode", async ({
+// StrictMode mounts each effect twice, so it also covers a host without it.
+test("passing each onChange document back into value keeps the cursor, under StrictMode", async ({
   page,
 }) => {
   await page.goto("/?strict");
   await focusStartOfTextBlock(page);
 
+  // As fast as it goes, so keys land between each commit and its effects. A
+  // document that reaches `value` after the next key would load, losing that
+  // key, the cursor and undo history.
   await page.keyboard.type(fastTyping);
 
   await expect(textBlock(page)).toHaveText(`${fastTyping}Hello`);

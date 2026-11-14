@@ -7,6 +7,7 @@ import {
   canvas,
   centerOf,
   changeCount,
+  hoverRow,
   letGo,
   moveCursorToLineEnd,
   moveTo,
@@ -16,20 +17,13 @@ import {
   selectRow,
   selectRowButton,
   structure,
+  TALL_VIEWPORT,
   textBlock,
   undoByKey,
 } from "./helpers.js";
 import type { Point } from "./helpers.js";
 
-// The test host's unfriendly CSS pushes the canvas far down the page.
-test.use({ viewport: { height: 1600, width: 1280 } });
-
-/** A Row's toolbar shows on hover, so the pointer goes there first. */
-const hoverRow = (page: Page, position: number) =>
-  canvas(page)
-    .locator(".row")
-    .nth(position - 1)
-    .hover({ position: { x: 4, y: 4 } });
+test.use({ viewport: TALL_VIEWPORT });
 
 const rowTool = (page: Page, position: number, name: string) =>
   rowTools(page, position).getByRole("button", { exact: true, name });

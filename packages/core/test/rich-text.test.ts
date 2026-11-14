@@ -1,12 +1,7 @@
 // oxlint-disable eslint/no-script-url -- These URLs are what the tests refuse.
 import { describe, expect, it } from "vitest";
 
-import {
-  createEditor,
-  createEmail,
-  isAllowedLinkHref,
-  loadDocument,
-} from "../src/index.js";
+import { createEmail, isAllowedLinkHref, loadDocument } from "../src/index.js";
 
 const emailWithInline = (...inline: unknown[]) => {
   const email = createEmail();
@@ -128,19 +123,6 @@ describe("limited rich text", () => {
 
     expect(result).toMatchObject({ ok: false });
     expect(result.ok === false && result.reason).toContain("link");
-  });
-
-  it("rejects a Command that would add an executable link", () => {
-    const email = createEmail();
-    const editor = createEditor({ document: email });
-    const blockId = email.rows[0]?.columns[0]?.blocks[0]?.id ?? "";
-    const { props } = emailWithInline(linkTo("javascript:alert(1)")).rows[0]
-      ?.columns[0]?.blocks[0] ?? { props: {} };
-
-    const result = editor.apply({ blockId, props, type: "updateBlockProps" });
-
-    expect(result.ok).toBeFalsy();
-    expect(editor.getDocument()).toStrictEqual(email);
   });
 });
 

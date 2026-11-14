@@ -20,7 +20,7 @@ The site is served from the root of `SITE_URL` in `site/project.ts`. The package
 
 ## Before upgrading Blume
 
-The site uses a few parts of Blume that its docs don't promise to keep. Check these still work after an upgrade:
+Blume's version is pinned, so an upgrade only comes when you choose one. The site uses a few parts of Blume that its docs don't promise to keep. Check these still work after an upgrade:
 
 - `withBase` from `blume/components/islands/base-path.ts`, which puts the base path on a link.
 - `codeBlockHtml` from `blume/components/content/code-block.ts`, which highlights the landing page's code as the docs' own is.

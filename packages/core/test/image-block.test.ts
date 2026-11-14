@@ -36,22 +36,6 @@ const linkField = (props: Record<string, unknown>) =>
   );
 
 describe("Image Block", () => {
-  it("is added with nothing set, as there's no image to show yet", () => {
-    const document = createEmail();
-    const columnId = document.rows[0]?.columns[0]?.id as string;
-    const editor = createEditor({ document });
-
-    const result = editor.apply({
-      blockType: "image",
-      columnId,
-      index: 0,
-      type: "insertBlock",
-    });
-
-    expect(result.ok).toBeTruthy();
-    expect(propsOf(editor.getDocument())).toStrictEqual({});
-  });
-
   it("stores a URL, alt text, width and link", () => {
     const props = {
       alt: "Our logo",

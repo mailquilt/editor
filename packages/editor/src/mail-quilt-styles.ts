@@ -41,12 +41,13 @@ export const editorStyles = css`
    * still in the layout, so a host that takes the width of its content
    * keeps the width the editor gives it, and grows again with the window.
    * Every part hides, as the email card and the tools start their styles
-   * again, and so none of them takes focus.
+   * again, and so none of them takes focus. Important, as otherwise a host's
+   * size for ::part(frame), which the notice shares, would win here.
    */
   .editor[data-collapsed] {
-    flex-grow: 0;
-    height: 0;
-    min-height: 0;
+    flex-grow: 0 !important;
+    height: 0 !important;
+    min-height: 0 !important;
   }
 
   .editor[data-collapsed],

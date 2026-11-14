@@ -1,8 +1,6 @@
 import { expect, test } from "@playwright/test";
-import type { Page } from "@playwright/test";
 
 import {
-  rowTools,
   blockGroup,
   boxOf,
   canvas,
@@ -10,23 +8,16 @@ import {
   openEmail as open,
   openTab,
   palette,
+  rowTag,
+  rowTools,
   selectRowButton,
   settle,
   structure,
+  TALL_VIEWPORT,
   undoByKey,
 } from "./helpers.js";
 
-// The test host's unfriendly CSS pushes the canvas far down the page.
-test.use({ viewport: { height: 1600, width: 1280 } });
-
-const rowTag = (page: Page, position: number) =>
-  canvas(page)
-    .locator(".row-frame")
-    .nth(position - 1)
-    .locator(".row-tag");
-
-const panelSettings = (page: Page) =>
-  canvas(page).getByRole("group", { name: "Settings" });
+test.use({ viewport: TALL_VIEWPORT });
 
 test.describe("selecting a Row", () => {
   test("its tag selects it, and the panel shows its settings", async ({
@@ -41,7 +32,9 @@ test.describe("selecting a Row", () => {
     await expect(
       canvas(page).locator('.block[aria-current="true"]')
     ).toHaveCount(0);
-    await expect(panelSettings(page).locator("legend")).toHaveText(["Row"]);
+    await expect(canvas(page).locator(".side-panel legend")).toHaveText([
+      "Row",
+    ]);
     await expect(
       canvas(page)
         .locator(".side-panel")

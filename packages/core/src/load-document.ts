@@ -91,7 +91,7 @@ const findProblem = ({ rows }: ParsedDocument) => {
           return `Duplicate ID "${block.id}"`;
         }
         const validated = validateProps(block, block.props);
-        if (!validated.valid) {
+        if (!validated.ok) {
           return validated.reason;
         }
         // The schema passes props through, so this also stops them being shared

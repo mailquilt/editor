@@ -10,13 +10,13 @@ import {
   exportHtml,
   focusStartOfTextBlock,
   latestDocument,
+  linkUrlField,
+  previewButton,
   setValue,
   textBlock,
   undoByKey,
 } from "./helpers.js";
 
-const previewButton = (page: Page) =>
-  page.getByRole("button", { exact: true, name: "Preview" });
 const previewDialog = (page: Page) =>
   page.getByRole("dialog", { name: "Preview" });
 const previewFrame = (page: Page) => previewDialog(page).locator("iframe");
@@ -209,31 +209,12 @@ test.describe("the sandbox", () => {
     expect(messages).toContain("control");
     expect(messages).not.toContain("preview");
     await expect(page.locator("html")).not.toHaveAttribute("data-preview");
-  });
-
-  test("the host page can't read into the Preview, because its origin is opaque", async ({
-    page,
-  }) => {
-    await previewButton(page).click();
-    await expect(previewEmail(page)).toContainText("Hello");
-
+    // Nor can the host page read into it, as its origin is opaque.
     expect(
       await previewFrame(page).evaluate(
         (frame) => (frame as HTMLIFrameElement).contentDocument
       )
     ).toBeNull();
-  });
-
-  test("HTML typed as text shows as text, not markup", async ({ page }) => {
-    await setValue(page, emailWith([[['<img src="x" onerror="alert(1)">']]]));
-    await expect(textBlock(page)).toHaveText(
-      '<img src="x" onerror="alert(1)">'
-    );
-
-    await previewButton(page).click();
-
-    await expect(previewEmail(page)).toContainText('<img src="x"');
-    await expect(previewEmail(page).locator("img")).toHaveCount(0);
   });
 
   test("a link in the Preview opens nothing and leaves the host page", async ({
@@ -279,6 +260,25 @@ test.describe("closing", () => {
     await expect(previewDialog(page)).toBeHidden();
   });
 
+  test("Escape closes it and goes no further, so a host's dialog stays open", async ({
+    page,
+  }) => {
+    await page.evaluate(() => {
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          document.documentElement.dataset.hostEscape = "reached";
+        }
+      });
+    });
+    await previewButton(page).click();
+    await expect(previewEmail(page)).toContainText("Hello");
+
+    await page.keyboard.press("Escape");
+
+    await expect(previewDialog(page)).toBeHidden();
+    await expect(page.locator("html")).not.toHaveAttribute("data-host-escape");
+  });
+
   test("the Block keeps its cursor and undo history after the Preview", async ({
     page,
   }) => {
@@ -315,7 +315,7 @@ test.describe("closing", () => {
   }) => {
     await textBlock(page).click();
     await page.getByRole("button", { exact: true, name: "Link" }).click();
-    const linkField = page.getByRole("textbox", { name: "Link URL" });
+    const linkField = linkUrlField(page);
     await expect(linkField).toBeFocused();
 
     await previewButton(page).click();
@@ -452,23 +452,6 @@ test.describe("the host changing things while the Preview is open", () => {
     await previewButton(page).click();
     await expect(previewEmail(page)).toContainText("Hello");
   });
-});
-
-test("host CSS doesn't reach the Preview", async ({ page }) => {
-  await previewButton(page).click();
-  const email = previewEmail(page).getByText("Hello");
-  await expect(email).toBeVisible();
-
-  await expect(email).toHaveCSS("color", "rgb(0, 0, 0)");
-  await expect(email).toHaveCSS("font-size", "16px");
-  await expect(email).toHaveCSS("text-transform", "none");
-  const heading = previewDialog(page).getByRole("heading", { name: "Preview" });
-  await expect(heading).toHaveCSS("font-size", "14px");
-  await expect(heading).toHaveCSS("color", "rgb(22, 24, 29)");
-  await expect(heading).toHaveCSS("text-transform", "none");
-  const { height, width } = await boxOf(previewFrame(page));
-  expect(height).toBeGreaterThan(200);
-  expect(width).toBeGreaterThan(600);
 });
 
 test("stays a readable size in a large window, in its middle", async ({

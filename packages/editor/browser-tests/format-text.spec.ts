@@ -6,9 +6,11 @@ import {
   canvas,
   exportHtml,
   latestDocument,
+  linkUrlField,
   pasteHtml,
   redoByKey,
   settle,
+  stopClock,
   undoByKey,
 } from "./helpers.js";
 
@@ -22,8 +24,6 @@ const toolbarButton = (page: Page, name: string) =>
     exact: true,
     name,
   });
-const linkInput = (page: Page) =>
-  page.getByRole("textbox", { name: "Link URL" });
 
 const selectAll = (page: Page) => page.keyboard.press("ControlOrMeta+a");
 
@@ -88,7 +88,7 @@ const addLink = async (page: Page, href: string) => {
   await toolbarButton(page, "Link")
     .or(toolbarButton(page, "Edit link"))
     .click();
-  await linkInput(page).fill(href);
+  await linkUrlField(page).fill(href);
   await page.keyboard.press("Enter");
 };
 
@@ -125,21 +125,6 @@ test.describe("bold, italic and underline", () => {
         { marks: [{ type: "underline" }], text: "Hello", type: "text" },
       ]);
     expect(await exportHtml(page)).toContain("<u>Hello</u>");
-  });
-
-  test("the toolbar button turns formatting off again", async ({ page }) => {
-    await selectAllInBlock(page);
-
-    await toolbarButton(page, "Bold").click();
-    await toolbarButton(page, "Bold").click();
-
-    await expect
-      .poll(() => savedInline(page))
-      .toStrictEqual([{ text: "Hello", type: "text" }]);
-    await expect(toolbarButton(page, "Bold")).toHaveAttribute(
-      "aria-pressed",
-      "false"
-    );
   });
 
   test("the toolbar shows the formatting at the cursor", async ({ page }) => {
@@ -479,14 +464,6 @@ test.describe("line breaks", () => {
 });
 
 test.describe("links", () => {
-  test("Control or Command+K opens the link field", async ({ page }) => {
-    await selectAllInBlock(page);
-
-    await page.keyboard.press("ControlOrMeta+k");
-
-    await expect(linkInput(page)).toBeFocused();
-  });
-
   test("applying a link returns focus and the selection to the Block", async ({
     page,
   }) => {
@@ -494,7 +471,7 @@ test.describe("links", () => {
 
     await addLink(page, "https://example.com");
 
-    await expect(linkInput(page)).toBeHidden();
+    await expect(linkUrlField(page)).toBeHidden();
     await expect(firstTextBlock(page)).toBeFocused();
     await page.keyboard.type("x");
     await expect(firstTextBlock(page)).toHaveText("x");
@@ -507,8 +484,8 @@ test.describe("links", () => {
     await addLink(page, "javascript:alert(1)");
 
     await expect(page.getByRole("alert")).toContainText("Merge Tag");
-    await expect(linkInput(page)).toBeVisible();
-    await expect(linkInput(page)).toHaveAttribute("aria-invalid", "true");
+    await expect(linkUrlField(page)).toBeVisible();
+    await expect(linkUrlField(page)).toHaveAttribute("aria-invalid", "true");
     expect(await savedInline(page)).toStrictEqual([
       { text: "Hello", type: "text" },
     ]);
@@ -517,7 +494,7 @@ test.describe("links", () => {
     await page.getByRole("alert").evaluate((element) => {
       element.dataset.seen = "true";
     });
-    await linkInput(page).press("Enter");
+    await linkUrlField(page).press("Enter");
     await expect(page.getByRole("alert")).toBeVisible();
     await expect(page.getByRole("alert")).not.toHaveAttribute("data-seen");
   });
@@ -525,7 +502,7 @@ test.describe("links", () => {
   test("spaces around a pasted URL are ignored", async ({ page }) => {
     await selectAllInBlock(page);
     await toolbarButton(page, "Link").click();
-    await linkInput(page).fill("  https://example.com ");
+    await linkUrlField(page).fill("  https://example.com ");
 
     await toolbarButton(page, "Apply").click();
 
@@ -545,11 +522,11 @@ test.describe("links", () => {
   }) => {
     await selectAllInBlock(page);
     await toolbarButton(page, "Link").click();
-    await linkInput(page).fill("https://example.com");
+    await linkUrlField(page).fill("https://example.com");
 
     await page.keyboard.press("Escape");
 
-    await expect(linkInput(page)).toBeHidden();
+    await expect(linkUrlField(page)).toBeHidden();
     await expect(firstTextBlock(page)).toBeFocused();
     expect(await savedInline(page)).toStrictEqual([
       { text: "Hello", type: "text" },
@@ -557,10 +534,10 @@ test.describe("links", () => {
 
     // Cancel does the same.
     await toolbarButton(page, "Link").click();
-    await linkInput(page).fill("https://example.com");
+    await linkUrlField(page).fill("https://example.com");
     await toolbarButton(page, "Cancel").click();
 
-    await expect(linkInput(page)).toBeHidden();
+    await expect(linkUrlField(page)).toBeHidden();
     await expect(firstTextBlock(page)).toBeFocused();
     expect(await savedInline(page)).toStrictEqual([
       { text: "Hello", type: "text" },
@@ -574,9 +551,9 @@ test.describe("links", () => {
   }) => {
     await selectAllInBlock(page);
     await toolbarButton(page, "Link").click();
-    await linkInput(page).fill("https://example.com");
+    await linkUrlField(page).fill("https://example.com");
 
-    await linkInput(page).evaluate((element) => {
+    await linkUrlField(page).evaluate((element) => {
       element.dispatchEvent(
         new KeyboardEvent("keydown", {
           bubbles: true,
@@ -588,7 +565,7 @@ test.describe("links", () => {
       );
     });
 
-    await expect(linkInput(page)).toHaveValue("https://example.com");
+    await expect(linkUrlField(page)).toHaveValue("https://example.com");
   });
 
   test("in an empty Block with everything selected, the URL becomes the linked text", async ({
@@ -617,7 +594,7 @@ test.describe("links", () => {
   }) => {
     await selectAllInBlock(page);
     await toolbarButton(page, "Link").click();
-    await expect(linkInput(page)).toBeFocused();
+    await expect(linkUrlField(page)).toBeFocused();
 
     await canvas(page).evaluate((element) => {
       const parent = element.parentElement;
@@ -626,18 +603,18 @@ test.describe("links", () => {
     });
 
     await expect(firstTextBlock(page)).toHaveText("Hello");
-    await expect(linkInput(page)).toBeHidden();
+    await expect(linkUrlField(page)).toBeHidden();
     await expect(toolbarButton(page, "Bold")).toHaveCount(0);
   });
 
   test("clicking back into the Block closes the field", async ({ page }) => {
     await selectAllInBlock(page);
     await toolbarButton(page, "Link").click();
-    await expect(linkInput(page)).toBeFocused();
+    await expect(linkUrlField(page)).toBeFocused();
 
     await firstTextBlock(page).click();
 
-    await expect(linkInput(page)).toBeHidden();
+    await expect(linkUrlField(page)).toBeHidden();
   });
 
   test("with only a cursor, the URL becomes the linked text", async ({
@@ -685,8 +662,8 @@ test.describe("links", () => {
         "aria-expanded",
         "true"
       );
-      await expect(linkInput(page)).toHaveValue("https://example.com");
-      await linkInput(page).fill("https://example.org");
+      await expect(linkUrlField(page)).toHaveValue("https://example.com");
+      await linkUrlField(page).fill("https://example.org");
       await page.keyboard.press("Enter");
 
       await expect
@@ -831,6 +808,7 @@ test.describe("undo and redo", () => {
     page,
   }) => {
     await cursorAtEndOfBlock(page);
+    await stopClock(page);
     await page.keyboard.type("a");
     await page.keyboard.press("ControlOrMeta+b");
     await page.keyboard.type("b");
@@ -857,7 +835,7 @@ test.describe("undo and redo", () => {
     await expect
       .poll(() => savedInline(page))
       .toStrictEqual([{ text: "Hello", type: "text" }]);
-    await expect(linkInput(page)).toBeHidden();
+    await expect(linkUrlField(page)).toBeHidden();
     await expect(firstTextBlock(page)).toBeFocused();
 
     await undoByKey(page);

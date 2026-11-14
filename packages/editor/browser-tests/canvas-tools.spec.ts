@@ -9,31 +9,23 @@ import {
   centerOf,
   currentValue,
   emailWith,
+  linkUrlField,
   openBlocks,
   openEmail,
+  rowTag,
   rowTools,
   selectRowButton,
   serveImages,
   settle,
   setValue,
   structure,
+  TALL_VIEWPORT,
   textBlock,
   undoByKey,
 } from "./helpers.js";
 
 const formatBar = (page: Page) =>
   canvas(page).getByRole("toolbar", { name: "Text formatting" });
-
-const outlineOf = (page: Page, selector: string) =>
-  canvas(page)
-    .locator(selector)
-    .first()
-    .evaluate((element) => {
-      const { outlineStyle, outlineWidth } = getComputedStyle(element);
-      return outlineStyle === "none"
-        ? "none"
-        : `${outlineWidth} ${outlineStyle}`;
-    });
 
 test.describe("a Block on the canvas", () => {
   test("only the selected one has a toolbar", async ({ page }) => {
@@ -92,14 +84,13 @@ test.describe("a Block on the canvas", () => {
 });
 
 test.describe("a Row on the canvas", () => {
-  test("shows an outline and its toolbar on hover", async ({ page }) => {
+  test("shows its toolbar on hover", async ({ page }) => {
     await openBlocks(page, ["button"]);
     await expect(rowTools(page, 1)).toHaveCSS("opacity", "0");
 
     await canvas(page).locator(".row").hover();
 
     await expect(rowTools(page, 1)).toHaveCSS("opacity", "1");
-    expect(await outlineOf(page, ".row")).toBe("1px dashed");
   });
 
   test("hides its toolbar while one of its Blocks is selected, even on hover", async ({
@@ -116,7 +107,7 @@ test.describe("a Row on the canvas", () => {
 
     await expect(rowTools(page, 2)).toHaveCSS("opacity", "0");
     // Its tag still shows, and selects the Row, which brings the toolbar back.
-    const tag = canvas(page).locator(".row-frame").nth(1).locator(".row-tag");
+    const tag = rowTag(page, 2);
     await expect(tag).toHaveCSS("opacity", "1");
     await tag.click();
     await expect(rowTools(page, 2)).toHaveCSS("opacity", "1");
@@ -134,6 +125,17 @@ test.describe("a Row on the canvas", () => {
     // One stop for the whole toolbar, at its first tool.
     await expect(selectRowButton(page, 2)).toBeFocused();
     await expect(rowTools(page, 2)).toHaveCSS("opacity", "1");
+
+    // Shift+Tab from further along leaves it, rather than going back to that stop.
+    await page.keyboard.press("ArrowRight");
+    await expect(
+      rowTools(page, 2).getByRole("button", { name: "Move Row up" })
+    ).toBeFocused();
+    await page.keyboard.press("Shift+Tab");
+    await expect(selectRowButton(page, 2)).not.toBeFocused();
+    await expect(
+      rowTools(page, 2).getByRole("button", { name: "Move Row up" })
+    ).not.toBeFocused();
   });
 
   test("an empty Row is selected and deleted from the keyboard", async ({
@@ -320,6 +322,9 @@ test.describe("the format bar", () => {
 
     await page.keyboard.press("Alt+F10");
     await expect(bold).toBeFocused();
+    // The first only closes Bold's tooltip.
+    await page.keyboard.press("Escape");
+    await expect(bold).toBeFocused();
     await page.keyboard.press("Escape");
     await expect(textBlock(page)).toBeFocused();
     await expect(formatBar(page)).toBeVisible();
@@ -403,20 +408,24 @@ test.describe("the floating toolbar", () => {
 });
 
 test.describe("a Block's drag handle and link shortcut", () => {
-  // The test host's unfriendly CSS pushes the canvas far down the page.
-  test.use({ viewport: { height: 1600, width: 1280 } });
+  test.use({ viewport: TALL_VIEWPORT });
 
-  test("Control or Command+K on the Block opens the link field in its text", async ({
+  test("Control or Command+K on the Block opens the link field in its text, and on a Button does nothing", async ({
     page,
   }) => {
-    await openBlocks(page, ["text"]);
-    await blockGroup(page, "Text").focus();
+    await openBlocks(page, ["button", "text"]);
+    const linkUrl = linkUrlField(page);
+    await blockGroup(page, "Button").focus();
 
     await page.keyboard.press("ControlOrMeta+k");
 
-    await expect(
-      canvas(page).getByRole("textbox", { name: "Link URL" })
-    ).toBeFocused();
+    await expect(linkUrl).toHaveCount(0);
+    await expect(blockGroup(page, "Button")).toBeFocused();
+
+    await blockGroup(page, "Text").focus();
+    await page.keyboard.press("ControlOrMeta+k");
+
+    await expect(linkUrl).toBeFocused();
   });
 
   test("a click on another Block's handle leaves the tabs showing", async ({
@@ -464,6 +473,23 @@ test.describe("on a screen too narrow to edit in", () => {
         .frameLocator("iframe")
         .getByText("Hello")
     ).toBeVisible();
+  });
+
+  test("stays out of sight with a size the host gives the frame", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await page.addStyleTag({
+      content:
+        "mail-quilt::part(frame) { flex-grow: 1; height: 700px; min-height: 700px }",
+    });
+    await expect(notice(page)).toBeVisible();
+
+    await expect(
+      canvas(page)
+        .locator(".editor")
+        .evaluate((editor) => editor.getBoundingClientRect().height)
+    ).resolves.toBe(0);
   });
 
   test("gives the editor back, with the same email, once there's room", async ({
@@ -521,7 +547,7 @@ test.describe("a click on the workspace, outside the email", () => {
   test("leaves the selection after a drag that ends there", async ({
     page,
   }) => {
-    await page.setViewportSize({ height: 1600, width: 1280 });
+    await page.setViewportSize(TALL_VIEWPORT);
     await openEmail(page, [[["A", "B"]]]);
     await blockGroup(page, "Text").first().focus();
     const handle = await boxOf(blockTools(page).locator(".drag-handle"));

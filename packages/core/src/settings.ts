@@ -32,6 +32,38 @@ export type SettingsField = FieldBase &
     | { type: "text" }
   );
 
+/** A whole number of pixels, 1 or more. */
+export const wholePixelsSchema = v.pipe(
+  v.number(),
+  v.safeInteger(),
+  v.minValue(1)
+);
+
+export const pixelSchema = (max: number) =>
+  v.pipe(wholePixelsSchema, v.maxValue(max));
+
+export const pixelField = (
+  key: string,
+  label: string,
+  fallback?: number,
+  max?: number
+): SettingsField => ({
+  default: fallback,
+  invalidMessage:
+    max === undefined
+      ? "Use a whole number of pixels, 1 or more."
+      : `Use a whole number from 1 to ${max}.`,
+  key,
+  label,
+  max,
+  min: 1,
+  type: "number",
+  unit: "px",
+});
+
+/** Wider than any inbox shows, so a mistyped width is refused. */
+const MAX_EMAIL_WIDTH = 1200;
+
 export const INVALID_COLOR = "Use a color such as #ff0000, or rgb(255, 0, 0).";
 
 /** Formats MJML accepts, so that an email that loads can also be exported. */
@@ -42,6 +74,29 @@ export const colorSchema = v.pipe(
     "Must be a color written as #rgb, #rrggbb, rgb() or rgba()"
   )
 );
+
+/**
+ * A color as #rrggbb, which a color input takes, from one in a format above.
+ * Its alpha is dropped. Nothing for text with no color in it.
+ * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
+ */
+export const hexColor = (color: string) => {
+  if (/^#[\da-f]{3}$/iu.test(color)) {
+    return color.replaceAll(/[\da-f]/giu, "$&$&").toLowerCase();
+  }
+  if (color.startsWith("#")) {
+    return color.toLowerCase();
+  }
+  const channels = color.match(/\d{1,3}/gu)?.slice(0, 3);
+  return (
+    channels &&
+    `#${channels
+      .map((channel) =>
+        Math.min(Number(channel), 255).toString(16).padStart(2, "0")
+      )
+      .join("")}`
+  );
+};
 
 export const INVALID_SOLID_COLOR =
   "Use a solid color such as #ff0000, or rgb(255, 0, 0).";
@@ -62,17 +117,17 @@ export const emailSettingsSchema = v.strictObject({
   backgroundColor: colorSchema,
   // Font names only, as both outputs put it in CSS, where a ; or : would add
   // rules of its own. A quote has to close, or the rest of the style would be
-  // read as part of the name.
+  // read as part of the name. With no name at all, the export has no font.
   fontFamily: v.pipe(
     v.string(),
     v.regex(
-      /^(?:[\w ,-]|'[\w ,"-]*'|"[\w ,'-]*")*$/u,
+      /^(?=.*\w)(?:[\w ,-]|'[\w ,"-]*'|"[\w ,'-]*")*$/u,
       "Must be a list of font names"
     )
   ),
   language: v.optional(v.string()),
   preheader: v.optional(v.string()),
-  width: v.pipe(v.number(), v.safeInteger(), v.minValue(1)),
+  width: pixelSchema(MAX_EMAIL_WIDTH),
 });
 
 /**
@@ -98,14 +153,7 @@ export const newLanguageSettingsSchema = v.strictObject({
  * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
  */
 export const EMAIL_SETTINGS_FIELDS: readonly SettingsField[] = [
-  {
-    invalidMessage: "Use a whole number of pixels, 1 or more.",
-    key: "width",
-    label: "Width",
-    min: 1,
-    type: "number",
-    unit: "px",
-  },
+  pixelField("width", "Width", undefined, MAX_EMAIL_WIDTH),
   {
     invalidMessage: INVALID_COLOR,
     key: "backgroundColor",
