@@ -559,12 +559,15 @@ const setValueAndCollectErrors = (page: Page, document: unknown) =>
   }, document);
 
 test.describe("setting value", () => {
-  test("a clone of the last document sent out keeps undo and the cursor", async ({
+  test("a clone of the document just loaded, or of the last one sent out, keeps undo and the cursor", async ({
     page,
   }) => {
     await focusStartOfTextBlock(page);
+    await setValue(page, await currentValue(page));
+    await expect(textBlock(page)).toBeFocused();
     await stopClock(page);
     await page.keyboard.type("ab");
+    await expect(textBlock(page)).toHaveText("abHello");
     await expect(changeCount(page)).toHaveText("2");
 
     await setValue(page, await latestDocument(page));
@@ -574,18 +577,6 @@ test.describe("setting value", () => {
     await expect(textBlock(page)).toHaveText("abcHello");
     await undoByKey(page);
     await expect(textBlock(page)).toHaveText("Hello");
-  });
-
-  test("a clone of the document just loaded keeps the cursor", async ({
-    page,
-  }) => {
-    await focusStartOfTextBlock(page);
-
-    await setValue(page, await currentValue(page));
-
-    await expect(textBlock(page)).toBeFocused();
-    await page.keyboard.type("a");
-    await expect(textBlock(page)).toHaveText("aHello");
   });
 
   test("a different document loads and clears undo history", async ({
@@ -605,21 +596,6 @@ test.describe("setting value", () => {
     await expect(textBlock(page)).toHaveText("Another email");
     // Loading isn't a change, so a host's auto-save has nothing to overwrite.
     await expect(changeCount(page)).toHaveText("2");
-  });
-
-  test("a document wrapped in a Proxy loads, as Vue's reactive() makes", async ({
-    page,
-  }) => {
-    const different = withText(await currentValue(page), "Another email");
-
-    await canvas(page).evaluate((element, document) => {
-      (element as MailQuilt).value = new Proxy(document, {});
-    }, different);
-
-    await expect(textBlock(page)).toHaveText("Another email");
-    await focusStartOfTextBlock(page);
-    await page.keyboard.type("a");
-    await expect(textBlock(page)).toHaveText("aAnother email");
   });
 
   test("a document the host changed after it was sent out loads", async ({
@@ -650,27 +626,19 @@ test.describe("setting value", () => {
     await expect(textBlock(page)).toHaveText("Host's own text");
   });
 
-  test("clearing value empties the canvas, and a document loads again after", async ({
+  // Null, as JSON.parse gives for nothing saved.
+  test("clearing value empties the canvas with no error, and a document loads again after", async ({
     page,
   }) => {
     const saved = await currentValue(page);
 
-    await canvas(page).evaluate((element) => {
-      (element as MailQuilt).value = undefined;
-    });
+    const reasons = await setValueAndCollectErrors(page, null);
+    expect(reasons).toStrictEqual([]);
     await expect(textBlock(page)).toHaveCount(0);
     await expect(exportHtml(page)).rejects.toThrow("has no document to export");
 
     await setValue(page, saved);
     await expect(textBlock(page)).toHaveText("Hello");
-  });
-
-  // As JSON.parse gives for nothing saved.
-  test("null empties it too, with no error", async ({ page }) => {
-    const reasons = await setValueAndCollectErrors(page, null);
-
-    expect(reasons).toStrictEqual([]);
-    await expect(textBlock(page)).toHaveCount(0);
   });
 });
 

@@ -1,8 +1,8 @@
 import { expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
-/** Each fresh project starts with an email saying "Hello", saved in localStorage. */
-export const checkLoadSaveExport = async (page: Page, url: string) => {
+/** Everything the page reports as going wrong, from here on. */
+const collectProblems = (page: Page) => {
   const problems: string[] = [];
   page.on("pageerror", ({ message }) => problems.push(message));
   page.on("console", (message) => {
@@ -10,6 +10,12 @@ export const checkLoadSaveExport = async (page: Page, url: string) => {
       problems.push(message.text());
     }
   });
+  return problems;
+};
+
+/** Each fresh project starts with an email saying "Hello", saved in localStorage. */
+export const checkLoadSaveExport = async (page: Page, url: string) => {
+  const problems = collectProblems(page);
   const text = page.getByRole("textbox", { name: "Text Block" });
 
   await page.goto(url);
@@ -61,13 +67,7 @@ export const checkRefusedDocument = async (page: Page, url: string) => {
  * editor's own tests' to check; this proves the Shell works once installed.
  */
 export const checkShell = async (page: Page, url: string) => {
-  const problems: string[] = [];
-  page.on("pageerror", ({ message }) => problems.push(message));
-  page.on("console", (message) => {
-    if (message.type() === "error") {
-      problems.push(message.text());
-    }
-  });
+  const problems = collectProblems(page);
   const shell = page.locator("mail-quilt-shell");
   const text = page.getByRole("textbox", { name: "Text Block" });
 

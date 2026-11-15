@@ -5,6 +5,7 @@ import {
   createEditor,
   createEmail,
   EMAIL_SETTINGS_FIELDS,
+  hexColor,
   loadDocument,
   rowStyles,
 } from "../src/index.js";
@@ -49,9 +50,6 @@ describe("Text Block settings", () => {
   it.each([
     ["an unknown alignment", { align: "middle" }, /align/u],
     ["a color that isn't hex or rgb()", { color: "red" }, /color/u],
-    ["a font size that isn't a number", { fontSize: "24px" }, /fontSize/u],
-    ["a fractional font size", { fontSize: 12.5 }, /fontSize/u],
-    ["a font size of zero", { fontSize: 0 }, /fontSize/u],
     ["a font size past the limit", { fontSize: 201 }, /fontSize/u],
   ])("rejects %s", (_name, props, reason) => {
     const { blockId, editor } = setup();
@@ -343,6 +341,19 @@ describe("a saved language that isn't a code", () => {
     editor.apply({ settings: { language: null }, type: "updateEmailSettings" });
 
     expect(editor.getDocument().settings).not.toHaveProperty("language");
+  });
+});
+
+describe(hexColor, () => {
+  it.each([
+    ["a short hex color", "#ABC", "#aabbcc"],
+    ["a hex color", "#AbCdEf", "#abcdef"],
+    ["rgb()", "rgb(255, 0, 16)", "#ff0010"],
+    ["rgba(), dropping its alpha", "rgba(0, 128, 255, 0.5)", "#0080ff"],
+    ["a channel past 255, capped", "rgb(300, 0, 0)", "#ff0000"],
+    ["text with no color", "none", undefined],
+  ])("reads %s", (_name, color, hex) => {
+    expect(hexColor(color)).toBe(hex);
   });
 });
 

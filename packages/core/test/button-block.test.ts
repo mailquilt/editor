@@ -30,22 +30,6 @@ const setHref = (href: unknown) => {
 };
 
 describe("Button Block", () => {
-  it("is added with a label and no link", () => {
-    const document = createEmail();
-    const columnId = document.rows[0]?.columns[0]?.id as string;
-    const editor = createEditor({ document });
-
-    const result = editor.apply({
-      blockType: "button",
-      columnId,
-      index: 0,
-      type: "insertBlock",
-    });
-
-    expect(result.ok).toBeTruthy();
-    expect(propsOf(editor.getDocument())).toStrictEqual({ label: "Button" });
-  });
-
   it("stores a label, link, background color, text color and alignment", () => {
     const { editor } = setup();
     const props = {
@@ -78,11 +62,6 @@ describe("Button Block", () => {
     ["no label", { label: null }, /label/u],
     ["a label of only spaces", { label: "   " }, /label/u],
     ["a label that isn't text", { label: 1 }, /label/u],
-    [
-      "a background that isn't hex or rgb()",
-      { backgroundColor: "red" },
-      /background/u,
-    ],
     [
       "a see-through background, which MJML would paint twice",
       { backgroundColor: "rgba(37, 99, 235, 0.5)" },

@@ -39,6 +39,7 @@ describe("an Image Block", () => {
     expect(html).toContain('href="https://shop.example/?a=1&amp;b=2"');
   });
 
+  // Core sets no maximum Image width and relies on this.
   it("stops at the Column's width, less its padding", async () => {
     const html = await renderEmail(
       emailWith(image({ src: LOGO, width: 5000 }))

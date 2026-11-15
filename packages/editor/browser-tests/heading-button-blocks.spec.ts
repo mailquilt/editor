@@ -83,13 +83,6 @@ const lastLineInset = (face: Locator) =>
 /** Browsers can differ by a fraction of a pixel between two pages. */
 const toTenths = (pixels: number) => Math.round(pixels * 10) / 10;
 
-/** How far a Button's face is from the right of what holds it. */
-const gapOnRight = async (face: Locator, container: Locator) => {
-  const inner = await boxOf(face);
-  const outer = await boxOf(container);
-  return toTenths(outer.x + outer.width - inner.x - inner.width);
-};
-
 test.use({ viewport: TALL_VIEWPORT });
 
 test.describe("the palette", () => {
@@ -108,7 +101,7 @@ test.describe("the palette", () => {
 });
 
 test.describe("a Heading", () => {
-  test("changes level, on the canvas, in the panel and in the export", async ({
+  test("changes level, and shows its settings the same on the canvas and in the export", async ({
     page,
   }) => {
     await open(page, ["heading"]);
@@ -122,20 +115,7 @@ test.describe("a Heading", () => {
     await expect(lastBlockProps(page)).resolves.toMatchObject({ level: 1 });
     await expect(field(page, "Font size (px)")).toHaveValue("32");
     await expect(blockGroup(page, "Heading")).toHaveCSS("font-size", "32px");
-    const { opened } = await openExport(page);
-    await expect(opened.getByRole("heading", { level: 1 })).toHaveText("Sale");
-    await expect(opened.getByRole("heading", { level: 1 })).toHaveCSS(
-      "font-size",
-      "32px"
-    );
-    await opened.close();
-  });
 
-  test("shows its settings the same on the canvas and in the export", async ({
-    page,
-  }) => {
-    await open(page, ["heading"]);
-    await headingText(page).click();
     await field(page, "Alignment").selectOption("right");
     await change(field(page, "Color"), "#ff0000");
     await change(field(page, "Font size (px)"), "40");
@@ -149,9 +129,10 @@ test.describe("a Heading", () => {
 
     await expect(headingLook(headingText(page))).resolves.toEqual(expected);
     const { opened } = await openExport(page);
-    await expect(headingLook(opened.getByRole("heading"))).resolves.toEqual(
-      expected
-    );
+    const exported = opened.getByRole("heading", { level: 1 });
+    await expect(exported).toHaveText("Sale");
+    await expect(headingLook(exported)).resolves.toEqual(expected);
+    await opened.close();
   });
 
   test("takes up the same space on the canvas as in the export", async ({
@@ -297,8 +278,11 @@ test.describe("a Button", () => {
     page,
   }) => {
     await open(page, ["text", "button"]);
+    // With a link, which a click could otherwise follow.
+    await blockGroup(page, "Button").focus();
+    await change(field(page, "Link"), "https://shop.example");
     await canvas(page).locator(".block").first().focus();
-    await field(page, "Alignment").waitFor();
+    await expect(field(page, "Label")).toHaveCount(0);
     const url = page.url();
 
     await buttonFace(page).click();
@@ -308,6 +292,7 @@ test.describe("a Button", () => {
       "true"
     );
     await expect(field(page, "Label")).toHaveValue("Buy");
+    await settle(page);
     expect(page.url()).toBe(url);
   });
 
@@ -338,7 +323,7 @@ test.describe("a Button", () => {
     await change(field(page, "Label"), "Buy it all today");
     await change(field(page, "Background color"), "#112233");
     await change(field(page, "Text color"), "#ddeeff");
-    await field(page, "Alignment").selectOption("center");
+    await field(page, "Alignment").selectOption("right");
 
     const onCanvas = await buttonLook(buttonFace(page));
     const email = await canvas(page)
@@ -363,20 +348,5 @@ test.describe("a Button", () => {
       // The export is centered on an 800px page.
       x: toTenths(onCanvas.x - email + 400),
     });
-  });
-
-  test("sits right on the canvas and in the export", async ({ page }) => {
-    await open(page, ["button"]);
-    await blockGroup(page, "Button").focus();
-    await field(page, "Alignment").selectOption("right");
-
-    await expect(
-      gapOnRight(buttonFace(page), blockGroup(page, "Button"))
-    ).resolves.toBe(16);
-    const { opened } = await openExport(page);
-    await opened.setViewportSize({ height: 800, width: 800 });
-    await expect(
-      gapOnRight(opened.getByText("Buy"), opened.locator("body > div"))
-    ).resolves.toBe(116);
   });
 });

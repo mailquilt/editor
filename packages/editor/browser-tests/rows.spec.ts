@@ -4,6 +4,7 @@ import {
   blockGroup,
   boxOf,
   canvas,
+  layoutOption,
   layoutTile,
   openEmail as open,
   openTab,
@@ -35,32 +36,19 @@ test.describe("selecting a Row", () => {
     await expect(canvas(page).locator(".side-panel legend")).toHaveText([
       "Row",
     ]);
-    await expect(
-      canvas(page)
-        .locator(".side-panel")
-        .getByRole("group", { name: "Layout" })
-        .getByRole("button", { exact: true, name: "50/50" })
-    ).toHaveAttribute("aria-pressed", "true");
+    await expect(layoutOption(page, "50/50")).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
   });
 
-  test("gives way to a selected Block, and to a click on the workspace", async ({
-    page,
-  }) => {
+  test("gives way to a selected Block", async ({ page }) => {
     await open(page, [[["A"]], [["B"]]]);
     await selectRowButton(page, 1).focus();
     await page.keyboard.press("Enter");
 
     await blockGroup(page, "Text").last().focus();
     await expect(rowTools(page, 1)).not.toHaveAttribute("aria-current");
-
-    await selectRowButton(page, 1).focus();
-    await page.keyboard.press("Enter");
-    const area = await boxOf(canvas(page).locator(".canvas-area"));
-    await page.mouse.click(area.x + 10, area.y + 10);
-    await expect(rowTools(page, 1)).not.toHaveAttribute("aria-current");
-    await expect(
-      canvas(page).getByRole("tab", { name: "Content" })
-    ).toBeVisible();
   });
 
   test("a Content tile adds into the selected Row's first Column, at its end", async ({

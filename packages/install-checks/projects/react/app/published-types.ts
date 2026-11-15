@@ -18,5 +18,9 @@ export const changedRows = ({ detail }: MailQuiltChangeEvent) =>
 
 export const reason = ({ detail }: MailQuiltErrorEvent) => detail.reason;
 
+// A type that fell back to `any` would make this line pass, and the build fail.
+// @ts-expect-error An email isn't a number.
+export const notANumber: number = ({} as MailQuiltChangeEvent).detail.document;
+
 /** JSON from a database is `unknown` until the renderer has checked it. */
 export const htmlFor = (saved: unknown): Promise<string> => renderEmail(saved);

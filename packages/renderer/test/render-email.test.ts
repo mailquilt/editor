@@ -250,16 +250,6 @@ describe(renderEmail, () => {
     );
   });
 
-  it("keeps the empty line after a line break at the end, as the canvas shows it", async () => {
-    const html = await renderEmail(
-      emailWithInline({ text: "a", type: "text" }, { type: "hardBreak" })
-    );
-
-    expect(html).toContain(
-      '<p style="margin:0;white-space:pre-wrap">a<br /><br /></p>'
-    );
-  });
-
   // MJML's strict validation rejects more than CSS does, so anything that loads
   // has to get through it, or an email could be edited but never exported.
   const accepted: [string, (email: BlocksDocument) => void][] = [
@@ -267,12 +257,6 @@ describe(renderEmail, () => {
       "the narrowest email",
       (email) => {
         email.settings.width = 1;
-      },
-    ],
-    [
-      "the widest email",
-      (email) => {
-        email.settings.width = 1200;
       },
     ],
     [

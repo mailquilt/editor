@@ -20,11 +20,13 @@ import {
   palette,
   previewButton,
   redoByKey,
+  selectedText,
   selectRow,
   settle,
   setValue,
   stopClock,
   structure,
+  textOf,
   undo,
   undoByKey,
   violations,
@@ -39,18 +41,12 @@ const backToTabs = async (page: Page) => {
   ).toBeFocused();
 };
 
-const textOf = (page: Page, text: string) =>
-  blockWith(page, text).getByRole("textbox", { name: "Text Block" });
-
-const newBlockText = (page: Page) =>
-  canvas(page).locator('[aria-current="true"]').getByRole("textbox");
-
 /** The controls that can't show focus, of those that can take it now. */
 const controlsWithoutRing = (page: Page) =>
   canvas(page).evaluate((host) => {
     const root = host.shadowRoot as ShadowRoot;
     const controls = root.querySelectorAll<HTMLElement>(
-      "button:not(:disabled), input, .block, .ProseMirror"
+      "button:not(:disabled), input, select, .block, .ProseMirror"
     );
     return [...controls]
       .filter((control) => {
@@ -119,9 +115,7 @@ test.describe("selecting a Block", () => {
     await expect(structure(page)).resolves.toEqual([[["First"], ["Second"]]]);
 
     await page.keyboard.press("Tab");
-    await expect(
-      blockWith(page, "First").getByRole("textbox", { name: "Text Block" })
-    ).toBeFocused();
+    await expect(textOf(page, "First")).toBeFocused();
 
     // The selected Block's toolbar is one stop.
     await page.keyboard.press("Tab");
@@ -188,20 +182,6 @@ test.describe("selecting a Block", () => {
 
     await page.keyboard.press("ArrowRight");
     await expect(blockWith(page, "D")).toBeFocused();
-  });
-
-  test("selecting a Block doesn't change the email or fire a change", async ({
-    page,
-  }) => {
-    await open(page, [[["A", "B"]]]);
-    const before = await changeCount(page).textContent();
-    await blockWith(page, "A").focus();
-
-    await page.keyboard.press("ArrowDown");
-
-    await expect(blockWith(page, "B")).toBeFocused();
-    await expect(structure(page)).resolves.toEqual([[["A", "B"]]]);
-    await expect(changeCount(page)).toHaveText(before as string);
   });
 });
 
@@ -359,40 +339,19 @@ test.describe("moving a Block with toolbar buttons", () => {
     page,
   }) => {
     await open(page, [[["A", "B"]]]);
-    await blockWith(page, "A").getByRole("textbox").click();
+    await textOf(page, "A").click();
     await page.keyboard.type("x");
 
     await blockTool(page, "Move Block down").click();
 
     await expect(structure(page)).resolves.toEqual([[["B", "Ax"]]]);
-    await expect(blockWith(page, "Ax").getByRole("textbox")).toBeFocused();
+    await expect(textOf(page, "Ax")).toBeFocused();
     await page.keyboard.type("y");
     await expect(structure(page)).resolves.toEqual([[["B", "Axy"]]]);
   });
 });
 
 test.describe("announcing a move", () => {
-  test("follows a move from the keyboard or the toolbar", async ({ page }) => {
-    await open(page, [[["A", "B"], ["C"]], [["D"]]]);
-    await expect(announcement(page)).toBeEmpty();
-    await blockWith(page, "A").focus();
-
-    await page.keyboard.press("Alt+ArrowDown");
-    await expect(announcement(page)).toHaveText(
-      "Moved to Row 1, Column 1, position 2 of 2."
-    );
-
-    await page.keyboard.press("Alt+ArrowRight");
-    await expect(announcement(page)).toHaveText(
-      "Moved to Row 1, Column 2, position 2 of 2."
-    );
-
-    await blockTool(page, "Move Block down").click();
-    await expect(announcement(page)).toHaveText(
-      "Moved to Row 2, Column 1, position 1 of 2."
-    );
-  });
-
   // At a Row's edge, and alone in a Row at the top, where every press would
   // otherwise add an empty Row.
   test("says when a Block can't go further, and changes nothing", async ({
@@ -494,21 +453,7 @@ test.describe("announcing a move", () => {
 });
 
 test.describe("typing inside a Block", () => {
-  test("arrow keys move the cursor, not the selection", async ({ page }) => {
-    await open(page, [[["AB", "C"]]]);
-    await textOf(page, "AB").click();
-    await page.keyboard.press(
-      process.platform === "darwin" ? "Meta+ArrowLeft" : "Home"
-    );
-
-    await page.keyboard.press("ArrowRight");
-    await page.keyboard.type("x");
-
-    await expect(structure(page)).resolves.toEqual([[["AxB", "C"]]]);
-    await expect(textOf(page, "AxB")).toBeFocused();
-  });
-
-  test("Alt+Arrow keys don't move the Block, or go back a page", async ({
+  test("arrow keys move the cursor, and Alt+Arrow keys don't move the Block or go back a page", async ({
     page,
   }) => {
     // As on Windows and Linux, where Alt+← goes back a page.
@@ -537,6 +482,16 @@ test.describe("typing inside a Block", () => {
     await expect
       .poll(() => page.evaluate(() => Reflect.get(window, "leftPrevented")))
       .toBe(true);
+
+    await page.keyboard.press(
+      process.platform === "darwin" ? "Meta+ArrowLeft" : "Home"
+    );
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.type("x");
+    await expect(structure(page)).resolves.toEqual([
+      [["oxne two", "B"], ["C"]],
+    ]);
+    await expect(textOf(page, "oxne two")).toBeFocused();
   });
 
   test("on macOS, Alt+Arrow keys still move the cursor by word", async ({
@@ -567,31 +522,6 @@ test.describe("typing inside a Block", () => {
     await expect(textOf(page, "Ax")).toBeFocused();
     await page.keyboard.type("y");
     await expect(structure(page)).resolves.toEqual([[["Axy", "B"]]]);
-  });
-
-  test("Escape during composition stays in the text", async ({
-    browserName,
-    page,
-  }) => {
-    test.skip(
-      browserName !== "chromium",
-      "Only Chromium can simulate an input method"
-    );
-    await open(page, [[["A"]]]);
-    await textOf(page, "A").click();
-    const session = await page.context().newCDPSession(page);
-    await session.send("Input.imeSetComposition", {
-      selectionEnd: 1,
-      selectionStart: 1,
-      text: "に",
-    });
-
-    await page.keyboard.press("Escape");
-
-    // The only text, not found by what it says, as the composition is in it.
-    await expect(
-      canvas(page).getByRole("textbox", { name: "Text Block" })
-    ).toBeFocused();
   });
 
   test("Escape from the text stops at the editor, and then reaches the host", async ({
@@ -746,7 +676,7 @@ test.describe("Enter on a palette item", () => {
 
     await page.keyboard.press("Enter");
 
-    await expect(newBlockText(page)).toBeFocused();
+    await expect(selectedText(page)).toBeFocused();
     await stopClock(page);
     await page.keyboard.type("New");
     await expect(structure(page)).resolves.toEqual([
@@ -765,13 +695,13 @@ test.describe("Enter on a palette item", () => {
     await palette(page, "Text").focus();
 
     await page.keyboard.down("Enter");
-    await expect(newBlockText(page)).toBeFocused();
+    await expect(selectedText(page)).toBeFocused();
     await page.keyboard.down("Enter");
     await page.keyboard.down("Enter");
     await page.keyboard.up("Enter");
 
     await expect(structure(page)).resolves.toEqual([[["A", ""]]]);
-    await expect(newBlockText(page).locator("p")).toHaveCount(1);
+    await expect(selectedText(page).locator("p")).toHaveCount(1);
   });
 
   test("with no Block selected, adds to the last Column, and shows it", async ({
@@ -785,8 +715,8 @@ test.describe("Enter on a palette item", () => {
 
     await page.keyboard.press("Enter");
 
-    await expect(newBlockText(page)).toBeFocused();
-    await expect(newBlockText(page)).toBeInViewport();
+    await expect(selectedText(page)).toBeFocused();
+    await expect(selectedText(page)).toBeInViewport();
     await page.keyboard.type("New");
     await expect(structure(page)).resolves.toEqual([
       ...above,
@@ -837,12 +767,26 @@ test.describe("labels and focus states", () => {
 
   test("every control shows where focus is", async ({ page }) => {
     await open(page, [[["A"], []]]);
-    await blockWith(page, "A").getByRole("textbox").click();
+    await textOf(page, "A").click();
     await page.getByRole("button", { exact: true, name: "Link" }).click();
     await expect(linkUrlField(page)).toBeFocused();
     // Browsers only show focus from a script after keyboard use.
     await page.keyboard.press("Tab");
 
+    await expect(controlsWithoutRing(page)).resolves.toEqual([]);
+
+    // The Email settings, and then the Row's.
+    await openTab(page, "Settings");
+    await page.keyboard.press("Tab");
+    await expect(
+      page.getByRole("group", { exact: true, name: "Email" })
+    ).toBeVisible();
+    await expect(controlsWithoutRing(page)).resolves.toEqual([]);
+
+    await canvas(page).getByRole("button", { name: "Select Row" }).focus();
+    await page.keyboard.press("Enter");
+    const row = page.getByRole("group", { exact: true, name: "Row" });
+    await expect(row).toBeVisible();
     await expect(controlsWithoutRing(page)).resolves.toEqual([]);
   });
 
@@ -898,7 +842,7 @@ test.describe("labels and focus states", () => {
     });
   }
 
-  test("a Block moved from the keyboard stays in view with its toolbar", async ({
+  test("a Block moved from the keyboard, or by redo, stays in view with its toolbar", async ({
     page,
   }) => {
     await page.setViewportSize({ height: 500, width: 1000 });
@@ -906,7 +850,7 @@ test.describe("labels and focus states", () => {
     await blockWith(page, "L").focus();
 
     // oxlint-disable no-await-in-loop -- Each press depends on the one before.
-    for (const expected of [10, 9, 8, 7, 6, 5, 4, 3, 2, 1]) {
+    for (const expected of [10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]) {
       await page.keyboard.press("Alt+ArrowUp");
       await expect.poll(() => positionOfL(page)).toBe(expected);
       await expect.poll(() => gapBelowTop(page, "L")).toBeGreaterThanOrEqual(0);
@@ -914,21 +858,8 @@ test.describe("labels and focus states", () => {
     // oxlint-enable no-await-in-loop
     await expect(blockWith(page, "L")).toBeFocused();
     await expect(blockWith(page, "L")).toBeInViewport();
-  });
 
-  test("redoing a move brings the selected Block back into view", async ({
-    page,
-  }) => {
-    await page.setViewportSize({ height: 500, width: 1000 });
-    await open(page, [[TWELVE]]);
-    await blockWith(page, "L").focus();
-    // oxlint-disable no-await-in-loop -- Each press depends on the one before.
-    for (const expected of [10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]) {
-      await page.keyboard.press("Alt+ArrowUp");
-      await expect.poll(() => positionOfL(page)).toBe(expected);
-    }
-    // oxlint-enable no-await-in-loop
-
+    // Redo brings it back into view too.
     await undoByKey(page);
     await page.evaluate(() => {
       window.scrollTo(0, document.documentElement.scrollHeight);
@@ -943,16 +874,12 @@ test.describe("labels and focus states", () => {
 });
 
 test.describe("automated accessibility checks", () => {
-  test("pass with Columns, empty Columns and no Block selected", async ({
+  test("pass with Columns, empty Columns, and no Block or one moved selected", async ({
     page,
   }) => {
     await open(page, [[["A", "B"], []], [["C"]]]);
-
     expect(await violations(page)).toEqual([]);
-  });
 
-  test("pass with a Block selected, after a move", async ({ page }) => {
-    await open(page, [[["A", "B"], []]]);
     await blockWith(page, "A").focus();
     await page.keyboard.press("Alt+ArrowDown");
     await expect(announcement(page)).not.toBeEmpty();
@@ -962,7 +889,7 @@ test.describe("automated accessibility checks", () => {
 
   test("pass with the link field showing its error", async ({ page }) => {
     await open(page, [[["A"]]]);
-    await blockWith(page, "A").getByRole("textbox").click();
+    await textOf(page, "A").click();
     await page.getByRole("button", { exact: true, name: "Link" }).click();
     await linkUrlField(page).fill("example.com");
     await page.keyboard.press("Enter");

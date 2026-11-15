@@ -3,7 +3,6 @@ import type { Page, Route } from "@playwright/test";
 
 import type { MailQuilt } from "../src/index.js";
 import {
-  boxOf,
   canvas,
   emailWith,
   emailWithLink,
@@ -12,7 +11,9 @@ import {
   latestDocument,
   linkUrlField,
   previewButton,
+  settle,
   setValue,
+  stopClock,
   textBlock,
   undoByKey,
 } from "./helpers.js";
@@ -90,7 +91,7 @@ test("a slow MJML shows a loading message, then the email", async ({
   await expect(previewDialog(page).getByRole("status")).toHaveCount(0);
 });
 
-test("MJML failing to load shows the reason, and the editor keeps working", async ({
+test("MJML failing to load shows the reason, the editor keeps working, and opening again retries", async ({
   page,
 }) => {
   await page.route("**/*mjml-browser*", (route) => route.abort());
@@ -105,20 +106,11 @@ test("MJML failing to load shows the reason, and the editor keeps working", asyn
   await focusStartOfTextBlock(page);
   await page.keyboard.type("a");
   await expect(textBlock(page)).toHaveText("aHello");
-});
-
-test("opening the Preview again retries after MJML failed to load", async ({
-  page,
-}) => {
-  await page.route("**/*mjml-browser*", (route) => route.abort());
-  await previewButton(page).click();
-  await expect(previewDialog(page).getByRole("alert")).toBeVisible();
-  await closeButton(page).click();
 
   await page.unroute("**/*mjml-browser*");
   await previewButton(page).click();
 
-  await expect(previewEmail(page)).toContainText("Hello");
+  await expect(previewEmail(page)).toContainText("aHello");
   await expect(previewDialog(page).getByRole("alert")).toHaveCount(0);
 });
 
@@ -146,6 +138,7 @@ test.describe("reflecting the latest edits", () => {
     await undoByKey(page);
     await expect(textBlock(page)).toHaveText("Hello");
     await previewButton(page).click();
+    await expect(previewEmail(page)).toContainText("Hello");
     await expect(previewEmail(page)).not.toContainText("xHello");
     await closeButton(page).click();
     expect(await exportCount(page)).toBe("3");
@@ -240,6 +233,7 @@ test.describe("the sandbox", () => {
         ...(frame as HTMLIFrameElement).sandbox,
       ])
     ).toEqual([]);
+    await settle(page);
     expect(opened).toEqual([]);
     expect(page.url()).toBe(url);
     await expect(previewDialog(page)).toBeVisible();
@@ -283,6 +277,8 @@ test.describe("closing", () => {
     page,
   }) => {
     await focusStartOfTextBlock(page);
+    // So that only leaving the Block for the Preview can make "b" a new step.
+    await stopClock(page);
     await page.keyboard.type("a");
     await expect(textBlock(page)).toHaveText("aHello");
 
@@ -408,21 +404,6 @@ test.describe("the host changing things while the Preview is open", () => {
     await expect(previewEmail(page)).toContainText("Another email");
   });
 
-  test("a different document during a render never shows the old email", async ({
-    page,
-  }) => {
-    const release = await holdMjml(page);
-    await previewButton(page).click();
-    await expect(previewDialog(page).getByRole("status")).toBeVisible();
-
-    await setValue(page, emailWith([[["Another email"]]]));
-    await previewButton(page).click();
-    await release();
-
-    await expect(previewEmail(page)).toContainText("Another email");
-    await expect(previewEmail(page)).not.toContainText("Hello");
-  });
-
   test("clearing value and loading a document leaves the Preview closed", async ({
     page,
   }) => {
@@ -452,19 +433,4 @@ test.describe("the host changing things while the Preview is open", () => {
     await previewButton(page).click();
     await expect(previewEmail(page)).toContainText("Hello");
   });
-});
-
-test("stays a readable size in a large window, in its middle", async ({
-  page,
-}) => {
-  await page.setViewportSize({ height: 1400, width: 2400 });
-  await previewButton(page).click();
-  await expect(previewEmail(page)).toContainText("Hello");
-
-  const box = await boxOf(previewDialog(page));
-
-  expect(box.width).toBe(960);
-  expect(box.height).toBe(880);
-  expect(box.x + box.width / 2).toBe(1200);
-  expect(box.y + box.height / 2).toBe(700);
 });

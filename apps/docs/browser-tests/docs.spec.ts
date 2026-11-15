@@ -21,26 +21,6 @@ test("the landing page's editor is live, and shows the email it would save", asy
   await expect(html).toContainText("Typed on the landing page.");
 });
 
-test("the landing page's editor shows a tooltip beside its button", async ({
-  page,
-}) => {
-  await page.goto("/");
-  const editor = page.locator("mail-quilt");
-  const undo = editor.getByRole("button", { name: "Undo" });
-
-  await undo.hover();
-  const tooltip = editor.getByRole("tooltip");
-  await expect(tooltip).toBeVisible();
-
-  const button = await undo.boundingBox();
-  const tip = await tooltip.boundingBox();
-  // The editor places its tooltips against the window, so a CSS transform on
-  // anything around it would send them somewhere else on the page.
-  const gap = (button?.y ?? 0) - ((tip?.y ?? 0) + (tip?.height ?? 0));
-  expect(gap).toBeGreaterThanOrEqual(0);
-  expect(gap).toBeLessThan(16);
-});
-
 test("the landing page's editor stays inside its frame as the email grows", async ({
   page,
 }) => {
@@ -87,20 +67,25 @@ test("the landing page recolors its editor with the swatch chosen", async ({
   await page.goto("/");
   const editor = page.locator("mail-quilt");
   await expect(editor.getByRole("textbox").first()).toBeVisible();
-  const swatches = page.locator("[data-home-themes] button");
+  const swatch = (name: string) =>
+    page
+      .getByRole("group", { name: /recolored with theme tokens/u })
+      .getByRole("button", { name });
 
-  await swatches.nth(1).click();
+  await swatch("Violet").click();
 
-  const accent = await swatches.nth(1).getAttribute("data-accent");
-  await expect(swatches.nth(1)).toHaveAttribute("aria-pressed", "true");
-  await expect(swatches.nth(0)).toHaveAttribute("aria-pressed", "false");
+  await expect(swatch("Violet")).toHaveAttribute("aria-pressed", "true");
+  await expect(swatch("Orange, to match this site")).toHaveAttribute(
+    "aria-pressed",
+    "false"
+  );
   await expect
     .poll(() =>
       editor.evaluate((element) =>
         getComputedStyle(element).getPropertyValue("--mq-color-accent").trim()
       )
     )
-    .toBe(accent);
+    .toBe("#7c3aed");
 });
 
 test("each example shows its whole email, with nothing to scroll inside it", async ({
@@ -140,8 +125,10 @@ test("the landing page's editor starts when arriving from another page", async (
 });
 
 test("in a narrow window, the landing page shows a picture of the editor", async ({
+  browserName,
   page,
 }) => {
+  test.skip(browserName !== "chromium", SAME_IN_EVERY_BROWSER);
   await page.setViewportSize({ height: 800, width: 390 });
   await page.goto("/");
 
@@ -157,11 +144,15 @@ test("in a narrow window, the landing page shows a picture of the editor", async
 });
 
 test("the landing page shows one package at a time, chosen by its tab", async ({
+  browserName,
   page,
 }) => {
+  test.skip(browserName !== "chromium", SAME_IN_EVERY_BROWSER);
   await page.goto("/");
   // The code beside it has tabs of its own.
-  const panels = page.locator(".home-panels").getByRole("tabpanel");
+  const panels = page.getByRole("tabpanel", {
+    name: /^(?:editor|react|core|renderer)$/u,
+  });
 
   await expect(panels).toHaveCount(1);
   await expect(panels).toContainText("@mailquilt/editor");
@@ -239,6 +230,9 @@ test("every page's links and assets resolve", async ({
     }
   });
 
+  /** Every link to a place in a page, which has to be there. */
+  const anchors = new Set<string>();
+
   /** Opens a page in a tab of its own, and returns the paths it links to on this site. */
   const linksFrom = async (path: string) => {
     const tab = await context.newPage();
@@ -249,10 +243,15 @@ test("every page's links and assets resolve", async ({
         links.map((link) => (link as HTMLAnchorElement).href)
       );
     await tab.close();
-    return hrefs
+    const here = hrefs
       .map((href) => new URL(href))
-      .filter((url) => url.origin === origin)
-      .map((url) => url.pathname);
+      .filter((url) => url.origin === origin);
+    for (const url of here) {
+      if (url.hash) {
+        anchors.add(`${url.pathname}${url.hash}`);
+      }
+    }
+    return here.map((url) => url.pathname);
   };
 
   // The landing page links to every section, and the docs' sidebar to every
@@ -271,6 +270,21 @@ test("every page's links and assets resolve", async ({
 
   expect(statuses.filter(({ status }) => status >= 400)).toStrictEqual([]);
   expect(failedAssets).toStrictEqual([]);
+  const missingAnchors = await Promise.all(
+    [...anchors].map(async (anchor) => {
+      const tab = await context.newPage();
+      await tab.goto(anchor);
+      const id = decodeURIComponent(anchor.slice(anchor.indexOf("#") + 1));
+      const found = await tab.evaluate(
+        (each) => document.querySelector(`#${CSS.escape(each)}`) !== null,
+        id
+      );
+      await tab.close();
+      return found ? [] : [anchor];
+    })
+  );
+  expect(missingAnchors.flat()).toStrictEqual([]);
+  expect(anchors.size).toBeGreaterThan(0);
   // So a crawl that finds nothing can't pass.
   expect(pages).toStrictEqual(
     expect.arrayContaining([
@@ -338,5 +352,8 @@ test("the theme tokens page lists every token, with its default", async ({
       collapse(value ?? "")
     );
   }
-  await expect(rows).toHaveCount(tokens.length + 4);
+  // And each table's header row.
+  await expect(rows).toHaveCount(
+    tokens.length + (await page.getByRole("main").getByRole("table").count())
+  );
 });

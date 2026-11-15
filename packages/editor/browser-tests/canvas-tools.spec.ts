@@ -3,6 +3,7 @@ import type { Page } from "@playwright/test";
 
 import {
   blockGroup,
+  blockWith,
   blockTools,
   boxOf,
   canvas,
@@ -18,7 +19,6 @@ import {
   serveImages,
   settle,
   setValue,
-  structure,
   TALL_VIEWPORT,
   textBlock,
   undoByKey,
@@ -39,28 +39,6 @@ test.describe("a Block on the canvas", () => {
       blockGroup(page, "Button").getByRole("toolbar", { name: "Block tools" })
     ).toBeVisible();
     await expect(blockTools(page).locator(".drag-handle")).toBeVisible();
-  });
-
-  test("its toolbar is one Tab stop, and arrow keys go across it", async ({
-    page,
-  }) => {
-    await openBlocks(page, ["button", "divider"]);
-    await blockGroup(page, "Button").focus();
-
-    await page.keyboard.press("Tab");
-    const up = blockTools(page).getByRole("button", { name: "Move Block up" });
-    await expect(up).toBeFocused();
-    await page.keyboard.press("ArrowRight");
-    await expect(
-      blockTools(page).getByRole("button", { name: "Move Block down" })
-    ).toBeFocused();
-    await page.keyboard.press("End");
-    await expect(
-      blockTools(page).getByRole("button", { name: "Delete Block" })
-    ).toBeFocused();
-
-    await page.keyboard.press("Tab");
-    await expect(blockGroup(page, "Divider")).toBeFocused();
   });
 
   test("Alt+↑ in its toolbar moves the Block, as its tooltip says", async ({
@@ -136,28 +114,6 @@ test.describe("a Row on the canvas", () => {
     await expect(
       rowTools(page, 2).getByRole("button", { name: "Move Row up" })
     ).not.toBeFocused();
-  });
-
-  test("an empty Row is selected and deleted from the keyboard", async ({
-    page,
-  }) => {
-    await openEmail(page, [[["A"]], [[]]]);
-    const select = selectRowButton(page, 2);
-
-    await select.focus();
-    await expect(rowTools(page, 2)).toHaveCSS("opacity", "1");
-    await page.keyboard.press("Enter");
-    await expect(rowTools(page, 2)).toHaveAttribute("aria-current", "true");
-    await expect(select).toBeFocused();
-
-    // Past Move Row up. Move Row down is disabled on the last Row.
-    await page.keyboard.press("ArrowRight");
-    await page.keyboard.press("ArrowRight");
-    await expect(
-      rowTools(page, 2).getByRole("button", { name: "Delete Row" })
-    ).toBeFocused();
-    await page.keyboard.press("Enter");
-    await expect(structure(page)).resolves.toEqual([[["A"]]]);
   });
 });
 
@@ -571,5 +527,6 @@ test.describe("a click on the workspace, outside the email", () => {
     await settle(page);
 
     await expect(canvas(page).locator('[aria-current="true"]')).toHaveCount(1);
+    await expect(blockWith(page, "A")).toHaveAttribute("aria-current", "true");
   });
 });

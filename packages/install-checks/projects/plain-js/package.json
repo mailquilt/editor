@@ -6,9 +6,9 @@
     "build": "vite build"
   },
   "dependencies": {
-    "@mailquilt/core": "0.0.0",
-    "@mailquilt/editor": "0.0.0",
-    "@mailquilt/renderer": "0.0.0"
+    "@mailquilt/core": "*",
+    "@mailquilt/editor": "*",
+    "@mailquilt/renderer": "*"
   },
   "devDependencies": {
     "vite": "^8.3.6"

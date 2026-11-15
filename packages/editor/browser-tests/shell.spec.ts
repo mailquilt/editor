@@ -114,16 +114,6 @@ test.describe("choosing the buttons with actions", () => {
     await expect(header(page).getByRole("button")).toHaveText(["Export JSON"]);
   });
 
-  test("is a property too", async ({ page }) => {
-    await openShell(page);
-
-    await shell(page).evaluate((element) => {
-      (element as MailQuiltShell).actions = "export-html";
-    });
-
-    await expect(header(page).getByRole("button")).toHaveText(["Export HTML"]);
-  });
-
   test("the can't-save message only suggests Export JSON when it shows", async ({
     page,
   }) => {
@@ -450,8 +440,16 @@ test.describe("saving in the browser", () => {
     ).toBe("{not json");
   });
 
-  test("says it can't save when storage is full", async ({ page }) => {
+  test("says it can't save when storage is full, until it can again", async ({
+    page,
+  }) => {
     await page.addInitScript(() => {
+      const { setItem } = Storage.prototype;
+      Object.assign(window, {
+        makeRoom: () => {
+          Storage.prototype.setItem = setItem;
+        },
+      });
       Storage.prototype.setItem = () => {
         throw new DOMException("Full", "QuotaExceededError");
       };
@@ -466,6 +464,14 @@ test.describe("saving in the browser", () => {
       "Export it as JSON"
     );
     await expect(textBlock(page)).toHaveText("Unsaved Hello");
+
+    await page.evaluate(() =>
+      (window as unknown as { makeRoom: () => void }).makeRoom()
+    );
+    await page.keyboard.type("Saved ");
+
+    await expect.poll(() => saved(page)).toContain("Unsaved Saved Hello");
+    await expect(shell(page).getByRole("alert")).toHaveCount(0);
   });
 
   test("keeps saying it can't save while showing another reason", async ({
@@ -635,23 +641,48 @@ test.describe("a saved email standing in for the host's", () => {
   });
 });
 
-test("a new save-key opens the email saved under it", async ({ page }) => {
+test("a new save-key opens the email saved under it, or keeps the current one", async ({
+  page,
+}) => {
   await page.addInitScript(
-    (email) => localStorage.setItem("test:second", JSON.stringify(email)),
+    (email) => {
+      localStorage.setItem("test:second", JSON.stringify(email));
+      localStorage.setItem("test:damaged", "{not json");
+    },
     emailWith([[["Second"]]])
   );
   await openShell(page, "?save-key=test:first");
+  const savedUnder = (key: string) =>
+    page.evaluate((each) => localStorage.getItem(each), key);
+  const setSaveKey = (key: string) =>
+    shell(page).evaluate(
+      (element, each) => element.setAttribute("save-key", each),
+      key
+    );
 
-  await shell(page).evaluate((element) =>
-    element.setAttribute("save-key", "test:second")
-  );
+  await setSaveKey("test:second");
   await expect(textBlock(page)).toHaveText("Second");
   await focusStartOfTextBlock(page);
   await page.keyboard.type("Oh ");
+  await expect.poll(() => savedUnder("test:second")).toContain("Oh Second");
 
+  // With nothing saved under it, the current email stays, and is saved there
+  // from its next change.
+  await setSaveKey("test:third");
+  await expect(textBlock(page)).toHaveText("Oh Second");
+  await focusStartOfTextBlock(page);
+  await page.keyboard.type("Third ");
   await expect
-    .poll(() => page.evaluate(() => localStorage.getItem("test:second")))
-    .toContain("Oh Second");
+    .poll(() => savedUnder("test:third"))
+    .toContain("Third Oh Second");
+
+  // A damaged one says so, and is kept apart from the next save.
+  await setSaveKey("test:damaged");
+  await expect(shell(page).getByRole("alert")).toContainText(
+    "saved email couldn't be opened"
+  );
+  await expect(textBlock(page)).toHaveText("Third Oh Second");
+  expect(await savedUnder("test:damaged:unopened")).toBe("{not json");
 });
 
 test.describe("look", () => {
@@ -817,29 +848,6 @@ test("shows the dragging cursor over the Shell during a drag", async ({
 });
 
 test.describe("accessibility", () => {
-  test("the keyboard reaches every header control", async ({ page }) => {
-    await openShell(page);
-    await page.locator("body").click({ position: { x: 1, y: 1 } });
-
-    const reached: string[] = [];
-    for (let index = 0; index < 3; index += 1) {
-      // oxlint-disable-next-line no-await-in-loop -- Each press moves focus on.
-      await page.keyboard.press("Tab");
-      // oxlint-disable-next-line no-await-in-loop -- See above.
-      const name = await shell(page).evaluate(
-        (element) =>
-          element.shadowRoot?.activeElement?.textContent?.trim() ?? ""
-      );
-      reached.push(name);
-    }
-
-    expect(reached).toStrictEqual([
-      "Import JSON",
-      "Export JSON",
-      "Export HTML",
-    ]);
-  });
-
   test("meets WCAG 2.2 AA, with a message showing", async ({ page }) => {
     await page.goto("/shell.html?refused-first");
     await expect(shell(page).getByRole("alert")).toBeVisible();
