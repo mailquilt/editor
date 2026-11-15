@@ -5,6 +5,11 @@ import { codeDark, codeLight } from "./site/code-themes";
 import { DESCRIPTION, REPO, SITE_URL, SOCIAL_IMAGE } from "./site/project";
 
 export default defineConfig({
+  agents: {
+    // The hand-written skill, at the repo root so `npx skills add` finds it
+    // too. Named mail-quilt, it replaces the one Blume would generate.
+    skills: "../../skills",
+  },
   content: {
     // The docs live under /docs, which leaves / for the landing page.
     sources: [filesystem({ prefix: "docs", root: "docs" })],
@@ -45,6 +50,7 @@ export default defineConfig({
           },
           {
             items: [
+              "/docs/design-your-editor-page",
               "/docs/theme-tokens",
               "/docs/keyboard",
               "/docs/render-on-a-server",

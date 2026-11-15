@@ -1,0 +1,132 @@
+---
+title: Design your editor page
+description: "Fit the Mail Quilt editor into a page of your app: how it takes its width and height, what it does in a narrow space, a complete dark theme, and what to check before you ship."
+---
+
+The [quick start](./quick-start) gets the editor working. This page is about the page around it: where it goes, how much room it needs and how it looks next to the rest of your app. If the editor is a page of its own, start with the [Shell](./shell), which does most of this for you.
+
+## Shell or your own page
+
+Use the Shell when the editor is the whole page, and its header can hold the page's buttons. It fills the space you give it, scrolls the email inside itself and shows every message.
+
+Put `<mail-quilt>` in a page of your own when the editor sits among other things, such as below a form for the email's subject and recipients, or when you want your own buttons around it. The rest of this page is for that case. The [Shell page](./shell#shell-or-mail-quilt) compares the two.
+
+## Width
+
+`<mail-quilt>` takes the width of the space you give it. Inside, the email sits on a workspace, with the side panel docked on its right.
+
+- **The side panel sits beside the email** while the editor is at least the email's width plus 400px. The email is 600px wide unless someone changes it in Settings, so that's 1000px. Any narrower, and the panel moves below the email rather than squeeze it.
+- **Below 640px, there's no room to edit.** The editor shows a notice in its place, which still opens the Preview. It comes back, with the same email, once there's room again.
+
+So give the editor the full width of your content area. Don't put it in a narrow column beside a sidebar of your own.
+
+## Height
+
+The editor is at least 600px tall, and grows with the email. It fills any height you give it, but never shrinks below the email, so the page scrolls rather than the editor. As it does, the side panel stays in view at the top of the window, and the toolbar with Undo, Redo and Preview stays at the bottom.
+
+That means:
+
+- **Let the page scroll.** Put `<mail-quilt>` in the page's normal flow, with no fixed height, and nothing that clips it.
+- **For a box of a fixed height**, such as a panel in a dashboard, use the Shell instead. It scrolls the email inside itself and keeps the side panel in view.
+
+Here's the editor below a form of the app's own:
+
+```html title="index.html"
+<main class="compose">
+  <form class="compose-fields">
+    <label>Subject <input name="subject" /></label>
+    <label
+      >Send to
+      <select name="list">
+        …
+      </select></label
+    >
+  </form>
+  <mail-quilt></mail-quilt>
+</main>
+```
+
+```css title="styles.css"
+.compose {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+```
+
+The [quick start](./quick-start) shows how to open an email in it, save it and export it.
+
+## Match your app
+
+The editor doesn't take its colors or font from your page. It looks the same on any page until you set its [theme tokens](./theme-tokens), and then it uses yours. Set them on the `<mail-quilt>` element, or on `<mail-quilt-shell>` for a Shell.
+
+Start with the font and the accent, which is enough for most apps:
+
+```css title="styles.css"
+mail-quilt {
+  --mq-font-family: "Inter", system-ui, sans-serif;
+  --mq-color-accent: #7c3aed;
+  --mq-color-accent-strong: #6d28d9;
+  --mq-color-accent-soft: rgb(124 58 237 / 10%);
+  --mq-color-outline-hover: rgb(124 58 237 / 45%);
+}
+```
+
+To change the frame beyond the tokens, such as an editor that fills a panel edge to edge, style the `frame` part:
+
+```css title="styles.css"
+mail-quilt::part(frame) {
+  border-radius: 0;
+  box-shadow: none;
+}
+```
+
+### A dark theme
+
+The defaults are a light theme. For a dark one, set every color token, not only a few, so that no light default is left next to a dark one. Each pair of colors in this theme meets WCAG AA contrast, 4.5:1 for text and 3:1 for borders and focus rings:
+
+```css title="styles.css"
+mail-quilt {
+  --mq-color-workspace: #0f1115;
+  --mq-color-surface: #181b21;
+  --mq-color-surface-muted: #20242b;
+  --mq-color-surface-hover: #272b33;
+  --mq-color-text: #e8eaed;
+  --mq-color-text-muted: #a3a9b3;
+  --mq-color-border: #2c3038;
+  --mq-color-border-strong: #7a828f;
+  --mq-color-accent: #7c93ff;
+  --mq-color-accent-strong: #a9b8ff;
+  --mq-color-accent-soft: rgb(124 147 255 / 16%);
+  --mq-color-outline-hover: rgb(124 147 255 / 50%);
+  --mq-color-on-accent: #0f1115;
+  --mq-color-danger: #ff7a6e;
+  --mq-color-tooltip: #e8eaed;
+  --mq-color-on-tooltip: #16181d;
+  --mq-color-backdrop: rgb(0 0 0 / 65%);
+  --mq-shadow-small: 0 1px 2px rgb(0 0 0 / 40%);
+  --mq-shadow:
+    0 0 0 1px rgb(255 255 255 / 6%), 0 2px 4px rgb(0 0 0 / 30%),
+    0 12px 32px -8px rgb(0 0 0 / 60%);
+}
+```
+
+A few tokens pair with each other, so change them together:
+
+- `--mq-color-surface` is also the icons and tag text on `--mq-color-text`, such as the selected Block's toolbar and tag. Keep the two far apart, one dark and one light.
+- `--mq-color-on-accent` is the text on `--mq-color-accent`. With a light accent, as here, it's dark.
+- `--mq-color-accent-strong` is the text and icons of pressed buttons, such as Bold, on `--mq-color-accent-soft`. On a dark theme, make it lighter than the accent, not darker.
+- `--mq-color-on-tooltip` is the text on `--mq-color-tooltip`.
+
+What the browser draws itself, such as the open list of a dropdown in the side panel and scrollbars, stays light for now. No token changes it yet.
+
+The email itself stays as its sender designed it, with its own background, colors and font, because that's how it will look when it's sent. A white email on a dark workspace is expected.
+
+## Check it before you ship
+
+- **Narrow the window** below 640px and back. The notice should show, then the editor with the same email.
+- **Use it from the keyboard.** Tab into the editor, select a Block, move it with Alt and the arrow keys, and edit its text. The [keyboard page](./keyboard) lists every key.
+- **With your own colors, check contrast**: text against the surface and workspace, the selected Block's tag, focus rings and the tooltip.
+- **Open the Preview**, and export the HTML once. If your page has a Content Security Policy, the [quick start](./quick-start#content-security-policy) says what Preview needs.
