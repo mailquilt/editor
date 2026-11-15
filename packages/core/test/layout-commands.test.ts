@@ -121,9 +121,8 @@ describe("the insertBlock Command", () => {
     expect(operations).toStrictEqual([
       [
         {
+          at: { columnId: "right", index: 1 },
           block: editor.getDocument().rows[0]?.columns[1]?.blocks[1],
-          columnId: "right",
-          index: 1,
           type: "insert",
         },
       ],
@@ -629,9 +628,8 @@ describe("the setRowLayout Command", () => {
         type: "move",
       },
       {
+        at: { index: 1, rowId: "row" },
         column: { blocks: [], id: "right", props: {}, width: 50 },
-        index: 1,
-        rowId: "row",
         type: "remove",
       },
       {

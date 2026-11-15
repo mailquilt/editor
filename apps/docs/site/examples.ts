@@ -15,18 +15,13 @@ import type {
   Row,
 } from "@mailquilt/core";
 
-import { art } from "./example-art";
+import { art, INK, ORANGE, PAPER, SOFT, WASH } from "./example-art";
 import { paragraph } from "./rich-text";
 
 type Props = Record<string, unknown>;
 
-const INK = "#111113";
-const ORANGE = "#d4380f";
 const BODY = "#3f3f46";
 const GREY = "#71717a";
-const LINE = "#e4e4e7";
-const WASH = "#f4f4f5";
-const PAPER = "#ffffff";
 
 const plain = (text: string): RichTextText => ({ text, type: "text" });
 const strong = (text: string): RichTextText => ({
@@ -93,7 +88,7 @@ const emailBuilder = (slug: string) => {
   return {
     button: (label: string, href: string) =>
       block("button", { backgroundColor: ORANGE, color: PAPER, href, label }),
-    divider: () => block("divider", { color: LINE }),
+    divider: () => block("divider", { color: SOFT }),
     /** The sender's name on the left, and a note about this email on the right. */
     header: (sender: string, note: string) => [
       [text(lines(strong(sender)), { color: INK, fontSize: 17 })],

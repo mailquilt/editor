@@ -24,6 +24,8 @@
   --site-slot: 1.5px dashed var(--site-dash);
   --site-lift: 0.3125rem;
   --site-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  /* The space at a page's sides, wider as the window is. */
+  --site-gutter: 1.25rem;
 
   --blume-background: #ffffff;
   --blume-foreground: #111113;
@@ -32,6 +34,18 @@
   --blume-border: #e4e4e7;
   --blume-code-background: #fafafa;
   --blume-content-width: 44rem;
+}
+
+@media (min-width: 48rem) {
+  :root {
+    --site-gutter: 2rem;
+  }
+}
+
+@media (min-width: 60rem) {
+  :root {
+    --site-gutter: 3rem;
+  }
 }
 
 :root[data-theme="dark"] {
@@ -118,13 +132,7 @@ kbd {
 /* On a page drawn on the grid, the header's ends line up with the grid's. */
 @media (min-width: 48rem) {
   body:has(.site-page > .site-frame) [data-blume-header] {
-    padding-inline: max(1.5rem, calc((100% - 78rem) / 2 + 2rem));
-  }
-}
-
-@media (min-width: 60rem) {
-  body:has(.site-page > .site-frame) [data-blume-header] {
-    padding-inline: max(1.5rem, calc((100% - 78rem) / 2 + 3rem));
+    padding-inline: max(1.5rem, calc((100% - 78rem) / 2 + var(--site-gutter)));
   }
 }
 
@@ -298,7 +306,7 @@ kbd {
  * slot, as the envelope does in the logo. The element becomes the slot, its
  * ::before becomes the lifted surface, and its children ride on that surface.
  */
-/* Things that lift: the site's own, and Blume's cards and page-end links. */
+/* Things that lift: Blume's cards and page-end links. */
 :is([data-blume-page-end] nav > a, a[data-blume-card][href]) {
   position: relative;
   overflow: visible;
@@ -365,13 +373,7 @@ body:has(.site-page > .site-frame) .site-footer {
   gap: 2.5rem 2rem;
   max-width: 78rem;
   margin-inline: auto;
-  padding: 3.5rem 1.25rem;
-}
-
-@media (min-width: 48rem) {
-  .site-footer-grid {
-    padding-inline: 2rem;
-  }
+  padding: 3.5rem var(--site-gutter);
 }
 
 .site-footer-grid > :first-child {
@@ -381,7 +383,7 @@ body:has(.site-page > .site-frame) .site-footer {
 @media (min-width: 60rem) {
   .site-footer-grid {
     grid-template-columns: 2fr 1fr 1fr 1fr;
-    padding: 4rem 3rem;
+    padding-block: 4rem;
   }
 
   .site-footer-grid > :first-child {

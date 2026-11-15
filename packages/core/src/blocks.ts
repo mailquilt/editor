@@ -9,8 +9,8 @@ import {
   richTextSchema,
 } from "./rich-text.js";
 import {
+  colorField,
   colorSchema,
-  INVALID_COLOR,
   INVALID_SOLID_COLOR,
   pixelField,
   pixelSchema,
@@ -36,17 +36,6 @@ const alignField = (fallback: string): SettingsField => ({
     { label: "Right", value: "right" },
   ],
   type: "select",
-});
-
-const colorField = (
-  fallback: string,
-  { invalidMessage = INVALID_COLOR, key = "color", label = "Color" } = {}
-): SettingsField => ({
-  default: fallback,
-  invalidMessage,
-  key,
-  label,
-  type: "color",
 });
 
 const fontSizeField = (fallback: number) =>

@@ -13,13 +13,14 @@ const facts = [
 
 /**
  * The editor's accent tokens, as a host would set them. The first matches this
- * site, and the second is what the editor uses when nobody sets any.
+ * site, and the second is what the editor uses when nobody sets any. Its tints
+ * are mixed from the accent, as on the Playground.
  */
 const themes = [
-  { accent: "#d4380f", name: "Orange, to match this site", on: "#ffffff", soft: "212 56 15", strong: "#b5300c" },
-  { accent: "#3355ff", name: "Blue, the editor's default", on: "#ffffff", soft: "51 85 255", strong: "#2340d6" },
-  { accent: "#7c3aed", name: "Violet", on: "#ffffff", soft: "124 58 237", strong: "#6d28d9" },
-  { accent: "#16181d", name: "Graphite", on: "#ffffff", soft: "22 24 29", strong: "#000000" },
+  { accent: "#d4380f", name: "Orange, to match this site", strong: "#b5300c" },
+  { accent: "#3355ff", name: "Blue, the editor's default", strong: "#2340d6" },
+  { accent: "#7c3aed", name: "Violet", strong: "#6d28d9" },
+  { accent: "#16181d", name: "Graphite", strong: "#000000" },
 ];
 ---
 
@@ -87,13 +88,11 @@ const themes = [
       >
       <div aria-labelledby="themes-label" class="home-swatches" role="group">
         {
-          themes.map(({ accent, name, on, soft, strong }, index) => (
+          themes.map(({ accent, name, strong }, index) => (
             <button
               aria-label={name}
               aria-pressed={index === 0 ? "true" : "false"}
               data-accent={accent}
-              data-on={on}
-              data-soft={soft}
               data-strong={strong}
               style={`--swatch:${accent}`}
               title={name}

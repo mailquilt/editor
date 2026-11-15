@@ -7,7 +7,7 @@ import "./mail-quilt.js";
 import type { MailQuilt } from "./mail-quilt.js";
 import { themeTokens, UI_LANG, uiStyles } from "./theme.js";
 
-/** The Shell's own buttons, in the order the header shows them. */
+/** The Shell's own buttons. */
 export type ShellAction = "export-html" | "export-json" | "import-json";
 
 /** Every theme token's name, from the one place they're defined. */

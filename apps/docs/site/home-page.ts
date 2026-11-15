@@ -118,12 +118,13 @@ const wireThemes = (editor: MailQuilt) => {
   const token = find("[data-home-token]");
   const buttons = findAll<HTMLButtonElement>("[data-home-themes] button");
   const apply = (button: HTMLButtonElement) => {
-    const { accent = "", on = "", soft = "", strong = "" } = button.dataset;
+    const { accent = "", strong = "" } = button.dataset;
+    const tint = (percent: number) =>
+      `color-mix(in srgb, ${accent} ${percent}%, transparent)`;
     editor.style.setProperty("--mq-color-accent", accent);
     editor.style.setProperty("--mq-color-accent-strong", strong);
-    editor.style.setProperty("--mq-color-on-accent", on);
-    editor.style.setProperty("--mq-color-accent-soft", `rgb(${soft} / 10%)`);
-    editor.style.setProperty("--mq-color-outline-hover", `rgb(${soft} / 45%)`);
+    editor.style.setProperty("--mq-color-accent-soft", tint(10));
+    editor.style.setProperty("--mq-color-outline-hover", tint(45));
     for (const other of buttons) {
       other.setAttribute("aria-pressed", String(other === button));
     }

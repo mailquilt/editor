@@ -22,12 +22,12 @@ export type {
   ShellAction,
 } from "@mailquilt/editor";
 
-interface EditorProps<Element> {
+interface EditorProps<Host> {
   onChange?: (document: BlocksDocument) => void;
   /** Why the editor refused a document, as `mq-error` says it. */
   onError?: (reason: string) => void;
   /** The element, once the editor has loaded in the browser. */
-  ref?: Ref<Element>;
+  ref?: Ref<Host>;
   value?: BlocksDocument;
 }
 
@@ -68,14 +68,14 @@ const setDocument = (
  * the editor has loaded. Returns the ref for the rendered element.
  */
 const useEditorElement = <
-  Element extends MailQuiltElement | MailQuiltShellElement,
+  Host extends MailQuiltElement | MailQuiltShellElement,
 >({
   onChange,
   onError,
   ref,
   value,
-}: EditorProps<Element>) => {
-  const [element, setElement] = useState<Element | null>(null);
+}: EditorProps<Host>) => {
+  const [element, setElement] = useState<Host | null>(null);
   const [loaded, setLoaded] = useState(false);
   const editor = loaded ? element : null;
 
@@ -115,7 +115,7 @@ const useEditorElement = <
 
   // Last, so a callback ref gets an element that already has its email, and with
   // nothing until then, because a ref is otherwise never called with `null` first.
-  useImperativeHandle<Element | null, Element | null>(
+  useImperativeHandle<Host | null, Host | null>(
     editor ? ref : undefined,
     () => editor,
     [editor]

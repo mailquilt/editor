@@ -1,7 +1,7 @@
 ---
 // Example emails. Each is rendered here, when the site is built, by the same
 // renderer a server would use, then shown with its Merge Tags filled in.
-import { loadDocument } from "@mailquilt/core";
+import { loadDocument, MERGE_TAG } from "@mailquilt/core";
 import { renderEmail } from "@mailquilt/renderer";
 import { withBase } from "blume/components/islands/base-path.ts";
 
@@ -26,7 +26,7 @@ const rendered = await Promise.all(
     }
     const json = JSON.stringify(document, null, 2);
     const html = await renderEmail(document);
-    const tags = [...new Set(json.match(/\{\{\w+\}\}/gu))];
+    const tags = [...new Set(json.match(new RegExp(MERGE_TAG.source, "gu")))];
     // Left unfilled, a tag would show in the preview as its own name.
     const unfilled = tags.filter((tag) => !(tag.slice(2, -2) in sample));
     if (unfilled.length > 0) {
@@ -185,21 +185,11 @@ const rendered = await Promise.all(
   }
 
   .example-copy {
-    padding: 3.5rem 1.25rem 2.5rem;
+    padding: 3.5rem var(--site-gutter) 2.5rem;
   }
 
   .example-preview {
-    padding: 0 1.25rem 3.5rem;
-  }
-
-  @media (min-width: 48rem) {
-    .example-copy {
-      padding-inline: 2rem;
-    }
-
-    .example-preview {
-      padding-inline: 2rem;
-    }
+    padding: 0 var(--site-gutter) 3.5rem;
   }
 
   @media (min-width: 60rem) {
@@ -212,7 +202,7 @@ const rendered = await Promise.all(
       position: sticky;
       top: 4rem;
       align-self: start;
-      padding: 5rem 3rem;
+      padding-block: 5rem;
     }
 
     .example-preview {

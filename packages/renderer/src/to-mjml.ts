@@ -92,8 +92,7 @@ const endsWithoutText = (inline: RichTextParagraph["content"] = []) =>
 
 const richTextToHtml = ({ content }: RichTextDocument) =>
   content
-    .map((paragraph) => {
-      const inline = paragraph.content ?? [];
+    .map(({ content: inline }) => {
       const html = inlineToHtml(inline);
       // A last empty line takes up space on the canvas, but a <br /> at the end
       // of a paragraph doesn't make one on its own. Nor does an empty paragraph.
@@ -123,7 +122,11 @@ const hasText = ({ content }: RichTextDocument) =>
  * because email clients give a heading their own. With no text it's only an empty
  * line, as a screen reader would announce an empty heading.
  */
-const headingToHtml = (block: Block, fontFamily: string) => {
+const headingToHtml = (
+  block: Block,
+  fontFamily: string,
+  blockCss: Record<string, string>
+) => {
   const { content, level } = block.props as unknown as {
     content: RichTextDocument;
     level: number;
@@ -138,7 +141,7 @@ const headingToHtml = (block: Block, fontFamily: string) => {
   const styles = Object.entries({
     "font-family": fontFamily,
     "line-height": EMAIL_LOOK.lineHeight,
-    ...blockStyles(block),
+    ...blockCss,
   })
     .map(([name, value]) => `${name}:${escapeAttribute(value)}`)
     .join(";");
@@ -149,13 +152,14 @@ const linkAttribute = (href: string | undefined) =>
   href === undefined ? "" : ` href="${escapeAttribute(href)}"`;
 
 const blockToMjml = (block: Block, fontFamily: string) => {
-  const attributes = mjmlAttributes(blockStyles(block));
+  const blockCss = blockStyles(block);
+  const attributes = mjmlAttributes(blockCss);
   switch (block.type) {
     case "text": {
       return `<mj-text${attributes}>${richTextToHtml(block.props.content as RichTextDocument)}</mj-text>`;
     }
     case "heading": {
-      return `<mj-text${attributes}>${headingToHtml(block, fontFamily)}</mj-text>`;
+      return `<mj-text${attributes}>${headingToHtml(block, fontFamily, blockCss)}</mj-text>`;
     }
     case "button": {
       const { href, label } = block.props as { href?: string; label: string };

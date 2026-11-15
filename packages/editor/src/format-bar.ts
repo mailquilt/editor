@@ -1,4 +1,4 @@
-import { INVALID_LINK } from "@mailquilt/core";
+import { INVALID_LINK, isAllowedLinkHref } from "@mailquilt/core";
 import { css, html, nothing } from "lit";
 import { keyed } from "lit/directives/keyed.js";
 
@@ -10,7 +10,11 @@ import {
   onToolbarArrowKeys,
 } from "./block-keyboard.js";
 import { ICONS } from "./icons.js";
-import type { TextFormats, ToggleableMark } from "./text-block-view.js";
+import type {
+  TextBlockView,
+  TextFormats,
+  ToggleableMark,
+} from "./text-block-view.js";
 
 export const formatBarStyles = css`
   /*
@@ -94,7 +98,7 @@ export interface FormatBarState {
 }
 
 export interface FormatBarEvents {
-  /** Escape in the bar or the link field: focus goes back to the text. */
+  /** Escape in the bar: focus goes back to the text. */
   onBack: () => void;
   onCancelLink: () => void;
   onControlMousedown: (event: MouseEvent) => void;
@@ -104,6 +108,77 @@ export interface FormatBarEvents {
   onSubmitLink: (href: string) => void;
   onToggleMark: (mark: ToggleableMark) => void;
 }
+
+interface LinkFormHost {
+  /** The selected Block's text, where the link goes. */
+  view: () => TextBlockView | undefined;
+  /** Whether focus is in that text, so the format bar already shows. */
+  editingText: () => boolean;
+  /** The field, once the next update has rendered it. */
+  field: () => Promise<HTMLInputElement | null>;
+  requestUpdate: () => void;
+}
+
+/** The link field: open or closed, and what its buttons do. */
+export const createLinkForm = (host: LinkFormHost) => {
+  let state: FormatBarState["linkForm"];
+
+  const close = () => {
+    if (state) {
+      state = undefined;
+      host.requestUpdate();
+    }
+  };
+
+  /** From the Block itself too: its text takes focus, and shows the format bar. */
+  const open = async () => {
+    const view = host.view();
+    if (!view) {
+      return;
+    }
+    if (!host.editingText()) {
+      view.focus();
+    }
+    state = { refusals: 0 };
+    host.requestUpdate();
+    const input = await host.field();
+    input?.focus();
+    input?.select();
+  };
+
+  const events: Pick<
+    FormatBarEvents,
+    "onCancelLink" | "onOpenLinkForm" | "onRemoveLink" | "onSubmitLink"
+  > = {
+    onCancelLink: () => {
+      close();
+      host.view()?.focus();
+    },
+    onOpenLinkForm: open,
+    onRemoveLink: () => {
+      close();
+      host.view()?.removeLink();
+    },
+    onSubmitLink: (href) => {
+      if (!isAllowedLinkHref(href)) {
+        state = { refusals: (state?.refusals ?? 0) + 1 };
+        host.requestUpdate();
+        return;
+      }
+      close();
+      host.view()?.setLink(href);
+    },
+  };
+
+  return {
+    close,
+    events,
+    open,
+    get state() {
+      return state;
+    },
+  };
+};
 
 /** For what has to stay with the element it happened in. */
 const stopPropagation = (event: Event) => event.stopPropagation();
