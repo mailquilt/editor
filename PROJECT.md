@@ -204,11 +204,15 @@ With a bundler, import `@mailquilt/editor`. Without one, such as in Rails, Larav
 </script>
 ```
 
-- **`value`** sets the email. A document with the same content as the last one the editor received or sent is ignored, even if it was cloned or its keys were reordered. So a host can pass each change straight back without wiping undo or losing the cursor. Any other document loads and clears undo, and `undefined` empties the editor.
+- **`value`** sets the email. A document with the same content as the last one the editor received or sent is ignored, even if it was cloned or its keys were reordered. So a host can pass each change straight back without wiping undo or losing the cursor. Any other document loads and clears undo, and `undefined` or `null` empties the editor.
 - **Only pass back the latest document.** An earlier one counts as different, and loads. A host that saves to a server shouldn't set `value` from each response, because a late response would replace newer typing.
 - **`mq-change`** fires after each change, with the new document. The `mq-` prefix keeps it apart from the native `change` event of inputs.
 - **`mq-error`** fires when a document is refused, and nothing changes. `event.detail.reason` says why. It fires just after the code that set `value` finishes, so add the listener before setting `value`.
 - **`exportHtml()`** returns the email's HTML, and loads MJML the first time it's called.
+
+### The Shell
+
+`<mail-quilt-shell>` is a ready-made editor page: the editor with a header, Import and Export, and messages. It takes the same `value`, events and `exportHtml()` as `<mail-quilt>`, plus `heading`, `actions` to choose its buttons, and `save-key` to keep the email in the browser. React has it as `MailQuiltShell`. The [Shell page](apps/docs/docs/shell.mdx) has the details.
 
 ### React
 
@@ -282,7 +286,7 @@ Effect isn't used in the published packages, and may be reconsidered for the CLI
 - Settings for each Block, Row and the email
 - Drag and drop, with a keyboard path for every drag action
 - Undo and redo
-- Merge Tags typed into text and links, kept intact through editing and rendering
+- Merge Tags typed into text and links, kept through editing and rendering, with any `&`, `<`, `>` or `"` in them escaped
 - Save and load as JSON
 - Preview of the real exported HTML, in a sandboxed iframe
 - HTML export, tested in Gmail and Apple Mail
