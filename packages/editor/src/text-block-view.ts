@@ -572,6 +572,14 @@ export const createTextBlockView = ({
         dispatch(state.tr.setMeta(FOCUSED, false));
         return false;
       },
+      // A page's router, such as Astro's or Turbo's, follows a click on any
+      // link to its own site, even inside the editor, unless it's handled.
+      click: (_view, event) => {
+        if ((event.target as Element).closest("a")) {
+          event.preventDefault();
+        }
+        return false;
+      },
       focus: ({ dispatch, state }) => {
         dispatch(state.tr.setMeta(FOCUSED, true));
         return false;

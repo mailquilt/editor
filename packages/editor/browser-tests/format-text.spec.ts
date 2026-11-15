@@ -660,6 +660,27 @@ test.describe("links", () => {
         ]);
     });
 
+    test("clicking it puts the cursor in it, and a page's router doesn't follow it", async ({
+      page,
+    }) => {
+      // From outside the editor, as when the text isn't being edited.
+      await page.mouse.click(5, 5);
+      // A router follows a link click that no one has handled.
+      await page.evaluate(() => {
+        document.addEventListener("click", (event) => {
+          document.body.dataset.handled = String(event.defaultPrevented);
+        });
+      });
+
+      await firstTextBlock(page).getByRole("link").click();
+
+      await expect(page.locator("body")).toHaveAttribute(
+        "data-handled",
+        "true"
+      );
+      await expect(toolbarButton(page, "Edit link")).toBeVisible();
+    });
+
     test("typing at the end of a link doesn't extend it", async ({ page }) => {
       await pressArrow(page, "ArrowRight");
 

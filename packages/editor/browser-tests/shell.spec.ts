@@ -732,6 +732,27 @@ test.describe("look", () => {
     expect(boxes.panel.bottom).toBe(boxes.frame.bottom);
   });
 
+  test("with its bottom below the window, editing doesn't scroll the page", async ({
+    page,
+  }) => {
+    // The 700px Shell's bottom, with the floating toolbar, is below the window.
+    await page.setViewportSize({ height: 500, width: 1280 });
+    await openShell(page);
+    const editor = shell(page).locator("mail-quilt");
+    const pageScroll = () => page.evaluate(() => window.scrollY);
+
+    // A Block added from the side panel, whose button goes away with focus on it.
+    await editor.getByRole("button", { name: "Add Text Block" }).click();
+    await expect(textBlock(page)).toHaveCount(2);
+    expect(await pageScroll()).toBe(0);
+
+    // A click on the workspace, with the new Block selected.
+    const area = await boxOf(editor.locator(".canvas-area"));
+    await page.mouse.click(area.x + 10, area.y + 10);
+    await expect(editor.locator('[aria-current="true"]')).toHaveCount(0);
+    expect(await pageScroll()).toBe(0);
+  });
+
   test("a long email keeps the whole side panel in view", async ({ page }) => {
     await page.goto("/shell.html?long");
     await expect(textBlock(page).first()).toBeVisible();
