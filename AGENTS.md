@@ -30,3 +30,7 @@ Before writing or changing tests, read `docs/agents/testing.md`.
 ### Skills
 
 Which skills to install or write, and when: see `docs/agents/skills.md`.
+
+### Reviews
+
+Before reviewing code, or acting on a review, read `docs/agents/review.md`. It says which kind of review to run, the bar a finding must meet, and when to stop. Decisions already taken are in `docs/agents/decisions.md`. Don't raise them again unless something has changed since.
