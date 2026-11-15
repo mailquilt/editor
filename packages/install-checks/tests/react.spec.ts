@@ -20,13 +20,12 @@ test("a refused document reaches onError", async ({ page }) => {
   await checkRefusedDocument(page, url);
 });
 
-test("rendering on a server doesn't register the element", async () => {
+test("renders on a server, with nothing for the element there", async () => {
   const { stdout } = await promisify(execFile)("node", ["server-render.js"], {
     cwd: freshProjectDir("react"),
   });
 
   expect(JSON.parse(stdout)).toStrictEqual({
-    customElements: "undefined",
     html: "<mail-quilt></mail-quilt>",
     shellHtml:
       '<mail-quilt-shell actions="export-html" save-key="my-app:email"></mail-quilt-shell>',

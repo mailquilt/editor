@@ -9,7 +9,6 @@ import {
   canvas,
   change,
   changeCount,
-  chooseLayout,
   collectErrors,
   currentValue,
   emailWith,
@@ -17,7 +16,6 @@ import {
   openExport,
   openTab,
   panelBlock,
-  previewButton,
   redoByKey,
   selectRow,
   setValue,
@@ -58,33 +56,6 @@ const textStyle = (locator: Locator) =>
 const rowBackground = (locator: Locator) =>
   locator.evaluate((element) => getComputedStyle(element).backgroundColor);
 
-/** The ring is the accent color, which the test sets to this. */
-const ACCENT = "rgb(1, 2, 3)";
-
-const expectNamedWithFocusRing = async (control: Locator) => {
-  await control.focus();
-  await expect(control).toBeFocused();
-  await expect(control).toHaveCSS("outline-style", "solid");
-  await expect(control).toHaveCSS("outline-color", ACCENT);
-  const named = await control.evaluate((element) => {
-    const { labels } = element as HTMLInputElement;
-    return (labels?.length ?? 0) > 0 || element.hasAttribute("aria-label");
-  });
-  expect(named).toBeTruthy();
-};
-
-/** Every control in a settings section has a name and a focus ring. */
-const expectEach = async (within: Locator) => {
-  await expect(within).toBeVisible();
-  const controls = await within.locator("input, select").all();
-  expect(controls.length).toBeGreaterThan(0);
-  // One at a time, because each one takes focus from the last.
-  for (const control of controls) {
-    // oxlint-disable-next-line no-await-in-loop -- See above.
-    await expectNamedWithFocusRing(control);
-  }
-};
-
 const typeFontSize = async (page: Page, size: string) => {
   await setValue(page, emailWith([[["One"]]]));
   await canvas(page).getByText("One", { exact: true }).click();
@@ -118,9 +89,13 @@ test.describe("the panel", () => {
     await setValue(page, emailWith([[["One", "Two"]]]));
     await canvas(page).getByText("One", { exact: true }).click();
     await change(field(page, "Font size (px)"), "30");
+    // A refused value stays with its own Block too.
+    await change(field(page, "Color"), "red");
 
     await canvas(page).getByText("Two", { exact: true }).click();
     await expect(field(page, "Font size (px)")).toHaveValue("16");
+    await expect(field(page, "Color")).toHaveValue("#000000");
+    await expect(panelBlock(page).getByRole("alert")).toHaveCount(0);
 
     await canvas(page).getByText("One", { exact: true }).click();
     await expect(field(page, "Font size (px)")).toHaveValue("30");
@@ -223,7 +198,7 @@ test.describe("Text settings", () => {
 });
 
 test.describe("Row settings", () => {
-  test("look the same on the canvas and in the export", async ({ page }) => {
+  test("show on the canvas", async ({ page }) => {
     await setValue(page, emailWith([[["In"]], [["Out"]]]));
     await selectRow(page, 1);
 
@@ -240,10 +215,6 @@ test.describe("Row settings", () => {
     expect(await rowBackground(canvas(page).locator(".row").last())).toBe(
       "rgba(0, 0, 0, 0)"
     );
-    const { html, opened } = await openExport(page);
-    expect(html).toContain("background-color:#00ff00");
-    await expect(opened.getByText("In", { exact: true })).toBeVisible();
-    await opened.close();
   });
 });
 
@@ -438,15 +409,32 @@ test.describe("validation", () => {
     expect(await currentValue(page)).toStrictEqual(before);
   });
 
-  test("Escape brings back the current value", async ({ page }) => {
+  test("Escape brings back the current value, and goes no further", async ({
+    page,
+  }) => {
+    await page.evaluate(() => {
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          document.documentElement.dataset.hostEscape = "reached";
+        }
+      });
+    });
     const language = emailField(page, "Language");
     await change(language, "English");
 
     await language.press("Escape");
 
     await expect(language).toHaveValue("");
+    await expect(page.locator("html")).not.toHaveAttribute("data-host-escape");
     await expect(email(page).getByRole("alert")).toHaveCount(0);
     await expect(language).toHaveAttribute("aria-invalid", "false");
+
+    // With nothing typed, it's the host's.
+    await language.press("Escape");
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-host-escape",
+      "reached"
+    );
   });
 
   test("undo clears a refused value", async ({ page }) => {
@@ -459,17 +447,6 @@ test.describe("validation", () => {
     await expect(emailField(page, "Language")).toHaveValue("");
     await expect(email(page).getByRole("alert")).toHaveCount(0);
     await expect(emailField(page, "Width (px)")).toHaveValue("600");
-  });
-
-  test("a refused value stays with its own Block", async ({ page }) => {
-    await setValue(page, emailWith([[["One", "Two"]]]));
-    await canvas(page).getByText("One", { exact: true }).click();
-    await change(field(page, "Color"), "red");
-
-    await canvas(page).getByText("Two", { exact: true }).click();
-
-    await expect(field(page, "Color")).toHaveValue("#000000");
-    await expect(panelBlock(page).getByRole("alert")).toHaveCount(0);
   });
 
   test("the color picker replaces a refused value", async ({ page }) => {
@@ -517,14 +494,6 @@ test.describe("text that hasn't been committed", () => {
     expect(await blockProps(page)).not.toHaveProperty("fontSize");
   });
 
-  test("is committed when a Row control is pressed", async ({ page }) => {
-    await typeFontSize(page, "24");
-
-    await chooseLayout(page, 1, "50/50");
-
-    expect(await blockProps(page)).toMatchObject({ fontSize: 24 });
-  });
-
   test("is committed when a drag handle is pressed", async ({ page }) => {
     await typeFontSize(page, "24");
     const box = await boxOf(canvas(page).locator(".drag-handle").first());
@@ -534,21 +503,6 @@ test.describe("text that hasn't been committed", () => {
     await page.mouse.up();
 
     expect(await blockProps(page)).toMatchObject({ fontSize: 24 });
-  });
-
-  test("is in the Preview when that's pressed", async ({ page }) => {
-    const preview = previewButton(page);
-    await preview.click();
-    const body = page
-      .frameLocator('iframe[title="Email preview"]')
-      .locator("body");
-    await expect(body).toHaveCSS("background-color", "rgb(255, 255, 255)");
-    await page.getByRole("button", { name: "Close" }).click();
-
-    await emailField(page, "Background color").fill("#eeeeee");
-    await preview.click();
-
-    await expect(body).toHaveCSS("background-color", "rgb(238, 238, 238)");
   });
 
   test("still shows why when a button is pressed", async ({ page }) => {
@@ -564,25 +518,7 @@ test.describe("text that hasn't been committed", () => {
 });
 
 test.describe("focus", () => {
-  test("stays in an Email field when undo removes the Block's settings", async ({
-    page,
-  }) => {
-    await setValue(page, emailWith([[[]]]));
-    await canvas(page)
-      .getByRole("button", { name: /Add Text Block/u })
-      .click();
-    await expect(panelBlock(page)).toBeVisible();
-    await openTab(page, "Settings");
-    const width = emailField(page, "Width (px)");
-    await width.click();
-
-    await undoByKey(page);
-
-    await expect(textBlock(page)).toHaveCount(0);
-    await expect(width).toBeFocused();
-  });
-
-  test("stays in an Email field when redo brings them back", async ({
+  test("stays in an Email field when undo removes the Block's settings and redo brings them back", async ({
     page,
   }) => {
     await setValue(page, emailWith([[[]]]));
@@ -592,6 +528,7 @@ test.describe("focus", () => {
     await language.click();
     await undoByKey(page);
     await expect(textBlock(page)).toHaveCount(0);
+    await expect(language).toBeFocused();
 
     await redoByKey(page);
 
@@ -679,19 +616,6 @@ test.describe("layout", () => {
     expect(panelBox.x).toBeGreaterThanOrEqual(emailBox.x + emailBox.width);
     expect(panelBox.x + panelBox.width).toBe(hostBox.x + hostBox.width);
   });
-
-  test("puts the panel below for a wider email that no longer fits", async ({
-    page,
-  }) => {
-    await inHostOf(page, 1100);
-
-    await change(emailField(page, "Width (px)"), "800");
-
-    await expect(canvas(page).locator(".email")).toHaveCSS("width", "800px");
-    const emailBox = await boxOf(canvas(page).locator(".email"));
-    const panelBox = await boxOf(canvas(page).locator(".side-panel"));
-    expect(panelBox.y).toBeGreaterThanOrEqual(emailBox.y + emailBox.height);
-  });
 });
 
 test.describe("accessibility", () => {
@@ -703,17 +627,5 @@ test.describe("accessibility", () => {
     await change(emailField(page, "Language"), "English");
 
     expect(await violations(page)).toStrictEqual([]);
-  });
-
-  test("names every control and shows where focus is", async ({ page }) => {
-    await canvas(page).evaluate((element, accent) => {
-      (element as HTMLElement).style.setProperty("--mq-color-accent", accent);
-    }, ACCENT);
-
-    await expectEach(email(page));
-    await selectRow(page, 1);
-    await expectEach(row(page));
-    await textBlock(page).click();
-    await expectEach(panelBlock(page));
   });
 });

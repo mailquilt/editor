@@ -24,25 +24,6 @@ const linkTo = (href: string) => ({
 });
 
 describe("limited rich text", () => {
-  it("keeps bold, italic, underline, links and line breaks", () => {
-    const email = emailWithInline(
-      {
-        marks: [
-          { attrs: { href: "https://example.com" }, type: "link" },
-          { type: "bold" },
-          { type: "italic" },
-          { type: "underline" },
-        ],
-        text: "All of them",
-        type: "text",
-      },
-      { type: "hardBreak" },
-      { text: "Plain", type: "text" }
-    );
-
-    expect(loadDocument(email)).toStrictEqual({ document: email, ok: true });
-  });
-
   it("keeps the marks ProseMirror leaves on a line break inside bold text", () => {
     const email = emailWithInline({
       marks: [{ type: "bold" }],

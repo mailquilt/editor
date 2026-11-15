@@ -6,10 +6,10 @@
     "build": "NEXT_TELEMETRY_DISABLED=1 next build"
   },
   "dependencies": {
-    "@mailquilt/core": "0.0.0",
-    "@mailquilt/editor": "0.0.0",
-    "@mailquilt/react": "0.0.0",
-    "@mailquilt/renderer": "0.0.0",
+    "@mailquilt/core": "*",
+    "@mailquilt/editor": "*",
+    "@mailquilt/react": "*",
+    "@mailquilt/renderer": "*",
     "next": "^16.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

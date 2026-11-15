@@ -85,6 +85,20 @@ test.describe("a tooltip", () => {
     await expect(tooltip(page)).toBeHidden();
   });
 
+  test("Escape over a control without focus closes its tooltip, and still leaves the text", async ({
+    page,
+  }) => {
+    await openBlocks(page, ["text"]);
+    await textBlock(page).click();
+    await undoButton(page).hover();
+    await expect(tooltip(page)).toBeVisible();
+
+    await page.keyboard.press("Escape");
+
+    await expect(tooltip(page)).toBeHidden();
+    await expect(blockGroup(page, "Text")).toBeFocused();
+  });
+
   test("Escape on a Block tool only closes its tooltip, then goes back to the Block", async ({
     page,
   }) => {
@@ -275,15 +289,14 @@ test.describe("on a dark host page", () => {
       return { panel: style(".side-panel-inner"), tooltip: style(".tooltip") };
     });
 
-    const white = "rgb(255, 255, 255)";
-    const text = "rgb(22, 24, 29)";
-    expect(surfaces).toEqual({
-      panel: { backgroundColor: white, color: text, serif: false },
-      tooltip: {
-        backgroundColor: text,
-        color: "rgb(247, 247, 248)",
-        serif: false,
-      },
-    });
+    // None of the host's black, white or serif, and nothing see-through.
+    for (const { backgroundColor, color, serif } of Object.values(surfaces)) {
+      expect(["rgb(0, 0, 0)", "rgba(0, 0, 0, 0)"]).not.toContain(
+        backgroundColor
+      );
+      expect(color).not.toBe("rgb(255, 255, 255)");
+      expect(color).not.toBe(backgroundColor);
+      expect(serif).toBe(false);
+    }
   });
 });

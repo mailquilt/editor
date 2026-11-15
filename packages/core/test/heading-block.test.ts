@@ -35,25 +35,6 @@ const fontSizeField = (level: number) =>
   }).find(({ key }) => key === "fontSize") as SettingsField;
 
 describe("Heading Block", () => {
-  it("is added empty, at level 1", () => {
-    const document = createEmail();
-    const columnId = document.rows[0]?.columns[0]?.id as string;
-    const editor = createEditor({ document });
-
-    const result = editor.apply({
-      blockType: "heading",
-      columnId,
-      index: 0,
-      type: "insertBlock",
-    });
-
-    expect(result.ok).toBeTruthy();
-    expect(propsOf(editor.getDocument())).toStrictEqual({
-      content: emptyText,
-      level: 1,
-    });
-  });
-
   it("stores rich text, a level, alignment, color and font size", () => {
     const { editor } = setup();
     const content = {

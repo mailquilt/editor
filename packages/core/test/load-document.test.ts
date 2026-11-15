@@ -47,6 +47,16 @@ describe(loadDocument, () => {
     expect(loadDocument(email)).toMatchObject({ ok: true });
   });
 
+  // structuredClone() would throw on one.
+  it("loads one wrapped in a Proxy, as Vue's reactive() makes", () => {
+    const email = readFixture("version-1");
+
+    expect(loadDocument(new Proxy(email, {}))).toStrictEqual({
+      document: readFixture("version-1"),
+      ok: true,
+    });
+  });
+
   it("returns a document that shares nothing with the one passed in", () => {
     const email = readFixture("version-1");
     const loaded = loadDocument(email);

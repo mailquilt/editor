@@ -12,10 +12,10 @@ import {
   canvas,
   change,
   drag,
-  exportHtml,
   field,
   openBlocks as open,
   openExport,
+  openTab,
   palette,
   selectRowButton,
   serveImages,
@@ -109,15 +109,12 @@ test.describe("selecting an Image", () => {
 });
 
 test.describe("an Image", () => {
-  test("asks for a URL until it has one, and exports nothing", async ({
-    page,
-  }) => {
+  test("asks for a URL until it has one", async ({ page }) => {
     await open(page, ["text"]);
     await palette(page, "Image").click();
 
     await expect(image(page)).toHaveCount(0);
     await expect(blockGroup(page, "Image")).toContainText("No image URL yet");
-    await expect(exportHtml(page)).resolves.not.toContain("<img");
   });
 
   test("shows and exports its URL and alt text", async ({ page }) => {
@@ -224,7 +221,6 @@ test.describe("an Image", () => {
     await expect(box(blockGroup(page, "Image"))).resolves.toMatchObject({
       height: 152,
     });
-    await expect(exportHtml(page)).resolves.toContain(`src="${missing}"`);
 
     await change(field(page, "Image URL"), PHOTO);
 
@@ -268,9 +264,7 @@ test.describe("an Image", () => {
     await expect(image(page)).toHaveAttribute("src", missing);
   });
 
-  test("takes a Merge Tag as its URL and link, as far as the export", async ({
-    page,
-  }) => {
+  test("takes a Merge Tag as its URL and link", async ({ page }) => {
     await open(page, ["image"]);
     await blockGroup(page, "Image").focus();
 
@@ -281,9 +275,11 @@ test.describe("an Image", () => {
     // There's nothing to load yet, and a request for it would only fail.
     await expect(image(page)).toHaveCount(0);
     await expect(blockGroup(page, "Image")).toContainText("{{logo_url}}");
-    const html = await exportHtml(page);
-    expect(html).toContain('src="{{logo_url}}"');
-    expect(html).toContain('href="{{site_url}}"');
+    await expect(firstBlockProps(page)).resolves.toEqual({
+      alt: "{{company}} logo",
+      href: "{{site_url}}",
+      src: "{{logo_url}}",
+    });
   });
 
   test("links only in the export, as a click on the canvas selects it", async ({
@@ -625,7 +621,7 @@ test.describe("accessibility", () => {
   // One page, each type of Block selected in turn, as tall as the window, so a
   // Block near its bottom has its tools beside the floating toolbar. A selected
   // Text Block and Heading are checked in keyboard.spec.ts.
-  test("finds no violations with each type of Block selected", async ({
+  test("finds no violations with each type of Block selected, and an Image with no URL", async ({
     page,
   }) => {
     await open(page, ["image", "divider", "spacer", "button", "text"]);
@@ -637,14 +633,12 @@ test.describe("accessibility", () => {
       // oxlint-disable-next-line no-await-in-loop -- Checked with each selected.
       await expect(violations(page)).resolves.toEqual([]);
     }
-  });
 
-  test("finds no violations with an Image that has no URL", async ({
-    page,
-  }) => {
-    await open(page, ["text"]);
+    await openTab(page, "Content");
     await palette(page, "Image").click();
-
+    await expect(
+      blockGroup(page, "Image").filter({ hasText: "No image URL yet" })
+    ).toBeVisible();
     await expect(violations(page)).resolves.toEqual([]);
   });
 

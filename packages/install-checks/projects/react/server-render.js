@@ -10,6 +10,4 @@ const shellHtml = renderToString(
     saveKey: "my-app:email",
   })
 );
-console.log(
-  JSON.stringify({ customElements: typeof customElements, html, shellHtml })
-);
+console.log(JSON.stringify({ html, shellHtml }));

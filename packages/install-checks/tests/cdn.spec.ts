@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import type { Page, Response } from "@playwright/test";
+import type { Response } from "@playwright/test";
 
 import { cdnPort, freshProjects } from "../fresh-projects.ts";
 import {
@@ -21,24 +21,6 @@ const urlsWithMjml = async (responses: Response[]) => {
     })
   );
   return checked.filter(({ hasMjml }) => hasMjml).map(({ url }) => url);
-};
-
-/** Checks `load` fetches MJML from beside the CDN build, and that nothing did before. */
-const checkMjmlLoadsOnlyFor = async (page: Page, load: () => Promise<void>) => {
-  const fetched: Response[] = [];
-  page.on("response", (response) => fetched.push(response));
-  await page.goto(pageUrl);
-  await expect(page.getByRole("textbox", { name: "Text Block" })).toHaveText(
-    "Hello"
-  );
-  const fetchedBeforehand = [...fetched];
-  expect(await urlsWithMjml(fetchedBeforehand)).toStrictEqual([]);
-
-  await load();
-
-  const mjml = await urlsWithMjml(fetched.slice(fetchedBeforehand.length));
-  expect(mjml).toHaveLength(1);
-  expect(mjml[0]).toContain(cdnBuildUrl);
 };
 
 test("a page with no bundler loads, saves and exports an email", async ({
@@ -64,10 +46,21 @@ test("the CDN build registers the Shell too", async ({ page }) => {
 test("MJML loads from beside the CDN build, only for export", async ({
   page,
 }) => {
-  await checkMjmlLoadsOnlyFor(page, async () => {
-    await page.getByRole("button", { name: "Export HTML" }).click();
-    await expect(page.getByTestId("exported-html")).toContainText("Hello");
-  });
+  const fetched: Response[] = [];
+  page.on("response", (response) => fetched.push(response));
+  await page.goto(pageUrl);
+  await expect(page.getByRole("textbox", { name: "Text Block" })).toHaveText(
+    "Hello"
+  );
+  const fetchedBeforehand = [...fetched];
+  expect(await urlsWithMjml(fetchedBeforehand)).toStrictEqual([]);
+
+  await page.getByRole("button", { name: "Export HTML" }).click();
+  await expect(page.getByTestId("exported-html")).toContainText("Hello");
+
+  const mjml = await urlsWithMjml(fetched.slice(fetchedBeforehand.length));
+  expect(mjml).toHaveLength(1);
+  expect(mjml[0]).toContain(cdnBuildUrl);
 });
 
 test("the CDN build lists the license of each package it bundles", async ({

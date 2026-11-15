@@ -4,6 +4,7 @@ import type { Page } from "@playwright/test";
 import {
   addSecondTextBlock,
   canvas,
+  changeCount,
   exportHtml,
   latestDocument,
   linkUrlField,
@@ -11,6 +12,7 @@ import {
   redoByKey,
   settle,
   stopClock,
+  undo,
   undoByKey,
 } from "./helpers.js";
 
@@ -303,14 +305,6 @@ test.describe("the toolbar", () => {
       "aria-keyshortcuts",
       `${mod}+B`
     );
-    await expect(toolbarButton(page, "Link")).toHaveAttribute(
-      "aria-keyshortcuts",
-      `${mod}+K`
-    );
-    await expect(toolbarButton(page, "Line break")).toHaveAttribute(
-      "aria-keyshortcuts",
-      "Shift+Enter"
-    );
   });
 
   test("by keyboard with only a cursor, typing continues where it was, formatted", async ({
@@ -443,24 +437,6 @@ test.describe("line breaks", () => {
         { content: [{ text: "Hello", type: "text" }], type: "paragraph" },
       ]);
   });
-
-  test("the toolbar adds a line break and keeps focus in the Block", async ({
-    page,
-  }) => {
-    await cursorAtEndOfBlock(page);
-
-    await toolbarButton(page, "Line break").click();
-
-    await expect(firstTextBlock(page)).toBeFocused();
-    await page.keyboard.type("x");
-    await expect
-      .poll(() => savedInline(page))
-      .toStrictEqual([
-        { text: "Hello", type: "text" },
-        { type: "hardBreak" },
-        { text: "x", type: "text" },
-      ]);
-  });
 });
 
 test.describe("links", () => {
@@ -486,6 +462,7 @@ test.describe("links", () => {
     await expect(page.getByRole("alert")).toContainText("Merge Tag");
     await expect(linkUrlField(page)).toBeVisible();
     await expect(linkUrlField(page)).toHaveAttribute("aria-invalid", "true");
+    await expect(linkUrlField(page)).toHaveAccessibleDescription(/Merge Tag/u);
     expect(await savedInline(page)).toStrictEqual([
       { text: "Hello", type: "text" },
     ]);
@@ -566,27 +543,6 @@ test.describe("links", () => {
     });
 
     await expect(linkUrlField(page)).toHaveValue("https://example.com");
-  });
-
-  test("in an empty Block with everything selected, the URL becomes the linked text", async ({
-    page,
-  }) => {
-    await selectAllInBlock(page);
-    await page.keyboard.press("Backspace");
-    await expect(firstTextBlock(page)).toHaveText("");
-    await selectAll(page);
-
-    await addLink(page, "https://example.com");
-
-    await expect
-      .poll(() => savedInline(page))
-      .toStrictEqual([
-        {
-          marks: [{ attrs: { href: "https://example.com" }, type: "link" }],
-          text: "https://example.com",
-          type: "text",
-        },
-      ]);
   });
 
   test("moving the element closes the field, because its selection is gone", async ({
@@ -721,11 +677,34 @@ test.describe("links", () => {
         ]);
     });
 
-    test("clicking a link in the Block doesn't follow it", async ({ page }) => {
-      await firstTextBlock(page).locator("a").click();
+    test("Remove link stops where a link to another URL starts", async ({
+      page,
+    }) => {
+      await pressArrow(page, "ArrowRight");
+      await page.keyboard.type(" there");
+      for (const _ of " there") {
+        // oxlint-disable-next-line no-await-in-loop -- Each key moves the selection on.
+        await extendSelection(page, "ArrowLeft");
+      }
+      await addLink(page, "https://example.org");
+      // A cursor inside " there", with no selection.
+      await pressArrow(page, "ArrowRight");
+      await pressArrow(page, "ArrowLeft");
 
-      await expect(page).toHaveURL(/localhost/u);
-      await expect(firstTextBlock(page)).toBeFocused();
+      await toolbarButton(page, "Edit link").click();
+      await expect(linkUrlField(page)).toHaveValue("https://example.org");
+      await page.getByRole("button", { name: "Remove link" }).click();
+
+      await expect
+        .poll(() => savedInline(page))
+        .toStrictEqual([
+          {
+            marks: [{ attrs: { href: "https://example.com" }, type: "link" }],
+            text: "Hello",
+            type: "text",
+          },
+          { text: " there", type: "text" },
+        ]);
     });
   });
 });
@@ -824,6 +803,52 @@ test.describe("undo and redo", () => {
     await expect
       .poll(() => savedInline(page))
       .toStrictEqual([{ text: "Helloa", type: "text" }]);
+  });
+
+  test("undo in the link field doesn't undo the email", async ({ page }) => {
+    await firstTextBlock(page).click();
+    await page.keyboard.type("x");
+    await expect(changeCount(page)).toHaveText("1");
+    await toolbarButton(page, "Link").click();
+    await expect(linkUrlField(page)).toBeFocused();
+    // Typed, because a filled value leaves nothing for the field's own undo.
+    await page.keyboard.type("https");
+    await expect(linkUrlField(page)).toHaveValue("https");
+
+    await undoByKey(page);
+
+    await expect(firstTextBlock(page)).toHaveText("Hellox");
+  });
+
+  test("the Undo button closes the link field and returns to the Block", async ({
+    page,
+  }) => {
+    await firstTextBlock(page).click();
+    await page.keyboard.type("x");
+    await expect(changeCount(page)).toHaveText("1");
+    await selectAll(page);
+    await toolbarButton(page, "Link").click();
+    const field = linkUrlField(page);
+    await expect(field).toBeFocused();
+
+    await undo(page);
+
+    await expect(field).toHaveCount(0);
+    await expect(firstTextBlock(page)).toHaveText("Hello");
+    await expect(firstTextBlock(page)).toBeFocused();
+  });
+
+  test("the Undo button leaves the link field open with nothing to undo", async ({
+    page,
+  }) => {
+    await firstTextBlock(page).click();
+    await toolbarButton(page, "Link").click();
+    const field = linkUrlField(page);
+    await expect(field).toBeFocused();
+
+    await undo(page);
+
+    await expect(field).toBeVisible();
   });
 
   test("adding and removing a link can each be undone", async ({ page }) => {

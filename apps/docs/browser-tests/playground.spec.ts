@@ -56,6 +56,8 @@ test("the starter email fits without scrolling, even in a short window", async (
       scrollHeight: editor.parentElement?.scrollHeight,
     }));
 
+  // So an editor with nothing around it can't pass.
+  expect(clientHeight).toBeGreaterThan(0);
   expect(scrollHeight).toBe(clientHeight);
 });
 
@@ -65,7 +67,9 @@ test("on a phone, the Shell is only as tall as its notice", async ({
   await page.setViewportSize({ height: 900, width: 420 });
   await page.goto(PLAYGROUND);
   const shell = page.locator("mail-quilt-shell");
-  const notice = shell.getByText("Editing needs more room").locator("..");
+  const notice = shell
+    .locator("mail-quilt")
+    .locator('[part="frame"]', { hasText: "Editing needs more room" });
   await expect(notice).toBeVisible();
 
   const shellBox = await shell.boundingBox();

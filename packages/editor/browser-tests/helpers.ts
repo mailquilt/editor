@@ -168,11 +168,15 @@ export const openEmail = async (page: Page, rows: string[][][]) => {
   await page.goto("/");
   await setValue(page, emailWith(rows));
   await expect(textBlock(page).first()).toBeVisible();
+  // An email the editor refused, such as one with two Blocks of the same text
+  // and so the same id, would leave the test working on something else.
+  expect(await structure(page)).toEqual(rows);
 };
 
-const rowFrame = (page: Page, position: number) =>
+/** A Row's frame. A drag's copy of it is left out. */
+export const rowFrame = (page: Page, position: number) =>
   canvas(page)
-    .locator(".row-frame")
+    .locator(".row-frame:not([data-drag-ghost])")
     .nth(position - 1);
 
 export const rowTag = (page: Page, position: number) =>
@@ -255,9 +259,7 @@ export const pasteHtml = (target: Locator, html: string) =>
   }, html);
 
 export const blockTool = (page: Page, name: string) =>
-  canvas(page)
-    .getByRole("toolbar", { name: "Block tools" })
-    .getByRole("button", { exact: true, name });
+  blockTools(page).getByRole("button", { exact: true, name });
 
 export const deleteBlock = (page: Page) => blockTool(page, "Delete Block");
 
@@ -272,6 +274,14 @@ export const blockWith = (page: Page, text: string) =>
   blockGroup(page, "Text").filter({
     has: textBlock(page).getByText(text, { exact: true }),
   });
+
+/** The text of the Text Block with this exact text. */
+export const textOf = (page: Page, text: string) =>
+  blockWith(page, text).getByRole("textbox", { name: "Text Block" });
+
+/** The text of the selected Block. */
+export const selectedText = (page: Page) =>
+  canvas(page).locator('[aria-current="true"]').getByRole("textbox");
 
 export const panelBlock = (page: Page) =>
   page.getByRole("group", { exact: true, name: "Block" });
