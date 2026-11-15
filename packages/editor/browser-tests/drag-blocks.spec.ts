@@ -621,6 +621,30 @@ test.describe("letting go far from the editor", () => {
   });
 });
 
+test("a file dropped on the email doesn't open in the page", async ({
+  page,
+}) => {
+  await openBlocks(page, ["text"]);
+
+  const allowed = await blockGroup(page, "Text").evaluate((block) => {
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(new File(["x"], "photo.png", { type: "image/png" }));
+    return ["dragover", "drop"].map((type) =>
+      block.dispatchEvent(
+        new DragEvent(type, {
+          bubbles: true,
+          cancelable: true,
+          composed: true,
+          dataTransfer,
+        })
+      )
+    );
+  });
+
+  // dispatchEvent is false once the browser's own handling is prevented.
+  expect(allowed).toEqual([false, false]);
+});
+
 test.describe("dragging from the palette", () => {
   test("selects the new Block, ready to type in", async ({ page }) => {
     await open(page, [[["One"]]]);

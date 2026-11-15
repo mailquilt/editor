@@ -31,6 +31,13 @@ export const REDO_SHORTCUTS = IS_MAC
   : "Control+Y Control+Shift+Z";
 
 /**
+ * Alt+← and Alt+→ go back and forward a page, except on Apple devices, where
+ * they move the cursor by word.
+ */
+export const isPageHistoryArrow = (direction: Direction | undefined) =>
+  !IS_MAC && (direction === "left" || direction === "right");
+
+/**
  * Command on Apple devices, and Ctrl elsewhere. Not either, because on a Mac
  * Ctrl+K and Ctrl+Y delete to the end of the line and put it back.
  */

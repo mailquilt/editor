@@ -508,15 +508,35 @@ test.describe("typing inside a Block", () => {
     await expect(textOf(page, "AxB")).toBeFocused();
   });
 
-  test("Alt+Arrow keys don't move the Block", async ({ page }) => {
+  test("Alt+Arrow keys don't move the Block, or go back a page", async ({
+    page,
+  }) => {
+    // As on Windows and Linux, where Alt+← goes back a page.
+    await page.addInitScript(() => {
+      Object.defineProperty(Navigator.prototype, "platform", {
+        get: () => "Win32",
+      });
+    });
     await open(page, [[["one two", "B"], ["C"]]]);
     await textOf(page, "one two").click();
+    // Listening before the key is pressed, so the press can't come first.
+    await page.evaluate(() => {
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "ArrowLeft") {
+          Object.assign(window, { leftPrevented: event.defaultPrevented });
+        }
+      });
+    });
 
     await page.keyboard.press("Alt+ArrowDown");
     await page.keyboard.press("Alt+ArrowUp");
+    await page.keyboard.press("Alt+ArrowLeft");
 
     await expect(structure(page)).resolves.toEqual([[["one two", "B"], ["C"]]]);
     await expect(textOf(page, "one two")).toBeFocused();
+    await expect
+      .poll(() => page.evaluate(() => Reflect.get(window, "leftPrevented")))
+      .toBe(true);
   });
 
   test("on macOS, Alt+Arrow keys still move the cursor by word", async ({
@@ -754,15 +774,24 @@ test.describe("Enter on a palette item", () => {
     await expect(newBlockText(page).locator("p")).toHaveCount(1);
   });
 
-  test("with no Block selected, adds to the last Column", async ({ page }) => {
-    await open(page, [[["A"], ["B"]]]);
+  test("with no Block selected, adds to the last Column, and shows it", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ height: 500, width: 1280 });
+    const above = Array.from({ length: 10 }, (_, index) => [[`R${index}`]]);
+    await open(page, [...above, [["A"], ["B"]]]);
     await palette(page, "Text").focus();
+    await expect(blockWith(page, "B")).not.toBeInViewport();
 
     await page.keyboard.press("Enter");
 
     await expect(newBlockText(page)).toBeFocused();
+    await expect(newBlockText(page)).toBeInViewport();
     await page.keyboard.type("New");
-    await expect(structure(page)).resolves.toEqual([[["A"], ["B", "New"]]]);
+    await expect(structure(page)).resolves.toEqual([
+      ...above,
+      [["A"], ["B", "New"]],
+    ]);
   });
 });
 

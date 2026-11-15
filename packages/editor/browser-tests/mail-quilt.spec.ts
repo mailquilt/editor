@@ -189,6 +189,32 @@ test.describe("undo and redo while typing", () => {
     await expect(textBlock(page)).toHaveText("abcHello");
   });
 
+  test("keys the editor acts on don't reach the host page as well", async ({
+    page,
+  }) => {
+    await focusStartOfTextBlock(page);
+    await stopClock(page);
+    await page.keyboard.type("abc");
+    await page.evaluate(() => {
+      const heard: string[] = [];
+      Object.assign(window, { heard });
+      document.addEventListener("keydown", ({ key }) => {
+        if (key.length === 1) {
+          heard.push(key);
+        }
+      });
+    });
+
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(textBlock(page)).toHaveText("Hello");
+    await page.keyboard.press("ControlOrMeta+k");
+    await expect(linkUrlField(page)).toBeVisible();
+
+    await expect(
+      page.evaluate(() => Reflect.get(window, "heard"))
+    ).resolves.toEqual([]);
+  });
+
   test.describe("on a Mac", () => {
     test.beforeEach(async ({ page }) => {
       await page.addInitScript(() => {

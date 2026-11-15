@@ -311,6 +311,17 @@ describe("a saved language that isn't a code", () => {
     });
   });
 
+  it("can be sent back unchanged with another setting, as a whole form sends it", () => {
+    const editor = createEditor({ document: withLanguage("en_US") });
+
+    expect(
+      editor.apply({
+        settings: { language: "en_US", width: 640 },
+        type: "updateEmailSettings",
+      })
+    ).toStrictEqual({ ok: true });
+  });
+
   it("is kept by an undefined, as JSON would drop that key", () => {
     const editor = createEditor({ document: withLanguage("en_US") });
     const before = editor.getDocument().settings;
