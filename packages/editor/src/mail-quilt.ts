@@ -369,7 +369,12 @@ export class MailQuilt extends LitElement {
           ).find((button) => !button.disabled)
         : undefined;
       this.#restoringFocus = true;
-      (tool ?? block ?? view ?? rowTool ?? this.#floatingToolbar)?.focus();
+      const next = tool ?? block ?? view ?? rowTool;
+      if (next) {
+        next.focus();
+      } else {
+        this.#focusFloatingToolbar();
+      }
       this.#restoringFocus = false;
     }
     if (this.isConnected && this.shadowRoot) {
@@ -677,7 +682,7 @@ export class MailQuilt extends LitElement {
       return;
     }
     this.#select(undefined);
-    this.#floatingToolbar?.focus({ focusVisible: false } as FocusOptions);
+    this.#focusFloatingToolbar({ focusVisible: false } as FocusOptions);
   }
 
   /** Back to the tabs, with the Block still selected for what's added next. */
@@ -1074,12 +1079,19 @@ export class MailQuilt extends LitElement {
     event.preventDefault();
     this.#commitFocusedField();
     if (!this.shadowRoot?.activeElement) {
-      this.#floatingToolbar?.focus();
+      this.#focusFloatingToolbar();
     }
   }
 
-  get #floatingToolbar() {
-    return this.renderRoot.querySelector<HTMLElement>(".floating-toolbar");
+  /**
+   * Gives focus to the floating toolbar, which keeps keyboard undo working,
+   * without scrolling the page to it: in a Shell whose bottom is below the
+   * window, the toolbar is out of view.
+   */
+  #focusFloatingToolbar(options?: FocusOptions) {
+    this.renderRoot
+      .querySelector<HTMLElement>(".floating-toolbar")
+      ?.focus({ ...options, preventScroll: true });
   }
 
   /** A new render can replace the tooltip, along with everything else. */
