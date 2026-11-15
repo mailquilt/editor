@@ -1,6 +1,8 @@
 // Colors JSON and HTML for the pages that show an email's document and its
 // export. Used when the site is built and again in the browser, as people edit.
 
+import { MERGE_TAG } from "@mailquilt/core";
+
 const ESCAPES: Record<string, string> = {
   "&": "&amp;",
   "<": "&lt;",
@@ -12,7 +14,10 @@ const escapeHtml = (text: string) =>
 
 /** Merge Tags stand out, because the point is that they come through untouched. */
 const paintMergeTags = (html: string) =>
-  html.replaceAll(/\{\{[^{}]+\}\}/gu, (tag) => `<span class="t">${tag}</span>`);
+  html.replaceAll(
+    new RegExp(MERGE_TAG.source, "gu"),
+    (tag) => `<span class="t">${tag}</span>`
+  );
 
 /** A document as indented JSON, in markup that `.site-code` colors. */
 export const paintJson = (document: unknown) =>

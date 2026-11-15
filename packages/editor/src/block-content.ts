@@ -1,4 +1,4 @@
-import { blockStyles, EMAIL_LOOK } from "@mailquilt/core";
+import { blockStyles, EMAIL_LOOK, MERGE_TAG } from "@mailquilt/core";
 import type { Block } from "@mailquilt/core";
 import { css, html, nothing, unsafeCSS } from "lit";
 import { styleMap } from "lit/directives/style-map.js";
@@ -141,7 +141,7 @@ const renderImage = (
   return html`
     <div class="image-block">
       ${
-        src === undefined || src.includes("{{") || failed
+        src === undefined || MERGE_TAG.test(src) || failed
           ? html`
               <div class="image-placeholder" style=${size}>
                 ${blockIcon("image")}

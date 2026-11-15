@@ -286,7 +286,7 @@ const planInsertBlock = (
   return {
     createdId: block.id,
     ok: true,
-    operations: [{ block, columnId, index, type: "insert" }],
+    operations: [{ at: { columnId, index }, block, type: "insert" }],
   };
 };
 
@@ -301,7 +301,7 @@ const planRemoveBlock = (
   const { block, columnId, index } = position;
   return {
     ok: true,
-    operations: [{ block, columnId, index, type: "remove" }],
+    operations: [{ at: { columnId, index }, block, type: "remove" }],
   };
 };
 
@@ -361,7 +361,7 @@ const planInsertRow = (
   return {
     createdId: row.id,
     ok: true,
-    operations: [{ index, row, type: "insert" }],
+    operations: [{ at: { index }, row, type: "insert" }],
   };
 };
 
@@ -423,7 +423,7 @@ const planRemoveRow = (
   const index = document.rows.findIndex(({ id }) => id === rowId);
   const row = document.rows[index];
   return row
-    ? { ok: true, operations: [{ index, row, type: "remove" }] }
+    ? { ok: true, operations: [{ at: { index }, row, type: "remove" }] }
     : rejected(`No Row with ID "${rowId}"`);
 };
 
@@ -485,9 +485,8 @@ const planSetRowLayout = (
       nextIndex += 1;
     }
     operations.push({
+      at: { index: widths.length, rowId },
       column: { ...column, blocks: [] },
-      index: widths.length,
-      rowId,
       type: "remove",
     });
   }
@@ -496,9 +495,8 @@ const planSetRowLayout = (
     const column = kept[index];
     if (!column) {
       operations.push({
+        at: { index, rowId },
         column: newColumn(width),
-        index,
-        rowId,
         type: "insert",
       });
     } else if (column.width !== width) {

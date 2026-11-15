@@ -4,12 +4,12 @@
 //
 // They use the site's own colors: ink, greys, and one orange thing in each.
 
-const INK = "#111113";
-const ORANGE = "#d4380f";
-const WASH = "#f4f4f5";
-const LINE = "#d4d4d8";
-const SOFT = "#e4e4e7";
-const PAPER = "#ffffff";
+export const INK = "#111113";
+export const ORANGE = "#d4380f";
+export const WASH = "#f4f4f5";
+export const LINE = "#d4d4d8";
+export const SOFT = "#e4e4e7";
+export const PAPER = "#ffffff";
 
 const svg = (width: number, height: number, body: string[]) =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">${body.join("")}</svg>`;

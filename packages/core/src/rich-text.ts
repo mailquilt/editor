@@ -20,6 +20,7 @@ const MERGE_TAG_URL = new RegExp(
  * An allowlist, because email has no use for any other scheme or a relative URL.
  * Being anchored at the start also refuses what browsers would clean up into
  * `javascript:`, such as a leading space or a tab inside the scheme.
+ * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
  */
 export const isAllowedLinkHref = (href: string) =>
   /^(?:https?:|mailto:|tel:)/iu.test(href) || MERGE_TAG_URL.test(href);

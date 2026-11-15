@@ -81,7 +81,22 @@ const stop = editor.subscribe((operations) => {
 });
 ```
 
-Each Operation is a record of one thing that happened to the email: an insert, a removal, a move, or a change of properties. One Command can produce several.
+Each Operation is a record of one thing that happened to the email: an insert, a removal, a move, a change of properties, or a Column's new width. One Command can produce several.
+
+An ID at the top of an Operation always names what changed, such as `blockId` in a move. An insert or a removal carries the Block, Column or Row itself, and says where it is with `at`, as a move does with `from` and `to`:
+
+```js
+const operations = [
+  { type: "insert", at: { columnId: "c1", index: 0 }, block: newBlock },
+  {
+    type: "move",
+    blockId: "b1",
+    from: { columnId: "c1", index: 0 },
+    to: { columnId: "c2", index: 1 },
+  },
+  { type: "remove", at: { rowId: "r1", index: 1 }, column: oldColumn },
+];
+```
 
 ## Checking an email
 

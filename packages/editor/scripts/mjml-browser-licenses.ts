@@ -2,8 +2,10 @@
 // bundles into its own file, which the CDN build passes on. The bundle doesn't
 // say which those are, so they're found from MJML's build for the browser:
 // every package `mjml` can reach, less those it leaves out. That can list a
-// package it doesn't use, but never misses one. Run it when mjml-browser
-// changes version: node scripts/mjml-browser-licenses.ts
+// package it doesn't use, but never misses one. MJML's dependencies install
+// afresh, so a version, and its license text, can be newer than the one
+// bundled. Run it when mjml-browser changes version:
+// node scripts/mjml-browser-licenses.ts
 import { execFileSync } from "node:child_process";
 import {
   existsSync,

@@ -41,16 +41,14 @@ const applied = (operation: Operation) => {
 };
 
 const insert: Operation = {
+  at: { columnId: "left", index: 1 },
   block: block("new"),
-  columnId: "left",
-  index: 1,
   type: "insert",
 };
 
 const remove: Operation = {
+  at: { columnId: "left", index: 1 },
   block: block("b"),
-  columnId: "left",
-  index: 1,
   type: "remove",
 };
 
@@ -70,10 +68,10 @@ const setProps: Operation = {
 
 const newRow = { columns: [], id: "new-row", props: {} };
 
-const insertRow: Operation = { index: 0, row: newRow, type: "insert" };
+const insertRow: Operation = { at: { index: 0 }, row: newRow, type: "insert" };
 
 const removeRow: Operation = {
-  index: 0,
+  at: { index: 0 },
   row: email().rows[0] as Row,
   type: "remove",
 };
@@ -94,16 +92,14 @@ const moveRow: Operation = {
 const newColumn = { blocks: [], id: "middle", props: {}, width: 20 };
 
 const insertColumn: Operation = {
+  at: { index: 1, rowId: "row" },
   column: newColumn,
-  index: 1,
-  rowId: "row",
   type: "insert",
 };
 
 const removeColumn: Operation = {
+  at: { index: 1, rowId: "row" },
   column: email().rows[0]?.columns[1] as Column,
-  index: 1,
-  rowId: "row",
   type: "remove",
 };
 
@@ -191,12 +187,11 @@ describe("applying an Operation", () => {
       props: {},
     };
     const document = email();
-    applyOperation(document, { index: 0, row, type: "insert" });
+    applyOperation(document, { at: { index: 0 }, row, type: "insert" });
 
     applyOperation(document, {
+      at: { columnId: "inside", index: 0 },
       block: block("new"),
-      columnId: "inside",
-      index: 0,
       type: "insert",
     });
 
@@ -205,13 +200,13 @@ describe("applying an Operation", () => {
 
   it("throws for a missing Column", () => {
     expect(() =>
-      applied({ ...insert, columnId: "missing" } as Operation)
+      applied({ ...insert, at: { columnId: "missing", index: 0 } })
     ).toThrow(/missing/u);
   });
 
   it("throws for an insert into a missing Row", () => {
     expect(() =>
-      applied({ ...insertColumn, rowId: "missing" } as Operation)
+      applied({ ...insertColumn, at: { index: 0, rowId: "missing" } })
     ).toThrow(/missing/u);
   });
 
@@ -223,9 +218,9 @@ describe("applying an Operation", () => {
 
   // The same check for Rows, Columns and Blocks, so one of them.
   it("throws for a removal of a Block that isn't at its index", () => {
-    expect(() => applied({ ...remove, index: 0 } as Operation)).toThrow(
-      /"b" at index 0/u
-    );
+    expect(() =>
+      applied({ ...remove, at: { columnId: "left", index: 0 } })
+    ).toThrow(/"b" at index 0/u);
   });
 
   it("throws for a set properties on a missing Block", () => {

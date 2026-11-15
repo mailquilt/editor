@@ -351,7 +351,10 @@ const editingKeys = Object.fromEntries(
   })
 );
 
-/** Formatting is its own undo step, unlike the typing around it. */
+/**
+ * Formatting is its own undo step, unlike the typing around it. A line break
+ * counts as formatting, as it's added from the format bar too.
+ */
 const changesFormatting = ({ steps }: Transaction) =>
   steps.some(
     (step) =>

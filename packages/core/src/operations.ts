@@ -11,11 +11,14 @@ interface BlockPosition {
   index: number;
 }
 
-/** What an insert or remove acts on, and where it goes in its list. */
+/**
+ * What an insert or remove acts on, and `at`, where it is in its list: like a
+ * move's `from` and `to`. So an ID outside `at` always names what changed.
+ */
 type Placement =
-  | ({ block: Block } & BlockPosition)
-  | { column: Column; index: number; rowId: string }
-  | { index: number; row: Row };
+  | { at: BlockPosition; block: Block }
+  | { at: { index: number; rowId: string }; column: Column }
+  | { at: { index: number }; row: Row };
 
 /** What a setProps changes. */
 export type PropsTarget =
@@ -114,11 +117,11 @@ const resolvePlacement = (
   return "column" in placement
     ? {
         item: placement.column,
-        list: getRow(document, placement.rowId).columns,
+        list: getRow(document, placement.at.rowId).columns,
       }
     : {
         item: placement.block,
-        list: getColumn(document, placement.columnId).blocks,
+        list: getColumn(document, placement.at.columnId).blocks,
       };
 };
 
@@ -131,16 +134,16 @@ export const applyOperation = (
     case "insert": {
       const { item, list } = resolvePlacement(document, operation);
       // A copy, because later Operations change this item in place.
-      list.splice(operation.index, 0, structuredClone(item));
+      list.splice(operation.at.index, 0, structuredClone(item));
       break;
     }
     case "remove": {
       const { item, list } = resolvePlacement(document, operation);
       // As for a move: a stale index would otherwise remove another item.
-      if (list[operation.index]?.id !== item.id) {
-        throw new Error(`No "${item.id}" at index ${operation.index}`);
+      if (list[operation.at.index]?.id !== item.id) {
+        throw new Error(`No "${item.id}" at index ${operation.at.index}`);
       }
-      list.splice(operation.index, 1);
+      list.splice(operation.at.index, 1);
       break;
     }
     case "move": {

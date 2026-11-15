@@ -64,7 +64,18 @@ export const pixelField = (
 /** Wider than any inbox shows, so a mistyped width is refused. */
 const MAX_EMAIL_WIDTH = 1200;
 
-export const INVALID_COLOR = "Use a color such as #ff0000, or rgb(255, 0, 0).";
+const INVALID_COLOR = "Use a color such as #ff0000, or rgb(255, 0, 0).";
+
+export const colorField = (
+  fallback?: string,
+  { invalidMessage = INVALID_COLOR, key = "color", label = "Color" } = {}
+): SettingsField => ({
+  default: fallback,
+  invalidMessage,
+  key,
+  label,
+  type: "color",
+});
 
 /** Formats MJML accepts, so that an email that loads can also be exported. */
 export const colorSchema = v.pipe(
@@ -148,18 +159,18 @@ export const newLanguageSettingsSchema = v.strictObject({
   ),
 });
 
+const BACKGROUND_COLOR_FIELD = colorField(undefined, {
+  key: "backgroundColor",
+  label: "Background color",
+});
+
 /**
  * The settings panel's fields for the email.
  * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
  */
 export const EMAIL_SETTINGS_FIELDS: readonly SettingsField[] = [
   pixelField("width", "Width", undefined, MAX_EMAIL_WIDTH),
-  {
-    invalidMessage: INVALID_COLOR,
-    key: "backgroundColor",
-    label: "Background color",
-    type: "color",
-  },
+  BACKGROUND_COLOR_FIELD,
   {
     invalidMessage: "Choose a font from the list.",
     key: "fontFamily",
@@ -199,12 +210,7 @@ export const rowPropsSchema = v.strictObject({
  * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
  */
 export const ROW_SETTINGS_FIELDS: readonly SettingsField[] = [
-  {
-    invalidMessage: INVALID_COLOR,
-    key: "backgroundColor",
-    label: "Background color",
-    type: "color",
-  },
+  BACKGROUND_COLOR_FIELD,
 ];
 
 /**

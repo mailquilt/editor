@@ -1,7 +1,6 @@
 import {
   blockLabel,
   createEditor,
-  isAllowedLinkHref,
   isSameDocument,
   loadDocument,
 } from "@mailquilt/core";
@@ -37,7 +36,7 @@ import {
   renderRows,
 } from "./canvas.js";
 import type { CanvasEvents, CanvasState } from "./canvas.js";
-import { formatBarStyles } from "./format-bar.js";
+import { createLinkForm, formatBarStyles } from "./format-bar.js";
 import type { FormatBarEvents } from "./format-bar.js";
 import { editorStyles } from "./mail-quilt-styles.js";
 import {
@@ -126,8 +125,17 @@ export class MailQuilt extends LitElement {
   #rendered: BlocksDocument | undefined;
   /** Image URLs that didn't load, which the canvas stops trying to show. */
   readonly #failedImages = new Set<string>();
-  /** Set while the link field is open. */
-  #linkForm: { refusals: number } | undefined;
+  readonly #linkForm = createLinkForm({
+    editingText: () => this.#editingText,
+    field: async () => {
+      await this.updateComplete;
+      return this.renderRoot.querySelector<HTMLInputElement>(
+        ".link-form input"
+      );
+    },
+    requestUpdate: () => this.requestUpdate(),
+    view: () => this.#selectedView,
+  });
   readonly #preview = createPreview({
     dialog: () => this.renderRoot.querySelector<HTMLDialogElement>(".preview"),
     exportHtml: () => this.exportHtml(),
@@ -161,13 +169,10 @@ export class MailQuilt extends LitElement {
   };
 
   readonly #formatBarEvents: FormatBarEvents = {
+    ...this.#linkForm.events,
     onBack: () => this.#selectedView?.focus(),
-    onCancelLink: () => this.#cancelLinkForm(),
     onControlMousedown: (event) => this.#onControlMousedown(event),
     onLineBreak: () => this.#selectedView?.insertLineBreak(),
-    onOpenLinkForm: () => this.#openLinkForm(),
-    onRemoveLink: () => this.#removeLink(),
-    onSubmitLink: (href) => this.#submitLink(href),
     onToggleMark: (mark) => this.#selectedView?.toggleMark(mark),
   };
 
@@ -272,7 +277,7 @@ export class MailQuilt extends LitElement {
     this.#dragging = undefined;
     this.#tooltips?.tooltips.destroy();
     this.#tooltips = undefined;
-    this.#destroyViews();
+    this.#reset();
   }
 
   protected override willUpdate() {
@@ -303,14 +308,18 @@ export class MailQuilt extends LitElement {
         );
       }
     }
-    this.#removeViewsExcept(new Set(blocks.map(({ id }) => id)));
+    const blockIds = new Set(blocks.map(({ id }) => id));
+    this.#removeViewsExcept(blockIds);
     for (const view of this.#views.values()) {
       view.setLang(this.#emailLang);
     }
+    // What was selected may have been removed.
     const rows = this.#rendered?.rows ?? [];
     if (
-      this.#selectedRowId !== undefined &&
-      !rows.some(({ id }) => id === this.#selectedRowId)
+      (this.#selectedBlockId !== undefined &&
+        !blockIds.has(this.#selectedBlockId)) ||
+      (this.#selectedRowId !== undefined &&
+        !rows.some(({ id }) => id === this.#selectedRowId))
     ) {
       this.#select(undefined);
     }
@@ -443,7 +452,7 @@ export class MailQuilt extends LitElement {
       editingText: this.#editingText,
       emailLang: this.#emailLang,
       failedImages: this.#failedImages,
-      formatBar: { formats: this.#formats, linkForm: this.#linkForm },
+      formatBar: { formats: this.#formats, linkForm: this.#linkForm.state },
       selectedBlockId: this.#selectedBlockId,
       selectedRowId: this.#selectedRowId,
       textOf: (blockId) => this.#views.get(blockId)?.element,
@@ -533,7 +542,7 @@ export class MailQuilt extends LitElement {
     this.#selectedRowId =
       target && "rowId" in target ? target.rowId : undefined;
     this.#showProperties = target !== undefined;
-    this.#linkForm = undefined;
+    this.#linkForm.close();
     if (blockId === undefined) {
       this.#editingText = false;
     }
@@ -564,51 +573,6 @@ export class MailQuilt extends LitElement {
       this.#formats = formats;
       this.requestUpdate();
     }
-  }
-
-  /** From the Block itself too: its text takes focus, and shows the format bar. */
-  async #openLinkForm() {
-    const view = this.#selectedView;
-    if (!view) {
-      return;
-    }
-    if (!this.#editingText) {
-      view.focus();
-    }
-    this.#linkForm = { refusals: 0 };
-    this.requestUpdate();
-    await this.updateComplete;
-    const input =
-      this.renderRoot.querySelector<HTMLInputElement>(".link-form input");
-    input?.focus();
-    input?.select();
-  }
-
-  #closeLinkForm() {
-    if (this.#linkForm) {
-      this.#linkForm = undefined;
-      this.requestUpdate();
-    }
-  }
-
-  #cancelLinkForm() {
-    this.#closeLinkForm();
-    this.#selectedView?.focus();
-  }
-
-  #removeLink() {
-    this.#closeLinkForm();
-    this.#selectedView?.removeLink();
-  }
-
-  #submitLink(href: string) {
-    if (!isAllowedLinkHref(href)) {
-      this.#linkForm = { refusals: (this.#linkForm?.refusals ?? 0) + 1 };
-      this.requestUpdate();
-      return;
-    }
-    this.#closeLinkForm();
-    this.#selectedView?.setLink(href);
   }
 
   async #openPreview({ currentTarget }: Event) {
@@ -781,7 +745,7 @@ export class MailQuilt extends LitElement {
 
   /**
    * Adds a Block and selects it, ready to type in if it has text. By default it
-   * goes after the selected Block, or else at the end of the last Column.
+   * goes where `#defaultBlockPlace` says.
    */
   async #addBlock(
     blockType: string,
@@ -898,7 +862,7 @@ export class MailQuilt extends LitElement {
       // page may use it for its own search.
       event.preventDefault();
       event.stopPropagation();
-      this.#openLinkForm();
+      this.#linkForm.open();
     }
   }
 
@@ -1169,7 +1133,7 @@ export class MailQuilt extends LitElement {
       return;
     }
     // The change can move the selection the link field would apply to.
-    this.#closeLinkForm();
+    this.#linkForm.close();
     // What was refused may be fine now, and the fields show what's come back.
     this.#drafts.clear();
     this.#announceHistoryStep(step, moved);
@@ -1211,7 +1175,7 @@ export class MailQuilt extends LitElement {
     // A URL that failed before may load now, as its image may have been
     // uploading, or the connection down.
     this.#failedImages.clear();
-    this.#destroyViews();
+    this.#reset();
     this.#editor = document && createEditor({ document });
     this.requestUpdate();
   }
@@ -1250,15 +1214,10 @@ export class MailQuilt extends LitElement {
         this.#views.delete(blockId);
       }
     }
-    if (
-      this.#selectedBlockId !== undefined &&
-      !blockIds.has(this.#selectedBlockId)
-    ) {
-      this.#select(undefined);
-    }
   }
 
-  #destroyViews() {
+  /** Destroys the text views, and the selection and Preview that describe them. */
+  #reset() {
     for (const view of this.#views.values()) {
       view.destroy();
     }

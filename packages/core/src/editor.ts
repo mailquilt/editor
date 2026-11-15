@@ -77,8 +77,9 @@ export const createEditor = ({
     current = next;
   };
 
-  // A listener can apply a Command of its own. Its change waits until every
-  // listener has heard of the one before, so each hears them in order.
+  // A listener can apply a Command of its own. Its change happens at once, but
+  // listeners hear of it only after every listener has heard of the one before,
+  // so each hears them in order.
   const unheard: Operation[][] = [];
   let notifying = false;
 

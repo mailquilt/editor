@@ -77,19 +77,7 @@
 }
 
 .site-wrap {
-  padding-inline: 1.25rem;
-}
-
-@media (min-width: 48rem) {
-  .site-wrap {
-    padding-inline: 2rem;
-  }
-}
-
-@media (min-width: 60rem) {
-  .site-wrap {
-    padding-inline: 3rem;
-  }
+  padding-inline: var(--site-gutter);
 }
 
 /* Copy on one side, the thing it describes on the other. */
@@ -144,8 +132,7 @@
   margin-top: 1.75rem;
 }
 
-.site-h2 + p,
-.site-h2 + .site-lead {
+.site-h2 + p {
   margin-top: 1.25rem;
 }
 
@@ -351,7 +338,7 @@
 }
 
 .site-columns > * {
-  padding: 2rem 1.25rem;
+  padding: 2rem var(--site-gutter);
   border-bottom: 1px solid var(--blume-border);
 }
 
@@ -361,7 +348,7 @@
 
 @media (min-width: 48rem) {
   .site-columns > * {
-    padding: 2.25rem 2rem;
+    padding-block: 2.25rem;
   }
 }
 
@@ -371,7 +358,7 @@
   }
 
   .site-columns > * {
-    padding: 2.75rem 3rem 3rem;
+    padding-block: 2.75rem 3rem;
     border-bottom: 0;
     border-inline-start: 1px solid var(--blume-border);
   }
@@ -525,18 +512,12 @@
 }
 
 .site-finale-copy {
-  padding: 4rem 1.25rem;
+  padding: 4rem var(--site-gutter);
 }
 
 /* Only where there's room for it beside the words. */
 .site-finale-art {
   display: none;
-}
-
-@media (min-width: 48rem) {
-  .site-finale-copy {
-    padding-inline: 2rem;
-  }
 }
 
 @media (min-width: 60rem) {
@@ -545,7 +526,7 @@
   }
 
   .site-finale-copy {
-    padding: 6.5rem 3rem;
+    padding-block: 6.5rem;
   }
 
   .site-finale-art {
@@ -595,11 +576,11 @@
 
 /* The surface's color, so the envelope cuts a gap in the slot beneath it. */
 .site-mark-gap {
-  fill: var(--site-mark-surface, var(--blume-background));
+  fill: var(--blume-background);
 }
 
-.site-finale-art {
-  --site-mark-surface: var(--site-surface);
+.site-finale-art .site-mark-gap {
+  fill: var(--site-surface);
 }
 
 /* A short page still fills the window, so the grid's rails reach the footer. */
@@ -633,8 +614,4 @@ body:has(.site-page > .site-frame) .site-page {
   max-width: 14em;
   font-size: clamp(2.375rem, 1.5rem + 3.6vw, 4.25rem);
   line-height: 0.98;
-}
-
-.site-prose > * + * {
-  margin-top: 1em;
 }

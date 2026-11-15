@@ -127,7 +127,7 @@ export const settingsPanelStyles = css`
         var(--mq-color-border-strong) 45%,
         var(--mq-color-border)
       );
-    border-radius: 8px;
+    border-radius: var(--mq-radius-small);
     box-shadow: 0 1px 2px rgb(22 24 29 / 4%);
     color: var(--mq-color-text);
     height: 32px;
@@ -233,7 +233,7 @@ export const settingsPanelStyles = css`
   .settings input[type="color"] {
     background: none;
     border: 0;
-    border-radius: 6px;
+    border-radius: var(--mq-radius-small);
     box-shadow: none;
     cursor: pointer;
     height: 24px;
@@ -251,13 +251,13 @@ export const settingsPanelStyles = css`
 
   .settings input[type="color"]::-webkit-color-swatch {
     border: 0;
-    border-radius: 5px;
+    border-radius: var(--mq-radius-small);
     box-shadow: inset 0 0 0 1px rgb(0 0 0 / 12%);
   }
 
   .settings input[type="color"]::-moz-color-swatch {
     border: 0;
-    border-radius: 5px;
+    border-radius: var(--mq-radius-small);
     box-shadow: inset 0 0 0 1px rgb(0 0 0 / 12%);
   }
 `;
