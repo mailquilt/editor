@@ -45,6 +45,7 @@ export default defineConfig({
               "/docs/quick-start",
               "/docs/packages",
               "/docs/let-customers-design-emails",
+              "/docs/ai-agents",
             ],
             label: "Get started",
           },

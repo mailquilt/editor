@@ -29,6 +29,16 @@ import "@mailquilt/editor"; // registers <mail-quilt>, through your bundler
 
 The docs, with a quick start for a bundler, a CDN and React, are at [editor.mailquilt.com](https://editor.mailquilt.com/docs). Their source is in [`apps/docs/docs`](apps/docs/docs).
 
+### With a coding agent
+
+Install the agent skill, and Claude Code, Cursor, Codex and other agents know which package to pick, the order of work and the mistakes to avoid:
+
+```sh
+npx skills add mailquilt/editor --skill mail-quilt
+```
+
+[AI coding agents](https://editor.mailquilt.com/docs/ai-agents) says what it adds, and how to point an agent at the Markdown docs.
+
 ## Packages
 
 | Package | What it is |

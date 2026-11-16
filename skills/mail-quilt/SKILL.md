@@ -1,6 +1,6 @@
 ---
 name: mail-quilt
-description: "Build email design into a web app with Mail Quilt: add its drag-and-drop email editor (<mail-quilt>, the ready-made <mail-quilt-shell>, or the React components), save and load emails as JSON, export or render them as HTML, change them in code, and lay out, theme or restyle the editor. Use whenever a task involves Mail Quilt or its packages (@mailquilt/editor, @mailquilt/react, @mailquilt/core, @mailquilt/renderer), or adding an email editor or email builder to an app that uses them."
+description: "Add Mail Quilt's drag-and-drop email editor to a web app (<mail-quilt>, the ready-made <mail-quilt-shell>, or the React components), save and load emails as JSON, export or render them as HTML, change them in code, and lay out, theme or restyle the editor. Use whenever a task involves Mail Quilt or its packages (@mailquilt/editor, @mailquilt/react, @mailquilt/core, @mailquilt/renderer), or adding an email editor or email builder to an app that uses them."
 ---
 
 # Mail Quilt
