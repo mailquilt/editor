@@ -49,7 +49,12 @@ export default defineConfig({
             label: "Get started",
           },
           {
-            items: ["/docs/html", "/docs/vite", "/docs/react", "/docs/nextjs"],
+            items: [
+              "/docs/html",
+              "/docs/react",
+              "/docs/nextjs",
+              "/docs/other-frameworks",
+            ],
             label: "Frameworks",
           },
           {
@@ -91,6 +96,7 @@ export default defineConfig({
       { label: "Roadmap", path: "/roadmap" },
     ],
   },
+  redirects: [{ from: "/docs/vite", status: 301, to: "/docs/quick-start" }],
   seo: {
     og: { image: SOCIAL_IMAGE.path },
     // Who publishes the site, cited as publisher on every page.

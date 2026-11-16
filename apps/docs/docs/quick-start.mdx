@@ -1,19 +1,32 @@
 ---
 title: Quick start
-description: Add the Mail Quilt email editor to your app. Pick your setup, from a plain HTML page to React and Next.js, and get right the two things every setup needs.
+description: Add the Mail Quilt email editor to an app with a bundler, save and export emails, and find the page for your setup, from a plain HTML page to React and Next.js.
 seo:
   title: "Quick start: add a drag-and-drop email editor to your app"
 ---
 
-The editor is a Web Component, so it works in any framework, or none. Pick the page for how your app loads JavaScript. Each one has working code that does the same four things: it opens an email, saves every change, shows the reason if the editor refuses an email, and exports the email as HTML. Mail Quilt's tests install each one against the built packages and run it in a browser, so the code works as written.
+The editor is a Web Component, so it works in any framework, or none. In an app with a bundler, install it and import it, and `<mail-quilt>` works like any other HTML element. Mail Quilt's tests build this code with Vite and run it in a browser, so it works as written.
+
+```bash
+npm install @mailquilt/editor
+```
+
+<include meta='title="index.html"'>./_quick-start/plain-js/index.html</include>
+
+<include meta='title="main.js"'>./_quick-start/plain-js/main.js</include>
+
+Importing `@mailquilt/editor` registers the `<mail-quilt>` element. MJML, the library that turns an email into HTML, is large, so it only loads the first time someone opens Preview or you call `exportHtml()`.
+
+The page opens an email, saves every change in the browser, shows the reason if the editor refuses an email, and exports the email as HTML. `starterEmail` is the email to open when nothing is saved yet. Use one your app already has, or copy the [example email](./document-format#example). In your app, save each email to your server instead, as [Save emails to your server](./save-emails) shows.
+
+If the editor will be a page of its own, the [Shell](./shell) gives you that page ready-made: the editor with a header, Export and Import buttons, messages and saving in the browser. Importing `@mailquilt/editor` registers it too.
+
+## Other setups
 
 <CardGroup cols={2}>
   <Card title="HTML, no build step" href="/docs/html">
     A plain HTML page, or a Rails, Laravel or Django template, with the CDN
     build.
-  </Card>
-  <Card title="JavaScript with Vite" href="/docs/vite">
-    An app with a bundler, in any framework or none.
   </Card>
   <Card title="React" href="/docs/react">
     The `MailQuilt` and `MailQuiltShell` components, in a React 19 app.
@@ -21,9 +34,10 @@ The editor is a Web Component, so it works in any framework, or none. Pick the p
   <Card title="Next.js" href="/docs/nextjs">
     The editor in a Client Component, and the HTML from a Route Handler.
   </Card>
+  <Card title="Vue, Angular and Svelte" href="/docs/other-frameworks">
+    How each one passes the email to the element and hears its events.
+  </Card>
 </CardGroup>
-
-If the editor will be a page of its own, the [Shell](./shell) gives you that page ready-made: the editor with a header, Export and Import buttons, messages and saving in the browser.
 
 ## Two things to get right
 
