@@ -2,7 +2,7 @@ import { defineConfig } from "blume";
 import { filesystem } from "blume/sources";
 
 import { codeDark, codeLight } from "./site/code-themes";
-import { DESCRIPTION, REPO, SITE_URL, SOCIAL_IMAGE } from "./site/project";
+import { DESCRIPTION, NPM, REPO, SITE_URL, SOCIAL_IMAGE } from "./site/project";
 
 export default defineConfig({
   agents: {
@@ -75,7 +75,20 @@ export default defineConfig({
       { label: "Roadmap", path: "/roadmap" },
     ],
   },
-  seo: { og: { image: SOCIAL_IMAGE.path } },
+  seo: {
+    og: { image: SOCIAL_IMAGE.path },
+    // Who publishes the site, cited as publisher on every page.
+    organization: {
+      logo: "/logo.svg",
+      sameAs: ["https://github.com/mailquilt"],
+    },
+    // What Mail Quilt is, on the home page: a free, MIT-licensed library.
+    software: {
+      license: `${REPO}/blob/main/LICENSE`,
+      price: 0,
+      sameAs: [REPO, NPM],
+    },
+  },
   theme: {
     // Blume's own chrome stays ink and grey. The logo's orange is added by
     // hand in theme.css, where it marks one thing at a time.
