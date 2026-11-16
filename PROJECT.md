@@ -289,7 +289,7 @@ Effect isn't used in the published packages, and may be reconsidered for the CLI
 - Merge Tags typed into text and links, kept through editing and rendering, with any `&`, `<`, `>` or `"` in them escaped
 - Save and load as JSON
 - Preview of the real exported HTML, in a sandboxed iframe
-- HTML export, tested in Gmail and Apple Mail
+- HTML export, tested in Gmail, Apple Mail, Outlook and other major email clients
 - Theme tokens to match the editor to the host app
 - The Shell: a ready-made editor page with Import, Export and messages
 - The docs and the Playground
