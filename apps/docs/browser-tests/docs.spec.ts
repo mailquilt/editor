@@ -221,6 +221,8 @@ test("every page's links and assets resolve", async ({
   request,
 }) => {
   test.skip(browserName !== "chromium", SAME_IN_EVERY_BROWSER);
+  // It opens every page in a tab of its own, which ran past 30 seconds in CI.
+  test.slow();
   const { origin } = new URL(baseURL as string);
   const failedAssets: string[] = [];
   context.on("response", (response) => {
