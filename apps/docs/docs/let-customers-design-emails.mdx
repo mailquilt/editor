@@ -1,0 +1,60 @@
+---
+title: Let customers design emails
+description: How the Mail Quilt packages fit an app whose customers design the emails it sends for them, from where the editor goes to Merge Tags, starting emails and rendering at send time.
+seo:
+  title: "Let your customers design emails in your SaaS app"
+---
+
+If your app sends email for its customers, such as receipts, reminders or newsletters, sooner or later they'll want to design those emails themselves. This page shows how Mail Quilt fits that: where the editor goes, where each email is kept, how Merge Tags reach the service that sends, and what to tell customers the editor can't do yet.
+
+## How the pieces fit
+
+1. **A customer designs the email** in the editor, on a page of your app.
+2. **Your app keeps it.** After every change, the editor hands your app the email as a JSON document. Save it with the rest of the customer's data. Mail Quilt stores nothing and runs no server.
+3. **Your server makes the HTML** from the JSON when it's time to send, with the [renderer](./render-on-a-server).
+4. **Your sending service fills in the Merge Tags** and sends it.
+
+Mail Quilt adds no service to that path. There's no account or API key to set up, and the packages run in your app and on your server.
+
+## Put the editor in your app
+
+Choose the [Shell](./shell) for a whole editor page, with Export and Import buttons and messages, or put the `<mail-quilt>` editor in a page of your own. [Design your editor page](./design-your-editor-page#shell-or-your-own-page) helps you choose.
+
+- **Make it look like your app.** The editor's colors, font, spacing and corners are [theme tokens](./theme-tokens), so customers see your brand around the email. The email itself keeps the colors and font the customer chose for it.
+- **Give it room.** Editing needs the editor to be at least 640 pixels wide. On a phone, customers see a notice and can still preview the email. The [width](./design-your-editor-page#width) section has the details.
+- **It works from the keyboard.** Anything a customer can do by dragging, they can also do from the keyboard. [Keyboard and screen readers](./keyboard) lists the keys and what a screen reader announces.
+
+## Keep each email with the customer
+
+Save the JSON from the editor's change event, keyed however your app keys a customer's emails. The [quick start](./quick-start) shows the code, and the [document format](./document-format) page describes the JSON.
+
+- **Upgrading doesn't strand saved emails.** Each email records the version that saved it, and a newer Mail Quilt brings an older email up to date when it loads it.
+- **The editor refuses what it can't trust.** Given an email it can't read, it changes nothing and tells your app why, so an auto-save can't replace a customer's email with a guess.
+
+## Give customers somewhere to start
+
+Mail Quilt has no template library, so the starting emails are yours to make, which also means they can match your app. Design each one in the [Playground](/playground), or in a [Shell](./shell) in your app, and keep what its Export JSON button gives you. When a customer creates an email, pass a starting email to the editor as its `value`.
+
+To make starting emails in code instead, such as one per customer with their name already in it, use [Commands](./change-emails-in-code) from the core package.
+
+## Merge Tags
+
+Customers type Merge Tags such as `{{first_name}}` anywhere in text, and at the start of a link or image URL, such as `{{unsubscribe_url}}`. Mail Quilt keeps them in the HTML exactly as typed, so the service that sends your email can fill them in.
+
+- **Tell customers which tags work.** Mail Quilt doesn't check a tag's name, so it can't warn a customer about a tag your sending service doesn't know.
+- **Keep tags to names.** An `&`, `<` or `>` inside a tag is escaped, as [Merge Tags](./document-format#merge-tags) explains, so your sending service would see the escaped text.
+
+## Images
+
+Customers add an image by its URL, which starts with `https:` or `http:`, or with a Merge Tag. There's no upload in the editor yet, so customers need their images hosted somewhere, such as storage your app already provides.
+
+## Render at send time
+
+Keep the JSON as the email, and make the HTML when you send, with `renderEmail()` from `@mailquilt/renderer` on your server. It runs in Node 22 or later and loads no editor code. Rendering at send time means each email is rendered by the renderer you have installed that day, and your server never trusts HTML that came from a browser. [Render on a server](./render-on-a-server) has the code, and what happens when the renderer refuses an email.
+
+## Before you offer it to customers
+
+- **The editor has six Blocks:** Text, Heading, Image, Button, Divider and Spacer, in Rows of one to four Columns.
+- **Mail Quilt is at version `0.x`,** so its API can still change between releases. Saved emails are brought up to date when they load.
+- **Classic Outlook for Windows shows the HTML with a few limits,** such as black-and-white emoji. [Tested email clients](./email-clients) lists every client it was checked in.
+- **One person builds Mail Quilt,** in the open. [Why it exists](/why) says what that means for the roadmap.

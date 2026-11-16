@@ -56,6 +56,7 @@ export default defineConfig({
               "/docs/keyboard",
               "/docs/render-on-a-server",
               "/docs/change-emails-in-code",
+              "/docs/let-customers-design-emails",
             ],
             label: "Guides",
           },
