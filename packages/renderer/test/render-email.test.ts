@@ -197,7 +197,7 @@ describe(renderEmail, () => {
     );
 
     expect(html).toContain(
-      '<p style="margin:0;word-break:break-word;overflow-wrap:anywhere">&nbsp;a &nbsp;&nbsp;b <strong>&nbsp;c</strong><br />&nbsp;d</p>'
+      '<p style="margin:0;word-break:break-word;overflow-wrap:anywhere;line-height:24px;mso-line-height-rule:exactly">&nbsp;a &nbsp;&nbsp;b <strong>&nbsp;c</strong><br />&nbsp;d</p>'
     );
     expect(html).not.toContain("pre-wrap");
   });
@@ -223,7 +223,7 @@ describe(renderEmail, () => {
     );
 
     expect(html).toContain(
-      '<p style="margin:0;word-break:break-word;overflow-wrap:anywhere">Plain, <strong>bold, </strong><em>italic, </em><u>underlined</u><br /><a href="{{cta_url}}" target="_blank" style="color:#000000;text-decoration:underline"><strong><em>a bold italic link</em></strong></a></p>'
+      '<p style="margin:0;word-break:break-word;overflow-wrap:anywhere;line-height:24px;mso-line-height-rule:exactly">Plain, <strong>bold, </strong><em>italic, </em><u>underlined</u><br /><a href="{{cta_url}}" target="_blank" style="color:#000000;text-decoration:underline"><strong><em>a bold italic link</em></strong></a></p>'
     );
   });
 
@@ -235,6 +235,19 @@ describe(renderEmail, () => {
     await expect(renderEmail(email)).resolves.toContain(
       '<a href="https://x.test" target="_blank" style="color:#ff0000;text-decoration:underline">'
     );
+  });
+
+  it("gives text an exact line height in pixels, as classic Outlook draws thin lines under text with 1.5", async () => {
+    const email = emailWithText("Hello");
+    const block = email.rows[0]?.columns[0]?.blocks[0] as Block;
+    block.props = { ...block.props, fontSize: 15 };
+    const html = await renderEmail(email);
+
+    expect(html).toContain(
+      '<p style="margin:0;word-break:break-word;overflow-wrap:anywhere;line-height:23px;mso-line-height-rule:exactly">Hello</p>'
+    );
+    expect(html).toMatch(/<div style="[^"]*line-height:23px;/u);
+    expect(html).not.toContain("line-height:1.5");
   });
 
   it("escapes a link URL so it can't become markup", async () => {
@@ -290,7 +303,7 @@ describe(renderEmail, () => {
     );
 
     expect(html).toContain(
-      '<p style="margin:0;word-break:break-word;overflow-wrap:anywhere">a<br />b</p>'
+      '<p style="margin:0;word-break:break-word;overflow-wrap:anywhere;line-height:24px;mso-line-height-rule:exactly">a<br />b</p>'
     );
   });
 

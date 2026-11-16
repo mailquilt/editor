@@ -12,6 +12,7 @@ When Columns share a Row, the renderer gives each one its desktop width inline, 
 
 - **`mj-group`.** MJML's own way to put widths inline, but its Columns never stack, so 3 and 4 Columns would be cramped on every phone.
 - **A `max-width` in percent.** It needs no pixel sum, but in a client with no media queries a phone would get the desktop layout shrunk, rather than Columns wrapping at a readable width.
+- **Fab Four widths.** `min-width` in pixels with `width:calc((480px - 100%) * 480)` would also fill a phone in clients that drop `<style>`. In Email on Acid test `6afadc9bcf62b7761e853fc2`, Outlook.com, Outlook for Mac and Web.de in Firefox stacked those Columns on a desktop, where the inline `max-width` keeps them side by side.
 - **Documenting the limit.** No code, but GMX and Web.de are Germany's largest webmail clients.
 
 ## Consequences

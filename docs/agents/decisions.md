@@ -46,6 +46,8 @@ A PR that changes one of these says so, gives the reason and updates this page.
 - MJML is given `fonts: {}`, so an exported email never loads web fonts. (#52)
 - The renderer writes MJML as strings, escaping in one place. It meets the code standard as it is. (ADR 0004)
 - Columns that share a Row get their desktop width inline, added to MJML's HTML after it renders, so clients that drop media queries keep them side by side. (#92, ADR 0005)
+- Columns don't use the Fab Four `calc()` widths. Outlook.com, Outlook for Mac and Web.de in Firefox stacked them on a desktop. (#92, ADR 0005)
+- Text and Headings get their line height in pixels, 1.5 times the font size rounded up, with `mso-line-height-rule:exactly`. With 1.5, classic Outlook drew thin lines under text. (#95)
 - Any `&`, `<`, `>` or `"` inside a Merge Tag is escaped, and the docs say so. Tags should be plain names. (#53, #81)
 - An Image in a Column narrower than its padding gets MJML's own negative width. Only very narrow emails reach it. (#36)
 

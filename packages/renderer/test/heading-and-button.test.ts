@@ -77,6 +77,17 @@ describe("a Heading Block", () => {
     expect(html).toMatch(/<p style="[^"]*font-size:32px[^"]*">/u);
   });
 
+  it("has an exact line height in pixels, as classic Outlook needs", async () => {
+    const html = await renderEmail(
+      emailWith(heading({ content: richText([text("Hi")]), level: 3 }))
+    );
+
+    expect(html).toMatch(
+      /<h3 style="[^"]*;line-height:30px;mso-line-height-rule:exactly;[^"]*">Hi<\/h3>/u
+    );
+    expect(html).not.toContain("line-height:1.5");
+  });
+
   it("colors a link as the Heading", async () => {
     const link = { attrs: { href: "https://x.test" }, type: "link" };
     const html = await renderEmail(

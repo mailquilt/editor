@@ -36,6 +36,14 @@ const keepSpaces = (text: string, afterSpace: boolean) =>
  */
 const TEXT_STYLE = "margin:0;word-break:break-word;overflow-wrap:anywhere";
 
+/**
+ * A text's line height in pixels, 1.5 times its font size rounded up, which the
+ * canvas shows as 1.5. Classic Outlook draws a thin line under text whose line
+ * height is 1.5, and squeezes its lines (#95).
+ */
+const exactLineHeight = (fontSize: string = EMAIL_LOOK.fontSize) =>
+  `${Math.ceil(Number(fontSize.replace("px", "")) * Number(EMAIL_LOOK.lineHeight))}px`;
+
 const MARK_TAGS = {
   bold: "strong",
   italic: "em",
@@ -117,13 +125,17 @@ const inlineToHtml = (
 const endsWithoutText = (inline: RichTextParagraph["content"] = []) =>
   inline.at(-1)?.type !== "text";
 
-const richTextToHtml = ({ content }: RichTextDocument, linkColor: string) =>
+const richTextToHtml = (
+  { content }: RichTextDocument,
+  linkColor: string,
+  lineHeight: string
+) =>
   content
     .map(({ content: inline }) => {
       const html = inlineToHtml(linkColor, inline);
       // A last empty line takes up space on the canvas, but a <br /> at the end
       // of a paragraph doesn't make one on its own. Nor does an empty paragraph.
-      return `<p style="${TEXT_STYLE}">${html}${endsWithoutText(inline) ? "<br />" : ""}</p>`;
+      return `<p style="${TEXT_STYLE};line-height:${lineHeight};mso-line-height-rule:exactly">${html}${endsWithoutText(inline) ? "<br />" : ""}</p>`;
     })
     .join("");
 
@@ -152,7 +164,8 @@ const hasText = ({ content }: RichTextDocument) =>
 const headingToHtml = (
   block: Block,
   fontFamily: string,
-  blockCss: Record<string, string>
+  blockCss: Record<string, string>,
+  lineHeight: string
 ) => {
   const { content, level } = block.props as unknown as {
     content: RichTextDocument;
@@ -167,7 +180,8 @@ const headingToHtml = (
   const tag = hasText(content) ? `h${level}` : "p";
   const styles = Object.entries({
     "font-family": fontFamily,
-    "line-height": EMAIL_LOOK.lineHeight,
+    "line-height": lineHeight,
+    "mso-line-height-rule": "exactly",
     ...blockCss,
   })
     .map(([name, value]) => `${name}:${escapeAttribute(value)}`)
@@ -183,10 +197,12 @@ const blockToMjml = (block: Block, fontFamily: string) => {
   const attributes = mjmlAttributes(blockCss);
   switch (block.type) {
     case "text": {
-      return `<mj-text${attributes}>${richTextToHtml(block.props.content as RichTextDocument, blockCss.color ?? "")}</mj-text>`;
+      const lineHeight = exactLineHeight(blockCss["font-size"]);
+      return `<mj-text${attributes} line-height="${lineHeight}">${richTextToHtml(block.props.content as RichTextDocument, blockCss.color ?? "", lineHeight)}</mj-text>`;
     }
     case "heading": {
-      return `<mj-text${attributes}>${headingToHtml(block, fontFamily, blockCss)}</mj-text>`;
+      const lineHeight = exactLineHeight(blockCss["font-size"]);
+      return `<mj-text${attributes} line-height="${lineHeight}">${headingToHtml(block, fontFamily, blockCss, lineHeight)}</mj-text>`;
     }
     case "button": {
       const { href, label } = block.props as { href?: string; label: string };
@@ -274,7 +290,7 @@ export const toMjml = (document: unknown) => {
     <mj-attributes>
       <mj-all font-family="${escapeAttribute(settings.fontFamily)}" />
       <mj-section padding="0" />
-      <mj-text line-height="${EMAIL_LOOK.lineHeight}" padding="${EMAIL_LOOK.blockPadding}" />
+      <mj-text padding="${EMAIL_LOOK.blockPadding}" />
       <mj-button font-size="${EMAIL_LOOK.fontSize}" line-height="${EMAIL_LOOK.lineHeight}" padding="${EMAIL_LOOK.blockPadding}" />
       <mj-image padding="${EMAIL_LOOK.blockPadding}" />
       <mj-divider padding="${EMAIL_LOOK.blockPadding}" />
