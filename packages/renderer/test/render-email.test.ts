@@ -210,7 +210,7 @@ describe(renderEmail, () => {
     );
 
     expect(html).toContain(
-      ">See https:/&#8203;/&#8203;example.&#8203;com/&#8203;a/&#8203;long_&#8203;path?&#8203;x=&#8203;1&amp;&#8203;y=&#8203;2 or short.example/x</p>"
+      ">See https://&#8203;example.&#8203;com/&#8203;a/&#8203;long_&#8203;path?&#8203;x=&#8203;1&amp;&#8203;y=&#8203;2 or short.example/x</p>"
     );
   });
 
@@ -220,7 +220,7 @@ describe(renderEmail, () => {
     );
 
     expect(html).toContain(
-      ">https:/&#8203;/&#8203;example.&#8203;com/&#8203;{{unsubscribe_token.value}}/&#8203;x</p>"
+      ">https://&#8203;example.&#8203;com/&#8203;{{unsubscribe_token.value}}/&#8203;x</p>"
     );
   });
 

@@ -49,9 +49,9 @@ const MERGE_TAG_PART = new RegExp(`(${MERGE_TAG.source})`, "u");
 
 /**
  * A word of 20 or more characters, such as a pasted URL, gets a zero-width space
- * after each / . - ? & = and _, outside Merge Tags. Yahoo, AOL, GMX, Web.de and
- * classic Outlook ignore CSS that breaks a word, and widened the email with it
- * (#91). Shorter words, and numbers such as 3.5, stay whole.
+ * after each / . - ? & = and _, outside Merge Tags and the // of a URL. Yahoo,
+ * AOL, GMX, Web.de and classic Outlook ignore CSS that breaks a word, and widened
+ * the email with it (#91). Shorter words, and numbers such as 3.5, stay whole.
  */
 const breakLongWords = (html: string) =>
   html.replaceAll(/\S{20,}/gu, (word) =>
@@ -60,7 +60,7 @@ const breakLongWords = (html: string) =>
       .map((part, index) =>
         index % 2 === 1
           ? part
-          : part.replaceAll(/&amp;|[/.\-?=_]/gu, "$&&#8203;")
+          : part.replaceAll(/&amp;|\/(?!\/)|[.\-?=_]/gu, "$&&#8203;")
       )
       .join("")
   );
