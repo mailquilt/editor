@@ -1,0 +1,53 @@
+name: Bug
+description: Something in Mail Quilt doesn't work as the docs say.
+labels: [bug, needs-triage]
+body:
+  - type: dropdown
+    id: package
+    attributes:
+      label: Package
+      options:
+        - "@mailquilt/editor"
+        - "@mailquilt/react"
+        - "@mailquilt/renderer"
+        - "@mailquilt/core"
+        - The docs or the Playground
+        - Not sure
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: input
+    id: where
+    attributes:
+      label: Browser, or email client
+      description: The browser the editor ran in, or, for a problem in a sent email, the email client and its version.
+      placeholder: "Safari 19 on macOS, or Outlook 2021 on Windows"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Add a Text Block
+        2. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected, and what happened instead
+    validations:
+      required: true
+  - type: textarea
+    id: email
+    attributes:
+      label: The email's JSON
+      description: If it's about one email, paste its JSON, or the smallest part that shows the problem. Leave out anything private.
+      render: json
