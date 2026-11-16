@@ -38,6 +38,8 @@ const shellPages = {
 } as const;
 /** The docs' server-side examples, run in Node against the packed packages. */
 const serverCode = path.join(quickStart, "..", "_code");
+/** The Next.js guide's own files, added to the React project, which is a Next.js app. */
+const nextjsGuide = path.join(quickStart, "..", "_nextjs");
 const tarballs = path.join(freshProjectsDir, "tarballs");
 
 const pnpm = (cwd: string, ...args: string[]) => {
@@ -75,6 +77,9 @@ for (const name of Object.keys(
   }
   if (name === "plain-js") {
     cpSync(serverCode, path.join(dir, "server"), { recursive: true });
+  }
+  if (name === "react") {
+    cpSync(nextjsGuide, dir, { recursive: true });
   }
   if (name in shellPages) {
     cpSync(

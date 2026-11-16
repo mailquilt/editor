@@ -50,6 +50,7 @@ export default defineConfig({
           },
           {
             items: [
+              "/docs/nextjs",
               "/docs/design-your-editor-page",
               "/docs/theme-tokens",
               "/docs/keyboard",
