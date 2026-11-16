@@ -1,0 +1,13 @@
+// The docs site on Cloudflare Workers, as static assets. At the repo root so
+// Wrangler finds it whether the build runs here or in apps/docs.
+{
+  "name": "editor",
+  "compatibility_date": "2026-06-01",
+  "assets": {
+    "directory": "./apps/docs/dist",
+    // Blume links to /docs/quick-start, not /docs/quick-start/. Cloudflare's
+    // default would answer every such link with a redirect to the slash.
+    "html_handling": "drop-trailing-slash",
+    "not_found_handling": "404-page",
+  },
+}
