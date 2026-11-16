@@ -1,0 +1,56 @@
+---
+title: Next.js
+description: Add the Mail Quilt drag-and-drop email editor to a Next.js app with the App Router, save each email as JSON, and render its HTML in a Route Handler.
+seo:
+  title: "Add a drag-and-drop email editor to a Next.js app"
+---
+
+This page puts the editor in a Next.js app that uses the App Router, and renders the email's HTML on the server. Mail Quilt's tests build every file on this page in a Next.js 16 app with React 19, open it in a browser, and post an email to the Route Handler, so the code works as written.
+
+```bash
+npm install @mailquilt/react @mailquilt/renderer
+```
+
+`@mailquilt/react` needs React 19. `@mailquilt/renderer` is only for the [Route Handler](#render-the-html-on-the-server), so leave it out if you export HTML in the browser.
+
+## The editor in a Client Component
+
+The component that holds the editor keeps the email in state and passes it callbacks, which a Server Component can't do, so it's a Client Component:
+
+<include meta='title="app/editor.tsx"'>
+  ./_quick-start/react/app/editor.tsx
+</include>
+
+`starterEmail` is the email to open when nothing is saved yet. Use one your app already has, or copy the [example email](./document-format#example).
+
+The page that shows it can stay a Server Component:
+
+<include meta='title="app/page.tsx"'>./_nextjs/app/page.tsx</include>
+
+- **There's no `next/dynamic` to add.** On the server, `MailQuilt` renders an empty `<mail-quilt>`, and the editor loads in the browser.
+- **`onError` is always listening in time.** If the editor refuses the email you pass, `onError` hears why, so nobody is left looking at an empty editor.
+- **Save to your server from `onChange`.** This example saves in the browser so it runs on its own. In your app, send each email to your server instead, and don't set `value` from each response, as the [editor's API](./quick-start#the-editors-api) explains.
+
+## A whole editor page
+
+If the editor is a page of its own, the [Shell](./shell) gives you the header, Export and Import buttons and messages around it. With `saveKey`, it keeps the email in the browser and needs no callbacks, so the page stays a Server Component:
+
+<include meta='title="app/shell/page.tsx"'>./_shell/react/page.tsx</include>
+
+## Render the HTML on the server
+
+Store the JSON from `onChange`, and make the HTML when you send. A Route Handler can do it with the [renderer](./render-on-a-server), which loads no editor code:
+
+<include meta='title="app/email-html/route.ts"'>
+  ./_nextjs/app/email-html/route.ts
+</include>
+
+- **It runs in the Node.js runtime**, which is the default for Route Handlers. The renderer needs Node 22 or later. It hasn't been tested in the Edge runtime.
+- **A refused email gets a 422** with the renderer's reason, such as an email saved by a newer version of Mail Quilt.
+- **As written, anyone who can reach this route can render any email they post.** In your app, check who's asking, or load the email from your own storage by its ID rather than from the request.
+
+MJML, the library that writes the HTML, loads the first time a request renders an email.
+
+## Content Security Policy
+
+If your app sets a Content Security Policy, Preview needs `'unsafe-inline'` in `style-src`. The [quick start](./quick-start#content-security-policy) explains why, and what happens without it.
