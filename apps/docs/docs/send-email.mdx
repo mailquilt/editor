@@ -1,0 +1,58 @@
+---
+title: Send with your email service
+description: Fill a Mail Quilt email's Merge Tags with each person's values on your server and send the HTML with any service, or let a service's templates fill them.
+seo:
+  title: "Fill merge tags in email HTML and send it with any service"
+---
+
+`renderEmail()` gives you an email's HTML with its Merge Tags, such as `{{first_name}}`, still in it. Before the email goes to someone, each tag needs that person's value. Your server can fill them in and send the finished HTML with any service, or a service whose templates read `{{ }}` can fill them for you.
+
+## Fill Merge Tags yourself
+
+This function fills each tag in the HTML with a value. Mail Quilt's tests run it in Node on a rendered email, and check what it does.
+
+<include meta='title="fill-merge-tags.js"'>./_code/fill-merge-tags.js</include>
+
+Render the email, fill it for one person, and send the result as the email's HTML body with your service's API:
+
+```js
+import { fillMergeTags } from "./fill-merge-tags.js";
+import { htmlFor } from "./render.js";
+
+const html = fillMergeTags(await htmlFor(email), {
+  first_name: "Ada",
+  unsubscribe_url: "https://example.com/unsubscribe?id=4012",
+});
+```
+
+`htmlFor()` is from [Render on a server](./render-on-a-server).
+
+### What it does
+
+- **It fills tags in text and in URLs.** A link or image URL can start with a tag, such as `{{unsubscribe_url}}`, so that value should be a whole URL.
+- **It escapes each value.** An `&`, `<`, `>`, `"` or `'` becomes an HTML entity, so a name such as `<b>Ada</b>` shows as typed rather than adding markup, and a value can't end the link it's in. An `&` in a URL becomes `&amp;`, which HTML reads as the same URL.
+- **It refuses an email with a tag it has no value for.** It throws, and the message names the tags, such as `No value for {{frist_name}}`. Customers type their own tags and Mail Quilt doesn't check their names, so leaving the tag would send `{{frist_name}}` to the reader. A send that stops is easier to fix than an email you can't take back. To send anyway, give the tag a value, even an empty one.
+- **Spaces inside the braces don't matter,** so `{{ first_name }}` is filled from `first_name`.
+
+### What it doesn't do
+
+- **It doesn't check a URL.** Escaping stops a value from breaking out of a link, but a value such as `javascript:alert(1)` would still become the link. Make link values on your server, rather than taking them from what someone typed.
+- **It only knows names.** A tag such as `{{#if vip}}` has no value, so the function throws. For logic like that, use a service's templates.
+- **It doesn't fill the subject,** which isn't part of the HTML. A subject is plain text, so put values in it without HTML escaping.
+
+## Or let the service fill them
+
+Some sending services keep a template, fill its `{{name}}` tags from data you send with each email, and send it. Use the HTML from `renderEmail()`, with its tags still in it, as the template's HTML body.
+
+| Service | Fills `{{name}}` | Escapes each value |
+| --- | --- | --- |
+| [Postmark templates](https://postmarkapp.com/support/article/1077-template-syntax) | Yes | Yes. "Mustachio automatically HTML encodes the values that it interpolates." |
+| [SendGrid dynamic templates](https://www.twilio.com/docs/sendgrid/for-developers/sending-email/using-handlebars) | Yes | Yes. Its docs use triple braces, `{{{name}}}`, for a value that isn't escaped. |
+| [Amazon SES templates](https://docs.aws.amazon.com/ses/latest/dg/send-personalized-email-advanced.html) | Yes | No. "SES doesn't escape HTML content when rendering the HTML template for a message." |
+
+- **With SES, escape each value yourself** before you send it as template data, as `escapeHtml()` in `fill-merge-tags.js` does. Otherwise a name such as `<a href="…">` becomes a link in the email.
+- **Triple braces in text aren't escaped.** Mail Quilt keeps `{{{first_name}}}` in text as typed, and Postmark and SendGrid fill it without escaping. If your values come from people, such as names, tell customers to use two braces.
+- **A link's URL is always escaped** with Postmark and SendGrid, since a link or image URL can't start with three braces. An escaped URL is the same URL to HTML, but send yourself a test with an `&` in a link before you rely on it.
+- **Keep tags to names.** These services' templates can do more than fill a name, but Mail Quilt escapes any `&`, `<` or `>` inside a tag, as [Merge Tags](./document-format#merge-tags) explains, so a tag with more than a name may not reach the service as typed.
+
+For a service not in this table, check in its own docs whether `{{name}}` escapes the value, or fill the tags yourself.
