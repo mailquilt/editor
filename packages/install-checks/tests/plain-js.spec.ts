@@ -48,3 +48,43 @@ test("the docs' server code builds, renders and refuses an email in Node", async
   expect(html).toContain("{{first_name}}");
   expect(refusal).toMatch(/^This email can't be sent/u);
 });
+
+test("the docs' Merge Tag code fills and escapes each value, in text and in a link, and refuses a tag with no value", async () => {
+  const { stdout } = await promisify(execFile)(
+    "node",
+    [
+      "--input-type=module",
+      "--eval",
+      `const { createEditor } = await import("@mailquilt/core");
+       const { email } = await import("./server/build-an-email.js");
+       const { htmlFor } = await import("./server/render.js");
+       const { fillMergeTags } = await import("./server/fill-merge-tags.js");
+       const editor = createEditor({ document: email });
+       const button = editor.apply({ blockType: "button", rowIndex: 0, type: "insertBlockInNewRow" });
+       editor.apply({ blockId: button.createdId, props: { href: "{{ cta_url }}" }, type: "updateBlockProps" });
+       const html = await htmlFor(editor.getDocument());
+       const filled = fillMergeTags(html, {
+         cta_url: "https://example.com/track?id=1&to=2",
+         first_name: "Ada <b>&</b> \\"Lovelace\\" O'Brien",
+       });
+       let missing;
+       try {
+         fillMergeTags(html, { first_name: "Ada" });
+       } catch ({ message }) {
+         missing = message;
+       }
+       console.log("RESULT" + JSON.stringify({ filled, missing }));`,
+    ],
+    { cwd: freshProjectDir("plain-js") }
+  );
+  const { filled, missing } = JSON.parse(
+    stdout.slice(stdout.indexOf("RESULT") + "RESULT".length)
+  );
+
+  expect(filled).toContain(
+    "Hi Ada &lt;b&gt;&amp;&lt;/b&gt; &quot;Lovelace&quot; O&#39;Brien, your order has shipped."
+  );
+  expect(filled).toContain('href="https://example.com/track?id=1&amp;to=2"');
+  expect(filled).not.toMatch(/\{\{[^{}]+\}\}/u);
+  expect(missing).toBe("No value for {{ cta_url }}");
+});

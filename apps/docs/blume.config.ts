@@ -64,6 +64,7 @@ export default defineConfig({
             items: [
               "/docs/save-emails",
               "/docs/render-on-a-server",
+              "/docs/send-email",
               "/docs/change-emails-in-code",
             ],
             label: "Your emails",

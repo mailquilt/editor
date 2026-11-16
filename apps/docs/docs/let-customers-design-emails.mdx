@@ -45,6 +45,8 @@ Customers type Merge Tags such as `{{first_name}}` anywhere in text, and at the 
 - **Tell customers which tags work.** Mail Quilt doesn't check a tag's name, so it can't warn a customer about a tag your sending service doesn't know.
 - **Keep tags to names.** An `&`, `<` or `>` inside a tag is escaped, as [Merge Tags](./document-format#merge-tags) explains, so your sending service would see the escaped text.
 
+[Send with your email service](./send-email) shows how to fill tags on your server instead, and which services escape the values they fill.
+
 ## Images
 
 Customers add an image by its URL, which starts with `https:` or `http:`, or with a Merge Tag. There's no upload in the editor yet, so customers need their images hosted somewhere, such as storage your app already provides.
