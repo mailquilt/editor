@@ -2,6 +2,7 @@ import {
   blockStyles,
   EMAIL_LOOK,
   loadDocument,
+  MERGE_TAG,
   rowStyles,
 } from "@mailquilt/core";
 import type {
@@ -43,6 +44,26 @@ const TEXT_STYLE = "margin:0;word-break:break-word;overflow-wrap:anywhere";
  */
 const exactLineHeight = (fontSize: string = EMAIL_LOOK.fontSize) =>
   `${Math.ceil(Number(fontSize.replace("px", "")) * Number(EMAIL_LOOK.lineHeight))}px`;
+
+const MERGE_TAG_PART = new RegExp(`(${MERGE_TAG.source})`, "u");
+
+/**
+ * A word of 20 or more characters, such as a pasted URL, gets a zero-width space
+ * after each / . - ? & = and _, outside Merge Tags. Yahoo, AOL, GMX, Web.de and
+ * classic Outlook ignore CSS that breaks a word, and widened the email with it
+ * (#91). Shorter words, and numbers such as 3.5, stay whole.
+ */
+const breakLongWords = (html: string) =>
+  html.replaceAll(/\S{20,}/gu, (word) =>
+    word
+      .split(MERGE_TAG_PART)
+      .map((part, index) =>
+        index % 2 === 1
+          ? part
+          : part.replaceAll(/&amp;|[/.\-?=_]/gu, "$&&#8203;")
+      )
+      .join("")
+  );
 
 const MARK_TAGS = {
   bold: "strong",
@@ -113,7 +134,7 @@ const inlineToHtml = (
         html += openTag(mark, linkColor);
         open.push(mark);
       }
-      html += keepSpaces(escapeText(node.text), afterSpace);
+      html += keepSpaces(breakLongWords(escapeText(node.text)), afterSpace);
       afterSpace = node.text.endsWith(" ");
     }
   }

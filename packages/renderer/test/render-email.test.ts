@@ -181,7 +181,7 @@ describe(renderEmail, () => {
     );
 
     expect(html).toContain(
-      `&lt;script&gt;alert("x")&lt;/script&gt; &amp; &lt;/mj-text&gt;`
+      `&lt;script&gt;alert("x")&lt;/&#8203;script&gt; &amp; &lt;/mj-text&gt;`
     );
     expect(html).not.toContain("<script>");
   });
@@ -200,6 +200,28 @@ describe(renderEmail, () => {
       '<p style="margin:0;word-break:break-word;overflow-wrap:anywhere;line-height:24px;mso-line-height-rule:exactly">&nbsp;a &nbsp;&nbsp;b <strong>&nbsp;c</strong><br />&nbsp;d</p>'
     );
     expect(html).not.toContain("pre-wrap");
+  });
+
+  it("lets a long word wrap after its slashes and dots, in clients that won't break it", async () => {
+    const html = await renderEmail(
+      emailWithText(
+        "See https://example.com/a/long_path?x=1&y=2 or short.example/x"
+      )
+    );
+
+    expect(html).toContain(
+      ">See https:/&#8203;/&#8203;example.&#8203;com/&#8203;a/&#8203;long_&#8203;path?&#8203;x=&#8203;1&amp;&#8203;y=&#8203;2 or short.example/x</p>"
+    );
+  });
+
+  it("keeps a Merge Tag whole in a long word, so it's still filled in", async () => {
+    const html = await renderEmail(
+      emailWithText("https://example.com/{{unsubscribe_token.value}}/x")
+    );
+
+    expect(html).toContain(
+      ">https:/&#8203;/&#8203;example.&#8203;com/&#8203;{{unsubscribe_token.value}}/&#8203;x</p>"
+    );
   });
 
   it("renders each mark as its tag, a line break, and a link around the other marks", async () => {
