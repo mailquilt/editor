@@ -2,6 +2,8 @@
 
 The Mail Quilt email editor as Web Components: `<mail-quilt>`, a drag-and-drop editor you put in your own page, and `<mail-quilt-shell>`, a whole editor page with Import, Export and saving in the browser. They work in any framework, or none.
 
+[![The Mail Quilt editor: an email on the left, and Blocks to drag onto it on the right](https://editor.mailquilt.com/editor-small.webp)](https://editor.mailquilt.com/playground)
+
 ```bash
 npm install @mailquilt/editor
 ```
@@ -35,4 +37,4 @@ For a page with no bundler, load the CDN build by its full path, with the versio
 
 In React, use [`@mailquilt/react`](https://www.npmjs.com/package/@mailquilt/react).
 
-[Docs](https://editor.mailquilt.com/docs/quick-start) · [Source](https://github.com/mailquilt/editor) · MIT
+[Docs](https://editor.mailquilt.com/docs/quick-start) · [Playground](https://editor.mailquilt.com/playground) · [Source](https://github.com/mailquilt/editor) · MIT

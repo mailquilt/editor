@@ -1,11 +1,14 @@
 {
   "name": "@mailquilt/renderer",
   "version": "0.0.0",
-  "description": "Turns a Mail Quilt document into email HTML. Runs without a DOM.",
+  "description": "Turns a Mail Quilt email into HTML for Gmail, Outlook, Apple Mail and other email clients, with MJML. Runs without a DOM.",
   "keywords": [
     "email",
     "email-builder",
     "email-html",
+    "email-renderer",
+    "email-template",
+    "html-email",
     "mjml"
   ],
   "homepage": "https://editor.mailquilt.com",
