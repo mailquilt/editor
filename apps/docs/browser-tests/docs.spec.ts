@@ -116,7 +116,7 @@ test("the landing page's editor starts when arriving from another page", async (
   // The logo links home, and Blume swaps the page in without a reload.
   await page
     .getByRole("banner")
-    .getByRole("link", { name: "Mail Quilt" })
+    .getByRole("link", { exact: true, name: "Mail Quilt" })
     .click();
 
   await expect(

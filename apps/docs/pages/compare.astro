@@ -14,6 +14,7 @@ const tools = [
     cost: "MIT. Free, with no paid plan.",
     kind: "Packages for building an email editor into an app: a drag-and-drop editor, and the document model under it. Emails are saved as JSON.",
     name: "Mail Quilt",
+    runs: "In your app, from npm or a CDN build you pin.",
     works: "Any framework, as a Web Component. React component.",
   },
   {
@@ -21,6 +22,7 @@ const tools = [
     href: "https://unlayer.com",
     kind: "A drag-and-drop editor you embed, for emails, pages and more.",
     name: "Unlayer",
+    runs: "Loaded from Unlayer's servers.",
     works: "React, Angular and Vue components.",
   },
   {
@@ -28,6 +30,7 @@ const tools = [
     href: "https://developers.beefree.io",
     kind: "A drag-and-drop editor you embed.",
     name: "Beefree SDK",
+    runs: "Loaded from Beefree's servers.",
     works: "React, Angular and Vue.",
   },
   {
@@ -35,6 +38,7 @@ const tools = [
     href: "https://topol.io/plugin",
     kind: "A drag-and-drop editor you embed.",
     name: "Topol",
+    runs: "Loaded from Topol's servers.",
     works: "React, Vue, Svelte and Angular.",
   },
   {
@@ -42,6 +46,7 @@ const tools = [
     href: "https://grapesjs.com",
     kind: "A framework for building visual editors, with a plugin for MJML emails.",
     name: "GrapesJS",
+    runs: "In your app, from npm.",
     works: "Plain JavaScript, with a React wrapper.",
   },
   {
@@ -49,6 +54,7 @@ const tools = [
     href: "https://easyemail.pro",
     kind: "A drag-and-drop editor you embed.",
     name: "Easy Email",
+    runs: "In your app, from npm.",
     works: "React.",
   },
   {
@@ -56,6 +62,7 @@ const tools = [
     href: "https://github.com/templatical/sdk",
     kind: "A drag-and-drop editor you embed. It saves JSON and writes MJML.",
     name: "Templatical",
+    runs: "In your app, from npm.",
     works: "Any framework. It's built with Vue.",
   },
   {
@@ -63,6 +70,7 @@ const tools = [
     href: "https://maily.to",
     kind: "An editor that works like writing a document, built on Tiptap.",
     name: "Maily",
+    runs: "In your app, from npm.",
     works: "React.",
   },
   {
@@ -70,6 +78,7 @@ const tools = [
     href: "https://react.email/docs/editor/overview",
     kind: "A rich-text editor for email, built on Tiptap and React Email.",
     name: "React Email editor",
+    runs: "In your app, from npm.",
     works: "React 18 or 19.",
   },
   {
@@ -77,13 +86,14 @@ const tools = [
     href: "https://www.usewaypoint.com/open-source/emailbuilderjs",
     kind: "A block editor that saves JSON or HTML.",
     name: "EmailBuilder.js",
+    runs: "In your app. You fork its editor, and its renderer is on npm.",
     works: "React.",
   },
 ];
 
 const elsewhere = [
   {
-    text: "Unlayer, Beefree, Stripo and Topol are companies with support teams, and you can sign a contract with them. Mail Quilt is one person and a public issue tracker.",
+    text: "Unlayer, Beefree and Topol are companies with support teams, and you can sign a contract with them. Mail Quilt is one person and a public issue tracker.",
     title: "You need someone to call",
   },
   {
@@ -146,12 +156,13 @@ const reasons = [
               <th scope="col">Editor</th>
               <th scope="col">What it is</th>
               <th scope="col">License and cost</th>
+              <th scope="col">Where it runs</th>
               <th scope="col">Works with</th>
             </tr>
           </thead>
           <tbody>
             {
-              tools.map(({ cost, href, kind, name, works }) => (
+              tools.map(({ cost, href, kind, name, runs, works }) => (
                 <tr>
                   <th scope="row">
                     {href ? (
@@ -164,6 +175,7 @@ const reasons = [
                   </th>
                   <td>{kind}</td>
                   <td>{cost}</td>
+                  <td>{runs}</td>
                   <td>{works}</td>
                 </tr>
               ))
@@ -232,7 +244,7 @@ const reasons = [
   }
 
   .glance table {
-    min-width: 44rem;
+    min-width: 54rem;
   }
 
   .glance tbody th {

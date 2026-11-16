@@ -16,14 +16,14 @@ const packages = [
     id: "editor",
     link: "Read the quick start",
     needs: "Brings the core and the renderer with it.",
-    when: "Your app isn't a React app, or your page has no build step.",
+    when: "Your app isn't a React app. A page with no build step loads its CDN build instead, with nothing to install.",
   },
   {
     href: "/docs/change-emails-in-code",
     id: "core",
     link: "Read how to change emails in code",
     needs: "Needs no DOM, and nothing else from Mail Quilt.",
-    when: "You create, check or change emails in code. Building a whole interface on it isn't documented yet.",
+    when: "You create, check or change emails in code.",
   },
   {
     href: "/docs/render-on-a-server",
@@ -52,7 +52,7 @@ const levels = [
     title: "Take the editor",
   },
   {
-    build: "You build your own interface, or none. The docs cover changing emails in code. Building a whole interface this way isn't documented yet.",
+    build: "You build your own interface, or none. The docs cover changing emails in code.",
     href: "/docs/change-emails-in-code",
     link: "Read how to change emails in code",
     take: "The email as data, the Commands that change it, and the HTML. The editor is built on these, and you can build on them too.",
