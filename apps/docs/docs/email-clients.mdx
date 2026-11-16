@@ -15,8 +15,9 @@ The export was checked with [Email on Acid](https://www.emailonacid.com) in Nove
 | New Outlook for Windows | Windows | Works |
 | Outlook for Mac and for iOS | macOS, iOS | Works |
 | Classic Outlook for Windows | 2016, 2019, 2021, 2024 and Microsoft 365 | Works, with [the limits below](#classic-outlook-for-windows) |
-| Yahoo Mail and AOL | Chrome, Edge and Firefox | Works |
-| GMX, Web.de, T-Online and Libero | Chrome, Edge and Firefox | Works |
+| Yahoo Mail and AOL | Chrome, Edge and Firefox | Works, apart from [long words](#long-words) |
+| GMX and Web.de | Chrome, Edge and Firefox | Works, apart from [long words](#long-words) |
+| T-Online and Libero | Chrome, Edge and Firefox | Works |
 | Free.fr | Chrome, Edge and Firefox | Works |
 
 Every client renders email in its own way, so send yourself a test of your own emails before you rely on them. To report how an email looks in a client, open an issue on [GitHub](https://github.com/mailquilt/editor/issues).
@@ -25,9 +26,17 @@ Every client renders email in its own way, so send yourself a test of your own e
 
 Classic Outlook draws email with Microsoft Word, which supports less HTML and CSS than a browser. Columns, buttons, images and spacing come out as designed, but:
 
-- **A long word widens the email.** Outlook won't break a word, so a URL pasted as text, wider than its Column, pushes its Row past the email's width. Link a few words to the URL instead of showing the URL itself.
+- **A long word widens the email**, as [below](#long-words).
 - **Emoji are black and white**, and a flag shows as its two letters, such as "IN".
 - **Thin light lines** show below some text in Outlook 2021, 2024 and Microsoft 365. Their cause is being looked into in [#95](https://github.com/mailquilt/editor/issues/95).
+
+## Long words
+
+A word too long for its Column, such as a URL pasted as text, breaks onto the next line in most clients. Classic Outlook, Yahoo Mail, AOL, GMX and Web.de don't break it, so it pushes its Row past the email's width. Link a few words to the URL instead of showing the URL itself. A fix for all but classic Outlook is being tested in [#91](https://github.com/mailquilt/editor/issues/91).
+
+## Links the client adds
+
+Apple Mail, iOS Mail and Gmail turn text that looks like a web or email address, such as `example.com`, into a link in their own blue. A link you add in the editor takes its text's color instead. To keep an address in your colors, link it yourself.
 
 ## Dark mode
 
@@ -48,6 +57,8 @@ Nothing in an email can turn this off in classic Outlook or the Gmail app on iOS
 ## Email size
 
 Gmail cuts off an email it counts as over 102 KB. It shows the start, then a "View entire message" link, so the end of the email, often with the unsubscribe link, is hidden. Images don't count, as the HTML only links to them.
+
+The Gmail app on Android sometimes shows "View entire message" below an email that's already complete. That isn't clipping, and nothing is missing.
 
 The export leaves out MJML's indentation to stay small: the test email, with 10 Rows, is about 40 KB. What Gmail counts can be more than the HTML, such as what your sending service adds for tracking, so keep well under the limit. Check an email's size before you send it:
 
