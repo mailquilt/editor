@@ -5,11 +5,11 @@ seo:
   title: "Packages: the email editor, React component, core and renderer"
 ---
 
-Most apps install one package. Which one depends on whether you want the editor, the HTML, or the email as data.
+Most apps install one package, and `@mailquilt/core` too if they create emails in code. Which one depends on whether you want the editor, the HTML, or the email as data.
 
 | Package | What it gives you | Install it when |
 | --- | --- | --- |
-| `@mailquilt/editor` | The `<mail-quilt>` and `<mail-quilt-shell>` elements, and a build to load from a CDN. | Your app isn't a React app, or your page has no build step. |
+| `@mailquilt/editor` | The `<mail-quilt>` and `<mail-quilt-shell>` elements, and a build to load from a CDN. | Your app isn't a React app. A page with no build step loads its CDN build instead, with nothing to install. |
 | `@mailquilt/react` | The `MailQuilt` and `MailQuiltShell` components. | Your app uses React 19. It installs the editor for you. |
 | `@mailquilt/renderer` | `renderEmail()`, which turns a saved email into HTML. | You want the HTML on your server, such as just before you send. |
 | `@mailquilt/core` | The document's types, `createEmail()`, `loadDocument()` and the Commands that change an email. | You create, check or change emails in code. |
@@ -27,20 +27,9 @@ Most apps install one package. Which one depends on whether you want the editor,
 
 `core` and `renderer` need no DOM, so they run in Node 22 or later as well as in a browser. Installing `renderer` on a server doesn't bring the editor with it.
 
-### With Yarn Plug'n'Play
-
-MJML, which `renderer` uses, needs `cheerio` without listing it. npm and pnpm find it anyway, as they hoist it by default. With Yarn Plug'n'Play, or pnpm with `hoist=false`, add it for MJML in `.yarnrc.yml` or `pnpm-workspace.yaml`, for any of the packages but `core`:
-
-```yaml
-packageExtensions:
-  mjml-browser@5:
-    dependencies:
-      cheerio: ^1.2.0
-```
-
 ## The editor in your app
 
-Install `@mailquilt/editor`, or `@mailquilt/react` in a React app. The [quick start](./quick-start) has working code for a bundler, a CDN and React.
+Install `@mailquilt/editor`, or `@mailquilt/react` in a React app. The [quick start](./quick-start) links to working code for each setup: an HTML page, Vite, React and Next.js.
 
 ```bash
 npm install @mailquilt/editor
@@ -67,3 +56,14 @@ npm install @mailquilt/core
 ```
 
 [Change emails in code](./change-emails-in-code) covers creating an email, applying Commands to it and checking one that came from somewhere you don't control.
+
+## Yarn Plug'n'Play and pnpm without hoisting
+
+MJML, which `renderer` uses, needs `cheerio` without listing it. npm and pnpm find it anyway, as they hoist it by default. With Yarn Plug'n'Play, or pnpm with `hoist=false`, add it for MJML in `.yarnrc.yml` or `pnpm-workspace.yaml`, for any of the packages but `core`:
+
+```yaml
+packageExtensions:
+  mjml-browser@5:
+    dependencies:
+      cheerio: ^1.2.0
+```

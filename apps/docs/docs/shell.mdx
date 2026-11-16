@@ -1,5 +1,7 @@
 ---
 title: Shell
+sidebar:
+  label: Ready-made page (Shell)
 description: Put a ready-made email editor page in your app, with a header, Export and Import buttons, messages and saving in the browser.
 seo:
   title: "Shell: a ready-made email editor page"
@@ -9,7 +11,11 @@ seo:
 
 ## What it has
 
-The header has the heading and up to three buttons. **Export HTML** downloads the email as `email.html`, ready to send. **Export JSON** downloads it as `email.json`, the [document format](./document-format) the editor saves. **Import JSON** opens a `.json` file in place of the current email, which undo can't bring back, and with `save-key` it's saved straight away. If the editor refuses it, the message bar says why and the current email stays.
+The header has the heading and up to three buttons:
+
+- **Export HTML** downloads the email as `email.html`, ready to send.
+- **Export JSON** downloads it as `email.json`, the [document format](./document-format) the editor saves.
+- **Import JSON** opens a `.json` file in place of the current email, which undo can't bring back, and with `save-key` it's saved straight away. If the editor refuses it, the message bar says why and the current email stays.
 
 The message bar shows emails the editor refuses, exports that fail and saves that fail. Screen readers announce each message. The [Playground](/playground) is a Shell.
 
@@ -23,7 +29,7 @@ npm install @mailquilt/editor
 
 <include meta='title="main.js"'>./_shell/plain-js/main.js</include>
 
-Importing `@mailquilt/editor` registers both `<mail-quilt>` and `<mail-quilt-shell>`. On a page with no build step, load the CDN build as the [quick start](./quick-start#without-a-bundler) shows. It registers both too.
+Importing `@mailquilt/editor` registers both `<mail-quilt>` and `<mail-quilt-shell>`. On a page with no build step, load the CDN build as [HTML, no build step](./html) shows. It registers both too.
 
 The Shell fills the width and height of the space you give it, and the editor takes everything below the header. If the email is longer than that, the editor scrolls inside the Shell.
 
@@ -35,14 +41,14 @@ npm install @mailquilt/react
 
 <include meta='title="app/page.tsx"'>./_shell/react/page.tsx</include>
 
-`MailQuiltShell` renders an empty `<mail-quilt-shell>` on the server, with its attributes, and the editor loads in the browser. Because `saveKey` keeps the email, this page can stay a Server Component. Pass `onChange` or `onError` from a Client Component, as with [`MailQuilt`](./quick-start#react).
+`MailQuiltShell` renders an empty `<mail-quilt-shell>` on the server, with its attributes, and the editor loads in the browser. Because `saveKey` keeps the email, this page can stay a Server Component. Pass `onChange` or `onError` from a Client Component, as with [`MailQuilt`](./nextjs). Outside Next.js, the [React](./react) page has a Shell in a plain component.
 
 ## Saving
 
 With `save-key`, the Shell keeps the email in the browser's `localStorage` under that key:
 
 - When the Shell opens, an email saved under the key opens instead of `value`. `value` is the email to start from when nothing is saved yet.
-- While the saved email is open, setting `value` to the starting email again leaves it open. If the Shell opened without a starting email, setting nothing leaves it open too, and the first email you set becomes the starting email. So a React component that renders again, or gets its starting email after the Shell opens, doesn't replace the person's work. Any other `value` works as on `<mail-quilt>`: a different email opens, and setting it to nothing empties the editor.
+- While the saved email is open, two things don't replace it: setting the starting email again, and, if the Shell opened without one, setting nothing or setting an email for the first time, which then becomes the starting email. So a React component that renders again, or gets its starting email late, can't replace the person's work. Any other `value` works as on `<mail-quilt>`: a different email opens, and setting it to nothing empties the editor.
 - If the saved email can't be opened, such as one saved by a newer version of Mail Quilt, the message bar says why and `value` opens instead. The person's next change is saved over it, so its text is first copied to `<save-key>:unopened`, where nothing saves, and your app can still read it.
 - Each change is saved under the key. With the Shell open in two tabs, each saves over the other, so the last change wins. If the browser can't save, because storage is blocked or full, the message bar says so, and suggests Export JSON while that button shows.
 
@@ -54,19 +60,7 @@ Without `save-key`, the Shell stores nothing. Save the email yourself from `mq-c
 
 ## The Shell's API
 
-| Name | What it does |
-| --- | --- |
-| `value` | The email the Shell shows, as on `<mail-quilt>`. With `save-key`, a saved email opens instead of the first one you set. With no `value` and nothing saved, the editor is empty and the export buttons say there's no email to export. |
-| `heading` | The text in the header. It's "Email" when unset. |
-| `actions` | The buttons to show, by name and separated by spaces: `import-json`, `export-json` and `export-html`. Leave it out to show all three. |
-| `save-key` | Where the email is kept in the browser, as the `saveKey` property. Leave it out to store nothing. |
-| `mq-change` | Fired after every change, including an import. The new email is in `event.detail.document`. |
-| `mq-error` | Fired when the editor refuses an email you set as `value`. The reason is in `event.detail.reason`, and the message bar shows it too. |
-| `exportHtml()` | Returns a promise of the email's HTML, as on `<mail-quilt>`. |
-
-`value`, `mq-change`, `mq-error` and `exportHtml()` follow the rules the [quick start](./quick-start#the-editors-api) describes, including when to listen for `mq-error`.
-
-In React, these are the `value`, `heading`, `actions`, `saveKey`, `onChange` and `onError` props, with `actions` as an array of names, and `exportHtml()` on the `ref`.
+The Shell takes `value`, `heading`, `actions` and `save-key`, fires `mq-change` and `mq-error`, and has `exportHtml()`. In React, these are the `value`, `heading`, `actions`, `saveKey`, `onChange` and `onError` props, with `actions` as an array of names. The [editor's API](./api#the-shell) describes each one.
 
 ## Customizing it
 

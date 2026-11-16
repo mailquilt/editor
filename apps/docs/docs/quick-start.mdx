@@ -1,89 +1,37 @@
 ---
 title: Quick start
-description: Add the Mail Quilt email editor to your app with a bundler, from a CDN with no build step, or in React, then save emails and export them as HTML.
+description: Add the Mail Quilt email editor to your app. Pick your setup, from a plain HTML page to React and Next.js, and get right the two things every setup needs.
 seo:
   title: "Quick start: add a drag-and-drop email editor to your app"
 ---
 
-Pick the way your app loads JavaScript. Each example does the same four things: it opens an email, saves every change in the browser, shows the reason if the editor refuses an email, and exports the email as HTML. Mail Quilt's tests install each one against the built packages and run it in a browser, so the code works as written.
+The editor is a Web Component, so it works in any framework, or none. Pick the page for how your app loads JavaScript. Each one has working code that does the same four things: it opens an email, saves every change, shows the reason if the editor refuses an email, and exports the email as HTML. Mail Quilt's tests install each one against the built packages and run it in a browser, so the code works as written.
 
-`starterEmail` is the email to open when nothing is saved yet, or what's saved can't be read. Use one your app already has, or copy the [example email](./document-format#example) from the document format page.
+<CardGroup cols={2}>
+  <Card title="HTML, no build step" href="/docs/html">
+    A plain HTML page, or a Rails, Laravel or Django template, with the CDN
+    build.
+  </Card>
+  <Card title="JavaScript with Vite" href="/docs/vite">
+    An app with a bundler, in any framework or none.
+  </Card>
+  <Card title="React" href="/docs/react">
+    The `MailQuilt` and `MailQuiltShell` components, in a React 19 app.
+  </Card>
+  <Card title="Next.js" href="/docs/nextjs">
+    The editor in a Client Component, and the HTML from a Route Handler.
+  </Card>
+</CardGroup>
 
-If the editor will be a page of its own, the [Shell](./shell) gives you this page ready-made: the editor with a header, Export and Import buttons, messages and saving in the browser.
+If the editor will be a page of its own, the [Shell](./shell) gives you that page ready-made: the editor with a header, Export and Import buttons, messages and saving in the browser.
 
-## With a bundler
-
-```bash
-npm install @mailquilt/editor
-```
-
-<include meta='title="index.html"'>./_quick-start/plain-js/index.html</include>
-
-<include meta='title="main.js"'>./_quick-start/plain-js/main.js</include>
-
-Importing `@mailquilt/editor` registers the `<mail-quilt>` element. MJML, the library that turns an email into HTML, is large, so it only loads the first time someone opens Preview or you call `exportHtml()`. This example is tested with Vite.
-
-## Without a bundler
-
-For a page with no build step, such as in Rails, Laravel or plain HTML, load the CDN build in a `<script type="module">`:
-
-<include meta='title="index.html"'>./_quick-start/cdn/index.html</include>
-
-- **Use the full path to `dist/cdn/index.js`.** A shorter URL, such as `https://cdn.jsdelivr.net/npm/@mailquilt/editor`, loads a different build that won't run without a bundler.
-- **Pin the version.** MJML loads from a file beside the build, and its name can change between releases. An unpinned URL could ask for a file the latest release no longer has.
-
-## React
-
-```bash
-npm install @mailquilt/react
-```
-
-`@mailquilt/react` needs React 19. This example is a Client Component in a Next.js app:
-
-<include meta='title="app/editor.tsx"'>
-  ./_quick-start/react/app/editor.tsx
-</include>
-
-- `ref` gives you the `<mail-quilt>` element once the editor has loaded, so you can call `exportHtml()`.
-- On the server, `MailQuilt` renders an empty `<mail-quilt>`, and the editor loads in the browser. You can render it from a Server Component too, though you'll need a Client Component like this one to pass it callbacks.
-- The [Next.js](./nextjs) page adds the page around it and a Route Handler that renders the HTML on the server.
-
-## The editor's API
-
-`<mail-quilt>` has one property, two events and one method:
-
-| Name | What it does |
-| --- | --- |
-| `value` | The email the editor shows. Set it to open an email, or to `undefined` or `null` to empty the editor. |
-| `mq-change` | An event fired after every change. The new email is in `event.detail.document`. |
-| `mq-error` | An event fired when the editor refuses an email, which then keeps the email it had. The reason is in `event.detail.reason`. The [document format](./document-format) page lists what the editor accepts. |
-| `exportHtml()` | Returns a promise of the email's HTML, ready to send. It rejects if the editor has no email. |
-
-In TypeScript, the two events are typed `MailQuiltChangeEvent` and `MailQuiltErrorEvent`, both exported by `@mailquilt/editor`, and `addEventListener` knows them by name.
-
-In React, these are the `value`, `onChange` and `onError` props, and `exportHtml()` on the `ref`. Other props, such as `className`, `style` and `aria-label`, go to the element.
-
-Opening a different email clears undo history. Setting `value` to the email the editor last sent you changes nothing, even if you copied it or its keys come back in another order. That's why the examples can save each change and pass it straight back.
-
-Two things to get right:
+## Two things to get right
 
 - **Only pass back the latest email.** An older one counts as a different email, so it opens and clears undo history. If you save each change to a server, don't set `value` from each response, or a slow response could replace what someone typed since.
 - **Listen for `mq-error` before the editor can refuse anything.** It fires just after the code that sets `value` finishes, and it isn't fired again. A listener added before setting `value`, as in the examples, or straight after it, hears it. One added later, such as in a React `useEffect`, misses it, and people see an empty editor with no explanation. The React component's `onError` is always listening in time.
 
-## Content Security Policy
+## Next
 
-Preview shows the email in a sandboxed iframe, which follows your page's Content Security Policy. Emails rely on inline styles, so Preview needs `'unsafe-inline'` in `style-src`:
-
-```text
-Content-Security-Policy: style-src 'self' 'unsafe-inline'
-```
-
-Without it, Preview shows the email without its styling. The editor and `exportHtml()` aren't affected, and the exported HTML is unchanged.
-
-A page using the CDN build also needs `script-src` to allow the folder the build is in, because the build is several files. The path must end in `/`:
-
-```text
-Content-Security-Policy: script-src 'self' https://cdn.jsdelivr.net/npm/@mailquilt/editor@0.1.0/dist/cdn/
-```
-
-If it allows only `dist/cdn/index.js`, the editor doesn't load. An inline script like the one in the [CDN example](#without-a-bundler) also needs a nonce or hash, or you can move it into a file of your own.
+- [Editor API](./api): every property, event and prop, and the Content Security Policy the editor needs.
+- [Theme the editor](./theme-the-editor): your font and colors, or a dark theme.
+- [Render on a server](./render-on-a-server): make the HTML from the saved JSON when you send.

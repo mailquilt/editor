@@ -1,0 +1,43 @@
+---
+title: React
+description: Add the Mail Quilt drag-and-drop email editor to a React 19 app, such as one built with Vite, with the MailQuilt and MailQuiltShell components.
+seo:
+  title: "React email editor: add drag-and-drop email design to a React app"
+---
+
+`@mailquilt/react` puts the editor in a React app as two components: `MailQuilt`, the editor, and `MailQuiltShell`, a whole editor page. Mail Quilt's tests build the code on this page in a Vite app with React 19, type-check it, and run it in a browser, so it works as written. For Next.js, see the [Next.js](./nextjs) page.
+
+```bash
+npm install @mailquilt/react
+```
+
+`@mailquilt/react` needs React 19, and it installs the editor for you.
+
+## The editor
+
+<include meta='title="src/editor.tsx"'>
+  ./_quick-start/react-vite/src/editor.tsx
+</include>
+
+Render `<Editor />` wherever the editor goes, such as from your `main.tsx`.
+
+- `value` opens an email, and `onChange` gets the new email after every change. Keep it in state, as here, and pass it back as `value`.
+- `onError` gets the reason when the editor refuses an email. It's always listening in time, so nobody is left looking at an empty editor.
+- `ref` gives you the `<mail-quilt>` element once the editor has loaded, so you can call `exportHtml()`.
+- `starterEmail` is the email to open when nothing is saved yet. Use one your app already has, or copy the [example email](./document-format#example).
+
+This example keeps the email in `localStorage` so it runs on its own. In your app, send each email to your server from `onChange` instead, and don't set `value` from each response, as [the editor's API](./api#the-editor) explains.
+
+## A whole editor page
+
+`MailQuiltShell` is the [Shell](./shell): the editor with a header, Export and Import buttons, messages and saving in the browser. With `saveKey`, it keeps the email in the browser, and needs no callbacks:
+
+<include meta='title="src/email-page.tsx"'>
+  ./_shell/react-vite/email-page.tsx
+</include>
+
+The Shell fills the space you give it, so give its parent a height.
+
+## Props
+
+`MailQuilt` takes `value`, `onChange`, `onError` and `ref`. `MailQuiltShell` takes those, and `heading`, `actions` and `saveKey`. Other props, such as `className`, `style` and `aria-label`, go to the element. The [editor's API](./api#react) lists them all, with their types.

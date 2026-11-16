@@ -33,6 +33,11 @@ export default defineConfig({
       port: freshProjects["plain-js"].port,
     },
     {
+      command: `node_modules/.bin/vite preview --port ${freshProjects["react-vite"].port} --strictPort`,
+      cwd: freshProjectDir("react-vite"),
+      port: freshProjects["react-vite"].port,
+    },
+    {
       command: `node_modules/.bin/next start --port ${freshProjects.react.port}`,
       cwd: freshProjectDir("react"),
       env: { NEXT_TELEMETRY_DISABLED: "1" },

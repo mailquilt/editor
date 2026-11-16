@@ -5,7 +5,7 @@ seo:
   title: "Add a drag-and-drop email editor to a Next.js app"
 ---
 
-This page puts the editor in a Next.js app that uses the App Router, and renders the email's HTML on the server. Mail Quilt's tests build every file on this page in a Next.js 16 app with React 19, open it in a browser, and post an email to the Route Handler, so the code works as written.
+This page puts the editor in a Next.js app that uses the App Router, and renders the email's HTML on the server. The Pages Router hasn't been tested. Mail Quilt's tests build every file on this page in a Next.js 16 app with React 19, open it in a browser, and post an email to the Route Handler, so the code works as written.
 
 ```bash
 npm install @mailquilt/react @mailquilt/renderer
@@ -29,7 +29,7 @@ The page that shows it can stay a Server Component:
 
 - **There's no `next/dynamic` to add.** On the server, `MailQuilt` renders an empty `<mail-quilt>`, and the editor loads in the browser.
 - **`onError` is always listening in time.** If the editor refuses the email you pass, `onError` hears why, so nobody is left looking at an empty editor.
-- **Save to your server from `onChange`.** This example saves in the browser so it runs on its own. In your app, send each email to your server instead, and don't set `value` from each response, as the [editor's API](./quick-start#the-editors-api) explains.
+- **Save to your server from `onChange`.** This example saves in the browser so it runs on its own. In your app, send each email to your server instead, and don't set `value` from each response, as the [editor's API](./api#the-editor) explains.
 
 ## A whole editor page
 
@@ -53,4 +53,4 @@ MJML, the library that writes the HTML, loads the first time a request renders a
 
 ## Content Security Policy
 
-If your app sets a Content Security Policy, Preview needs `'unsafe-inline'` in `style-src`. The [quick start](./quick-start#content-security-policy) explains why, and what happens without it.
+If your app sets a Content Security Policy, Preview needs `'unsafe-inline'` in `style-src`. [Content Security Policy](./api#content-security-policy) explains why, and what happens without it.

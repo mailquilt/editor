@@ -43,25 +43,35 @@ export default defineConfig({
             items: [
               "/docs",
               "/docs/quick-start",
-              "/docs/shell",
               "/docs/packages",
+              "/docs/let-customers-design-emails",
             ],
             label: "Get started",
           },
           {
-            items: [
-              "/docs/nextjs",
-              "/docs/design-your-editor-page",
-              "/docs/theme-tokens",
-              "/docs/keyboard",
-              "/docs/render-on-a-server",
-              "/docs/change-emails-in-code",
-              "/docs/let-customers-design-emails",
-            ],
-            label: "Guides",
+            items: ["/docs/html", "/docs/vite", "/docs/react", "/docs/nextjs"],
+            label: "Frameworks",
           },
           {
-            items: ["/docs/document-format", "/docs/email-clients"],
+            items: [
+              "/docs/shell",
+              "/docs/design-your-editor-page",
+              "/docs/theme-the-editor",
+            ],
+            label: "The editor page",
+          },
+          {
+            items: ["/docs/render-on-a-server", "/docs/change-emails-in-code"],
+            label: "Your emails",
+          },
+          {
+            items: [
+              "/docs/api",
+              "/docs/document-format",
+              "/docs/theme-tokens",
+              "/docs/keyboard",
+              "/docs/email-clients",
+            ],
             label: "Reference",
           },
         ],

@@ -1,0 +1,90 @@
+---
+title: Editor API
+description: Every property, event, method, prop, type and CSS part of the Mail Quilt editor and Shell, for the Web Components and the React components, and the Content Security Policy they need.
+seo:
+  title: "Email editor API: properties, events and React props"
+---
+
+The editor is the `<mail-quilt>` element, and the [Shell](./shell) is `<mail-quilt-shell>`, the editor with a header and messages around it. `@mailquilt/editor` registers both, and `@mailquilt/react` wraps both as components.
+
+## The editor
+
+`<mail-quilt>` has one property, two events and one method:
+
+| Name | What it does |
+| --- | --- |
+| `value` | The email the editor shows. Set it to open an email, or to `undefined` or `null` to empty the editor. |
+| `mq-change` | An event fired after every change. The new email is in `event.detail.document`. |
+| `mq-error` | An event fired when the editor refuses an email, which then keeps the email it had. The reason is in `event.detail.reason`. The [document format](./document-format) page lists what the editor accepts. |
+| `exportHtml()` | Returns a promise of the email's HTML, ready to send. It rejects if the editor has no email. |
+
+Opening a different email clears undo history. Setting `value` to the email the editor last sent you changes nothing, even if you copied it or its keys come back in another order. That's why you can save each change and pass it straight back.
+
+[Two things to get right](./quick-start#two-things-to-get-right) says which email to pass back, and when to start listening for `mq-error`.
+
+## The Shell
+
+`<mail-quilt-shell>` has the editor's property, events and method, and three attributes of its own:
+
+| Name | What it does |
+| --- | --- |
+| `value` | The email the Shell shows, as on `<mail-quilt>`. With `save-key`, a saved email opens instead of the first one you set. With no `value` and nothing saved, the editor is empty and the export buttons say there's no email to export. |
+| `heading` | The text in the header. It's "Email" when unset. |
+| `actions` | The buttons to show, by name and separated by spaces: `import-json`, `export-json` and `export-html`. Leave it out to show all three. |
+| `save-key` | Where the email is kept in the browser, as the `saveKey` property. Leave it out to store nothing. [Saving](./shell#saving) says how it works. |
+| `mq-change` | Fired after every change, including an import. The new email is in `event.detail.document`. |
+| `mq-error` | Fired when the editor refuses an email you set as `value`. The reason is in `event.detail.reason`, and the message bar shows it too. |
+| `exportHtml()` | Returns a promise of the email's HTML, as on `<mail-quilt>`. |
+
+## React
+
+`@mailquilt/react` has two components, which render the same elements:
+
+| Component | Props |
+| --- | --- |
+| `MailQuilt` | `value`, `onChange`, `onError` and `ref`. |
+| `MailQuiltShell` | The same, and `heading`, `actions` and `saveKey`. `actions` is an array of names, such as `["export-html"]`. |
+
+- `value` is the email to open. `onChange` gets the new email after every change, and `onError` gets the reason when the editor refuses one. `onError` is always listening in time.
+- `ref` gives you the element once the editor has loaded, so you can call `exportHtml()`.
+- Other props, such as `className`, `style`, `id` and `aria-label`, go to the element.
+- On the server, each component renders its empty element, and the editor loads in the browser.
+
+`@mailquilt/react` needs React 19. The [React](./react) and [Next.js](./nextjs) pages show both components in use.
+
+## TypeScript
+
+| Type | From | What it is |
+| --- | --- | --- |
+| `BlocksDocument` | `@mailquilt/core`, `@mailquilt/editor` and `@mailquilt/react` | An email, as the [document format](./document-format) describes it. |
+| `MailQuiltChangeEvent` | `@mailquilt/editor` | The `mq-change` event. |
+| `MailQuiltErrorEvent` | `@mailquilt/editor` | The `mq-error` event. |
+| `MailQuiltElement`, `MailQuiltShellElement` | `@mailquilt/react` | The elements a `ref` gives you. |
+| `MailQuiltProps`, `MailQuiltShellProps` | `@mailquilt/react` | The components' props. |
+| `ShellAction` | `@mailquilt/editor` and `@mailquilt/react` | One of the Shell's button names. |
+
+`addEventListener` on the elements knows `mq-change` and `mq-error` by name, so their events are typed without a cast.
+
+## CSS parts
+
+The frame around the editor, with its corners and its 1px ring, is the `frame` part. Style it with `mail-quilt::part(frame)`, such as `border-radius: 0` for an editor that fills a panel edge to edge. The Shell's header and message bar are parts too, which [Customizing it](./shell#customizing-it) lists.
+
+Colors, spacing, corners and the font are [theme tokens](./theme-tokens), not parts.
+
+## Content Security Policy
+
+Preview shows the email in a sandboxed iframe, which follows your page's Content Security Policy. Emails rely on inline styles, so Preview needs `'unsafe-inline'` in `style-src`:
+
+```text
+Content-Security-Policy: style-src 'self' 'unsafe-inline'
+```
+
+Without it, Preview shows the email without its styling. The editor and `exportHtml()` aren't affected, and the exported HTML is unchanged.
+
+A page using the [CDN build](./html) also needs `script-src` to allow the folder the build is in, because the build is several files. The path must end in `/`:
+
+```text
+Content-Security-Policy: script-src 'self' https://cdn.jsdelivr.net/npm/@mailquilt/editor@0.1.0/dist/cdn/
+```
+
+If it allows only `dist/cdn/index.js`, the editor doesn't load. An inline script like the one in the [HTML example](./html) also needs a nonce or hash, or you can move it into a file of your own.

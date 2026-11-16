@@ -35,6 +35,7 @@ const shellExamples = path.join(quickStart, "..", "_shell");
 const shellPages = {
   "plain-js": "shell",
   react: path.join("app", "shell"),
+  "react-vite": "src",
 } as const;
 /** The docs' server-side examples, run in Node against the packed packages. */
 const serverCode = path.join(quickStart, "..", "_code");
@@ -68,8 +69,8 @@ for (const name of Object.keys(
   const dir = freshProjectDir(name);
   cpSync(path.join(here, "projects", name), dir, { recursive: true });
   cpSync(path.join(quickStart, name), dir, { recursive: true });
-  // The React project has its own typed copy.
-  if (name !== "react") {
+  // The React projects have their own typed copies.
+  if (name !== "react" && name !== "react-vite") {
     cpSync(
       path.join(here, "projects", "starter-email.js"),
       path.join(dir, "starter-email.js")

@@ -5,7 +5,7 @@ seo:
   title: "Document format: the JSON an email is saved as"
 ---
 
-Mail Quilt saves an email as a JSON document: Rows hold Columns, and Columns hold Blocks. This is the document `mq-change` gives you and `value` takes, so you can store it anywhere JSON goes.
+Mail Quilt saves an email as a JSON document: Rows hold Columns, and Columns hold Blocks. This is the document `mq-change` gives you and `value` takes, so you can store it anywhere JSON goes. In TypeScript, it's the `BlocksDocument` type, exported by `@mailquilt/core`, `@mailquilt/editor` and `@mailquilt/react`.
 
 The editor never repairs a document. If one doesn't match this format, the editor refuses it, keeps the email it had, and fires `mq-error` with the reason. A field the editor doesn't know is refused too, rather than dropped, so your next save can't lose it.
 
