@@ -678,4 +678,9 @@ export const editorStyles = css`
   .ProseMirror p {
     margin: 0;
   }
+
+  /* In the Block's color, as the export writes it, and underlined. */
+  .ProseMirror a {
+    color: inherit;
+  }
 `;

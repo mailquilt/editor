@@ -77,6 +77,23 @@ describe("a Heading Block", () => {
     expect(html).toMatch(/<p style="[^"]*font-size:32px[^"]*">/u);
   });
 
+  it("colors a link as the Heading", async () => {
+    const link = { attrs: { href: "https://x.test" }, type: "link" };
+    const html = await renderEmail(
+      emailWith(
+        heading({
+          color: "#123456",
+          content: richText([text("Sale", [link])]),
+          level: 1,
+        })
+      )
+    );
+
+    expect(html).toContain(
+      '<a href="https://x.test" target="_blank" style="color:#123456;text-decoration:underline">Sale</a>'
+    );
+  });
+
   it("escapes its text", async () => {
     const html = await renderEmail(
       emailWith(heading({ content: richText([text("<script>&")]), level: 1 }))

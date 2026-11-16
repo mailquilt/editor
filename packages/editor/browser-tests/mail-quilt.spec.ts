@@ -172,7 +172,7 @@ test("exported HTML keeps repeated spaces typed in a Text Block", async ({
   await page.keyboard.type("a   b ");
   await expect(textBlock(page)).toHaveText("a   b Hello");
 
-  expect(await exportHtml(page)).toContain("a   b Hello");
+  expect(await exportHtml(page)).toContain("a &nbsp;&nbsp;b Hello");
 });
 
 test.describe("undo and redo while typing", () => {
