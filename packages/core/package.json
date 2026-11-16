@@ -1,12 +1,15 @@
 {
   "name": "@mailquilt/core",
   "version": "0.0.0",
-  "description": "Mail Quilt document model and Commands. Runs without a DOM.",
+  "description": "The email document model behind the Mail Quilt email editor: the JSON format, the Commands that change it, and undo. Runs without a DOM.",
   "keywords": [
     "document-model",
     "email",
     "email-builder",
-    "email-editor"
+    "email-editor",
+    "email-template",
+    "json",
+    "undo"
   ],
   "homepage": "https://editor.mailquilt.com",
   "bugs": {

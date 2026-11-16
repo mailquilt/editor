@@ -29,4 +29,4 @@ editor.undo();
 
 The other Mail Quilt packages are built on this one. To turn an email into HTML, use [`@mailquilt/renderer`](https://www.npmjs.com/package/@mailquilt/renderer). For the editor, use [`@mailquilt/editor`](https://www.npmjs.com/package/@mailquilt/editor) or [`@mailquilt/react`](https://www.npmjs.com/package/@mailquilt/react).
 
-[Docs](https://editor.mailquilt.com/docs/change-emails-in-code) · [Source](https://github.com/mailquilt/editor) · MIT
+[Docs](https://editor.mailquilt.com/docs/change-emails-in-code) · [Playground](https://editor.mailquilt.com/playground) · [Source](https://github.com/mailquilt/editor) · MIT

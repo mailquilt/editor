@@ -2,6 +2,8 @@
 
 The Mail Quilt email editor for React 19: `MailQuilt`, the editor, and `MailQuiltShell`, a whole editor page with Import, Export and saving in the browser.
 
+[![The Mail Quilt editor: an email on the left, and Blocks to drag onto it on the right](https://editor.mailquilt.com/editor-small.webp)](https://editor.mailquilt.com/playground)
+
 ```bash
 npm install @mailquilt/react
 ```
@@ -45,4 +47,4 @@ Pass the email you saved for this person, or `createEmail()` for a new one, from
 
 On the server it renders an empty `<mail-quilt>`, and the editor loads in the browser.
 
-[Docs](https://editor.mailquilt.com/docs/quick-start#react) · [Source](https://github.com/mailquilt/editor) · MIT
+[Docs](https://editor.mailquilt.com/docs/quick-start#react) · [Playground](https://editor.mailquilt.com/playground) · [Source](https://github.com/mailquilt/editor) · MIT

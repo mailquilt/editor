@@ -1,12 +1,17 @@
 {
   "name": "@mailquilt/react",
   "version": "0.0.0",
-  "description": "The Mail Quilt email editor as a React component.",
+  "description": "Drag-and-drop email editor for React: the Mail Quilt editor and editor page as React components.",
   "keywords": [
+    "drag-and-drop",
     "email",
     "email-builder",
+    "email-designer",
     "email-editor",
-    "react"
+    "email-template",
+    "html-email",
+    "react",
+    "react-component"
   ],
   "homepage": "https://editor.mailquilt.com",
   "bugs": {
