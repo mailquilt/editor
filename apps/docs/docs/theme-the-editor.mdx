@@ -1,0 +1,74 @@
+---
+title: Theme the editor
+description: Match the Mail Quilt editor to your app with its theme tokens, from the font and accent to a complete dark theme that meets WCAG AA contrast.
+seo:
+  title: "Theme the email editor: match your app, and a dark theme"
+---
+
+The editor doesn't take its colors or font from your page. It looks the same on any page until you set its [theme tokens](./theme-tokens), and then it uses yours. Set them on the `<mail-quilt>` element, or on `<mail-quilt-shell>` for a Shell.
+
+## Your font and accent
+
+Start with the font and the accent, which is enough for most apps:
+
+```css title="styles.css"
+mail-quilt {
+  --mq-font-family: "Inter", system-ui, sans-serif;
+  --mq-color-accent: #7c3aed;
+  --mq-color-accent-strong: #6d28d9;
+  --mq-color-accent-soft: rgb(124 58 237 / 10%);
+  --mq-color-outline-hover: rgb(124 58 237 / 45%);
+}
+```
+
+To change the frame beyond the tokens, such as for an editor that fills a panel edge to edge, style the `frame` part:
+
+```css title="styles.css"
+mail-quilt::part(frame) {
+  border-radius: 0;
+  box-shadow: none;
+}
+```
+
+## A dark theme
+
+The defaults are a light theme. For a dark one, set every color token, not only a few, so that no light default is left next to a dark one. Each pair of colors in this theme meets WCAG AA contrast, 4.5:1 for text and 3:1 for borders and focus rings:
+
+```css title="styles.css"
+mail-quilt {
+  --mq-color-workspace: #0f1115;
+  --mq-color-surface: #181b21;
+  --mq-color-surface-muted: #20242b;
+  --mq-color-surface-hover: #272b33;
+  --mq-color-text: #e8eaed;
+  --mq-color-text-muted: #a3a9b3;
+  --mq-color-border: #2c3038;
+  --mq-color-border-strong: #7a828f;
+  --mq-color-accent: #7c93ff;
+  --mq-color-accent-strong: #a9b8ff;
+  --mq-color-accent-soft: rgb(124 147 255 / 16%);
+  --mq-color-outline-hover: rgb(124 147 255 / 50%);
+  --mq-color-on-accent: #0f1115;
+  --mq-color-danger: #ff7a6e;
+  --mq-color-tooltip: #e8eaed;
+  --mq-color-on-tooltip: #16181d;
+  --mq-color-backdrop: rgb(0 0 0 / 65%);
+  --mq-shadow-small: 0 1px 2px rgb(0 0 0 / 40%);
+  --mq-shadow:
+    0 0 0 1px rgb(255 255 255 / 6%), 0 2px 4px rgb(0 0 0 / 30%),
+    0 12px 32px -8px rgb(0 0 0 / 60%);
+}
+```
+
+A few tokens pair with each other, so change them together:
+
+- `--mq-color-surface` is also the icons and tag text on `--mq-color-text`, such as the selected Block's toolbar and tag. Keep the two far apart, one dark and one light.
+- `--mq-color-on-accent` is the text on `--mq-color-accent`. With a light accent, as here, it's dark.
+- `--mq-color-accent-strong` is the text and icons of pressed buttons, such as Bold, on `--mq-color-accent-soft`. On a dark theme, make it lighter than the accent, not darker.
+- `--mq-color-on-tooltip` is the text on `--mq-color-tooltip`.
+
+What the browser draws itself, such as the open list of a dropdown in the side panel and scrollbars, stays light for now. No token changes it yet.
+
+The email itself stays as its sender designed it, with its own background, colors and font, because that's how it will look when it's sent. A white email on a dark workspace is expected.
+
+Every token, with its default and what it changes, is on the [theme tokens](./theme-tokens) page.

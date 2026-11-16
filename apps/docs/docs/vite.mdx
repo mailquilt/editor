@@ -1,0 +1,27 @@
+---
+title: JavaScript with Vite
+description: Add the Mail Quilt email editor to a JavaScript app built with Vite or another bundler, save each email, show why one was refused, and export the HTML.
+seo:
+  title: "Add a drag-and-drop email editor to a JavaScript app with Vite"
+---
+
+In an app with a bundler, install the editor and import it. The `<mail-quilt>` element then works like any other HTML element, in any framework or none. Mail Quilt's tests build this code with Vite and run it in a browser, so it works as written.
+
+```bash
+npm install @mailquilt/editor
+```
+
+<include meta='title="index.html"'>./_quick-start/plain-js/index.html</include>
+
+<include meta='title="main.js"'>./_quick-start/plain-js/main.js</include>
+
+Importing `@mailquilt/editor` registers the `<mail-quilt>` element. MJML, the library that turns an email into HTML, is large, so it only loads the first time someone opens Preview or you call `exportHtml()`.
+
+The page opens an email, saves every change in the browser, shows the reason if the editor refuses an email, and exports the email as HTML. `starterEmail` is the email to open when nothing is saved yet. Use one your app already has, or copy the [example email](./document-format#example).
+
+- **Listen for `mq-error` before you set `value`, or straight after,** as this code does. A listener added later misses it.
+- **Save to your server, not only the browser.** This page keeps the email in `localStorage` so it runs on its own. In your app, send the email from `mq-change` to your server, as [the editor's API](./api#the-editor) explains.
+
+## A whole editor page
+
+Importing `@mailquilt/editor` registers `<mail-quilt-shell>` too, the [Shell](./shell): the editor with a header, Export and Import buttons, messages and saving in the browser. The Shell page has its own example for a bundler.

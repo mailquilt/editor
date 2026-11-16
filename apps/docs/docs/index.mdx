@@ -2,15 +2,17 @@
 title: Introduction
 description: What Mail Quilt is, how it works, and what to know before you rely on it.
 seo:
-  title: "Introduction to the email editor packages"
+  title: "Mail Quilt docs: an open-source email editor to embed in your app"
 ---
+
+Mail Quilt is four npm packages for adding a drag-and-drop email editor to a web app. They're free and MIT-licensed, and they run in your app, with no service to sign up for.
 
 ## What it is
 
-Mail Quilt is four packages for building email design into an app. You can take as much of it as you need:
+There are three ways in, from the most done for you to the least:
 
 - **The Shell** is a whole editor page, ready-made. You build nothing. The [Playground](/playground) is one.
-- **The editor** is the `<mail-quilt>` element: the canvas and the side panel. You build your own page around it.
+- **The editor** is the `<mail-quilt>` element, or `MailQuilt` in React: the canvas and the side panel. You build your own page around it.
 - **The core and the renderer** are the email as data, the Commands that change it, and the HTML. The editor is built on them, and you can [build on them too](./change-emails-in-code).
 
 Most of these docs are about the editor, because that's where most apps start. [Packages](./packages) says what each of the four is for.
@@ -39,10 +41,10 @@ The editor doesn't send email, store emails for you, or run a server. Its packag
 
 ## Add it to your app
 
-- **Any framework, or none:** `@mailquilt/editor` registers the `<mail-quilt>` element. Load it through your bundler, or from a CDN on a page with no build step.
-- **React:** `@mailquilt/react` wraps it as a `MailQuilt` component, which also works with server rendering.
+- **Any framework, or none:** `@mailquilt/editor` registers the `<mail-quilt>` element. Load it from a CDN on a page with no build step, as [HTML, no build step](./html) shows, or through your bundler, as [JavaScript with Vite](./vite) shows.
+- **React:** `@mailquilt/react` wraps it as a `MailQuilt` component, which also works with server rendering. See [React](./react) and [Next.js](./nextjs).
 
-The [quick start](./quick-start) has working code for each, and [Packages](./packages) says what the other two packages are for. Wrappers for Vue and Svelte are planned. To match the editor to your app's colors and font, set its [theme tokens](./theme-tokens).
+[Packages](./packages) says what the other two packages are for. Wrappers for Vue and Svelte are planned. To match the editor to your app's colors and font, set its [theme tokens](./theme-tokens).
 
 ## Before you rely on it
 
@@ -54,7 +56,16 @@ The [quick start](./quick-start) has working code for each, and [Packages](./pac
 
 <CardGroup cols={2}>
   <Card title="Quick start" href="/docs/quick-start">
-    Working code for a bundler, a CDN and React.
+    Pick your setup, from a plain HTML page to React and Next.js.
+  </Card>
+  <Card
+    title="Let customers design emails"
+    href="/docs/let-customers-design-emails"
+  >
+    How it fits an app that sends email for its customers.
+  </Card>
+  <Card title="Editor API" href="/docs/api">
+    Every property, event and prop, in one place.
   </Card>
   <Card title="Packages" href="/docs/packages">
     The four packages, and which one to install.

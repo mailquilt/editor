@@ -47,4 +47,4 @@ Pass the email you saved for this person, or `createEmail()` for a new one, from
 
 On the server it renders an empty `<mail-quilt>`, and the editor loads in the browser.
 
-[Docs](https://editor.mailquilt.com/docs/quick-start#react) · [Playground](https://editor.mailquilt.com/playground) · [Source](https://github.com/mailquilt/editor) · MIT
+[Docs](https://editor.mailquilt.com/docs/react) · [Playground](https://editor.mailquilt.com/playground) · [Source](https://github.com/mailquilt/editor) · MIT

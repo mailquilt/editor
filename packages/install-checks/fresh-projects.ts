@@ -8,6 +8,7 @@ export const freshProjects = {
   cdn: { port: 4177 },
   "plain-js": { port: 4175 },
   react: { port: 4176 },
+  "react-vite": { port: 4180 },
 } as const;
 
 /** Serves `@mailquilt/editor` as a CDN would. */

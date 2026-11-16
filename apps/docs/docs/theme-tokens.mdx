@@ -9,20 +9,17 @@ The editor draws everything it owns from tokens: the workspace around the email,
 
 ```css title="styles.css"
 mail-quilt {
-  --mq-font-family: "Inter", system-ui, sans-serif;
-  --mq-color-accent: #7c3aed;
-  --mq-color-accent-strong: #6d28d9;
-  --mq-color-accent-soft: rgb(124 58 237 / 10%);
-  --mq-color-outline-hover: rgb(124 58 237 / 45%);
   --mq-radius: 12px;
 }
 ```
+
+This page lists every token. [Theme the editor](./theme-the-editor) says which to set first, which ones pair with each other, and has a complete dark theme.
 
 The React component renders the same `<mail-quilt>` element, so the same selector works there. On a [Shell](./shell), set them on `<mail-quilt-shell>` instead. Its header and messages use them, and so does the editor inside it.
 
 The frame around the editor, with its corners and its 1px ring, is the `frame` part. To change it beyond the tokens, style `mail-quilt::part(frame)`, such as `border-radius: 0` for an editor that fills a panel edge to edge.
 
-The editor doesn't take its color, font or background from your page, so it looks the same on a light page and a dark one until you change a token. The defaults below are a light theme. If you set darker colors, check that text stays readable against them.
+The editor doesn't take its color, font or background from your page, so it looks the same on a light page and a dark one until you change a token. The defaults below are a light theme. For a dark one, set every color token, as the [dark theme](./theme-the-editor#a-dark-theme) does, and check that text stays readable.
 
 The email itself never uses these tokens. The card in the middle of the canvas shows the email's own background color, font and width, which people change in the side panel's Settings tab, so it looks the way it will when it's sent.
 
@@ -39,7 +36,7 @@ The email itself never uses these tokens. The card in the middle of the canvas s
 | Token | Default | What it changes |
 | --- | --- | --- |
 | `--mq-color-workspace` | <span class="site-swatch" style={{ background: "#eeeff1" }} />`#eeeff1` | The background around the email card. |
-| `--mq-color-surface` | <span class="site-swatch" style={{ background: "#ffffff" }} />`#ffffff` | The side panel, the toolbars, the selected tab, fields, tiles and an empty Column's placeholder. It's also the icons and focus ring of the selected Block's toolbar, the type badge's icon, and the selected Block's and Row's tag text, all on `--mq-color-text`, and the fill of the drop line's ends. |
+| `--mq-color-surface` | <span class="site-swatch" style={{ background: "#ffffff" }} />`#ffffff` | Backgrounds: the side panel, the toolbars, the selected tab, fields, tiles and an empty Column's placeholder. Also used for: the icons and focus ring of the selected Block's toolbar, the type badge's icon, and the selected Block's and Row's tag text, all on `--mq-color-text`, and the fill of the drop line's ends. |
 | `--mq-color-surface-muted` | <span class="site-swatch" style={{ background: "#f5f6f7" }} />`#f5f6f7` | Disabled fields, layout thumbnails and the circle behind an empty Column's plus. |
 | `--mq-color-surface-hover` | <span class="site-swatch" style={{ background: "#eceef0" }} />`#eceef0` | The track behind the tabs, and a button under the pointer. |
 | `--mq-color-text` | <span class="site-swatch" style={{ background: "#16181d" }} />`#16181d` | Text and icons, the tag of the selected Block or Row, the selected Block's toolbar, and the badge in the side panel. |
