@@ -44,3 +44,6 @@ playwright-report
 # Blume
 .blume
 .blume-verify
+
+# Wrangler's local cache
+.wrangler
