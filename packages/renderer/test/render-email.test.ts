@@ -77,6 +77,23 @@ describe(renderEmail, () => {
     );
   });
 
+  it("gives Columns that share a Row a desktop width that never adds up to more than the email", async () => {
+    const email = emailWithColumns(
+      { texts: ["One"], width: 33.33 },
+      { texts: ["Two"], width: 33.33 },
+      { texts: ["Three"], width: 33.34 }
+    );
+    email.settings.width = 599;
+
+    const html = await renderEmail(email);
+    const widths = [
+      ...html.matchAll(/mq-column" style="[^"]*max-width:(?<px>[\d.]+)px;"/gu),
+    ].map(({ groups }) => Number(groups?.px));
+
+    expect(widths).toStrictEqual([199.64, 199.64, 199.7]);
+    expect(widths.reduce((sum, width) => sum + width)).toBeLessThanOrEqual(599);
+  });
+
   it("matches the saved HTML for an email with every setting", async () => {
     const email = emailWithText("Hello {{first_name}},", "", "Welcome aboard.");
     email.settings = {
