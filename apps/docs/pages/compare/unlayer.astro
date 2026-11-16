@@ -1,0 +1,110 @@
+---
+// Mail Quilt beside Unlayer. Every line about Unlayer was read from its own
+// site, docs or code on the date below. Check them again before changing it.
+import SitePage from "../../components/site-page.astro";
+import Versus from "../../components/versus.astro";
+
+const CHECKED = "16 November 2026";
+
+const rows = [
+  {
+    label: "What it is",
+    ours: "Packages for building an email editor into your app: a drag-and-drop editor, a ready-made editor page, and the document model and renderer under them. It makes emails only.",
+    theirs:
+      "A commercial editor you embed, with builders for emails, pages, popups and documents.",
+  },
+  {
+    label: "License and cost",
+    ours: "MIT. Free, with no paid plan.",
+    theirs:
+      "A free plan, then Launch at $250 a month, Scale at $750 and Optimize at $2,000, with Enterprise priced on request. The React wrapper is MIT.",
+  },
+  {
+    label: "Where the editor comes from",
+    ours: "Installed from npm and bundled with your app, or loaded from a CDN build you pin to a version.",
+    theirs:
+      "Loaded from Unlayer's servers, at editor.unlayer.com. Running it on-premise or offline is an Enterprise option.",
+  },
+  {
+    label: "Account",
+    ours: "None.",
+    theirs:
+      "In production, your domain must be added in the Unlayer Console.",
+  },
+  {
+    label: "Frameworks",
+    ours: "Any framework, as a Web Component, and a React component.",
+    theirs: "React, Angular and Vue wrappers.",
+  },
+  {
+    label: "What you save",
+    ours: "A documented JSON format. The HTML is written by MJML, in the browser or on your own server.",
+    theirs: "Unlayer's JSON design, which it exports as HTML.",
+  },
+  {
+    label: "Classic Outlook",
+    ours: "Works, with limits: emoji are black and white, and dark mode inverts the colors.",
+    theirs:
+      "Its docs say exports include markup for classic Outlook for Windows by default.",
+  },
+  {
+    label: "Blocks, images and teams",
+    ours: "Six Blocks, no template library, no image upload and no collaboration.",
+    theirs:
+      "White-labeling and custom tools from Launch. Custom Blocks, team collaboration and a custom image library from Scale.",
+  },
+  {
+    label: "Support",
+    ours: "One maintainer and a public issue tracker.",
+    theirs: "A company, with a dedicated success manager on Enterprise.",
+  },
+];
+
+const theirs = [
+  "You need page, popup or document builders as well as email.",
+  "Your customers expect templates, many kinds of Blocks, image uploads or editing together.",
+  "You want a company behind the editor, with a contract and support.",
+];
+
+const ours = [
+  "You want the editor inside your product, with no fee and no other company's servers involved.",
+  "You want each email saved as a documented JSON format that you can check, change and render on your own server.",
+  "You want everything that can be dragged to work from the keyboard too.",
+  "Six Blocks are enough for the emails your customers send.",
+];
+
+const sources = [
+  { href: "https://unlayer.com/pricing", label: "pricing" },
+  { href: "https://docs.unlayer.com", label: "docs" },
+  {
+    href: "https://github.com/unlayer/react-email-editor",
+    label: "React wrapper",
+  },
+];
+---
+
+<SitePage
+  description="Mail Quilt and Unlayer side by side: cost, where the editor loads from, frameworks, saved format and classic Outlook, and when Unlayer is the better choice."
+  title="An open-source Unlayer alternative: Mail Quilt compared with Unlayer"
+>
+  <header class="site-intro">
+    <div class="site-wrap">
+      <h1 class="site-h1">Mail Quilt and Unlayer</h1>
+      <p class="site-lead">
+        Both put a drag-and-drop email editor in your app. Unlayer is a hosted,
+        commercial editor with many more features. Mail Quilt is free, MIT-licensed
+        packages that run in your app. This page sets them side by side, and says
+        when Unlayer is the better choice.
+      </p>
+    </div>
+  </header>
+
+  <Versus
+    checked={CHECKED}
+    ours={ours}
+    rows={rows}
+    sources={sources}
+    theirs={theirs}
+    them="Unlayer"
+  />
+</SitePage>

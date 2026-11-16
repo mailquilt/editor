@@ -1,0 +1,108 @@
+---
+// Mail Quilt beside Beefree SDK. Every line about Beefree was read from its
+// own site, docs or code on the date below. Check them again before changing it.
+import SitePage from "../../components/site-page.astro";
+import Versus from "../../components/versus.astro";
+
+const CHECKED = "16 November 2026";
+
+const rows = [
+  {
+    label: "What it is",
+    ours: "Packages for building an email editor into your app: a drag-and-drop editor, a ready-made editor page, and the document model and renderer under them. It makes emails only.",
+    theirs:
+      "A commercial SDK you embed, with an Email Builder, Page Builder, Pop-up Builder and File Manager.",
+  },
+  {
+    label: "License and cost",
+    ours: "MIT. Free, with no paid plan.",
+    theirs:
+      "A free plan for prototyping, with 10 users. Then Essentials at $400 a month, Core at $1,200 and Superpowers at $3,000, with Enterprise priced on request. Its docs say the free plan can still bring charges, such as for CDN overages.",
+  },
+  {
+    label: "Where the editor comes from",
+    ours: "Installed from npm and bundled with your app, or loaded from a CDN build you pin to a version.",
+    theirs: "Loaded from Beefree's servers, at app-rsrc.getbee.io.",
+  },
+  {
+    label: "Account",
+    ours: "None.",
+    theirs:
+      "A client ID and secret. Its docs say production apps must sign in from the server, and never expose the secret in the browser.",
+  },
+  {
+    label: "Frameworks",
+    ours: "Any framework, as a Web Component, and a React component.",
+    theirs: "React, Angular and Vue packages.",
+  },
+  {
+    label: "What you save",
+    ours: "A documented JSON format. The HTML is written by MJML, in the browser or on your own server.",
+    theirs: "Beefree's JSON, with HTML, and AMP HTML, from the same save.",
+  },
+  {
+    label: "Outlook",
+    ours: "Works in classic Outlook for Windows, with limits: emoji are black and white, and dark mode inverts the colors.",
+    theirs:
+      "Its site says “Broad email compatibility, Outlook included”, without naming versions.",
+  },
+  {
+    label: "Content and templates",
+    ours: "Six Blocks, no template library and no image upload.",
+    theirs:
+      "Eleven content tiles on the free plan, including Social, Icons and Table, with more on paid plans. A File Manager and a Template Catalog API.",
+  },
+  {
+    label: "Support",
+    ours: "One maintainer and a public issue tracker.",
+    theirs: "A company, with a help center and sales team.",
+  },
+];
+
+const theirs = [
+  "You need page or pop-up builders as well as email.",
+  "Your customers expect templates, more kinds of content, or a file manager.",
+  "You want a company behind the editor, with a contract and support.",
+];
+
+const ours = [
+  "You want the editor inside your product, with no fee and no other company's servers involved.",
+  "You'd rather not run a sign-in step on your server before the editor can open.",
+  "You want each email saved as a documented JSON format that you can check, change and render on your own server.",
+  "You want everything that can be dragged to work from the keyboard too.",
+  "Six Blocks are enough for the emails your customers send.",
+];
+
+const sources = [
+  { href: "https://developers.beefree.io/pricing-plans", label: "pricing" },
+  { href: "https://docs.beefree.io/beefree-sdk", label: "docs" },
+  { href: "https://developers.beefree.io/email-builder", label: "Email Builder" },
+  { href: "https://www.npmjs.com/package/@beefree.io/sdk", label: "SDK package" },
+];
+---
+
+<SitePage
+  description="Mail Quilt and Beefree SDK side by side: cost, sign-in, where the editor loads from, frameworks and saved format, and when Beefree is the better choice."
+  title="An open-source Beefree SDK alternative: Mail Quilt compared with Beefree"
+>
+  <header class="site-intro">
+    <div class="site-wrap">
+      <h1 class="site-h1">Mail Quilt and Beefree SDK</h1>
+      <p class="site-lead">
+        Both put a drag-and-drop email editor in your app. Beefree SDK is a hosted,
+        commercial editor with many more features. Mail Quilt is free, MIT-licensed
+        packages that run in your app. This page sets them side by side, and says
+        when Beefree is the better choice.
+      </p>
+    </div>
+  </header>
+
+  <Versus
+    checked={CHECKED}
+    ours={ours}
+    rows={rows}
+    sources={sources}
+    theirs={theirs}
+    them="Beefree SDK"
+  />
+</SitePage>

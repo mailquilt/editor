@@ -1,0 +1,120 @@
+---
+// One other editor beside Mail Quilt, row by row, with when to choose each.
+// The page that uses it holds the facts, and the date they were read on.
+import { withBase } from "blume/components/islands/base-path.ts";
+
+import { ISSUES } from "../site/project.ts";
+
+interface Props {
+  /** The day each line about the other editor was read from its own pages. */
+  checked: string;
+  /** Reasons to choose Mail Quilt instead. */
+  ours: string[];
+  /** One fact per row, for both editors. */
+  rows: { label: string; ours: string; theirs: string }[];
+  /** The other editor's own pages each line was read from. */
+  sources: { href: string; label: string }[];
+  /** Reasons to choose the other editor. */
+  theirs: string[];
+  /** The other editor's name. */
+  them: string;
+}
+
+const { checked, ours, rows, sources, theirs, them } = Astro.props;
+---
+
+<section class="site-section">
+  <div class="site-wrap">
+    <h2 class="site-h2" id="side-by-side">Side by side</h2>
+    <!-- Focusable, so the keyboard can scroll it where it's too wide. -->
+    <div
+      aria-labelledby="side-by-side"
+      class="site-scroll versus"
+      role="region"
+      tabindex="0">
+      <table class="site-table">
+        <thead>
+          <tr>
+            <td></td>
+            <th scope="col">Mail Quilt</th>
+            <th scope="col">{them}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            rows.map((row) => (
+              <tr>
+                <th scope="row">{row.label}</th>
+                <td>{row.ours}</td>
+                <td>{row.theirs}</td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+    <p class="site-small site-muted site-measure checked">
+      Each line about {them} was read from its own site, docs or code on{" "}
+      {checked}: {
+        sources.map((source, index) => (
+          <>
+            <a class="site-link" href={source.href}>
+              {source.label}
+            </a>
+            {index < sources.length - 1 ? ", " : "."}
+          </>
+        ))
+      } Prices and features change, so check theirs before you decide. If a line
+      here is wrong, <a class="site-link" href={ISSUES}>open an issue</a> and it
+      will be fixed.
+    </p>
+  </div>
+</section>
+
+<section class="site-section">
+  <div class="site-wrap site-split">
+    <div>
+      <h2 class="site-h2">Choose {them} when</h2>
+    </div>
+    <ul class="site-list">
+      {theirs.map((reason) => <li>{reason}</li>)}
+    </ul>
+  </div>
+</section>
+
+<section class="site-section">
+  <div class="site-wrap site-split">
+    <div>
+      <h2 class="site-h2">Choose Mail Quilt when</h2>
+      <div class="site-actions">
+        <a class="site-button" data-tone="accent" href={withBase("/playground")}
+          >Try the Playground</a
+        >
+        <a class="site-button" data-tone="quiet" href={withBase("/compare")}
+          >Compare it with others</a
+        >
+      </div>
+    </div>
+    <ul class="site-list">
+      {ours.map((reason) => <li>{reason}</li>)}
+    </ul>
+  </div>
+</section>
+
+<style>
+  .versus {
+    margin-top: 2rem;
+  }
+
+  .versus table {
+    min-width: 40rem;
+  }
+
+  .versus tbody th {
+    white-space: nowrap;
+  }
+
+  .checked {
+    margin-top: 1.5rem;
+  }
+</style>
