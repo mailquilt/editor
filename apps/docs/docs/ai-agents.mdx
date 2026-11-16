@@ -1,0 +1,39 @@
+---
+title: AI coding agents
+description: Help a coding agent such as Claude Code, Cursor or Codex add Mail Quilt to your app, with Mail Quilt's agent skill and Markdown copies of these docs.
+seo:
+  title: "Add the email editor with an AI coding agent: skill and Markdown docs"
+---
+
+Mail Quilt publishes an agent skill and Markdown copies of these docs, so a coding agent such as Claude Code, Cursor or Codex can add the editor to your app from what's true today, rather than from what it remembers. That matters while the API is at `0.x` and can still change.
+
+## Install the skill
+
+```bash
+npx skills add mailquilt/editor --skill mail-quilt
+```
+
+The command adds the skill to your project, in `.agents/skills/mail-quilt`, for the agents it supports, with a link for Claude Code in `.claude/skills`. Your agent then uses it whenever a task involves Mail Quilt.
+
+The skill holds what these docs don't:
+
+- **which package to pick** for the app in front of it
+- **the order of work**: set the editor up, start from an email, save the JSON and make the HTML
+- **the mistakes to avoid**, such as listening for `mq-error` too late, or setting `value` from a server's answer
+- **how to restyle the editor**, in the order to try things
+
+For facts, it links to the page on this site, rather than repeating them. You can read it at [/skill.md](/skill.md).
+
+After you upgrade Mail Quilt, update the skill too:
+
+```bash
+npx skills update mail-quilt
+```
+
+## Point an agent at the docs
+
+- **Every page has a Markdown copy.** Add `.md` to its address, such as [/docs/quick-start.md](/docs/quick-start.md).
+- **[/llms.txt](/llms.txt)** lists every page, with a line on what each is for.
+- **[/llms-full.txt](/llms-full.txt)** has all the docs in one file.
+
+Give your agent the page for your setup, such as [React](./react) or [Next.js](./nextjs), and the [Editor API](./api).

@@ -56,6 +56,12 @@ const questions: {
     question: "Can people use it without a mouse?",
   },
   {
+    answer:
+      "Yes. Install Mail Quilt's agent skill with npx skills add mailquilt/editor --skill mail-quilt, and your agent knows which package to pick, the order of work and the mistakes to avoid. Every docs page also has a Markdown copy.",
+    more: { href: "/docs/ai-agents", text: "Read about AI coding agents" },
+    question: "Can my coding agent use it?",
+  },
+  {
     answer: `From a CDN the editor is ${kilobytes(size.editor)} gzipped, with everything it needs inside. MJML is another ${kilobytes(size.mjml)}, and it only loads the first time someone opens Preview or exports. Both numbers are measured from the build this page was made with.`,
     question: "How big is it?",
   },
