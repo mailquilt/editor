@@ -15,7 +15,7 @@ npm install @mailquilt/react @mailquilt/renderer
 
 ## The editor in a Client Component
 
-The editor answers what people do in it, so the component that holds it is a Client Component:
+The component that holds the editor keeps the email in state and passes it callbacks, which a Server Component can't do, so it's a Client Component:
 
 <include meta='title="app/editor.tsx"'>
   ./_quick-start/react/app/editor.tsx
