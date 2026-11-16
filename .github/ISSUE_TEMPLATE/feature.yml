@@ -1,0 +1,25 @@
+name: Idea
+description: Something Mail Quilt can't do yet.
+labels: [enhancement, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: The [roadmap](https://editor.mailquilt.com/roadmap) lists what's planned. If your idea is there, add to its issue instead.
+  - type: textarea
+    id: goal
+    attributes:
+      label: What you're trying to do
+      description: The task, in your app or for the people using it, rather than a solution.
+    validations:
+      required: true
+  - type: textarea
+    id: gap
+    attributes:
+      label: Why Mail Quilt can't do it today
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: How it could work
+      description: Optional. A sketch, an example from another editor, or an API you'd like.
