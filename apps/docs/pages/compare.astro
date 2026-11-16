@@ -7,7 +7,7 @@ import { withBase } from "blume/components/islands/base-path.ts";
 import SitePage from "../components/site-page.astro";
 import { ISSUES } from "../site/project.ts";
 
-const CHECKED = "10 November 2026";
+const CHECKED = "16 November 2026";
 
 const tools = [
   {
@@ -24,11 +24,18 @@ const tools = [
     works: "React, Angular and Vue components.",
   },
   {
-    cost: "Commercial. Free to sign up, with paid plans.",
+    cost: "Commercial. A free plan, then paid plans from $400 a month.",
     href: "https://developers.beefree.io",
     kind: "A drag-and-drop editor you embed.",
     name: "Beefree SDK",
     works: "React, Angular and Vue.",
+  },
+  {
+    cost: "Commercial. Paid plans from $70 a month, with an API key from Topol.",
+    href: "https://topol.io/plugin",
+    kind: "A drag-and-drop editor you embed.",
+    name: "Topol",
+    works: "React, Vue, Svelte and Angular.",
   },
   {
     cost: "Open-source core under BSD-3. A paid SDK is built on it.",
@@ -45,11 +52,25 @@ const tools = [
     works: "React.",
   },
   {
+    cost: "FSL-1.1, which becomes MIT two years after each release. Free, but it can't be repackaged as a competing email editor.",
+    href: "https://github.com/templatical/sdk",
+    kind: "A drag-and-drop editor you embed. It saves JSON and writes MJML.",
+    name: "Templatical",
+    works: "Any framework. It's built with Vue.",
+  },
+  {
     cost: "MIT. Free.",
     href: "https://maily.to",
     kind: "An editor that works like writing a document, built on Tiptap.",
     name: "Maily",
     works: "React.",
+  },
+  {
+    cost: "MIT. Free.",
+    href: "https://react.email/docs/editor/overview",
+    kind: "A rich-text editor for email, built on Tiptap and React Email.",
+    name: "React Email editor",
+    works: "React 18 or 19.",
   },
   {
     cost: "MIT. Free.",
@@ -66,7 +87,7 @@ const elsewhere = [
     title: "You need someone to call",
   },
   {
-    text: "Mail Quilt's emails work in classic Outlook for Windows, with limits: emoji are black and white, and dark mode inverts the colors. Topol says it tests there too, and Beefree and Unlayer say they support it. If your emails must look exactly as designed in classic Outlook, compare their output with Mail Quilt's.",
+    text: "Mail Quilt's emails work in classic Outlook for Windows, with limits: emoji are black and white, and dark mode inverts the colors. Unlayer's docs say its exports include markup for classic Outlook, Topol says it tests its output in old Outlook, and Beefree says its output works in Outlook. If your emails must look exactly as designed in classic Outlook, compare their output with Mail Quilt's.",
     title: "Your emails must look exactly right in classic Outlook",
   },
   {
@@ -82,7 +103,7 @@ const elsewhere = [
     title: "You're building pages as well",
   },
   {
-    text: "Maily feels like writing in a document rather than arranging Blocks, which suits emails that are mostly text.",
+    text: "Maily and React Email's editor feel like writing in a document rather than arranging Blocks, which suits emails that are mostly text.",
     title: "You'd rather write than lay out",
   },
 ];
@@ -97,7 +118,7 @@ const reasons = [
 ---
 
 <SitePage
-  description="How Mail Quilt compares with Unlayer, Beefree, GrapesJS, Easy Email, Maily and EmailBuilder.js, and when one of them is the better choice."
+  description="How Mail Quilt compares with Unlayer, Beefree, Topol, GrapesJS, Easy Email, Templatical, Maily, React Email and EmailBuilder.js, and when one of them is the better choice."
   title="Mail Quilt compared with Unlayer, Beefree, GrapesJS and others"
 >
   <header class="site-intro">
@@ -156,6 +177,15 @@ const reasons = [
         decide. If a line here is wrong,{" "}
         <a class="site-link" href={ISSUES}>open an issue</a> and it will be
         fixed.
+      </p>
+      <p class="site-measure checked">
+        Row by row:{" "}
+        <a class="site-link" href={withBase("/compare/unlayer")}
+          >Mail Quilt and Unlayer</a
+        >, and{" "}
+        <a class="site-link" href={withBase("/compare/beefree")}
+          >Mail Quilt and Beefree SDK</a
+        >.
       </p>
     </div>
   </section>
