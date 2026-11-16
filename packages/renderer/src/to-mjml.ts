@@ -2,6 +2,7 @@ import {
   blockStyles,
   EMAIL_LOOK,
   loadDocument,
+  MERGE_TAG,
   rowStyles,
 } from "@mailquilt/core";
 import type {
@@ -44,6 +45,26 @@ const TEXT_STYLE = "margin:0;word-break:break-word;overflow-wrap:anywhere";
 const exactLineHeight = (fontSize: string = EMAIL_LOOK.fontSize) =>
   `${Math.ceil(Number(fontSize.replace("px", "")) * Number(EMAIL_LOOK.lineHeight))}px`;
 
+const MERGE_TAG_PART = new RegExp(`(${MERGE_TAG.source})`, "u");
+
+/**
+ * A word of 20 or more characters, such as a pasted URL, gets a zero-width space
+ * after each / . - ? & = and _, outside Merge Tags and the // of a URL. Yahoo,
+ * AOL, GMX, Web.de and classic Outlook ignore CSS that breaks a word, and widened
+ * the email with it (#91). Shorter words, and numbers such as 3.5, stay whole.
+ */
+const breakLongWords = (html: string) =>
+  html.replaceAll(/\S{20,}/gu, (word) =>
+    word
+      .split(MERGE_TAG_PART)
+      .map((part, index) =>
+        index % 2 === 1
+          ? part
+          : part.replaceAll(/&amp;|\/(?!\/)|[.\-?=_]/gu, "$&&#8203;")
+      )
+      .join("")
+  );
+
 const MARK_TAGS = {
   bold: "strong",
   italic: "em",
@@ -67,6 +88,31 @@ const openTag = (mark: RichTextMark, linkColor: string) =>
   mark.type === "link"
     ? `<a href="${escapeAttribute(mark.attrs.href)}" target="_blank" style="color:${escapeAttribute(linkColor)};text-decoration:underline">`
     : `<${MARK_TAGS[mark.type]}>`;
+
+/** A URL written as text, without the punctuation that may end a sentence after it. */
+const URL_IN_TEXT = /(?<url>https?:\/\/[^\s<>"]*[^\s<>".,;:!?)'\]])/u;
+
+/**
+ * A text's HTML. A URL in text that isn't already linked becomes a link to
+ * itself, as Apple Mail and Gmail would make it, because its break points stop
+ * them recognizing it (#91).
+ */
+const textToHtml = (
+  text: string,
+  linkColor: string,
+  afterSpace: boolean,
+  linked: boolean
+) =>
+  (linked ? [text] : text.split(URL_IN_TEXT))
+    .map((part, index) =>
+      index % 2 === 1
+        ? `${openTag({ attrs: { href: part }, type: "link" }, linkColor)}${breakLongWords(escapeText(part))}</a>`
+        : keepSpaces(
+            breakLongWords(escapeText(part)),
+            index === 0 ? afterSpace : false
+          )
+    )
+    .join("");
 
 const isSameMark = (a: RichTextMark, b: RichTextMark) =>
   a.type === "link" && b.type === "link"
@@ -113,7 +159,12 @@ const inlineToHtml = (
         html += openTag(mark, linkColor);
         open.push(mark);
       }
-      html += keepSpaces(escapeText(node.text), afterSpace);
+      html += textToHtml(
+        node.text,
+        linkColor,
+        afterSpace,
+        marks[0]?.type === "link"
+      );
       afterSpace = node.text.endsWith(" ");
     }
   }
