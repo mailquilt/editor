@@ -160,12 +160,20 @@ describe(renderEmail, () => {
     expect(html).not.toContain("<script>");
   });
 
-  it("keeps repeated spaces, as the canvas shows them", async () => {
-    const html = await renderEmail(emailWithText("a    b"));
+  it("keeps repeated spaces and those starting a line, as the canvas shows them", async () => {
+    const html = await renderEmail(
+      emailWithInline(
+        { text: " a   b ", type: "text" },
+        { marks: [{ type: "bold" }], text: " c", type: "text" },
+        { type: "hardBreak" },
+        { text: " d", type: "text" }
+      )
+    );
 
     expect(html).toContain(
-      '<p style="margin:0;white-space:pre-wrap">a    b</p>'
+      '<p style="margin:0;word-break:break-word;overflow-wrap:anywhere">&nbsp;a &nbsp;&nbsp;b <strong>&nbsp;c</strong><br />&nbsp;d</p>'
     );
+    expect(html).not.toContain("pre-wrap");
   });
 
   it("renders each mark as its tag, a line break, and a link around the other marks", async () => {
@@ -189,7 +197,17 @@ describe(renderEmail, () => {
     );
 
     expect(html).toContain(
-      '<p style="margin:0;white-space:pre-wrap">Plain, <strong>bold, </strong><em>italic, </em><u>underlined</u><br /><a href="{{cta_url}}" target="_blank"><strong><em>a bold italic link</em></strong></a></p>'
+      '<p style="margin:0;word-break:break-word;overflow-wrap:anywhere">Plain, <strong>bold, </strong><em>italic, </em><u>underlined</u><br /><a href="{{cta_url}}" target="_blank" style="color:#000000;text-decoration:underline"><strong><em>a bold italic link</em></strong></a></p>'
+    );
+  });
+
+  it("colors a link as its Text Block, so it reads on the Block's background", async () => {
+    const email = emailWithInline(linked("https://x.test"));
+    const block = email.rows[0]?.columns[0]?.blocks[0] as Block;
+    block.props = { ...block.props, color: "#ff0000" };
+
+    await expect(renderEmail(email)).resolves.toContain(
+      '<a href="https://x.test" target="_blank" style="color:#ff0000;text-decoration:underline">'
     );
   });
 
@@ -218,7 +236,7 @@ describe(renderEmail, () => {
     );
 
     expect(html).toContain(
-      '<a href="https://x.test" target="_blank">Shop the <strong>sale</strong><br />now</a> or <a href="https://y.test" target="_blank">later</a>'
+      '<a href="https://x.test" target="_blank" style="color:#000000;text-decoration:underline">Shop the <strong>sale</strong><br />now</a> or <a href="https://y.test" target="_blank" style="color:#000000;text-decoration:underline">later</a>'
     );
   });
 
@@ -232,7 +250,7 @@ describe(renderEmail, () => {
     );
 
     expect(html).toContain(
-      '<a href="https://x.test" target="_blank"><strong>Sale</strong> now</a>'
+      '<a href="https://x.test" target="_blank" style="color:#000000;text-decoration:underline"><strong>Sale</strong> now</a>'
     );
   });
 
@@ -246,7 +264,7 @@ describe(renderEmail, () => {
     );
 
     expect(html).toContain(
-      '<p style="margin:0;white-space:pre-wrap">a<br />b</p>'
+      '<p style="margin:0;word-break:break-word;overflow-wrap:anywhere">a<br />b</p>'
     );
   });
 

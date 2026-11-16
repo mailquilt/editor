@@ -19,6 +19,23 @@ const escapeText = (text: string) =>
 const escapeAttribute = (value: string) =>
   escapeText(value).replaceAll('"', "&quot;");
 
+/**
+ * Repeated spaces as the canvas shows them. Each space after another, or at the
+ * start of a line, is a no-break space. Not `white-space:pre-wrap`, which shows
+ * the line breaks and indents some clients add when they reformat the HTML.
+ */
+const keepSpaces = (text: string, afterSpace: boolean) =>
+  text.replaceAll(" ", (space, offset: number) =>
+    (offset === 0 ? afterSpace : text[offset - 1] === " ") ? "&nbsp;" : space
+  );
+
+/**
+ * A paragraph's or heading's own style. A word too long for its Column, such as
+ * a pasted URL, breaks rather than widening the email. Classic Outlook ignores
+ * both properties.
+ */
+const TEXT_STYLE = "margin:0;word-break:break-word;overflow-wrap:anywhere";
+
 const MARK_TAGS = {
   bold: "strong",
   italic: "em",
@@ -34,9 +51,13 @@ const MARK_ORDER: RichTextMark["type"][] = [
   "underline",
 ];
 
-const openTag = (mark: RichTextMark) =>
+/**
+ * A link is in its Block's color and underlined, as on the canvas. Without a
+ * color, each client uses its own, which can't be read on a dark Row.
+ */
+const openTag = (mark: RichTextMark, linkColor: string) =>
   mark.type === "link"
-    ? `<a href="${escapeAttribute(mark.attrs.href)}" target="_blank">`
+    ? `<a href="${escapeAttribute(mark.attrs.href)}" target="_blank" style="color:${escapeAttribute(linkColor)};text-decoration:underline">`
     : `<${MARK_TAGS[mark.type]}>`;
 
 const isSameMark = (a: RichTextMark, b: RichTextMark) =>
@@ -50,9 +71,13 @@ const isSameMark = (a: RichTextMark, b: RichTextMark) =>
  * would be several links. Marks go in the editor's order, whatever order they
  * were saved in, so that one text's [bold, link] matches the next's [link].
  */
-const inlineToHtml = (inline: RichTextParagraph["content"] = []) => {
+const inlineToHtml = (
+  linkColor: string,
+  inline: RichTextParagraph["content"] = []
+) => {
   const open: RichTextMark[] = [];
   let html = "";
+  let afterSpace = true;
   const closeFrom = (index: number) => {
     for (const mark of open.splice(index).toReversed()) {
       html += `</${MARK_TAGS[mark.type]}>`;
@@ -74,12 +99,14 @@ const inlineToHtml = (inline: RichTextParagraph["content"] = []) => {
     if (node.type === "hardBreak") {
       // It keeps a mark open across it, but opens none of its own.
       html += "<br />";
+      afterSpace = true;
     } else {
       for (const mark of marks.slice(kept)) {
-        html += openTag(mark);
+        html += openTag(mark, linkColor);
         open.push(mark);
       }
-      html += escapeText(node.text);
+      html += keepSpaces(escapeText(node.text), afterSpace);
+      afterSpace = node.text.endsWith(" ");
     }
   }
   closeFrom(0);
@@ -90,13 +117,13 @@ const inlineToHtml = (inline: RichTextParagraph["content"] = []) => {
 const endsWithoutText = (inline: RichTextParagraph["content"] = []) =>
   inline.at(-1)?.type !== "text";
 
-const richTextToHtml = ({ content }: RichTextDocument) =>
+const richTextToHtml = ({ content }: RichTextDocument, linkColor: string) =>
   content
     .map(({ content: inline }) => {
-      const html = inlineToHtml(inline);
+      const html = inlineToHtml(linkColor, inline);
       // A last empty line takes up space on the canvas, but a <br /> at the end
       // of a paragraph doesn't make one on its own. Nor does an empty paragraph.
-      return `<p style="margin:0;white-space:pre-wrap">${html}${endsWithoutText(inline) ? "<br />" : ""}</p>`;
+      return `<p style="${TEXT_STYLE}">${html}${endsWithoutText(inline) ? "<br />" : ""}</p>`;
     })
     .join("");
 
@@ -132,7 +159,7 @@ const headingToHtml = (
     level: number;
   };
   const lines = content.content
-    .map((paragraph) => inlineToHtml(paragraph.content))
+    .map((paragraph) => inlineToHtml(blockCss.color ?? "", paragraph.content))
     .join("<br />");
   const lastLine = endsWithoutText(content.content.at(-1)?.content)
     ? "<br />"
@@ -145,7 +172,7 @@ const headingToHtml = (
   })
     .map(([name, value]) => `${name}:${escapeAttribute(value)}`)
     .join(";");
-  return `<${tag} style="margin:0;white-space:pre-wrap;${styles}">${lines}${lastLine}</${tag}>`;
+  return `<${tag} style="${TEXT_STYLE};${styles}">${lines}${lastLine}</${tag}>`;
 };
 
 const linkAttribute = (href: string | undefined) =>
@@ -156,7 +183,7 @@ const blockToMjml = (block: Block, fontFamily: string) => {
   const attributes = mjmlAttributes(blockCss);
   switch (block.type) {
     case "text": {
-      return `<mj-text${attributes}>${richTextToHtml(block.props.content as RichTextDocument)}</mj-text>`;
+      return `<mj-text${attributes}>${richTextToHtml(block.props.content as RichTextDocument, blockCss.color ?? "")}</mj-text>`;
     }
     case "heading": {
       return `<mj-text${attributes}>${headingToHtml(block, fontFamily, blockCss)}</mj-text>`;
