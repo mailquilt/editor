@@ -2,7 +2,7 @@
 // The site's footer, on the docs pages and the pages under pages/ alike.
 import { withBase } from "blume/components/islands/base-path.ts";
 
-import { ISSUES, REPO } from "../site/project.ts";
+import { ISSUES, NPM, REPO } from "../site/project.ts";
 
 const groups = [
   {
@@ -27,7 +27,7 @@ const groups = [
   {
     links: [
       { href: REPO, label: "GitHub" },
-      { href: "https://www.npmjs.com/org/mailquilt", label: "npm" },
+      { href: NPM, label: "npm" },
       { href: ISSUES, label: "Report a problem" },
     ],
     title: "Elsewhere",

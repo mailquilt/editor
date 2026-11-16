@@ -10,6 +10,8 @@ export const REPO = "https://github.com/mailquilt/editor";
 
 export const ISSUES = `${REPO}/issues`;
 
+export const NPM = "https://www.npmjs.com/org/mailquilt";
+
 /** The logo kit's card, for links shared on social sites. */
 export const SOCIAL_IMAGE = {
   alt: "Mail Quilt. Open-source packages for building an email editor into your app.",
