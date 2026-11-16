@@ -5,7 +5,7 @@ import type { Block, BlocksDocument } from "@mailquilt/core";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
 
 import { renderEmail } from "../src/index.js";
-import { emailWith } from "./email-with.js";
+import { emailWith, readable } from "./email-with.js";
 
 /** A Text Block's email, on a background other than white. */
 const emailWithParagraphs = (paragraphs: unknown[]): BlocksDocument => {
@@ -72,7 +72,9 @@ describe(renderEmail, () => {
       { texts: ["Three"], width: 33.34 }
     );
 
-    await expect(renderEmail(email)).resolves.toMatchFileSnapshot(
+    await expect(
+      renderEmail(email).then(readable)
+    ).resolves.toMatchFileSnapshot(
       "expected/columns-33-33-33-empty-column.html"
     );
   });
@@ -113,9 +115,9 @@ describe(renderEmail, () => {
       fontSize: 24,
     };
 
-    await expect(renderEmail(email)).resolves.toMatchFileSnapshot(
-      "expected/every-setting.html"
-    );
+    await expect(
+      renderEmail(email).then(readable)
+    ).resolves.toMatchFileSnapshot("expected/every-setting.html");
   });
 
   it("keeps a saved language that isn't a code, safely", async () => {
@@ -126,6 +128,13 @@ describe(renderEmail, () => {
 
     expect(html).not.toContain("<script>");
     expect(html).toContain('lang="en&quot;&gt;&lt;script&gt;');
+  });
+
+  it("leaves out MJML's line breaks and indents, to keep the email small, and the text's own spaces", async () => {
+    const html = await renderEmail(emailWithText("a b c"));
+
+    expect(html).not.toContain("\n");
+    expect(html).toContain(">a b c</p>");
   });
 
   it("loads no web fonts, even for a font MJML would load", async () => {

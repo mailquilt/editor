@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { renderEmail } from "../src/index.js";
-import { emailWith } from "./email-with.js";
+import { emailWith, readable } from "./email-with.js";
 
 const richText = (...paragraphs: unknown[][]) => ({
   content: paragraphs.map((content) =>
@@ -39,7 +39,7 @@ describe("a Heading Block", () => {
             level: 2,
           })
         )
-      )
+      ).then(readable)
     ).resolves.toMatchFileSnapshot("expected/heading-every-setting.html");
   });
 
@@ -117,7 +117,7 @@ describe("a Button Block", () => {
             label: "Buy now",
           })
         )
-      )
+      ).then(readable)
     ).resolves.toMatchFileSnapshot("expected/button-every-setting.html");
   });
 

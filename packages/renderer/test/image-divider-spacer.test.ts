@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { renderEmail } from "../src/index.js";
-import { emailWith } from "./email-with.js";
+import { emailWith, readable } from "./email-with.js";
 
 const image = (props: Record<string, unknown>) => ({ props, type: "image" });
 const divider = (props: Record<string, unknown>) => ({
@@ -70,7 +70,7 @@ describe("an Image Block", () => {
             width: 240,
           })
         )
-      )
+      ).then(readable)
     ).resolves.toMatchFileSnapshot("expected/image-every-setting.html");
   });
 
