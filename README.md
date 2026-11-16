@@ -21,9 +21,10 @@ npm install @mailquilt/react    # or the React components
 
 ```html
 <mail-quilt></mail-quilt>
-<script type="module">
-  import "@mailquilt/editor";
-</script>
+```
+
+```js
+import "@mailquilt/editor"; // registers <mail-quilt>, through your bundler
 ```
 
 The docs, with a quick start for a bundler, a CDN and React, are at [editor.mailquilt.com](https://editor.mailquilt.com/docs). Their source is in [`apps/docs/docs`](apps/docs/docs).
