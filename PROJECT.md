@@ -52,7 +52,7 @@ In `0.1.0`, people build emails by dragging Blocks into Rows and Columns, or wit
 ### Goals
 
 1. Embed in any framework through one consistent API.
-2. Produce HTML that works in the major email clients. `0.1.0` is tested in Gmail and Apple Mail. Outlook relies on MJML and is untested.
+2. Produce HTML that works in the major email clients. `0.1.0` is checked in Gmail, Apple Mail, Outlook, Yahoo and others through Email on Acid, and the docs list the limits found.
 3. Give full visual control, without allowing layouts that email clients can't render.
 4. Make AI edits validated, reviewable and undoable.
 5. Work for developers through packages, a CLI, a local mode and MCP.
@@ -298,7 +298,7 @@ It doesn't include a Merge Tag picker, image uploads, or anything in [Planned fe
 
 ### The docs and the Playground
 
-`apps/docs` is one static site, built with Blume and served from its root. It has the docs, a page of tested email clients that says plainly that Outlook is untested, and the Playground: one page where anyone can try the editor. The Playground keeps emails in the browser, imports and exports JSON, and exports HTML. It runs on `@mailquilt/react`, so it tests the wrapper too.
+`apps/docs` is one static site, built with Blume and served from its root. It has the docs, a page of tested email clients that lists where the export was checked and its known limits, and the Playground: one page where anyone can try the editor. The Playground keeps emails in the browser, imports and exports JSON, and exports HTML. It runs on `@mailquilt/react`, so it tests the wrapper too.
 
 ## 9. Roadmap
 
@@ -457,7 +457,7 @@ Custom Blocks and settings fields, custom checker rules, image upload and media 
 - **Unit tests (Vitest):** Commands, undo and redo, migrations and the renderer.
 - **Browser tests (Playwright):** drag and drop, the keyboard, undo, settings, export and the React wrapper, in Chromium, Firefox and WebKit, with automated accessibility checks.
 - **Install checks:** the packed packages are installed in fresh plain JavaScript, CDN and Next.js projects, and tested there.
-- **Email clients:** `0.1.0` is checked with real emails in Gmail and Apple Mail. Outlook isn't tested, and the docs say so. Other clients, and services such as Litmus, may come later.
+- **Email clients:** `0.1.0` is checked in Email on Acid, in Gmail, Apple Mail, iOS Mail, every version of Outlook, Yahoo, AOL and European webmail, in light and dark mode. The docs list the clients and the known limits.
 - **By hand, for `0.1.0`:** keyboard and screen reader use, typing Japanese in Safari, Firefox and Chrome (automated tests can only simulate it in Chromium), and touch.
 
 [`docs/agents/testing.md`](docs/agents/testing.md) says how tests are written here.
@@ -476,7 +476,7 @@ Custom Blocks and settings fields, custom checker rules, image upload and media 
 |---|---|
 | Rich text or dragging misbehaves in Shadow DOM | Tested early ([ADR 0002](docs/adr/0002-build-the-editor-with-lit-in-shadow-dom.md)). If text editing fails in a later case, the fallbacks are an iframe canvas, then light DOM |
 | The canvas and the exported HTML differ | Preview shows the real export, and tests compare the two |
-| Email client quirks, Outlook especially | MJML handles them, Gmail and Apple Mail are tested, and Outlook is documented as untested |
+| Email client quirks, Outlook especially | MJML handles most of them. The export is checked in Email on Acid, and the docs list the known limits |
 | MJML is large in the browser | It loads only for Preview and export |
 | Early API changes hurt users | `0.x` versions, versioned documents and clear changelogs |
 | AI writes invalid or poor emails | Schemas, validation, previews and a fixed set of test prompts |
