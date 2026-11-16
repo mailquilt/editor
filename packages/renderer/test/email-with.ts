@@ -1,5 +1,8 @@
 import type { BlocksDocument } from "@mailquilt/core";
 
+/** An export with a line break between tags, so a saved file's diff can be read. */
+export const readable = (html: string) => html.replaceAll("><", ">\n<");
+
 /** An email with one Row and one Column holding `blocks`. */
 export const emailWith = (
   ...blocks: { props: Record<string, unknown>; type: string }[]
