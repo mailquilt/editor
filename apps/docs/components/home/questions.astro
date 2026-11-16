@@ -1,5 +1,7 @@
 ---
 // The questions people ask first.
+import { withBase } from "blume/components/islands/base-path.ts";
+
 import { kilobytes } from "../../site/measure.ts";
 import { ISSUES } from "../../site/project.ts";
 
@@ -10,7 +12,12 @@ interface Props {
 
 const { size } = Astro.props;
 
-const questions = [
+/** `more` links to the page that says more, after the answer. */
+const questions: {
+  answer: string;
+  more?: { href: string; text: string };
+  question: string;
+}[] = [
   {
     answer:
       "Yes. Every package is MIT licensed, and every feature is in it. There's no paid tier and no hosted version to move you onto.",
@@ -28,7 +35,8 @@ const questions = [
   },
   {
     answer:
-      "Yes. The export was checked in classic Outlook for Windows, from 2016 to Microsoft 365, and in new Outlook, Outlook.com, and Outlook for Mac and iOS. Classic Outlook shows emoji in black and white and inverts colors in dark mode, which the tested email clients page explains.",
+      "Yes. The export was checked in classic Outlook for Windows, from 2016 to Microsoft 365, and in new Outlook, Outlook.com, and Outlook for Mac and iOS. Classic Outlook shows emoji in black and white and inverts colors in dark mode.",
+    more: { href: "/docs/email-clients", text: "Read about the tested email clients" },
     question: "Do the emails work in Outlook?",
   },
   {
@@ -39,6 +47,7 @@ const questions = [
   {
     answer:
       "Any of them, or none. The editor is a Web Component, so it's an HTML element like any other. There's a React component today, and Vue and Svelte ones are planned.",
+    more: { href: "/docs/quick-start", text: "Read the quick start" },
     question: "Which frameworks does it work with?",
   },
   {
@@ -64,12 +73,22 @@ const questions = [
     </div>
     <div class="home-faq">
       {
-        questions.map(({ answer, question }) => (
+        questions.map(({ answer, more, question }) => (
           <details>
             <summary>
               <span>{question}</span>
             </summary>
-            <p class="site-measure">{answer}</p>
+            <p class="site-measure">
+              {answer}
+              {more && (
+                <>
+                  {" "}
+                  <a class="site-link" href={withBase(more.href)}>
+                    {more.text}
+                  </a>
+                </>
+              )}
+            </p>
           </details>
         ))
       }

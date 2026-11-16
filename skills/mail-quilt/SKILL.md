@@ -5,7 +5,7 @@ description: "Build email design into a web app with Mail Quilt: add its drag-an
 
 # Mail Quilt
 
-Mail Quilt is a set of free, MIT-licensed packages for building email design into a web app. The docs at https://editor.mailquilt.com are the facts: read the page for the task before you write code, and don't rely on memory, as the API is at `0.x` and can change. Add `.md` to any docs URL for its Markdown. This skill adds what the docs don't: which package to pick, the order of work, and the mistakes to avoid.
+Mail Quilt is a set of free, MIT-licensed packages for adding a drag-and-drop email editor to a web app. The docs at https://editor.mailquilt.com are the facts: read the page for the task before you write code, and don't rely on memory, as the API is at `0.x` and can change. Add `.md` to any docs URL for its Markdown. This skill adds what the docs don't: which package to pick, the order of work, and the mistakes to avoid.
 
 ## Pick the package
 

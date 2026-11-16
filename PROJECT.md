@@ -29,7 +29,7 @@ This document explains what Mail Quilt is for, how it's designed, and where it's
 
 ## 1. What Mail Quilt is
 
-Mail Quilt is a set of free, MIT-licensed packages for building email design into any web app. Each app takes as much of it as it needs:
+Mail Quilt is a set of free, MIT-licensed packages for adding a drag-and-drop email editor to any web app. Each app takes as much of it as it needs:
 
 | If you want… | Use |
 |---|---|

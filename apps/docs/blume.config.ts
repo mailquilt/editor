@@ -73,7 +73,7 @@ export default defineConfig({
       { label: "Docs", path: "/docs" },
       { label: "Examples", path: "/examples" },
       { label: "Compare", path: "/compare" },
-      { label: "Why", path: "/why" },
+      { label: "Why Mail Quilt", path: "/why" },
       { label: "Roadmap", path: "/roadmap" },
     ],
   },
