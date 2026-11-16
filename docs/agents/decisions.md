@@ -48,7 +48,7 @@ A PR that changes one of these says so, gives the reason and updates this page.
 - Columns that share a Row get their desktop width inline, added to MJML's HTML after it renders, so clients that drop media queries keep them side by side. (#92, ADR 0005)
 - Columns don't use the Fab Four `calc()` widths. Outlook.com, Outlook for Mac and Web.de in Firefox stacked them on a desktop. (#92, ADR 0005)
 - Text and Headings get their line height in pixels, 1.5 times the font size rounded up, with `mso-line-height-rule:exactly`. With 1.5, classic Outlook drew thin lines under text. (#95)
-- A word of 20 or more characters gets a zero-width space after each `/ . - ? & = _`, outside Merge Tags and a URL's `//`, so it can wrap where CSS can't break it. Copied text includes them, and a link's address never does. (#91)
+- A word of 20 or more characters gets a zero-width space after each `/ . - ? & = _`, outside Merge Tags and a URL's `//`, so it can wrap where CSS can't break it. Copied text includes them, and a link's address never does. A URL written as text, and not already linked, is exported as a link to itself, because the break points stop Apple Mail and Gmail linking it. (#91)
 - Any `&`, `<`, `>` or `"` inside a Merge Tag is escaped, and the docs say so. Tags should be plain names. (#53, #81)
 - An Image in a Column narrower than its padding gets MJML's own negative width. Only very narrow emails reach it. (#36)
 

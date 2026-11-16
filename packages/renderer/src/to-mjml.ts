@@ -89,6 +89,31 @@ const openTag = (mark: RichTextMark, linkColor: string) =>
     ? `<a href="${escapeAttribute(mark.attrs.href)}" target="_blank" style="color:${escapeAttribute(linkColor)};text-decoration:underline">`
     : `<${MARK_TAGS[mark.type]}>`;
 
+/** A URL written as text, without the punctuation that may end a sentence after it. */
+const URL_IN_TEXT = /(?<url>https?:\/\/[^\s<>"]*[^\s<>".,;:!?)'\]])/u;
+
+/**
+ * A text's HTML. A URL in text that isn't already linked becomes a link to
+ * itself, as Apple Mail and Gmail would make it, because its break points stop
+ * them recognizing it (#91).
+ */
+const textToHtml = (
+  text: string,
+  linkColor: string,
+  afterSpace: boolean,
+  linked: boolean
+) =>
+  (linked ? [text] : text.split(URL_IN_TEXT))
+    .map((part, index) =>
+      index % 2 === 1
+        ? `${openTag({ attrs: { href: part }, type: "link" }, linkColor)}${breakLongWords(escapeText(part))}</a>`
+        : keepSpaces(
+            breakLongWords(escapeText(part)),
+            index === 0 ? afterSpace : false
+          )
+    )
+    .join("");
+
 const isSameMark = (a: RichTextMark, b: RichTextMark) =>
   a.type === "link" && b.type === "link"
     ? a.attrs.href === b.attrs.href
@@ -134,7 +159,12 @@ const inlineToHtml = (
         html += openTag(mark, linkColor);
         open.push(mark);
       }
-      html += keepSpaces(breakLongWords(escapeText(node.text)), afterSpace);
+      html += textToHtml(
+        node.text,
+        linkColor,
+        afterSpace,
+        marks[0]?.type === "link"
+      );
       afterSpace = node.text.endsWith(" ");
     }
   }

@@ -205,12 +205,22 @@ describe(renderEmail, () => {
   it("lets a long word wrap after its slashes and dots, in clients that won't break it", async () => {
     const html = await renderEmail(
       emailWithText(
-        "See https://example.com/a/long_path?x=1&y=2 or short.example/x"
+        "Saved as projects/mail-quilt/welcome_v2.json, or short.example/x"
       )
     );
 
     expect(html).toContain(
-      ">See https://&#8203;example.&#8203;com/&#8203;a/&#8203;long_&#8203;path?&#8203;x=&#8203;1&amp;&#8203;y=&#8203;2 or short.example/x</p>"
+      ">Saved as projects/&#8203;mail-&#8203;quilt/&#8203;welcome_&#8203;v2.&#8203;json, or short.example/x</p>"
+    );
+  });
+
+  it("links a URL written as text, as Apple Mail and Gmail did before its break points", async () => {
+    const html = await renderEmail(
+      emailWithText("See https://example.com/a/long_path?x=1&y=2.")
+    );
+
+    expect(html).toContain(
+      '>See <a href="https://example.com/a/long_path?x=1&amp;y=2" target="_blank" style="color:#000000;text-decoration:underline">https://&#8203;example.&#8203;com/&#8203;a/&#8203;long_&#8203;path?&#8203;x=&#8203;1&amp;&#8203;y=&#8203;2</a>.</p>'
     );
   });
 
@@ -220,7 +230,20 @@ describe(renderEmail, () => {
     );
 
     expect(html).toContain(
-      ">https://&#8203;example.&#8203;com/&#8203;{{unsubscribe_token.value}}/&#8203;x</p>"
+      '<a href="https://example.com/{{unsubscribe_token.value}}/x" target="_blank" style="color:#000000;text-decoration:underline">https://&#8203;example.&#8203;com/&#8203;{{unsubscribe_token.value}}/&#8203;x</a>'
+    );
+  });
+
+  it("doesn't link a URL again inside a link", async () => {
+    const html = await renderEmail(
+      emailWithInline(
+        linked("https://x.test", "https://example.com/a/long/path")
+      )
+    );
+
+    expect(html.match(/<a\b/gu)).toHaveLength(1);
+    expect(html).toContain(
+      ">https://&#8203;example.&#8203;com/&#8203;a/&#8203;long/&#8203;path</a>"
     );
   });
 
