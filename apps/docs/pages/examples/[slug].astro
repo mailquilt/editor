@@ -1,0 +1,58 @@
+---
+// One example email on a page of its own, so each can be found by what it is,
+// such as a receipt email template.
+import { withBase } from "blume/components/islands/base-path.ts";
+
+import ExampleEmail from "../../components/example-email.astro";
+import SitePage from "../../components/site-page.astro";
+import { renderedExamples } from "../../site/rendered-examples.ts";
+import type { RenderedExample } from "../../site/rendered-examples.ts";
+
+export const getStaticPaths = () =>
+  renderedExamples.map((example) => ({
+    params: { slug: example.slug },
+    props: { example },
+  }));
+
+const { example } = Astro.props as { example: RenderedExample };
+const others = renderedExamples.filter(({ slug }) => slug !== example.slug);
+const kind = example.name.toLowerCase();
+---
+
+<SitePage
+  description={`A free ${kind} email template. ${example.text} Download its HTML, or its JSON to change it in the Mail Quilt editor.`}
+  title={`${example.name} email template: free HTML and JSON - Mail Quilt`}
+>
+  <ExampleEmail
+    example={example}
+    level="h1"
+    title={`${example.name} email template`}
+  />
+
+  <section class="site-section">
+    <div class="site-wrap site-measure">
+      <h2 class="site-h2">Change it</h2>
+      <p>
+        Download the JSON and open it in the{" "}
+        <a class="site-link" href={withBase("/playground")}>Playground</a> with
+        Import JSON. Its pictures come in through Merge Tags, so the Playground
+        shows placeholders until you give them addresses. To put the editor in
+        your own app, start with the{" "}
+        <a class="site-link" href={withBase("/docs/quick-start")}>quick start</a>.
+      </p>
+      <p>
+        More examples:{" "}
+        {
+          others.map((other, index) => (
+            <>
+              <a class="site-link" href={withBase(`/examples/${other.slug}`)}>
+                {other.name}
+              </a>
+              {index < others.length - 1 ? ", " : "."}
+            </>
+          ))
+        }
+      </p>
+    </div>
+  </section>
+</SitePage>

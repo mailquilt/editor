@@ -1,0 +1,101 @@
+---
+// Mail Quilt beside Easy Email. Every line about Easy Email was read from its
+// own site, README or packages on the date below. Check them again before
+// changing it.
+import SitePage from "../../components/site-page.astro";
+import Versus from "../../components/versus.astro";
+
+const CHECKED = "16 November 2026";
+
+const rows = [
+  {
+    label: "What it is",
+    ours: "Packages for building an email editor into your app: a drag-and-drop editor, a ready-made editor page, and the document model and renderer under them.",
+    theirs:
+      "An open-source drag-and-drop email editor for React, built on MJML, with a paid Pro version.",
+  },
+  {
+    label: "License and cost",
+    ours: "MIT. Free, with no paid plan.",
+    theirs: "The editor is MIT and free. Easy Email Pro starts at $99 a month.",
+  },
+  {
+    label: "Where the editor comes from",
+    ours: "Installed from npm and bundled with your app, or loaded from a CDN build you pin to a version.",
+    theirs: "Installed from npm and bundled with your app.",
+  },
+  {
+    label: "Frameworks",
+    ours: "Any framework, as a Web Component, and a React component for React 19.",
+    theirs:
+      "React 18. Its README says the open-source version doesn't support React 19, and Pro does.",
+  },
+  {
+    label: "Browsers",
+    ours: "Its tests run in Chromium, Firefox and WebKit, Safari's engine.",
+    theirs:
+      "Its README says the open-source version only supports Chrome, and Pro works in other browsers.",
+  },
+  {
+    label: "What you save",
+    ours: "A documented JSON format of Rows, Columns and Blocks. The HTML is written by MJML, in the browser or on your own server.",
+    theirs:
+      "Its own JSON, with the email's content, subject and subtitle, which it turns into MJML.",
+  },
+  {
+    label: "Blocks and extras",
+    ours: "Six Blocks, no template library and no image upload.",
+    theirs:
+      "More blocks, such as hero, navbar, carousel and accordion, and a free collection of templates. Pro adds AMP blocks, an Unsplash image library, a File Manager and more blocks.",
+  },
+  {
+    label: "Support",
+    ours: "One maintainer and a public issue tracker.",
+    theirs: "The community, with paid support on Pro.",
+  },
+];
+
+const theirs = [
+  "Your app uses React 18, and you want more blocks and ready-made templates.",
+  "You want AMP blocks, or to move templates over from Unlayer, which Pro offers.",
+  "You want paid support from the team behind the editor.",
+];
+
+const ours = [
+  "Your app uses React 19, or isn't a React app at all.",
+  "People will use the editor in Firefox or Safari as well as Chrome.",
+  "You want each email saved as a documented JSON format of Rows, Columns and Blocks, which you can check, change and render on your own server.",
+  "You want everything that can be dragged to work from the keyboard too.",
+];
+
+const sources = [
+  { href: "https://github.com/zalify/easy-email", label: "README" },
+  { href: "https://www.npmjs.com/package/easy-email-editor", label: "npm package" },
+  { href: "https://www.easyemail.pro", label: "Easy Email Pro" },
+];
+---
+
+<SitePage
+  description="Mail Quilt and Easy Email side by side: license and cost, React versions, browsers, what you save and what's included, and when Easy Email is the better choice."
+  title="An open-source Easy Email alternative: Mail Quilt compared with Easy Email"
+>
+  <header class="site-intro">
+    <div class="site-wrap">
+      <h1 class="site-h1">Mail Quilt and Easy Email</h1>
+      <p class="site-lead">
+        Both are open-source, drag-and-drop email editors built on MJML that run
+        in your app. This page sets them side by side, and says when Easy Email
+        is the better choice.
+      </p>
+    </div>
+  </header>
+
+  <Versus
+    checked={CHECKED}
+    ours={ours}
+    rows={rows}
+    sources={sources}
+    theirs={theirs}
+    them="Easy Email"
+  />
+</SitePage>
