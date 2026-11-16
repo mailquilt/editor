@@ -220,11 +220,36 @@ const blockToMjml = (block: Block, fontFamily: string) => {
   }
 };
 
-const columnToMjml = ({ blocks, width }: Column, fontFamily: string) =>
-  `<mj-column width="${width}%">${blocks.map((block) => blockToMjml(block, fontFamily)).join("")}</mj-column>`;
+/** Marks a Column that shares its Row, for `limitColumnWidths`. */
+const SHARED_COLUMN = "mq-column";
+
+const columnToMjml = (
+  { blocks, width }: Column,
+  fontFamily: string,
+  shared: boolean
+) =>
+  `<mj-column width="${width}%"${shared ? ` css-class="${SHARED_COLUMN}"` : ""}>${blocks.map((block) => blockToMjml(block, fontFamily)).join("")}</mj-column>`;
 
 const rowToMjml = (row: Row, fontFamily: string) =>
-  `<mj-section${mjmlAttributes(rowStyles(row))}>${row.columns.map((column) => columnToMjml(column, fontFamily)).join("")}</mj-section>`;
+  `<mj-section${mjmlAttributes(rowStyles(row))}>${row.columns.map((column) => columnToMjml(column, fontFamily, row.columns.length > 1)).join("")}</mj-section>`;
+
+/**
+ * MJML gives a Column its desktop width only inside a media query, and
+ * `width:100%` inline. GMX, Web.de, T-Online and Libero drop the media query,
+ * so Columns that share a Row stacked on a desktop. Each one gets its desktop
+ * width inline as a `max-width` in pixels, which a phone media query lifts so
+ * they still stack there (ADR 0005). Rounded down, so the Columns never add up
+ * to more than the email and wrap.
+ */
+export const limitColumnWidths = (html: string, emailWidth: number) =>
+  html.replaceAll(
+    new RegExp(
+      `(class="mj-column-per-(\\d+)(?:-(\\d+))? mj-outlook-group-fix ${SHARED_COLUMN}" style="[^"]*)width:100%;`,
+      "gu"
+    ),
+    (_match, start: string, whole: string, fraction = "") =>
+      `${start}width:100%;max-width:${Math.floor(emailWidth * Number(`${whole}.${fraction}`)) / 100}px;`
+  );
 
 /** Throws if the document can't be trusted, and renders migrated older ones. */
 export const toMjml = (document: unknown) => {
@@ -233,15 +258,19 @@ export const toMjml = (document: unknown) => {
     throw new Error(loaded.reason);
   }
   const { rows, settings } = loaded.document;
+  const sharedColumns = rows.some(({ columns }) => columns.length > 1)
+    ? `<mj-style>@media only screen and (max-width:479px) { .${SHARED_COLUMN} { max-width:100% !important; } }</mj-style>`
+    : "";
   const language = settings.language
     ? ` lang="${escapeAttribute(settings.language)}"`
     : "";
   const preheader = settings.preheader
     ? `<mj-preview>${escapeText(settings.preheader)}</mj-preview>`
     : "";
-  return `<mjml${language}>
+  const mjml = `<mjml${language}>
   <mj-head>
     ${preheader}
+    ${sharedColumns}
     <mj-attributes>
       <mj-all font-family="${escapeAttribute(settings.fontFamily)}" />
       <mj-section padding="0" />
@@ -255,4 +284,5 @@ export const toMjml = (document: unknown) => {
     ${rows.map((row) => rowToMjml(row, settings.fontFamily)).join("")}
   </mj-body>
 </mjml>`;
+  return { emailWidth: settings.width, mjml };
 };
