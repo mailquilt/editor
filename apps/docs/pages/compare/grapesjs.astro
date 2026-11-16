@@ -1,0 +1,102 @@
+---
+// Mail Quilt beside GrapesJS. Every line about GrapesJS was read from its own
+// site, docs or packages on the date below. Check them again before changing it.
+import SitePage from "../../components/site-page.astro";
+import Versus from "../../components/versus.astro";
+
+const CHECKED = "16 November 2026";
+
+const rows = [
+  {
+    label: "What it is",
+    ours: "Packages for building an email editor into your app: a drag-and-drop editor, a ready-made editor page, and the document model and renderer under them. It makes emails only.",
+    theirs:
+      "An open-source framework for building visual editors, for web pages and emails. Its MJML plugin, grapesjs-mjml, makes it an email editor.",
+  },
+  {
+    label: "License and cost",
+    ours: "MIT. Free, with no paid plan.",
+    theirs:
+      "BSD-3-Clause, and free. Studio SDK, a ready-made editor from the GrapesJS team, comes with its Enterprise plan, priced on request.",
+  },
+  {
+    label: "Where the editor comes from",
+    ours: "Installed from npm and bundled with your app, or loaded from a CDN build you pin to a version.",
+    theirs: "Installed from npm and bundled with your app.",
+  },
+  {
+    label: "Account",
+    ours: "None.",
+    theirs: "None for the open-source framework.",
+  },
+  {
+    label: "Frameworks",
+    ours: "Any framework, as a Web Component, and a React component.",
+    theirs: "Plain JavaScript, and an MIT React wrapper, @grapesjs/react.",
+  },
+  {
+    label: "What you save",
+    ours: "A documented JSON format of Rows, Columns and Blocks. The HTML is written by MJML, in the browser or on your own server.",
+    theirs:
+      "Its project data, a JSON object with the project's pages and styles. The MJML plugin turns the email into HTML.",
+  },
+  {
+    label: "What you build",
+    ours: "Nothing: the editor and its panel come ready, with six Blocks.",
+    theirs:
+      "The editor you want, from its blocks, panels and plugins, such as a newsletter preset and the MJML components.",
+  },
+  {
+    label: "Support",
+    ours: "One maintainer and a public issue tracker.",
+    theirs:
+      "The community for the framework. Studio SDK comes with support from the GrapesJS team.",
+  },
+];
+
+const theirs = [
+  "You build web pages as well as emails.",
+  "You want a framework to build your own kind of editor from, with plugins for what you need.",
+  "You want a ready-made editor and support from the team behind it, through Studio SDK.",
+];
+
+const ours = [
+  "You want an email editor that works as it comes, rather than a framework to assemble one from.",
+  "You want each email saved as a documented JSON format of Rows, Columns and Blocks, which you can check, change and render on your own server.",
+  "You want everything that can be dragged to work from the keyboard too.",
+  "Six Blocks are enough for the emails your customers send.",
+];
+
+const sources = [
+  { href: "https://github.com/GrapesJS/grapesjs", label: "repository" },
+  { href: "https://github.com/GrapesJS/mjml", label: "MJML plugin" },
+  { href: "https://grapesjs.com/docs/modules/Storage.html", label: "storage docs" },
+  { href: "https://grapesjs.com/pricing", label: "pricing" },
+];
+---
+
+<SitePage
+  description="Mail Quilt and GrapesJS side by side: what each one is, license and cost, frameworks, what you save and what you build, and when GrapesJS is the better choice."
+  title="An open-source GrapesJS alternative for email: Mail Quilt compared with GrapesJS"
+>
+  <header class="site-intro">
+    <div class="site-wrap">
+      <h1 class="site-h1">Mail Quilt and GrapesJS</h1>
+      <p class="site-lead">
+        Both are open source and run in your app. GrapesJS is a framework you
+        build a visual editor from, for pages or emails. Mail Quilt is an email
+        editor that comes ready. This page sets them side by side, and says when
+        GrapesJS is the better choice.
+      </p>
+    </div>
+  </header>
+
+  <Versus
+    checked={CHECKED}
+    ours={ours}
+    rows={rows}
+    sources={sources}
+    theirs={theirs}
+    them="GrapesJS"
+  />
+</SitePage>
