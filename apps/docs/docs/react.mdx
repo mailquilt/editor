@@ -26,7 +26,7 @@ Render `<Editor />` wherever the editor goes, such as from your `main.tsx`.
 - `ref` gives you the `<mail-quilt>` element once the editor has loaded, so you can call `exportHtml()`.
 - `starterEmail` is the email to open when nothing is saved yet. Use one your app already has, or copy the [example email](./document-format#example).
 
-This example keeps the email in `localStorage` so it runs on its own. In your app, send each email to your server from `onChange` instead, and don't set `value` from each response, as [the editor's API](./api#the-editor) explains.
+This example keeps the email in `localStorage` so it runs on its own. In your app, send each email to your server from `onChange` instead, as [Save emails to your server](./save-emails) shows, and don't set `value` from the server's answers.
 
 ## A whole editor page
 

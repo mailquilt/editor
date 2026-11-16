@@ -13,7 +13,7 @@ The page opens an email, saves every change in the browser, shows the reason if 
 
 - **Use the full path to `dist/cdn/index.js`.** A shorter URL, such as `https://cdn.jsdelivr.net/npm/@mailquilt/editor`, loads a different build that won't run without a bundler.
 - **Pin the version.** MJML, the library that writes the HTML, loads from a file beside the build the first time someone opens Preview or exports, and its name can change between releases. An unpinned URL could ask for a file the latest release no longer has.
-- **Save to your server, not only the browser.** This page keeps the email in `localStorage` so it runs on its own. In your app, send the email from `mq-change` to your server, as [the editor's API](./api#the-editor) explains.
+- **Save to your server, not only the browser.** This page keeps the email in `localStorage` so it runs on its own. In your app, send the email from `mq-change` to your server, as [Save emails to your server](./save-emails) shows.
 
 ## A whole editor page
 

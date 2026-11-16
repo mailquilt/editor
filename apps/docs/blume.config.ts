@@ -61,7 +61,11 @@ export default defineConfig({
             label: "The editor page",
           },
           {
-            items: ["/docs/render-on-a-server", "/docs/change-emails-in-code"],
+            items: [
+              "/docs/save-emails",
+              "/docs/render-on-a-server",
+              "/docs/change-emails-in-code",
+            ],
             label: "Your emails",
           },
           {

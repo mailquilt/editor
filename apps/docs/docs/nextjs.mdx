@@ -29,7 +29,7 @@ The page that shows it can stay a Server Component:
 
 - **There's no `next/dynamic` to add.** On the server, `MailQuilt` renders an empty `<mail-quilt>`, and the editor loads in the browser.
 - **`onError` is always listening in time.** If the editor refuses the email you pass, `onError` hears why, so nobody is left looking at an empty editor.
-- **Save to your server from `onChange`.** This example saves in the browser so it runs on its own. In your app, send each email to your server instead, and don't set `value` from each response, as the [editor's API](./api#the-editor) explains.
+- **Save to your server from `onChange`.** This example saves in the browser so it runs on its own. In your app, send each email to your server instead, as [Save emails to your server](./save-emails) shows, and don't set `value` from the server's answers.
 
 ## A whole editor page
 

@@ -20,7 +20,7 @@ Importing `@mailquilt/editor` registers the `<mail-quilt>` element. MJML, the li
 The page opens an email, saves every change in the browser, shows the reason if the editor refuses an email, and exports the email as HTML. `starterEmail` is the email to open when nothing is saved yet. Use one your app already has, or copy the [example email](./document-format#example).
 
 - **Listen for `mq-error` before you set `value`, or straight after,** as this code does. A listener added later misses it.
-- **Save to your server, not only the browser.** This page keeps the email in `localStorage` so it runs on its own. In your app, send the email from `mq-change` to your server, as [the editor's API](./api#the-editor) explains.
+- **Save to your server, not only the browser.** This page keeps the email in `localStorage` so it runs on its own. In your app, send the email from `mq-change` to your server, as [Save emails to your server](./save-emails) shows.
 
 ## A whole editor page
 
