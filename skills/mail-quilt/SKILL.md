@@ -36,7 +36,7 @@ React needs React 19, and `@mailquilt/react` installs the editor with it. An app
 - **Passing callbacks from a Next.js Server Component.** `MailQuilt` and `MailQuiltShell` render safely on the server, but `onChange` and `onError` need a Client Component. A Shell with `saveKey` and no callbacks can stay a Server Component.
 - **Setting the Shell's `save-key` late.** Set it before the Shell opens, and use a key no other app on the origin uses, such as one starting with the app's name.
 - **Giving the editor too little room.** It needs at least 640px of width, or it shows a notice instead, and at least 600px of height, growing with the email. Don't give `<mail-quilt>` a fixed height or put it in anything that clips it. For a box of a fixed height, use the Shell.
-- **Expecting Merge Tags to come through unchanged whatever they hold.** Tags such as `{{first_name}}` reach the HTML as typed, but any `&`, `<`, `>` or `"` inside one is escaped. Keep tags to plain names.
+- **Expecting Merge Tags to come through unchanged whatever they hold.** Tags such as `{{first_name}}` reach the HTML as typed, but any `&`, `<` or `>` inside one is escaped, and a `"` too in a link or image URL. Keep tags to plain names.
 - **Forgetting the Content Security Policy.** Preview needs `'unsafe-inline'` in `style-src`, and a page using the CDN build needs `script-src` to allow the `dist/cdn/` folder: [Content Security Policy](https://editor.mailquilt.com/docs/api.md).
 - **Yarn Plug'n'Play, or pnpm with `hoist=false`.** MJML needs `cheerio` added as a package extension: [Packages](https://editor.mailquilt.com/docs/packages.md).
 

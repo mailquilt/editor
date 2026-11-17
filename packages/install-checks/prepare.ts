@@ -50,7 +50,8 @@ const pnpm = (cwd: string, ...args: string[]) => {
 rmSync(freshProjectsDir, { force: true, recursive: true });
 mkdirSync(tarballs, { recursive: true });
 
-// Packed packages name each other by version, which isn't on npm yet.
+// Packed packages name each other by version, so each is pointed at its
+// tarball, or the install would fetch that version from npm instead.
 const overrides = packages
   .map((name) => {
     const { filename } = JSON.parse(
