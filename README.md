@@ -4,7 +4,7 @@ Free, MIT-licensed packages for adding a drag-and-drop email editor to any web a
 
 [Docs](https://editor.mailquilt.com/docs) · [Playground](https://editor.mailquilt.com/playground) · [Examples](https://editor.mailquilt.com/examples) · [Compared with Unlayer, Beefree and GrapesJS](https://editor.mailquilt.com/compare)
 
-[![The Mail Quilt editor: an email on the left, and Blocks to drag onto it on the right](https://editor.mailquilt.com/editor-small.webp)](https://editor.mailquilt.com/playground)
+[![Building an email in the Mail Quilt editor: changing the heading, dragging in a two-column Row, typing in each Column and changing the button's color](apps/docs/public/editor-demo.gif)](https://editor.mailquilt.com/playground)
 
 - **Any framework, or none.** The editor is a Web Component, with React components too.
 - **HTML that holds up in email clients.** Checked in Gmail, Apple Mail, Yahoo Mail and Outlook, classic Outlook for Windows included. See [Tested email clients](https://editor.mailquilt.com/docs/email-clients).
@@ -70,6 +70,8 @@ Run one package's task with a filter, such as `pnpm --filter @mailquilt/core tes
 - `docs/agents/testing.md` says how tests are written here.
 
 Issues and plans are in [GitHub Issues](https://github.com/mailquilt/editor/issues).
+
+Mail Quilt is built by [Vishal Lohar](https://x.com/yourcodebuddy).
 
 ## License
 

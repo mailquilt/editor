@@ -10,6 +10,12 @@ export const REPO = "https://github.com/mailquilt/editor";
 
 export const ISSUES = `${REPO}/issues`;
 
+/** Who builds Mail Quilt, and the page their name links to. */
+export const AUTHOR = {
+  name: "Vishal Lohar",
+  url: "https://x.com/yourcodebuddy",
+};
+
 export const NPM = "https://www.npmjs.com/org/mailquilt";
 
 /** The logo kit's card, for links shared on social sites. */

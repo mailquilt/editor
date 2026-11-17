@@ -2,7 +2,7 @@
 // The site's footer, on the docs pages and the pages under pages/ alike.
 import { withBase } from "blume/components/islands/base-path.ts";
 
-import { ISSUES, NPM, REPO } from "../site/project.ts";
+import { AUTHOR, ISSUES, NPM, REPO } from "../site/project.ts";
 
 const groups = [
   {
@@ -62,6 +62,9 @@ const hrefOf = (href: string) => (href.startsWith("/") ? withBase(href) : href);
         />
       </a>
       <p>MIT licensed. No paid tier and no hosted service.</p>
+      <p>
+        Built by <a class="site-link" href={AUTHOR.url}>{AUTHOR.name}</a>.
+      </p>
     </div>
     {
       groups.map(({ links, title }) => (

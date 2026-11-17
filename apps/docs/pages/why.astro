@@ -3,7 +3,7 @@
 import { withBase } from "blume/components/islands/base-path.ts";
 
 import SitePage from "../components/site-page.astro";
-import { ISSUES } from "../site/project.ts";
+import { AUTHOR, ISSUES } from "../site/project.ts";
 
 const principles = [
   {
@@ -116,7 +116,8 @@ const never = [
       <h2 class="site-h2">Who makes it</h2>
       <div class="site-measure">
         <p>
-          One person builds Mail Quilt, in the open. That's why the{" "}
+          One person builds Mail Quilt, in the open:{" "}
+          <a class="site-link" href={AUTHOR.url}>{AUTHOR.name}</a>. That's why the{" "}
           <a class="site-link" href={withBase("/roadmap")}>roadmap</a> has no
           dates on it, and why the first release is small: six Blocks, components
           for one framework, React, and no image upload.
