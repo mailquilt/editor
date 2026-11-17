@@ -65,6 +65,116 @@ export const previewStyles = css`
   .preview-panel > p[role="alert"] {
     color: var(--mq-color-danger);
   }
+
+  /* Where the email will be, so it takes the same place when it arrives. */
+  .preview-loading {
+    background: var(--mq-color-workspace);
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    padding: var(--mq-space-5) var(--mq-space-4);
+  }
+
+  /*
+   * The width of a new email. Shown only after a moment, so a quick render
+   * doesn't flash it.
+   */
+  .preview-skeleton {
+    animation: preview-skeleton-in 200ms ease-out 150ms both;
+    background: var(--mq-color-surface);
+    border-radius: var(--mq-radius-small);
+    box-shadow: var(--mq-shadow-small);
+    display: flex;
+    flex-direction: column;
+    gap: var(--mq-space-3);
+    margin-inline: auto;
+    max-width: 600px;
+    padding: 32px;
+  }
+
+  .preview-skeleton > span {
+    animation: preview-skeleton-shimmer 1.4s ease-in-out infinite;
+    background: linear-gradient(
+        90deg,
+        var(--mq-color-surface-hover) 30%,
+        var(--mq-color-surface-muted) 50%,
+        var(--mq-color-surface-hover) 70%
+      )
+      0 0 / 300% 100%;
+    border-radius: 4px;
+    display: block;
+    height: 12px;
+  }
+
+  .preview-skeleton > .long {
+    width: 92%;
+  }
+
+  .preview-skeleton > .medium {
+    width: 78%;
+  }
+
+  .preview-skeleton > .short {
+    width: 64%;
+  }
+
+  .preview-skeleton > .heading {
+    height: 22px;
+    margin-block-end: var(--mq-space-2);
+    width: 55%;
+  }
+
+  .preview-skeleton > .image {
+    border-radius: var(--mq-radius-small);
+    height: 180px;
+    margin-block: var(--mq-space-3);
+  }
+
+  .preview-skeleton > .button {
+    border-radius: var(--mq-radius-small);
+    height: 40px;
+    margin-block-start: var(--mq-space-3);
+    width: 160px;
+  }
+
+  @keyframes preview-skeleton-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes preview-skeleton-shimmer {
+    from {
+      background-position: 100% 0;
+    }
+    to {
+      background-position: 0 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .preview-skeleton,
+    .preview-skeleton > span {
+      animation: none;
+    }
+  }
+`;
+
+/** The outline of an email, in the shapes most emails start with. */
+const previewSkeleton = html`
+  <div aria-hidden="true" class="preview-skeleton">
+    <span class="heading"></span>
+    <span></span>
+    <span class="long"></span>
+    <span class="short"></span>
+    <span class="image"></span>
+    <span class="long"></span>
+    <span class="medium"></span>
+    <span class="button"></span>
+  </div>
 `;
 
 /** One opening of the Preview. */
@@ -75,7 +185,12 @@ interface Preview {
 
 const renderPreviewContent = ({ result }: Preview) => {
   if (!result) {
-    return html`<p role="status">Loading preview…</p>`;
+    return html`
+      <div class="preview-loading" role="status">
+        <span class="visually-hidden">Loading preview…</span>
+        ${previewSkeleton}
+      </div>
+    `;
   }
   return "html" in result
     ? html`
