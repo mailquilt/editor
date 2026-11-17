@@ -17,7 +17,7 @@ npm install @mailquilt/renderer
 
 <include meta='title="render.js"'>./_code/render.js</include>
 
-The HTML is ready to send. Merge Tags such as `{{first_name}}` are in it as they were typed, so the service that sends your email can fill them in. An `&`, `<`, `>` or `"` inside a tag is escaped, as [Merge Tags](./document-format#merge-tags) explains, so keep tags to names.
+The HTML is ready to send. Merge Tags such as `{{first_name}}` are in it as they were typed, so the service that sends your email can fill them in. An `&`, `<` or `>` inside a tag is escaped, and a `"` too in a link or image URL, as [Merge Tags](./document-format#merge-tags) explains, so keep tags to names.
 
 [MJML](https://mjml.io), the library that writes the HTML, loads the first time you call `renderEmail()`. A server that never renders an email never loads it.
 
