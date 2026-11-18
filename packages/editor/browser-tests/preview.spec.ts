@@ -4,6 +4,7 @@ import type { Page, Route } from "@playwright/test";
 import type { MailQuilt } from "../src/index.js";
 import {
   canvas,
+  countHostEscapes,
   emailWith,
   emailWithLink,
   exportHtml,
@@ -11,18 +12,15 @@ import {
   latestDocument,
   linkUrlField,
   previewButton,
-  settle,
+  previewDialog,
+  previewEmail,
   setValue,
   stopClock,
   textBlock,
   undoByKey,
 } from "./helpers.js";
 
-const previewDialog = (page: Page) =>
-  page.getByRole("dialog", { name: "Preview" });
-const previewFrame = (page: Page) => previewDialog(page).locator("iframe");
-const previewEmail = (page: Page) =>
-  page.frameLocator("iframe[title='Email preview']").locator("body");
+const previewFrame = (page: Page) => page.getByTitle("Email preview");
 
 const closeButton = (page: Page) =>
   previewDialog(page).getByRole("button", { name: "Close" });
@@ -61,14 +59,17 @@ const countExports = (page: Page) =>
 const exportCount = (page: Page) =>
   page.evaluate(() => window.document.documentElement.dataset.exports);
 
-/** Tries to reach the page around it, under the name it reports with. */
+/**
+ * Tries to reach the page around it, under the name it reports with. Its text
+ * comes after the script, so once it shows, the script has had its turn.
+ */
 const hostileEmail = (name: string) => `<!doctype html>
   <body>
-    <p>${name} loaded</p>
     <script>
       parent.postMessage("${name}", "*");
       parent.document.documentElement.dataset.${name} = "reached";
     </script>
+    <p>${name} loaded</p>
   </body>`;
 
 test.beforeEach(async ({ page }) => {
@@ -196,11 +197,14 @@ test.describe("the sandbox", () => {
       "data-control",
       "reached"
     );
-    const messages = await page.evaluate(
-      () => (window as unknown as { messages: unknown[] }).messages
-    );
-    expect(messages).toContain("control");
-    expect(messages).not.toContain("preview");
+    // A message arrives a task after it's sent, and the Preview's would have
+    // been sent first, so once the control's is here, any from the Preview is.
+    const messages = () =>
+      page.evaluate(
+        () => (window as unknown as { messages: unknown[] }).messages
+      );
+    await expect.poll(messages).toContain("control");
+    expect(await messages()).not.toContain("preview");
     await expect(page.locator("html")).not.toHaveAttribute("data-preview");
   });
 
@@ -220,16 +224,23 @@ test.describe("the sandbox", () => {
     await previewButton(page).click();
     await previewEmail(page).getByRole("link", { name: "Go there" }).click();
 
-    // Nothing happens to wait for, so this shows nothing can: no token lets
-    // the frame run a script, open a popup or move the page. Its origin is
-    // the host page's only so the editor can refuse a file dropped on it.
+    // The same email outside the Preview opens the link. The Preview's click
+    // came first, so once this one has loaded, any from it would have too.
+    const control = await context.newPage();
+    await control.setContent(await exportHtml(page));
+    const popup = control.waitForEvent("popup");
+    await control.getByRole("link", { name: "Go there" }).click();
+    const opening = await popup;
+    await opening.waitForLoadState();
+    expect(opened).toEqual(["https://example.com/"]);
+    // No token lets the frame run a script, open a popup or move the page. Its
+    // origin is the host page's only so the editor can refuse a file dropped
+    // on it.
     expect(
       await previewFrame(page).evaluate((frame) => [
         ...(frame as HTMLIFrameElement).sandbox,
       ])
     ).toEqual(["allow-same-origin"]);
-    await settle(page);
-    expect(opened).toEqual([]);
     expect(page.url()).toBe(url);
     await expect(previewDialog(page)).toBeVisible();
     await expect(previewEmail(page)).toContainText("Go there");
@@ -252,20 +263,14 @@ test.describe("closing", () => {
   test("Escape closes it and goes no further, so a host's dialog stays open", async ({
     page,
   }) => {
-    await page.evaluate(() => {
-      document.addEventListener("keydown", (event) => {
-        if (event.key === "Escape") {
-          document.documentElement.dataset.hostEscape = "reached";
-        }
-      });
-    });
+    const hostEscapes = await countHostEscapes(page);
     await previewButton(page).click();
     await expect(previewEmail(page)).toContainText("Hello");
 
     await page.keyboard.press("Escape");
 
     await expect(previewDialog(page)).toBeHidden();
-    await expect(page.locator("html")).not.toHaveAttribute("data-host-escape");
+    await expect(hostEscapes()).resolves.toBe(0);
   });
 
   test("the Block keeps its cursor and undo history after the Preview", async ({
@@ -406,7 +411,9 @@ test.describe("the host changing things while the Preview is open", () => {
     await expect(previewEmail(page)).toContainText("Hello");
 
     await setValue(page, undefined);
-    await expect(page.locator("mail-quilt dialog")).toHaveCount(0);
+    await expect(
+      canvas(page).getByRole("dialog", { includeHidden: true })
+    ).toHaveCount(0);
     await setValue(page, emailWith([[["Back again"]]]));
 
     await expect(textBlock(page)).toHaveText("Back again");

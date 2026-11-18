@@ -9,6 +9,7 @@ import {
   openEmail as open,
   openTab,
   palette,
+  panelBlock,
   rowTag,
   rowTools,
   selectedBlock,
@@ -33,8 +34,9 @@ test.describe("selecting a Row", () => {
     await expect(rowTools(page, 2)).toHaveAttribute("aria-current", "true");
     await expect(selectedBlock(page)).toHaveCount(0);
     await expect(
-      canvas(page).getByTestId("side-panel").locator("legend")
-    ).toHaveText(["Row"]);
+      canvas(page).getByRole("group", { exact: true, name: "Row" })
+    ).toBeVisible();
+    await expect(panelBlock(page)).toHaveCount(0);
     await expect(layoutOption(page, "50/50")).toHaveAttribute(
       "aria-pressed",
       "true"

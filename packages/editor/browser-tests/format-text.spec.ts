@@ -5,6 +5,7 @@ import {
   addSecondTextBlock,
   canvas,
   changeCount,
+  copySelection,
   exportHtml,
   latestDocument,
   linkUrlField,
@@ -69,21 +70,6 @@ const extendSelection = async (page: Page, key: "ArrowLeft" | "ArrowRight") => {
   await page.keyboard.press(`Shift+${key}`);
   await settle(page);
 };
-
-/** The plain text a copy of the selection would give. */
-const copiedText = (page: Page) =>
-  firstTextBlock(page).evaluate((element) => {
-    const clipboardData = new DataTransfer();
-    // Not a ClipboardEvent, whose constructor ignores this data in Firefox.
-    const event = new Event("copy", {
-      bubbles: true,
-      cancelable: true,
-      composed: true,
-    });
-    Object.defineProperty(event, "clipboardData", { value: clipboardData });
-    element.dispatchEvent(event);
-    return clipboardData.getData("text/plain");
-  });
 
 const addLink = async (page: Page, href: string) => {
   // "Edit link" when the text is in a link already.
@@ -297,7 +283,7 @@ test.describe("the toolbar", () => {
     await expect(firstTextBlock(page)).toHaveText("x");
   });
 
-  test("its buttons name their shortcuts", async ({ page }) => {
+  test("its Bold button names its shortcut", async ({ page }) => {
     await selectAllInBlock(page);
     const mod = process.platform === "darwin" ? "Meta" : "Control";
 
@@ -897,12 +883,12 @@ test.describe("copy and paste", () => {
     await expect(secondTextBlock(page)).toHaveText("Hello");
     await selectAllInBlock(page);
     await page.keyboard.press("ControlOrMeta+b");
-    await page.keyboard.press("ControlOrMeta+c");
+    const { html } = await copySelection(firstTextBlock(page));
 
     await secondTextBlock(page).click();
     await expect(secondTextBlock(page)).toBeFocused();
     await selectAll(page);
-    await page.keyboard.press("ControlOrMeta+v");
+    await pasteHtml(secondTextBlock(page), html);
 
     await expect
       .poll(() => savedInline(page, 1))
@@ -940,7 +926,8 @@ test.describe("copy and paste", () => {
     await page.keyboard.type("B");
     await selectAll(page);
 
-    expect(await copiedText(page)).toBe("Hello\nA\n\nB");
+    const { text } = await copySelection(firstTextBlock(page));
+    expect(text).toBe("Hello\nA\n\nB");
   });
 
   test("pasted content is reduced to the allowed formatting", async ({

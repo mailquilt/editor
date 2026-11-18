@@ -119,6 +119,12 @@ describe("in a Block's text", () => {
     ).toBeUndefined();
   });
 
+  // The browser tests copy and paste through events, so they can't see this.
+  it("Ctrl/⌘+C and Ctrl/⌘+V are left to the browser, to copy and paste", () => {
+    expect(keyIn("text", press("Mod-c"))).toBeUndefined();
+    expect(keyIn("text", press("Mod-v"))).toBeUndefined();
+  });
+
   it("an arrow key moves the cursor", () => {
     expect(keyIn("text", press("ArrowUp"))).toBeUndefined();
   });

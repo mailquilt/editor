@@ -7,6 +7,7 @@ import {
   canvas,
   centerOf,
   changeCount,
+  dragMarks,
   hoverRow,
   letGo,
   moveCursorToLineEnd,
@@ -21,6 +22,7 @@ import {
   TALL_VIEWPORT,
   textBlock,
   undoByKey,
+  watchPrevented,
 } from "./helpers.js";
 import type { Point } from "./helpers.js";
 
@@ -130,13 +132,7 @@ test.describe("moving a selected Row from the keyboard", () => {
     await open(page, [[["One"]], [["Two"]]]);
     await selectRow(page, 1);
     // Listening before the key is pressed, so the press can't come first.
-    await page.evaluate(() => {
-      document.addEventListener("keydown", (event) => {
-        if (event.key === "ArrowLeft") {
-          Object.assign(window, { leftPrevented: event.defaultPrevented });
-        }
-      });
-    });
+    const leftPrevented = await watchPrevented(page, "ArrowLeft");
 
     await page.keyboard.press("Alt+ArrowUp");
     await expect(announcement(page)).toHaveText("The Row can't move up.");
@@ -144,9 +140,7 @@ test.describe("moving a selected Row from the keyboard", () => {
     await expect(selectRowButton(page, 1)).toBeFocused();
 
     await page.keyboard.press("Alt+ArrowLeft");
-    await expect
-      .poll(() => page.evaluate(() => Reflect.get(window, "leftPrevented")))
-      .toBe(true);
+    await expect.poll(leftPrevented).toBe(true);
     await expect(announcement(page)).toHaveText("The Row can't move left.");
 
     await page.keyboard.press("Alt+ArrowRight");
@@ -192,9 +186,7 @@ test.describe("dragging a Row", () => {
     // A Row only ever lands between Rows, never in a Column.
     await expect(canvas(page).locator("[data-drop-target]")).toHaveCount(0);
     await letGo(page);
-    await expect(
-      canvas(page).locator("[data-drag-ghost], [data-drag-source]")
-    ).toHaveCount(0);
+    await expect(dragMarks(page)).toHaveCount(0);
 
     await expect(structure(page)).resolves.toEqual([
       [["Two"]],

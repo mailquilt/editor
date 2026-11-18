@@ -10,6 +10,7 @@ import {
   canvas,
   changeCount,
   chooseLayout,
+  countHostEscapes,
   deleteBlock,
   emailWith,
   layoutOption,
@@ -27,9 +28,12 @@ import {
   stopClock,
   structure,
   textOf,
+  tooltip,
   undo,
+  undoButton,
   undoByKey,
   violations,
+  watchPrevented,
 } from "./helpers.js";
 
 /** Back to the side panel's tabs from the keyboard, the Block still selected. */
@@ -41,12 +45,15 @@ const backToTabs = async (page: Page) => {
   ).toBeFocused();
 };
 
-/** The controls that can't show focus, of those that can take it now. */
+/**
+ * The controls that can't show focus, of those that can take it now. A group
+ * with any tabindex is one, as the floating toolbar takes focus from the editor.
+ */
 const controlsWithoutRing = (page: Page) =>
   canvas(page).evaluate((host) => {
     const root = host.shadowRoot as ShadowRoot;
     const controls = root.querySelectorAll<HTMLElement>(
-      'button:not(:disabled), input, select, [role="group"][tabindex="0"], [role="textbox"]'
+      'button:not(:disabled), input, select, [role="group"][tabindex], [role="textbox"]'
     );
     return [...controls]
       .filter((control) => {
@@ -465,13 +472,7 @@ test.describe("typing inside a Block", () => {
     await open(page, [[["one two", "B"], ["C"]]]);
     await textOf(page, "one two").click();
     // Listening before the key is pressed, so the press can't come first.
-    await page.evaluate(() => {
-      document.addEventListener("keydown", (event) => {
-        if (event.key === "ArrowLeft") {
-          Object.assign(window, { leftPrevented: event.defaultPrevented });
-        }
-      });
-    });
+    const leftPrevented = await watchPrevented(page, "ArrowLeft");
 
     await page.keyboard.press("Alt+ArrowDown");
     await page.keyboard.press("Alt+ArrowUp");
@@ -479,9 +480,7 @@ test.describe("typing inside a Block", () => {
 
     await expect(structure(page)).resolves.toEqual([[["one two", "B"], ["C"]]]);
     await expect(textOf(page, "one two")).toBeFocused();
-    await expect
-      .poll(() => page.evaluate(() => Reflect.get(window, "leftPrevented")))
-      .toBe(true);
+    await expect.poll(leftPrevented).toBe(true);
 
     await page.keyboard.press(
       process.platform === "darwin" ? "Meta+ArrowLeft" : "Home"
@@ -494,18 +493,29 @@ test.describe("typing inside a Block", () => {
     await expect(textOf(page, "oxne two")).toBeFocused();
   });
 
-  test("on macOS, Alt+Arrow keys still move the cursor by word", async ({
+  // The browser moves the cursor by word, which only a real Mac does, so this
+  // checks the editor leaves the key to it on any platform that says it's one.
+  test("on a Mac, Alt+← is left to the browser, to move the cursor by word", async ({
     page,
   }) => {
-    test.skip(process.platform !== "darwin", "A macOS text shortcut");
+    await page.addInitScript(() => {
+      Object.defineProperty(Navigator.prototype, "platform", {
+        get: () => "MacIntel",
+      });
+    });
     await open(page, [[["one two"], ["C"]]]);
     await textOf(page, "one two").click();
-    await page.keyboard.press("Meta+ArrowRight");
+    const leftPrevented = await watchPrevented(page, "ArrowLeft");
+    // After the check above has seen the press, so a browser that isn't a Mac
+    // doesn't take it as Back and leave the page.
+    await page.evaluate(() => {
+      window.addEventListener("keydown", (event) => event.preventDefault());
+    });
 
     await page.keyboard.press("Alt+ArrowLeft");
-    await page.keyboard.type("x");
 
-    await expect(structure(page)).resolves.toEqual([[["one xtwo"], ["C"]]]);
+    await expect.poll(leftPrevented).toBe(false);
+    await expect(textOf(page, "one two")).toBeFocused();
   });
 
   test("Escape returns to the Block, and Enter to the same place", async ({
@@ -528,17 +538,7 @@ test.describe("typing inside a Block", () => {
     page,
   }) => {
     await open(page, [[["A"]]]);
-    await page.evaluate(() => {
-      const counter = window as unknown as { escapes: number };
-      counter.escapes = 0;
-      document.addEventListener("keydown", (event) => {
-        if (event.key === "Escape") {
-          counter.escapes += 1;
-        }
-      });
-    });
-    const escapes = () =>
-      page.evaluate(() => (window as unknown as { escapes: number }).escapes);
+    const escapes = await countHostEscapes(page);
     await textOf(page, "A").click();
 
     await page.keyboard.press("Escape");
@@ -550,13 +550,8 @@ test.describe("typing inside a Block", () => {
   });
 
   test("Escape that an input method handled stays in the text", async ({
-    browserName,
     page,
   }) => {
-    test.skip(
-      browserName === "firefox",
-      "Firefox doesn't let a script set an event's keyCode"
-    );
     await open(page, [[["A"]]]);
     await textOf(page, "A").click();
 
@@ -576,13 +571,8 @@ test.describe("typing inside a Block", () => {
   });
 
   test("Ctrl/⌘+Z that an input method handled doesn't undo", async ({
-    browserName,
     page,
   }) => {
-    test.skip(
-      browserName === "firefox",
-      "Firefox doesn't let a script set an event's keyCode"
-    );
     await open(page, [[["A"]]]);
     await textOf(page, "A").click();
     await page.keyboard.type("B");
@@ -873,6 +863,28 @@ test.describe("labels and focus states", () => {
   });
 });
 
+/** The dark theme on the docs' "Theme the editor" page, which claims AA contrast. */
+const DARK_THEME = `
+  --mq-color-workspace: #0f1115;
+  --mq-color-surface: #181b21;
+  --mq-color-surface-muted: #20242b;
+  --mq-color-surface-hover: #272b33;
+  --mq-color-text: #e8eaed;
+  --mq-color-text-muted: #a3a9b3;
+  --mq-color-border: #2c3038;
+  --mq-color-border-strong: #7a828f;
+  --mq-color-accent: #7c93ff;
+  --mq-color-accent-strong: #a9b8ff;
+  --mq-color-accent-soft: rgb(124 147 255 / 16%);
+  --mq-color-outline-hover: rgb(124 147 255 / 50%);
+  --mq-color-on-accent: #0f1115;
+  --mq-color-danger: #ff7a6e;
+  --mq-color-tooltip: #e8eaed;
+  --mq-color-on-tooltip: #16181d;
+  --mq-color-backdrop: rgb(0 0 0 / 65%);
+  --mq-color-scheme: dark;
+`;
+
 test.describe("automated accessibility checks", () => {
   test("pass with Columns, empty Columns, and no Block or one moved selected", async ({
     page,
@@ -918,6 +930,24 @@ test.describe("automated accessibility checks", () => {
     await expect(
       canvas(page).getByText("Editing needs more room")
     ).toBeVisible();
+    expect(await violations(page)).toEqual([]);
+  });
+
+  test("pass with a tooltip showing, in the default and the dark theme", async ({
+    page,
+  }) => {
+    await open(page, [[["A"]]]);
+    await blockWith(page, "A").focus();
+    await undoButton(page).hover();
+    await expect(tooltip(page)).toBeVisible();
+    expect(await violations(page)).toEqual([]);
+
+    await page.addStyleTag({ content: `mail-quilt { ${DARK_THEME} }` });
+    await expect(canvas(page).getByTestId("workspace")).toHaveCSS(
+      "background-color",
+      "rgb(15, 17, 21)"
+    );
+    await expect(tooltip(page)).toBeVisible();
     expect(await violations(page)).toEqual([]);
   });
 

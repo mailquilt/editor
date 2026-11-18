@@ -19,6 +19,22 @@ export const linkUrlField = (page: Page) =>
 export const previewButton = (page: Page) =>
   page.getByRole("button", { exact: true, name: "Preview" });
 
+export const previewDialog = (page: Page) =>
+  page.getByRole("dialog", { name: "Preview" });
+
+/** The email in the open Preview. */
+export const previewEmail = (page: Page) =>
+  page.getByTitle("Email preview").contentFrame().locator("body");
+
+export const undoButton = (page: Page) =>
+  canvas(page).getByRole("button", { exact: true, name: "Undo" });
+
+export const tooltip = (page: Page) => canvas(page).getByRole("tooltip");
+
+/** What a drag leaves while it lasts: the copy that moves, and its empty place. */
+export const dragMarks = (page: Page) =>
+  canvas(page).locator("[data-drag-ghost], [data-drag-source]");
+
 type Document = NonNullable<MailQuilt["value"]>;
 
 export { emailWith } from "./host/email.js";
@@ -151,6 +167,38 @@ export const latestDocument = async (page: Page) =>
     (await page.getByTestId("latest-document").textContent()) ?? ""
   ) as Document;
 
+/** Counts the Escape presses that reach the host page, from here on. */
+export const countHostEscapes = async (page: Page) => {
+  await page.evaluate(() => {
+    const counter = window as unknown as { hostEscapes: number };
+    counter.hostEscapes = 0;
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        counter.hostEscapes += 1;
+      }
+    });
+  });
+  return () =>
+    page.evaluate(
+      () => (window as unknown as { hostEscapes: number }).hostEscapes
+    );
+};
+
+/**
+ * Whether the editor kept the browser from acting on the last press of this
+ * key, from here on, as the host page sees it. Undefined until one reaches it.
+ */
+export const watchPrevented = async (page: Page, key: string) => {
+  await page.evaluate((watched) => {
+    document.addEventListener("keydown", (event) => {
+      if (event.key === watched) {
+        Object.assign(window, { lastPrevented: event.defaultPrevented });
+      }
+    });
+  }, key);
+  return () => page.evaluate(() => Reflect.get(window, "lastPrevented"));
+};
+
 /** Everything the page reports as going wrong, from here on. */
 export const collectErrors = (page: Page) => {
   const errors: string[] = [];
@@ -242,6 +290,28 @@ export const addText = async (page: Page) => {
   const text = await showPalette(page, "Text");
   await text.click();
 };
+
+/**
+ * What a copy of the selection in some text would give. Tests copy and paste
+ * through events, as tests running at the same time could share the system's
+ * clipboard.
+ */
+export const copySelection = (target: Locator) =>
+  target.evaluate((element) => {
+    const clipboardData = new DataTransfer();
+    // Not a ClipboardEvent, whose constructor ignores this data in Firefox.
+    const event = new Event("copy", {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+    });
+    Object.defineProperty(event, "clipboardData", { value: clipboardData });
+    element.dispatchEvent(event);
+    return {
+      html: clipboardData.getData("text/html"),
+      text: clipboardData.getData("text/plain"),
+    };
+  });
 
 /** Pastes HTML into some text, as a paste from another app would. */
 export const pasteHtml = (target: Locator, html: string) =>

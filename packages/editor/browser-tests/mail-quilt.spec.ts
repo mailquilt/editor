@@ -8,6 +8,7 @@ import {
   canvas,
   changeCount,
   chooseLayout,
+  copySelection,
   currentValue,
   emailWith,
   emailWithLink,
@@ -15,6 +16,7 @@ import {
   focusStartOfTextBlock,
   latestDocument,
   linkUrlField,
+  pasteHtml,
   redo,
   redoByKey,
   settle,
@@ -104,7 +106,7 @@ test("host CSS doesn't reach the canvas", async ({ page }) => {
   const hostParagraph = page.getByTestId("host-paragraph");
   await expect(hostParagraph).toHaveCSS("color", "rgb(255, 0, 0)");
   await expect(hostParagraph).toHaveCSS("margin-top", "50px");
-  await expect(page.locator("main")).toHaveCSS("display", "flex");
+  await expect(page.getByRole("main")).toHaveCSS("display", "flex");
   await expect(page.getByRole("button", { name: "Host button" })).toHaveCSS(
     "background-color",
     "rgba(0, 0, 0, 0)"
@@ -535,11 +537,11 @@ test.describe("undo and redo while typing", () => {
   test("a paste is its own undo step", async ({ page }) => {
     await focusStartOfTextBlock(page);
     await page.keyboard.press("ControlOrMeta+a");
-    await page.keyboard.press("ControlOrMeta+c");
+    const { html } = await copySelection(textBlock(page));
     await page.keyboard.press("ArrowRight");
     await settle(page);
     await page.keyboard.type("x");
-    await page.keyboard.press("ControlOrMeta+v");
+    await pasteHtml(textBlock(page), html);
     await expect(textBlock(page)).toHaveText("HelloxHello");
     await page.keyboard.type("y");
     await expect(textBlock(page)).toHaveText("HelloxHelloy");
@@ -765,7 +767,7 @@ test("a host's fixed height never cuts the email short", async ({ page }) => {
   });
 
   // The whole email shows, overflowing the host as it always has.
-  const editor = await boxOf(canvas(page).getByTestId("editor"));
+  const editor = await boxOf(canvas(page).locator('[part="frame"]'));
   const lastRow = await boxOf(canvas(page).getByTestId("row-frame").last());
   expect(lastRow.y + lastRow.height).toBeLessThanOrEqual(
     editor.y + editor.height

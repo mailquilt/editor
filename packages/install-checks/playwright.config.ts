@@ -3,12 +3,14 @@ import { defineConfig, devices } from "@playwright/test";
 import { cdnPort, freshProjectDir, freshProjects } from "./fresh-projects.ts";
 
 export default defineConfig({
+  // A test that passes only on a retry fails the run, so a flake is seen and
+  // fixed. The retries are kept to tell a flake from a test that always fails,
+  // and to record a trace of the retry.
+  failOnFlakyTests: Boolean(process.env.CI),
   forbidOnly: Boolean(process.env.CI),
   // These check the packages, and the browser tests of each package cover the
   // other browsers.
   projects: [{ name: "chromium", use: devices["Desktop Chrome"] }],
-  // CI's runners are slow enough that a key can land before the page has
-  // caught up. A test that passes on a retry is still reported as flaky.
   retries: process.env.CI ? 2 : 0,
   testDir: "tests",
   // The fresh projects are the quick-start code the docs show, which marks its

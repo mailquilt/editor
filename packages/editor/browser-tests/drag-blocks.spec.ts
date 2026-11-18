@@ -16,6 +16,7 @@ import {
   currentValue,
   deleteRow,
   drag,
+  dragMarks,
   dropFileOn,
   emailWith,
   letGo,
@@ -27,6 +28,8 @@ import {
   palette,
   pickUp,
   previewButton,
+  previewDialog,
+  previewEmail,
   serveImages,
   settle,
   setValue,
@@ -63,17 +66,61 @@ const indicatorBox = async (page: Page) => {
   return boxOf(dropIndicator(page));
 };
 
+/** Marks the host page's body once a click reaches it, from here on. */
+const watchHostClicks = (page: Page) =>
+  page.evaluate(() => {
+    document.body.addEventListener("click", () => {
+      document.body.dataset.clicked = "yes";
+    });
+  });
+
 const scrollTop = (page: Page) =>
   page.evaluate(() => document.scrollingElement?.scrollTop ?? 0);
+
+/**
+ * Puts the editor in a container fixed over the page, which scrolls it, and
+ * returns the container. An editor wider than it can scroll it sideways.
+ */
+const inScroller = async (
+  page: Page,
+  {
+    editorWidth,
+    height,
+    sideways = "auto",
+    width,
+  }: { editorWidth?: number; height: number; sideways?: string; width: number }
+) => {
+  await canvas(page).evaluate(
+    (element, size) => {
+      const scroller = document.createElement("section");
+      scroller.dataset.testid = "scroller";
+      Object.assign(scroller.style, {
+        background: "white",
+        height: `${size.height}px`,
+        left: "0",
+        overflowX: size.sideways,
+        overflowY: "auto",
+        position: "fixed",
+        top: "0",
+        width: `${size.width}px`,
+        zIndex: "10",
+      });
+      if (size.editorWidth) {
+        element.style.width = `${size.editorWidth}px`;
+      }
+      element.replaceWith(scroller);
+      scroller.append(element);
+    },
+    { editorWidth, height, sideways, width }
+  );
+  await expect(textBlock(page).first()).toBeVisible();
+  return page.getByTestId("scroller");
+};
 
 test.describe("moving a Block by its handle", () => {
   test("announces where the Block went", async ({ page }) => {
     await open(page, [[["A"], ["B"]]]);
-    await page.evaluate(() => {
-      document.body.addEventListener("click", () => {
-        document.body.dataset.clicked = "yes";
-      });
-    });
+    await watchHostClicks(page);
 
     await drag(page, handleOf(page, "A"), await bottomOf(blockWith(page, "B")));
 
@@ -96,11 +143,7 @@ test.describe("moving a Block by its handle", () => {
   test("Escape cancels the drag", async ({ page }) => {
     await open(page, [[["One", "Two"], ["Three"]]]);
     const changes = await changeCount(page).textContent();
-    await page.evaluate(() => {
-      document.body.addEventListener("click", () => {
-        document.body.dataset.clicked = "yes";
-      });
-    });
+    await watchHostClicks(page);
 
     await pickUp(page, handleOf(page, "Two"));
     await moveTo(page, await topOf(blockWith(page, "Three")));
@@ -112,9 +155,7 @@ test.describe("moving a Block by its handle", () => {
     expect(await structure(page)).toStrictEqual([[["One", "Two"], ["Three"]]]);
     await expect(changeCount(page)).toHaveText(changes as string);
     await expect(dropIndicator(page)).toBeHidden();
-    await expect(
-      canvas(page).locator("[data-drag-ghost], [data-drag-source]")
-    ).toHaveCount(0);
+    await expect(dragMarks(page)).toHaveCount(0);
   });
 
   // White text on a dark email would otherwise be unreadable while it moves.
@@ -200,9 +241,7 @@ test.describe("moving a Block by its handle", () => {
 
     expect(await structure(page)).toStrictEqual([[["One", "Two"], ["Three"]]]);
     await expect(changeCount(page)).toHaveText(changes as string);
-    await expect(
-      canvas(page).locator("[data-drag-ghost], [data-drag-source]")
-    ).toHaveCount(0);
+    await expect(dragMarks(page)).toHaveCount(0);
 
     await drag(
       page,
@@ -306,7 +345,7 @@ test.describe("moving a Block by its handle", () => {
     await expect(changeCount(page)).toHaveText(changes as string);
   });
 
-  test("Alt+↓ on another Block does nothing until the drag ends", async ({
+  test("Alt+↓ on another Block does nothing during the drag", async ({
     page,
   }) => {
     await open(page, [[["One", "Two", "Three"]]]);
@@ -624,9 +663,7 @@ test.describe("letting go far from the editor", () => {
       );
     });
 
-    await expect(
-      canvas(page).locator("[data-drag-ghost], [data-drag-source]")
-    ).toHaveCount(0);
+    await expect(dragMarks(page)).toHaveCount(0);
     await letGo(page);
     expect(await structure(page)).toStrictEqual([[["One", "Two"]]]);
   });
@@ -645,7 +682,7 @@ test.describe("a file dropped doesn't open in the page", () => {
   test("on the open Preview", async ({ page }) => {
     await page.goto("/");
     await previewButton(page).click();
-    const preview = page.getByRole("dialog", { name: "Preview" });
+    const preview = previewDialog(page);
     await expect(preview).toBeVisible();
 
     await expect(
@@ -660,9 +697,7 @@ test.describe("a file dropped doesn't open in the page", () => {
     );
     await page.goto("/");
     await previewButton(page).click();
-    const email = page
-      .frameLocator("iframe[title='Email preview']")
-      .locator("body");
+    const email = previewEmail(page);
     await expect(email).toContainText("Hello");
 
     // From inside the email's own document, where a real drop over it goes.
@@ -777,12 +812,10 @@ test.describe("dragging from the palette", () => {
     // The new Block's settings show in place of the tabs.
     await openTab(page, "Content");
     expect(await boxOf(palette(page, "Text"))).toStrictEqual(before);
-    await expect(
-      canvas(page).locator("[data-drag-ghost], [data-drag-source]")
-    ).toHaveCount(0);
+    await expect(dragMarks(page)).toHaveCount(0);
   });
 
-  test("let go over the toolbar, adds nothing and leaves the text cursor", async ({
+  test("let go back on the palette, adds nothing and leaves the text cursor", async ({
     page,
   }) => {
     await open(page, [[["One", "Two"]]]);
@@ -922,20 +955,14 @@ test.describe("auto-scrolling", () => {
     await open(page, [[manyBlocks]]);
     await canvas(page).evaluate((element) => {
       const wrapper = document.createElement("div");
-      wrapper.id = "wrapper";
       wrapper.attachShadow({ mode: "open" }).innerHTML =
-        '<section style="height: 400px; overflow: auto; position: fixed; top: 0; left: 0; width: 800px; background: white; z-index: 10"><slot></slot></section>';
+        '<section data-testid="scroller" style="height: 400px; overflow: auto; position: fixed; top: 0; left: 0; width: 800px; background: white; z-index: 10"><slot></slot></section>';
       element.replaceWith(wrapper);
       wrapper.append(element);
     });
     await expect(textBlock(page).first()).toBeVisible();
     const containerTop = () =>
-      page.evaluate(
-        () =>
-          document
-            .querySelector("#wrapper")
-            ?.shadowRoot?.querySelector("section")?.scrollTop ?? 0
-      );
+      page.getByTestId("scroller").evaluate((scroller) => scroller.scrollTop);
     const handle = handleOf(page, "Block 1");
     await handle.hover();
 
@@ -949,18 +976,13 @@ test.describe("auto-scrolling", () => {
 
   test("a container scrolls sideways near its edge", async ({ page }) => {
     await open(page, [[["One"]]]);
-    await canvas(page).evaluate((element) => {
-      const scroller = document.createElement("section");
-      scroller.id = "scroller";
-      scroller.style.cssText =
-        "height: 500px; overflow: auto; position: fixed; top: 0; left: 0; width: 600px; background: white; z-index: 10";
-      element.style.width = "1400px";
-      element.replaceWith(scroller);
-      scroller.append(element);
+    const scroller = await inScroller(page, {
+      editorWidth: 1400,
+      height: 500,
+      width: 600,
     });
-    await expect(textBlock(page).first()).toBeVisible();
     const containerLeft = () =>
-      page.evaluate(() => document.querySelector("#scroller")?.scrollLeft ?? 0);
+      scroller.evaluate((element) => element.scrollLeft);
     const handle = handleOf(page, "One");
     await handle.hover();
 
@@ -976,25 +998,15 @@ test.describe("auto-scrolling", () => {
     page,
   }) => {
     await open(page, [[manyBlocks]]);
-    await canvas(page).evaluate((element) => {
+    await page.evaluate(() => {
       // Taller than the window, whatever else the page has.
       document.body.style.minHeight = "300vh";
-      const scroller = document.createElement("section");
-      scroller.id = "scroller";
-      scroller.style.cssText =
-        "height: 500px; overflow: auto; position: fixed; top: 0; left: 0; width: 800px; background: white; z-index: 10";
-      element.replaceWith(scroller);
-      scroller.append(element);
     });
-    await expect(textBlock(page).first()).toBeVisible();
+    const scroller = await inScroller(page, { height: 500, width: 800 });
     const containerTop = () =>
-      page.evaluate(() => {
-        const scroller = document.querySelector("#scroller");
-        return scroller ? scroller.scrollTop : 0;
-      });
-    await page.evaluate(() => {
-      const scroller = document.querySelector("#scroller");
-      scroller?.scrollTo(0, scroller.scrollHeight);
+      scroller.evaluate((element) => element.scrollTop);
+    await scroller.evaluate((element) => {
+      element.scrollTo(0, element.scrollHeight);
     });
     const end = await containerTop();
     expect(end).toBeGreaterThan(0);
@@ -1016,14 +1028,7 @@ test.describe("auto-scrolling", () => {
     page,
   }) => {
     await open(page, [[manyBlocks]]);
-    await canvas(page).evaluate((element) => {
-      const scroller = document.createElement("section");
-      scroller.style.cssText =
-        "height: 300px; overflow: auto; position: fixed; top: 0; left: 0; width: 800px; background: white; z-index: 10";
-      element.replaceWith(scroller);
-      scroller.append(element);
-    });
-    await expect(textBlock(page).first()).toBeVisible();
+    await inScroller(page, { height: 300, width: 800 });
     const changes = await changeCount(page).textContent();
     const handle = handleOf(page, "Block 0");
     await handle.hover();
@@ -1040,21 +1045,17 @@ test.describe("auto-scrolling", () => {
   test("a container doesn't scroll the way it hides", async ({ page }) => {
     // Tall enough to scroll up and down, which it doesn't hide.
     await open(page, [[manyBlocks]]);
-    await canvas(page).evaluate((element) => {
-      const scroller = document.createElement("section");
-      scroller.id = "scroller";
-      scroller.style.cssText =
-        "height: 500px; overflow-x: hidden; overflow-y: auto; position: fixed; top: 0; left: 0; width: 600px; background: white; z-index: 10";
-      element.style.width = "1400px";
-      element.replaceWith(scroller);
-      scroller.append(element);
+    const scroller = await inScroller(page, {
+      editorWidth: 1400,
+      height: 500,
+      sideways: "hidden",
+      width: 600,
     });
-    await expect(textBlock(page).first()).toBeVisible();
     const scrolled = () =>
-      page.evaluate(() => {
-        const scroller = document.querySelector("#scroller");
-        return { left: scroller?.scrollLeft, top: scroller?.scrollTop ?? 0 };
-      });
+      scroller.evaluate(({ scrollLeft, scrollTop: top }) => ({
+        left: scrollLeft,
+        top,
+      }));
     const handle = handleOf(page, "Block 0");
     await handle.hover();
 
@@ -1196,9 +1197,7 @@ test.describe("a Block that's removed or replaced", () => {
     await undoByKey(page);
     await settle(page);
     // The undo made the Block anew, so the drag of the old one is over.
-    await expect(
-      canvas(page).locator("[data-drag-ghost], [data-drag-source]")
-    ).toHaveCount(0);
+    await expect(dragMarks(page)).toHaveCount(0);
     await expect(dropIndicator(page)).toBeHidden();
     await letGo(page);
 
@@ -1244,27 +1243,33 @@ const touchDrag = async (page: Page, from: Point, to: Point) => {
 test.describe("on a touch screen", () => {
   test.skip(
     ({ browserName }) => browserName !== "chromium",
-    "Only Chromium can emulate a phone."
+    "Only Chromium's DevTools protocol can send a touch that moves"
   );
   test.use({ hasTouch: true, isMobile: true });
 
   test("a Block's handle drags it, and the page doesn't scroll", async ({
     page,
   }) => {
-    await open(page, [[["One", "Two"]]]);
+    await open(page, [[["One", "Two", "Three", "Four"]]]);
+    // A phone shows the whole test page, so this gives it room to scroll.
+    await page.evaluate(() => {
+      const below = document.createElement("section");
+      below.style.height = "20000px";
+      document.body.append(below);
+    });
     const before = await scrollTop(page);
 
-    await touchDrag(
-      page,
-      await centerOf(handleOf(page, "One")),
-      await bottomOf(blockWith(page, "Two"))
-    );
+    // Straight up and far, as that would scroll the page down. A move mostly
+    // sideways would be read as one, which the page can't scroll for.
+    const from = await centerOf(handleOf(page, "Four"));
+    const { y } = await topOf(blockWith(page, "One"));
+    await touchDrag(page, from, { x: from.x, y });
 
-    await expect.poll(() => structure(page)).toStrictEqual([[["Two", "One"]]]);
+    await expect
+      .poll(() => structure(page))
+      .toStrictEqual([[["Four", "One", "Two", "Three"]]]);
     expect(await scrollTop(page)).toBe(before);
-    await expect(
-      canvas(page).locator("[data-drag-ghost], [data-drag-source]")
-    ).toHaveCount(0);
+    await expect(dragMarks(page)).toHaveCount(0);
   });
 
   test("a palette item drags a new Block in", async ({ page }) => {
