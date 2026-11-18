@@ -1,9 +1,4 @@
-import {
-  blockLabel,
-  createEditor,
-  isSameDocument,
-  loadDocument,
-} from "@mailquilt/core";
+import { createEditor, isSameDocument, loadDocument } from "@mailquilt/core";
 import type {
   BlocksDocument,
   Command,
@@ -12,6 +7,7 @@ import type {
   RichTextDocument,
   RowLayout,
 } from "@mailquilt/core";
+import { blockLabel } from "@mailquilt/core/internal";
 import { renderEmail } from "@mailquilt/renderer";
 import { html, LitElement, nothing } from "lit";
 import { keyed } from "lit/directives/keyed.js";

@@ -1,7 +1,8 @@
 // The example emails, rendered when the site is built by the same renderer a
 // server would use, and filled with sample values for their previews. The
 // Examples page and each example's own page show them.
-import { loadDocument, MERGE_TAG } from "@mailquilt/core";
+import { loadDocument } from "@mailquilt/core";
+import { MERGE_TAG } from "@mailquilt/core/internal";
 import { renderEmail } from "@mailquilt/renderer";
 
 import { examples } from "./examples";

@@ -1,5 +1,6 @@
-import { hexColor } from "@mailquilt/core";
-import type { ApplyResult, Command, SettingsField } from "@mailquilt/core";
+import type { ApplyResult, Command } from "@mailquilt/core";
+import { hexColor } from "@mailquilt/core/internal";
+import type { SettingsField } from "@mailquilt/core/internal";
 import { css, html, nothing } from "lit";
 import { keyed } from "lit/directives/keyed.js";
 import { live } from "lit/directives/live.js";

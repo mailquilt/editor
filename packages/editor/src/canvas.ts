@@ -1,10 +1,6 @@
-import {
-  BLOCK_TYPES,
-  blockLabel,
-  blockStyles,
-  rowStyles,
-} from "@mailquilt/core";
+import { BLOCK_TYPES } from "@mailquilt/core";
 import type { Block, Column, Row } from "@mailquilt/core";
+import { blockLabel, blockStyles, rowStyles } from "@mailquilt/core/internal";
 import { html, nothing } from "lit";
 import { repeat } from "lit/directives/repeat.js";
 import { styleMap } from "lit/directives/style-map.js";

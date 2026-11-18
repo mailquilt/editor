@@ -1,13 +1,12 @@
+import { BLOCK_TYPES, ROW_LAYOUTS } from "@mailquilt/core";
+import type { BlocksDocument, Row, RowLayout } from "@mailquilt/core";
 import {
-  BLOCK_TYPES,
   blockLabel,
   blockSettingsFields,
   EMAIL_SETTINGS_FIELDS,
-  ROW_LAYOUTS,
   ROW_SETTINGS_FIELDS,
   rowLayoutOf,
-} from "@mailquilt/core";
-import type { BlocksDocument, Row, RowLayout } from "@mailquilt/core";
+} from "@mailquilt/core/internal";
 import { css, html, nothing } from "lit";
 import type { TemplateResult } from "lit";
 import { styleMap } from "lit/directives/style-map.js";

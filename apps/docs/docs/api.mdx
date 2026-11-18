@@ -57,6 +57,13 @@ Opening a different email clears undo history. Setting `value` to the email the 
 | Type | From | What it is |
 | --- | --- | --- |
 | `BlocksDocument` | `@mailquilt/core`, `@mailquilt/editor` and `@mailquilt/react` | An email, as the [document format](./document-format) describes it. |
+| `Block`, `Row`, `Column`, `EmailSettings` | `@mailquilt/core` | The parts of an email, as the [document format](./document-format) describes them. |
+| `RichTextDocument`, `RichTextParagraph`, `RichTextText`, `RichTextHardBreak`, `RichTextMark` | `@mailquilt/core` | A Text or Heading Block's [rich text](./document-format#rich-text), and its parts. |
+| `Command`, `RowLayout` | `@mailquilt/core` | One of the [Commands](./change-emails-in-code#commands), and one of the layouts in `ROW_LAYOUTS`. |
+| `Operation` | `@mailquilt/core` | A record of one change, as [`subscribe()`](./change-emails-in-code#listening-for-changes) gives it to you. |
+| `Editor` | `@mailquilt/core` | What `createEditor()` returns. |
+| `ApplyOptions`, `ApplyResult` | `@mailquilt/core` | What `apply()` takes as its second argument, and what it returns. |
+| `LoadResult` | `@mailquilt/core` | What `loadDocument()` returns: the email, or the reason it was refused. |
 | `MailQuiltChangeEvent` | `@mailquilt/editor` | The `mq-change` event. |
 | `MailQuiltErrorEvent` | `@mailquilt/editor` | The `mq-error` event. |
 | `MailQuiltElement`, `MailQuiltShellElement` | `@mailquilt/react` | The elements a `ref` gives you. |

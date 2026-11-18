@@ -1,5 +1,5 @@
-import { findBlockPosition } from "@mailquilt/core";
 import type { BlocksDocument, Command } from "@mailquilt/core";
+import { findBlockPosition } from "@mailquilt/core/internal";
 
 import type { Direction } from "./block-keyboard.js";
 

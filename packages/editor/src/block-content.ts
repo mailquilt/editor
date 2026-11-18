@@ -1,5 +1,5 @@
-import { blockStyles, EMAIL_LOOK, MERGE_TAG } from "@mailquilt/core";
 import type { Block } from "@mailquilt/core";
+import { blockStyles, EMAIL_LOOK, MERGE_TAG } from "@mailquilt/core/internal";
 import { css, html, nothing, unsafeCSS } from "lit";
 import { styleMap } from "lit/directives/style-map.js";
 
