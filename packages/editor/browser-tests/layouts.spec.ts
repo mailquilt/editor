@@ -17,6 +17,7 @@ import {
   layoutOption,
   openBlocks,
   rowTools,
+  selectedBlock,
   selectedText,
   selectRow,
   selectRowButton,
@@ -161,9 +162,7 @@ test.describe("deleting a Block", () => {
 
     await expect(announcement(page)).toHaveText("Block deleted.");
     expect(await structure(page)).toStrictEqual([[["B"]]]);
-    await expect(
-      canvas(page).locator('.block[aria-current="true"]')
-    ).toHaveCount(0);
+    await expect(selectedBlock(page)).toHaveCount(0);
   });
 });
 

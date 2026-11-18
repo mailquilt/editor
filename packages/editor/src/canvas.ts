@@ -53,7 +53,7 @@ export interface CanvasEvents {
     place: { columnId: string; index: number }
   ) => void;
   onBlockClick: (event: MouseEvent) => void;
-  onBlockFocus: (event: FocusEvent, blockId: string) => void;
+  onBlockFocus: (blockId: string) => void;
   onBlockFocusout: () => void;
   onControlMousedown: (event: MouseEvent) => void;
   onDeleteRow: (rowId: string, fromKeyboard: boolean) => void;
@@ -229,7 +229,7 @@ const renderBlock = (
       style=${styleMap(rich ? blockStyles(block) : {})}
       tabindex="0"
       @click=${events.onBlockClick}
-      @focus=${(event: FocusEvent) => events.onBlockFocus(event, block.id)}
+      @focus=${() => events.onBlockFocus(block.id)}
       @focusout=${events.onBlockFocusout}
     >
       ${selected ? nothing : renderDragHandle(events.onHandleMousedown)}

@@ -393,7 +393,7 @@ test.describe("a Block's drag handle and link shortcut", () => {
       .getByRole("button", { exact: true, name: "Back" })
       .click();
 
-    const b = canvas(page).locator(".block").last();
+    const b = blockWith(page, "B");
     await b.hover();
     await b.locator(".drag-handle").click();
 

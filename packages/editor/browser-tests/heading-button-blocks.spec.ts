@@ -281,7 +281,7 @@ test.describe("a Button", () => {
     // With a link, which a click could otherwise follow.
     await blockGroup(page, "Button").focus();
     await change(field(page, "Link"), "https://shop.example");
-    await canvas(page).locator(".block").first().focus();
+    await blockGroup(page, "Text").focus();
     await expect(field(page, "Label")).toHaveCount(0);
     const url = page.url();
 

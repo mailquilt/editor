@@ -46,7 +46,7 @@ const controlsWithoutRing = (page: Page) =>
   canvas(page).evaluate((host) => {
     const root = host.shadowRoot as ShadowRoot;
     const controls = root.querySelectorAll<HTMLElement>(
-      "button:not(:disabled), input, select, .block, .ProseMirror"
+      'button:not(:disabled), input, select, [role="group"][tabindex="0"], [role="textbox"]'
     );
     return [...controls]
       .filter((control) => {
