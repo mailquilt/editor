@@ -11,6 +11,7 @@ import {
   palette,
   rowTag,
   rowTools,
+  selectedBlock,
   selectRowButton,
   settle,
   structure,
@@ -30,9 +31,7 @@ test.describe("selecting a Row", () => {
     await rowTag(page, 2).click();
 
     await expect(rowTools(page, 2)).toHaveAttribute("aria-current", "true");
-    await expect(
-      canvas(page).locator('.block[aria-current="true"]')
-    ).toHaveCount(0);
+    await expect(selectedBlock(page)).toHaveCount(0);
     await expect(canvas(page).locator(".side-panel legend")).toHaveText([
       "Row",
     ]);

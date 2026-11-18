@@ -625,7 +625,9 @@ test.describe("accessibility", () => {
     page,
   }) => {
     await open(page, ["image", "divider", "spacer", "button", "text"]);
-    const selectable = canvas(page).locator(".block");
+    const selectable = canvas(page).getByRole("group", {
+      name: / Block, Row /u,
+    });
 
     for (const index of [0, 1, 2, 3]) {
       // oxlint-disable-next-line no-await-in-loop -- One selection at a time.

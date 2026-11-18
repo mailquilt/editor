@@ -110,8 +110,10 @@ interface LinkFormHost {
   view: () => TextBlockView | undefined;
   /** Whether focus is in that text, so the format bar already shows. */
   editingText: () => boolean;
-  /** The field, once the next update has rendered it. */
-  field: () => Promise<HTMLInputElement | null>;
+  /** Moves focus to the field, once the next update has rendered it. */
+  focusField: () => Promise<void>;
+  /** Moves focus back to the text. */
+  focusText: () => void;
   requestUpdate: () => void;
 }
 
@@ -133,13 +135,11 @@ export const createLinkForm = (host: LinkFormHost) => {
       return;
     }
     if (!host.editingText()) {
-      view.focus();
+      host.focusText();
     }
     state = { refusals: 0 };
     host.requestUpdate();
-    const input = await host.field();
-    input?.focus();
-    input?.select();
+    await host.focusField();
   };
 
   const events: Pick<
@@ -148,7 +148,7 @@ export const createLinkForm = (host: LinkFormHost) => {
   > = {
     onCancelLink: () => {
       close();
-      host.view()?.focus();
+      host.focusText();
     },
     onOpenLinkForm: open,
     onRemoveLink: () => {

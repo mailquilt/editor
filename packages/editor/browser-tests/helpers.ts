@@ -196,7 +196,7 @@ const showRowTools = async (page: Page, position: number) => {
   await hoverRow(page, position);
   if (
     (await rowFrame(page, position)
-      .locator('.block[aria-current="true"]')
+      .locator('[role="group"][aria-current="true"]')
       .count()) > 0
   ) {
     await rowTag(page, position).click();
@@ -279,9 +279,13 @@ export const blockWith = (page: Page, text: string) =>
 export const textOf = (page: Page, text: string) =>
   blockWith(page, text).getByRole("textbox", { name: "Text Block" });
 
+/** The selected Block, if there is one. */
+export const selectedBlock = (page: Page) =>
+  canvas(page).locator('[role="group"][aria-current="true"]');
+
 /** The text of the selected Block. */
 export const selectedText = (page: Page) =>
-  canvas(page).locator('[aria-current="true"]').getByRole("textbox");
+  selectedBlock(page).getByRole("textbox");
 
 export const panelBlock = (page: Page) =>
   page.getByRole("group", { exact: true, name: "Block" });

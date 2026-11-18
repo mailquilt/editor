@@ -53,7 +53,7 @@ export interface CanvasEvents {
     place: { columnId: string; index: number }
   ) => void;
   onBlockClick: (event: MouseEvent) => void;
-  onBlockFocus: (event: FocusEvent, blockId: string) => void;
+  onBlockFocus: (blockId: string) => void;
   onBlockFocusout: () => void;
   onControlMousedown: (event: MouseEvent) => void;
   onDeleteRow: (rowId: string, fromKeyboard: boolean) => void;
@@ -62,7 +62,7 @@ export interface CanvasEvents {
   onImageError: (src: string) => void;
   onMoveRow: (rowId: string, direction: "down" | "up") => void;
   onMoveSelectedBlock: (direction: Direction) => void;
-  onOpenPreview: (event: Event) => void;
+  onOpenPreview: () => void;
   onSelectRow: (rowId: string) => void;
   onStepHistory: (step: "redo" | "undo") => void;
 }
@@ -86,9 +86,10 @@ const renderDragHandle = (
  * On a phone there's no room for the canvas and the side panel. The editor
  * stays as it is, so nothing is lost, and the email can still be previewed.
  */
-export const renderNarrowNotice = (
-  onOpenPreview: (event: Event) => void
-) => html`
+export const renderNarrowNotice = ({
+  onControlMousedown,
+  onOpenPreview,
+}: CanvasEvents) => html`
   <div class="ui frame narrow-notice" lang=${UI_LANG} part="frame">
     <span class="notice-icon">${ICONS.monitor}</span>
     <p class="notice-title">Editing needs more room</p>
@@ -96,7 +97,12 @@ export const renderNarrowNotice = (
       Make the editor at least ${MIN_EDITOR_WIDTH}px wide, such as by widening
       the window, to change this email. You can still preview it here.
     </p>
-    <button class="text-button primary" type="button" @click=${onOpenPreview}>
+    <button
+      class="text-button primary"
+      type="button"
+      @click=${onOpenPreview}
+      @mousedown=${onControlMousedown}
+    >
       ${ICONS.preview}<span>Preview email</span>
     </button>
   </div>
@@ -141,6 +147,7 @@ const renderRowToolbar = (
             aria-keyshortcuts=${shortcuts}
             aria-label=${`Move Row ${direction}`}
             class="icon-button"
+            data-action=${`move-${direction}`}
             data-tooltip=${`Move Row ${direction} (${keys})`}
             ?disabled=${direction === "up" ? index === 0 : index === count - 1}
             tabindex="-1"
@@ -154,6 +161,7 @@ const renderRowToolbar = (
       <button
         aria-label="Delete Row"
         class="icon-button danger"
+        data-action="delete"
         data-tooltip="Delete Row"
         tabindex="-1"
         type="button"
@@ -229,7 +237,7 @@ const renderBlock = (
       style=${styleMap(rich ? blockStyles(block) : {})}
       tabindex="0"
       @click=${events.onBlockClick}
-      @focus=${(event: FocusEvent) => events.onBlockFocus(event, block.id)}
+      @focus=${() => events.onBlockFocus(block.id)}
       @focusout=${events.onBlockFocusout}
     >
       ${selected ? nothing : renderDragHandle(events.onHandleMousedown)}

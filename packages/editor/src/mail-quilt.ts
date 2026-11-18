@@ -38,6 +38,7 @@ import {
   positionLabel,
 } from "./places.js";
 import { createPreview, previewStyles, renderPreview } from "./preview.js";
+import { createSelection, focusToolbarButton } from "./selection.js";
 import { createSettingsDrafts, settingsPanelStyles } from "./settings-panel.js";
 import { renderSidePanel, sidePanelStyles } from "./side-panel.js";
 import type { PanelTab, SidePanelEvents } from "./side-panel.js";
@@ -80,34 +81,6 @@ const doNothing = () => {
   // Nothing more.
 };
 
-/**
- * Goes along the buttons of the toolbar, or the tabs, that a key was pressed in,
- * either way round. Tab leaves from its one stop, wherever the arrow keys got
- * to, so Shift+Tab doesn't land back on that stop.
- */
-const focusToolbarButton = ({ target }: KeyboardEvent, { action }: Binding) => {
-  const button = target as HTMLButtonElement;
-  const buttons = [
-    ...(button.parentElement?.querySelectorAll<HTMLButtonElement>(
-      ":scope > button:not(:disabled)"
-    ) ?? []),
-  ];
-  const index = buttons.indexOf(button);
-  if (index === -1) {
-    return;
-  }
-  const last = buttons.length - 1;
-  const next: Partial<Record<Action, HTMLButtonElement | undefined>> = {
-    firstButton: buttons[0],
-    lastButton: buttons[last],
-    // Focus moves on from there once this returns.
-    leaveToolbar: buttons.find(({ tabIndex }) => tabIndex === 0),
-    nextButton: buttons[index === last ? 0 : index + 1],
-    previousButton: buttons[index === 0 ? last : index - 1],
-  };
-  next[action]?.focus();
-};
-
 export class MailQuilt extends LitElement {
   static override styles = [
     themeTokens,
@@ -127,20 +100,19 @@ export class MailQuilt extends LitElement {
   /** Edits in the same typing session merge into one undo step. */
   #typingSession = 0;
   #lastTypedAt = 0;
-  /** The selected Block, which the toolbars act on: the last one to have focus. */
-  #selectedBlockId: string | undefined;
-  /** Whether focus is in the selected Block's text or its format bar. */
-  #editingText = false;
-  /** The selected Row, when a Row rather than a Block is selected. */
-  #selectedRowId: string | undefined;
-  /** Whether the side panel shows the selected Block's or Row's settings, not its tabs. */
-  #showProperties = false;
   #panelTab: PanelTab = "content";
-  /** What had focus in the editor when the current update began. */
-  #focusedBeforeUpdate: Element | null | undefined;
-  /** Set while `updated` gives focus back, which selects nothing new. */
-  #restoringFocus = false;
   #formats: TextFormats | undefined;
+  readonly #selection = createSelection({
+    onSelect: () => {
+      this.#linkForm.close();
+      this.#formats = this.#selection.selectedText?.formats();
+      this.requestUpdate();
+    },
+    requestUpdate: () => this.requestUpdate(),
+    root: () => this.renderRoot as ShadowRoot,
+    textOf: (blockId) => this.#views.get(blockId),
+    updateComplete: () => this.updateComplete,
+  });
   readonly #drafts = createSettingsDrafts({
     apply: (command) => this.#apply(command, { refusable: true }),
     controlOf: (key) =>
@@ -160,15 +132,11 @@ export class MailQuilt extends LitElement {
   /** Image URLs that didn't load, which the canvas stops trying to show. */
   readonly #failedImages = new Set<string>();
   readonly #linkForm = createLinkForm({
-    editingText: () => this.#editingText,
-    field: async () => {
-      await this.updateComplete;
-      return this.renderRoot.querySelector<HTMLInputElement>(
-        ".link-form input"
-      );
-    },
+    editingText: () => this.#selection.editingText,
+    focusField: () => this.#selection.focusWhenRendered({ on: "linkField" }),
+    focusText: () => this.#selection.focus({ on: "text" }),
     requestUpdate: () => this.requestUpdate(),
-    view: () => this.#selectedView,
+    view: () => this.#selection.selectedText,
   });
   readonly #preview = createPreview({
     dialog: () => this.renderRoot.querySelector<HTMLDialogElement>(".preview"),
@@ -194,37 +162,37 @@ export class MailQuilt extends LitElement {
   readonly #sidePanelEvents: SidePanelEvents = {
     onAddBlock: (blockType) => this.#addBlock(blockType),
     onAddRow: (layout) => this.#addRow(layout),
-    onBack: () => this.#showTabs(),
+    onBack: () => this.#selection.showTabs(this.#panelTab),
     onChooseLayout: (rowId, layout) =>
       this.#apply({ layout, rowId, type: "setRowLayout" }),
-    onControlMousedown: (event) => this.#onControlMousedown(event),
+    onControlMousedown: (event) => this.#selection.onControlMousedown(event),
     onSelectTab: (tab) => this.#selectTab(tab),
     settings: this.#drafts.events,
   };
 
   readonly #formatBarEvents: FormatBarEvents = {
     ...this.#linkForm.events,
-    onControlMousedown: (event) => this.#onControlMousedown(event),
-    onLineBreak: () => this.#selectedView?.insertLineBreak(),
-    onToggleMark: (mark) => this.#selectedView?.toggleMark(mark),
+    onControlMousedown: (event) => this.#selection.onControlMousedown(event),
+    onLineBreak: () => this.#selection.selectedText?.insertLineBreak(),
+    onToggleMark: (mark) => this.#selection.selectedText?.toggleMark(mark),
   };
 
   readonly #canvasEvents: CanvasEvents = {
     formatBar: this.#formatBarEvents,
     onAddBlock: (blockType, place) => this.#addBlock(blockType, place),
-    onBlockClick: (event) => this.#onBlockClick(event),
-    onBlockFocus: (event, blockId) => this.#onBlockFocus(event, blockId),
-    onBlockFocusout: () => this.#onBlockFocusout(),
-    onControlMousedown: (event) => this.#onControlMousedown(event),
+    onBlockClick: (event) => this.#selection.onBlockClick(event),
+    onBlockFocus: (blockId) => this.#selection.onBlockFocus(blockId),
+    onBlockFocusout: () => this.#selection.onBlockFocusout(),
+    onControlMousedown: (event) => this.#selection.onControlMousedown(event),
     onDeleteRow: (rowId, fromKeyboard) => this.#deleteRow(rowId, fromKeyboard),
     onDeleteSelectedBlock: (fromKeyboard) =>
       this.#deleteSelectedBlock(fromKeyboard),
-    onHandleMousedown: (event) => this.#onHandleMousedown(event),
+    onHandleMousedown: (event) => this.#selection.onHandleMousedown(event),
     onImageError: (src) => this.#onImageError(src),
     onMoveRow: (rowId, direction) => this.#moveRow(rowId, direction),
     onMoveSelectedBlock: (direction) => this.#moveSelectedBlock(direction),
-    onOpenPreview: (event) => this.#openPreview(event),
-    onSelectRow: (rowId) => this.#selectRow(rowId),
+    onOpenPreview: () => this.#openPreview(),
+    onSelectRow: (rowId) => this.#selection.selectRow(rowId),
     onStepHistory: (step) => this.#stepHistory(step),
   };
 
@@ -317,14 +285,18 @@ export class MailQuilt extends LitElement {
   }
 
   protected override willUpdate() {
-    this.#focusedBeforeUpdate = this.shadowRoot?.activeElement;
     this.#rendered = this.value;
+    const email = this.isConnected ? this.#rendered : undefined;
+    const blocks = email ? blocksIn(email) : [];
+    const blockIds = new Set(blocks.map(({ id }) => id));
+    this.#selection.beforeUpdate(
+      email && { blockIds, rowIds: new Set(email.rows.map(({ id }) => id)) }
+    );
     // Lit still updates detached elements, and nothing would destroy these
     // views. connectedCallback requests an update that creates them instead.
     if (!this.isConnected) {
       return;
     }
-    const blocks = this.#rendered ? blocksIn(this.#rendered) : [];
     for (const block of blocks) {
       if (hasRichText(block) && !this.#views.has(block.id)) {
         this.#views.set(
@@ -335,7 +307,7 @@ export class MailQuilt extends LitElement {
             content: block.props.content as RichTextDocument,
             label: `${blockLabel(block.type)} Block`,
             onChange: (next) => this.#commitText(block.id, next),
-            onFocus: () => this.#selectFocused(block.id, true),
+            onFocus: () => this.#selection.onTextFocus(block.id),
             onStateChange: () => this.#syncFormats(),
             onTypingBreak: () => {
               this.#typingSession += 1;
@@ -344,75 +316,14 @@ export class MailQuilt extends LitElement {
         );
       }
     }
-    const blockIds = new Set(blocks.map(({ id }) => id));
     this.#removeViewsExcept(blockIds);
     for (const view of this.#views.values()) {
       view.setLang(this.#emailLang);
     }
-    // What was selected may have been removed.
-    const rows = this.#rendered?.rows ?? [];
-    if (
-      (this.#selectedBlockId !== undefined &&
-        !blockIds.has(this.#selectedBlockId)) ||
-      (this.#selectedRowId !== undefined &&
-        !rows.some(({ id }) => id === this.#selectedRowId))
-    ) {
-      this.#select(undefined);
-    }
   }
 
-  /**
-   * A change can remove the element with focus, or disable it. Focus stays in the
-   * editor, where undo still works. A Block that just moved, or whose link field
-   * just closed, gets it back, on the Block itself or the same tool if that's
-   * where it was, so that the next move works. Otherwise the floating toolbar
-   * takes it, because it does nothing when a key that activated a button is
-   * pressed again or held down.
-   */
   protected override updated() {
-    const before = this.#focusedBeforeUpdate;
-    const active = this.shadowRoot?.activeElement as
-      | HTMLButtonElement
-      | null
-      | undefined;
-    if (before && (!active || active.disabled)) {
-      const selected =
-        this.#selectedBlockId === undefined
-          ? undefined
-          : this.#blockElement(this.#selectedBlockId);
-      const { action } = (before as HTMLElement).dataset;
-      const tool =
-        action === undefined
-          ? undefined
-          : selected?.querySelector<HTMLElement>(
-              `.block-toolbar [data-action="${action}"]`
-            );
-      const block = before.matches(".block") ? selected : undefined;
-      // What was removed is detached by now, without the Block around it.
-      const view = before.closest(".block, .format-bar, .link-form")
-        ? this.#selectedView
-        : undefined;
-      // A Row that moved keeps its tools. At either end, one of them is disabled.
-      const rowTools = before.isConnected
-        ? before.closest(".row-toolbar")
-        : undefined;
-      const rowTool = rowTools
-        ? (
-            [
-              before,
-              ...rowTools.querySelectorAll("button"),
-            ] as HTMLButtonElement[]
-          ).find((button) => !button.disabled)
-        : undefined;
-      this.#restoringFocus = true;
-      const next = tool ?? block ?? view ?? rowTool;
-      if (next) {
-        next.focus();
-      } else {
-        this.#focusFloatingToolbar();
-      }
-      this.#restoringFocus = false;
-    }
+    this.#selection.afterUpdate();
     if (this.isConnected && this.shadowRoot) {
       this.#syncTooltips(this.shadowRoot);
     }
@@ -440,7 +351,7 @@ export class MailQuilt extends LitElement {
         Use arrow keys to select another Block, and Alt with arrow keys to move
         this one.
       </p>
-      ${this.#narrow ? renderNarrowNotice(this.#canvasEvents.onOpenPreview) : nothing}
+      ${this.#narrow ? renderNarrowNotice(this.#canvasEvents) : nothing}
       <div
         class="ui frame editor"
         lang=${UI_LANG}
@@ -475,8 +386,8 @@ export class MailQuilt extends LitElement {
           {
             document,
             selectedBlock: selected,
-            selectedRowId: this.#selectedRowId,
-            showProperties: this.#showProperties,
+            selectedRowId: this.#selection.rowId,
+            showProperties: this.#selection.showsSettings,
             tab: this.#panelTab,
           },
           this.#sidePanelEvents
@@ -488,12 +399,12 @@ export class MailQuilt extends LitElement {
 
   get #canvasState(): CanvasState {
     return {
-      editingText: this.#editingText,
+      editingText: this.#selection.editingText,
       emailLang: this.#emailLang,
       failedImages: this.#failedImages,
       formatBar: { formats: this.#formats, linkForm: this.#linkForm.state },
-      selectedBlockId: this.#selectedBlockId,
-      selectedRowId: this.#selectedRowId,
+      selectedBlockId: this.#selection.blockId,
+      selectedRowId: this.#selection.rowId,
       textOf: (blockId) => this.#views.get(blockId)?.element,
     };
   }
@@ -503,123 +414,17 @@ export class MailQuilt extends LitElement {
     return this.#rendered?.settings.language ?? "";
   }
 
-  /** The first of a Row's tools, where Tab reaches its toolbar. */
-  #selectRowButton(rowId: string) {
-    return this.renderRoot.querySelector<HTMLElement>(
-      `.row-frame[data-row-id="${CSS.escape(rowId)}"] [data-action="select-row"]`
-    );
-  }
-
-  get #selectedView() {
-    return this.#selectedBlockId === undefined
-      ? undefined
-      : this.#views.get(this.#selectedBlockId);
-  }
-
-  /** Firefox's scroll on focus leaves a Block that's partly in view where it is. */
-  #onBlockFocus({ currentTarget }: FocusEvent, blockId: string) {
-    this.#selectFocused(blockId, false);
-    (currentTarget as HTMLElement).scrollIntoView({ block: "nearest" });
-    this.#revealBlock(blockId);
-  }
-
-  /**
-   * Shows the selected Block's settings again after Back, when its text still has
-   * focus and so gets no new focus event. Its own toolbars leave the panel be.
-   */
-  #onBlockClick({ currentTarget, target }: MouseEvent) {
-    if (
-      !this.#showProperties &&
-      (currentTarget as HTMLElement).dataset.blockId ===
-        this.#selectedBlockId &&
-      !(target as Element).closest(".block-toolbar, .format-bar")
-    ) {
-      this.#showProperties = true;
-      this.requestUpdate();
-    }
-  }
-
-  /**
-   * The text stops being edited once focus leaves it and its format bar. State
-   * rather than CSS, which would hide the bar while focus is on its way there.
-   * Checked once focus has landed: the Preview opening over the text, or the
-   * window losing focus while a URL is copied elsewhere, leave the bar as it is.
-   */
-  #onBlockFocusout() {
-    if (!this.#editingText) {
-      return;
-    }
-    setTimeout(() => {
-      const active = this.shadowRoot?.activeElement;
-      if (
-        this.#editingText &&
-        document.hasFocus() &&
-        !active?.closest(".ProseMirror, .format-bar, .preview")
-      ) {
-        this.#editingText = false;
-        this.requestUpdate();
-      }
-    }, 0);
-  }
-
-  /** Focus on a Block, or in its text, selects the Block. */
-  #selectFocused(blockId: string, inText: boolean) {
-    this.#editingText = inText;
-    // The Block is selected already, and the panel stays as it was left.
-    if (!this.#restoringFocus) {
-      this.#select({ blockId });
-    }
-  }
-
-  /**
-   * Selects a Block, a Row or nothing, and shows what's selected in the side
-   * panel. Whether a Block's text is being edited is up to where focus is.
-   */
-  #select(target: { blockId: string } | { rowId: string } | undefined) {
-    const blockId = target && "blockId" in target ? target.blockId : undefined;
-    this.#selectedBlockId = blockId;
-    this.#selectedRowId =
-      target && "rowId" in target ? target.rowId : undefined;
-    this.#showProperties = target !== undefined;
-    this.#linkForm.close();
-    if (blockId === undefined) {
-      this.#editingText = false;
-    }
-    this.#formats = this.#selectedView?.formats();
-    this.requestUpdate();
-  }
-
-  /**
-   * Selects a Row in place of any Block, and shows its settings. Its toolbar's
-   * button takes focus, so typing can't go on in a Block's text.
-   */
-  async #selectRow(rowId: string) {
-    // From the keyboard, as from the Rows tab, the focus ring follows.
-    const focusVisible =
-      this.shadowRoot?.activeElement?.matches(":focus-visible") ?? false;
-    this.#select({ rowId });
-    await this.updateComplete;
-    const button = this.#selectRowButton(rowId);
-    if (button && this.shadowRoot?.activeElement !== button) {
-      button.focus({ focusVisible } as FocusOptions);
-    }
-  }
-
   /** Re-renders only on a change, because this runs on every transaction. */
   #syncFormats() {
-    const formats = this.#selectedView?.formats();
+    const formats = this.#selection.selectedText?.formats();
     if (JSON.stringify(formats) !== JSON.stringify(this.#formats)) {
       this.#formats = formats;
       this.requestUpdate();
     }
   }
 
-  async #openPreview({ currentTarget }: Event) {
-    // Toolbar buttons don't take focus from a mouse press, and the dialog returns
-    // focus to whatever had it.
-    if (!this.shadowRoot?.activeElement) {
-      (currentTarget as HTMLElement).focus();
-    }
+  /** The dialog returns focus to whatever had it, which a press gives Preview. */
+  async #openPreview() {
     await this.#preview.open();
   }
 
@@ -661,9 +466,8 @@ export class MailQuilt extends LitElement {
   }
 
   #selectedPosition(document: BlocksDocument) {
-    return this.#selectedBlockId === undefined
-      ? undefined
-      : locate(document, this.#selectedBlockId);
+    const { blockId } = this.#selection;
+    return blockId === undefined ? undefined : locate(document, blockId);
   }
 
   /** After the selected Block's Row, or else at the end, and selects it. */
@@ -673,7 +477,7 @@ export class MailQuilt extends LitElement {
       return;
     }
     const selectedRow = document.rows.findIndex(
-      ({ id }) => id === this.#selectedRowId
+      ({ id }) => id === this.#selection.rowId
     );
     const rowIndex =
       selectedRow === -1
@@ -685,7 +489,7 @@ export class MailQuilt extends LitElement {
       type: "insertRow",
     });
     if (result?.ok && result.createdId !== undefined) {
-      await this.#selectRow(result.createdId);
+      await this.#selection.selectRow(result.createdId);
     }
   }
 
@@ -701,24 +505,15 @@ export class MailQuilt extends LitElement {
     if (
       target !== currentTarget ||
       !this.#pressedOnWorkspace ||
-      (this.#selectedBlockId === undefined && this.#selectedRowId === undefined)
+      (this.#selection.blockId === undefined &&
+        this.#selection.rowId === undefined)
     ) {
       return;
     }
-    this.#select(undefined);
-    this.#focusFloatingToolbar({ focusVisible: false } as FocusOptions);
-  }
-
-  /** Back to the tabs, with the Block still selected for what's added next. */
-  async #showTabs() {
-    const fromKeyboard =
-      this.shadowRoot?.activeElement?.matches(".back-button") ?? false;
-    this.#showProperties = false;
-    this.requestUpdate();
-    if (fromKeyboard) {
-      await this.updateComplete;
-      this.#tabButton(this.#panelTab)?.focus();
-    }
+    this.#selection.select(undefined);
+    this.#selection.focus({ on: "emailTools" }, {
+      focusVisible: false,
+    } as FocusOptions);
   }
 
   /** The ARIA tabs pattern: a tab that arrow keys move to shows its panel too. */
@@ -729,17 +524,13 @@ export class MailQuilt extends LitElement {
     }
   }
 
-  #tabButton(tab: PanelTab) {
-    return this.renderRoot.querySelector<HTMLElement>(`#tab-${tab}`);
-  }
-
   /**
    * From the keyboard, focus goes to the next Block, or else the one before, as
    * it would be lost. A button pressed with a key clicks with a `detail` of 0.
    */
   async #deleteSelectedBlock(fromKeyboard: boolean) {
     const document = this.#editor?.getDocument();
-    const blockId = this.#selectedBlockId;
+    const { blockId } = this.#selection;
     if (!document || blockId === undefined) {
       return;
     }
@@ -748,9 +539,11 @@ export class MailQuilt extends LitElement {
       neighbourBlockId(document, blockId, "up");
     if (this.#apply({ blockId, type: "removeBlock" })?.ok) {
       this.#announce("Block deleted.");
-      await this.updateComplete;
       if (fromKeyboard && neighbour !== undefined) {
-        this.#blockElement(neighbour)?.focus();
+        await this.#selection.focusWhenRendered({
+          blockId: neighbour,
+          on: "block",
+        });
       }
     }
   }
@@ -765,9 +558,11 @@ export class MailQuilt extends LitElement {
     const neighbour = rows[index + 1] ?? rows[index - 1];
     if (this.#apply({ rowId, type: "removeRow" })?.ok) {
       this.#announce("Row deleted.");
-      await this.updateComplete;
       if (fromKeyboard && neighbour) {
-        this.#selectRowButton(neighbour.id)?.focus();
+        await this.#selection.focusWhenRendered({
+          on: "rowTool",
+          rowId: neighbour.id,
+        });
       }
     }
   }
@@ -791,23 +586,7 @@ export class MailQuilt extends LitElement {
         : { blockType, rowIndex: 0, type: "insertBlockInNewRow" }
     );
     if (result?.ok) {
-      await this.#showPlaced(result.createdId);
-    }
-  }
-
-  /** Selects a Block that was just put in place, in its text if it has any. */
-  async #showPlaced(blockId: string | undefined) {
-    this.#select(blockId === undefined ? undefined : { blockId });
-    await this.updateComplete;
-    if (blockId === undefined) {
-      return;
-    }
-    if (this.#selectedView) {
-      this.#selectedView.focus();
-      // Unlike focus on the Block, focus in its text doesn't scroll.
-      this.#revealBlock(blockId);
-    } else {
-      this.#blockElement(blockId)?.focus();
+      await this.#selection.selectPlaced(result.createdId);
     }
   }
 
@@ -822,8 +601,8 @@ export class MailQuilt extends LitElement {
       return { columnId: selected.columnId, index: selected.index + 1 };
     }
     const column =
-      document.rows.find(({ id }) => id === this.#selectedRowId)?.columns[0] ??
-      document.rows.at(-1)?.columns.at(-1);
+      document.rows.find(({ id }) => id === this.#selection.rowId)
+        ?.columns[0] ?? document.rows.at(-1)?.columns.at(-1);
     return column && { columnId: column.id, index: column.blocks.length };
   }
 
@@ -838,14 +617,14 @@ export class MailQuilt extends LitElement {
     }
     if ("rowLayout" in source) {
       if (result.createdId !== undefined) {
-        await this.#selectRow(result.createdId);
+        await this.#selection.selectRow(result.createdId);
       }
       return;
     }
     if ("blockId" in source) {
       this.#announceMove(source.blockId);
     }
-    await this.#showPlaced(
+    await this.#selection.selectPlaced(
       "blockId" in source ? source.blockId : result.createdId
     );
   }
@@ -866,8 +645,7 @@ export class MailQuilt extends LitElement {
   #onBeforeInput(event: InputEvent) {
     // WebKit types into a Block's selection, and undoes there too, even with focus
     // on the dialog, a control, the link field or the Block itself.
-    const active = this.shadowRoot?.activeElement;
-    if (this.#preview.isOpen || (active && !active.closest(".ProseMirror"))) {
+    if (this.#preview.isOpen || this.#selection.focusIsOutsideText) {
       event.preventDefault();
       return;
     }
@@ -936,9 +714,8 @@ export class MailQuilt extends LitElement {
     Action,
     (event: KeyboardEvent, binding: Binding) => void
   > = {
-    backToBlock: ({ target }) =>
-      (target as Element).closest<HTMLElement>(BLOCKS)?.focus(),
-    backToText: () => this.#selectedView?.focus(),
+    backToBlock: () => this.#selection.focus({ on: "block" }),
+    backToText: () => this.#selection.focus({ on: "text" }),
     // The drag hears this itself.
     cancelDrag: doNothing,
     cancelLink: () => this.#linkForm.events.onCancelLink(),
@@ -947,12 +724,9 @@ export class MailQuilt extends LitElement {
     // The tooltips hear this themselves.
     closeTooltip: doNothing,
     discardDraft: (event) => this.#drafts.discard(event),
-    editText: () => this.#selectedView?.focus(),
+    editText: () => this.#selection.focus({ on: "text" }),
     firstButton: focusToolbarButton,
-    focusFormatBar: () =>
-      this.renderRoot
-        .querySelector<HTMLElement>(".format-bar > button:not(:disabled)")
-        ?.focus(),
+    focusFormatBar: () => this.#selection.focus({ on: "formatBar" }),
     ignore: doNothing,
     keepPage: doNothing,
     lastButton: focusToolbarButton,
@@ -989,26 +763,26 @@ export class MailQuilt extends LitElement {
 
   #selectNeighbour(direction: Direction) {
     const document = this.#editor?.getDocument();
-    const blockId = this.#selectedBlockId;
+    const { blockId } = this.#selection;
     const next =
       document &&
       blockId !== undefined &&
       neighbourBlockId(document, blockId, direction);
     if (next) {
-      this.#blockElement(next)?.focus();
+      this.#selection.focus({ blockId: next, on: "block" });
     }
   }
 
   #moveSelectedBlock(direction: Direction) {
     const document = this.#editor?.getDocument();
-    const blockId = this.#selectedBlockId;
+    const { blockId } = this.#selection;
     if (!document || blockId === undefined) {
       return;
     }
     const command = moveCommand(document, blockId, direction);
     if (command && this.#apply(command)?.ok) {
       this.#announceMove(blockId);
-      this.#revealBlock(blockId);
+      this.#selection.revealBlock(blockId);
     } else {
       this.#announce(`The Block can't move ${direction}.`);
     }
@@ -1038,7 +812,7 @@ export class MailQuilt extends LitElement {
     }
     if (this.#apply(command)?.ok) {
       this.#announceRowMove(rowId);
-      this.#revealRow(rowId);
+      this.#selection.revealRow(rowId);
     }
   }
 
@@ -1048,80 +822,6 @@ export class MailQuilt extends LitElement {
     if (index !== -1) {
       this.#announce(`${prefix} ${positionLabel(index, rows.length)}.`);
     }
-  }
-
-  async #revealRow(rowId: string) {
-    await this.updateComplete;
-    this.renderRoot
-      .querySelector(`.row-frame[data-row-id="${CSS.escape(rowId)}"]`)
-      ?.scrollIntoView({ block: "nearest" });
-  }
-
-  /**
-   * Focus alone doesn't do this. A Block keeps focus if its neighbour is what moves
-   * in the DOM, and focusing its text doesn't scroll.
-   */
-  async #revealBlock(blockId: string) {
-    await this.updateComplete;
-    const block = this.#blockElement(blockId);
-    block?.scrollIntoView({ block: "nearest" });
-    // Its tools can reach past a thin Block, under the floating toolbar, which
-    // would hide the one with focus.
-    block
-      ?.querySelector(".block-toolbar")
-      ?.scrollIntoView({ block: "nearest" });
-  }
-
-  #blockElement(blockId: string) {
-    return this.renderRoot.querySelector<HTMLElement>(
-      `${BLOCKS}[data-block-id="${CSS.escape(blockId)}"]`
-    );
-  }
-
-  /**
-   * Pressing a control leaves focus and the selection in the Block. With no focus
-   * in the editor, the control takes it, because keyboard undo only reaches the
-   * editor from inside it. Browsers disagree on whether a press focuses a button.
-   * A drag handle in a toolbar has its own.
-   */
-  #onControlMousedown(event: MouseEvent) {
-    const { target } = event;
-    if (
-      target instanceof HTMLInputElement ||
-      (target instanceof Element && target.closest(".drag-handle"))
-    ) {
-      return;
-    }
-    event.preventDefault();
-    this.#commitFocusedField();
-    if (!this.shadowRoot?.activeElement && target instanceof Element) {
-      // Without a ring, as for any other press with the pointer.
-      target.closest("button")?.focus({ focusVisible: false } as FocusOptions);
-    }
-  }
-
-  /**
-   * Leaves focus and the selection where they are. With no focus in the editor,
-   * the floating toolbar takes it, because keyboard undo only reaches the editor
-   * from inside.
-   */
-  #onHandleMousedown(event: MouseEvent) {
-    event.preventDefault();
-    this.#commitFocusedField();
-    if (!this.shadowRoot?.activeElement) {
-      this.#focusFloatingToolbar();
-    }
-  }
-
-  /**
-   * Gives focus to the floating toolbar, which keeps keyboard undo working,
-   * without scrolling the page to it: in a Shell whose bottom is below the
-   * window, the toolbar is out of view.
-   */
-  #focusFloatingToolbar(options?: FocusOptions) {
-    this.renderRoot
-      .querySelector<HTMLElement>(".floating-toolbar")
-      ?.focus({ ...options, preventScroll: true });
   }
 
   /** A new render can replace the tooltip, along with everything else. */
@@ -1134,17 +834,6 @@ export class MailQuilt extends LitElement {
         : undefined;
     }
     this.#tooltips?.tooltips.sync();
-  }
-
-  /**
-   * The presses above keep focus where it is, so a settings field would hold on to
-   * what's typed in it while the press acts on the email. Blurring commits it.
-   */
-  #commitFocusedField() {
-    const active = this.shadowRoot?.activeElement;
-    if (active?.closest(".settings")) {
-      (active as HTMLElement).blur();
-    }
   }
 
   #runHistoryStep(event: Event, step: "redo" | "undo" | undefined) {
@@ -1204,8 +893,8 @@ export class MailQuilt extends LitElement {
     }
     const { blockId } = operation;
     this.#announceMove(blockId, `${prefix} a Block to`);
-    if (blockId === this.#selectedBlockId) {
-      this.#revealBlock(blockId);
+    if (blockId === this.#selection.blockId) {
+      this.#selection.revealBlock(blockId);
     }
   }
 
@@ -1265,7 +954,7 @@ export class MailQuilt extends LitElement {
     }
     this.#views.clear();
     // The toolbar's state describes those views and their selections.
-    this.#select(undefined);
+    this.#selection.select(undefined);
     this.#preview.end();
   }
 }
