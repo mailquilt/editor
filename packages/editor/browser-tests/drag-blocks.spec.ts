@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 
 import {
   announcement,
@@ -25,6 +25,7 @@ import {
   openTab,
   palette,
   pickUp,
+  previewButton,
   serveImages,
   settle,
   setValue,
@@ -630,16 +631,16 @@ test.describe("letting go far from the editor", () => {
   });
 });
 
-test("a file dropped on the email doesn't open in the page", async ({
-  page,
-}) => {
-  await openBlocks(page, ["text"]);
-
-  const allowed = await blockGroup(page, "Text").evaluate((block) => {
+/**
+ * Drags a file over the element and drops it there. Returns whether each event
+ * kept the browser's own handling: false once it's prevented.
+ */
+const dropFileOn = (target: Locator) =>
+  target.evaluate((element) => {
     const dataTransfer = new DataTransfer();
     dataTransfer.items.add(new File(["x"], "photo.png", { type: "image/png" }));
     return ["dragover", "drop"].map((type) =>
-      block.dispatchEvent(
+      element.dispatchEvent(
         new DragEvent(type, {
           bubbles: true,
           cancelable: true,
@@ -650,8 +651,83 @@ test("a file dropped on the email doesn't open in the page", async ({
     );
   });
 
-  // dispatchEvent is false once the browser's own handling is prevented.
-  expect(allowed).toEqual([false, false]);
+test.describe("a file dropped doesn't open in the page", () => {
+  test("on the email", async ({ page }) => {
+    await openBlocks(page, ["text"]);
+
+    await expect(dropFileOn(blockGroup(page, "Text"))).resolves.toEqual([
+      false,
+      false,
+    ]);
+  });
+
+  test("on the open Preview", async ({ page }) => {
+    await page.goto("/");
+    await previewButton(page).click();
+    const preview = page.getByRole("dialog", { name: "Preview" });
+    await expect(preview).toBeVisible();
+
+    await expect(
+      dropFileOn(preview.getByRole("heading", { name: "Preview" }))
+    ).resolves.toEqual([false, false]);
+  });
+
+  test("on the narrow notice", async ({ page }) => {
+    await page.setViewportSize({ height: 800, width: 390 });
+    await page.goto("/");
+    const notice = canvas(page).getByText("Editing needs more room");
+    await expect(notice).toBeVisible();
+
+    await expect(dropFileOn(notice)).resolves.toEqual([false, false]);
+  });
+});
+
+test("text dragged within a Block's text still moves", async ({ page }) => {
+  await page.setViewportSize(TALL_VIEWPORT);
+  await open(page, [[["One Two"]]]);
+  const words = textBlock(page).getByText("One Two");
+  await words.dblclick({ position: { x: 4, y: 8 } });
+  // ProseMirror learns of the selection a moment later.
+  await settle(page);
+
+  // The selected first word goes after the second, as the browser sends a drag
+  // of selected text.
+  await words.evaluate((line) => {
+    const text = line.firstChild;
+    if (!text) {
+      throw new Error("The line has no text");
+    }
+    /** Halfway along the character at `offset`. */
+    const pointAt = (offset: number) => {
+      const range = document.createRange();
+      range.setStart(text, offset);
+      range.setEnd(text, offset + 1);
+      const { height, left, top, width } = range.getBoundingClientRect();
+      return { clientX: left + width / 2, clientY: top + height / 2 };
+    };
+    const inOne = pointAt(1);
+    const afterTwo = { ...pointAt(6), clientX: pointAt(6).clientX + 20 };
+    const dataTransfer = new DataTransfer();
+    const events = [
+      ["dragstart", inOne],
+      ["dragover", afterTwo],
+      ["drop", afterTwo],
+      ["dragend", afterTwo],
+    ] as const;
+    for (const [type, point] of events) {
+      line.dispatchEvent(
+        new DragEvent(type, {
+          bubbles: true,
+          cancelable: true,
+          composed: true,
+          dataTransfer,
+          ...point,
+        })
+      );
+    }
+  });
+
+  await expect(textBlock(page)).toHaveText(/^ ?TwoOne ?$/u);
 });
 
 test.describe("dragging from the palette", () => {
