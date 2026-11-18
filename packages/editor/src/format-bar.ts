@@ -2,14 +2,8 @@ import { INVALID_LINK, isAllowedLinkHref } from "@mailquilt/core/internal";
 import { css, html, nothing } from "lit";
 import { keyed } from "lit/directives/keyed.js";
 
-import {
-  isComposing,
-  LINE_BREAK_KEYS,
-  MOD_KEY,
-  MOD_SHORTCUT,
-  onToolbarArrowKeys,
-} from "./block-keyboard.js";
 import { ICONS } from "./icons.js";
+import { LINE_BREAK_KEYS, MOD_KEY, MOD_SHORTCUT } from "./key-map.js";
 import type {
   TextBlockView,
   TextFormats,
@@ -98,8 +92,6 @@ export interface FormatBarState {
 }
 
 export interface FormatBarEvents {
-  /** Escape in the bar: focus goes back to the text. */
-  onBack: () => void;
   onCancelLink: () => void;
   onControlMousedown: (event: MouseEvent) => void;
   onLineBreak: () => void;
@@ -192,15 +184,6 @@ const renderLinkForm = (
     class="link-form"
     novalidate
     @beforeinput=${stopPropagation}
-    @keydown=${(event: KeyboardEvent) => {
-      // The link field has its own typing and undo, so its keys stop here,
-      // before the format bar, the Block and the email act on them.
-      event.stopPropagation();
-      if (event.key === "Escape" && !isComposing(event)) {
-        event.preventDefault();
-        events.onCancelLink();
-      }
-    }}
     @submit=${(event: SubmitEvent) => {
       event.preventDefault();
       const form = event.target as HTMLFormElement;
@@ -263,16 +246,6 @@ export const renderFormatBar = (
       aria-label="Text formatting"
       class="ui bar format-bar"
       role="toolbar"
-      @keydown=${(event: KeyboardEvent) => {
-        // Escape goes back to the text, as from the link field.
-        if (event.key === "Escape" && !isComposing(event)) {
-          event.preventDefault();
-          event.stopPropagation();
-          events.onBack();
-          return;
-        }
-        onToolbarArrowKeys(event);
-      }}
       @mousedown=${events.onControlMousedown}
     >
       ${MARK_BUTTONS.map(

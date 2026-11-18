@@ -17,15 +17,6 @@ import { blockContentStyles, hasRichText } from "./block-content.js";
 import { BLOCKS, createBlockDragging, dropCommand } from "./block-dragging.js";
 import type { BlockDragging, DragSource, DropPlace } from "./block-dragging.js";
 import {
-  arrowDirection,
-  historyInput,
-  historyShortcut,
-  isComposing,
-  isLinkShortcut,
-  isPageHistoryArrow,
-} from "./block-keyboard.js";
-import type { Direction } from "./block-keyboard.js";
-import {
   MIN_EDITOR_WIDTH,
   renderFloatingToolbar,
   renderNarrowNotice,
@@ -34,6 +25,8 @@ import {
 import type { CanvasEvents, CanvasState } from "./canvas.js";
 import { createLinkForm, formatBarStyles } from "./format-bar.js";
 import type { FormatBarEvents } from "./format-bar.js";
+import { claim, historyInput, keyFor } from "./key-map.js";
+import type { Action, Binding, Direction, Place } from "./key-map.js";
 import { editorStyles } from "./mail-quilt-styles.js";
 import {
   blocksIn,
@@ -69,6 +62,51 @@ const refuseFiles = (event: DragEvent) => {
 };
 
 type MoveOperation = Extract<Operation, { type: "move" }>;
+
+/** The places in the editor that have keys of their own, the innermost first. */
+const PLACES: [selector: string, place: Place][] = [
+  [".link-form", "linkField"],
+  [".format-bar", "formatBar"],
+  [".ProseMirror", "text"],
+  [".block-toolbar", "blockToolbar"],
+  [BLOCKS, "block"],
+  [".row-toolbar", "rowToolbar"],
+  [".email", "email"],
+  ['[role="tablist"]', "panelTabs"],
+];
+
+/** For a key whose press only needs keeping from the browser, or stopping. */
+const doNothing = () => {
+  // Nothing more.
+};
+
+/**
+ * Goes along the buttons of the toolbar, or the tabs, that a key was pressed in,
+ * either way round. Tab leaves from its one stop, wherever the arrow keys got
+ * to, so Shift+Tab doesn't land back on that stop.
+ */
+const focusToolbarButton = ({ target }: KeyboardEvent, { action }: Binding) => {
+  const button = target as HTMLButtonElement;
+  const buttons = [
+    ...(button.parentElement?.querySelectorAll<HTMLButtonElement>(
+      ":scope > button:not(:disabled)"
+    ) ?? []),
+  ];
+  const index = buttons.indexOf(button);
+  if (index === -1) {
+    return;
+  }
+  const last = buttons.length - 1;
+  const next: Partial<Record<Action, HTMLButtonElement | undefined>> = {
+    firstButton: buttons[0],
+    lastButton: buttons[last],
+    // Focus moves on from there once this returns.
+    leaveToolbar: buttons.find(({ tabIndex }) => tabIndex === 0),
+    nextButton: buttons[index === last ? 0 : index + 1],
+    previousButton: buttons[index === 0 ? last : index - 1],
+  };
+  next[action]?.focus();
+};
 
 export class MailQuilt extends LitElement {
   static override styles = [
@@ -144,8 +182,8 @@ export class MailQuilt extends LitElement {
   #announcement = "";
   /** Each announcement gets a new element, so the same words are read again. */
   #announcementId = 0;
-  /** Where the Enter key now held down was pressed. */
-  #enterPressedOn: EventTarget | undefined;
+  /** The last key pressed, and where, before it was held down. */
+  #lastPress: { key: string; target: EventTarget | undefined } | undefined;
   /** The last press began on the workspace itself, not after a drag from a Block. */
   #pressedOnWorkspace = false;
   /** Too narrow to edit in, as on a phone or in a narrow part of a page. */
@@ -166,7 +204,6 @@ export class MailQuilt extends LitElement {
 
   readonly #formatBarEvents: FormatBarEvents = {
     ...this.#linkForm.events,
-    onBack: () => this.#selectedView?.focus(),
     onControlMousedown: (event) => this.#onControlMousedown(event),
     onLineBreak: () => this.#selectedView?.insertLineBreak(),
     onToggleMark: (mark) => this.#selectedView?.toggleMark(mark),
@@ -178,7 +215,6 @@ export class MailQuilt extends LitElement {
     onBlockClick: (event) => this.#onBlockClick(event),
     onBlockFocus: (event, blockId) => this.#onBlockFocus(event, blockId),
     onBlockFocusout: () => this.#onBlockFocusout(),
-    onBlockKeydown: (event) => this.#onBlockKeydown(event),
     onControlMousedown: (event) => this.#onControlMousedown(event),
     onDeleteRow: (rowId, fromKeyboard) => this.#deleteRow(rowId, fromKeyboard),
     onDeleteSelectedBlock: (fromKeyboard) =>
@@ -188,11 +224,15 @@ export class MailQuilt extends LitElement {
     onMoveRow: (rowId, direction) => this.#moveRow(rowId, direction),
     onMoveSelectedBlock: (direction) => this.#moveSelectedBlock(direction),
     onOpenPreview: (event) => this.#openPreview(event),
-    onRowToolbarKeydown: (event, rowId) =>
-      this.#onRowToolbarKeydown(event, rowId),
     onSelectRow: (rowId) => this.#selectRow(rowId),
     onStepHistory: (step) => this.#stepHistory(step),
   };
+
+  protected override createRenderRoot() {
+    const root = super.createRenderRoot();
+    root.addEventListener("keydown", this.#onKeydown);
+    return root;
+  }
 
   constructor() {
     super();
@@ -407,7 +447,6 @@ export class MailQuilt extends LitElement {
         part="frame"
         ?data-collapsed=${this.#narrow}
         style=${styleMap({ "--email-width": `${settings.width}px` })}
-        @keydown=${this.#onEditorKeydown}
         @dragover=${refuseFiles}
         @drop=${refuseFiles}
       >
@@ -419,7 +458,6 @@ export class MailQuilt extends LitElement {
           <div
             class="email"
             @beforeinput=${this.#onBeforeInput}
-            @keydown=${this.#onEmailKeydown}
             style=${styleMap({
               // Also for what's dragged, which has nothing behind it.
               "--_mq-email-background": settings.backgroundColor,
@@ -620,16 +658,6 @@ export class MailQuilt extends LitElement {
     }
     this.#emitChange(editor.getDocument());
     return result;
-  }
-
-  /**
-   * Undo and redo, from anywhere in the editor. Text being typed in a settings
-   * field has the field's own undo, like the link field, which keeps its keys.
-   */
-  #onEditorKeydown(event: KeyboardEvent) {
-    if (this.#drafts.draftKeyOf(event) === undefined) {
-      this.#runHistoryStep(event, historyShortcut(event));
-    }
   }
 
   #selectedPosition(document: BlocksDocument) {
@@ -846,94 +874,118 @@ export class MailQuilt extends LitElement {
     this.#runHistoryStep(event, historyInput(event));
   }
 
-  #onEmailKeydown(event: KeyboardEvent) {
-    if (
-      event.altKey &&
-      event.key === "F10" &&
-      (event.target as Element).closest(".ProseMirror")
-    ) {
-      event.preventDefault();
-      this.renderRoot
-        .querySelector<HTMLElement>(".format-bar > button:not(:disabled)")
-        ?.focus();
-      return;
-    }
-    if (isLinkShortcut(event)) {
-      // Browsers use this one to focus their search or address bar, and a host
-      // page may use it for its own search.
-      event.preventDefault();
-      event.stopPropagation();
-      this.#linkForm.open();
-    }
-  }
-
   /**
-   * A key that moved focus into a Block's text would otherwise keep repeating
-   * there, adding empty paragraphs. Repeats only count where the press began.
+   * Heard on the way in, before a Block's text, which acts on a key before it
+   * bubbles out. A held key's repeats count only where it was pressed.
    */
   readonly #onKeydownCapture = (event: KeyboardEvent) => {
-    if (event.key !== "Enter") {
-      return;
-    }
     const [target] = event.composedPath();
     if (!event.repeat) {
-      this.#enterPressedOn = target;
-    } else if (target !== this.#enterPressedOn) {
-      event.preventDefault();
-      event.stopPropagation();
+      this.#lastPress = { key: event.key, target };
+      return;
+    }
+    const binding =
+      this.#lastPress?.key === event.key && this.#lastPress.target === target
+        ? undefined
+        : keyFor("heldElsewhere", event);
+    if (binding) {
+      claim(event, binding);
     }
   };
 
   /**
-   * These act only with focus on the Block itself, apart from the Move buttons'
-   * Alt+arrow shortcuts, which also work in its toolbar. In its text, the same
-   * keys move the cursor, by word with Alt on macOS, and Enter starts a new
-   * paragraph.
+   * Every key pressed in the editor, once what it was pressed on, such as a
+   * Block's text, has had it. The key map says what it does there.
    */
-  #onBlockKeydown(event: KeyboardEvent) {
-    // The Blocks would change under a drag that's still going.
-    if (this.#dragging?.isDragging()) {
-      return;
+  readonly #onKeydown = (event: Event) => {
+    const keydown = event as KeyboardEvent;
+    const place = this.#placeOf(keydown);
+    const binding =
+      place &&
+      keyFor(place, keydown, {
+        dragging: this.#dragging?.isDragging() ?? false,
+      });
+    if (binding) {
+      claim(keydown, binding);
+      this.#keyActions[binding.action](keydown, binding);
     }
-    const block = event.currentTarget as HTMLElement;
+  };
+
+  /** Where in the editor a key was pressed, if it's a place in the key map. */
+  #placeOf(event: KeyboardEvent): Place | undefined {
     const target = event.target as Element;
-    const direction = arrowDirection(event);
-    if (event.altKey && direction && target.closest(".block-toolbar")) {
-      // Alt+Left would go back in history.
-      event.preventDefault();
-      this.#moveSelectedBlock(direction);
+    if (target.closest(".preview")) {
+      return "preview";
+    }
+    // Such as the narrow notice.
+    if (!target.closest(".editor")) {
       return;
     }
-    if (target !== block) {
-      if (event.key === "Escape" && !isComposing(event)) {
-        event.preventDefault();
-        // This one is used up, so a host's dialog stays open. Pressed again on the
-        // Block, it reaches the host.
-        event.stopPropagation();
-        block.focus();
-      } else if (event.altKey && isPageHistoryArrow(direction)) {
-        // In the text and its format bar, these would leave the page.
-        event.preventDefault();
-      }
-      return;
+    const [, place] =
+      PLACES.find(([selector]) => target.closest(selector)) ?? [];
+    if (place) {
+      return place;
     }
-    if (event.key === "Enter") {
-      // Otherwise the new paragraph lands in the text that just took focus.
-      event.preventDefault();
-      this.#selectedView?.focus();
-      return;
-    }
-    if (!direction) {
-      return;
-    }
-    // The page would scroll too, or go back in history with Alt+Left.
-    event.preventDefault();
-    if (event.altKey) {
-      this.#moveSelectedBlock(direction);
-    } else {
-      this.#selectNeighbour(direction);
-    }
+    return this.#drafts.draftKeyOf(event) === undefined
+      ? "editor"
+      : "settingsDraft";
   }
+
+  /** What each action in the key map does here. */
+  readonly #keyActions: Record<
+    Action,
+    (event: KeyboardEvent, binding: Binding) => void
+  > = {
+    backToBlock: ({ target }) =>
+      (target as Element).closest<HTMLElement>(BLOCKS)?.focus(),
+    backToText: () => this.#selectedView?.focus(),
+    // The drag hears this itself.
+    cancelDrag: doNothing,
+    cancelLink: () => this.#linkForm.events.onCancelLink(),
+    // The browser closes the dialog.
+    closePreview: doNothing,
+    // The tooltips hear this themselves.
+    closeTooltip: doNothing,
+    discardDraft: (event) => this.#drafts.discard(event),
+    editText: () => this.#selectedView?.focus(),
+    firstButton: focusToolbarButton,
+    focusFormatBar: () =>
+      this.renderRoot
+        .querySelector<HTMLElement>(".format-bar > button:not(:disabled)")
+        ?.focus(),
+    ignore: doNothing,
+    keepPage: doNothing,
+    lastButton: focusToolbarButton,
+    leaveToolbar: focusToolbarButton,
+    moveBlock: (_event, { direction }) => {
+      if (direction) {
+        this.#moveSelectedBlock(direction);
+      }
+    },
+    moveRow: ({ target }, { direction }) => {
+      const rowId = (target as Element).closest<HTMLElement>(".row-frame")
+        ?.dataset.rowId;
+      if (rowId === undefined) {
+        return;
+      }
+      if (direction === "up" || direction === "down") {
+        this.#moveRow(rowId, direction);
+      } else {
+        this.#announce(`The Row can't move ${direction}.`);
+      }
+    },
+    nextButton: focusToolbarButton,
+    openLinkField: () => this.#linkForm.open(),
+    previousButton: focusToolbarButton,
+    redo: () => this.#stepHistory("redo"),
+    selectBlock: (_event, { direction }) => {
+      if (direction) {
+        this.#selectNeighbour(direction);
+      }
+    },
+    typeInField: doNothing,
+    undo: () => this.#stepHistory("undo"),
+  };
 
   #selectNeighbour(direction: Direction) {
     const document = this.#editor?.getDocument();
@@ -974,24 +1026,6 @@ export class MailQuilt extends LitElement {
     this.#announcement = text;
     this.#announcementId += 1;
     this.requestUpdate();
-  }
-
-  #onRowToolbarKeydown(event: KeyboardEvent, rowId: string) {
-    // The Rows would change under a drag that's still going.
-    if (this.#dragging?.isDragging()) {
-      return;
-    }
-    const direction = arrowDirection(event);
-    if (!(event.altKey && direction)) {
-      return;
-    }
-    // Alt+Left would go back in history.
-    event.preventDefault();
-    if (direction === "up" || direction === "down") {
-      this.#moveRow(rowId, direction);
-    } else {
-      this.#announce(`The Row can't move ${direction}.`);
-    }
   }
 
   /** One step, keeping the selection, and focus on the Row's tools if it was there. */

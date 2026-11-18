@@ -1,6 +1,7 @@
 import type { Command, RowLayout } from "@mailquilt/core";
 
 import { contains, shadowRootsUpFrom } from "./geometry.js";
+import { claim, keyFor } from "./key-map.js";
 
 /**
  * What a drag brings: a Block or Row on the canvas, a new Block from the palette,
@@ -522,14 +523,13 @@ export const createBlockDragging = ({
       email.dataset.dragging = isRowSource(grab.source) ? "row" : "block";
     }
     const { signal } = listeners;
-    // Escape cancels the drag. This listens first, as controls such as the
-    // format bar handle Escape themselves and stop it there.
+    // Heard first, before the editor's own places hear the key.
     window.addEventListener(
       "keydown",
       (keydown) => {
-        if (keydown.key === "Escape") {
-          keydown.preventDefault();
-          keydown.stopPropagation();
+        const binding = keyFor("drag", keydown);
+        if (binding?.action === "cancelDrag") {
+          claim(keydown, binding);
           release(false);
           // The button is still down, and the body still has the pointer. A
           // cancelled pointer has no release to guard.

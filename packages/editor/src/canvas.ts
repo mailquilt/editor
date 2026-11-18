@@ -6,19 +6,18 @@ import { repeat } from "lit/directives/repeat.js";
 import { styleMap } from "lit/directives/style-map.js";
 
 import { hasRichText, renderBlockContent } from "./block-content.js";
+import { renderFormatBar } from "./format-bar.js";
+import type { FormatBarEvents, FormatBarState } from "./format-bar.js";
+import { blockIcon, ICONS } from "./icons.js";
 import {
   MOVE_BUTTONS,
-  onToolbarArrowKeys,
   REDO_KEYS,
   REDO_SHORTCUTS,
   ROW_MOVE_BUTTONS,
   UNDO_KEYS,
   UNDO_SHORTCUTS,
-} from "./block-keyboard.js";
-import type { Direction } from "./block-keyboard.js";
-import { renderFormatBar } from "./format-bar.js";
-import type { FormatBarEvents, FormatBarState } from "./format-bar.js";
-import { blockIcon, ICONS } from "./icons.js";
+} from "./key-map.js";
+import type { Direction } from "./key-map.js";
 import { columnLabel, positionLabel } from "./places.js";
 import { UI_LANG } from "./theme.js";
 
@@ -47,7 +46,6 @@ export interface CanvasEvents {
   onBlockClick: (event: MouseEvent) => void;
   onBlockFocus: (event: FocusEvent, blockId: string) => void;
   onBlockFocusout: () => void;
-  onBlockKeydown: (event: KeyboardEvent) => void;
   onControlMousedown: (event: MouseEvent) => void;
   onDeleteRow: (rowId: string, fromKeyboard: boolean) => void;
   onDeleteSelectedBlock: (fromKeyboard: boolean) => void;
@@ -56,7 +54,6 @@ export interface CanvasEvents {
   onMoveRow: (rowId: string, direction: "down" | "up") => void;
   onMoveSelectedBlock: (direction: Direction) => void;
   onOpenPreview: (event: Event) => void;
-  onRowToolbarKeydown: (event: KeyboardEvent, rowId: string) => void;
   onSelectRow: (rowId: string) => void;
   onStepHistory: (step: "redo" | "undo") => void;
 }
@@ -114,11 +111,9 @@ const renderRowToolbar = (
     aria-orientation="vertical"
     class="ui row-toolbar"
     role="toolbar"
-    @keydown=${(event: KeyboardEvent) =>
-      events.onRowToolbarKeydown(event, row.id)}
     @mousedown=${events.onControlMousedown}
   >
-    <div class="bar" @keydown=${onToolbarArrowKeys}>
+    <div class="bar">
       ${renderDragHandle(events.onHandleMousedown, "Drag Row")}
       <button
         aria-label="Select Row"
@@ -169,7 +164,6 @@ const renderBlockToolbar = (events: CanvasEvents) => html`
     aria-orientation="vertical"
     class="ui bar block-toolbar"
     role="toolbar"
-    @keydown=${onToolbarArrowKeys}
     @mousedown=${events.onControlMousedown}
   >
     ${renderDragHandle(events.onHandleMousedown)}
@@ -228,7 +222,6 @@ const renderBlock = (
       @click=${events.onBlockClick}
       @focus=${(event: FocusEvent) => events.onBlockFocus(event, block.id)}
       @focusout=${events.onBlockFocusout}
-      @keydown=${events.onBlockKeydown}
     >
       ${selected ? nothing : renderDragHandle(events.onHandleMousedown)}
       ${rich ? state.textOf(block.id) : nothing}

@@ -485,7 +485,7 @@ Custom Blocks and settings fields, custom checker rules, image upload and media 
 
 ## 11. Quality and testing
 
-- **Unit tests (Vitest):** Commands, undo and redo, migrations and the renderer.
+- **Unit tests (Vitest):** Commands, undo and redo, migrations, the renderer and the editor's key map.
 - **Browser tests (Playwright):** drag and drop, the keyboard, undo, settings, export and the React wrapper, in Chromium, Firefox and WebKit, with automated accessibility checks.
 - **Install checks:** the packed packages are installed in fresh plain JavaScript, CDN and Next.js projects, and tested there.
 - **Email clients:** `0.1.0` is checked in Email on Acid, in Gmail, Apple Mail, iOS Mail, every version of Outlook, Yahoo, AOL and European webmail, in light and dark mode. The docs list the clients and the known limits.

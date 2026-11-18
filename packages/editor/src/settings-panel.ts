@@ -5,8 +5,6 @@ import { css, html, nothing } from "lit";
 import { keyed } from "lit/directives/keyed.js";
 import { live } from "lit/directives/live.js";
 
-import { isComposing } from "./block-keyboard.js";
-
 /** One group of controls, and what its fields change. */
 export interface SettingsSection {
   /** Unique in the panel. Part of the controls' IDs. */
@@ -43,7 +41,6 @@ export interface SettingsPanelEvents {
     field: SettingsField,
     control: HTMLInputElement | HTMLSelectElement
   ) => void;
-  onKeydown: (event: KeyboardEvent) => void;
 }
 
 export const settingsPanelStyles = css`
@@ -458,7 +455,7 @@ export const renderSettingsPanel = (
   section: SettingsSection,
   events: SettingsPanelEvents
 ) => html`
-  <div class="settings" @keydown=${events.onKeydown}>
+  <div class="settings">
     <div class="section">
       <fieldset>
         <legend>${section.legend}</legend>
@@ -544,22 +541,22 @@ export const createSettingsDrafts = (host: DraftsHost) => {
         drafts.set(key, { refusals, text });
       }
     },
-    /** Escape takes back what was typed in a settings field. */
-    onKeydown: (event) => {
-      const key = draftKeyOf(event);
-      if (key !== undefined && event.key === "Escape" && !isComposing(event)) {
-        event.preventDefault();
-        event.stopPropagation();
-        drafts.delete(key);
-        // Its value already reads as empty, so rendering wouldn't clear it.
-        const control = event.target as HTMLInputElement;
-        if (control.validity.badInput) {
-          control.value = "";
-        }
-        host.requestUpdate();
-      }
-    },
   };
 
-  return { clear: () => drafts.clear(), draftKeyOf, events };
+  /** Takes back what was typed in the settings field the key was pressed in. */
+  const discard = (event: KeyboardEvent) => {
+    const key = draftKeyOf(event);
+    if (key === undefined) {
+      return;
+    }
+    drafts.delete(key);
+    // Its value already reads as empty, so rendering wouldn't clear it.
+    const control = event.target as HTMLInputElement;
+    if (control.validity.badInput) {
+      control.value = "";
+    }
+    host.requestUpdate();
+  };
+
+  return { clear: () => drafts.clear(), discard, draftKeyOf, events };
 };

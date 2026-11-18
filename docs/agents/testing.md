@@ -6,7 +6,8 @@ test, search for one that already covers the same code, and extend it instead.
 ## Test each rule once, at the lowest layer that can see it
 
 - Rules about documents, Commands, validation and undo belong in `core` unit
-  tests. Rendering belongs in `renderer` tests.
+  tests. Rendering belongs in `renderer` tests. What a key does in each place
+  belongs in the editor's key map tests.
 - A browser test proves the UI is wired up: the control, focus, keyboard,
   layout, what the screen shows. For a rule that `core` already tests, use one
   case to show the UI handles the refusal or result. Don't repeat the list of

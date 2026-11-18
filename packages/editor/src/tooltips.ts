@@ -1,4 +1,5 @@
 import { contains, shadowRootsUpFrom } from "./geometry.js";
+import { claim, keyFor } from "./key-map.js";
 
 /** What has a tooltip: the attribute holds its words. */
 const TOOLTIP_TRIGGERS = "[data-tooltip]";
@@ -134,17 +135,21 @@ export const createTooltips = (
   };
 
   /**
-   * On the control with focus, Escape only closes its tooltip, as it would
-   * otherwise also move focus. Over another control, it goes on, so that Escape
-   * still does what it does with no tooltip. Heard on the window, as a hovered
-   * control's tooltip shows with focus anywhere on the page.
+   * Heard on the window, as a hovered control's tooltip shows with focus
+   * anywhere on the page.
    */
   const onKeydown = (event: KeyboardEvent) => {
-    if (event.key === "Escape" && !tooltip.hidden) {
-      dismissed = hovered ?? focused;
-      if (dismissed === focused) {
-        event.stopPropagation();
-      }
+    if (tooltip.hidden) {
+      return;
+    }
+    const shown = hovered ?? focused;
+    const binding = keyFor(
+      shown === focused ? "focusedTooltip" : "hoveredTooltip",
+      event
+    );
+    if (binding?.action === "closeTooltip") {
+      dismissed = shown;
+      claim(event, binding);
       update();
     }
   };

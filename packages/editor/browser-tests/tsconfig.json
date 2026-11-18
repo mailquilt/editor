@@ -10,7 +10,8 @@
     "../licenses.ts",
     "../playwright.config.ts",
     "../scripts",
-    "../tsdown.config.ts"
+    "../tsdown.config.ts",
+    "../vitest.config.ts"
   ],
   "exclude": ["host/dist"]
 }
