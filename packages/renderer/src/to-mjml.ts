@@ -53,8 +53,14 @@ const exactLineHeight = (fontSize: string = EMAIL_LOOK.fontSize) =>
 
 const MERGE_TAG_PART = new RegExp(`(${MERGE_TAG.source})`, "u");
 
-/** A word, with any Merge Tag in it whole, spaces and all. */
-const WORD = new RegExp(`(?:${MERGE_TAG.source}|\\S)+`, "gu");
+/**
+ * Put before a character class: a whole Merge Tag, spaces and all, or one of
+ * those characters that doesn't start one, so a word or URL never cuts a tag.
+ */
+const TAG_OR = `${MERGE_TAG.source}|(?!${MERGE_TAG.source})`;
+
+/** A word, with any Merge Tag in it whole. */
+const WORD = new RegExp(`(?:${TAG_OR}\\S)+`, "gu");
 
 /**
  * A word of 20 or more characters, such as a pasted URL, gets a zero-width space
@@ -99,9 +105,6 @@ const openTag = (mark: RichTextMark, linkColor: string) =>
   mark.type === "link"
     ? `<a href="${escapeAttribute(mark.attrs.href)}" target="_blank" style="color:${escapeAttribute(linkColor)};text-decoration:underline">`
     : `<${MARK_TAGS[mark.type]}>`;
-
-/** A Merge Tag, or one character that doesn't start one, so a tag is never cut. */
-const TAG_OR = `${MERGE_TAG.source}|(?!${MERGE_TAG.source})`;
 
 /**
  * A URL written as text, with any Merge Tag in it whole, and without the
