@@ -1,5 +1,6 @@
 import { css, html, nothing } from "lit";
 
+import { refuseFiles } from "./refuse-files.js";
 import { UI_LANG } from "./theme.js";
 
 export const previewStyles = css`
@@ -55,10 +56,6 @@ export const previewStyles = css`
     flex: 1;
     min-height: 0;
     width: 100%;
-  }
-
-  .preview[data-file-drag] iframe {
-    pointer-events: none;
   }
 
   .preview-panel > p {
@@ -187,6 +184,13 @@ interface Preview {
   result?: { html: string } | { failure: string };
 }
 
+/** The email's own document would let the browser open a dropped file. */
+const refuseFilesInEmail = (event: Event) => {
+  const email = (event.currentTarget as HTMLIFrameElement).contentDocument;
+  email?.addEventListener("dragover", refuseFiles);
+  email?.addEventListener("drop", refuseFiles);
+};
+
 const renderPreviewContent = ({ result }: Preview) => {
   if (!result) {
     return html`
@@ -198,7 +202,12 @@ const renderPreviewContent = ({ result }: Preview) => {
   }
   return "html" in result
     ? html`
-        <iframe sandbox="" srcdoc=${result.html} title="Email preview"></iframe>
+        <iframe
+          sandbox="allow-same-origin"
+          srcdoc=${result.html}
+          title="Email preview"
+          @load=${refuseFilesInEmail}
+        ></iframe>
       `
     : html`
         <p role="alert">The preview couldn't be loaded: ${result.failure}</p>
@@ -214,21 +223,19 @@ interface PreviewEvents {
 
 /**
  * The dialog stays rendered so that closing it, not removing it, returns focus.
- * An empty `sandbox` gives the email an opaque origin and no scripts, forms,
- * popups or top-level navigation. Escape closes it and goes no further, so a
- * modal of the host's around the editor stays open. While a file is dragged
- * over the editor, the email lets it through to the dialog, which refuses it,
- * as the email's own document would let the browser open it.
+ * The `sandbox` gives the email no scripts, forms, popups or top-level
+ * navigation. Its origin is the host page's, only so the editor can refuse a
+ * file dropped on it. Never add `allow-scripts` with it: together they let the
+ * email remove its own sandbox. Escape closes it and goes no further, so a
+ * modal of the host's around the editor stays open.
  */
 export const renderPreview = (
   preview: Preview | undefined,
-  { onClose, onClosed }: PreviewEvents,
-  draggingFile: boolean
+  { onClose, onClosed }: PreviewEvents
 ) => html`
   <dialog
     aria-labelledby="preview-title"
     class="preview"
-    ?data-file-drag=${draggingFile}
     lang=${UI_LANG}
     @close=${onClosed}
   >

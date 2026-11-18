@@ -3,8 +3,9 @@ import type { BlocksDocument, LoadResult } from "@mailquilt/core";
 import { css, html, LitElement, nothing, unsafeCSS } from "lit";
 import { keyed } from "lit/directives/keyed.js";
 
-import { refuseFiles } from "./mail-quilt.js";
+import "./mail-quilt.js";
 import type { MailQuilt } from "./mail-quilt.js";
+import { refuseFiles } from "./refuse-files.js";
 import { themeTokens, UI_LANG, uiStyles } from "./theme.js";
 
 /** The Shell's own buttons. */

@@ -202,12 +202,6 @@ test.describe("the sandbox", () => {
     expect(messages).toContain("control");
     expect(messages).not.toContain("preview");
     await expect(page.locator("html")).not.toHaveAttribute("data-preview");
-    // Nor can the host page read into it, as its origin is opaque.
-    expect(
-      await previewFrame(page).evaluate(
-        (frame) => (frame as HTMLIFrameElement).contentDocument
-      )
-    ).toBeNull();
   });
 
   test("a link in the Preview opens nothing and leaves the host page", async ({
@@ -227,12 +221,13 @@ test.describe("the sandbox", () => {
     await previewEmail(page).getByRole("link", { name: "Go there" }).click();
 
     // Nothing happens to wait for, so this shows nothing can: no token lets
-    // the frame open a popup or move the page.
+    // the frame run a script, open a popup or move the page. Its origin is
+    // the host page's only so the editor can refuse a file dropped on it.
     expect(
       await previewFrame(page).evaluate((frame) => [
         ...(frame as HTMLIFrameElement).sandbox,
       ])
-    ).toEqual([]);
+    ).toEqual(["allow-same-origin"]);
     await settle(page);
     expect(opened).toEqual([]);
     expect(page.url()).toBe(url);
