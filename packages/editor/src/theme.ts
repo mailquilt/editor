@@ -36,6 +36,8 @@ export const themeTokens = css`
     --mq-color-tooltip: #16181d;
     --mq-color-on-tooltip: #f7f7f8;
     --mq-color-backdrop: rgb(16 24 40 / 55%);
+    /* For what the browser draws itself, such as a dropdown's open list. */
+    --mq-color-scheme: light;
 
     --mq-space-1: 4px;
     --mq-space-2: 8px;
@@ -68,6 +70,7 @@ export const uiStyles = css`
     -webkit-font-smoothing: antialiased;
     box-sizing: border-box;
     color: var(--mq-color-text);
+    color-scheme: var(--mq-color-scheme);
     font-family: var(--mq-font-family);
     font-size: var(--mq-font-size);
     line-height: 1.5;

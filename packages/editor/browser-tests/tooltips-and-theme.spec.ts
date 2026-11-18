@@ -189,6 +189,23 @@ test.describe("theme tokens", () => {
     await expect(previewButton(page)).toHaveCSS("color", "rgb(4, 5, 6)");
   });
 
+  test("a dark color scheme reaches the controls the browser draws", async ({
+    page,
+  }) => {
+    await openBlocks(page, ["text"]);
+    await textBlock(page).click();
+    const alignment = canvas(page).getByLabel("Alignment");
+    // A host page's own scheme stops at the editor's surfaces.
+    await page.addStyleTag({ content: ":root { color-scheme: dark; }" });
+    await expect(alignment).toHaveCSS("color-scheme", "light");
+
+    await canvas(page).evaluate((element) => {
+      element.style.setProperty("--mq-color-scheme", "dark");
+    });
+
+    await expect(alignment).toHaveCSS("color-scheme", "dark");
+  });
+
   test("don't reach the email card, which shows the email's settings", async ({
     page,
   }) => {
