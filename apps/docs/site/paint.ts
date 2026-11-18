@@ -35,7 +35,7 @@ export const paintJson = (document: unknown) =>
 export const paintHtml = (html: string) =>
   paintMergeTags(
     escapeHtml(html).replaceAll(
-      /(?<open>&lt;\/?)(?<name>[a-z][\w:-]*)/giu,
+      /(?<open>&lt;\/?)(?<name>[A-Za-z][\w:-]*)/gu,
       '$<open><span class="k">$<name></span>'
     )
   );
