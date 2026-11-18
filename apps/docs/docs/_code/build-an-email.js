@@ -36,6 +36,6 @@ const refused = editor.apply({
   props: { color: "not a color" },
   type: "updateBlockProps",
 });
-console.log(refused.ok, refused.reason);
+console.log(refused.ok, refused.code, refused.reason);
 
 export const email = editor.getDocument();

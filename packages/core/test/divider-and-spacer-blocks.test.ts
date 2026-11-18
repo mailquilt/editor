@@ -50,6 +50,7 @@ describe("Divider Block", () => {
     ["a thickness over the limit", { thickness: 101 }, /thickness/u],
   ])("rejects %s", (_name, props, reason) => {
     expect(setProps("divider", props).result).toStrictEqual({
+      code: "invalidProps",
       ok: false,
       reason: expect.stringMatching(reason),
     });
@@ -73,6 +74,7 @@ describe("Spacer Block", () => {
 
   it("rejects a height over the limit", () => {
     expect(setProps("spacer", { height: 1001 }).result).toStrictEqual({
+      code: "invalidProps",
       ok: false,
       reason: expect.stringMatching(/height/u),
     });

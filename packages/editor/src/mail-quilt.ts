@@ -86,6 +86,8 @@ export class MailQuilt extends LitElement {
   ];
 
   #editor: Editor | undefined;
+  /** What the latest change moved, for undo and redo to announce. */
+  #lastMoves: MoveOperation[] = [];
   /** A private copy of the document last received from or sent to the host. */
   #lastKnownDocument: BlocksDocument | undefined;
   readonly #views = new Map<string, TextBlockView>();
@@ -396,6 +398,8 @@ export class MailQuilt extends LitElement {
   #panelApi(email: BlocksDocument): PanelApi {
     return {
       ...this.#panelActions,
+      canRedo: this.#editor?.canRedo() ?? false,
+      canUndo: this.#editor?.canUndo() ?? false,
       editingText: this.#selection.editingText,
       email,
       formats: this.#formats,
@@ -453,10 +457,11 @@ export class MailQuilt extends LitElement {
     }: { mergeKey?: string; refusable?: boolean; render?: boolean } = {}
   ) {
     const editor = this.#editor;
-    const result = editor?.apply(command, { mergeKey });
-    if (!(editor && result)) {
+    if (!editor) {
       return;
     }
+    const could = { redo: editor.canRedo(), undo: editor.canUndo() };
+    const result = editor.apply(command, { mergeKey });
     if (!result.ok) {
       if (!(result.unchanged || refusable)) {
         // The controls only offer what's allowed, so this is a bug here.
@@ -464,7 +469,12 @@ export class MailQuilt extends LitElement {
       }
       return result;
     }
-    if (render) {
+    // Undo and Redo show whether there's a step to take, typing included.
+    if (
+      render ||
+      could.undo !== editor.canUndo() ||
+      could.redo !== editor.canRedo()
+    ) {
       this.requestUpdate();
     }
     this.#emitChange(editor.getDocument());
@@ -862,22 +872,14 @@ export class MailQuilt extends LitElement {
     if (!editor) {
       return;
     }
-    let moved: MoveOperation[] = [];
-    const stopListening = editor.subscribe((operations) => {
-      moved = operations.filter(
-        (operation): operation is MoveOperation => operation.type === "move"
-      );
-    });
-    const changed = editor[step]();
-    stopListening();
-    if (!changed) {
+    if (!editor[step]()) {
       return;
     }
     // The change can move the selection the link field would apply to.
     this.#linkForm.close();
     // What was refused may be fine now, and the fields show what's come back.
     this.#drafts.clear();
-    this.#announceHistoryStep(step, moved);
+    this.#announceHistoryStep(step, this.#lastMoves);
     const document = editor.getDocument();
     for (const block of blocksIn(document)) {
       this.#views
@@ -918,6 +920,11 @@ export class MailQuilt extends LitElement {
     this.#failedImages.clear();
     this.#reset();
     this.#editor = document && createEditor({ document });
+    this.#editor?.subscribe((operations) => {
+      this.#lastMoves = operations.filter(
+        (operation): operation is MoveOperation => operation.type === "move"
+      );
+    });
     this.requestUpdate();
   }
 

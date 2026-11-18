@@ -173,15 +173,35 @@ const commandSchema = v.variant("type", [
   }),
 ]) satisfies v.GenericSchema<unknown, Command>;
 
+/** Why a Command was refused, for a host to tell one refusal from another. */
+export type RefusalCode =
+  /** It isn't a Command, or one of its fields isn't what that Command takes. */
+  | "invalidCommand"
+  /** The changed props or settings aren't ones that can be saved. */
+  | "invalidProps"
+  | "noSuchBlock"
+  | "noSuchColumn"
+  | "noSuchRow"
+  | "unknownBlockType"
+  /** An index past the end of the Column or the email. */
+  | "indexPastEnd"
+  /** The email is already as the Command asks. */
+  | "unchanged";
+
 /** What an accepted Command does to the document. */
 type CommandPlan =
   | { ok: true; operations: Operation[]; createdId?: string }
-  | { ok: false; reason: string; unchanged?: true };
+  | { ok: false; code: RefusalCode; reason: string; unchanged?: true };
 
-const rejected = (reason: string) => ({ ok: false as const, reason });
+const rejected = (code: RefusalCode, reason: string) => ({
+  code,
+  ok: false as const,
+  reason,
+});
 
 /** Refused only because the email is already that way. */
 const unchanged = (reason: string) => ({
+  code: "unchanged" as const,
   ok: false as const,
   reason,
   unchanged: true as const,
@@ -203,7 +223,7 @@ const planProps = (
   );
   const validated = validate(Object.fromEntries(merged));
   if (!validated.ok) {
-    return rejected(validated.reason);
+    return rejected("invalidProps", validated.reason);
   }
   if (isSameDocument(validated.props, current)) {
     return unchanged("Nothing would change");
@@ -231,7 +251,7 @@ const planUpdateBlockProps = (
     ? planProps({ blockId }, block.props, props, (merged) =>
         validateProps(block, merged)
       )
-    : rejected(`No Block with ID "${blockId}"`);
+    : rejected("noSuchBlock", `No Block with ID "${blockId}"`);
 };
 
 const planUpdateRowProps = (
@@ -244,7 +264,7 @@ const planUpdateRowProps = (
     ? planProps({ rowId }, row.props, props, (merged) =>
         parseProps(rowPropsSchema, merged, `Row "${rowId}"`)
       )
-    : rejected(`No Row with ID "${rowId}"`);
+    : rejected("noSuchRow", `No Row with ID "${rowId}"`);
 };
 
 const planUpdateEmailSettings = (
@@ -270,14 +290,15 @@ const planInsertBlock = (
 ): CommandPlan => {
   const definition = blockDefinitions.get(blockType);
   if (!definition) {
-    return rejected(`Unknown Block type "${blockType}"`);
+    return rejected("unknownBlockType", `Unknown Block type "${blockType}"`);
   }
   const column = findColumn(document, columnId);
   if (!column) {
-    return rejected(`No Column with ID "${columnId}"`);
+    return rejected("noSuchColumn", `No Column with ID "${columnId}"`);
   }
   if (index > column.blocks.length) {
     return rejected(
+      "indexPastEnd",
       `Index ${index} is past the end of Column "${columnId}", which has ${column.blocks.length} Blocks`
     );
   }
@@ -296,7 +317,7 @@ const planRemoveBlock = (
 ): CommandPlan => {
   const position = findBlockPosition(document, blockId);
   if (!position) {
-    return rejected(`No Block with ID "${blockId}"`);
+    return rejected("noSuchBlock", `No Block with ID "${blockId}"`);
   }
   const { block, columnId, index } = position;
   return {
@@ -313,17 +334,18 @@ const planMoveBlock = (
 ): CommandPlan => {
   const position = findBlockPosition(document, blockId);
   if (!position) {
-    return rejected(`No Block with ID "${blockId}"`);
+    return rejected("noSuchBlock", `No Block with ID "${blockId}"`);
   }
   const column = findColumn(document, columnId);
   if (!column) {
-    return rejected(`No Column with ID "${columnId}"`);
+    return rejected("noSuchColumn", `No Column with ID "${columnId}"`);
   }
   const from = { columnId: position.columnId, index: position.index };
   const sameColumn = from.columnId === columnId;
   const length = column.blocks.length - (sameColumn ? 1 : 0);
   if (index > length) {
     return rejected(
+      "indexPastEnd",
       `Index ${index} is past the end of Column "${columnId}", which would have ${length} other Blocks`
     );
   }
@@ -350,6 +372,7 @@ const planInsertRow = (
 ): CommandPlan => {
   if (index > document.rows.length) {
     return rejected(
+      "indexPastEnd",
       `Index ${index} is past the end of the email, which has ${document.rows.length} Rows`
     );
   }
@@ -424,7 +447,7 @@ const planRemoveRow = (
   const row = document.rows[index];
   return row
     ? { ok: true, operations: [{ at: { index }, row, type: "remove" }] }
-    : rejected(`No Row with ID "${rowId}"`);
+    : rejected("noSuchRow", `No Row with ID "${rowId}"`);
 };
 
 const planMoveRow = (
@@ -434,11 +457,12 @@ const planMoveRow = (
 ): CommandPlan => {
   const from = document.rows.findIndex(({ id }) => id === rowId);
   if (from === -1) {
-    return rejected(`No Row with ID "${rowId}"`);
+    return rejected("noSuchRow", `No Row with ID "${rowId}"`);
   }
   const length = document.rows.length - 1;
   if (index > length) {
     return rejected(
+      "indexPastEnd",
       `Index ${index} is past the end of the email, which would have ${length} other Rows`
     );
   }
@@ -462,7 +486,7 @@ const planSetRowLayout = (
 ): CommandPlan => {
   const row = findRow(document, rowId);
   if (!row) {
-    return rejected(`No Row with ID "${rowId}"`);
+    return rejected("noSuchRow", `No Row with ID "${rowId}"`);
   }
   if (rowLayoutOf(row) === layout) {
     return unchanged(`Row "${rowId}" already has the layout "${layout}"`);
@@ -519,7 +543,10 @@ export const planCommand = (
 ): CommandPlan => {
   const parsed = v.safeParse(commandSchema, command);
   if (!parsed.success) {
-    return rejected(`Invalid Command: ${describeIssues(parsed.issues)}`);
+    return rejected(
+      "invalidCommand",
+      `Invalid Command: ${describeIssues(parsed.issues)}`
+    );
   }
   const { output } = parsed;
   switch (output.type) {

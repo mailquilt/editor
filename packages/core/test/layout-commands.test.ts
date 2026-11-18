@@ -243,6 +243,7 @@ describe("the moveBlock Command", () => {
     const { editor } = setup();
 
     expect(editor.apply(command)).toStrictEqual({
+      code: expect.any(String),
       ok: false,
       reason: expect.stringMatching(reason),
     });
@@ -348,6 +349,7 @@ describe("a Command for what's already so", () => {
     const { editor } = setup();
 
     expect(editor.apply(move("a", "left", 0))).toMatchObject({
+      code: "unchanged",
       ok: false,
       unchanged: true,
     });
@@ -468,6 +470,7 @@ describe("rejecting a Block Command", () => {
     const { editor } = setup();
 
     expect(send(editor, command)).toStrictEqual({
+      code: expect.any(String),
       ok: false,
       reason: expect.stringMatching(reason),
     });
@@ -699,6 +702,7 @@ describe("rejecting a Row Command", () => {
     const { editor } = setup();
 
     expect(send(editor, command)).toStrictEqual({
+      code: expect.any(String),
       ok: false,
       reason: expect.stringMatching(reason),
     });
@@ -756,6 +760,7 @@ describe("the moveRow Command", () => {
     const { editor } = setup(threeRowEmail());
 
     expect(editor.apply(command)).toStrictEqual({
+      code: expect.any(String),
       ok: false,
       reason: expect.stringMatching(reason),
     });

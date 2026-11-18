@@ -34,6 +34,9 @@ export interface RowPlace {
 export interface PanelState {
   /** The email as the editor shows it. */
   email: BlocksDocument;
+  /** Whether Undo and Redo would change the email. */
+  canUndo: boolean;
+  canRedo: boolean;
   /** The selected Block, and where it is. Unset while a Row is selected. */
   selectedBlock: BlockPlace | undefined;
   /** The selected Row, and where it is. Unset while a Block is selected. */

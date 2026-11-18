@@ -360,6 +360,7 @@ export const renderFloatingToolbar = (api: PanelApi) => html`
       aria-label="Undo"
       class="icon-button"
       data-tooltip=${`Undo (${UNDO.keys})`}
+      ?disabled=${!api.canUndo}
       type="button"
       @click=${() => api.stepHistory("undo")}
     >
@@ -370,6 +371,7 @@ export const renderFloatingToolbar = (api: PanelApi) => html`
       aria-label="Redo"
       class="icon-button"
       data-tooltip=${`Redo (${REDO.keys})`}
+      ?disabled=${!api.canRedo}
       type="button"
       @click=${() => api.stepHistory("redo")}
     >

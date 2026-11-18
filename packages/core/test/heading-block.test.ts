@@ -86,6 +86,7 @@ describe("Heading Block", () => {
     });
 
     expect(result).toStrictEqual({
+      code: "invalidProps",
       ok: false,
       reason: expect.stringMatching(reason),
     });

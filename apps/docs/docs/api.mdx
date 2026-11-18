@@ -62,7 +62,7 @@ Opening a different email clears undo history. Setting `value` to the email the 
 | `Command`, `RowLayout` | `@mailquilt/core` | One of the [Commands](./change-emails-in-code#commands), and one of the layouts in `ROW_LAYOUTS`. |
 | `Operation` | `@mailquilt/core` | A record of one change, as [`subscribe()`](./change-emails-in-code#listening-for-changes) gives it to you. |
 | `Editor` | `@mailquilt/core` | What `createEditor()` returns. |
-| `ApplyOptions`, `ApplyResult` | `@mailquilt/core` | What `apply()` takes as its second argument, and what it returns. |
+| `ApplyOptions`, `ApplyResult`, `RefusalCode` | `@mailquilt/core` | What `apply()` takes as its second argument, what it returns, and the [`code`](./change-emails-in-code#commands) of a refusal. |
 | `LoadResult` | `@mailquilt/core` | What `loadDocument()` returns: the email, or the reason it was refused. |
 | `MailQuiltChangeEvent` | `@mailquilt/editor` | The `mq-change` event. |
 | `MailQuiltErrorEvent` | `@mailquilt/editor` | The `mq-error` event. |
