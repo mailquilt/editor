@@ -431,6 +431,19 @@ test.describe("on a screen too narrow to edit in", () => {
     ).toBeVisible();
   });
 
+  test("returns focus to Preview email when the Preview closes", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const preview = canvas(page).getByRole("button", { name: "Preview email" });
+    await preview.click();
+    await expect(page.getByRole("dialog", { name: "Preview" })).toBeVisible();
+
+    await page.keyboard.press("Escape");
+
+    await expect(preview).toBeFocused();
+  });
+
   test("stays out of sight with a size the host gives the frame", async ({
     page,
   }) => {

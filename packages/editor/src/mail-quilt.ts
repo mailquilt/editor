@@ -191,7 +191,7 @@ export class MailQuilt extends LitElement {
     onImageError: (src) => this.#onImageError(src),
     onMoveRow: (rowId, direction) => this.#moveRow(rowId, direction),
     onMoveSelectedBlock: (direction) => this.#moveSelectedBlock(direction),
-    onOpenPreview: (event) => this.#openPreview(event),
+    onOpenPreview: () => this.#openPreview(),
     onSelectRow: (rowId) => this.#selection.selectRow(rowId),
     onStepHistory: (step) => this.#stepHistory(step),
   };
@@ -286,13 +286,17 @@ export class MailQuilt extends LitElement {
 
   protected override willUpdate() {
     this.#rendered = this.value;
-    this.#selection.beforeUpdate(this.isConnected ? this.#rendered : undefined);
+    const email = this.isConnected ? this.#rendered : undefined;
+    const blocks = email ? blocksIn(email) : [];
+    const blockIds = new Set(blocks.map(({ id }) => id));
+    this.#selection.beforeUpdate(
+      email && { blockIds, rowIds: new Set(email.rows.map(({ id }) => id)) }
+    );
     // Lit still updates detached elements, and nothing would destroy these
     // views. connectedCallback requests an update that creates them instead.
     if (!this.isConnected) {
       return;
     }
-    const blocks = this.#rendered ? blocksIn(this.#rendered) : [];
     for (const block of blocks) {
       if (hasRichText(block) && !this.#views.has(block.id)) {
         this.#views.set(
@@ -312,7 +316,7 @@ export class MailQuilt extends LitElement {
         );
       }
     }
-    this.#removeViewsExcept(new Set(blocks.map(({ id }) => id)));
+    this.#removeViewsExcept(blockIds);
     for (const view of this.#views.values()) {
       view.setLang(this.#emailLang);
     }
@@ -347,7 +351,7 @@ export class MailQuilt extends LitElement {
         Use arrow keys to select another Block, and Alt with arrow keys to move
         this one.
       </p>
-      ${this.#narrow ? renderNarrowNotice(this.#canvasEvents.onOpenPreview) : nothing}
+      ${this.#narrow ? renderNarrowNotice(this.#canvasEvents) : nothing}
       <div
         class="ui frame editor"
         lang=${UI_LANG}
@@ -419,10 +423,8 @@ export class MailQuilt extends LitElement {
     }
   }
 
-  async #openPreview({ currentTarget }: Event) {
-    // Toolbar buttons don't take focus from a mouse press, and the dialog returns
-    // focus to whatever had it.
-    this.#selection.focusIfNone(currentTarget as HTMLElement);
+  /** The dialog returns focus to whatever had it, which a press gives Preview. */
+  async #openPreview() {
     await this.#preview.open();
   }
 

@@ -45,7 +45,6 @@ export const createTooltips = (
   tooltip: HTMLElement
 ): Tooltips => {
   let hovered: HTMLElement | undefined;
-  let focused: HTMLElement | undefined;
   /** Escape or a press closed it, until hover or focus moves to another control. */
   let dismissed: HTMLElement | undefined;
   const isPopover = typeof tooltip.showPopover === "function";
@@ -73,8 +72,17 @@ export const createTooltips = (
     tooltip.style.top = `${top}px`;
   };
 
+  /** The control with focus from the keyboard, read when it's needed. */
+  const focused = () => {
+    const element = root.activeElement;
+    const trigger = triggerOf(element);
+    return trigger === element && trigger?.matches(":focus-visible")
+      ? trigger
+      : undefined;
+  };
+
   const update = () => {
-    const trigger = hovered ?? focused;
+    const trigger = hovered ?? focused();
     if (!trigger?.isConnected || trigger === dismissed) {
       show(false);
       return;
@@ -109,29 +117,17 @@ export const createTooltips = (
 
   const onPointerDown = () => {
     if (!tooltip.hidden) {
-      dismissed = hovered ?? focused;
+      dismissed = hovered ?? focused();
       update();
     }
   };
 
-  const onFocusIn = ({ target }: FocusEvent) => {
-    const trigger = triggerOf(target);
-    const next =
-      trigger === target && trigger?.matches(":focus-visible")
-        ? trigger
-        : undefined;
-    if (next !== focused) {
+  /** Focus from the keyboard on a control opens its tooltip again. */
+  const onFocusIn = () => {
+    if (focused()) {
       dismissed = undefined;
-      focused = next;
-      update();
     }
-  };
-
-  const onFocusOut = ({ relatedTarget }: FocusEvent) => {
-    if (!(relatedTarget instanceof Node && focused?.contains(relatedTarget))) {
-      focused = undefined;
-      update();
-    }
+    update();
   };
 
   /**
@@ -142,9 +138,9 @@ export const createTooltips = (
     if (tooltip.hidden) {
       return;
     }
-    const shown = hovered ?? focused;
+    const shown = hovered ?? focused();
     const binding = keyFor(
-      shown === focused ? "focusedTooltip" : "hoveredTooltip",
+      shown === focused() ? "focusedTooltip" : "hoveredTooltip",
       event
     );
     if (binding?.action === "closeTooltip") {
@@ -167,8 +163,8 @@ export const createTooltips = (
     AddEventListenerOptions,
   ][] = [
     [root, "pointerover", onPointerOver as EventListener, {}],
-    [root, "focusin", onFocusIn as EventListener, {}],
-    [root, "focusout", onFocusOut as EventListener, {}],
+    [root, "focusin", onFocusIn, {}],
+    [root, "focusout", update, {}],
     [window, "keydown", onKeydown as EventListener, { capture: true }],
     [window, "pointermove", onPointerMove as EventListener, { passive: true }],
     [window, "pointerdown", onPointerDown, { capture: true }],

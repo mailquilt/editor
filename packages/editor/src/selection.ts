@@ -1,8 +1,5 @@
-import type { BlocksDocument } from "@mailquilt/core";
-
 import { BLOCKS } from "./block-dragging.js";
 import type { Action, Binding } from "./key-map.js";
-import { blocksIn } from "./places.js";
 import type { PanelTab } from "./side-panel.js";
 import type { TextBlockView } from "./text-block-view.js";
 
@@ -28,8 +25,8 @@ export type FocusTarget =
   | { on: "formatBar" }
   /** The link field, with its URL selected to type over. */
   | { on: "linkField" }
-  /** A Row's tool, by its name while it's enabled, or else its first that is. */
-  | { on: "rowTool"; name?: string; rowId: string }
+  /** A Row's tool, by its `data-action` while it's enabled, or else its first that is. */
+  | { on: "rowTool"; action?: string; rowId: string }
   | { on: "tab"; tab: PanelTab }
   /** The floating toolbar, which keeps keyboard undo working. */
   | { on: "emailTools" };
@@ -89,18 +86,14 @@ const targetOf = (element: Element): FocusTarget => {
   if (element.closest(".format-bar")) {
     return { on: "formatBar" };
   }
+  const { action } = (element as HTMLElement).dataset;
   const rowId = element.closest(".row-toolbar")
     ? element.closest<HTMLElement>(".row-frame")?.dataset.rowId
     : undefined;
   if (rowId !== undefined) {
-    return {
-      name: element.getAttribute("aria-label") ?? undefined,
-      on: "rowTool",
-      rowId,
-    };
+    return { action, on: "rowTool", rowId };
   }
   const block = element.closest<HTMLElement>(BLOCKS);
-  const { action } = (element as HTMLElement).dataset;
   if (block && element.closest(".block-toolbar") && action !== undefined) {
     return { action, on: "blockTool" };
   }
@@ -195,9 +188,8 @@ export const createSelection = (host: SelectionHost) => {
       case "rowTool": {
         const tools = rowTools(target.rowId);
         return (
-          tools.find(
-            (tool) => tool.getAttribute("aria-label") === target.name
-          ) ?? tools[0]
+          tools.find((tool) => tool.dataset.action === target.action) ??
+          tools[0]
         );
       }
       case "tab": {
@@ -332,9 +324,13 @@ export const createSelection = (host: SelectionHost) => {
 
     /**
      * Before an update: notes where focus is, and drops a selection that the
-     * update's document no longer has.
+     * update's email no longer has.
      */
-    beforeUpdate(document: BlocksDocument | undefined) {
+    beforeUpdate(
+      email:
+        | { blockIds: ReadonlySet<string>; rowIds: ReadonlySet<string> }
+        | undefined
+    ) {
       const element = active();
       focusedBeforeUpdate = element ? targetOf(element) : undefined;
       // The link field and the format bar may close, and their text stays.
@@ -344,15 +340,14 @@ export const createSelection = (host: SelectionHost) => {
       ) {
         focusedBeforeUpdate = { on: "text" };
       }
-      if (!document) {
+      if (!email) {
         return;
       }
       const blockId = selectedBlockId();
       const rowId = selectedRowId();
       if (
-        (blockId !== undefined &&
-          !blocksIn(document).some(({ id }) => id === blockId)) ||
-        (rowId !== undefined && !document.rows.some(({ id }) => id === rowId))
+        (blockId !== undefined && !email.blockIds.has(blockId)) ||
+        (rowId !== undefined && !email.rowIds.has(rowId))
       ) {
         select(undefined);
       }
@@ -367,13 +362,6 @@ export const createSelection = (host: SelectionHost) => {
     },
 
     focus,
-
-    /** For a control the mouse pressed, with no focus in the editor to keep. */
-    focusIfNone: (element: HTMLElement, options?: FocusOptions) => {
-      if (!active()) {
-        element.focus(options);
-      }
-    },
 
     /**
      * Whether focus is in the editor but not in a Block's text, such as on a
