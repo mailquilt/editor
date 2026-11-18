@@ -13,6 +13,7 @@ import {
   MERGE_TAG,
   rowStyles,
 } from "@mailquilt/core/internal";
+import type { BlockProps } from "@mailquilt/core/internal";
 
 /**
  * A line break is escaped too, so `renderEmail` can tell it from MJML's layout.
@@ -57,7 +58,7 @@ const TEXT_STYLE = "margin:0;word-break:break-word;overflow-wrap:anywhere";
  * canvas shows as 1.5. Classic Outlook draws a thin line under text whose line
  * height is 1.5, and squeezes its lines (#95).
  */
-const exactLineHeight = (fontSize: string = EMAIL_LOOK.fontSize) =>
+const exactLineHeight = (fontSize: string) =>
   `${Math.ceil(Number(fontSize.replace("px", "")) * Number(EMAIL_LOOK.lineHeight))}px`;
 
 const MERGE_TAG_PART = new RegExp(`(${MERGE_TAG.source})`, "u");
@@ -236,14 +237,11 @@ const inlineToHtml = (
     const marks = (node.marks ?? []).toSorted(
       (a, b) => MARK_ORDER.indexOf(a.type) - MARK_ORDER.indexOf(b.type)
     );
-    let kept = 0;
-    while (
-      kept < open.length &&
-      kept < marks.length &&
-      isSameMark(open[kept] as RichTextMark, marks[kept] as RichTextMark)
-    ) {
-      kept += 1;
-    }
+    const differs = marks.findIndex((mark, index) => {
+      const openMark = open[index];
+      return openMark === undefined || !isSameMark(openMark, mark);
+    });
+    const kept = differs === -1 ? marks.length : differs;
     closeFrom(kept);
     if (node.type === "hardBreak") {
       // It keeps a mark open across it, but opens none of its own.
@@ -308,17 +306,13 @@ const hasText = ({ content }: RichTextDocument) =>
  * line, as a screen reader would announce an empty heading.
  */
 const headingToHtml = (
-  block: Block,
+  { content, level }: BlockProps["heading"],
   fontFamily: string,
-  blockCss: Record<string, string>,
+  blockCss: TextCss,
   lineHeight: string
 ) => {
-  const { content, level } = block.props as unknown as {
-    content: RichTextDocument;
-    level: number;
-  };
   const lines = content.content
-    .map((paragraph) => inlineToHtml(blockCss.color ?? "", paragraph.content))
+    .map((paragraph) => inlineToHtml(blockCss.color, paragraph.content))
     .join("<br />");
   const lastLine = endsWithoutText(content.content.at(-1)?.content)
     ? "<br />"
@@ -338,32 +332,34 @@ const headingToHtml = (
 const linkAttribute = (href: string | undefined) =>
   href === undefined ? "" : ` href="${escapeAttribute(href)}"`;
 
+/** The styles core gives every Text and Heading, which always set these. */
+type TextCss = Record<string, string> & { color: string; "font-size": string };
+
+/**
+ * A Block as MJML. The casts are safe, as `loadDocument` checked each Block's
+ * props against its type's schema, and core's styles for a type always set the
+ * same properties.
+ */
 const blockToMjml = (block: Block, fontFamily: string) => {
   const blockCss = blockStyles(block);
   const attributes = mjmlAttributes(blockCss);
   switch (block.type) {
     case "text": {
-      const lineHeight = exactLineHeight(blockCss["font-size"]);
-      return `<mj-text${attributes} line-height="${lineHeight}">${richTextToHtml(block.props.content as RichTextDocument, blockCss.color ?? "", lineHeight)}</mj-text>`;
+      const textCss = blockCss as TextCss;
+      const lineHeight = exactLineHeight(textCss["font-size"]);
+      return `<mj-text${attributes} line-height="${lineHeight}">${richTextToHtml((block.props as BlockProps["text"]).content, textCss.color, lineHeight)}</mj-text>`;
     }
     case "heading": {
-      const lineHeight = exactLineHeight(blockCss["font-size"]);
-      return `<mj-text${attributes} line-height="${lineHeight}">${headingToHtml(block, fontFamily, blockCss, lineHeight)}</mj-text>`;
+      const textCss = blockCss as TextCss;
+      const lineHeight = exactLineHeight(textCss["font-size"]);
+      return `<mj-text${attributes} line-height="${lineHeight}">${headingToHtml(block.props as BlockProps["heading"], fontFamily, textCss, lineHeight)}</mj-text>`;
     }
     case "button": {
-      const { href, label } = block.props as { href?: string; label: string };
+      const { href, label } = block.props as BlockProps["button"];
       return `<mj-button${attributes}${linkAttribute(href)}>${escapeText(label)}</mj-button>`;
     }
     case "image": {
-      const {
-        alt = "",
-        href,
-        src,
-      } = block.props as {
-        alt?: string;
-        href?: string;
-        src?: string;
-      };
+      const { alt = "", href, src } = block.props as BlockProps["image"];
       // Until it has a URL, there's no image, and a link would have nothing in it.
       if (src === undefined) {
         return "";
@@ -376,6 +372,8 @@ const blockToMjml = (block: Block, fontFamily: string) => {
     case "spacer": {
       return `<mj-spacer${attributes}></mj-spacer>`;
     }
+    // Only for a type core adds before this package can render it, which the
+    // test that renders each of core's types would catch first.
     default: {
       throw new Error(`Can't render unknown Block type "${block.type}"`);
     }

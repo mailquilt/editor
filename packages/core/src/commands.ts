@@ -1,177 +1,25 @@
 import * as v from "valibot";
 
-import {
-  blockDefinitions,
-  describeIssues,
-  parseProps,
-  validateProps,
-} from "./blocks.js";
+import { blockDefinitions, validateProps } from "./blocks.js";
+import { commandSchema } from "./command-schema.js";
 import { createId } from "./document.js";
 import type { BlocksDocument, Column, Row } from "./document.js";
 import { isSameDocument } from "./load-document.js";
 import {
-  applyOperation,
   findBlock,
   findBlockPosition,
   findColumn,
   findRow,
 } from "./operations.js";
 import type { Operation, PropsTarget } from "./operations.js";
+import { LAYOUT_WIDTHS, rowLayoutOf } from "./row-layouts.js";
+import type { RowLayout } from "./row-layouts.js";
 import {
   emailSettingsSchema,
   newLanguageSettingsSchema,
   rowPropsSchema,
 } from "./settings.js";
-
-/** The layouts a Row can have, in the order a person chooses from them. */
-export const ROW_LAYOUTS = [
-  "100",
-  "50/50",
-  "33/67",
-  "67/33",
-  "33/33/33",
-  "25/25/25/25",
-] as const;
-
-export type RowLayout = (typeof ROW_LAYOUTS)[number];
-
-/** Percentages that add up to 100, so thirds can't all be the same width. */
-const LAYOUT_WIDTHS: Record<RowLayout, readonly number[]> = {
-  "100": [100],
-  "25/25/25/25": [25, 25, 25, 25],
-  "33/33/33": [33.33, 33.33, 33.34],
-  "33/67": [33, 67],
-  "50/50": [50, 50],
-  "67/33": [67, 33],
-};
-
-/**
- * The preset a Row uses. A saved email may have other widths, so none.
- * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
- */
-export const rowLayoutOf = ({ columns }: Row) =>
-  ROW_LAYOUTS.find((layout) => {
-    const widths = LAYOUT_WIDTHS[layout];
-    return (
-      widths.length === columns.length &&
-      widths.every((width, index) => width === columns[index]?.width)
-    );
-  });
-
-const indexSchema = v.pipe(v.number(), v.safeInteger(), v.minValue(0));
-
-const layoutSchema = v.picklist(ROW_LAYOUTS);
-
-/**
- * Changes to a Block's, Row's or the email's properties. Not v.record, which
- * accepts an array and silently drops a key such as "constructor". An undefined
- * changes nothing, as the key would be gone once the Command is JSON.
- */
-const changesSchema = v.pipe(
-  v.custom<Record<string, unknown>>(
-    (input) =>
-      typeof input === "object" && input !== null && !Array.isArray(input),
-    "Expected an object"
-  ),
-  v.transform((changes) =>
-    Object.fromEntries(
-      Object.entries(changes).filter(([, value]) => value !== undefined)
-    )
-  )
-);
-
-/** A request to change an email. It can be rejected. */
-export type Command =
-  | {
-      type: "updateBlockProps";
-      blockId: string;
-      props: Record<string, unknown>;
-    }
-  | { type: "updateRowProps"; rowId: string; props: Record<string, unknown> }
-  | { type: "updateEmailSettings"; settings: Record<string, unknown> }
-  | { type: "insertBlock"; blockType: string; columnId: string; index: number }
-  | { type: "removeBlock"; blockId: string }
-  | {
-      type: "moveBlock";
-      blockId: string;
-      columnId: string;
-      /** Where the Block goes once it has left its current place. */
-      index: number;
-    }
-  | { type: "moveBlockToNewRow"; blockId: string; rowIndex: number }
-  | { type: "insertBlockInNewRow"; blockType: string; rowIndex: number }
-  | { type: "insertRow"; index: number; layout: RowLayout }
-  | { type: "removeRow"; rowId: string }
-  | {
-      type: "moveRow";
-      /** Where the Row goes once it has left its current place. */
-      index: number;
-      rowId: string;
-    }
-  | { type: "setRowLayout"; layout: RowLayout; rowId: string };
-
-// Written out above, so hosts see Commands rather than the library's types.
-const commandSchema = v.variant("type", [
-  v.strictObject({
-    blockId: v.string(),
-    props: changesSchema,
-    type: v.literal("updateBlockProps"),
-  }),
-  v.strictObject({
-    props: changesSchema,
-    rowId: v.string(),
-    type: v.literal("updateRowProps"),
-  }),
-  v.strictObject({
-    settings: changesSchema,
-    type: v.literal("updateEmailSettings"),
-  }),
-  v.strictObject({
-    blockType: v.string(),
-    columnId: v.string(),
-    index: indexSchema,
-    type: v.literal("insertBlock"),
-  }),
-  v.strictObject({
-    blockId: v.string(),
-    type: v.literal("removeBlock"),
-  }),
-  v.strictObject({
-    blockId: v.string(),
-    columnId: v.string(),
-    index: indexSchema,
-    type: v.literal("moveBlock"),
-  }),
-  v.strictObject({
-    blockId: v.string(),
-    rowIndex: indexSchema,
-    type: v.literal("moveBlockToNewRow"),
-  }),
-  v.strictObject({
-    blockType: v.string(),
-    rowIndex: indexSchema,
-    type: v.literal("insertBlockInNewRow"),
-  }),
-  v.strictObject({
-    index: indexSchema,
-    layout: layoutSchema,
-    type: v.literal("insertRow"),
-  }),
-  v.strictObject({
-    rowId: v.string(),
-    type: v.literal("removeRow"),
-  }),
-  v.strictObject({
-    index: indexSchema,
-    rowId: v.string(),
-    type: v.literal("moveRow"),
-  }),
-  v.strictObject({
-    layout: layoutSchema,
-    rowId: v.string(),
-    type: v.literal("setRowLayout"),
-  }),
-]) satisfies v.GenericSchema<unknown, Command>;
+import { describeIssues, parseProps } from "./validation.js";
 
 /** Why a Command was refused, for a host to tell one refusal from another. */
 export type RefusalCode =
@@ -365,28 +213,27 @@ const newColumn = (width: number): Column => ({
   width,
 });
 
+const newRow = (columns: Column[]): Row => ({
+  columns,
+  id: createId(),
+  props: {},
+});
+
 const planInsertRow = (
   document: BlocksDocument,
-  layout: RowLayout,
+  row: Row,
   index: number
-): CommandPlan => {
-  if (index > document.rows.length) {
-    return rejected(
-      "indexPastEnd",
-      `Index ${index} is past the end of the email, which has ${document.rows.length} Rows`
-    );
-  }
-  const row: Row = {
-    columns: LAYOUT_WIDTHS[layout].map(newColumn),
-    id: createId(),
-    props: {},
-  };
-  return {
-    createdId: row.id,
-    ok: true,
-    operations: [{ at: { index }, row, type: "insert" }],
-  };
-};
+): CommandPlan =>
+  index > document.rows.length
+    ? rejected(
+        "indexPastEnd",
+        `Index ${index} is past the end of the email, which has ${document.rows.length} Rows`
+      )
+    : {
+        createdId: row.id,
+        ok: true,
+        operations: [{ at: { index }, row, type: "insert" }],
+      };
 
 /**
  * Plans a new single-Column Row and what `planBlock` puts in its Column, as one
@@ -397,16 +244,18 @@ const planInNewRow = (
   rowIndex: number,
   planBlock: (withRow: BlocksDocument, columnId: string) => CommandPlan
 ): CommandPlan => {
-  const rowPlan = planInsertRow(document, "100", rowIndex);
+  const column = newColumn(100);
+  const row = newRow([column]);
+  const rowPlan = planInsertRow(document, row, rowIndex);
   if (!rowPlan.ok) {
     return rowPlan;
   }
-  const withRow = structuredClone(document);
-  for (const operation of rowPlan.operations) {
-    applyOperation(withRow, operation);
-  }
-  const columnId = withRow.rows[rowIndex]?.columns[0]?.id as string;
-  const blockPlan = planBlock(withRow, columnId);
+  // Not a copy, as planning only reads the email.
+  const withRow = {
+    ...document,
+    rows: document.rows.toSpliced(rowIndex, 0, row),
+  };
+  const blockPlan = planBlock(withRow, column.id);
   return blockPlan.ok
     ? {
         ...blockPlan,
@@ -597,7 +446,11 @@ export const planCommand = (
       );
     }
     case "insertRow": {
-      return planInsertRow(document, output.layout, output.index);
+      return planInsertRow(
+        document,
+        newRow(LAYOUT_WIDTHS[output.layout].map(newColumn)),
+        output.index
+      );
     }
     case "removeRow": {
       return planRemoveRow(document, output.rowId);
