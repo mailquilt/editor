@@ -1,10 +1,4 @@
-import {
-  blockStyles,
-  EMAIL_LOOK,
-  loadDocument,
-  MERGE_TAG,
-  rowStyles,
-} from "@mailquilt/core";
+import { loadDocument } from "@mailquilt/core";
 import type {
   Block,
   Column,
@@ -13,6 +7,12 @@ import type {
   RichTextParagraph,
   Row,
 } from "@mailquilt/core";
+import {
+  blockStyles,
+  EMAIL_LOOK,
+  MERGE_TAG,
+  rowStyles,
+} from "@mailquilt/core/internal";
 
 const escapeText = (text: string) =>
   text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");

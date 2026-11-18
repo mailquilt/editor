@@ -1,15 +1,13 @@
 import { describe, expect, it } from "vitest";
 
+import { createEditor, createEmail, loadDocument } from "../src/index.js";
+import type { BlocksDocument, Operation } from "../src/index.js";
 import {
   blockStyles,
-  createEditor,
-  createEmail,
   EMAIL_SETTINGS_FIELDS,
   hexColor,
-  loadDocument,
   rowStyles,
-} from "../src/index.js";
-import type { BlocksDocument, Operation } from "../src/index.js";
+} from "../src/internal.js";
 
 const setup = () => {
   const document = createEmail();

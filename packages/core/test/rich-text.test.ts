@@ -1,7 +1,8 @@
 // oxlint-disable eslint/no-script-url -- These URLs are what the tests refuse.
 import { describe, expect, it } from "vitest";
 
-import { createEmail, isAllowedLinkHref, loadDocument } from "../src/index.js";
+import { createEmail, loadDocument } from "../src/index.js";
+import { isAllowedLinkHref } from "../src/internal.js";
 
 const emailWithInline = (...inline: unknown[]) => {
   const email = createEmail();

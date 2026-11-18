@@ -1,5 +1,5 @@
-import { isAllowedLinkHref, MERGE_TAG } from "@mailquilt/core";
 import type { RichTextDocument } from "@mailquilt/core";
+import { isAllowedLinkHref, MERGE_TAG } from "@mailquilt/core/internal";
 import {
   baseKeymap,
   chainCommands,

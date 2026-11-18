@@ -5,9 +5,9 @@ import {
   createEditor,
   createEmail,
   loadDocument,
-  rowLayoutOf,
 } from "../src/index.js";
 import type { BlocksDocument, Command, Operation } from "../src/index.js";
+import { rowLayoutOf } from "../src/internal.js";
 
 const block = (id: string) => ({
   id,

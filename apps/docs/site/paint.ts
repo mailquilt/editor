@@ -1,7 +1,7 @@
 // Colors JSON and HTML for the pages that show an email's document and its
 // export. Used when the site is built and again in the browser, as people edit.
 
-import { MERGE_TAG } from "@mailquilt/core";
+import { MERGE_TAG } from "@mailquilt/core/internal";
 
 const ESCAPES: Record<string, string> = {
   "&": "&amp;",

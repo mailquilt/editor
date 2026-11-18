@@ -1,4 +1,4 @@
-import { EMAIL_LOOK } from "@mailquilt/core";
+import { EMAIL_LOOK } from "@mailquilt/core/internal";
 import { css, unsafeCSS } from "lit";
 
 /** The editor's own canvas, Rows, Blocks and toolbars. Its panels have their own. */

@@ -39,7 +39,7 @@ A PR that changes one of these says so, gives the reason and updates this page.
 - `setRowLayout` to the layout a Row already has comes back `unchanged`. (#52)
 - A saved language that isn't a code still loads, and can be sent back unchanged. Only a new one has to be a code. (#79)
 - An email is at most 1200px wide, and a font family needs at least one name. (#78)
-- Exports from `core` marked "not a promise to hosts" are for Mail Quilt's own packages. (#61)
+- Exports from `core` marked "not a promise to hosts" are for Mail Quilt's own packages, and come from `@mailquilt/core/internal`, not the main entry. (#61, #84)
 
 ## Rendering
 

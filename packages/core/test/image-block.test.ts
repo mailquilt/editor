@@ -1,12 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  blockSettingsFields,
-  blockStyles,
-  createEditor,
-  createEmail,
-} from "../src/index.js";
+import { createEditor, createEmail } from "../src/index.js";
 import type { BlocksDocument } from "../src/index.js";
+import { blockSettingsFields, blockStyles } from "../src/internal.js";
 
 const withImage = (props: Record<string, unknown>): BlocksDocument => {
   const document = createEmail();

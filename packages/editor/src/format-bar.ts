@@ -1,4 +1,4 @@
-import { INVALID_LINK, isAllowedLinkHref } from "@mailquilt/core";
+import { INVALID_LINK, isAllowedLinkHref } from "@mailquilt/core/internal";
 import { css, html, nothing } from "lit";
 import { keyed } from "lit/directives/keyed.js";
 

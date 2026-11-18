@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { blockStyles, createEditor, createEmail } from "../src/index.js";
+import { createEditor, createEmail } from "../src/index.js";
 import type { BlocksDocument } from "../src/index.js";
+import { blockStyles } from "../src/internal.js";
 
 const withBlock = (
   type: string,

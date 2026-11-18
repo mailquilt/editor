@@ -1,13 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  blockSettingsFields,
-  blockStyles,
-  createEditor,
-  createEmail,
-  loadDocument,
-} from "../src/index.js";
-import type { BlocksDocument, SettingsField } from "../src/index.js";
+import { createEditor, createEmail, loadDocument } from "../src/index.js";
+import type { BlocksDocument } from "../src/index.js";
+import { blockSettingsFields, blockStyles } from "../src/internal.js";
+import type { SettingsField } from "../src/internal.js";
 
 const emptyText = { content: [{ type: "paragraph" }], type: "doc" };
 
