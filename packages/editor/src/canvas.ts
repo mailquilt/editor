@@ -83,7 +83,7 @@ const renderDragHandle = (
 export const renderNarrowNotice = (
   onOpenPreview: (event: Event) => void
 ) => html`
-  <div class="ui narrow-notice" lang=${UI_LANG} part="frame">
+  <div class="ui frame narrow-notice" lang=${UI_LANG} part="frame">
     <span class="notice-icon">${ICONS.monitor}</span>
     <p class="notice-title">Editing needs more room</p>
     <p class="notice-body">
