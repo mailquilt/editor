@@ -20,14 +20,20 @@ const escapeText = (text: string) =>
 const escapeAttribute = (value: string) =>
   escapeText(value).replaceAll('"', "&quot;");
 
+/** A space, or a Merge Tag, which may have spaces of its own. */
+const SPACE_OR_MERGE_TAG = new RegExp(`${MERGE_TAG.source}| `, "gu");
+
 /**
  * Repeated spaces as the canvas shows them. Each space after another, or at the
  * start of a line, is a no-break space. Not `white-space:pre-wrap`, which shows
  * the line breaks and indents some clients add when they reformat the HTML.
+ * A Merge Tag's spaces stay as typed, so it's still filled in.
  */
 const keepSpaces = (text: string, afterSpace: boolean) =>
-  text.replaceAll(" ", (space, offset: number) =>
-    (offset === 0 ? afterSpace : text[offset - 1] === " ") ? "&nbsp;" : space
+  text.replaceAll(SPACE_OR_MERGE_TAG, (match, offset: number) =>
+    match === " " && (offset === 0 ? afterSpace : text[offset - 1] === " ")
+      ? "&nbsp;"
+      : match
   );
 
 /**
@@ -48,21 +54,32 @@ const exactLineHeight = (fontSize: string = EMAIL_LOOK.fontSize) =>
 const MERGE_TAG_PART = new RegExp(`(${MERGE_TAG.source})`, "u");
 
 /**
+ * Put before a character class: a whole Merge Tag, spaces and all, or one of
+ * those characters that doesn't start one, so a word or URL never cuts a tag.
+ */
+const TAG_OR = `${MERGE_TAG.source}|(?!${MERGE_TAG.source})`;
+
+/** A word, with any Merge Tag in it whole. */
+const WORD = new RegExp(`(?:${TAG_OR}\\S)+`, "gu");
+
+/**
  * A word of 20 or more characters, such as a pasted URL, gets a zero-width space
  * after each / . - ? & = and _, outside Merge Tags and the // of a URL. Yahoo,
  * AOL, GMX, Web.de and classic Outlook ignore CSS that breaks a word, and widened
  * the email with it (#91). Shorter words, and numbers such as 3.5, stay whole.
  */
 const breakLongWords = (html: string) =>
-  html.replaceAll(/\S{20,}/gu, (word) =>
-    word
-      .split(MERGE_TAG_PART)
-      .map((part, index) =>
-        index % 2 === 1
-          ? part
-          : part.replaceAll(/&amp;|\/(?!\/)|[.\-?=_]/gu, "$&&#8203;")
-      )
-      .join("")
+  html.replaceAll(WORD, (word) =>
+    [...word].length < 20
+      ? word
+      : word
+          .split(MERGE_TAG_PART)
+          .map((part, index) =>
+            index % 2 === 1
+              ? part
+              : part.replaceAll(/&amp;|\/(?!\/)|[.\-?=_]/gu, "$&&#8203;")
+          )
+          .join("")
   );
 
 const MARK_TAGS = {
@@ -89,8 +106,14 @@ const openTag = (mark: RichTextMark, linkColor: string) =>
     ? `<a href="${escapeAttribute(mark.attrs.href)}" target="_blank" style="color:${escapeAttribute(linkColor)};text-decoration:underline">`
     : `<${MARK_TAGS[mark.type]}>`;
 
-/** A URL written as text, without the punctuation that may end a sentence after it. */
-const URL_IN_TEXT = /(?<url>https?:\/\/[^\s<>"]*[^\s<>".,;:!?)'\]])/u;
+/**
+ * A URL written as text, with any Merge Tag in it whole, and without the
+ * punctuation that may end a sentence after it.
+ */
+const URL_IN_TEXT = new RegExp(
+  `(?<url>https?://(?:${TAG_OR}[^\\s<>"])*(?:${TAG_OR}[^\\s<>".,;:!?)'\\]]))`,
+  "u"
+);
 
 /**
  * A text's HTML. A URL in text that isn't already linked becomes a link to

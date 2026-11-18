@@ -234,6 +234,30 @@ describe(renderEmail, () => {
     );
   });
 
+  it("keeps a Merge Tag with spaces inside its braces whole, so it's still filled in", async () => {
+    const html = await renderEmail(
+      emailWithText(
+        "Hi {{ customer.preferred_name }} and {{ a  b }}, see projects/{{ id }}/welcome_v2.json"
+      )
+    );
+
+    expect(html).toContain(
+      ">Hi {{ customer.preferred_name }} and {{ a  b }}, see projects/&#8203;{{ id }}/&#8203;welcome_&#8203;v2.&#8203;json</p>"
+    );
+  });
+
+  it("links a URL written as text whole, Merge Tags with spaces and all", async () => {
+    const html = await renderEmail(
+      emailWithText(
+        "Open https://example.com/{{ user id }}/x, https://example.com/{{ id }}. or https://x.test/{{ id }}"
+      )
+    );
+
+    expect(html).toContain(
+      '>Open <a href="https://example.com/{{ user id }}/x" target="_blank" style="color:#000000;text-decoration:underline">https://&#8203;example.&#8203;com/&#8203;{{ user id }}/&#8203;x</a>, <a href="https://example.com/{{ id }}" target="_blank" style="color:#000000;text-decoration:underline">https://&#8203;example.&#8203;com/&#8203;{{ id }}</a>. or <a href="https://x.test/{{ id }}" target="_blank" style="color:#000000;text-decoration:underline">https://&#8203;x.&#8203;test/&#8203;{{ id }}</a></p>'
+    );
+  });
+
   it("doesn't link a URL again inside a link", async () => {
     const html = await renderEmail(
       emailWithInline(
