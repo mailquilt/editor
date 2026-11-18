@@ -60,10 +60,12 @@ describe("applying a Command", () => {
 });
 
 describe("rejecting a Command", () => {
-  const rejected: [string, (blockId: string) => unknown, RegExp][] = [
+  type Email = ReturnType<typeof createEmail>;
+  const rejected: [string, (email: Email) => unknown, string, RegExp][] = [
     [
       "an unknown Command type",
       () => ({ type: "explode" }),
+      "invalidCommand",
       /invalid command/iu,
     ],
     [
@@ -73,32 +75,78 @@ describe("rejecting a Command", () => {
         props: { content: paragraph("Hi") },
         type: "updateBlockProps",
       }),
+      "noSuchBlock",
       /no block.*missing/iu,
     ],
     [
+      "a Column that doesn't exist",
+      () => ({
+        blockType: "text",
+        columnId: "missing",
+        index: 0,
+        type: "insertBlock",
+      }),
+      "noSuchColumn",
+      /no column.*missing/iu,
+    ],
+    [
+      "a Row that doesn't exist",
+      () => ({ rowId: "missing", type: "removeRow" }),
+      "noSuchRow",
+      /no row.*missing/iu,
+    ],
+    [
+      "a Block type that doesn't exist",
+      (email) => ({
+        blockType: "video",
+        columnId: email.rows[0]?.columns[0]?.id,
+        index: 0,
+        type: "insertBlock",
+      }),
+      "unknownBlockType",
+      /video/iu,
+    ],
+    [
+      "an index past the end",
+      () => ({ index: 5, layout: "100", type: "insertRow" }),
+      "indexPastEnd",
+      /past the end/iu,
+    ],
+    [
       "props that aren't an object",
-      (blockId) => ({ blockId, props: [], type: "updateBlockProps" }),
+      (email) => ({
+        blockId: firstBlock(email).id,
+        props: [],
+        type: "updateBlockProps",
+      }),
+      "invalidCommand",
       /props/iu,
     ],
     [
       "a key the Block doesn't have, even one named like Object's own",
-      (blockId) => ({
-        blockId,
+      (email) => ({
+        blockId: firstBlock(email).id,
         props: JSON.parse('{"constructor":"x"}'),
         type: "updateBlockProps",
       }),
+      "invalidProps",
       /constructor/iu,
     ],
   ];
 
-  it.each(rejected)("rejects %s with a reason", (_name, command, reason) => {
-    const document = createEmail();
-    const editor = createEditor({ document });
+  it.each(rejected)(
+    "rejects %s with a code and a reason",
+    (_name, command, code, reason) => {
+      const document = createEmail();
+      const editor = createEditor({ document });
 
-    expect(
-      editor.apply(
-        command(firstBlock(document).id) as Parameters<typeof editor.apply>[0]
-      )
-    ).toStrictEqual({ ok: false, reason: expect.stringMatching(reason) });
-  });
+      expect(
+        editor.apply(command(document) as Parameters<typeof editor.apply>[0])
+      ).toStrictEqual({
+        code,
+        ok: false,
+        reason: expect.stringMatching(reason),
+      });
+    }
+  );
 });

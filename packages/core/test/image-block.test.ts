@@ -81,6 +81,7 @@ describe("Image Block", () => {
     const { document, result } = setProps({ src });
 
     expect(result).toStrictEqual({
+      code: "invalidProps",
       ok: false,
       reason: expect.stringMatching(/src/u),
     });
@@ -92,6 +93,7 @@ describe("Image Block", () => {
       // oxlint-disable-next-line no-script-url -- What's being refused.
       setProps({ alt: "Our logo", href: "javascript:alert(1)" }).result
     ).toStrictEqual({
+      code: "invalidProps",
       ok: false,
       reason: expect.stringMatching(/href/u),
     });
@@ -101,6 +103,7 @@ describe("Image Block", () => {
     "rejects %s",
     (_name, props, reason) => {
       expect(setProps(props).result).toStrictEqual({
+        code: "invalidProps",
         ok: false,
         reason: expect.stringMatching(reason),
       });
@@ -117,6 +120,7 @@ describe("Image Block", () => {
     });
 
     expect(result).toStrictEqual({
+      code: "invalidProps",
       ok: false,
       reason: expect.stringMatching(/alt text/u),
     });

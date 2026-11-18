@@ -488,6 +488,30 @@ test.describe("the selected Block's tools", () => {
 });
 
 test.describe("the floating toolbar", () => {
+  test("Undo and Redo are disabled while there's nothing to undo or redo", async ({
+    page,
+  }) => {
+    await openBlocks(page, ["text"]);
+    const toolbar = canvas(page).getByRole("group", { name: "Email tools" });
+    const undo = toolbar.getByRole("button", { name: "Undo" });
+    const redo = toolbar.getByRole("button", { name: "Redo" });
+    await expect(undo).toBeDisabled();
+    await expect(redo).toBeDisabled();
+
+    await textBlock(page).click();
+    await page.keyboard.type("Hi");
+    await expect(undo).toBeEnabled();
+    await expect(redo).toBeDisabled();
+
+    await undo.focus();
+    await page.keyboard.press("Enter");
+
+    await expect(undo).toBeDisabled();
+    await expect(redo).toBeEnabled();
+    // As for any control that an update disables.
+    await expect(toolbar).toBeFocused();
+  });
+
   test("sits at the bottom left of the canvas", async ({ page }) => {
     await openBlocks(page, ["text"]);
     const toolbar = canvas(page).getByRole("group", { name: "Email tools" });

@@ -1,5 +1,5 @@
 import { planCommand } from "./commands.js";
-import type { Command } from "./commands.js";
+import type { Command, RefusalCode } from "./commands.js";
 import type { BlocksDocument } from "./document.js";
 import { isSameDocument, loadDocument } from "./load-document.js";
 import { applyOperation, reverseOperation } from "./operations.js";
@@ -8,11 +8,18 @@ import type { Operation, PropsTarget } from "./operations.js";
 export type ApplyResult =
   | {
       ok: true;
-      /** The ID of what the Command added, if it added a Block or Row. */
+      /**
+       * The new Block's ID from `insertBlock` and `insertBlockInNewRow`, or the
+       * new Row's from `insertRow`. Other Commands, including
+       * `moveBlockToNewRow`, have none.
+       */
       createdId?: string;
     }
   | {
       ok: false;
+      /** What kind of refusal this is, for code to match on. */
+      code: RefusalCode;
+      /** Why, in English, for a person to read. */
       reason: string;
       /** Things are already as the Command asks, so nothing went wrong. */
       unchanged?: true;
@@ -34,10 +41,18 @@ export interface Editor {
   undo: () => boolean;
   /** Returns false when there is nothing to redo. */
   redo: () => boolean;
+  /** Whether `undo()` would change the email. */
+  canUndo: () => boolean;
+  /** Whether `redo()` would change the email. */
+  canRedo: () => boolean;
   getDocument: () => BlocksDocument;
   /**
    * Calls `listener` with the Operations of each change, including undo and
-   * redo. Returns a function that ends the subscription.
+   * redo. Returns a function that ends the subscription. Subscribing a function
+   * that's already subscribed adds nothing, so one call ends it. A listener
+   * that throws doesn't stop the others hearing of the change. Once they all
+   * have, the first error is thrown from the `apply()`, `undo()` or `redo()`
+   * that made it.
    */
   subscribe: (listener: (operations: Operation[]) => void) => () => void;
 }
@@ -83,23 +98,30 @@ export const createEditor = ({
   const unheard: Operation[][] = [];
   let notifying = false;
 
-  /** Runs last, so listeners can't interrupt a change or see it half done. */
+  /**
+   * Runs last, so listeners can't interrupt a change or see it half done. A
+   * listener that throws doesn't stop the others hearing of a change that has
+   * happened. Its error is thrown once they all have.
+   */
   const notify = (operations: Operation[]) => {
     unheard.push(operations);
     if (notifying) {
       return;
     }
     notifying = true;
-    try {
-      for (let next = unheard.shift(); next; next = unheard.shift()) {
-        for (const listener of listeners) {
+    let failure: { error: unknown } | undefined;
+    for (let next = unheard.shift(); next; next = unheard.shift()) {
+      for (const listener of listeners) {
+        try {
           listener(structuredClone(next));
+        } catch (error) {
+          failure ??= { error };
         }
       }
-    } finally {
-      // A listener that throws leaves nothing to be heard out of turn later.
-      notifying = false;
-      unheard.length = 0;
+    }
+    notifying = false;
+    if (failure) {
+      throw failure.error;
     }
   };
 
@@ -151,6 +173,8 @@ export const createEditor = ({
       notify(operations);
       return createdId === undefined ? { ok: true } : { createdId, ok: true };
     },
+    canRedo: () => redoStack.length > 0,
+    canUndo: () => undoStack.length > 0,
     getDocument: () => structuredClone(current),
     redo: () => {
       const step = redoStack.pop();
@@ -165,7 +189,9 @@ export const createEditor = ({
     },
     subscribe: (listener) => {
       listeners.add(listener);
-      return () => listeners.delete(listener);
+      return () => {
+        listeners.delete(listener);
+      };
     },
     undo: () => {
       const step = undoStack.pop();

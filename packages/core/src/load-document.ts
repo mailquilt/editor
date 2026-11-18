@@ -170,7 +170,9 @@ export const createDocumentLoader =
 /**
  * Checks a saved email and migrates it if it's an older version, without
  * changing what was passed in. It never repairs a document, so a host's
- * auto-save can't overwrite the original with a damaged copy. Never throws.
+ * auto-save can't overwrite the original with a damaged copy. It gives a reason,
+ * rather than throwing, for anything that isn't an email it accepts. Only
+ * reading the value can throw, as a getter or a Proxy can.
  */
 export const loadDocument = createDocumentLoader(DOCUMENT_VERSION, {});
 
@@ -178,6 +180,7 @@ export const loadDocument = createDocumentLoader(DOCUMENT_VERSION, {});
  * Compares content, not identity or key order, because a host may clone a
  * document or get it back from a store that reorders keys. A field set to
  * undefined counts as missing, because JSON drops it. List entries always count.
+ * Two values that each hold a cycle, which JSON can't, overflow the stack.
  */
 export const isSameDocument = (a: unknown, b: unknown): boolean => {
   if (a === b) {

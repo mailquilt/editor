@@ -52,6 +52,7 @@ describe("Button Block", () => {
     const { document, result } = setHref("javascript:alert(1)");
 
     expect(result).toStrictEqual({
+      code: "invalidProps",
       ok: false,
       reason: expect.stringMatching(/href/u),
     });
@@ -73,7 +74,11 @@ describe("Button Block", () => {
 
     expect(
       editor.apply({ blockId: "button-1", props, type: "updateBlockProps" })
-    ).toStrictEqual({ ok: false, reason: expect.stringMatching(reason) });
+    ).toStrictEqual({
+      code: "invalidProps",
+      ok: false,
+      reason: expect.stringMatching(reason),
+    });
   });
 
   it("accepts see-through text, which is painted once", () => {

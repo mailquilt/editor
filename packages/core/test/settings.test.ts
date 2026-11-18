@@ -54,7 +54,11 @@ describe("Text Block settings", () => {
 
     expect(
       editor.apply({ blockId, props, type: "updateBlockProps" })
-    ).toStrictEqual({ ok: false, reason: expect.stringMatching(reason) });
+    ).toStrictEqual({
+      code: "invalidProps",
+      ok: false,
+      reason: expect.stringMatching(reason),
+    });
   });
 
   it("goes back to the default when a null removes a setting", () => {
@@ -80,6 +84,7 @@ describe("Text Block settings", () => {
     });
 
     expect(result).toStrictEqual({
+      code: "invalidProps",
       ok: false,
       reason: expect.stringMatching(/content/u),
     });
@@ -139,6 +144,7 @@ describe("Row settings", () => {
         type: "updateRowProps",
       })
     ).toStrictEqual({
+      code: "invalidProps",
       ok: false,
       reason: expect.stringMatching(/backgroundColor/u),
     });
@@ -149,7 +155,11 @@ describe("Row settings", () => {
 
     expect(
       editor.apply({ props: {}, rowId: "nope", type: "updateRowProps" })
-    ).toStrictEqual({ ok: false, reason: 'No Row with ID "nope"' });
+    ).toStrictEqual({
+      code: "noSuchRow",
+      ok: false,
+      reason: 'No Row with ID "nope"',
+    });
   });
 
   it("reports its change as a setProps Operation for the Row", () => {
@@ -254,7 +264,11 @@ describe("Email settings", () => {
 
     expect(
       editor.apply({ settings, type: "updateEmailSettings" })
-    ).toStrictEqual({ ok: false, reason: expect.stringMatching(reason) });
+    ).toStrictEqual({
+      code: "invalidProps",
+      ok: false,
+      reason: expect.stringMatching(reason),
+    });
   });
 
   it.each(["en", "fil", "pt-BR", "zh-Hant-TW"])("accepts %s", (language) => {

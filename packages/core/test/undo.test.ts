@@ -68,6 +68,18 @@ describe("the undo history", () => {
     expect(editor.getDocument()).toStrictEqual(document);
   });
 
+  it("says whether undo or redo would do anything", () => {
+    const { editor, setText } = setup();
+    const can = () => [editor.canUndo(), editor.canRedo()];
+    expect(can()).toStrictEqual([false, false]);
+
+    setText("Changed");
+    expect(can()).toStrictEqual([true, false]);
+
+    editor.undo();
+    expect(can()).toStrictEqual([false, true]);
+  });
+
   it("has no step for a rejected Command", () => {
     const { blockId, editor, setText } = setup();
     setText("Kept");
@@ -400,6 +412,23 @@ describe("subscribing to Operations", () => {
     expect(received).toStrictEqual([]);
   });
 
+  it("adds nothing for a function subscribed again, and ends it with one unsubscribe", () => {
+    const { editor, setText } = setup();
+    let heard = 0;
+    const listener = () => {
+      heard += 1;
+    };
+    const unsubscribe = editor.subscribe(listener);
+    editor.subscribe(listener);
+
+    setText("A");
+    expect(heard).toBe(1);
+
+    expect(unsubscribe()).toBeUndefined();
+    setText("B");
+    expect(heard).toBe(1);
+  });
+
   it("keeps the history safe from a listener changing what it received", () => {
     const { document, editor, setText } = setup();
     editor.subscribe((operations) => {
@@ -459,31 +488,28 @@ describe("subscribing to Operations", () => {
     expect(editor.getDocument()).toStrictEqual(document);
   });
 
-  it("drops a change queued by a listener when a later listener throws", () => {
+  it("tells every listener of each change when one of them throws", () => {
     const { editor, setText } = setup();
     let isFirst = true;
-    const unsubscribeFirst = editor.subscribe(() => {
+    editor.subscribe(() => {
       if (isFirst) {
         isFirst = false;
         setText("From listener");
       }
     });
-    const unsubscribeThrowing = editor.subscribe(() => {
+    editor.subscribe(() => {
       throw new Error("Listener failed");
     });
-    expect(() => setText("First")).toThrow("Listener failed");
-    unsubscribeFirst();
-    unsubscribeThrowing();
     const heard: string[] = [];
     editor.subscribe((operations) => {
       heard.push(JSON.stringify(operations));
     });
 
-    setText("Next");
+    expect(() => setText("First")).toThrow("Listener failed");
 
-    // Only the new change, not the one left over from before.
-    expect(heard).toHaveLength(1);
-    expect(heard[0]).toContain("Next");
+    expect(heard).toHaveLength(2);
+    expect(heard[0]).toContain("First");
+    expect(heard[1]).toContain("From listener");
   });
 
   it("tells every listener of changes in the order they were made", () => {

@@ -859,19 +859,6 @@ test.describe("undo and redo", () => {
     await expect(firstTextBlock(page)).toBeFocused();
   });
 
-  test("the Undo button leaves the link field open with nothing to undo", async ({
-    page,
-  }) => {
-    await firstTextBlock(page).click();
-    await toolbarButton(page, "Link").click();
-    const field = linkUrlField(page);
-    await expect(field).toBeFocused();
-
-    await undo(page);
-
-    await expect(field).toBeVisible();
-  });
-
   test("adding and removing a link can each be undone", async ({ page }) => {
     await selectAllInBlock(page);
     await addLink(page, "https://example.com");
