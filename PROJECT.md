@@ -68,6 +68,7 @@ The editor designs emails. It works alongside whatever sends them, so it doesn't
 - Paid plans, gated features or a paid hosted tier
 - A hosted real-time collaboration service
 - Editing or importing React Email code
+- Web pages, popups or AMP emails
 
 ## 3. How it works
 
@@ -306,26 +307,51 @@ There are no dates, and items can move. Each item is tracked in GitHub Issues.
 
 **Next**
 
-1. Vue and Svelte wrappers
-2. More Blocks and settings
-3. An MCP server, on its own, with its first five tools
-4. The AI builder
+What a team needs before its customers can use the editor. These come before the MCP server and the AI builder because a team that can't upload an image or pick a Merge Tag stops there, whatever else the editor does.
+
+1. Image upload, to storage the host app supplies
+2. A Merge Tag picker, filled by the host app
+3. Lists in text
+4. Web fonts
+5. Social, Menu, Video and HTML Blocks
+6. Row padding, hiding or stacking on phones, and a mobile preview
+7. Copy, paste and duplicate
+8. Alt text, or a "decorative" choice, for every image
+9. A plain-text version of each email
+10. Translations of the editor's interface, and right-to-left text
+11. Starter emails
+12. React 18 in `@mailquilt/react`
+13. Vue, Angular and Svelte tested in `install-checks`, with types for the element
 
 **Later**
 
-- A CLI and local mode
-- Copy, paste and duplicate
-- A read-only view of the generated code
+Wanted. The first five open the editor up to the host app, so they come first. The rest have no order yet.
+
+- Custom Blocks
+- The editor in parts a host app arranges itself, with the text editor as its own element, and the selection and Commands reachable from outside
+- Display rules and brand styles
+- Saved Rows, and ready-made sections to drag in
+- Parts of an email that can't be changed
 - Light and dark editor themes
-- Brand styles, a Merge Tag picker and display rules
 - The email checker
-- Mobile and dark-mode previews
-- HTML mode
+- A dark-mode preview
+- HTML mode, and a read-only view of the generated code
+- Import from HTML, MJML and other editors' formats
+- A JSON Schema for the email format
+- An MCP server, on its own, with its first five tools, then a CLI and local mode
+- The AI builder
+- Vue and Svelte wrappers, if the tested and typed element isn't enough
 - React Email export
-- Saved Rows, and MJML and HTML import
 - Sending integrations
 - Translated emails
 - Collaboration support, with an example
+
+**Before `1.0.0`**
+
+- Measure the editor's speed on a large email, and set a limit to keep to
+- Confirm that dragging works by touch on a tablet
+- Say which browsers and Node versions are supported, and how soon an issue gets a first reply
+- Freeze the document format and the API, with a written promise of what won't change
 
 ## 10. Planned features
 
@@ -340,6 +366,8 @@ There are three levels of access to HTML:
 3. **Full HTML mode:** the whole email in a code editor (CodeMirror), with a live preview.
 
 Switching from Blocks to HTML always works. It warns that the email leaves the visual editor, and keeps the Block version so the user can go back, losing their HTML edits. Switching from HTML to Blocks is best effort: what's recognized becomes Blocks, and the rest becomes HTML Blocks, so nothing is lost. The two are never kept in continuous sync.
+
+The HTML Block comes first, on its own. It's the one Block that lets a person put markup of their own on the canvas, so how its content is sanitized, and how a host app turns the Block off, are settled before it's built.
 
 ### Brand styles, Merge Tags and display rules
 
@@ -458,6 +486,7 @@ Custom Blocks and settings fields, custom checker rules, image upload and media 
 - **Browser tests (Playwright):** drag and drop, the keyboard, undo, settings, export and the React wrapper, in Chromium, Firefox and WebKit, with automated accessibility checks.
 - **Install checks:** the packed packages are installed in fresh plain JavaScript, CDN and Next.js projects, and tested there.
 - **Email clients:** `0.1.0` is checked in Email on Acid, in Gmail, Apple Mail, iOS Mail, every version of Outlook, Yahoo, AOL and European webmail, in light and dark mode. The docs list the clients and the known limits.
+- **By hand, before each release:** the same check in Email on Acid, with a fixed set of test emails that use every Block and layout. The docs' page of tested clients then gets the new date.
 - **By hand, for `0.1.0`:** keyboard and screen reader use, typing Japanese in Safari, Firefox and Chrome (automated tests can only simulate it in Chromium), and touch.
 
 [`docs/agents/testing.md`](docs/agents/testing.md) says how tests are written here.
