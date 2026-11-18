@@ -14,8 +14,17 @@ import {
   rowStyles,
 } from "@mailquilt/core/internal";
 
+/**
+ * A line break is escaped too, so `renderEmail` can tell it from MJML's layout.
+ * In text it still shows as a space, and browsers leave one out of a link or
+ * image address.
+ */
 const escapeText = (text: string) =>
-  text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+  text
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll("\n", "&#10;");
 
 const escapeAttribute = (value: string) =>
   escapeText(value).replaceAll('"', "&quot;");
@@ -59,25 +68,32 @@ const MERGE_TAG_PART = new RegExp(`(${MERGE_TAG.source})`, "u");
  */
 const TAG_OR = `${MERGE_TAG.source}|(?!${MERGE_TAG.source})`;
 
-/** A word, with any Merge Tag in it whole. */
-const WORD = new RegExp(`(?:${TAG_OR}\\S)+`, "gu");
+/**
+ * A word, with any Merge Tag in it whole, or the whitespace between words, which
+ * has nothing to break after.
+ */
+const WORD_OR_SPACE = new RegExp(`(?:${TAG_OR}\\S)+|\\s+`, "gu");
 
 /**
- * A word of 20 or more characters, such as a pasted URL, gets a zero-width space
- * after each / . - ? & = and _, outside Merge Tags and the // of a URL. Yahoo,
- * AOL, GMX, Web.de and classic Outlook ignore CSS that breaks a word, and widened
- * the email with it (#91). Shorter words, and numbers such as 3.5, stay whole.
+ * Text as HTML, escaped. A word of 20 or more characters as typed, such as a
+ * pasted URL, gets a zero-width space after each / . - ? & = and _, outside
+ * Merge Tags and the // of a URL. Yahoo, AOL, GMX, Web.de and classic Outlook
+ * ignore CSS that breaks a word, and widened the email with it (#91). Shorter
+ * words, and numbers such as 3.5, stay whole.
  */
-const breakLongWords = (html: string) =>
-  html.replaceAll(WORD, (word) =>
+const breakLongWords = (text: string) =>
+  text.replaceAll(WORD_OR_SPACE, (word) =>
     [...word].length < 20
-      ? word
+      ? escapeText(word)
       : word
           .split(MERGE_TAG_PART)
           .map((part, index) =>
             index % 2 === 1
-              ? part
-              : part.replaceAll(/&amp;|\/(?!\/)|[.\-?=_]/gu, "$&&#8203;")
+              ? escapeText(part)
+              : escapeText(part).replaceAll(
+                  /&amp;|\/(?!\/)|[.\-?=_]/gu,
+                  "$&&#8203;"
+                )
           )
           .join("")
   );
@@ -107,35 +123,91 @@ const openTag = (mark: RichTextMark, linkColor: string) =>
     : `<${MARK_TAGS[mark.type]}>`;
 
 /**
- * A URL written as text, with any Merge Tag in it whole, and without the
- * punctuation that may end a sentence after it.
+ * What follows a URL's `https://` or `www.`, with any Merge Tag in it whole, and
+ * without the punctuation or closing bracket that may end a sentence after it.
  */
-const URL_IN_TEXT = new RegExp(
-  `(?<url>https?://(?:${TAG_OR}[^\\s<>"])*(?:${TAG_OR}[^\\s<>".,;:!?)'\\]]))`,
-  "u"
+const URL_REST = `(?:${TAG_OR}[^\\s<>"])*(?:${TAG_OR}[^\\s<>".,;:!?)'\\]])`;
+
+/**
+ * An email address. It may have an apostrophe, as in o'brien@example.com, and a
+ * dot only between characters. It never starts right after a character it may
+ * hold, a Merge Tag or a path, so it's never the end of something longer, and a
+ * long word without an @ is read once, not once for each character.
+ */
+const EMAIL_ADDRESS = `(?<![\\w'./+}-])\\w[\\w'+-]*(?:\\.[\\w'+-]+)*@[A-Za-z\\d-]+(?:\\.[A-Za-z\\d-]+)+`;
+
+/**
+ * A URL or email address written as text, or a Merge Tag, which is tried first
+ * so that one written inside a tag, such as its default, stays part of it. The
+ * letters of the scheme and `www.` may be capitals, spelled out because the u
+ * flag's i would also take ſ as s. An address is tried before `www.`, so one
+ * starting with it is still an address.
+ */
+const ADDRESS_IN_TEXT = new RegExp(
+  `${MERGE_TAG.source}|(?<url>[Hh][Tt]{2}[Pp][Ss]?://${URL_REST})|(?<email>${EMAIL_ADDRESS})|(?<www>(?<![\\w./-])[Ww]{3}\\.${URL_REST})`,
+  "gu"
 );
 
 /**
- * A text's HTML. A URL in text that isn't already linked becomes a link to
- * itself, as Apple Mail and Gmail would make it, because its break points stop
- * them recognizing it (#91).
+ * The URL or email address a match found, and where it goes, as clients would
+ * link it. A Merge Tag isn't one. A URL takes the closing brackets after it
+ * that it opened, as in Wikipedia's `Mercury_(planet)`.
+ */
+const addressAt = (
+  text: string,
+  { 0: match, groups = {}, index }: RegExpExecArray
+) => {
+  if (groups.email !== undefined) {
+    return { href: `mailto:${match}`, written: match };
+  }
+  if (groups.url === undefined && groups.www === undefined) {
+    return;
+  }
+  const unclosed = match.split("(").length - match.split(")").length;
+  let end = index + match.length;
+  while (end < index + match.length + unclosed && text[end] === ")") {
+    end += 1;
+  }
+  const written = text.slice(index, end);
+  return {
+    href: groups.www === undefined ? written : `http://${written}`,
+    written,
+  };
+};
+
+/**
+ * A text's HTML. A URL or email address in text that isn't already linked
+ * becomes a link, as Apple Mail and Gmail would make it, because its break
+ * points stop them recognizing it (#91).
  */
 const textToHtml = (
   text: string,
   linkColor: string,
   afterSpace: boolean,
   linked: boolean
-) =>
-  (linked ? [text] : text.split(URL_IN_TEXT))
-    .map((part, index) =>
-      index % 2 === 1
-        ? `${openTag({ attrs: { href: part }, type: "link" }, linkColor)}${breakLongWords(escapeText(part))}</a>`
-        : keepSpaces(
-            breakLongWords(escapeText(part)),
-            index === 0 ? afterSpace : false
-          )
-    )
-    .join("");
+) => {
+  if (linked) {
+    return keepSpaces(breakLongWords(text), afterSpace);
+  }
+  let html = "";
+  let end = 0;
+  const addTextTo = (start: number) => {
+    html += keepSpaces(
+      breakLongWords(text.slice(end, start)),
+      end === 0 && afterSpace
+    );
+  };
+  for (const match of text.matchAll(ADDRESS_IN_TEXT)) {
+    const address = addressAt(text, match);
+    if (address !== undefined) {
+      addTextTo(match.index);
+      html += `${openTag({ attrs: { href: address.href }, type: "link" }, linkColor)}${breakLongWords(address.written)}</a>`;
+      end = match.index + address.written.length;
+    }
+  }
+  addTextTo(text.length);
+  return html;
+};
 
 const isSameMark = (a: RichTextMark, b: RichTextMark) =>
   a.type === "link" && b.type === "link"
