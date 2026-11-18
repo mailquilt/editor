@@ -67,6 +67,8 @@ describe("Image Block", () => {
     // oxlint-disable-next-line no-script-url -- What's being refused.
     [" javascript:alert(1)"],
     ["java\tscript:alert(1)"],
+    // Unicode case folding would read ſ as s.
+    ["httpſ://cdn.example/logo.png"],
     ["data:image/svg+xml,<svg onload=alert(1)>"],
     ["vbscript:msgbox(1)"],
     // oxlint-disable-next-line no-script-url -- What's being refused.

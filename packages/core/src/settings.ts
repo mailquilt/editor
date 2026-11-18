@@ -81,17 +81,20 @@ export const colorField = (
 export const colorSchema = v.pipe(
   v.string(),
   v.regex(
-    /^(?:#[\da-f]{3}(?:[\da-f]{3})?|rgb\(\d{1,3},\s?\d{1,3},\s?\d{1,3}\)|rgba\(\d{1,3},\s?\d{1,3},\s?\d{1,3},\s?\d(?:\.\d{1,3})?\))$/iu,
+    /^(?:#[\da-f]{3}(?:[\da-f]{3})?|rgb\(\d{1,3}, ?\d{1,3}, ?\d{1,3}\)|rgba\(\d{1,3}, ?\d{1,3}, ?\d{1,3}, ?\d(?:\.\d{1,3})?\))$/iu,
     "Must be a color written as #rgb, #rrggbb, rgb() or rgba()"
   )
 );
 
 /**
  * A color as #rrggbb, which a color input takes, from one in a format above.
- * Its alpha is dropped. Nothing for text with no color in it.
+ * Its alpha is dropped. Nothing for text that isn't a color the schema accepts.
  * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
  */
 export const hexColor = (color: string) => {
+  if (!v.is(colorSchema, color)) {
+    return;
+  }
   if (/^#[\da-f]{3}$/iu.test(color)) {
     return color.replaceAll(/[\da-f]/giu, "$&$&").toLowerCase();
   }
@@ -152,7 +155,7 @@ export const newLanguageSettingsSchema = v.strictObject({
     v.pipe(
       v.string(),
       v.regex(
-        /^[a-z]{2,3}(?:-[a-z\d]{2,8})*$/iu,
+        /^[A-Za-z]{2,3}(?:-[A-Za-z\d]{2,8})*$/u,
         "Must be a language code such as en or pt-BR"
       )
     )
