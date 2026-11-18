@@ -34,6 +34,9 @@ import {
 } from "prosemirror-transform";
 import { Decoration, DecorationSet, EditorView } from "prosemirror-view";
 
+import { proseMirrorKeys } from "./key-map.js";
+import type { TextAction } from "./key-map.js";
+
 export type ToggleableMark = "bold" | "italic" | "underline";
 
 /** What the toolbar shows for the cursor or selection. */
@@ -507,6 +510,15 @@ export const createTextBlockView = ({
     ? toggleMarkCommand(schema.marks.bold)
     : () => true;
 
+  const textCommands: Record<TextAction, Command> = {
+    bold,
+    italic: toggleMarkCommand(schema.marks.italic),
+    lineBreak: insertHardBreak,
+    toEnd: collapseSelectAll(true),
+    toStart: collapseSelectAll(false),
+    underline: toggleMarkCommand(schema.marks.underline),
+  };
+
   const view = new EditorView(element, {
     attributes: {
       "aria-label": label,
@@ -588,18 +600,14 @@ export const createTextBlockView = ({
     state: EditorState.create({
       doc: schema.nodeFromJSON(content),
       plugins: [
-        keymap({
-          ArrowLeft: collapseSelectAll(false),
-          ArrowRight: collapseSelectAll(true),
-          "Mod-B": bold,
-          "Mod-Enter": insertHardBreak,
-          "Mod-I": toggleMarkCommand(schema.marks.italic),
-          "Mod-U": toggleMarkCommand(schema.marks.underline),
-          "Mod-b": bold,
-          "Mod-i": toggleMarkCommand(schema.marks.italic),
-          "Mod-u": toggleMarkCommand(schema.marks.underline),
-          "Shift-Enter": insertHardBreak,
-        }),
+        keymap(
+          Object.fromEntries(
+            proseMirrorKeys().map(([key, action]) => [
+              key,
+              textCommands[action],
+            ])
+          )
+        ),
         keymap(editingKeys),
         keepMergeTagsWhole,
       ],

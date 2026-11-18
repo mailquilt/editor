@@ -11,7 +11,6 @@ import { css, html, nothing } from "lit";
 import type { TemplateResult } from "lit";
 import { styleMap } from "lit/directives/style-map.js";
 
-import { onToolbarArrowKeys } from "./block-keyboard.js";
 import { blockIcon, ICONS } from "./icons.js";
 import { columnLabel } from "./places.js";
 import type { BlockPlace } from "./places.js";
@@ -573,12 +572,7 @@ const renderTabs = (
   events: SidePanelEvents
 ) => html`
   <div class="panel-top">
-    <div
-      aria-label="Side panel"
-      class="tabs"
-      role="tablist"
-      @keydown=${onToolbarArrowKeys}
-    >
+    <div aria-label="Side panel" class="tabs" role="tablist">
       ${PANEL_TABS.map(
         ({ icon, id, label }) => html`
           <button

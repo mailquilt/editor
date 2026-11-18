@@ -6,21 +6,29 @@ import { repeat } from "lit/directives/repeat.js";
 import { styleMap } from "lit/directives/style-map.js";
 
 import { hasRichText, renderBlockContent } from "./block-content.js";
-import {
-  MOVE_BUTTONS,
-  onToolbarArrowKeys,
-  REDO_KEYS,
-  REDO_SHORTCUTS,
-  ROW_MOVE_BUTTONS,
-  UNDO_KEYS,
-  UNDO_SHORTCUTS,
-} from "./block-keyboard.js";
-import type { Direction } from "./block-keyboard.js";
 import { renderFormatBar } from "./format-bar.js";
 import type { FormatBarEvents, FormatBarState } from "./format-bar.js";
 import { blockIcon, ICONS } from "./icons.js";
+import { keyLabel } from "./key-map.js";
+import type { Direction } from "./key-map.js";
 import { columnLabel, positionLabel } from "./places.js";
 import { UI_LANG } from "./theme.js";
+
+const MOVE_BUTTONS = (["up", "down", "left", "right"] as const).map(
+  (direction) => ({
+    direction,
+    ...keyLabel("blockToolbar", "moveBlock", { direction }),
+  })
+);
+
+/** A Row moves only up and down. */
+const ROW_MOVE_BUTTONS = (["up", "down"] as const).map((direction) => ({
+  direction,
+  ...keyLabel("rowToolbar", "moveRow", { direction }),
+}));
+
+const UNDO = keyLabel("editor", "undo");
+const REDO = keyLabel("editor", "redo");
 
 /** Narrower than this, there's no room to edit, and a notice shows instead. */
 export const MIN_EDITOR_WIDTH = 640;
@@ -47,7 +55,6 @@ export interface CanvasEvents {
   onBlockClick: (event: MouseEvent) => void;
   onBlockFocus: (event: FocusEvent, blockId: string) => void;
   onBlockFocusout: () => void;
-  onBlockKeydown: (event: KeyboardEvent) => void;
   onControlMousedown: (event: MouseEvent) => void;
   onDeleteRow: (rowId: string, fromKeyboard: boolean) => void;
   onDeleteSelectedBlock: (fromKeyboard: boolean) => void;
@@ -56,7 +63,6 @@ export interface CanvasEvents {
   onMoveRow: (rowId: string, direction: "down" | "up") => void;
   onMoveSelectedBlock: (direction: Direction) => void;
   onOpenPreview: (event: Event) => void;
-  onRowToolbarKeydown: (event: KeyboardEvent, rowId: string) => void;
   onSelectRow: (rowId: string) => void;
   onStepHistory: (step: "redo" | "undo") => void;
 }
@@ -114,11 +120,9 @@ const renderRowToolbar = (
     aria-orientation="vertical"
     class="ui row-toolbar"
     role="toolbar"
-    @keydown=${(event: KeyboardEvent) =>
-      events.onRowToolbarKeydown(event, row.id)}
     @mousedown=${events.onControlMousedown}
   >
-    <div class="bar" @keydown=${onToolbarArrowKeys}>
+    <div class="bar">
       ${renderDragHandle(events.onHandleMousedown, "Drag Row")}
       <button
         aria-label="Select Row"
@@ -132,9 +136,9 @@ const renderRowToolbar = (
         ${ICONS.select}
       </button>
       ${ROW_MOVE_BUTTONS.map(
-        ({ direction, keys, shortcut }) => html`
+        ({ direction, keys, shortcuts }) => html`
           <button
-            aria-keyshortcuts=${shortcut}
+            aria-keyshortcuts=${shortcuts}
             aria-label=${`Move Row ${direction}`}
             class="icon-button"
             data-tooltip=${`Move Row ${direction} (${keys})`}
@@ -169,15 +173,14 @@ const renderBlockToolbar = (events: CanvasEvents) => html`
     aria-orientation="vertical"
     class="ui bar block-toolbar"
     role="toolbar"
-    @keydown=${onToolbarArrowKeys}
     @mousedown=${events.onControlMousedown}
   >
     ${renderDragHandle(events.onHandleMousedown)}
     <span class="separator"></span>
     ${MOVE_BUTTONS.map(
-      ({ direction, keys, shortcut }, index) => html`
+      ({ direction, keys, shortcuts }, index) => html`
         <button
-          aria-keyshortcuts=${shortcut}
+          aria-keyshortcuts=${shortcuts}
           aria-label=${`Move Block ${direction}`}
           class="icon-button"
           data-action=${`move-${direction}`}
@@ -228,7 +231,6 @@ const renderBlock = (
       @click=${events.onBlockClick}
       @focus=${(event: FocusEvent) => events.onBlockFocus(event, block.id)}
       @focusout=${events.onBlockFocusout}
-      @keydown=${events.onBlockKeydown}
     >
       ${selected ? nothing : renderDragHandle(events.onHandleMousedown)}
       ${rich ? state.textOf(block.id) : nothing}
@@ -358,20 +360,20 @@ export const renderFloatingToolbar = (events: CanvasEvents) => html`
     @mousedown=${events.onControlMousedown}
   >
     <button
-      aria-keyshortcuts=${UNDO_SHORTCUTS}
+      aria-keyshortcuts=${UNDO.shortcuts}
       aria-label="Undo"
       class="icon-button"
-      data-tooltip=${`Undo (${UNDO_KEYS})`}
+      data-tooltip=${`Undo (${UNDO.keys})`}
       type="button"
       @click=${() => events.onStepHistory("undo")}
     >
       ${ICONS.undo}
     </button>
     <button
-      aria-keyshortcuts=${REDO_SHORTCUTS}
+      aria-keyshortcuts=${REDO.shortcuts}
       aria-label="Redo"
       class="icon-button"
-      data-tooltip=${`Redo (${REDO_KEYS})`}
+      data-tooltip=${`Redo (${REDO.keys})`}
       type="button"
       @click=${() => events.onStepHistory("redo")}
     >

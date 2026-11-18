@@ -6,10 +6,12 @@ A PR that changes one of these says so, gives the reason and updates this page.
 
 ## Keys and focus
 
+- Every key the editor answers to is in its key map, `packages/editor/src/key-map.ts`, which says for each place what the key does and whether the press stops there. Handlers hold no rules of their own, and tooltips and `aria-keyshortcuts` name keys from it. (#145)
+- A key acts only with the modifiers the key map gives it. Escape, Tab in a toolbar, and Enter on a Block or held down act with any. (#145)
 - Escape closes one thing and stops there: the focused control's tooltip, the link field, what was typed in a settings field, or the Preview. In a Block's text it goes back to the Block and stops. A hovered tooltip closes and the Escape goes on. An Escape that does none of these reaches the host page, so a host's dialog can close. (#66, #78, #79)
-- Escape, Ctrl/⌘+Z and Ctrl/⌘+K that an input method handled do nothing. (#66, #78)
+- A key that an input method handled does nothing, so an Escape that ends a composition doesn't close a tooltip either. The link field still keeps every key to itself. (#66, #78, #145)
 - Ctrl/⌘+Z and Ctrl/⌘+K that the editor acts on don't reach the host page. (#79)
-- Alt+← and Alt+→ never go back a page: on a Block, in its toolbar, in its text or in the Row toolbar. On a Mac, in text, they still move by word. (#54, #79)
+- Alt+← and Alt+→ never go back a page: on a Block, in its toolbar, in its text or in the Row toolbar, and during a drag too. On a Mac, in text, they still move by word. (#54, #79, #145)
 - Shift+Ctrl/⌘+B, I and U format text too, or the browser would format it outside the editor on Windows and Linux. (#78)
 - The Block and Row toolbars are one Tab stop each, with arrow keys between their buttons. Shift+Tab leaves the toolbar. (#60, #78)
 - Each empty Column has one Tab stop per Block type, and `keyboard.mdx` says so. (#36)
@@ -61,6 +63,6 @@ A PR that changes one of these says so, gives the reason and updates this page.
 
 ## Tests
 
-- There's no unit-test setup for the editor. Its tests run in the browser. (#36)
+- The editor's tests run in the browser, apart from the key map's, which are unit tests. (#36, #145)
 - Core keeps a "stores…" test for each Block type's own settings. (#82)
 - "A Row on the canvas shows an outline and its toolbar on hover" failed once in WebKit CI and passed on retry, with no cause found in 25 local runs. It isn't treated as flaky unless it fails again. (#36)

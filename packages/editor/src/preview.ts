@@ -208,12 +208,6 @@ interface PreviewEvents {
   onClosed: () => void;
 }
 
-const stopEscape = (event: KeyboardEvent) => {
-  if (event.key === "Escape") {
-    event.stopPropagation();
-  }
-};
-
 /**
  * The dialog stays rendered so that closing it, not removing it, returns focus.
  * An empty `sandbox` gives the email an opaque origin and no scripts, forms,
@@ -229,7 +223,6 @@ export const renderPreview = (
     class="preview"
     lang=${UI_LANG}
     @close=${onClosed}
-    @keydown=${stopEscape}
   >
     <div class="ui preview-panel">
       <div class="preview-header">

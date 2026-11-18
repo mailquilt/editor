@@ -2,14 +2,9 @@ import { INVALID_LINK, isAllowedLinkHref } from "@mailquilt/core/internal";
 import { css, html, nothing } from "lit";
 import { keyed } from "lit/directives/keyed.js";
 
-import {
-  isComposing,
-  LINE_BREAK_KEYS,
-  MOD_KEY,
-  MOD_SHORTCUT,
-  onToolbarArrowKeys,
-} from "./block-keyboard.js";
 import { ICONS } from "./icons.js";
+import type { KeyLabel } from "./key-map.js";
+import { keyLabel, textKeyLabel } from "./key-map.js";
 import type {
   TextBlockView,
   TextFormats,
@@ -78,14 +73,17 @@ export const formatBarStyles = css`
 `;
 
 const MARK_BUTTONS: {
-  key: string;
+  keys: KeyLabel;
   label: string;
   mark: ToggleableMark;
 }[] = [
-  { key: "B", label: "Bold", mark: "bold" },
-  { key: "I", label: "Italic", mark: "italic" },
-  { key: "U", label: "Underline", mark: "underline" },
+  { keys: textKeyLabel("bold"), label: "Bold", mark: "bold" },
+  { keys: textKeyLabel("italic"), label: "Italic", mark: "italic" },
+  { keys: textKeyLabel("underline"), label: "Underline", mark: "underline" },
 ];
+
+const LINK_KEYS = keyLabel("text", "openLinkField");
+const LINE_BREAK_KEYS = textKeyLabel("lineBreak");
 
 export interface FormatBarState {
   /** Unset until the Block's text has its editor, and the buttons wait for it. */
@@ -98,8 +96,6 @@ export interface FormatBarState {
 }
 
 export interface FormatBarEvents {
-  /** Escape in the bar: focus goes back to the text. */
-  onBack: () => void;
   onCancelLink: () => void;
   onControlMousedown: (event: MouseEvent) => void;
   onLineBreak: () => void;
@@ -192,15 +188,6 @@ const renderLinkForm = (
     class="link-form"
     novalidate
     @beforeinput=${stopPropagation}
-    @keydown=${(event: KeyboardEvent) => {
-      // The link field has its own typing and undo, so its keys stop here,
-      // before the format bar, the Block and the email act on them.
-      event.stopPropagation();
-      if (event.key === "Escape" && !isComposing(event)) {
-        event.preventDefault();
-        events.onCancelLink();
-      }
-    }}
     @submit=${(event: SubmitEvent) => {
       event.preventDefault();
       const form = event.target as HTMLFormElement;
@@ -263,26 +250,16 @@ export const renderFormatBar = (
       aria-label="Text formatting"
       class="ui bar format-bar"
       role="toolbar"
-      @keydown=${(event: KeyboardEvent) => {
-        // Escape goes back to the text, as from the link field.
-        if (event.key === "Escape" && !isComposing(event)) {
-          event.preventDefault();
-          event.stopPropagation();
-          events.onBack();
-          return;
-        }
-        onToolbarArrowKeys(event);
-      }}
       @mousedown=${events.onControlMousedown}
     >
       ${MARK_BUTTONS.map(
-        ({ key, label, mark }) => html`
+        ({ keys, label, mark }) => html`
           <button
-            aria-keyshortcuts=${`${MOD_SHORTCUT}+${key}`}
+            aria-keyshortcuts=${keys.shortcuts}
             aria-label=${label}
             aria-pressed=${formats?.[mark] ? "true" : "false"}
             class="icon-button"
-            data-tooltip=${`${label} (${MOD_KEY}${key})`}
+            data-tooltip=${`${label} (${keys.keys})`}
             ?disabled=${!formats || (mark === "bold" && !formats.canBold)}
             tabindex="-1"
             type="button"
@@ -295,11 +272,11 @@ export const renderFormatBar = (
       <span class="separator"></span>
       <button
         aria-expanded=${linkForm ? "true" : "false"}
-        aria-keyshortcuts=${`${MOD_SHORTCUT}+K`}
+        aria-keyshortcuts=${LINK_KEYS.shortcuts}
         aria-label=${linkLabel}
         class="icon-button"
         ?data-active=${formats?.linkHref !== undefined}
-        data-tooltip=${`${linkLabel} (${MOD_KEY}K)`}
+        data-tooltip=${`${linkLabel} (${LINK_KEYS.keys})`}
         ?disabled=${!formats}
         tabindex="-1"
         type="button"
@@ -308,10 +285,10 @@ export const renderFormatBar = (
         ${ICONS.link}
       </button>
       <button
-        aria-keyshortcuts="Shift+Enter"
+        aria-keyshortcuts=${LINE_BREAK_KEYS.shortcuts}
         aria-label="Line break"
         class="icon-button"
-        data-tooltip=${`Line break (${LINE_BREAK_KEYS})`}
+        data-tooltip=${`Line break (${LINE_BREAK_KEYS.keys})`}
         ?disabled=${!formats}
         tabindex="-1"
         type="button"
