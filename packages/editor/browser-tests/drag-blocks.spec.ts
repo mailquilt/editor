@@ -672,6 +672,49 @@ test.describe("a file dropped doesn't open in the page", () => {
     ).resolves.toEqual([false, false]);
   });
 
+  test("on the email in the open Preview, which lets the dialog take it", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await previewButton(page).click();
+    const email = page
+      .getByRole("dialog", { name: "Preview" })
+      .locator("iframe[title='Email preview']");
+    await expect(email).toBeVisible();
+    const { height, width, x, y } = await boxOf(email);
+    const middle = { x: x + width / 2, y: y + height / 2 };
+    /** The iframe's own document would get the drop, out of the editor's reach. */
+    const isUnderMiddle = () =>
+      email.evaluate(
+        (frame, point) =>
+          (frame.getRootNode() as ShadowRoot).elementFromPoint(
+            point.x,
+            point.y
+          ) === frame,
+        middle
+      );
+    await expect(isUnderMiddle()).resolves.toBe(true);
+
+    await canvas(page).evaluate((editor) => {
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(
+        new File(["x"], "photo.png", { type: "image/png" })
+      );
+      editor.shadowRoot?.querySelector("dialog")?.dispatchEvent(
+        new DragEvent("dragenter", {
+          bubbles: true,
+          composed: true,
+          dataTransfer,
+        })
+      );
+    });
+    await expect(isUnderMiddle()).resolves.toBe(false);
+
+    // The drag is over once the pointer moves, and the email scrolls again.
+    await page.mouse.move(middle.x, middle.y);
+    await expect(isUnderMiddle()).resolves.toBe(true);
+  });
+
   test("on the narrow notice", async ({ page }) => {
     await page.setViewportSize({ height: 800, width: 390 });
     await page.goto("/");

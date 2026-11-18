@@ -51,13 +51,16 @@ import type { Tooltips } from "./tooltips.js";
 /** Typing after a gap this long starts a new undo step. */
 const TYPING_PAUSE_MS = 1000;
 
+const carriesFile = (event: DragEvent) =>
+  event.dataTransfer?.types.includes("Files") ?? false;
+
 /**
  * A file dropped anywhere in the editor, the Preview and the narrow notice too,
  * would open in the tab, in place of the page and the email. Dragged text
  * still moves.
  */
 const refuseFiles = (event: DragEvent) => {
-  if (event.dataTransfer?.types.includes("Files")) {
+  if (event.dataTransfer && carriesFile(event)) {
     event.preventDefault();
     event.dataTransfer.dropEffect = "none";
   }
@@ -103,6 +106,8 @@ export class MailQuilt extends LitElement {
   #lastTypedAt = 0;
   #panelTab: PanelTab = "content";
   #formats: TextFormats | undefined;
+  /** A file is being dragged over the editor, which the Preview lets through. */
+  #draggingFile = false;
   readonly #selection = createSelection({
     onSelect: () => {
       this.#linkForm.close();
@@ -204,6 +209,11 @@ export class MailQuilt extends LitElement {
     this.addEventListener("keydown", this.#onKeydownCapture, { capture: true });
     this.addEventListener("dragover", refuseFiles);
     this.addEventListener("drop", refuseFiles);
+    this.addEventListener("dragenter", (event) =>
+      this.#setDraggingFile(carriesFile(event))
+    );
+    // No pointer events fire during a drag, so the next one means it's over.
+    this.addEventListener("pointermove", () => this.#setDraggingFile(false));
     // A host may set `value` before this element is defined, which leaves an
     // own property in front of the setter.
     if (Object.hasOwn(this, "value")) {
@@ -336,7 +346,11 @@ export class MailQuilt extends LitElement {
     const api = this.#panelApi(document);
 
     return html`
-      ${renderPreview(this.#preview.shown, this.#preview.events)}
+      ${renderPreview(
+        this.#preview.shown,
+        this.#preview.events,
+        this.#draggingFile
+      )}
       <div class="visually-hidden" lang=${UI_LANG} role="status">
         ${keyed(this.#announcementId, html`<span>${this.#announcement}</span>`)}
       </div>
@@ -424,6 +438,13 @@ export class MailQuilt extends LitElement {
     const formats = this.#selection.selectedText?.formats();
     if (JSON.stringify(formats) !== JSON.stringify(this.#formats)) {
       this.#formats = formats;
+      this.requestUpdate();
+    }
+  }
+
+  #setDraggingFile(dragging: boolean) {
+    if (this.#draggingFile !== dragging) {
+      this.#draggingFile = dragging;
       this.requestUpdate();
     }
   }

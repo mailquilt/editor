@@ -57,6 +57,10 @@ export const previewStyles = css`
     width: 100%;
   }
 
+  .preview[data-file-drag] iframe {
+    pointer-events: none;
+  }
+
   .preview-panel > p {
     margin: 0;
     padding: var(--mq-space-4);
@@ -212,15 +216,19 @@ interface PreviewEvents {
  * The dialog stays rendered so that closing it, not removing it, returns focus.
  * An empty `sandbox` gives the email an opaque origin and no scripts, forms,
  * popups or top-level navigation. Escape closes it and goes no further, so a
- * modal of the host's around the editor stays open.
+ * modal of the host's around the editor stays open. While a file is dragged
+ * over the editor, the email lets it through to the dialog, which refuses it,
+ * as the email's own document would let the browser open it.
  */
 export const renderPreview = (
   preview: Preview | undefined,
-  { onClose, onClosed }: PreviewEvents
+  { onClose, onClosed }: PreviewEvents,
+  draggingFile: boolean
 ) => html`
   <dialog
     aria-labelledby="preview-title"
     class="preview"
+    ?data-file-drag=${draggingFile}
     lang=${UI_LANG}
     @close=${onClosed}
   >
