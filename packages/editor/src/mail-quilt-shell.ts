@@ -3,7 +3,7 @@ import type { BlocksDocument, LoadResult } from "@mailquilt/core";
 import { css, html, LitElement, nothing, unsafeCSS } from "lit";
 import { keyed } from "lit/directives/keyed.js";
 
-import "./mail-quilt.js";
+import { refuseFiles } from "./mail-quilt.js";
 import type { MailQuilt } from "./mail-quilt.js";
 import { themeTokens, UI_LANG, uiStyles } from "./theme.js";
 
@@ -215,6 +215,9 @@ export class MailQuiltShell extends LitElement {
 
   constructor() {
     super();
+    // Its header is outside <mail-quilt>, which refuses the rest.
+    this.addEventListener("dragover", refuseFiles);
+    this.addEventListener("drop", refuseFiles);
     // As on <mail-quilt>, for a `value` set before this element is defined.
     if (Object.hasOwn(this, "value")) {
       const { value } = this;

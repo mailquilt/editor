@@ -55,11 +55,11 @@ const carriesFile = (event: DragEvent) =>
   event.dataTransfer?.types.includes("Files") ?? false;
 
 /**
- * A file dropped anywhere in the editor, the Preview and the narrow notice too,
- * would open in the tab, in place of the page and the email. Dragged text
- * still moves.
+ * A file dropped anywhere in the editor, the Preview, the narrow notice and the
+ * Shell too, would open in the tab, in place of the page and the email.
+ * Dragged text still moves.
  */
-const refuseFiles = (event: DragEvent) => {
+export const refuseFiles = (event: DragEvent) => {
   if (event.dataTransfer && carriesFile(event)) {
     event.preventDefault();
     event.dataTransfer.dropEffect = "none";

@@ -1027,6 +1027,30 @@ test("shows the dragging cursor over the Shell during a drag", async ({
   await expect.poll(cursor).toBe("pointer");
 });
 
+test("a file dropped on the header doesn't open in the page", async ({
+  page,
+}) => {
+  await openShell(page);
+
+  const allowed = await header(page).evaluate((element) => {
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(new File(["x"], "photo.png", { type: "image/png" }));
+    return ["dragover", "drop"].map((type) =>
+      element.dispatchEvent(
+        new DragEvent(type, {
+          bubbles: true,
+          cancelable: true,
+          composed: true,
+          dataTransfer,
+        })
+      )
+    );
+  });
+
+  // dispatchEvent is false once the browser's own handling is prevented.
+  expect(allowed).toEqual([false, false]);
+});
+
 test.describe("accessibility", () => {
   test("meets WCAG 2.2 AA, with a message showing", async ({ page }) => {
     await page.goto("/shell.html?refused-first");
