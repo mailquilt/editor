@@ -307,37 +307,40 @@ There are no dates, and items can move. Each item is tracked in GitHub Issues.
 
 **Next**
 
-What a team needs before its customers can use the editor. These come before the MCP server and the AI builder because a team that can't upload an image or pick a Merge Tag stops there, whatever else the editor does.
+`0.2` comes first and adds no features: it restructures the editor ([ADR 0004](docs/adr/0004-restructure-the-editor-for-0-2.md)). Next starts in `0.3`.
+
+What a team needs before its customers can use the editor. The first six are specified together and ship first. These come before the MCP server and the AI builder because a team that can't upload an image or pick a Merge Tag stops there, whatever else the editor does.
 
 1. Image upload, to storage the host app supplies
 2. A Merge Tag picker, filled by the host app
 3. Lists in text
-4. Web fonts
-5. Social, Menu, Video and HTML Blocks
-6. Row padding, hiding or stacking on phones, and a mobile preview
-7. Copy, paste and duplicate
-8. Alt text, or a "decorative" choice, for every image
-9. A plain-text version of each email
-10. Translations of the editor's interface, and right-to-left text
-11. Starter emails
-12. React 18 in `@mailquilt/react`
-13. Vue, Angular and Svelte tested in `install-checks`, with types for the element
+4. Row padding, hiding or stacking on phones, and a mobile preview
+5. Copy, paste and duplicate
+6. A Social Block
+7. Web fonts
+8. Menu, Video and HTML Blocks
+9. Alt text, or a "decorative" choice, for every image
+10. A plain-text version of each email
+11. Translations of the editor's interface, and right-to-left text
+12. Starter emails
+13. React 18 in `@mailquilt/react`
+14. Vue, Angular and Svelte tested in `install-checks`, with types for the element
+15. A JSON Schema for the email format
 
 **Later**
 
-Wanted. The first five open the editor up to the host app, so they come first. The rest have no order yet.
+Wanted. The first five open the editor up to the host app, so they come first, in this order. The rest have no order yet.
 
 - Custom Blocks
 - The editor in parts a host app arranges itself, with the text editor as its own element, and the selection and Commands reachable from outside
+- Saved Rows, whether a person saved them or the host app supplied them
 - Display rules and brand styles
-- Saved Rows, and ready-made sections to drag in
 - Parts of an email that can't be changed
 - Light and dark editor themes
 - The email checker
 - A dark-mode preview
 - HTML mode, and a read-only view of the generated code
 - Import from HTML, MJML and other editors' formats
-- A JSON Schema for the email format
 - An MCP server, on its own, with its first five tools, then a CLI and local mode
 - The AI builder
 - Vue and Svelte wrappers, if the tested and typed element isn't enough
@@ -367,7 +370,7 @@ There are three levels of access to HTML:
 
 Switching from Blocks to HTML always works. It warns that the email leaves the visual editor, and keeps the Block version so the user can go back, losing their HTML edits. Switching from HTML to Blocks is best effort: what's recognized becomes Blocks, and the rest becomes HTML Blocks, so nothing is lost. The two are never kept in continuous sync.
 
-The HTML Block comes first, on its own. It's the one Block that lets a person put markup of their own on the canvas, so how its content is sanitized, and how a host app turns the Block off, are settled before it's built.
+The HTML Block comes first, on its own. It's the one Block that lets a person put markup of their own on the canvas, so how its content is sanitized, and how a host app turns the Block off, are settled before it's built. The Block is off unless the host app turns it on.
 
 ### Brand styles, Merge Tags and display rules
 
@@ -486,7 +489,7 @@ Custom Blocks and settings fields, custom checker rules, image upload and media 
 - **Browser tests (Playwright):** drag and drop, the keyboard, undo, settings, export and the React wrapper, in Chromium, Firefox and WebKit, with automated accessibility checks.
 - **Install checks:** the packed packages are installed in fresh plain JavaScript, CDN and Next.js projects, and tested there.
 - **Email clients:** `0.1.0` is checked in Email on Acid, in Gmail, Apple Mail, iOS Mail, every version of Outlook, Yahoo, AOL and European webmail, in light and dark mode. The docs list the clients and the known limits.
-- **By hand, before each release:** the same check in Email on Acid, with a fixed set of test emails that use every Block and layout. The docs' page of tested clients then gets the new date.
+- **By hand, before each release that adds a Block or changes what the renderer writes:** the same check in Email on Acid, with a fixed set of test emails that use every Block and layout. The docs' page of tested clients then gets the new date.
 - **By hand, for `0.1.0`:** keyboard and screen reader use, typing Japanese in Safari, Firefox and Chrome (automated tests can only simulate it in Chromium), and touch.
 
 [`docs/agents/testing.md`](docs/agents/testing.md) says how tests are written here.
