@@ -85,7 +85,7 @@ editor.apply(second, { mergeKey: "import" });
 
 ## Listening for changes
 
-`subscribe()` calls you after every change, including undo and redo, with what changed. It returns a function that stops the calls. Subscribing the same function twice calls it twice, until you stop each one.
+`subscribe()` calls you after every change, including undo and redo, with what changed. It returns a function that stops the calls. Subscribing a function that's already subscribed adds nothing, and either function you got back stops it.
 
 ```js
 const stop = editor.subscribe((operations) => {

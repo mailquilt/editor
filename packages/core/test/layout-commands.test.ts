@@ -316,14 +316,15 @@ describe("the Commands that add a Row for a Block", () => {
   });
 
   it.each([
+    // Named before the Row index, which is past the end too.
     [
       "an unknown Block",
-      { blockId: "nope", rowIndex: 0, type: "moveBlockToNewRow" },
+      { blockId: "nope", rowIndex: 5, type: "moveBlockToNewRow" },
       /No Block/u,
     ],
     [
       "an unknown Block type",
-      { blockType: "nope", rowIndex: 0, type: "insertBlockInNewRow" },
+      { blockType: "nope", rowIndex: 5, type: "insertBlockInNewRow" },
       /Unknown Block type/u,
     ],
     [

@@ -48,8 +48,8 @@ export interface Editor {
   getDocument: () => BlocksDocument;
   /**
    * Calls `listener` with the Operations of each change, including undo and
-   * redo. Returns a function that ends the subscription. The same function
-   * subscribed twice is called twice, until each subscription ends. A listener
+   * redo. Returns a function that ends the subscription. Subscribing a function
+   * that's already subscribed adds nothing, so one call ends it. A listener
    * that throws doesn't stop the others hearing of the change. Once they all
    * have, the first error is thrown from the `apply()`, `undo()` or `redo()`
    * that made it.
@@ -82,8 +82,7 @@ export const createEditor = ({
   const undoStack: Operation[][] = [];
   const redoStack: Operation[][] = [];
   let openMergeKey: string | undefined;
-  // Each subscription is its own entry, so the same function can have two.
-  const listeners = new Set<{ listener: (operations: Operation[]) => void }>();
+  const listeners = new Set<(operations: Operation[]) => void>();
 
   const changeDocument = (operations: Operation[]) => {
     const next = structuredClone(current);
@@ -112,7 +111,7 @@ export const createEditor = ({
     notifying = true;
     let failure: { error: unknown } | undefined;
     for (let next = unheard.shift(); next; next = unheard.shift()) {
-      for (const { listener } of listeners) {
+      for (const listener of listeners) {
         try {
           listener(structuredClone(next));
         } catch (error) {
@@ -189,10 +188,9 @@ export const createEditor = ({
       return true;
     },
     subscribe: (listener) => {
-      const subscription = { listener };
-      listeners.add(subscription);
+      listeners.add(listener);
       return () => {
-        listeners.delete(subscription);
+        listeners.delete(listener);
       };
     },
     undo: () => {

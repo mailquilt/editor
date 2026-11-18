@@ -425,9 +425,12 @@ const planMoveBlockToNewRow = (
   rowIndex: number
 ): CommandPlan => {
   const from = findBlockPosition(document, blockId);
-  const row = from && document.rows[from.rowIndex];
+  // Before the new Row's place, so a missing Block is named as that.
+  if (!from) {
+    return rejected("noSuchBlock", `No Block with ID "${blockId}"`);
+  }
+  const row = document.rows[from.rowIndex];
   if (
-    from &&
     row?.columns.length === 1 &&
     row.columns[0]?.blocks.length === 1 &&
     (rowIndex === from.rowIndex || rowIndex === from.rowIndex + 1)
@@ -582,6 +585,13 @@ export const planCommand = (
       return planMoveBlockToNewRow(document, output.blockId, output.rowIndex);
     }
     case "insertBlockInNewRow": {
+      // Before the new Row's place, as moveBlockToNewRow checks its Block.
+      if (!blockDefinitions.has(output.blockType)) {
+        return rejected(
+          "unknownBlockType",
+          `Unknown Block type "${output.blockType}"`
+        );
+      }
       return planInNewRow(document, output.rowIndex, (withRow, columnId) =>
         planInsertBlock(withRow, output.blockType, columnId, 0)
       );

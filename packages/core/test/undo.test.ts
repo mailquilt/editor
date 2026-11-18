@@ -412,7 +412,7 @@ describe("subscribing to Operations", () => {
     expect(received).toStrictEqual([]);
   });
 
-  it("gives a function subscribed twice two subscriptions, ended one at a time", () => {
+  it("adds nothing for a function subscribed again, and ends it with one unsubscribe", () => {
     const { editor, setText } = setup();
     let heard = 0;
     const listener = () => {
@@ -422,11 +422,11 @@ describe("subscribing to Operations", () => {
     editor.subscribe(listener);
 
     setText("A");
-    expect(heard).toBe(2);
+    expect(heard).toBe(1);
 
     expect(unsubscribe()).toBeUndefined();
     setText("B");
-    expect(heard).toBe(3);
+    expect(heard).toBe(1);
   });
 
   it("keeps the history safe from a listener changing what it received", () => {
