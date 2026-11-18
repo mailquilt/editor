@@ -18,10 +18,18 @@ import {
   solidColorSchema,
 } from "./settings.js";
 import type { SettingsField } from "./settings.js";
+import { parseProps } from "./validation.js";
 
 const MAX_FONT_SIZE = 200;
 
-const alignSchema = v.picklist(["left", "center", "right"]);
+/** The alignment dropdown, whose values are all the schema accepts. */
+const ALIGN_OPTIONS = [
+  { label: "Left", value: "left" },
+  { label: "Center", value: "center" },
+  { label: "Right", value: "right" },
+] as const;
+
+const alignSchema = v.picklist(ALIGN_OPTIONS.map(({ value }) => value));
 
 const fontSizeSchema = pixelSchema(MAX_FONT_SIZE);
 
@@ -30,11 +38,7 @@ const alignField = (fallback: string): SettingsField => ({
   invalidMessage: "Choose an alignment from the list.",
   key: "align",
   label: "Alignment",
-  options: [
-    { label: "Left", value: "left" },
-    { label: "Center", value: "center" },
-    { label: "Right", value: "right" },
-  ],
+  options: ALIGN_OPTIONS,
   type: "select",
 });
 
@@ -104,12 +108,19 @@ const HEADING_LOOK = { align: "left", color: "#000000" } as const;
 
 const HEADING_FONT_SIZES = { 1: 32, 2: 24, 3: 20 } as const;
 
+/** The level dropdown, whose values are all the schema accepts. */
+const LEVEL_OPTIONS = [
+  { label: "Heading 1", value: 1 },
+  { label: "Heading 2", value: 2 },
+  { label: "Heading 3", value: 3 },
+] as const;
+
 const headingBlockSchema = v.strictObject({
   align: v.optional(alignSchema),
   color: v.optional(colorSchema),
   content: richTextSchema,
   fontSize: v.optional(fontSizeSchema),
-  level: v.picklist([1, 2, 3]),
+  level: v.picklist(LEVEL_OPTIONS.map(({ value }) => value)),
 });
 
 type HeadingBlockProps = v.InferOutput<typeof headingBlockSchema>;
@@ -119,11 +130,7 @@ const headingFields = (fontSize: number): readonly SettingsField[] => [
     invalidMessage: "Choose a level from the list.",
     key: "level",
     label: "Level",
-    options: [
-      { label: "Heading 1", value: 1 },
-      { label: "Heading 2", value: 2 },
-      { label: "Heading 3", value: 3 },
-    ],
+    options: LEVEL_OPTIONS,
     type: "select",
   },
   alignField(HEADING_LOOK.align),
@@ -342,14 +349,27 @@ const spacerBlock = {
   },
 } satisfies BlockDefinition;
 
-export const blockDefinitions = new Map<string, BlockDefinition>([
+/** Each type of Block, in the order the palette shows them. */
+const BLOCKS = [
   ["text", textBlock],
   ["heading", headingBlock],
   ["image", imageBlock],
   ["button", buttonBlock],
   ["divider", dividerBlock],
   ["spacer", spacerBlock],
-]);
+] as const;
+
+export const blockDefinitions = new Map<string, BlockDefinition>(BLOCKS);
+
+/**
+ * Each type of Block's props, as its schema checks them.
+ * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
+ */
+export type BlockProps = {
+  [Entry in (typeof BLOCKS)[number] as Entry[0]]: v.InferOutput<
+    Entry[1]["schema"]
+  >;
+};
 
 /** The types of Block a person can add, in the order the palette shows them. */
 export const BLOCK_TYPES: readonly {
@@ -363,29 +383,6 @@ export const BLOCK_TYPES: readonly {
  */
 export const blockLabel = (type: string) =>
   blockDefinitions.get(type)?.label ?? type;
-
-export const describeIssues = (issues: readonly v.BaseIssue<unknown>[]) =>
-  issues
-    .map((issue) => {
-      const path = v.getDotPath(issue);
-      return path ? `${path}: ${issue.message}` : issue.message;
-    })
-    .join("; ");
-
-/** Checks what `owner`'s properties would become. */
-export const parseProps = (
-  schema: v.GenericSchema<unknown, Record<string, unknown>>,
-  props: unknown,
-  owner: string
-) => {
-  const result = v.safeParse(schema, props);
-  return result.success
-    ? { ok: true as const, props: result.output }
-    : {
-        ok: false as const,
-        reason: `Invalid props for ${owner}: ${describeIssues(result.issues)}`,
-      };
-};
 
 export const validateProps = (
   block: Pick<Block, "id" | "type">,

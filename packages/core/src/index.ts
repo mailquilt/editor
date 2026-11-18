@@ -14,8 +14,10 @@ export type {
   RichTextParagraph,
   RichTextText,
 } from "./rich-text.js";
-export type { Command, RefusalCode, RowLayout } from "./commands.js";
-export { ROW_LAYOUTS } from "./commands.js";
+export type { Command } from "./command-schema.js";
+export type { RefusalCode } from "./commands.js";
+export type { RowLayout } from "./row-layouts.js";
+export { ROW_LAYOUTS } from "./row-layouts.js";
 export type { ApplyOptions, ApplyResult, Editor } from "./editor.js";
 export { createEditor } from "./editor.js";
 export type { LoadResult } from "./load-document.js";

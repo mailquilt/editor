@@ -400,6 +400,14 @@ describe("migrating an older document", () => {
     });
   });
 
+  it("migrates one wrapped in a Proxy, as Vue's reactive() makes", () => {
+    const load = createDocumentLoader(1, { 0: renameBackground });
+
+    expect(load(new Proxy(readFixture("pretend-version-0"), {}))).toStrictEqual(
+      { document: readFixture("version-1"), ok: true }
+    );
+  });
+
   it("runs each migration in order, from the saved version", () => {
     const load = createDocumentLoader(3, {
       0: renameBackground,
@@ -485,9 +493,17 @@ describe("migrating an older document", () => {
 
   it("refuses an older document that can't be copied, rather than throwing", () => {
     const load = createDocumentLoader(1, { 0: renameBackground });
-    const saved = { ...readFixture("pretend-version-0"), extra: () => "code" };
+    const saved = {
+      ...readFixture("pretend-version-0"),
+      get settings() {
+        throw new Error("Can't be read");
+      },
+    };
 
-    expect(load(saved)).toMatchObject({ ok: false });
+    expect(load(saved)).toStrictEqual({
+      ok: false,
+      reason: expect.stringMatching(/version 0.*can't be read/iu),
+    });
   });
 });
 

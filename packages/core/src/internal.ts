@@ -7,7 +7,7 @@ export {
   blockStyles,
   EMAIL_LOOK,
 } from "./blocks.js";
-export { rowLayoutOf } from "./commands.js";
+export { rowLayoutOf } from "./row-layouts.js";
 export { findBlockPosition } from "./operations.js";
 export { INVALID_LINK, isAllowedLinkHref, MERGE_TAG } from "./rich-text.js";
 export {
@@ -16,4 +16,5 @@ export {
   ROW_SETTINGS_FIELDS,
   rowStyles,
 } from "./settings.js";
+export type { BlockProps } from "./blocks.js";
 export type { SettingsField } from "./settings.js";

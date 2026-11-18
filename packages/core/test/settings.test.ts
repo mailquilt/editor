@@ -23,7 +23,7 @@ const blockProps = (document: BlocksDocument) =>
   document.rows[0]?.columns[0]?.blocks[0]?.props;
 
 describe("Text Block settings", () => {
-  it("sets alignment, color and font size, keeping the text", () => {
+  it("stores alignment, color and font size, keeping the text", () => {
     const { blockId, editor } = setup();
     const { content } = blockProps(editor.getDocument()) as {
       content: unknown;
@@ -287,18 +287,14 @@ const saved = (change: (email: BlocksDocument) => void) => {
 };
 
 describe("saved settings", () => {
-  it.each([
-    [
-      "a Row setting it doesn't know",
-      (email: BlocksDocument) => {
+  it("refuses a Row setting it doesn't know", () => {
+    expect(
+      saved((email) => {
         (email.rows[0] as BlocksDocument["rows"][0]).props = { padding: 8 };
-      },
-      /padding/u,
-    ],
-  ])("refuses %s", (_name, change, reason) => {
-    expect(saved(change)).toStrictEqual({
+      })
+    ).toStrictEqual({
       ok: false,
-      reason: expect.stringMatching(reason),
+      reason: expect.stringMatching(/padding/u),
     });
   });
 });

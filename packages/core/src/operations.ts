@@ -106,23 +106,47 @@ const getRow = (document: BlocksDocument, rowId: string) => {
   return row;
 };
 
-/** A Placement's item, and the list in the document that it belongs in. */
-const resolvePlacement = (
+/** Changes the list in the document that a Placement's item belongs in. */
+type ListEdit = <Item extends { id: string }>(
+  list: Item[],
+  index: number,
+  item: Item
+) => void;
+
+/** Gives `edit` the Placement's item with its own list, so the types match. */
+const editPlacement = (
   document: BlocksDocument,
-  placement: Placement
-): { item: Block | Column | Row; list: (Block | Column | Row)[] } => {
+  placement: Placement,
+  edit: ListEdit
+) => {
   if ("row" in placement) {
-    return { item: placement.row, list: document.rows };
+    edit(document.rows, placement.at.index, placement.row);
+  } else if ("column" in placement) {
+    edit(
+      getRow(document, placement.at.rowId).columns,
+      placement.at.index,
+      placement.column
+    );
+  } else {
+    edit(
+      getColumn(document, placement.at.columnId).blocks,
+      placement.at.index,
+      placement.block
+    );
   }
-  return "column" in placement
-    ? {
-        item: placement.column,
-        list: getRow(document, placement.at.rowId).columns,
-      }
-    : {
-        item: placement.block,
-        list: getColumn(document, placement.at.columnId).blocks,
-      };
+};
+
+const insertItem: ListEdit = (list, index, item) => {
+  // A copy, because later Operations change this item in place.
+  list.splice(index, 0, structuredClone(item));
+};
+
+const removeItem: ListEdit = (list, index, item) => {
+  // As for a move: a stale index would otherwise remove another item.
+  if (list[index]?.id !== item.id) {
+    throw new Error(`No "${item.id}" at index ${index}`);
+  }
+  list.splice(index, 1);
 };
 
 /** Changes `document` in place. */
@@ -132,18 +156,11 @@ export const applyOperation = (
 ) => {
   switch (operation.type) {
     case "insert": {
-      const { item, list } = resolvePlacement(document, operation);
-      // A copy, because later Operations change this item in place.
-      list.splice(operation.at.index, 0, structuredClone(item));
+      editPlacement(document, operation, insertItem);
       break;
     }
     case "remove": {
-      const { item, list } = resolvePlacement(document, operation);
-      // As for a move: a stale index would otherwise remove another item.
-      if (list[operation.at.index]?.id !== item.id) {
-        throw new Error(`No "${item.id}" at index ${operation.at.index}`);
-      }
-      list.splice(operation.at.index, 1);
+      editPlacement(document, operation, removeItem);
       break;
     }
     case "move": {
@@ -169,6 +186,8 @@ export const applyOperation = (
     }
     case "setProps": {
       if ("emailSettings" in operation) {
+        // Safe: the Command that planned it checked these against the email
+        // settings' schema, and undo gives back settings that were checked.
         document.settings = operation.props as unknown as EmailSettings;
       } else if ("rowId" in operation) {
         getRow(document, operation.rowId).props = operation.props;

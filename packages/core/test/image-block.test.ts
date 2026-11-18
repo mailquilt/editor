@@ -99,16 +99,13 @@ describe("Image Block", () => {
     });
   });
 
-  it.each([["a width of 0", { width: 0 }, /width/u]])(
-    "rejects %s",
-    (_name, props, reason) => {
-      expect(setProps(props).result).toStrictEqual({
-        code: "invalidProps",
-        ok: false,
-        reason: expect.stringMatching(reason),
-      });
-    }
-  );
+  it("rejects a width of 0", () => {
+    expect(setProps({ width: 0 }).result).toStrictEqual({
+      code: "invalidProps",
+      ok: false,
+      reason: expect.stringMatching(/width/u),
+    });
+  });
 
   it.each([
     ["no alt text", {}],

@@ -1,9 +1,10 @@
 import * as v from "valibot";
 
-import { describeIssues, validateProps } from "./blocks.js";
+import { validateProps } from "./blocks.js";
 import { DOCUMENT_VERSION } from "./document.js";
 import type { BlocksDocument } from "./document.js";
 import { emailSettingsSchema, rowPropsSchema } from "./settings.js";
+import { describeIssues } from "./validation.js";
 
 export type LoadResult =
   | { ok: true; document: BlocksDocument }
@@ -102,6 +103,24 @@ const findProblem = ({ rows }: ParsedDocument) => {
   }
 };
 
+/**
+ * A copy of a document, read through any Proxy, as Vue's reactive() makes,
+ * which structuredClone would refuse. Each list is copied as a list and every
+ * other object as a plain object, so the schema refuses one, such as a Date,
+ * that JSON couldn't have saved. A function stays as it is, for the schema to
+ * refuse too.
+ */
+const copyData = (value: unknown): unknown => {
+  if (Array.isArray(value)) {
+    return value.map((item) => copyData(item));
+  }
+  return typeof value === "object" && value !== null
+    ? Object.fromEntries(
+        Object.entries(value).map(([key, item]) => [key, copyData(item)])
+      )
+    : value;
+};
+
 const migrate = (
   input: object,
   savedVersion: number,
@@ -119,8 +138,9 @@ const migrate = (
     }
     try {
       document = {
-        // A copy, so that a migration can't change the host's document.
-        ...migration(structuredClone(document) as Record<string, unknown>),
+        // A copy, so that a migration can't change the host's document. The
+        // copy of an object that isn't a list is a plain object.
+        ...migration(copyData(document) as Record<string, unknown>),
         version: version + 1,
       };
     } catch (error) {

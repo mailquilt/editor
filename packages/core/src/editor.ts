@@ -1,5 +1,6 @@
+import type { Command } from "./command-schema.js";
 import { planCommand } from "./commands.js";
-import type { Command, RefusalCode } from "./commands.js";
+import type { RefusalCode } from "./commands.js";
 import type { BlocksDocument } from "./document.js";
 import { isSameDocument, loadDocument } from "./load-document.js";
 import { applyOperation, reverseOperation } from "./operations.js";
