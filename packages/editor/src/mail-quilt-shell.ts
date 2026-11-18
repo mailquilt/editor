@@ -347,7 +347,7 @@ export class MailQuiltShell extends LitElement {
               : nothing
           }
         </div>
-        <div class="body">${this.#editor}</div>
+        <div class="body" data-testid="body">${this.#editor}</div>
       </div>
     `;
   }

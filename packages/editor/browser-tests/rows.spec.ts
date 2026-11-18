@@ -26,15 +26,15 @@ test.describe("selecting a Row", () => {
     page,
   }) => {
     await open(page, [[["A"]], [["B"], ["C"]]]);
-    await canvas(page).locator(".row").nth(1).hover();
+    await canvas(page).getByTestId("row").nth(1).hover();
 
     await rowTag(page, 2).click();
 
     await expect(rowTools(page, 2)).toHaveAttribute("aria-current", "true");
     await expect(selectedBlock(page)).toHaveCount(0);
-    await expect(canvas(page).locator(".side-panel legend")).toHaveText([
-      "Row",
-    ]);
+    await expect(
+      canvas(page).getByTestId("side-panel").locator("legend")
+    ).toHaveText(["Row"]);
     await expect(layoutOption(page, "50/50")).toHaveAttribute(
       "aria-pressed",
       "true"
@@ -75,14 +75,14 @@ test.describe("dragging a layout from the Rows tab", () => {
     await openTab(page, "Rows");
     const tile = layoutTile(page, "50/50");
     const from = await boxOf(tile);
-    const second = await boxOf(canvas(page).locator(".row").nth(1));
+    const second = await boxOf(canvas(page).getByTestId("row").nth(1));
 
     await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
     await page.mouse.down();
     await page.mouse.move(from.x + 20, from.y + 20, { steps: 3 });
     await page.mouse.move(second.x + 100, second.y + 4, { steps: 8 });
     await settle(page);
-    await expect(canvas(page).locator(".drop-indicator")).toBeVisible();
+    await expect(canvas(page).getByTestId("drop-indicator")).toBeVisible();
     // A new Row lands between Rows, never in a Column.
     await expect(canvas(page).locator("[data-drop-target]")).toHaveCount(0);
     await page.mouse.up();

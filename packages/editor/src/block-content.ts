@@ -118,7 +118,9 @@ const renderButton = (block: Block, lang: string) => {
       lang=${lang}
       style=${styleMap({ "text-align": align })}
     >
-      <span class="button" style=${styleMap(face)}>${block.props.label}</span>
+      <span class="button" data-testid="button-face" style=${styleMap(face)}
+        >${block.props.label}</span
+      >
     </div>
   `;
 };
@@ -167,7 +169,11 @@ const renderImage = (
 
 const renderDivider = (block: Block) => html`
   <div class="divider-block">
-    <div class="divider" style=${styleMap(blockStyles(block))}></div>
+    <div
+      class="divider"
+      data-testid="divider-line"
+      style=${styleMap(blockStyles(block))}
+    ></div>
   </div>
 `;
 

@@ -24,10 +24,10 @@ import {
 } from "./canvas.js";
 import type { CanvasEvents, CanvasState } from "./canvas.js";
 import { createLinkForm, formatBarStyles } from "./format-bar.js";
-import type { FormatBarEvents } from "./format-bar.js";
 import { claim, historyInput, keyFor } from "./key-map.js";
 import type { Action, Binding, Direction, Place } from "./key-map.js";
 import { editorStyles } from "./mail-quilt-styles.js";
+import type { PanelActions, PanelApi } from "./panel-api.js";
 import {
   blocksIn,
   locate,
@@ -41,7 +41,7 @@ import { createPreview, previewStyles, renderPreview } from "./preview.js";
 import { createSelection, focusToolbarButton } from "./selection.js";
 import { createSettingsDrafts, settingsPanelStyles } from "./settings-panel.js";
 import { renderSidePanel, sidePanelStyles } from "./side-panel.js";
-import type { PanelTab, SidePanelEvents } from "./side-panel.js";
+import type { PanelTab } from "./side-panel.js";
 import { createTextBlockView } from "./text-block-view.js";
 import type { TextBlockView, TextFormats } from "./text-block-view.js";
 import { themeTokens, UI_LANG, uiStyles } from "./theme.js";
@@ -159,41 +159,36 @@ export class MailQuilt extends LitElement {
   /** Made on the page, as a server rendering the editor has no ResizeObserver. */
   #resizeObserver: ResizeObserver | undefined;
 
-  readonly #sidePanelEvents: SidePanelEvents = {
-    onAddBlock: (blockType) => this.#addBlock(blockType),
-    onAddRow: (layout) => this.#addRow(layout),
-    onBack: () => this.#selection.showTabs(this.#panelTab),
-    onChooseLayout: (rowId, layout) =>
-      this.#apply({ layout, rowId, type: "setRowLayout" }),
+  /** Every change the Side panel, its settings and the toolbars make. */
+  readonly #panelActions: PanelActions = {
+    addBlock: (blockType, place) => this.#addBlock(blockType, place),
+    addRow: (layout) => this.#addRow(layout),
+    apply: (command) => this.#apply(command, { refusable: true }),
+    cancelLink: () => this.#linkForm.cancel(),
+    deleteBlock: (fromKeyboard) => this.#deleteSelectedBlock(fromKeyboard),
+    deleteRow: (rowId, fromKeyboard) => this.#deleteRow(rowId, fromKeyboard),
+    insertLineBreak: () => this.#selection.selectedText?.insertLineBreak(),
+    moveBlock: (direction) => this.#moveSelectedBlock(direction),
+    moveRow: (rowId, direction) => this.#moveRow(rowId, direction),
     onControlMousedown: (event) => this.#selection.onControlMousedown(event),
-    onSelectTab: (tab) => this.#selectTab(tab),
+    onHandleMousedown: (event) => this.#selection.onHandleMousedown(event),
+    openLinkField: () => this.#linkForm.open(),
+    openPreview: () => this.#openPreview(),
+    removeLink: () => this.#linkForm.remove(),
+    selectRow: (rowId) => this.#selection.selectRow(rowId),
+    selectTab: (tab) => this.#selectTab(tab),
     settings: this.#drafts.events,
-  };
-
-  readonly #formatBarEvents: FormatBarEvents = {
-    ...this.#linkForm.events,
-    onControlMousedown: (event) => this.#selection.onControlMousedown(event),
-    onLineBreak: () => this.#selection.selectedText?.insertLineBreak(),
-    onToggleMark: (mark) => this.#selection.selectedText?.toggleMark(mark),
+    showTabs: () => this.#selection.showTabs(this.#panelTab),
+    stepHistory: (step) => this.#stepHistory(step),
+    submitLink: (href) => this.#linkForm.submit(href),
+    toggleMark: (mark) => this.#selection.selectedText?.toggleMark(mark),
   };
 
   readonly #canvasEvents: CanvasEvents = {
-    formatBar: this.#formatBarEvents,
-    onAddBlock: (blockType, place) => this.#addBlock(blockType, place),
     onBlockClick: (event) => this.#selection.onBlockClick(event),
     onBlockFocus: (blockId) => this.#selection.onBlockFocus(blockId),
     onBlockFocusout: () => this.#selection.onBlockFocusout(),
-    onControlMousedown: (event) => this.#selection.onControlMousedown(event),
-    onDeleteRow: (rowId, fromKeyboard) => this.#deleteRow(rowId, fromKeyboard),
-    onDeleteSelectedBlock: (fromKeyboard) =>
-      this.#deleteSelectedBlock(fromKeyboard),
-    onHandleMousedown: (event) => this.#selection.onHandleMousedown(event),
     onImageError: (src) => this.#onImageError(src),
-    onMoveRow: (rowId, direction) => this.#moveRow(rowId, direction),
-    onMoveSelectedBlock: (direction) => this.#moveSelectedBlock(direction),
-    onOpenPreview: () => this.#openPreview(),
-    onSelectRow: (rowId) => this.#selection.selectRow(rowId),
-    onStepHistory: (step) => this.#stepHistory(step),
   };
 
   protected override createRenderRoot() {
@@ -334,8 +329,8 @@ export class MailQuilt extends LitElement {
     if (!document) {
       return nothing;
     }
-    const { rows, settings } = document;
-    const selected = this.#selectedPosition(document);
+    const { settings } = document;
+    const api = this.#panelApi(document);
 
     return html`
       ${renderPreview(this.#preview.shown, this.#preview.events)}
@@ -351,9 +346,10 @@ export class MailQuilt extends LitElement {
         Use arrow keys to select another Block, and Alt with arrow keys to move
         this one.
       </p>
-      ${this.#narrow ? renderNarrowNotice(this.#canvasEvents) : nothing}
+      ${this.#narrow ? renderNarrowNotice(api) : nothing}
       <div
         class="ui frame editor"
+        data-testid="editor"
         lang=${UI_LANG}
         part="frame"
         ?data-collapsed=${this.#narrow}
@@ -363,11 +359,13 @@ export class MailQuilt extends LitElement {
       >
         <div
           class="canvas-area"
+          data-testid="workspace"
           @click=${this.#onWorkspaceClick}
           @pointerdown=${this.#onWorkspacePointerdown}
         >
           <div
             class="email"
+            data-testid="email"
             @beforeinput=${this.#onBeforeInput}
             style=${styleMap({
               // Also for what's dragged, which has nothing behind it.
@@ -377,34 +375,44 @@ export class MailQuilt extends LitElement {
               width: `${settings.width}px`,
             })}
           >
-            ${renderRows(rows, this.#canvasState, this.#canvasEvents)}
-            <div class="drop-indicator" hidden></div>
+            ${renderRows(api, this.#canvasState, this.#canvasEvents)}
+            <div
+              class="drop-indicator"
+              data-testid="drop-indicator"
+              hidden
+            ></div>
           </div>
-          ${renderFloatingToolbar(this.#canvasEvents)}
+          ${renderFloatingToolbar(api)}
         </div>
-        ${renderSidePanel(
-          {
-            document,
-            selectedBlock: selected,
-            selectedRowId: this.#selection.rowId,
-            showProperties: this.#selection.showsSettings,
-            tab: this.#panelTab,
-          },
-          this.#sidePanelEvents
-        )}
+        ${renderSidePanel(api)}
         <div class="ui tooltip" hidden role="tooltip"></div>
       </div>
     `;
   }
 
+  /** What the Side panel, its settings and the toolbars show, and what they do. */
+  #panelApi(email: BlocksDocument): PanelApi {
+    const rowIndex = email.rows.findIndex(
+      ({ id }) => id === this.#selection.rowId
+    );
+    const row = email.rows[rowIndex];
+    return {
+      ...this.#panelActions,
+      editingText: this.#selection.editingText,
+      email,
+      formats: this.#formats,
+      linkField: this.#linkForm.state,
+      selectedBlock: this.#selectedPosition(email),
+      selectedRow: row && { row, rowIndex },
+      showsSettings: this.#selection.showsSettings,
+      tab: this.#panelTab,
+    };
+  }
+
   get #canvasState(): CanvasState {
     return {
-      editingText: this.#selection.editingText,
       emailLang: this.#emailLang,
       failedImages: this.#failedImages,
-      formatBar: { formats: this.#formats, linkForm: this.#linkForm.state },
-      selectedBlockId: this.#selection.blockId,
-      selectedRowId: this.#selection.rowId,
       textOf: (blockId) => this.#views.get(blockId)?.element,
     };
   }
@@ -718,7 +726,7 @@ export class MailQuilt extends LitElement {
     backToText: () => this.#selection.focus({ on: "text" }),
     // The drag hears this itself.
     cancelDrag: doNothing,
-    cancelLink: () => this.#linkForm.events.onCancelLink(),
+    cancelLink: () => this.#linkForm.cancel(),
     // The browser closes the dialog.
     closePreview: doNothing,
     // The tooltips hear this themselves.

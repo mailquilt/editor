@@ -61,7 +61,8 @@ const space = async (from: Locator, to: Locator) => {
   return Math.round(end - y);
 };
 
-const line = (page: Page) => blockGroup(page, "Divider").locator(".divider");
+const line = (page: Page) =>
+  blockGroup(page, "Divider").getByTestId("divider-line");
 
 /** The line, and what it's made of. */
 const look = (locator: Locator) =>
@@ -88,7 +89,7 @@ const takesClickAt = (locator: Locator, offsetX: number, offsetY: number) =>
   );
 
 const spacerHandle = (page: Page) =>
-  blockGroup(page, "Spacer").locator(".drag-handle");
+  blockGroup(page, "Spacer").getByTestId("drag-handle");
 
 const makeThin = async (page: Page) => {
   await blockGroup(page, "Spacer").focus();
@@ -347,7 +348,9 @@ test.describe("an Image", () => {
 
     const onCanvas = await box(image(page));
     expect(onCanvas).toEqual({ height: 120, width: 120 });
-    await expect(offCenter(image(page), ".email")).resolves.toBe(0);
+    await expect(offCenter(image(page), '[data-testid="email"]')).resolves.toBe(
+      0
+    );
 
     const { opened } = await openExport(page);
     await opened.setViewportSize({ height: 800, width: 800 });
@@ -514,17 +517,17 @@ test.describe("a Spacer", () => {
 
     // A Row's toolbar takes clicks once it shows, on hover.
     await canvas(page)
-      .locator(".row")
+      .getByTestId("row")
       .nth(1)
       .hover({ position: { x: 300, y: 0 } });
     await expect(takesClicks(2)).resolves.toBeTruthy();
 
     // The Spacer's own Row shows its toolbar once its tag selects the Row.
     await canvas(page)
-      .locator(".row")
+      .getByTestId("row")
       .first()
       .hover({ position: { x: 300, y: 0 } });
-    await canvas(page).locator(".row-tag").first().click();
+    await canvas(page).getByTestId("row-tag").first().click();
     await expect(takesClicks(1)).resolves.toBeTruthy();
   });
 
@@ -559,7 +562,11 @@ test.describe("a Spacer", () => {
       await drag(
         page,
         spacerHandle(page),
-        await bottomOf(canvas(page).locator(".column.empty"))
+        await bottomOf(
+          canvas(page)
+            .getByTestId("column")
+            .filter({ has: page.getByTestId("placeholder") })
+        )
       );
 
       await expect(blockTypes(page, 0, 0)).resolves.toEqual([]);
@@ -604,7 +611,7 @@ test.describe("a Spacer", () => {
 
       await drag(
         page,
-        text.locator(".drag-handle"),
+        text.getByTestId("drag-handle"),
         await bottomOf(blockGroup(page, "Heading"))
       );
 

@@ -146,7 +146,7 @@ test.describe("a tooltip", () => {
   test("every icon button has a name and a tooltip", async ({ page }) => {
     await openBlocks(page, ["text"], []);
     await textBlock(page).click();
-    await canvas(page).locator(".row").hover();
+    await canvas(page).getByTestId("row").hover();
 
     const buttons = await iconButtons(page);
 
@@ -164,7 +164,7 @@ test.describe("a tooltip", () => {
 test.describe("theme tokens", () => {
   test("a host overrides them on the element", async ({ page }) => {
     await openBlocks(page, ["text"]);
-    const workspace = canvas(page).locator(".canvas-area");
+    const workspace = canvas(page).getByTestId("workspace");
 
     await canvas(page).evaluate((element) => {
       element.style.setProperty("--mq-color-workspace", "rgb(1, 2, 3)");
@@ -216,11 +216,11 @@ test.describe("theme tokens", () => {
       element.style.setProperty("--mq-color-surface", "rgb(1, 2, 3)");
     });
 
-    await expect(canvas(page).locator(".email")).toHaveCSS(
+    await expect(canvas(page).getByTestId("email")).toHaveCSS(
       "font-family",
       "Arial, Helvetica, sans-serif"
     );
-    await expect(canvas(page).locator(".email")).toHaveCSS(
+    await expect(canvas(page).getByTestId("email")).toHaveCSS(
       "background-color",
       "rgb(255, 255, 255)"
     );
@@ -252,7 +252,7 @@ test("a host restyles the editor's frame through its part", async ({
   page,
 }) => {
   await openBlocks(page, ["text"]);
-  const frame = canvas(page).locator(".editor");
+  const frame = canvas(page).getByTestId("editor");
 
   await page.addStyleTag({
     content: "mail-quilt::part(frame) { border-radius: 0; box-shadow: none; }",
@@ -303,7 +303,10 @@ test.describe("on a dark host page", () => {
           getComputedStyle(element);
         return { backgroundColor, color, serif: fontFamily === "serif" };
       };
-      return { panel: style(".side-panel-inner"), tooltip: style(".tooltip") };
+      return {
+        panel: style('[data-testid="side-panel-content"]'),
+        tooltip: style('[role="tooltip"]'),
+      };
     });
 
     // None of the host's black, white or serif, and nothing see-through.

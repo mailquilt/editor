@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 
 import {
   blockGroup,
@@ -27,6 +27,12 @@ import {
 const formatBar = (page: Page) =>
   canvas(page).getByRole("toolbar", { name: "Text formatting" });
 
+/** The language an element is in, from the nearest element that says. */
+const langOf = (locator: Locator) =>
+  locator
+    .first()
+    .evaluate((element) => element.closest("[lang]")?.getAttribute("lang"));
+
 test.describe("a Block on the canvas", () => {
   test("only the selected one has a toolbar", async ({ page }) => {
     await openBlocks(page, ["button", "divider"]);
@@ -38,7 +44,7 @@ test.describe("a Block on the canvas", () => {
     await expect(
       blockGroup(page, "Button").getByRole("toolbar", { name: "Block tools" })
     ).toBeVisible();
-    await expect(blockTools(page).locator(".drag-handle")).toBeVisible();
+    await expect(blockTools(page).getByTestId("drag-handle")).toBeVisible();
   });
 
   test("Alt+↑ in its toolbar moves the Block, as its tooltip says", async ({
@@ -66,7 +72,7 @@ test.describe("a Row on the canvas", () => {
     await openBlocks(page, ["button"]);
     await expect(rowTools(page, 1)).toHaveCSS("opacity", "0");
 
-    await canvas(page).locator(".row").hover();
+    await canvas(page).getByTestId("row").hover();
 
     await expect(rowTools(page, 1)).toHaveCSS("opacity", "1");
   });
@@ -79,7 +85,7 @@ test.describe("a Row on the canvas", () => {
 
     await blockGroup(page, "Text").last().focus();
     await canvas(page)
-      .locator(".row")
+      .getByTestId("row")
       .nth(1)
       .hover({ position: { x: 4, y: 4 } });
 
@@ -120,11 +126,11 @@ test.describe("a Row on the canvas", () => {
 test.describe("an empty Column", () => {
   test("every add button takes the pointer's click", async ({ page }) => {
     await openBlocks(page, ["button"], []);
-    const column = canvas(page).locator(".column").nth(1);
+    const column = canvas(page).getByTestId("column").nth(1);
     await column.hover();
     // Once the buttons have faded in, over the label that has faded out.
-    await expect(column.locator(".add-blocks")).toHaveCSS("opacity", "1");
-    await expect(column.locator(".placeholder-label")).toHaveCSS(
+    await expect(column.getByTestId("add-blocks")).toHaveCSS("opacity", "1");
+    await expect(column.getByTestId("placeholder-label")).toHaveCSS(
       "opacity",
       "0"
     );
@@ -162,24 +168,19 @@ test.describe("the email's language", () => {
     await setValue(page, document);
     await textBlock(page).click();
 
-    const langs = await canvas(page).evaluate((host) => {
-      const root = host.shadowRoot as ShadowRoot;
-      const langOf = (selector: string) =>
-        root.querySelector(selector)?.closest("[lang]")?.getAttribute("lang");
-      return {
-        block: langOf(".block"),
-        blockTools: langOf(".block-toolbar"),
-        button: langOf(".button"),
-        formatBar: langOf(".format-bar"),
-        imageAlt: langOf(".image-block img"),
-        placeholder: langOf(".placeholder"),
-        rowTools: langOf(".row-toolbar"),
-        sidePanel: langOf(".side-panel"),
-        status: langOf('[role="status"]'),
-        text: langOf(".ProseMirror p"),
-        textBox: langOf(".ProseMirror"),
-      };
-    });
+    const langs = {
+      block: await langOf(blockGroup(page, "Text")),
+      blockTools: await langOf(blockTools(page)),
+      button: await langOf(canvas(page).getByTestId("button-face")),
+      formatBar: await langOf(formatBar(page)),
+      imageAlt: await langOf(blockGroup(page, "Image").getByRole("img")),
+      placeholder: await langOf(canvas(page).getByTestId("placeholder")),
+      rowTools: await langOf(rowTools(page, 1)),
+      sidePanel: await langOf(canvas(page).getByTestId("side-panel")),
+      status: await langOf(canvas(page).getByRole("status")),
+      text: await langOf(textBlock(page).locator("p")),
+      textBox: await langOf(textBlock(page)),
+    };
 
     expect(langs).toEqual({
       block: "en",
@@ -201,12 +202,9 @@ test.describe("the email's language", () => {
   }) => {
     await openEmail(page, [[["A"]]]);
 
-    const lang = await canvas(page).evaluate((host) =>
-      host.shadowRoot
-        ?.querySelector(".ProseMirror p")
-        ?.closest("[lang]")
-        ?.getAttribute("lang")
-    );
+    const lang = await textBlock(page)
+      .locator("p")
+      .evaluate((text) => text.closest("[lang]")?.getAttribute("lang"));
 
     expect(lang).toBe("");
   });
@@ -223,21 +221,20 @@ test.describe("an empty Column on a touch screen", () => {
 
   test("shows its add buttons alone, not under its label", async ({ page }) => {
     await openBlocks(page, ["button"], []);
-    const column = canvas(page).locator(".column").nth(1);
+    const column = canvas(page).getByTestId("column").nth(1);
     expect(await page.evaluate(() => matchMedia("(hover: none)").matches)).toBe(
       true
     );
 
-    await expect(column.locator(".add-blocks")).toHaveCSS("opacity", "1");
-    await expect(column.locator(".placeholder-label")).toHaveCSS(
+    await expect(column.getByTestId("add-blocks")).toHaveCSS("opacity", "1");
+    await expect(column.getByTestId("placeholder-label")).toHaveCSS(
       "opacity",
       "0"
     );
     // With no hover to show it, a Block's drag handle always shows.
-    await expect(blockGroup(page, "Button").locator(".drag-handle")).toHaveCSS(
-      "opacity",
-      "1"
-    );
+    await expect(
+      blockGroup(page, "Button").getByTestId("drag-handle")
+    ).toHaveCSS("opacity", "1");
   });
 });
 
@@ -293,8 +290,8 @@ test.describe("the floating toolbar", () => {
     const toolbar = canvas(page).getByRole("group", { name: "Email tools" });
 
     const box = await boxOf(toolbar);
-    const area = await boxOf(canvas(page).locator(".canvas-area"));
-    const panel = await boxOf(canvas(page).locator(".side-panel"));
+    const area = await boxOf(canvas(page).getByTestId("workspace"));
+    const panel = await boxOf(canvas(page).getByTestId("side-panel"));
     expect(box.x - area.x).toBeLessThan(80);
     expect(box.x + box.width).toBeLessThan(panel.x);
     // At the bottom of the canvas, or of the window while the canvas goes on.
@@ -346,8 +343,10 @@ test.describe("the floating toolbar", () => {
 
     const onTop = await canvas(page).evaluate((host) => {
       const root = host.shadowRoot as ShadowRoot;
-      const toolbar = root.querySelector(".floating-toolbar") as Element;
-      const email = root.querySelector(".email") as Element;
+      const toolbar = root.querySelector(
+        '[role="group"][aria-label="Email tools"]'
+      ) as Element;
+      const email = root.querySelector('[data-testid="email"]') as Element;
       // Halfway down the email, which goes on below the window.
       window.scrollBy(0, email.getBoundingClientRect().y);
       const { height, width, x, y } = toolbar.getBoundingClientRect();
@@ -395,7 +394,7 @@ test.describe("a Block's drag handle and link shortcut", () => {
 
     const b = blockWith(page, "B");
     await b.hover();
-    await b.locator(".drag-handle").click();
+    await b.getByTestId("drag-handle").click();
 
     await expect(
       canvas(page).getByRole("tab", { name: "Content" })
@@ -456,7 +455,7 @@ test.describe("on a screen too narrow to edit in", () => {
 
     await expect(
       canvas(page)
-        .locator(".editor")
+        .getByTestId("editor")
         .evaluate((editor) => editor.getBoundingClientRect().height)
     ).resolves.toBe(0);
   });
@@ -510,7 +509,7 @@ test.describe("a click on the workspace, outside the email", () => {
     await page.keyboard.type("!");
     await expect(blockTools(page)).toBeVisible();
 
-    const area = await boxOf(canvas(page).locator(".canvas-area"));
+    const area = await boxOf(canvas(page).getByTestId("workspace"));
     await page.mouse.click(area.x + 10, area.y + 10);
 
     await expect(blockTools(page)).toHaveCount(0);
@@ -528,8 +527,8 @@ test.describe("a click on the workspace, outside the email", () => {
     await page.setViewportSize(TALL_VIEWPORT);
     await openEmail(page, [[["A", "B"]]]);
     await blockGroup(page, "Text").first().focus();
-    const handle = await boxOf(blockTools(page).locator(".drag-handle"));
-    const area = await boxOf(canvas(page).locator(".canvas-area"));
+    const handle = await boxOf(blockTools(page).getByTestId("drag-handle"));
+    const area = await boxOf(canvas(page).getByTestId("workspace"));
 
     await page.mouse.move(handle.x + 10, handle.y + 10);
     await page.mouse.down();

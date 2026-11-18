@@ -19,6 +19,10 @@ A PR that changes one of these says so, gives the reason and updates this page.
 - After Delete Block or Delete Row from the keyboard, focus goes to the neighbour and the deletion is announced. (#54)
 - The Link button keeps `aria-pressed`, so screen readers say whether the cursor is on a link. (#36)
 
+## The panels
+
+- The Side panel, its settings, the format bar, and the Block, Row and floating toolbars reach the editor only through `PanelApi` in `packages/editor/src/panel-api.ts`: what's selected and its settings, and every change they make. It isn't exported or documented in 0.2. Its `apply` treats a refused Command as an answer, not a bug, as a host's own panel would. (#147)
+
 ## Editing
 
 - Links accept any `https:`, `http:`, `mailto:` or `tel:` URL, or a Merge Tag. (#36)
@@ -65,5 +69,6 @@ A PR that changes one of these says so, gives the reason and updates this page.
 ## Tests
 
 - The editor's tests run in the browser, apart from the key map's, which are unit tests. (#36, #145)
+- Browser tests find an element by role and name, or by a documented part. An element with neither, such as a drag handle, a Column or the Side panel, has a `data-testid`, and no selector uses a class. (#147)
 - Core keeps a "stores…" test for each Block type's own settings. (#82)
 - "A Row on the canvas shows an outline and its toolbar on hover" failed once in WebKit CI and passed on retry, with no cause found in 25 local runs. It isn't treated as flaky unless it fails again. (#36)

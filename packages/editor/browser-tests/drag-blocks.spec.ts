@@ -38,16 +38,21 @@ import {
 import type { Point } from "./helpers.js";
 
 const handleOf = (page: Page, text: string) =>
-  blockWith(page, text).locator(".drag-handle");
+  blockWith(page, text).getByTestId("drag-handle");
 
 const column = (page: Page, rowIndex: number, columnIndex: number) =>
   canvas(page)
-    .locator(".row")
+    .getByTestId("row")
     .nth(rowIndex)
-    .locator(".column")
+    .getByTestId("column")
     .nth(columnIndex);
 
-const dropIndicator = (page: Page) => canvas(page).locator(".drop-indicator");
+const dropIndicator = (page: Page) =>
+  canvas(page).getByTestId("drop-indicator");
+
+/** A drag's copy of a Block, which is hidden from screen readers. */
+const liftedBlock = (page: Page) =>
+  canvas(page).locator('[role="group"][data-drag-ghost]');
 
 test.use({ viewport: TALL_VIEWPORT });
 
@@ -122,22 +127,18 @@ test.describe("moving a Block by its handle", () => {
       colored.props = { backgroundColor: "#123456" };
     }
     await setValue(page, email);
-    const ghostBackground = (selector: string) =>
-      canvas(page)
-        .locator(selector)
-        .evaluate((element) => getComputedStyle(element).backgroundColor);
+    const ghostBackground = () =>
+      liftedBlock(page).evaluate(
+        (element) => getComputedStyle(element).backgroundColor
+      );
 
     await pickUp(page, handleOf(page, "One"));
-    expect(await ghostBackground(".block[data-drag-ghost]")).toBe(
-      "rgb(18, 52, 86)"
-    );
+    expect(await ghostBackground()).toBe("rgb(18, 52, 86)");
     await page.keyboard.press("Escape");
     await letGo(page);
 
     await pickUp(page, handleOf(page, "Two"));
-    expect(await ghostBackground(".block[data-drag-ghost]")).toBe(
-      "rgb(16, 16, 16)"
-    );
+    expect(await ghostBackground()).toBe("rgb(16, 16, 16)");
     await page.keyboard.press("Escape");
     await letGo(page);
   });
@@ -261,7 +262,7 @@ test.describe("moving a Block by its handle", () => {
   }) => {
     await open(page, [[["A"], ["B"]]]);
     await blockGroup(page, "Text").last().focus();
-    const handle = await boxOf(blockTools(page).locator(".drag-handle"));
+    const handle = await boxOf(blockTools(page).getByTestId("drag-handle"));
 
     await page.mouse.move(handle.x + 10, handle.y + 10);
     await page.mouse.down();
@@ -277,7 +278,7 @@ test.describe("moving a Block by its handle", () => {
   }) => {
     await open(page, [[["A"], ["B"]]]);
     await blockGroup(page, "Text").last().focus();
-    const handle = await boxOf(blockTools(page).locator(".drag-handle"));
+    const handle = await boxOf(blockTools(page).getByTestId("drag-handle"));
 
     // Away from the toolbar, then back over where it was, in the first Column.
     await page.mouse.move(handle.x + 10, handle.y + 10);
@@ -407,9 +408,9 @@ test.describe("while dragging", () => {
   test("the Block follows the pointer", async ({ page }) => {
     await open(page, [[["One", "Two"], ["Three"]]]);
     await pickUp(page, handleOf(page, "Two"));
-    const lifted = canvas(page).locator(".block[data-drag-ghost]");
+    const lifted = liftedBlock(page);
     const first = await boxOf(lifted);
-    const email = await boxOf(canvas(page).locator(".email"));
+    const email = await boxOf(canvas(page).getByTestId("email"));
 
     await page.mouse.move(email.x + 100, email.y + 100, { steps: 8 });
     await settle(page);
@@ -441,7 +442,7 @@ test.describe("while dragging", () => {
 
     // Where pickUp left the pointer.
     const pointer = { x: start.x + 8, y: start.y + 8 };
-    const lifted = await boxOf(canvas(page).locator(".block[data-drag-ghost]"));
+    const lifted = await boxOf(liftedBlock(page));
     expect(pointer.x).toBeGreaterThan(lifted.x);
     expect(pointer.x).toBeLessThan(lifted.x + lifted.width);
     expect(pointer.y).toBeGreaterThan(lifted.y);
@@ -462,11 +463,13 @@ test.describe("while dragging", () => {
 
     await pickUp(page, handleOf(page, "One"));
 
-    const lifted = canvas(page).locator(".block[data-drag-ghost]");
+    const lifted = liftedBlock(page);
     const after = await boxOf(lifted);
     expect(after.width).toBeCloseTo(before.width, 0);
     expect(after.height).toBeCloseTo(before.height, 0);
-    const copied = await boxOf(lifted.locator(".ProseMirror"));
+    const copied = await boxOf(
+      lifted.getByRole("textbox", { includeHidden: true })
+    );
     expect(copied.height).toBeCloseTo(text.height, 0);
     await page.keyboard.press("Escape");
   });
@@ -484,7 +487,7 @@ test.describe("while dragging", () => {
     );
     const scrolled = await page.evaluate(() => window.scrollY);
     expect(scrolled).toBeGreaterThan(0);
-    const start = await boxOf(block.locator(".drag-handle"));
+    const start = await boxOf(block.getByTestId("drag-handle"));
 
     await page.mouse.move(start.x + 8, start.y + 12);
     await page.mouse.down();
@@ -522,7 +525,7 @@ test.describe("while dragging", () => {
     const after = await indicatorBox(page);
     expect(after.y + after.height / 2).toBeCloseTo(two.y + two.height, 0);
     // The Column it would land in is highlighted, and no other.
-    await expect(canvas(page).locator(".email")).toHaveAttribute(
+    await expect(canvas(page).getByTestId("email")).toHaveAttribute(
       "data-dragging"
     );
     await expect(column(page, 0, 0)).toHaveAttribute("data-drop-target");
@@ -533,7 +536,7 @@ test.describe("while dragging", () => {
       [["One", "Two", "Four", "Three"], []],
     ]);
     await expect(canvas(page).locator("[data-drop-target]")).toHaveCount(0);
-    await expect(canvas(page).locator(".email")).not.toHaveAttribute(
+    await expect(canvas(page).getByTestId("email")).not.toHaveAttribute(
       "data-dragging"
     );
   });
@@ -541,7 +544,7 @@ test.describe("while dragging", () => {
   test("the indicator spans the email outside any Row", async ({ page }) => {
     await open(page, [[["One"], ["Two"]]]);
     await pickUp(page, handleOf(page, "One"));
-    const row = await boxOf(canvas(page).locator(".row").first());
+    const row = await boxOf(canvas(page).getByTestId("row").first());
 
     await moveTo(page, { x: row.x + 100, y: row.y + row.height + 30 });
 
@@ -560,7 +563,7 @@ test.describe("dropping outside any Row", () => {
     await open(page, [[["One", "Two"]], [["Three"]]]);
     const changes = Number(await changeCount(page).textContent());
     const { height, width, x, y } = await boxOf(
-      canvas(page).locator(".row").last()
+      canvas(page).getByTestId("row").last()
     );
 
     await drag(page, handleOf(page, "Two"), {
@@ -677,7 +680,7 @@ test.describe("dragging from the palette", () => {
     await open(page, [[["One"]]]);
     await deleteRow(page, 1);
     await expect(textBlock(page)).toHaveCount(0);
-    const email = await boxOf(canvas(page).locator(".email"));
+    const email = await boxOf(canvas(page).getByTestId("email"));
 
     await drag(page, palette(page, "Text"), {
       x: email.x + 300,
@@ -1026,7 +1029,7 @@ test.describe("auto-scrolling", () => {
         (document.scrollingElement?.scrollTop ?? 0) > start + 300 && {
           top: document
             .querySelector("mail-quilt")
-            ?.shadowRoot?.querySelector(".drop-indicator")
+            ?.shadowRoot?.querySelector('[data-testid="drop-indicator"]')
             ?.getBoundingClientRect().top,
         },
       before,
