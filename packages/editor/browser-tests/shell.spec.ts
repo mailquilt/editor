@@ -403,6 +403,38 @@ test.describe("saving in the browser", () => {
     await expect(textBlock(page)).toHaveText("Saved Hello");
   });
 
+  test("on a first visit, typing stays when the host passes its first email again", async ({
+    page,
+  }) => {
+    await openShell(page, `?save-key=${key}`);
+    await focusStartOfTextBlock(page);
+    await page.keyboard.type("Typed ");
+    await expect(textBlock(page)).toHaveText("Typed Hello");
+
+    // A copy, as a re-render that builds the email again would pass.
+    await setShellValue(page, emailWith([[["Hello"]]]));
+
+    await expect(textBlock(page)).toHaveText("Typed Hello");
+    // A different email still opens, as on <mail-quilt>.
+    await setShellValue(page, emailWith([[["Other"]]]));
+    await expect(textBlock(page)).toHaveText("Other");
+  });
+
+  test("on a first visit, a first email set late opens, and typing stays when it's set again", async ({
+    page,
+  }) => {
+    await page.goto(`/shell.html?save-key=${key}&late-value`);
+    await setShellValue(page, emailWith([[["Hello"]]]));
+    await expect(textBlock(page)).toHaveText("Hello");
+    await focusStartOfTextBlock(page);
+    await page.keyboard.type("Typed ");
+    await expect(textBlock(page)).toHaveText("Typed Hello");
+
+    await setShellValue(page, emailWith([[["Hello"]]]));
+
+    await expect(textBlock(page)).toHaveText("Typed Hello");
+  });
+
   test("a reload reopens an imported email", async ({ page }) => {
     await openShell(page, `?save-key=${key}`);
     await importFile(page, JSON.stringify(emailWith([[["Imported"]]])));
@@ -438,6 +470,29 @@ test.describe("saving in the browser", () => {
         key
       )
     ).toBe("{not json");
+  });
+
+  test("a damaged saved email that can't be copied apart isn't saved over, and says so", async ({
+    page,
+  }) => {
+    await page.addInitScript((each) => {
+      localStorage.setItem(each, "{not json");
+      const { setItem: realSetItem } = Storage.prototype;
+      Storage.prototype.setItem = function setItem(name, value) {
+        if (name === `${each}:unopened`) {
+          throw new DOMException("Full", "QuotaExceededError");
+        }
+        realSetItem.call(this, name, value);
+      };
+    }, key);
+    await openShell(page, `?save-key=${key}`);
+
+    await focusStartOfTextBlock(page);
+    await page.keyboard.type("New ");
+
+    await expect(textBlock(page)).toHaveText("New Hello");
+    await expect(shell(page).getByRole("alert")).toContainText("can't save");
+    expect(await saved(page)).toBe("{not json");
   });
 
   test("a damaged saved email opened again is a new alert, read out again", async ({
@@ -539,6 +594,22 @@ test.describe("saving in the browser", () => {
     await expect(shell(page).getByRole("alert")).toHaveCount(0);
   });
 
+  test("removing save-key stops the saving", async ({ page }) => {
+    await openShell(page, `?save-key=${key}`);
+    await focusStartOfTextBlock(page);
+    await page.keyboard.type("Saved ");
+    await expect.poll(() => saved(page)).toContain("Saved Hello");
+
+    await shell(page).evaluate((element) =>
+      element.removeAttribute("save-key")
+    );
+    await page.keyboard.type("Unsaved ");
+
+    await expect(page.locator("#change-count")).toHaveText("14");
+    expect(await saved(page)).toContain("Saved Hello");
+    expect(await saved(page)).not.toContain("Unsaved");
+  });
+
   test("without a save key, nothing is stored", async ({ page }) => {
     await page.addInitScript(() => {
       const touched: string[] = [];
@@ -594,7 +665,37 @@ test.describe("a saved email standing in for the host's", () => {
     await page.goto(`/shell.html?save-key=${key}&late-value`);
     await expect(textBlock(page)).toHaveText("Saved");
 
-    await setShellValue(page, undefined);
+    // Null too, as JSON.parse gives for nothing saved.
+    await setShellValue(page, null);
+    await expect(textBlock(page)).toHaveText("Saved");
+    await setShellValue(page, emailWith([[["Hello"]]]));
+
+    await expect(textBlock(page)).toHaveText("Saved");
+  });
+
+  test("opens without firing mq-change", async ({ page }) => {
+    await saveFirst(page);
+    await page.goto(`/shell.html?save-key=${key}`);
+    await expect(textBlock(page)).toHaveText("Saved");
+
+    // One change of the person's own, so any before it would be counted too.
+    await focusStartOfTextBlock(page);
+    await page.keyboard.type("O");
+
+    await expect(page.locator("#change-count")).toHaveText("1");
+  });
+
+  test("stays when save-key is removed and the host passes its first email again", async ({
+    page,
+  }) => {
+    await saveFirst(page);
+    await page.goto(`/shell.html?save-key=${key}`);
+    await expect(textBlock(page)).toHaveText("Saved");
+
+    await shell(page).evaluate(async (element) => {
+      element.removeAttribute("save-key");
+      await (element as MailQuiltShell).updateComplete;
+    });
     await setShellValue(page, emailWith([[["Hello"]]]));
 
     await expect(textBlock(page)).toHaveText("Saved");
