@@ -9,7 +9,6 @@ import {
 } from "@mailquilt/core/internal";
 import { css, html, nothing } from "lit";
 import type { TemplateResult } from "lit";
-import { styleMap } from "lit/directives/style-map.js";
 
 import { blockIcon, ICONS } from "./icons.js";
 import type { PanelApi, RowPlace } from "./panel-api.js";
@@ -17,6 +16,7 @@ import { columnLabel } from "./places.js";
 import type { BlockPlace } from "./places.js";
 import { renderSettingsPanel } from "./settings-panel.js";
 import type { SettingsSection } from "./settings-panel.js";
+import { styleProperties } from "./style-properties.js";
 
 export const sidePanelStyles = css`
   .layout-option {
@@ -349,7 +349,8 @@ const renderThumbnail = (layout: RowLayout) => html`
     ${layout
       .split("/")
       .map(
-        (width) => html`<span style=${styleMap({ "flex-grow": width })}></span>`
+        (width) =>
+          html`<span style=${styleProperties({ "flex-grow": width })}></span>`
       )}
   </span>
 `;

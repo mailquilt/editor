@@ -14,4 +14,18 @@ export default defineConfig({
       files: ["test/**/*.test.ts"],
     })),
   ],
+  rules: {
+    "no-restricted-imports": [
+      "error",
+      {
+        paths: [
+          {
+            message:
+              "Use styleProperties: styleMap writes a style attribute, which a strict Content Security Policy blocks. (ADR 0006)",
+            name: "lit/directives/style-map.js",
+          },
+        ],
+      },
+    ],
+  },
 });

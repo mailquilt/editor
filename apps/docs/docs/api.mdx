@@ -80,15 +80,13 @@ Colors, spacing, corners and the font are [theme tokens](./theme-tokens), not pa
 
 ## Content Security Policy
 
-The editor needs `'unsafe-inline'` in `style-src`, for the canvas and for Preview:
+The editor works under a policy that blocks inline styles, such as `style-src 'self'`. Only Preview needs `'unsafe-inline'` in `style-src`:
 
 ```text
 Content-Security-Policy: style-src 'self' 'unsafe-inline'
 ```
 
-The editor sets what comes from the email as inline styles, such as its width, background and font, and each Column's and Block's settings. Preview shows the email in a sandboxed iframe, which follows your page's policy, and emails rely on inline styles.
-
-Without it, the editor is laid out wrong and the email loses its styling. The canvas shows the email only as wide as its text, with no background and in the browser's default font, and Columns and Blocks can lose their widths, colors and spacing. Some of these come back after an edit, so what's wrong changes as the person works. Preview shows the email without its styling. `exportHtml()` isn't affected, and the exported HTML is unchanged.
+Preview shows the email in a sandboxed iframe, which follows your page's policy, and emails rely on inline styles. Without it, Preview shows the email without its styling. The canvas and `exportHtml()` aren't affected, and the exported HTML is unchanged.
 
 A page using the [CDN build](./html) also needs `script-src` to allow the folder the build is in, because the build is several files. The path must end in `/`:
 

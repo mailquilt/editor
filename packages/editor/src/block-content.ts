@@ -1,9 +1,9 @@
 import type { Block } from "@mailquilt/core";
 import { blockStyles, EMAIL_LOOK, MERGE_TAG } from "@mailquilt/core/internal";
 import { css, html, nothing, unsafeCSS } from "lit";
-import { styleMap } from "lit/directives/style-map.js";
 
 import { blockIcon } from "./icons.js";
+import { styleProperties } from "./style-properties.js";
 
 export const blockContentStyles = css`
   /* The same space as a Text Block's padding, as in the email output. */
@@ -116,9 +116,12 @@ const renderButton = (block: Block, lang: string) => {
     <div
       class="button-block"
       lang=${lang}
-      style=${styleMap({ "text-align": align })}
+      style=${styleProperties({ "text-align": align })}
     >
-      <span class="button" data-testid="button-face" style=${styleMap(face)}
+      <span
+        class="button"
+        data-testid="button-face"
+        style=${styleProperties(face)}
         >${block.props.label}</span
       >
     </div>
@@ -138,7 +141,7 @@ const renderImage = (
   onImageError: (src: string) => void
 ) => {
   const { alt = "", src } = block.props as { alt?: string; src?: string };
-  const size = styleMap(blockStyles(block));
+  const size = styleProperties(blockStyles(block));
   const failed = src !== undefined && failedImages.has(src);
   return html`
     <div class="image-block">
@@ -172,13 +175,13 @@ const renderDivider = (block: Block) => html`
     <div
       class="divider"
       data-testid="divider-line"
-      style=${styleMap(blockStyles(block))}
+      style=${styleProperties(blockStyles(block))}
     ></div>
   </div>
 `;
 
 const renderSpacer = (block: Block) =>
-  html`<div class="spacer" style=${styleMap(blockStyles(block))}></div>`;
+  html`<div class="spacer" style=${styleProperties(blockStyles(block))}></div>`;
 
 /**
  * What a Block without text draws on the canvas. Its words take the email's

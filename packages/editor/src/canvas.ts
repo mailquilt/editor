@@ -3,7 +3,6 @@ import type { Block, Column, Row } from "@mailquilt/core";
 import { blockLabel, blockStyles, rowStyles } from "@mailquilt/core/internal";
 import { html, nothing } from "lit";
 import { repeat } from "lit/directives/repeat.js";
-import { styleMap } from "lit/directives/style-map.js";
 
 import { hasRichText, renderBlockContent } from "./block-content.js";
 import { renderFormatBar } from "./format-bar.js";
@@ -11,6 +10,7 @@ import { blockIcon, ICONS } from "./icons.js";
 import { keyLabel } from "./key-map.js";
 import type { PanelApi } from "./panel-api.js";
 import { columnLabel, positionLabel } from "./places.js";
+import { styleProperties } from "./style-properties.js";
 import { UI_LANG } from "./theme.js";
 
 const MOVE_BUTTONS = (["up", "down", "left", "right"] as const).map(
@@ -218,7 +218,7 @@ const renderBlock = (
       data-block-id=${block.id}
       data-label=${blockLabel(block.type)}
       role="group"
-      style=${styleMap(rich ? blockStyles(block) : {})}
+      style=${styleProperties(rich ? blockStyles(block) : {})}
       tabindex="0"
       @click=${events.onBlockClick}
       @focus=${() => events.onBlockFocus(block.id)}
@@ -249,7 +249,7 @@ const renderColumn = (
     class=${blocks.length === 0 ? "column empty" : "column"}
     data-column-id=${id}
     data-testid="column"
-    style=${styleMap({ width: `${width}%` })}
+    style=${styleProperties({ width: `${width}%` })}
   >
     ${repeat(
       blocks,
@@ -327,7 +327,11 @@ export const renderRows = (
           Row
         </div>
         ${renderRowToolbar(row, rowIndex, rows.length, api)}
-        <div class="row" data-testid="row" style=${styleMap(rowLook(row))}>
+        <div
+          class="row"
+          data-testid="row"
+          style=${styleProperties(rowLook(row))}
+        >
           ${repeat(
             row.columns,
             (column) => column.id,
