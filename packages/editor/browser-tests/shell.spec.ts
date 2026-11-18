@@ -64,23 +64,33 @@ const openShell = async (page: Page, query = "") => {
   await expect(textBlock(page)).toHaveText("Hello");
 };
 
-test("a heading the host sets is in the page's language, and Email is in English", async ({
+test("a heading the host sets is in the page's language and its own text's direction, and Email is in English", async ({
   page,
 }) => {
   await openShell(page);
+  await page.evaluate(() =>
+    document.documentElement.setAttribute("dir", "rtl")
+  );
   const heading = header(page).getByRole("heading");
+
+  await shell(page).evaluate((element) => {
+    element.setAttribute("heading", "בריכה");
+  });
+  await expect(heading).toHaveCSS("direction", "rtl");
 
   await shell(page).evaluate((element) => {
     element.setAttribute("heading", "Welcome email");
   });
   await expect(heading).toHaveText("Welcome email");
   await expect(heading).not.toHaveAttribute("lang");
+  await expect(heading).toHaveCSS("direction", "ltr");
 
   await shell(page).evaluate((element) => {
     element.removeAttribute("heading");
   });
   await expect(heading).toHaveText("Email");
   await expect(heading).toHaveAttribute("lang", "en");
+  await expect(heading).toHaveCSS("direction", "ltr");
 
   await shell(page).evaluate((element) => {
     element.setAttribute("heading", "");

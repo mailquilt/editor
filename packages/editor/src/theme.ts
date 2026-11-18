@@ -64,9 +64,12 @@ export const uiStyles = css`
   /*
    * Inherited properties cross the Shadow DOM boundary, and the email's own
    * settings reach the controls on the canvas, so each surface starts again here.
+   * Two aren't reset by all: direction, set here so the editor is left to right
+   * on any page, and custom properties, so the host's tokens still reach it.
    */
   .ui {
     all: initial;
+    direction: ltr;
     -webkit-font-smoothing: antialiased;
     box-sizing: border-box;
     color: var(--mq-color-text);
