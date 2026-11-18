@@ -6,7 +6,7 @@ A PR that changes one of these says so, gives the reason and updates this page.
 
 ## Keys and focus
 
-- Every key the editor answers to is in its key map, `packages/editor/src/key-map.ts`, which says for each place what the key does and whether the press stops there. Handlers hold no rules of their own. (#145)
+- Every key the editor answers to is in its key map, `packages/editor/src/key-map.ts`, which says for each place what the key does and whether the press stops there. Handlers hold no rules of their own, and tooltips and `aria-keyshortcuts` name keys from it. (#145)
 - A key acts only with the modifiers the key map gives it. Escape, Tab in a toolbar, and Enter on a Block or held down act with any. (#145)
 - Escape closes one thing and stops there: the focused control's tooltip, the link field, what was typed in a settings field, or the Preview. In a Block's text it goes back to the Block and stops. A hovered tooltip closes and the Escape goes on. An Escape that does none of these reaches the host page, so a host's dialog can close. (#66, #78, #79)
 - A key that an input method handled does nothing, so an Escape that ends a composition doesn't close a tooltip either. The link field still keeps every key to itself. (#66, #78, #145)

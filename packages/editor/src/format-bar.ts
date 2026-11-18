@@ -3,7 +3,8 @@ import { css, html, nothing } from "lit";
 import { keyed } from "lit/directives/keyed.js";
 
 import { ICONS } from "./icons.js";
-import { LINE_BREAK_KEYS, MOD_KEY, MOD_SHORTCUT } from "./key-map.js";
+import type { KeyLabel } from "./key-map.js";
+import { keyLabel, textKeyLabel } from "./key-map.js";
 import type {
   TextBlockView,
   TextFormats,
@@ -72,14 +73,17 @@ export const formatBarStyles = css`
 `;
 
 const MARK_BUTTONS: {
-  key: string;
+  keys: KeyLabel;
   label: string;
   mark: ToggleableMark;
 }[] = [
-  { key: "B", label: "Bold", mark: "bold" },
-  { key: "I", label: "Italic", mark: "italic" },
-  { key: "U", label: "Underline", mark: "underline" },
+  { keys: textKeyLabel("bold"), label: "Bold", mark: "bold" },
+  { keys: textKeyLabel("italic"), label: "Italic", mark: "italic" },
+  { keys: textKeyLabel("underline"), label: "Underline", mark: "underline" },
 ];
+
+const LINK_KEYS = keyLabel("text", "openLinkField");
+const LINE_BREAK_KEYS = textKeyLabel("lineBreak");
 
 export interface FormatBarState {
   /** Unset until the Block's text has its editor, and the buttons wait for it. */
@@ -249,13 +253,13 @@ export const renderFormatBar = (
       @mousedown=${events.onControlMousedown}
     >
       ${MARK_BUTTONS.map(
-        ({ key, label, mark }) => html`
+        ({ keys, label, mark }) => html`
           <button
-            aria-keyshortcuts=${`${MOD_SHORTCUT}+${key}`}
+            aria-keyshortcuts=${keys.shortcuts}
             aria-label=${label}
             aria-pressed=${formats?.[mark] ? "true" : "false"}
             class="icon-button"
-            data-tooltip=${`${label} (${MOD_KEY}${key})`}
+            data-tooltip=${`${label} (${keys.keys})`}
             ?disabled=${!formats || (mark === "bold" && !formats.canBold)}
             tabindex="-1"
             type="button"
@@ -268,11 +272,11 @@ export const renderFormatBar = (
       <span class="separator"></span>
       <button
         aria-expanded=${linkForm ? "true" : "false"}
-        aria-keyshortcuts=${`${MOD_SHORTCUT}+K`}
+        aria-keyshortcuts=${LINK_KEYS.shortcuts}
         aria-label=${linkLabel}
         class="icon-button"
         ?data-active=${formats?.linkHref !== undefined}
-        data-tooltip=${`${linkLabel} (${MOD_KEY}K)`}
+        data-tooltip=${`${linkLabel} (${LINK_KEYS.keys})`}
         ?disabled=${!formats}
         tabindex="-1"
         type="button"
@@ -281,10 +285,10 @@ export const renderFormatBar = (
         ${ICONS.link}
       </button>
       <button
-        aria-keyshortcuts="Shift+Enter"
+        aria-keyshortcuts=${LINE_BREAK_KEYS.shortcuts}
         aria-label="Line break"
         class="icon-button"
-        data-tooltip=${`Line break (${LINE_BREAK_KEYS})`}
+        data-tooltip=${`Line break (${LINE_BREAK_KEYS.keys})`}
         ?disabled=${!formats}
         tabindex="-1"
         type="button"

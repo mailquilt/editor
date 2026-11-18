@@ -19,6 +19,7 @@
       "dependsOn": ["build"],
       "env": ["CI"],
       "passThroughEnv": ["PLAYWRIGHT_BROWSERS_PATH"]
-    }
+    },
+    "test:unit": {}
   }
 }

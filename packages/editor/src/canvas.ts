@@ -9,17 +9,26 @@ import { hasRichText, renderBlockContent } from "./block-content.js";
 import { renderFormatBar } from "./format-bar.js";
 import type { FormatBarEvents, FormatBarState } from "./format-bar.js";
 import { blockIcon, ICONS } from "./icons.js";
-import {
-  MOVE_BUTTONS,
-  REDO_KEYS,
-  REDO_SHORTCUTS,
-  ROW_MOVE_BUTTONS,
-  UNDO_KEYS,
-  UNDO_SHORTCUTS,
-} from "./key-map.js";
+import { keyLabel } from "./key-map.js";
 import type { Direction } from "./key-map.js";
 import { columnLabel, positionLabel } from "./places.js";
 import { UI_LANG } from "./theme.js";
+
+const MOVE_BUTTONS = (["up", "down", "left", "right"] as const).map(
+  (direction) => ({
+    direction,
+    ...keyLabel("blockToolbar", "moveBlock", { direction }),
+  })
+);
+
+/** A Row moves only up and down. */
+const ROW_MOVE_BUTTONS = (["up", "down"] as const).map((direction) => ({
+  direction,
+  ...keyLabel("rowToolbar", "moveRow", { direction }),
+}));
+
+const UNDO = keyLabel("editor", "undo");
+const REDO = keyLabel("editor", "redo");
 
 /** Narrower than this, there's no room to edit, and a notice shows instead. */
 export const MIN_EDITOR_WIDTH = 640;
@@ -127,9 +136,9 @@ const renderRowToolbar = (
         ${ICONS.select}
       </button>
       ${ROW_MOVE_BUTTONS.map(
-        ({ direction, keys, shortcut }) => html`
+        ({ direction, keys, shortcuts }) => html`
           <button
-            aria-keyshortcuts=${shortcut}
+            aria-keyshortcuts=${shortcuts}
             aria-label=${`Move Row ${direction}`}
             class="icon-button"
             data-tooltip=${`Move Row ${direction} (${keys})`}
@@ -169,9 +178,9 @@ const renderBlockToolbar = (events: CanvasEvents) => html`
     ${renderDragHandle(events.onHandleMousedown)}
     <span class="separator"></span>
     ${MOVE_BUTTONS.map(
-      ({ direction, keys, shortcut }, index) => html`
+      ({ direction, keys, shortcuts }, index) => html`
         <button
-          aria-keyshortcuts=${shortcut}
+          aria-keyshortcuts=${shortcuts}
           aria-label=${`Move Block ${direction}`}
           class="icon-button"
           data-action=${`move-${direction}`}
@@ -351,20 +360,20 @@ export const renderFloatingToolbar = (events: CanvasEvents) => html`
     @mousedown=${events.onControlMousedown}
   >
     <button
-      aria-keyshortcuts=${UNDO_SHORTCUTS}
+      aria-keyshortcuts=${UNDO.shortcuts}
       aria-label="Undo"
       class="icon-button"
-      data-tooltip=${`Undo (${UNDO_KEYS})`}
+      data-tooltip=${`Undo (${UNDO.keys})`}
       type="button"
       @click=${() => events.onStepHistory("undo")}
     >
       ${ICONS.undo}
     </button>
     <button
-      aria-keyshortcuts=${REDO_SHORTCUTS}
+      aria-keyshortcuts=${REDO.shortcuts}
       aria-label="Redo"
       class="icon-button"
-      data-tooltip=${`Redo (${REDO_KEYS})`}
+      data-tooltip=${`Redo (${REDO.keys})`}
       type="button"
       @click=${() => events.onStepHistory("redo")}
     >

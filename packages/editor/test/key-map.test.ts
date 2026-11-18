@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { keyFor, TEXT_KEYS } from "../src/key-map.js";
+import {
+  keyFor,
+  keyLabel,
+  proseMirrorKeys,
+  TEXT_KEYS,
+  textKeyLabel,
+} from "../src/key-map.js";
 import type { KeyPress, Place } from "../src/key-map.js";
 
 /**
@@ -142,9 +148,10 @@ describe("in a Block's text", () => {
   });
 
   it("isn't the editor's for a key ProseMirror answers first", () => {
-    const answered = Object.keys(TEXT_KEYS).filter((name) =>
-      keyIn("text", press(name))
-    );
+    const answered = TEXT_KEYS.flatMap(({ aliases = [], keys }) => [
+      ...keys,
+      ...aliases,
+    ]).filter((name) => keyIn("text", press(name)));
     expect(answered).toStrictEqual([]);
   });
 });
@@ -330,5 +337,54 @@ describe("a key held down", () => {
 
   it("an arrow key repeating goes on to the next Block", () => {
     expect(keyIn("heldElsewhere", press("ArrowDown"))).toBeUndefined();
+  });
+});
+
+describe("ProseMirror's names for the text's keys", () => {
+  it("write Shift with a letter as the capital, so Shift+Ctrl/⌘+B still formats", () => {
+    expect(proseMirrorKeys()).toContainEqual(["Mod-B", "bold"]);
+  });
+});
+
+describe("how a key is named, for a tooltip and for aria-keyshortcuts", () => {
+  it("with Ctrl, on Windows and Linux", () => {
+    expect(keyLabel("editor", "undo", { apple: false })).toStrictEqual({
+      keys: "Ctrl+Z",
+      shortcuts: "Control+Z",
+    });
+  });
+
+  it("with Alt and an arrow", () => {
+    expect(
+      keyLabel("blockToolbar", "moveBlock", { apple: false, direction: "up" })
+    ).toStrictEqual({ keys: "Alt+↑", shortcuts: "Alt+ArrowUp" });
+  });
+
+  it("shows the first of several keys, and gives all of them to aria-keyshortcuts", () => {
+    expect(keyLabel("editor", "redo", { apple: false })).toStrictEqual({
+      keys: "Ctrl+Y",
+      shortcuts: "Control+Y Control+Shift+Z",
+    });
+  });
+
+  it("on Apple devices, with their symbols, and without a key they don't have", () => {
+    expect(keyLabel("editor", "redo", { apple: true })).toStrictEqual({
+      keys: "⇧⌘Z",
+      shortcuts: "Meta+Shift+Z",
+    });
+  });
+
+  it("names Enter with Apple's symbol for it too", () => {
+    expect(textKeyLabel("lineBreak", { apple: true })).toStrictEqual({
+      keys: "⇧↩",
+      shortcuts: "Shift+Enter",
+    });
+  });
+
+  it("leaves out a key that only keeps the browser from acting, such as Shift+Ctrl+B", () => {
+    expect(textKeyLabel("bold", { apple: false })).toStrictEqual({
+      keys: "Ctrl+B",
+      shortcuts: "Control+B",
+    });
   });
 });

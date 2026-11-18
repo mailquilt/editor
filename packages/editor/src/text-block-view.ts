@@ -34,7 +34,7 @@ import {
 } from "prosemirror-transform";
 import { Decoration, DecorationSet, EditorView } from "prosemirror-view";
 
-import { TEXT_KEYS } from "./key-map.js";
+import { proseMirrorKeys } from "./key-map.js";
 import type { TextAction } from "./key-map.js";
 
 export type ToggleableMark = "bold" | "italic" | "underline";
@@ -602,7 +602,7 @@ export const createTextBlockView = ({
       plugins: [
         keymap(
           Object.fromEntries(
-            Object.entries(TEXT_KEYS).map(([key, action]) => [
+            proseMirrorKeys().map(([key, action]) => [
               key,
               textCommands[action],
             ])

@@ -130,8 +130,9 @@ const arrows = (
 /** Undo and redo for the whole editor, in place of the browser's own. */
 const HISTORY: Entry[] = [
   { action: "undo", keys: ["Mod-z"], stops: true },
-  { action: "redo", keys: ["Shift-Mod-z"], stops: true },
+  // Where both redo, Ctrl+Y is the one named first.
   { action: "redo", keys: ["Mod-y"], platform: "other", stops: true },
+  { action: "redo", keys: ["Shift-Mod-z"], stops: true },
 ];
 
 /**
@@ -276,26 +277,58 @@ const KEY_MAP: Record<Place, readonly Entry[]> = {
   ],
 };
 
-/**
- * In a Block's text, ProseMirror answers these first, by its own names for
- * keys. Mod-B is with Shift too, or the browser would format the text itself on
- * Windows and Linux. ← and → act only on all the text selected. The text's
- * other keys, such as Backspace, are ProseMirror's own.
- */
-export const TEXT_KEYS = {
-  ArrowLeft: "toStart",
-  ArrowRight: "toEnd",
-  "Mod-B": "bold",
-  "Mod-Enter": "lineBreak",
-  "Mod-I": "italic",
-  "Mod-U": "underline",
-  "Mod-b": "bold",
-  "Mod-i": "italic",
-  "Mod-u": "underline",
-  "Shift-Enter": "lineBreak",
-} as const;
+export type TextAction =
+  | "bold"
+  | "italic"
+  | "lineBreak"
+  | "toEnd"
+  | "toStart"
+  | "underline";
 
-export type TextAction = (typeof TEXT_KEYS)[keyof typeof TEXT_KEYS];
+interface TextEntry {
+  action: TextAction;
+  /**
+   * Keys that work too, but aren't named in tooltips or aria-keyshortcuts,
+   * such as Shift+Ctrl+B, which only keeps the browser on Windows and Linux
+   * from formatting the text itself.
+   */
+  aliases?: readonly string[];
+  keys: readonly string[];
+}
+
+/**
+ * In a Block's text, ProseMirror answers these first. The text's other keys,
+ * such as Backspace, are ProseMirror's own.
+ */
+export const TEXT_KEYS: readonly TextEntry[] = [
+  { action: "bold", aliases: ["Shift-Mod-b"], keys: ["Mod-b"] },
+  { action: "italic", aliases: ["Shift-Mod-i"], keys: ["Mod-i"] },
+  { action: "underline", aliases: ["Shift-Mod-u"], keys: ["Mod-u"] },
+  { action: "lineBreak", aliases: ["Mod-Enter"], keys: ["Shift-Enter"] },
+  // Only from all the text selected, which some browsers leave alone.
+  { action: "toStart", keys: ["ArrowLeft"] },
+  { action: "toEnd", keys: ["ArrowRight"] },
+];
+
+/** ProseMirror writes Shift with a letter as the capital: Mod-B, not Shift-Mod-b. */
+const proseMirrorName = (name: string) => {
+  const modifiers = name.split("-");
+  const key = modifiers.pop() ?? "";
+  return /^[a-z]$/u.test(key) && modifiers.includes("Shift")
+    ? [...modifiers.filter((each) => each !== "Shift"), key.toUpperCase()].join(
+        "-"
+      )
+    : name;
+};
+
+/** The text's keys, by ProseMirror's names, with what each does. */
+export const proseMirrorKeys = (): [string, TextAction][] =>
+  TEXT_KEYS.flatMap(({ action, aliases = [], keys }) =>
+    [...keys, ...aliases].map((name): [string, TextAction] => [
+      proseMirrorName(name),
+      action,
+    ])
+  );
 
 // As ProseMirror decides it for Bold and the other text keys, so they all agree.
 // A server importing the editor may have no navigator.
@@ -356,6 +389,9 @@ export const claim = (event: Event, { keepsDefault, stops }: Binding) => {
   }
 };
 
+const isOnPlatform = ({ platform }: Entry, apple: boolean) =>
+  platform === undefined || (platform === "apple") === apple;
+
 const applies = (
   entry: Entry,
   press: KeyPress,
@@ -368,7 +404,7 @@ const applies = (
   if (
     isComposing(press) ||
     (dragging && entry.waitsForDrag) ||
-    (entry.platform !== undefined && (entry.platform === "apple") !== apple)
+    !isOnPlatform(entry, apple)
   ) {
     return false;
   }
@@ -400,36 +436,90 @@ export const keyFor = (
   );
 };
 
-/** How a shortcut with Ctrl, or Command on Apple devices, is written. */
-export const MOD_KEY = IS_MAC ? "⌘" : "Ctrl+";
-/** The same key, as `aria-keyshortcuts` names it. */
-export const MOD_SHORTCUT = IS_MAC ? "Meta" : "Control";
-export const UNDO_KEYS = `${MOD_KEY}Z`;
-export const LINE_BREAK_KEYS = IS_MAC ? "⇧↩" : "Shift+Enter";
-export const REDO_KEYS = IS_MAC ? "⇧⌘Z" : "Ctrl+Y";
-export const UNDO_SHORTCUTS = `${MOD_SHORTCUT}+Z`;
-export const REDO_SHORTCUTS = IS_MAC
-  ? "Meta+Shift+Z"
-  : "Control+Y Control+Shift+Z";
-
-export const MOVE_BUTTONS: {
-  direction: Direction;
+/** How a key is named for people. */
+export interface KeyLabel {
+  /** As a tooltip shows it, such as "Ctrl+Z", or "⌘Z" on Apple devices. */
   keys: string;
-  shortcut: string;
-}[] = [
-  { direction: "up", keys: "Alt+↑", shortcut: "Alt+ArrowUp" },
-  { direction: "down", keys: "Alt+↓", shortcut: "Alt+ArrowDown" },
-  { direction: "left", keys: "Alt+←", shortcut: "Alt+ArrowLeft" },
-  { direction: "right", keys: "Alt+→", shortcut: "Alt+ArrowRight" },
-];
+  /** As `aria-keyshortcuts` names it, such as "Control+Z". */
+  shortcuts: string;
+}
 
-type MoveButton = (typeof MOVE_BUTTONS)[number];
+const ARROW_SYMBOLS: Record<string, string> = {
+  ArrowDown: "↓",
+  ArrowLeft: "←",
+  ArrowRight: "→",
+  ArrowUp: "↑",
+};
 
-/** A Block's up and down, which also move a Row. */
-export const ROW_MOVE_BUTTONS = MOVE_BUTTONS.filter(
-  (button): button is MoveButton & { direction: "down" | "up" } =>
-    button.direction === "up" || button.direction === "down"
-);
+const nameOne = (name: string, apple: boolean): KeyLabel => {
+  const modifiers = name.split("-");
+  const key = modifiers.pop() ?? "";
+  const has = (modifier: string) => modifiers.includes(modifier);
+  const base = key.length === 1 ? key.toUpperCase() : key;
+  const shown = ARROW_SYMBOLS[key] ?? (apple && key === "Enter" ? "↩" : base);
+  return {
+    keys: apple
+      ? `${has("Alt") ? "Alt+" : ""}${has("Shift") ? "⇧" : ""}${has("Mod") ? "⌘" : ""}${shown}`
+      : [
+          has("Mod") && "Ctrl",
+          has("Alt") && "Alt",
+          has("Shift") && "Shift",
+          shown,
+        ]
+          .filter(Boolean)
+          .join("+"),
+    shortcuts: [
+      has("Mod") && (apple ? "Meta" : "Control"),
+      has("Alt") && "Alt",
+      has("Shift") && "Shift",
+      base,
+    ]
+      .filter(Boolean)
+      .join("+"),
+  };
+};
+
+/** The first name for a tooltip, and every one for `aria-keyshortcuts`. */
+const nameAll = (names: readonly string[], apple: boolean): KeyLabel => {
+  const [first] = names;
+  if (first === undefined) {
+    throw new Error("The key map has no key to name");
+  }
+  return {
+    keys: nameOne(first, apple).keys,
+    shortcuts: names.map((name) => nameOne(name, apple).shortcuts).join(" "),
+  };
+};
+
+/** How the keys for `action` in `place` are named, from the key map. */
+export const keyLabel = (
+  place: Place,
+  action: Action,
+  { apple = IS_MAC, direction }: { apple?: boolean; direction?: Direction } = {}
+) =>
+  nameAll(
+    KEY_MAP[place]
+      .filter(
+        (entry) =>
+          entry.action === action &&
+          entry.direction === direction &&
+          isOnPlatform(entry, apple)
+      )
+      .flatMap(({ keys }) => (keys === "any" ? [] : keys)),
+    apple
+  );
+
+/** How the keys for a text action are named. */
+export const textKeyLabel = (
+  action: TextAction,
+  { apple = IS_MAC }: { apple?: boolean } = {}
+) =>
+  nameAll(
+    TEXT_KEYS.filter((entry) => entry.action === action).flatMap(
+      ({ keys }) => keys
+    ),
+    apple
+  );
 
 /** Undo and redo from the browser's own menu, or WebKit's, in a Block's text. */
 export const historyInput = (event: InputEvent) => {

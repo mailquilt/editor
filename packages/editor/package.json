@@ -45,7 +45,8 @@
   "scripts": {
     "build": "tsdown",
     "check-types": "tsc --noEmit && tsc --noEmit -p browser-tests",
-    "test": "vitest run && playwright test"
+    "test": "playwright test",
+    "test:unit": "vitest run"
   },
   "dependencies": {
     "@mailquilt/core": "workspace:*",

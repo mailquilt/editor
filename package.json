@@ -5,7 +5,7 @@
     "build": "turbo run build",
     "dev": "turbo run dev",
     "check-types": "turbo run check-types",
-    "test": "turbo run test",
+    "test": "turbo run test test:unit",
     "lint": "ultracite check",
     "fix": "ultracite fix",
     "release": "turbo run build --filter=@mailquilt/* && changeset publish"
