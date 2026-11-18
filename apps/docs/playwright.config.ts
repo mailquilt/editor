@@ -3,6 +3,10 @@ import { defineConfig, devices } from "@playwright/test";
 const port = 4179;
 
 export default defineConfig({
+  // A test that passes only on a retry fails the run, so a flake is seen and
+  // fixed. The retries are kept to tell a flake from a test that always fails,
+  // and to record a trace of the retry.
+  failOnFlakyTests: Boolean(process.env.CI),
   forbidOnly: Boolean(process.env.CI),
   fullyParallel: true,
   projects: [
@@ -10,8 +14,6 @@ export default defineConfig({
     { name: "firefox", use: devices["Desktop Firefox"] },
     { name: "webkit", use: devices["Desktop Safari"] },
   ],
-  // CI's runners are slow enough that a key can land before the page has
-  // caught up. A test that passes on a retry is still reported as flaky.
   retries: process.env.CI ? 2 : 0,
   testDir: "browser-tests",
   use: {

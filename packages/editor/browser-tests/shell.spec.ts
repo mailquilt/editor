@@ -7,6 +7,7 @@ import type { MailQuiltShell } from "../src/index.js";
 import {
   boxOf,
   canvas,
+  changeCount,
   dropFileOn,
   emailWith,
   emailWithLink,
@@ -156,17 +157,13 @@ test.describe("moving an email with JSON", () => {
     await focusStartOfTextBlock(page);
     await page.keyboard.type("Later ");
     await expect(textBlock(page)).toHaveText("Later Exported Hello");
-    const changesBefore = Number(
-      await page.locator("#change-count").textContent()
-    );
+    const changesBefore = Number(await changeCount(page).textContent());
 
     await importFile(page, text);
 
     await expect(textBlock(page)).toHaveText("Exported Hello");
     // The host hears an import, as it would any other change.
-    await expect(page.locator("#change-count")).toHaveText(
-      String(changesBefore + 1)
-    );
+    await expect(changeCount(page)).toHaveText(String(changesBefore + 1));
   });
 
   test("an import with a link that isn't allowed is refused, and keeps the current email", async ({
@@ -222,13 +219,15 @@ test.describe("moving an email with JSON", () => {
     await expect(alert).not.toHaveAttribute("data-seen");
   });
 
-  test("the same file, once fixed, can be chosen again", async ({ page }) => {
+  test("a refused file is cleared from the file input, so it can be chosen again", async ({
+    page,
+  }) => {
     await openShell(page);
     await importFile(page, "{not json");
     await expect(shell(page).getByRole("alert")).toContainText("valid JSON");
 
     // A browser only reports a choice that differs from the input's value.
-    await expect(shell(page).locator("input[type=file]")).toHaveValue("");
+    await expect(shell(page).getByTestId("file-input")).toHaveValue("");
   });
 
   test("a reason goes away with the next edit or good file", async ({
@@ -269,7 +268,14 @@ test.describe("moving an email with JSON", () => {
         "There's no email to export."
       );
     }
-    expect(downloads).toBe(0);
+
+    // A download is reported a moment after it starts, so one that does start
+    // afterwards shows whether any started before it.
+    await openShell(page);
+    const download = page.waitForEvent("download");
+    await shell(page).getByRole("button", { name: "Export JSON" }).click();
+    await download;
+    expect(downloads).toBe(1);
   });
 });
 
@@ -282,7 +288,7 @@ test.describe("the editor's API", () => {
 
     await page.keyboard.type("Oh ");
 
-    await expect(page.locator("#change-count")).toHaveText("3");
+    await expect(changeCount(page)).toHaveText("3");
     const { html, value } = await shell(page).evaluate(async (element) => {
       const host = element as MailQuiltShell;
       return { html: await host.exportHtml(), value: host.value };
@@ -371,7 +377,7 @@ test.describe("the editor's API", () => {
   }) => {
     await page.goto("/shell.html?refused-first");
 
-    await expect(page.locator("#errors")).toContainText("newer");
+    await expect(page.getByTestId("errors")).toContainText("newer");
     await expect(shell(page).getByRole("alert")).toContainText("newer");
     await expect(textBlock(page)).toHaveCount(0);
   });
@@ -450,7 +456,7 @@ test.describe("saving in the browser", () => {
     page,
   }) => {
     await page.goto(`/shell.html?save-key=${key}&refused-first`);
-    const errors = page.locator("#errors");
+    const errors = page.getByTestId("errors");
     await expect(errors).toContainText("newer");
     const reason = await errors.textContent();
 
@@ -632,7 +638,7 @@ test.describe("saving in the browser", () => {
     );
     await page.keyboard.type("Unsaved ");
 
-    await expect(page.locator("#change-count")).toHaveText("14");
+    await expect(changeCount(page)).toHaveText("14");
     expect(await saved(page)).toContain("Saved Hello");
     expect(await saved(page)).not.toContain("Unsaved");
   });
@@ -655,7 +661,7 @@ test.describe("saving in the browser", () => {
 
     await focusStartOfTextBlock(page);
     await page.keyboard.type("Oh ");
-    await expect(page.locator("#change-count")).toHaveText("3");
+    await expect(changeCount(page)).toHaveText("3");
 
     expect(
       await page.evaluate(
@@ -709,7 +715,7 @@ test.describe("a saved email standing in for the host's", () => {
     await focusStartOfTextBlock(page);
     await page.keyboard.type("O");
 
-    await expect(page.locator("#change-count")).toHaveText("1");
+    await expect(changeCount(page)).toHaveText("1");
   });
 
   test("stays when save-key is removed and the host passes its first email again", async ({
@@ -864,7 +870,7 @@ test.describe("look", () => {
     await page.evaluate(
       (email) => {
         const editor = document.createElement("mail-quilt");
-        editor.id = "alone";
+        editor.dataset.testid = "alone";
         editor.value = email;
         document.body.append(editor);
         for (const element of [
@@ -878,7 +884,7 @@ test.describe("look", () => {
     );
 
     await expect(shell(page)).toBeHidden();
-    await expect(page.locator("#alone")).toBeHidden();
+    await expect(page.getByTestId("alone")).toBeHidden();
   });
 
   test("fills the space the host gives it, the editor below the header", async ({
@@ -889,7 +895,7 @@ test.describe("look", () => {
     const editor = shell(page).locator("mail-quilt");
     const boxes = {
       editor: await box(editor),
-      frame: await box(page.locator("#frame")),
+      frame: await box(page.getByTestId("frame")),
       header: await box(header(page)),
       // The editor itself stretches, so its side panel runs to the bottom.
       panel: await box(editor.getByTestId("side-panel")),
@@ -930,7 +936,7 @@ test.describe("look", () => {
     const panel = await box(
       shell(page).locator("mail-quilt").getByTestId("side-panel-content")
     );
-    const frameBox = await box(page.locator("#frame"));
+    const frameBox = await box(page.getByTestId("frame"));
 
     expect(panel.bottom).toBeLessThanOrEqual(frameBox.bottom);
   });
@@ -949,7 +955,7 @@ test.describe("look", () => {
     });
     await expect(textBlock(page).first()).toBeVisible();
     // A smaller space after the move, which only a running observer sees.
-    await page.locator("#frame").evaluate((frame) => {
+    await page.getByTestId("frame").evaluate((frame) => {
       frame.style.height = "500px";
     });
 
@@ -958,7 +964,7 @@ test.describe("look", () => {
         const panel = await box(
           shell(page).locator("mail-quilt").getByTestId("side-panel-content")
         );
-        const frameBox = await box(page.locator("#frame"));
+        const frameBox = await box(page.getByTestId("frame"));
         return panel.bottom <= frameBox.bottom;
       })
       .toBe(true);
@@ -1061,12 +1067,12 @@ test.describe("too narrow to edit in", () => {
   }) => {
     await page.goto("/shell.html?narrow");
     const notice = shell(page)
-      .getByText("Editing needs more room")
-      .locator("..");
+      .locator('[part="frame"]')
+      .filter({ hasText: "Editing needs more room" });
     await expect(notice).toBeVisible();
 
     const noticeBox = await box(notice);
-    const frameBox = await box(page.locator("#frame"));
+    const frameBox = await box(page.getByTestId("frame"));
     const headerBox = await box(header(page));
 
     expect(noticeBox.top).toBe(headerBox.bottom);

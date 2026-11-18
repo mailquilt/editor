@@ -10,6 +10,7 @@ import {
   change,
   changeCount,
   collectErrors,
+  countHostEscapes,
   currentValue,
   emailWith,
   field,
@@ -412,29 +413,20 @@ test.describe("validation", () => {
   test("Escape brings back the current value, and goes no further", async ({
     page,
   }) => {
-    await page.evaluate(() => {
-      document.addEventListener("keydown", (event) => {
-        if (event.key === "Escape") {
-          document.documentElement.dataset.hostEscape = "reached";
-        }
-      });
-    });
+    const hostEscapes = await countHostEscapes(page);
     const language = emailField(page, "Language");
     await change(language, "English");
 
     await language.press("Escape");
 
     await expect(language).toHaveValue("");
-    await expect(page.locator("html")).not.toHaveAttribute("data-host-escape");
+    await expect(hostEscapes()).resolves.toBe(0);
     await expect(email(page).getByRole("alert")).toHaveCount(0);
     await expect(language).toHaveAttribute("aria-invalid", "false");
 
     // With nothing typed, it's the host's.
     await language.press("Escape");
-    await expect(page.locator("html")).toHaveAttribute(
-      "data-host-escape",
-      "reached"
-    );
+    await expect(hostEscapes()).resolves.toBe(1);
   });
 
   test("undo clears a refused value", async ({ page }) => {

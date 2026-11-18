@@ -316,6 +316,7 @@ export class MailQuiltShell extends LitElement {
                     </button>
                     <input
                       accept=".json,application/json"
+                      data-testid="file-input"
                       hidden
                       type="file"
                       @change=${this.#importJson}

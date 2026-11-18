@@ -71,6 +71,12 @@ A PR that changes one of these says so, gives the reason and updates this page.
 ## Tests
 
 - The editor's tests run in the browser, apart from the key map's, which are unit tests. (#36, #145)
-- Browser tests find an element by role and name, or by a documented part. An element with neither, such as a drag handle, a Column or the Side panel, has a `data-testid`, and no selector uses a class. (#147)
+- Browser tests find an element by role and name, or by a documented part. An element with neither, such as a drag handle, a Column or the Side panel, has a `data-testid`, and no selector uses a class. (#147) The rule is for the editor's own elements and the test pages. These are found otherwise: (#171)
+  - The email's own markup, which has no roles or test ids: the text's paragraphs and marks and an Image's picture on the canvas, and the exported HTML, by its tags and MJML's classes.
+  - A state, by the attribute that holds it, such as `aria-current`, `aria-pressed` or `data-drag-ghost`.
+  - A control's icon, by its `svg`, and the host page's `html` and `body`, which hold what a test records.
+  - Code run in the page, which has no locators, by tag and role attributes.
+- CI fails on a test that passes only on a retry, so a flake is seen and fixed. The retries stay, to tell a flake from a test that always fails and to keep a trace. (#171)
+- Tests copy and paste through events, not the system's clipboard, which tests running at the same time could share. (#171)
 - Core keeps a "stores…" test for each Block type's own settings. (#82)
 - "A Row on the canvas shows an outline and its toolbar on hover" failed once in WebKit CI and passed on retry, with no cause found in 25 local runs. It isn't treated as flaky unless it fails again. (#36)

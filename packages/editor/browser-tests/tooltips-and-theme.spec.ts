@@ -11,12 +11,9 @@ import {
   previewButton,
   settle,
   textBlock,
+  tooltip,
+  undoButton,
 } from "./helpers.js";
-
-const tooltip = (page: Page) => canvas(page).getByRole("tooltip");
-
-const undoButton = (page: Page) =>
-  canvas(page).getByRole("button", { exact: true, name: "Undo" });
 
 /** Every icon-only button: no text of its own, so its name comes from a label. */
 const iconButtons = (page: Page) =>
@@ -143,7 +140,9 @@ test.describe("a tooltip", () => {
     await page.mouse.up();
   });
 
-  test("every icon button has a name and a tooltip", async ({ page }) => {
+  test("each icon button, with a Block selected and a Row hovered, has a name and a tooltip", async ({
+    page,
+  }) => {
     await openBlocks(page, ["text"], []);
     await textBlock(page).click();
     await canvas(page).getByTestId("row").hover();
@@ -228,10 +227,8 @@ test.describe("theme tokens", () => {
 });
 
 test("in forced colors, a selected tab and a pressed button are outlined", async ({
-  browserName,
   page,
 }) => {
-  test.skip(browserName !== "chromium", "Only Chromium can emulate it");
   await page.emulateMedia({ forcedColors: "active" });
   await openBlocks(page, ["text"]);
 
@@ -252,7 +249,7 @@ test("a host restyles the editor's frame through its part", async ({
   page,
 }) => {
   await openBlocks(page, ["text"]);
-  const frame = canvas(page).getByTestId("editor");
+  const frame = canvas(page).locator('[part="frame"]');
 
   await page.addStyleTag({
     content: "mail-quilt::part(frame) { border-radius: 0; box-shadow: none; }",

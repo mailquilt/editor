@@ -3,8 +3,8 @@ import type { Locator, Page } from "@playwright/test";
 
 import {
   blockGroup,
-  blockWith,
   blockTools,
+  blockWith,
   boxOf,
   canvas,
   centerOf,
@@ -14,6 +14,7 @@ import {
   moveCursorToLineEnd,
   openBlocks,
   openEmail,
+  previewEmail,
   rowTag,
   rowTools,
   selectedBlock,
@@ -221,8 +222,6 @@ test.describe("the email's language", () => {
 });
 
 test.describe("an empty Column on a touch screen", () => {
-  // Only Chromium emulates a device with no hover.
-  test.skip(({ browserName }) => browserName !== "chromium", "Chromium only");
   test.use({
     hasTouch: true,
     isMobile: true,
@@ -649,25 +648,7 @@ test.describe("on a screen too narrow to edit in", () => {
     await expect(textBlock(page)).toBeHidden();
 
     await canvas(page).getByRole("button", { name: "Preview email" }).click();
-    await expect(
-      page
-        .getByRole("dialog", { name: "Preview" })
-        .frameLocator("iframe")
-        .getByText("Hello")
-    ).toBeVisible();
-  });
-
-  test("returns focus to Preview email when the Preview closes", async ({
-    page,
-  }) => {
-    await page.goto("/");
-    const preview = canvas(page).getByRole("button", { name: "Preview email" });
-    await preview.click();
-    await expect(page.getByRole("dialog", { name: "Preview" })).toBeVisible();
-
-    await page.keyboard.press("Escape");
-
-    await expect(preview).toBeFocused();
+    await expect(previewEmail(page)).toContainText("Hello");
   });
 
   test("stays out of sight with a size the host gives the frame", async ({

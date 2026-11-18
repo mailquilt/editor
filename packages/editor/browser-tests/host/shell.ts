@@ -15,7 +15,7 @@ const saveKey = params.get("save-key");
 if (saveKey) {
   shell.setAttribute("save-key", saveKey);
 }
-const frame = document.querySelector<HTMLElement>("#frame");
+const frame = document.querySelector<HTMLElement>('[data-testid="frame"]');
 // Narrower than the editor needs, as on a phone.
 if (params.has("narrow")) {
   frame?.style.setProperty("width", "500px");
@@ -56,7 +56,7 @@ if (!params.has("late-value")) {
   shell.value = firstEmail();
 }
 shell.addEventListener("mq-error", ({ detail }) => {
-  const errors = document.querySelector("#errors");
+  const errors = document.querySelector('[data-testid="errors"]');
   if (errors) {
     errors.textContent += detail.reason;
   }
@@ -65,7 +65,7 @@ shell.addEventListener("mq-error", ({ detail }) => {
 let changes = 0;
 shell.addEventListener("mq-change", () => {
   changes += 1;
-  const count = document.querySelector("#change-count");
+  const count = document.querySelector('[data-testid="change-count"]');
   if (count) {
     count.textContent = String(changes);
   }
