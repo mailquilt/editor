@@ -23,7 +23,8 @@ const MERGE_TAG_URL = new RegExp(
  * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
  */
 export const isAllowedLinkHref = (href: string) =>
-  /^(?:https?:|mailto:|tel:)/iu.test(href) || MERGE_TAG_URL.test(href);
+  // oxlint-disable-next-line require-unicode-regexp -- With u, i would also take ſ as s.
+  /^(?:https?:|mailto:|tel:)/i.test(href) || MERGE_TAG_URL.test(href);
 
 /**
  * What a person is told when a link is refused, matching `isAllowedLinkHref`.
@@ -47,7 +48,8 @@ export const INVALID_IMAGE_URL =
 export const imageSrcSchema = v.pipe(
   v.string(),
   v.check(
-    (src) => /^https?:/iu.test(src) || MERGE_TAG_URL.test(src),
+    // oxlint-disable-next-line require-unicode-regexp -- As for links.
+    (src) => /^https?:/i.test(src) || MERGE_TAG_URL.test(src),
     "An image URL must start with http:, https: or a Merge Tag"
   )
 );

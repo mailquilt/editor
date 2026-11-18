@@ -346,7 +346,7 @@ const isComposing = (press: KeyPress) =>
  * its own name.
  */
 const keyOf = ({ code, key }: KeyPress) => {
-  if (/^[a-z]$/iu.test(key)) {
+  if (/^[A-Za-z]$/u.test(key)) {
     return key.toLowerCase();
   }
   return /^Key[A-Z]$/u.test(code) && /^\p{L}$/u.test(key)

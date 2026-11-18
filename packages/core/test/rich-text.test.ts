@@ -134,6 +134,8 @@ describe(isAllowedLinkHref, () => {
     "java\nscript:alert(1)",
     "\u0001javascript:alert(1)",
     "vbscript:msgbox(1)",
+    // Unicode case folding would read ſ as s.
+    "httpſ://example.com",
     "data:text/html,<script>alert(1)</script>",
     "javascript:{{x}}",
     "java{{x}}script:alert(1)",

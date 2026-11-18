@@ -218,6 +218,11 @@ describe("Email settings", () => {
       /backgroundColor/u,
     ],
     [
+      "a color with a line break in it",
+      { backgroundColor: "rgb(1,\n2,3)" },
+      /backgroundColor/u,
+    ],
+    [
       "a font that adds a CSS rule",
       { fontFamily: "Arial;display:none" },
       /fontFamily/u,
@@ -240,6 +245,9 @@ describe("Email settings", () => {
     ],
     ["a preheader that isn't text", { preheader: 1 }, /preheader/u],
     ["a language that isn't a code", { language: "English" }, /language/u],
+    // Unicode case folding would read them as s and k.
+    ["a language with ſ for s", { language: "ſv" }, /language/u],
+    ["a language with K for k", { language: "\u212Ao" }, /language/u],
     ["a setting it doesn't have", { subject: "Hi" }, /subject/u],
   ])("rejects %s", (_name, settings, reason) => {
     const { editor } = setup();
@@ -350,6 +358,8 @@ describe(hexColor, () => {
     ["rgba(), dropping its alpha", "rgba(0, 128, 255, 0.5)", "#0080ff"],
     ["a channel past 255, capped", "rgb(300, 0, 0)", "#ff0000"],
     ["text with no color", "none", undefined],
+    ["text with numbers but no color", "12 apples", undefined],
+    ["a # that isn't a color", "#ffffff80", undefined],
   ])("reads %s", (_name, color, hex) => {
     expect(hexColor(color)).toBe(hex);
   });

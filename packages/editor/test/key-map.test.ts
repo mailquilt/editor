@@ -22,7 +22,7 @@ const press = (
   const mod = parts.includes("Mod");
   return {
     altKey: parts.includes("Alt"),
-    code: /^[a-z]$/iu.test(key) ? `Key${key.toUpperCase()}` : key,
+    code: /^[A-Za-z]$/u.test(key) ? `Key${key.toUpperCase()}` : key,
     ctrlKey: apple ? parts.includes("Ctrl") : mod,
     isComposing: false,
     key,
@@ -145,6 +145,12 @@ describe("in a Block's text", () => {
     expect(
       keyIn("text", press("Mod-k", { code: "KeyK", key: "л" }))?.action
     ).toBe("openLinkField");
+  });
+
+  it("reads the Kelvin sign by its place on the keyboard, not as k", () => {
+    expect(
+      keyIn("text", press("Mod-k", { code: "KeyJ", key: "\u212A" }))
+    ).toBeUndefined();
   });
 
   it("isn't the editor's for a key ProseMirror answers first", () => {

@@ -330,6 +330,26 @@ describe(renderEmail, () => {
     expect(html).not.toContain("<script>");
   });
 
+  // Values core accepts that would end their attribute, or run, if not escaped.
+  it.each([
+    [
+      "a quoted font name holding a double quote",
+      () => {
+        const email = emailWithText("Hi");
+        email.settings.fontFamily = `'x" onmouseover "', serif`;
+        return email;
+      },
+      `<div style="font-family:'x&quot; onmouseover &quot;', serif;`,
+    ],
+    [
+      "an entity-encoded scheme after a Merge Tag",
+      () => emailWithInline(linked("{{x}}javascript&#58;alert(1)")),
+      '<a href="{{x}}javascript&amp;#58;alert(1)"',
+    ],
+  ])("keeps %s as text", async (_name, email, expected) => {
+    await expect(renderEmail(email())).resolves.toContain(expected);
+  });
+
   it("keeps a link one link across bold text and a line break in it", async () => {
     const link = { attrs: { href: "https://x.test" }, type: "link" };
     const html = await renderEmail(
