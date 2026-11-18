@@ -11,7 +11,6 @@ import { blockLabel } from "@mailquilt/core/internal";
 import { renderEmail } from "@mailquilt/renderer";
 import { html, LitElement, nothing } from "lit";
 import { keyed } from "lit/directives/keyed.js";
-import { styleMap } from "lit/directives/style-map.js";
 
 import { blockContentStyles, hasRichText } from "./block-content.js";
 import { BLOCKS, createBlockDragging, dropCommand } from "./block-dragging.js";
@@ -43,6 +42,7 @@ import { createSelection, focusToolbarButton } from "./selection.js";
 import { createSettingsDrafts, settingsPanelStyles } from "./settings-panel.js";
 import { renderSidePanel, sidePanelStyles } from "./side-panel.js";
 import type { PanelTab } from "./side-panel.js";
+import { styleProperties } from "./style-properties.js";
 import { createTextBlockView } from "./text-block-view.js";
 import type { TextBlockView, TextFormats } from "./text-block-view.js";
 import { themeTokens, UI_LANG, uiStyles } from "./theme.js";
@@ -359,7 +359,7 @@ export class MailQuilt extends LitElement {
         lang=${UI_LANG}
         part="frame"
         ?data-collapsed=${this.#narrow}
-        style=${styleMap({ "--email-width": `${settings.width}px` })}
+        style=${styleProperties({ "--email-width": `${settings.width}px` })}
       >
         <div
           class="canvas-area"
@@ -371,7 +371,7 @@ export class MailQuilt extends LitElement {
             class="email"
             data-testid="email"
             @beforeinput=${this.#onBeforeInput}
-            style=${styleMap({
+            style=${styleProperties({
               // Also for what's dragged, which has nothing behind it.
               "--_mq-email-background": settings.backgroundColor,
               "background-color": settings.backgroundColor,
