@@ -406,6 +406,26 @@ export interface Point {
   y: number;
 }
 
+/**
+ * Drags a file over the element and drops it there. Returns whether each event
+ * kept the browser's own handling: false once it's prevented.
+ */
+export const dropFileOn = (target: Locator) =>
+  target.evaluate((element) => {
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(new File(["x"], "photo.png", { type: "image/png" }));
+    return ["dragover", "drop"].map((type) =>
+      element.dispatchEvent(
+        new DragEvent(type, {
+          bubbles: true,
+          cancelable: true,
+          composed: true,
+          dataTransfer,
+        })
+      )
+    );
+  });
+
 export const boxOf = async (locator: Locator) => {
   const box = await locator.boundingBox();
   if (!box) {

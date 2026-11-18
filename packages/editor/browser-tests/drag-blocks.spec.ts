@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import type { Locator, Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
 
 import {
   announcement,
@@ -16,6 +16,7 @@ import {
   currentValue,
   deleteRow,
   drag,
+  dropFileOn,
   emailWith,
   letGo,
   moveCursorToLineEnd,
@@ -630,26 +631,6 @@ test.describe("letting go far from the editor", () => {
     expect(await structure(page)).toStrictEqual([[["One", "Two"]]]);
   });
 });
-
-/**
- * Drags a file over the element and drops it there. Returns whether each event
- * kept the browser's own handling: false once it's prevented.
- */
-const dropFileOn = (target: Locator) =>
-  target.evaluate((element) => {
-    const dataTransfer = new DataTransfer();
-    dataTransfer.items.add(new File(["x"], "photo.png", { type: "image/png" }));
-    return ["dragover", "drop"].map((type) =>
-      element.dispatchEvent(
-        new DragEvent(type, {
-          bubbles: true,
-          cancelable: true,
-          composed: true,
-          dataTransfer,
-        })
-      )
-    );
-  });
 
 test.describe("a file dropped doesn't open in the page", () => {
   test("on the email", async ({ page }) => {
