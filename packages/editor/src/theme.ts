@@ -79,6 +79,17 @@ export const uiStyles = css`
     box-sizing: border-box;
   }
 
+  /*
+   * Around the editor, the Shell and the notice in the editor's place, so each
+   * reads as one component on the host's page. A ring rather than a border,
+   * so it takes no room from what's inside.
+   */
+  .frame {
+    background: var(--mq-color-workspace);
+    border-radius: var(--mq-radius);
+    box-shadow: 0 0 0 1px var(--mq-color-border);
+  }
+
   /* Without weight, so each control's own color and font win over these. */
   :where(.ui) :where(button, input, select) {
     color: inherit;

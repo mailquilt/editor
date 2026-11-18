@@ -402,7 +402,7 @@ export class MailQuilt extends LitElement {
       </p>
       ${this.#narrow ? renderNarrowNotice(this.#canvasEvents.onOpenPreview) : nothing}
       <div
-        class="ui editor"
+        class="ui frame editor"
         lang=${UI_LANG}
         part="frame"
         ?data-collapsed=${this.#narrow}

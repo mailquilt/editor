@@ -15,9 +15,8 @@ export const editorStyles = css`
 
   /*
    * The canvas, then the side panel docked on its right. In a host too narrow
-   * for both, the panel goes below rather than squeeze the email. Framed,
-   * so it reads as one component on the host's page. Clipped rather than
-   * hidden, which would stop the panel and toolbar sticking.
+   * for both, the panel goes below rather than squeeze the email. Clipped
+   * rather than hidden, which would stop the panel and toolbar sticking.
    */
   .editor {
     /* Beside the email, room for a Block's tools and a Row's. */
@@ -28,10 +27,6 @@ export const editorStyles = css`
       var(--email-width) + 2 * var(--gutter) + var(--panel-width)
     );
     align-items: stretch;
-    background: var(--mq-color-workspace);
-    border-radius: var(--mq-radius);
-    /* A ring rather than a border, so it takes no room from the email. */
-    box-shadow: 0 0 0 1px var(--mq-color-border);
     display: flex;
     overflow: clip;
     /* Fills any height the host gives, but never shrinks below the email. */
@@ -601,9 +596,6 @@ export const editorStyles = css`
   .narrow-notice {
     align-items: center;
     flex-grow: 1;
-    background: var(--mq-color-workspace);
-    border-radius: var(--mq-radius);
-    box-shadow: 0 0 0 1px var(--mq-color-border);
     display: flex;
     flex-direction: column;
     gap: var(--mq-space-3);
