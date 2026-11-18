@@ -53,3 +53,7 @@ _Avoid_: Demo, hosted editor
 **Shell**:
 A ready-made editor page: the editor plus a header, Import and Export, and messages.
 _Avoid_: Template, Kit
+
+**Starter email**:
+A ready-made email that a host offers its users to begin from, instead of an empty one.
+_Avoid_: Template
