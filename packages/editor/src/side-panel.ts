@@ -1,5 +1,5 @@
 import { BLOCK_TYPES, ROW_LAYOUTS } from "@mailquilt/core";
-import type { BlocksDocument, Row, RowLayout } from "@mailquilt/core";
+import type { RowLayout } from "@mailquilt/core";
 import {
   blockLabel,
   blockSettingsFields,
@@ -12,10 +12,11 @@ import type { TemplateResult } from "lit";
 import { styleMap } from "lit/directives/style-map.js";
 
 import { blockIcon, ICONS } from "./icons.js";
+import type { PanelApi, RowPlace } from "./panel-api.js";
 import { columnLabel } from "./places.js";
 import type { BlockPlace } from "./places.js";
 import { renderSettingsPanel } from "./settings-panel.js";
-import type { SettingsPanelEvents, SettingsSection } from "./settings-panel.js";
+import type { SettingsSection } from "./settings-panel.js";
 
 export const sidePanelStyles = css`
   .layout-option {
@@ -353,41 +354,20 @@ const renderThumbnail = (layout: RowLayout) => html`
   </span>
 `;
 
-interface SidePanelState {
-  document: BlocksDocument;
-  /** The selected Block, and where it is. */
-  selectedBlock: BlockPlace | undefined;
-  selectedRowId: string | undefined;
-  /** Whether it shows the selected Block's or Row's settings, not its tabs. */
-  showProperties: boolean;
-  tab: PanelTab;
-}
-
-export interface SidePanelEvents {
-  onAddBlock: (blockType: string) => void;
-  onAddRow: (layout: RowLayout) => void;
-  /** Back from a Block's or Row's settings to the tabs. */
-  onBack: () => void;
-  onChooseLayout: (rowId: string, layout: RowLayout) => void;
-  onControlMousedown: (event: MouseEvent) => void;
-  onSelectTab: (tab: PanelTab) => void;
-  settings: SettingsPanelEvents;
-}
-
 /** What the side panel shows, with a way Back to its tabs. */
 const renderPanelHeader = (
   icon: TemplateResult,
   title: string,
   subtitle: string,
-  events: SidePanelEvents
+  api: PanelApi
 ) => html`
-  <div class="panel-header" @mousedown=${events.onControlMousedown}>
+  <div class="panel-header" @mousedown=${api.onControlMousedown}>
     <button
       aria-label="Back"
       class="icon-button back-button"
       data-tooltip="Back"
       type="button"
-      @click=${events.onBack}
+      @click=${api.showTabs}
     >
       ${ICONS.left}
     </button>
@@ -400,12 +380,7 @@ const renderPanelHeader = (
 `;
 
 /** A selected Row: its layout, then its settings. Empty Rows too. */
-const renderRowProperties = (
-  document: BlocksDocument,
-  row: Row,
-  rowIndex: number,
-  events: SidePanelEvents
-) => {
+const renderRowProperties = ({ row, rowIndex }: RowPlace, api: PanelApi) => {
   const current = rowLayoutOf(row);
   const section: SettingsSection = {
     command: (props) => ({ props, rowId: row.id, type: "updateRowProps" }),
@@ -413,7 +388,7 @@ const renderRowProperties = (
     id: "row",
     legend: "Row",
     targetId: row.id,
-    unsetColor: document.settings.backgroundColor,
+    unsetColor: api.email.settings.backgroundColor,
     values: row.props,
   };
   return html`
@@ -421,7 +396,7 @@ const renderRowProperties = (
       ICONS.rows,
       `Row ${rowIndex + 1}`,
       current ? `${current} layout` : "Custom layout",
-      events
+      api
     )}
     <div class="panel-scroll">
       <div class="panel-section">
@@ -430,7 +405,7 @@ const renderRowProperties = (
           aria-labelledby="row-layout-title"
           class="layout-choices"
           role="group"
-          @mousedown=${events.onControlMousedown}
+          @mousedown=${api.onControlMousedown}
         >
           ${ROW_LAYOUTS.map(
             (layout) => html`
@@ -438,7 +413,8 @@ const renderRowProperties = (
                 aria-pressed=${layout === current ? "true" : "false"}
                 class="layout-option"
                 type="button"
-                @click=${() => events.onChooseLayout(row.id, layout)}
+                @click=${() =>
+                  api.apply({ layout, rowId: row.id, type: "setRowLayout" })}
               >
                 ${renderThumbnail(layout)}<span>${layout}</span>
               </button>
@@ -446,7 +422,7 @@ const renderRowProperties = (
           )}
         </div>
       </div>
-      ${renderSettingsPanel(section, events.settings)}
+      ${renderSettingsPanel(section, api.settings)}
     </div>
   `;
 };
@@ -454,7 +430,7 @@ const renderRowProperties = (
 /** The selected Block's fields. */
 const renderProperties = (
   { block, columnIndex, rowIndex }: BlockPlace,
-  events: SidePanelEvents
+  api: PanelApi
 ) => {
   const section: SettingsSection = {
     command: (props) => ({
@@ -473,20 +449,16 @@ const renderProperties = (
       blockIcon(block.type),
       blockLabel(block.type),
       columnLabel(rowIndex, columnIndex),
-      events
+      api
     )}
     <div class="panel-scroll">
-      ${renderSettingsPanel(section, events.settings)}
+      ${renderSettingsPanel(section, api.settings)}
     </div>
   `;
 };
 
-const renderTabPanel = (
-  tab: PanelTab,
-  document: BlocksDocument,
-  events: SidePanelEvents
-) => {
-  switch (tab) {
+const renderTabPanel = (api: PanelApi) => {
+  switch (api.tab) {
     case "content": {
       return html`
         <div class="panel-intro">
@@ -500,7 +472,7 @@ const renderTabPanel = (
           aria-label="Add content"
           class="tiles"
           role="group"
-          @mousedown=${events.onControlMousedown}
+          @mousedown=${api.onControlMousedown}
         >
           ${BLOCK_TYPES.map(
             ({ label, type }) => html`
@@ -509,7 +481,7 @@ const renderTabPanel = (
                 class="tile"
                 data-block-type=${type}
                 type="button"
-                @click=${() => events.onAddBlock(type)}
+                @click=${() => api.addBlock(type)}
               >
                 ${blockIcon(type)}
                 <span>${label}</span>
@@ -532,7 +504,7 @@ const renderTabPanel = (
           aria-label="Add a Row"
           class="layout-tiles"
           role="group"
-          @mousedown=${events.onControlMousedown}
+          @mousedown=${api.onControlMousedown}
         >
           ${ROW_LAYOUTS.map(
             (layout) => html`
@@ -541,7 +513,7 @@ const renderTabPanel = (
                 class="layout-tile"
                 data-row-layout=${layout}
                 type="button"
-                @click=${() => events.onAddRow(layout)}
+                @click=${() => api.addRow(layout)}
               >
                 ${renderThumbnail(layout)}<span>${layout}</span>
               </button>
@@ -558,78 +530,64 @@ const renderTabPanel = (
           id: "email",
           legend: "Email",
           targetId: "",
-          values: { ...document.settings },
+          values: { ...api.email.settings },
         },
-        events.settings
+        api.settings
       );
     }
   }
 };
 
-const renderTabs = (
-  document: BlocksDocument,
-  current: PanelTab,
-  events: SidePanelEvents
-) => html`
-  <div class="panel-top">
-    <div aria-label="Side panel" class="tabs" role="tablist">
-      ${PANEL_TABS.map(
-        ({ icon, id, label }) => html`
-          <button
-            aria-controls=${id === current ? `tabpanel-${id}` : nothing}
-            aria-selected=${id === current ? "true" : "false"}
-            class="tab"
-            id=${`tab-${id}`}
-            role="tab"
-            tabindex=${id === current ? "0" : "-1"}
-            type="button"
-            @click=${() => events.onSelectTab(id)}
-            @focus=${() => events.onSelectTab(id)}
-          >
-            ${icon}<span>${label}</span>
-          </button>
-        `
-      )}
+const renderTabs = (api: PanelApi) => {
+  const current = api.tab;
+  return html`
+    <div class="panel-top">
+      <div aria-label="Side panel" class="tabs" role="tablist">
+        ${PANEL_TABS.map(
+          ({ icon, id, label }) => html`
+            <button
+              aria-controls=${id === current ? `tabpanel-${id}` : nothing}
+              aria-selected=${id === current ? "true" : "false"}
+              class="tab"
+              id=${`tab-${id}`}
+              role="tab"
+              tabindex=${id === current ? "0" : "-1"}
+              type="button"
+              @click=${() => api.selectTab(id)}
+              @focus=${() => api.selectTab(id)}
+            >
+              ${icon}<span>${label}</span>
+            </button>
+          `
+        )}
+      </div>
     </div>
-  </div>
-  <div
-    aria-labelledby=${`tab-${current}`}
-    class=${current === "settings" ? "panel-scroll" : "panel-scroll padded"}
-    id=${`tabpanel-${current}`}
-    role="tabpanel"
-  >
-    ${renderTabPanel(current, document, events)}
-  </div>
-`;
-
-const renderPanelView = (
-  {
-    document,
-    selectedBlock,
-    selectedRowId,
-    showProperties,
-    tab,
-  }: SidePanelState,
-  events: SidePanelEvents
-) => {
-  if (showProperties) {
-    const rowIndex = document.rows.findIndex(({ id }) => id === selectedRowId);
-    const row = document.rows[rowIndex];
-    if (row) {
-      return renderRowProperties(document, row, rowIndex, events);
-    }
-    if (selectedBlock) {
-      return renderProperties(selectedBlock, events);
-    }
-  }
-  return renderTabs(document, tab, events);
+    <div
+      aria-labelledby=${`tab-${current}`}
+      class=${current === "settings" ? "panel-scroll" : "panel-scroll padded"}
+      id=${`tabpanel-${current}`}
+      role="tabpanel"
+    >
+      ${renderTabPanel(api)}
+    </div>
+  `;
 };
 
-export const renderSidePanel = (
-  state: SidePanelState,
-  events: SidePanelEvents
-) => html`
-  <div class="side-panel">
-    <div class="side-panel-inner">${renderPanelView(state, events)}</div>
+const renderPanelView = (api: PanelApi) => {
+  const { selectedBlock, selectedRow, showsSettings } = api;
+  if (showsSettings && selectedRow) {
+    return renderRowProperties(selectedRow, api);
+  }
+  if (showsSettings && selectedBlock) {
+    return renderProperties(selectedBlock, api);
+  }
+  return renderTabs(api);
+};
+
+export const renderSidePanel = (api: PanelApi) => html`
+  <div class="side-panel" data-testid="side-panel">
+    <div class="side-panel-inner" data-testid="side-panel-content">
+      ${renderPanelView(api)}
+    </div>
   </div>
 `;

@@ -166,9 +166,9 @@ test.describe("Text settings", () => {
       fontSize: "24px",
       textAlign: "center",
     };
-    expect(
-      await textStyle(canvas(page).locator(".ProseMirror p"))
-    ).toMatchObject(expected);
+    expect(await textStyle(textBlock(page).locator("p"))).toMatchObject(
+      expected
+    );
     const { opened } = await openExport(page);
     expect(await textStyle(opened.getByText("Styled"))).toMatchObject(expected);
     await opened.close();
@@ -209,10 +209,10 @@ test.describe("Row settings", () => {
       { backgroundColor: "#00ff00" },
       {},
     ]);
-    expect(await rowBackground(canvas(page).locator(".row").first())).toBe(
+    expect(await rowBackground(canvas(page).getByTestId("row").first())).toBe(
       "rgb(0, 255, 0)"
     );
-    expect(await rowBackground(canvas(page).locator(".row").last())).toBe(
+    expect(await rowBackground(canvas(page).getByTestId("row").last())).toBe(
       "rgba(0, 0, 0, 0)"
     );
   });
@@ -243,12 +243,12 @@ test.describe("Email settings", () => {
         )
       )
       .toBe("pt-BR");
-    const onCanvas = canvas(page).locator(".email");
+    const onCanvas = canvas(page).getByTestId("email");
     await expect(onCanvas).toHaveCSS("background-color", "rgb(238, 238, 238)");
     await expect(onCanvas).toHaveCSS("width", "500px");
-    expect(
-      await textStyle(canvas(page).locator(".ProseMirror p"))
-    ).toMatchObject({ fontFamily: verdana });
+    expect(await textStyle(textBlock(page).locator("p"))).toMatchObject({
+      fontFamily: verdana,
+    });
 
     const { html, opened } = await openExport(page);
     expect(html).toContain('<html lang="pt-BR"');
@@ -290,14 +290,14 @@ test.describe("undo", () => {
     await expect(field(page, "Color")).toHaveValue("#ff0000");
     await undoByKey(page);
     await expect(field(page, "Color")).toHaveValue("#000000");
-    await expect(canvas(page).locator(".ProseMirror p")).toHaveCSS(
+    await expect(textBlock(page).locator("p")).toHaveCSS(
       "color",
       "rgb(0, 0, 0)"
     );
 
     await redoByKey(page);
     await expect(field(page, "Color")).toHaveValue("#ff0000");
-    await expect(canvas(page).locator(".ProseMirror p")).toHaveCSS(
+    await expect(textBlock(page).locator("p")).toHaveCSS(
       "color",
       "rgb(255, 0, 0)"
     );
@@ -496,7 +496,7 @@ test.describe("text that hasn't been committed", () => {
 
   test("is committed when a drag handle is pressed", async ({ page }) => {
     await typeFontSize(page, "24");
-    const box = await boxOf(canvas(page).locator(".drag-handle").first());
+    const box = await boxOf(canvas(page).getByTestId("drag-handle").first());
 
     await page.mouse.move(box.x + 4, box.y + 4);
     await page.mouse.down();
@@ -594,10 +594,10 @@ test.describe("layout", () => {
     page,
   }) => {
     await inHostOf(page, 900);
-    const onCanvas = canvas(page).locator(".email");
+    const onCanvas = canvas(page).getByTestId("email");
     await expect(onCanvas).toHaveCSS("width", "600px");
     const emailBox = await boxOf(onCanvas);
-    const panelBox = await boxOf(canvas(page).locator(".side-panel"));
+    const panelBox = await boxOf(canvas(page).getByTestId("side-panel"));
     const hostBox = await boxOf(canvas(page));
     expect(panelBox.y).toBeGreaterThanOrEqual(emailBox.y + emailBox.height);
     // Below, it takes the editor's whole width.
@@ -609,8 +609,8 @@ test.describe("layout", () => {
   }) => {
     await inHostOf(page, 1100);
 
-    const emailBox = await boxOf(canvas(page).locator(".email"));
-    const panelBox = await boxOf(canvas(page).locator(".side-panel"));
+    const emailBox = await boxOf(canvas(page).getByTestId("email"));
+    const panelBox = await boxOf(canvas(page).getByTestId("side-panel"));
     const hostBox = await boxOf(canvas(page));
     expect(panelBox.y).toBe(hostBox.y);
     expect(panelBox.x).toBeGreaterThanOrEqual(emailBox.x + emailBox.width);

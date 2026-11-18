@@ -25,7 +25,7 @@ const headingText = (page: Page) =>
 
 /** The part of a Button that looks like one, on the canvas. */
 const buttonFace = (page: Page) =>
-  blockGroup(page, "Button").locator(".button");
+  blockGroup(page, "Button").getByTestId("button-face");
 
 const lastBlockProps = async (page: Page) => {
   const found = await blocks(page);
@@ -327,7 +327,7 @@ test.describe("a Button", () => {
 
     const onCanvas = await buttonLook(buttonFace(page));
     const email = await canvas(page)
-      .locator(".email")
+      .getByTestId("email")
       .evaluate((element) => {
         const { width, x } = element.getBoundingClientRect();
         return x + width / 2;

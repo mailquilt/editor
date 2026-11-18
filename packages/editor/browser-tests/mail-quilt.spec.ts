@@ -747,8 +747,8 @@ test("a host's fixed height never cuts the email short", async ({ page }) => {
   });
 
   // The whole email shows, overflowing the host as it always has.
-  const editor = await boxOf(canvas(page).locator(".editor"));
-  const lastRow = await boxOf(canvas(page).locator(".row-frame").last());
+  const editor = await boxOf(canvas(page).getByTestId("editor"));
+  const lastRow = await boxOf(canvas(page).getByTestId("row-frame").last());
   expect(lastRow.y + lastRow.height).toBeLessThanOrEqual(
     editor.y + editor.height
   );

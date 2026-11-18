@@ -112,7 +112,7 @@ test.describe("moving a selected Row from the keyboard", () => {
     );
     await selectRow(page, letters.length);
     const moved = canvas(page)
-      .locator(".row-frame")
+      .getByTestId("row-frame")
       .filter({ has: textBlock(page).getByText("J", { exact: true }) });
 
     // oxlint-disable no-await-in-loop -- Each press depends on the one before.
@@ -157,12 +157,12 @@ test.describe("moving a selected Row from the keyboard", () => {
 /** Shows the Row's tools and tag, then the handle or tag to drag it by. */
 const grip = async (page: Page, position: number, by: "handle" | "tag") => {
   await canvas(page)
-    .locator(".row")
+    .getByTestId("row")
     .nth(position - 1)
     .hover({ position: { x: 4, y: 4 } });
   return by === "handle"
-    ? rowTools(page, position).locator(".drag-handle")
-    : rowFrame(page, position).locator(".row-tag");
+    ? rowTools(page, position).getByTestId("drag-handle")
+    : rowFrame(page, position).getByTestId("row-tag");
 };
 
 /**
@@ -172,7 +172,7 @@ const grip = async (page: Page, position: number, by: "handle" | "tag") => {
 const belowMiddleOf = async (page: Page, position: number): Promise<Point> => {
   const { height, width, x, y } = await boxOf(
     canvas(page)
-      .locator(".row")
+      .getByTestId("row")
       .nth(position - 1)
   );
   return { x: x + width / 2, y: y + height * 0.75 };
@@ -188,7 +188,7 @@ test.describe("dragging a Row", () => {
     const to = await belowMiddleOf(page, 2);
     await pickUp(page, await grip(page, 1, "handle"));
     await moveTo(page, to);
-    await expect(canvas(page).locator(".drop-indicator")).toBeVisible();
+    await expect(canvas(page).getByTestId("drop-indicator")).toBeVisible();
     // A Row only ever lands between Rows, never in a Column.
     await expect(canvas(page).locator("[data-drop-target]")).toHaveCount(0);
     await letGo(page);
@@ -240,7 +240,7 @@ test.describe("dragging a Row", () => {
 
     await pickUp(page, await grip(page, 1, "handle"));
     await moveTo(page, away);
-    await expect(canvas(page).locator(".drop-indicator")).toBeHidden();
+    await expect(canvas(page).getByTestId("drop-indicator")).toBeHidden();
     await letGo(page);
 
     await expect(structure(page)).resolves.toEqual([[["One"]], [["Two"]]]);

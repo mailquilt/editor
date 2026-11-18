@@ -722,7 +722,7 @@ test.describe("look", () => {
       frame: await box(page.locator("#frame")),
       header: await box(header(page)),
       // The editor itself stretches, so its side panel runs to the bottom.
-      panel: await box(editor.locator(".side-panel")),
+      panel: await box(editor.getByTestId("side-panel")),
     };
 
     expect(boxes.header.top).toBe(boxes.frame.top);
@@ -747,7 +747,7 @@ test.describe("look", () => {
     expect(await pageScroll()).toBe(0);
 
     // A click on the workspace, with the new Block selected.
-    const area = await boxOf(editor.locator(".canvas-area"));
+    const area = await boxOf(editor.getByTestId("workspace"));
     await page.mouse.click(area.x + 10, area.y + 10);
     await expect(editor.locator('[aria-current="true"]')).toHaveCount(0);
     expect(await pageScroll()).toBe(0);
@@ -758,7 +758,7 @@ test.describe("look", () => {
     await expect(textBlock(page).first()).toBeVisible();
 
     const panel = await box(
-      shell(page).locator("mail-quilt").locator(".side-panel-inner")
+      shell(page).locator("mail-quilt").getByTestId("side-panel-content")
     );
     const frameBox = await box(page.locator("#frame"));
 
@@ -786,7 +786,7 @@ test.describe("look", () => {
     await expect
       .poll(async () => {
         const panel = await box(
-          shell(page).locator("mail-quilt").locator(".side-panel-inner")
+          shell(page).locator("mail-quilt").getByTestId("side-panel-content")
         );
         const frameBox = await box(page.locator("#frame"));
         return panel.bottom <= frameBox.bottom;
@@ -808,7 +808,7 @@ test.describe("look", () => {
     const before = await box(tooltip);
 
     await shell(page).evaluate((element) => {
-      const body = element.shadowRoot?.querySelector(".body");
+      const body = element.shadowRoot?.querySelector('[data-testid="body"]');
       if (body) {
         body.scrollTop += 40;
       }
@@ -840,7 +840,7 @@ test.describe("look", () => {
 
     await expect(header(page)).toHaveCSS("background-color", "rgb(1, 2, 3)");
     await expect(
-      shell(page).locator("mail-quilt").locator(".side-panel-inner")
+      shell(page).locator("mail-quilt").getByTestId("side-panel-content")
     ).toHaveCSS("background-color", "rgb(1, 2, 3)");
   });
 });

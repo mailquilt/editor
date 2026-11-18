@@ -5,11 +5,8 @@ import { keyed } from "lit/directives/keyed.js";
 import { ICONS } from "./icons.js";
 import type { KeyLabel } from "./key-map.js";
 import { keyLabel, textKeyLabel } from "./key-map.js";
-import type {
-  TextBlockView,
-  TextFormats,
-  ToggleableMark,
-} from "./text-block-view.js";
+import type { PanelApi, PanelState } from "./panel-api.js";
+import type { TextBlockView, ToggleableMark } from "./text-block-view.js";
 
 export const formatBarStyles = css`
   /*
@@ -85,26 +82,6 @@ const MARK_BUTTONS: {
 const LINK_KEYS = keyLabel("text", "openLinkField");
 const LINE_BREAK_KEYS = textKeyLabel("lineBreak");
 
-export interface FormatBarState {
-  /** Unset until the Block's text has its editor, and the buttons wait for it. */
-  formats: TextFormats | undefined;
-  /**
-   * Set while the link field is open. Each refusal counts, so the same one again
-   * is a new alert and is read out.
-   */
-  linkForm: { refusals: number } | undefined;
-}
-
-export interface FormatBarEvents {
-  onCancelLink: () => void;
-  onControlMousedown: (event: MouseEvent) => void;
-  onLineBreak: () => void;
-  onOpenLinkForm: () => void;
-  onRemoveLink: () => void;
-  onSubmitLink: (href: string) => void;
-  onToggleMark: (mark: ToggleableMark) => void;
-}
-
 interface LinkFormHost {
   /** The selected Block's text, where the link goes. */
   view: () => TextBlockView | undefined;
@@ -119,7 +96,7 @@ interface LinkFormHost {
 
 /** The link field: open or closed, and what its buttons do. */
 export const createLinkForm = (host: LinkFormHost) => {
-  let state: FormatBarState["linkForm"];
+  let state: PanelState["linkField"];
 
   const close = () => {
     if (state) {
@@ -142,37 +119,35 @@ export const createLinkForm = (host: LinkFormHost) => {
     await host.focusField();
   };
 
-  const events: Pick<
-    FormatBarEvents,
-    "onCancelLink" | "onOpenLinkForm" | "onRemoveLink" | "onSubmitLink"
-  > = {
-    onCancelLink: () => {
-      close();
-      host.focusText();
-    },
-    onOpenLinkForm: open,
-    onRemoveLink: () => {
-      close();
-      host.view()?.removeLink();
-    },
-    onSubmitLink: (href) => {
-      if (!isAllowedLinkHref(href)) {
-        state = { refusals: (state?.refusals ?? 0) + 1 };
-        host.requestUpdate();
-        return;
-      }
-      close();
-      host.view()?.setLink(href);
-    },
+  const cancel = () => {
+    close();
+    host.focusText();
+  };
+
+  const remove = () => {
+    close();
+    host.view()?.removeLink();
+  };
+
+  const submit = (href: string) => {
+    if (!isAllowedLinkHref(href)) {
+      state = { refusals: (state?.refusals ?? 0) + 1 };
+      host.requestUpdate();
+      return;
+    }
+    close();
+    host.view()?.setLink(href);
   };
 
   return {
+    cancel,
     close,
-    events,
     open,
+    remove,
     get state() {
       return state;
     },
+    submit,
   };
 };
 
@@ -182,7 +157,7 @@ const stopPropagation = (event: Event) => event.stopPropagation();
 const renderLinkForm = (
   refusals: number,
   href: string | undefined,
-  events: FormatBarEvents
+  api: PanelApi
 ) => html`
   <form
     class="link-form"
@@ -191,7 +166,7 @@ const renderLinkForm = (
     @submit=${(event: SubmitEvent) => {
       event.preventDefault();
       const form = event.target as HTMLFormElement;
-      events.onSubmitLink(String(new FormData(form).get("href")).trim());
+      api.submitLink(String(new FormData(form).get("href")).trim());
     }}
   >
     <label>
@@ -211,16 +186,12 @@ const renderLinkForm = (
       href === undefined
         ? nothing
         : html`
-            <button
-              class="text-button"
-              type="button"
-              @click=${events.onRemoveLink}
-            >
+            <button class="text-button" type="button" @click=${api.removeLink}>
               Remove link
             </button>
           `
     }
-    <button class="text-button" type="button" @click=${events.onCancelLink}>
+    <button class="text-button" type="button" @click=${api.cancelLink}>
       Cancel
     </button>
     ${
@@ -238,10 +209,8 @@ const renderLinkForm = (
  * Next to the text being edited. Alt+F10 reaches it from the text and Escape
  * goes back, so it takes no stop of its own from Tab.
  */
-export const renderFormatBar = (
-  { formats, linkForm }: FormatBarState,
-  events: FormatBarEvents
-) => {
+export const renderFormatBar = (api: PanelApi) => {
+  const { formats, linkField } = api;
   // Its name, not a pressed state, says the text is in a link, as pressing it
   // opens the link field rather than taking the link away.
   const linkLabel = formats?.linkHref === undefined ? "Link" : "Edit link";
@@ -250,7 +219,7 @@ export const renderFormatBar = (
       aria-label="Text formatting"
       class="ui bar format-bar"
       role="toolbar"
-      @mousedown=${events.onControlMousedown}
+      @mousedown=${api.onControlMousedown}
     >
       ${MARK_BUTTONS.map(
         ({ keys, label, mark }) => html`
@@ -263,7 +232,7 @@ export const renderFormatBar = (
             ?disabled=${!formats || (mark === "bold" && !formats.canBold)}
             tabindex="-1"
             type="button"
-            @click=${() => events.onToggleMark(mark)}
+            @click=${() => api.toggleMark(mark)}
           >
             ${ICONS[mark]}
           </button>
@@ -271,7 +240,7 @@ export const renderFormatBar = (
       )}
       <span class="separator"></span>
       <button
-        aria-expanded=${linkForm ? "true" : "false"}
+        aria-expanded=${linkField ? "true" : "false"}
         aria-keyshortcuts=${LINK_KEYS.shortcuts}
         aria-label=${linkLabel}
         class="icon-button"
@@ -280,7 +249,7 @@ export const renderFormatBar = (
         ?disabled=${!formats}
         tabindex="-1"
         type="button"
-        @click=${events.onOpenLinkForm}
+        @click=${api.openLinkField}
       >
         ${ICONS.link}
       </button>
@@ -292,11 +261,11 @@ export const renderFormatBar = (
         ?disabled=${!formats}
         tabindex="-1"
         type="button"
-        @click=${events.onLineBreak}
+        @click=${api.insertLineBreak}
       >
         ${ICONS.lineBreak}
       </button>
-      ${linkForm ? renderLinkForm(linkForm.refusals, formats?.linkHref, events) : nothing}
+      ${linkField ? renderLinkForm(linkField.refusals, formats?.linkHref, api) : nothing}
     </div>
   `;
 };

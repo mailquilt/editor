@@ -176,16 +176,16 @@ export const openEmail = async (page: Page, rows: string[][][]) => {
 /** A Row's frame. A drag's copy of it is left out. */
 export const rowFrame = (page: Page, position: number) =>
   canvas(page)
-    .locator(".row-frame:not([data-drag-ghost])")
+    .locator('[data-testid="row-frame"]:not([data-drag-ghost])')
     .nth(position - 1);
 
 export const rowTag = (page: Page, position: number) =>
-  rowFrame(page, position).locator(".row-tag");
+  rowFrame(page, position).getByTestId("row-tag");
 
 /** A Row's toolbar shows on hover, so the pointer goes there first. */
 export const hoverRow = (page: Page, position: number) =>
   rowFrame(page, position)
-    .locator(".row")
+    .getByTestId("row")
     .hover({ position: { x: 4, y: 4 } });
 
 /**
@@ -212,7 +212,7 @@ export const selectRow = async (page: Page, position: number) => {
 /** A layout in the selected Row's side panel. */
 export const layoutOption = (page: Page, layout: string) =>
   canvas(page)
-    .locator(".side-panel")
+    .getByTestId("side-panel")
     .getByRole("group", { name: "Layout" })
     .getByRole("button", { exact: true, name: layout });
 
@@ -371,7 +371,11 @@ export const openBlocks = async (page: Page, ...columns: string[][]) => {
   }
   await page.goto("/");
   await setValue(page, email);
-  await expect(canvas(page).locator(".block").first()).toBeVisible();
+  await expect(
+    canvas(page)
+      .getByRole("group", { name: / Block, Row /u })
+      .first()
+  ).toBeVisible();
   // An image that's still loading would go on to move what's below it.
   for (const image of await canvas(page).locator("img").all()) {
     // oxlint-disable-next-line no-await-in-loop -- Order doesn't matter, and there are few.

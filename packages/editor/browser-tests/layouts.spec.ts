@@ -71,7 +71,7 @@ const exportedColumnBoxes = async (page: Page) => {
 const canvasColumnWidths = (page: Page) =>
   canvas(page).evaluate((element) =>
     Array.from(
-      element.shadowRoot?.querySelectorAll(".row > *") ?? [],
+      element.shadowRoot?.querySelectorAll('[data-testid="column"]') ?? [],
       (column) => Math.round(column.getBoundingClientRect().width)
     )
   );
@@ -181,7 +181,7 @@ test.describe("an empty Column", () => {
 
   test("keeps its controls inside a narrow Column", async ({ page }) => {
     await openBlocks(page, ["text"], [], [], []);
-    const column = canvas(page).locator(".column").nth(1);
+    const column = canvas(page).getByTestId("column").nth(1);
     const box = await boxOf(column);
 
     const controls = await column.getByRole("button").all();
@@ -283,7 +283,7 @@ test.describe("choosing a layout", () => {
 
     await selectRow(page, 1);
     const layouts = canvas(page)
-      .locator(".side-panel")
+      .getByTestId("side-panel")
       .getByRole("group", { name: "Layout" });
     await expect(layouts).toBeVisible();
     await expect(layouts.locator('[aria-pressed="true"]')).toHaveCount(0);
