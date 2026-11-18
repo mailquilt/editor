@@ -49,7 +49,7 @@ test("the docs' server code builds, renders and refuses an email in Node", async
   expect(refusal).toMatch(/^This email can't be sent/u);
 });
 
-test("the docs' Merge Tag code fills and escapes each value, in text and in a link, and refuses a tag with no value", async () => {
+test("the docs' Merge Tag code fills and escapes each value, in text and in a link, with spaces inside its braces, and refuses a tag with no value", async () => {
   const { stdout } = await promisify(execFile)(
     "node",
     [
@@ -62,14 +62,18 @@ test("the docs' Merge Tag code fills and escapes each value, in text and in a li
        const editor = createEditor({ document: email });
        const button = editor.apply({ blockType: "button", rowIndex: 0, type: "insertBlockInNewRow" });
        editor.apply({ blockId: button.createdId, props: { href: "{{ cta_url }}" }, type: "updateBlockProps" });
+       const text = editor.apply({ blockType: "text", rowIndex: 0, type: "insertBlockInNewRow" });
+       const paragraph = { content: [{ text: "Signed up as {{ customer.preferred_name }}.", type: "text" }], type: "paragraph" };
+       editor.apply({ blockId: text.createdId, props: { content: { content: [paragraph], type: "doc" } }, type: "updateBlockProps" });
        const html = await htmlFor(editor.getDocument());
        const filled = fillMergeTags(html, {
          cta_url: "https://example.com/track?id=1&to=2",
+         "customer.preferred_name": "Ada",
          first_name: "Ada <b>&</b> \\"Lovelace\\" O'Brien",
        });
        let missing;
        try {
-         fillMergeTags(html, { first_name: "Ada" });
+         fillMergeTags(html, { "customer.preferred_name": "Ada", first_name: "Ada" });
        } catch ({ message }) {
          missing = message;
        }
@@ -85,6 +89,7 @@ test("the docs' Merge Tag code fills and escapes each value, in text and in a li
     "Hi Ada &lt;b&gt;&amp;&lt;/b&gt; &quot;Lovelace&quot; O&#39;Brien, your order has shipped."
   );
   expect(filled).toContain('href="https://example.com/track?id=1&amp;to=2"');
+  expect(filled).toContain("Signed up as Ada.");
   expect(filled).not.toMatch(/\{\{[^{}]+\}\}/u);
   expect(missing).toBe("No value for {{ cta_url }}");
 });
