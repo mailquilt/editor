@@ -18,8 +18,8 @@ export const renderEmail = async (document: unknown) => {
     validationLevel: "strict",
   });
   // MJML indents its HTML, which is over a quarter of an email's size. Gmail
-  // cuts off an email it counts as over 102 KB. The email's own text never has
-  // a line break in it, so whitespace with one is only MJML's layout.
+  // cuts off an email it counts as over 102 KB. The email's own line breaks are
+  // escaped, so whitespace with one is only MJML's layout.
   return limitColumnWidths(
     html.replaceAll(/>\s*\n\s*</gu, "><").replaceAll(/\s*\n\s*/gu, " "),
     emailWidth

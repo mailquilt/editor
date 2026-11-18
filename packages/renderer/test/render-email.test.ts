@@ -202,15 +202,15 @@ describe(renderEmail, () => {
     expect(html).not.toContain("pre-wrap");
   });
 
-  it("lets a long word wrap after its slashes and dots, in clients that won't break it", async () => {
+  it("lets a word of 20 or more typed characters wrap after its slashes and dots, in clients that won't break it", async () => {
     const html = await renderEmail(
       emailWithText(
-        "Saved as projects/mail-quilt/welcome_v2.json, or short.example/x"
+        "Saved as projects/mail-quilt/welcome_v2.json, or short.example/x and fish&chips/today.ok"
       )
     );
 
     expect(html).toContain(
-      ">Saved as projects/&#8203;mail-&#8203;quilt/&#8203;welcome_&#8203;v2.&#8203;json, or short.example/x</p>"
+      ">Saved as projects/&#8203;mail-&#8203;quilt/&#8203;welcome_&#8203;v2.&#8203;json, or short.example/x and fish&amp;chips/today.ok</p>"
     );
   });
 
@@ -256,6 +256,50 @@ describe(renderEmail, () => {
     expect(html).toContain(
       '>Open <a href="https://example.com/{{ user id }}/x" target="_blank" style="color:#000000;text-decoration:underline">https://&#8203;example.&#8203;com/&#8203;{{ user id }}/&#8203;x</a>, <a href="https://example.com/{{ id }}" target="_blank" style="color:#000000;text-decoration:underline">https://&#8203;example.&#8203;com/&#8203;{{ id }}</a>. or <a href="https://x.test/{{ id }}" target="_blank" style="color:#000000;text-decoration:underline">https://&#8203;x.&#8203;test/&#8203;{{ id }}</a></p>'
     );
+  });
+
+  it("links a URL written as text with a closing bracket it opened, and without one it didn't", async () => {
+    const html = await renderEmail(
+      emailWithText(
+        "See https://x.test/(b) (or https://x.test/(d)), https://x.co/((e)), https://x.co/?q=(f or https://x.co/a)b"
+      )
+    );
+
+    expect(html).toContain(
+      '>See <a href="https://x.test/(b)" target="_blank" style="color:#000000;text-decoration:underline">https://x.test/(b)</a> (or <a href="https://x.test/(d)" target="_blank" style="color:#000000;text-decoration:underline">https://x.test/(d)</a>), <a href="https://x.co/((e))" target="_blank" style="color:#000000;text-decoration:underline">https://x.co/((e))</a>, <a href="https://x.co/?q=(f" target="_blank" style="color:#000000;text-decoration:underline">https://x.co/?q=(f</a> or <a href="https://x.co/a)b" target="_blank" style="color:#000000;text-decoration:underline">https://x.co/a)b</a></p>'
+    );
+  });
+
+  it("links a www. URL written as text, and one with its scheme in capitals, as other URLs", async () => {
+    const html = await renderEmail(
+      emailWithText(
+        "Visit www.x.test/a, HTTPS://X.TEST, WWW.X.TEST or swww.x.test."
+      )
+    );
+
+    expect(html).toContain(
+      '>Visit <a href="http://www.x.test/a" target="_blank" style="color:#000000;text-decoration:underline">www.x.test/a</a>, <a href="HTTPS://X.TEST" target="_blank" style="color:#000000;text-decoration:underline">HTTPS://X.TEST</a>, <a href="http://WWW.X.TEST" target="_blank" style="color:#000000;text-decoration:underline">WWW.X.TEST</a> or swww.x.test.</p>'
+    );
+  });
+
+  it("links an email address written as text as mailto:, so its break points don't stop it working", async () => {
+    const html = await renderEmail(
+      emailWithText(
+        "Write to first.last-name@mail.example.com or o'brien@x.test, not {{ first }}sales@x.test, wait...@x.test or x.co/a@b.co."
+      )
+    );
+
+    expect(html).toContain(
+      `>Write to <a href="mailto:first.last-name@mail.example.com" target="_blank" style="color:#000000;text-decoration:underline">first.&#8203;last-&#8203;name@mail.&#8203;example.&#8203;com</a> or <a href="mailto:o'brien@x.test" target="_blank" style="color:#000000;text-decoration:underline">o'brien@x.test</a>, not {{ first }}sales@x.&#8203;test, wait...@x.test or x.co/a@b.co.</p>`
+    );
+  });
+
+  it("doesn't link an email address inside a Merge Tag, so the tag is still filled in", async () => {
+    const html = await renderEmail(
+      emailWithText('Write to {{ to | default: "help@x.test" }}')
+    );
+
+    expect(html).toContain('>Write to {{ to | default: "help@x.test" }}</p>');
   });
 
   it("doesn't link a URL again inside a link", async () => {
@@ -328,6 +372,26 @@ describe(renderEmail, () => {
       'href="https://a.b/?x=&quot;&gt;&lt;script&gt;&amp;y=&lt;/mj-text&gt;"'
     );
     expect(html).not.toContain("<script>");
+  });
+
+  it("keeps a line break in text between marks, which shows as a space", async () => {
+    const html = await renderEmail(
+      emailWithInline(
+        { marks: [{ type: "bold" }], text: "a", type: "text" },
+        { text: "\n", type: "text" },
+        { marks: [{ type: "italic" }], text: "b", type: "text" }
+      )
+    );
+
+    expect(html).toContain("<strong>a</strong>&#10;<em>b</em>");
+  });
+
+  it("keeps a line break in a link address, which browsers leave out, rather than making it a space", async () => {
+    const html = await renderEmail(
+      emailWithInline(linked("https://x.test/a\nb"))
+    );
+
+    expect(html).toContain('href="https://x.test/a&#10;b"');
   });
 
   // Values core accepts that would end their attribute, or run, if not escaped.

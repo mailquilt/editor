@@ -29,9 +29,9 @@ Classic Outlook draws email with Microsoft Word, which supports less HTML and CS
 
 ## URLs and long words
 
-A URL written as text, starting with `https://` or `http://`, is exported as a link to itself, in its text's color, like a link you add in the editor. The canvas still shows it as text.
+A URL written as text, starting with `https://`, `http://` or `www.`, is exported as a link to itself, in its text's color, like a link you add in the editor. One starting with `www.` links to `http://` and that address. An email address written as text is exported as a `mailto:` link the same way. The canvas still shows both as text. A URL ends before a closing bracket it didn't open, and before a full stop or comma after it, so `(see https://example.com/a_(b))` links `https://example.com/a_(b)`. A URL or address inside a Merge Tag, such as its default value, stays part of the tag.
 
-A word of 20 or more characters, such as that URL, gets invisible break points after its slashes, dots and other punctuation, so it wraps onto the next line in every client rather than widening the email. Someone who copies it from the email copies the break points too. A link's address is never changed, and Merge Tags are left whole, with or without spaces inside their braces.
+A word of 20 or more characters as typed, such as that URL, gets invisible break points after its slashes, dots and other punctuation, so it wraps onto the next line in every client rather than widening the email. Someone who copies it from the email copies the break points too. A link's address is never changed, and Merge Tags are left whole, with or without spaces inside their braces.
 
 Apple Mail, iOS Mail and Gmail also turn text that looks like an address without `https://`, such as `example.com`, into a link in their own blue. To keep it in your colors, link it yourself.
 
