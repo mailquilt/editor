@@ -14,6 +14,10 @@ export const contains = (
   );
 };
 
+/** How much the host page scales a length, such as with a CSS transform. */
+export const scaleOf = (onScreen: number, laidOut: number) =>
+  Math.abs(onScreen - laidOut) > 1 ? onScreen / laidOut : 1;
+
 /**
  * `root` and each shadow root around it, up to the page. What the page has, such
  * as a scroll event or a style sheet, doesn't reach inside them.

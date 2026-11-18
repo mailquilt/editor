@@ -46,6 +46,8 @@ import type { PanelTab } from "./side-panel.js";
 import { createTextBlockView } from "./text-block-view.js";
 import type { TextBlockView, TextFormats } from "./text-block-view.js";
 import { themeTokens, UI_LANG, uiStyles } from "./theme.js";
+import { createToolPlacement } from "./tool-placement.js";
+import type { ToolPlacement } from "./tool-placement.js";
 import { createTooltips } from "./tooltips.js";
 import type { Tooltips } from "./tooltips.js";
 
@@ -135,6 +137,8 @@ export class MailQuilt extends LitElement {
   });
   /** Set while the element is connected. */
   #dragging: BlockDragging | undefined;
+  /** Set while the element is connected, as it observes sizes on the page. */
+  #toolPlacement: ToolPlacement | undefined;
   #tooltips: { element: HTMLElement; tooltips: Tooltips } | undefined;
   /** What the screen reader last heard about a move. */
   #announcement = "";
@@ -258,6 +262,10 @@ export class MailQuilt extends LitElement {
       onDrop: (source, place) => this.#drop(source, place),
       root: this.renderRoot as ShadowRoot,
     });
+    this.#toolPlacement = createToolPlacement(
+      this.renderRoot as ShadowRoot,
+      () => this.#tooltips?.tooltips.sync()
+    );
     this.requestUpdate();
   }
 
@@ -266,6 +274,8 @@ export class MailQuilt extends LitElement {
     this.#resizeObserver?.disconnect();
     this.#dragging?.destroy();
     this.#dragging = undefined;
+    this.#toolPlacement?.destroy();
+    this.#toolPlacement = undefined;
     this.#tooltips?.tooltips.destroy();
     this.#tooltips = undefined;
     this.#reset();
@@ -310,6 +320,8 @@ export class MailQuilt extends LitElement {
   }
 
   protected override updated() {
+    // First, so focus that moves scrolls to where the tools end up.
+    this.#toolPlacement?.sync();
     this.#selection.afterUpdate();
     if (this.isConnected && this.shadowRoot) {
       this.#syncTooltips(this.shadowRoot);

@@ -22,6 +22,7 @@ A PR that changes one of these says so, gives the reason and updates this page.
 ## The panels
 
 - The Side panel, its settings, the format bar, and the Block, Row and floating toolbars reach the editor only through `PanelApi` in `packages/editor/src/panel-api.ts`: what's selected and its settings, and every change they make. It isn't exported or documented in 0.2. (#147)
+- The selected Block's toolbar and format bar are placed by CSS, then moved back inside the canvas by `packages/editor/src/tool-placement.ts` after each update and when the canvas, the email or the selected Block changes size, on a page that scales the editor too. The format bar starts where its Block does when it's wider than the Block, and goes above the Block, or past the toolbar, rather than cover the toolbar or be cut off. Both sit over the floating toolbar. (#162)
 
 ## Editing
 

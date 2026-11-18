@@ -11,16 +11,19 @@ import {
   currentValue,
   emailWith,
   linkUrlField,
+  moveCursorToLineEnd,
   openBlocks,
   openEmail,
   rowTag,
   rowTools,
+  selectedBlock,
   selectRowButton,
   serveImages,
   settle,
   setValue,
   TALL_VIEWPORT,
   textBlock,
+  textOf,
   undoByKey,
 } from "./helpers.js";
 
@@ -288,6 +291,199 @@ test.describe("the format bar", () => {
     await page.keyboard.press("Escape");
     await expect(textBlock(page)).toBeFocused();
     await expect(formatBar(page)).toBeVisible();
+  });
+});
+
+/**
+ * What a pointer can't press of the selected Block's text and controls, by
+ * name, once each is scrolled to: its middle and the middle of each edge must
+ * be on top. The editor clips what reaches past it.
+ */
+const unpressable = async (page: Page) => {
+  const controls = [
+    selectedBlock(page).getByRole("textbox", {
+      exact: true,
+      name: "Text Block",
+    }),
+    ...(await formatBar(page).getByRole("button").all()),
+    ...(await formatBar(page).getByRole("textbox").all()),
+    ...(await blockTools(page).getByRole("button").all()),
+    blockTools(page).getByTestId("drag-handle"),
+  ];
+  const missed: string[] = [];
+  for (const control of controls) {
+    // oxlint-disable-next-line no-await-in-loop -- Each scroll moves the page for the next.
+    await control.scrollIntoViewIfNeeded();
+    // oxlint-disable-next-line no-await-in-loop -- As above.
+    const name = await control.evaluate((element) => {
+      const root = element.getRootNode() as ShadowRoot;
+      const { bottom, left, right, top } = element.getBoundingClientRect();
+      const [x, y] = [(left + right) / 2, (top + bottom) / 2];
+      const points = [
+        [x, y],
+        [left + 2, y],
+        [right - 2, y],
+        [x, top + 2],
+        [x, bottom - 2],
+      ] as const;
+      const reached = points.every(([px, py]) =>
+        element.contains(root.elementFromPoint(px, py))
+      );
+      return reached
+        ? undefined
+        : (element.getAttribute("aria-label") ?? element.textContent?.trim());
+    });
+    if (name !== undefined) {
+      missed.push(name || "drag handle");
+    }
+  }
+  return missed;
+};
+
+/** A Row of four one-line Columns. */
+const FOUR_COLUMNS = [["W"], ["X"], ["Y"], ["Z"]];
+
+/** How far apart two elements are, up and down. */
+const verticalGap = async (a: Locator, b: Locator) => {
+  const [first, second] = [await boxOf(a), await boxOf(b)];
+  return Math.max(
+    first.y - (second.y + second.height),
+    second.y - (first.y + first.height)
+  );
+};
+
+test.describe("the selected Block's tools", () => {
+  // In the last Column, the Block's toolbar is in the way of its text's end.
+  for (const [column, text, place, rows, nextToText] of [
+    ["first", "W", "at the email's start", [FOUR_COLUMNS], true],
+    ["last", "Z", "at the email's start", [FOUR_COLUMNS], false],
+    // Taller than the canvas's least height, so the email ends with the canvas.
+    [
+      "first",
+      "W",
+      "at the email's end",
+      [[[..."ABCDEFGHI"]], FOUR_COLUMNS],
+      true,
+    ],
+    [
+      "last",
+      "Z",
+      "at the email's end",
+      [[[..."ABCDEFGHI"]], FOUR_COLUMNS],
+      false,
+    ],
+  ] as const) {
+    test(`in the ${column} of four Columns ${place}, the text and every button of the Block's toolbar, the format bar and the link field take the pointer`, async ({
+      page,
+    }) => {
+      await openEmail(
+        page,
+        rows.map((row) => row.map((texts) => [...texts]))
+      );
+      await textOf(page, text).click();
+      expect(await unpressable(page)).toEqual([]);
+
+      await page.keyboard.press("ControlOrMeta+k");
+      await expect(linkUrlField(page)).toBeFocused();
+      expect(await unpressable(page)).toEqual([]);
+      if (nextToText) {
+        expect(
+          await verticalGap(formatBar(page), selectedBlock(page))
+        ).toBeLessThanOrEqual(6);
+      }
+    });
+  }
+
+  test("on a page that scales the editor, the link field in the first of four Columns takes the pointer, next to its text", async ({
+    page,
+  }) => {
+    await openEmail(page, [FOUR_COLUMNS]);
+    await canvas(page).evaluate((element) => {
+      element.style.transform = "scale(0.5)";
+      element.style.transformOrigin = "0 0";
+    });
+    await textOf(page, "W").click();
+    await page.keyboard.press("ControlOrMeta+k");
+
+    expect(await unpressable(page)).toEqual([]);
+    expect(
+      await verticalGap(formatBar(page), selectedBlock(page))
+    ).toBeLessThanOrEqual(3);
+  });
+
+  test("the format bar keeps clear of the Block's toolbar as its text gets more lines", async ({
+    page,
+  }) => {
+    // Little room beside a narrow email, so the format bar is above the Block.
+    await page.setViewportSize({ height: 900, width: 930 });
+    await page.goto("/");
+    const email = emailWith([[["A", "B", "C", "D", "E"], ["X"], ["Y"], ["Z"]]]);
+    email.settings.width = 300;
+    await setValue(page, email);
+    await textOf(page, "Z").click();
+    await moveCursorToLineEnd(page);
+
+    // The first Column is taller, so only the Block grows.
+    for (const _ of [1, 2, 3]) {
+      // oxlint-disable-next-line no-await-in-loop -- Keys go in order.
+      await page.keyboard.press("Enter");
+    }
+
+    await expect.poll(() => unpressable(page)).toEqual([]);
+  });
+
+  test("the tools stay in reach when the host gets narrower", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ height: 720, width: 1600 });
+    await openEmail(page, [FOUR_COLUMNS]);
+    await textOf(page, "Z").click();
+    await page.keyboard.press("ControlOrMeta+k");
+
+    // The Side panel goes below, so the canvas ends where the editor does.
+    await page.setViewportSize({ height: 720, width: 1100 });
+
+    await expect.poll(() => unpressable(page)).toEqual([]);
+  });
+
+  test("a tooltip that shows for a tool moves with it", async ({ page }) => {
+    await page.setViewportSize({ height: 720, width: 1600 });
+    await openEmail(page, [FOUR_COLUMNS]);
+    await textOf(page, "Z").click();
+    // From focus, as content moving under the pointer can hover another control.
+    await page.mouse.move(0, 0);
+    await page.keyboard.press("Alt+F10");
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("ArrowLeft");
+    const bold = formatBar(page).getByRole("button", { name: "Bold" });
+    await expect(bold).toBeFocused();
+    const tooltip = canvas(page).getByRole("tooltip");
+    await expect(tooltip).toBeVisible();
+
+    // The Side panel goes below, and the email and its tools move.
+    await page.setViewportSize({ height: 720, width: 1100 });
+
+    await expect
+      .poll(async () => {
+        const [tip, button] = [await boxOf(tooltip), await boxOf(bold)];
+        return Math.abs(tip.x + tip.width / 2 - (button.x + button.width / 2));
+      })
+      .toBeLessThan(2);
+  });
+
+  test("the floating toolbar doesn't cover the link field", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ height: 400, width: 1280 });
+    await openEmail(page, [FOUR_COLUMNS]);
+    await textOf(page, "W").click();
+    await page.keyboard.press("ControlOrMeta+k");
+    // At the window's bottom, where the floating toolbar stays.
+    await formatBar(page).evaluate((bar) => {
+      bar.scrollIntoView({ block: "end" });
+    });
+
+    expect(await unpressable(page)).toEqual([]);
   });
 });
 
