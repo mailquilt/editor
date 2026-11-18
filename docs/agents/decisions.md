@@ -31,6 +31,7 @@ A PR that changes one of these says so, gives the reason and updates this page.
 - A drag scrolls a container only within 60px of its edge, and passes on to the next container once one can't go further. (#78)
 - A file dropped on the editor is refused, as there's no image upload yet. (#79) That includes the Preview, the narrow notice and the Shell. The Preview's email has the host page's origin, with scripts still off, so the editor can refuse a file dropped on it too. Safari runs no listener there, so it still opens a file dropped on the email in the Preview. (#161)
 - Import JSON has no confirm, and reads a file of any size. (#36)
+- The editor and the Shell are left to right on any page, so the canvas matches the export until right-to-left emails are built. A heading the host gives the Shell takes its direction from its own text. (#166)
 - `value` and each keystroke copy the whole email. That's fine at email sizes. (#36 E15)
 
 ## The Shell

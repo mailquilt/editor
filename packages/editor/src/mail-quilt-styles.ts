@@ -71,7 +71,9 @@ export const editorStyles = css`
   /*
    * The email card: the email's own settings, never the editor's tokens.
    * Inherited properties cross the Shadow DOM boundary, so hostile values on
-   * the host element stop here.
+   * the host element stop here. Direction and custom properties aren't reset by
+   * all, so the email takes the editor's: left to right, as its export is, and
+   * the tokens for its outlines and tools.
    */
   .email {
     all: initial;

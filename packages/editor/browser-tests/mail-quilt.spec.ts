@@ -7,6 +7,7 @@ import {
   boxOf,
   canvas,
   changeCount,
+  chooseLayout,
   currentValue,
   emailWith,
   emailWithLink,
@@ -121,6 +122,23 @@ test("host CSS doesn't reach the canvas", async ({ page }) => {
   await expect(paragraph).toHaveCSS("text-transform", "none");
   await expect(paragraph).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
   await expect(textBlock(page)).toHaveCSS("white-space-collapse", /pre|break/u);
+});
+
+test("on a right-to-left host page, the editor and the email stay left to right, as the export is", async ({
+  page,
+}) => {
+  await page.evaluate(() =>
+    document.documentElement.setAttribute("dir", "rtl")
+  );
+  await chooseLayout(page, 1, "50/50");
+
+  const columns = canvas(page).getByTestId("column");
+  const first = await boxOf(columns.nth(0));
+  const second = await boxOf(columns.nth(1));
+  expect(first.x).toBeLessThan(second.x);
+  const workspace = await boxOf(canvas(page).getByTestId("workspace"));
+  const panel = await boxOf(canvas(page).getByTestId("side-panel"));
+  expect(workspace.x).toBeLessThan(panel.x);
 });
 
 test("moving the element keeps the email editable", async ({ page }) => {

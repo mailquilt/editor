@@ -290,9 +290,13 @@ export class MailQuiltShell extends LitElement {
     return html`
       <div class="ui frame shell">
         <div class="header" part="header">
-          <!-- A heading the host sets is in the host page's language. -->
+          <!--
+            A heading the host sets is in the host page's language, and takes
+            its direction from its own text, as the Shell is left to right.
+          -->
           <h2
             class="heading"
+            dir=${this.heading ? "auto" : nothing}
             lang=${this.heading ? nothing : UI_LANG}
             part="heading"
           >
