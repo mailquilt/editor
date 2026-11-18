@@ -59,8 +59,9 @@ export interface PanelState {
 /** Every change the panels make: to the email, to what's selected, or to themselves. */
 export interface PanelActions {
   /**
-   * Applies a Command, such as a new setting. One that's refused changes
-   * nothing, and the result says why.
+   * Applies a Command, such as a new Row layout. The panels only offer what's
+   * allowed, so one that's refused is a bug, and is logged. It changes nothing,
+   * and the result says why.
    */
   apply: (command: Command) => ApplyResult | undefined;
   /**

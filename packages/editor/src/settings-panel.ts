@@ -5,8 +5,6 @@ import { css, html, nothing } from "lit";
 import { keyed } from "lit/directives/keyed.js";
 import { live } from "lit/directives/live.js";
 
-import type { PanelApi } from "./panel-api.js";
-
 /** One group of controls, and what its fields change. */
 export interface SettingsSection {
   /** Unique in the panel. Part of the controls' IDs. */
@@ -306,7 +304,7 @@ const fieldValue = (
 const renderField = (
   section: SettingsSection,
   field: SettingsField,
-  { settings: events }: PanelApi
+  events: SettingsPanelEvents
 ) => {
   const id = `settings-${section.id}-${field.key}`;
   const descriptionId = `${id}-description`;
@@ -455,13 +453,13 @@ const renderField = (
 /** The one settings panel: every control in it comes from fields that are data. */
 export const renderSettingsPanel = (
   section: SettingsSection,
-  api: PanelApi
+  events: SettingsPanelEvents
 ) => html`
   <div class="settings">
     <div class="section">
       <fieldset>
         <legend>${section.legend}</legend>
-        ${section.fields.map((field) => renderField(section, field, api))}
+        ${section.fields.map((field) => renderField(section, field, events))}
       </fieldset>
     </div>
   </div>

@@ -168,19 +168,26 @@ test.describe("the email's language", () => {
     await setValue(page, document);
     await textBlock(page).click();
 
-    const langs = {
-      block: await langOf(blockGroup(page, "Text")),
-      blockTools: await langOf(blockTools(page)),
-      button: await langOf(canvas(page).getByTestId("button-face")),
-      formatBar: await langOf(formatBar(page)),
-      imageAlt: await langOf(blockGroup(page, "Image").getByRole("img")),
-      placeholder: await langOf(canvas(page).getByTestId("placeholder")),
-      rowTools: await langOf(rowTools(page, 1)),
-      sidePanel: await langOf(canvas(page).getByTestId("side-panel")),
-      status: await langOf(canvas(page).getByRole("status")),
-      text: await langOf(textBlock(page).locator("p")),
-      textBox: await langOf(textBlock(page)),
+    const elements = {
+      block: blockGroup(page, "Text"),
+      blockTools: blockTools(page),
+      button: canvas(page).getByTestId("button-face"),
+      formatBar: formatBar(page),
+      imageAlt: blockGroup(page, "Image").getByRole("img"),
+      placeholder: canvas(page).getByTestId("placeholder"),
+      rowTools: rowTools(page, 1),
+      sidePanel: canvas(page).getByTestId("side-panel"),
+      status: canvas(page).getByRole("status"),
+      text: textBlock(page).locator("p"),
+      textBox: textBlock(page),
     };
+    const langs = Object.fromEntries(
+      await Promise.all(
+        Object.entries(elements).map(
+          async ([name, locator]) => [name, await langOf(locator)] as const
+        )
+      )
+    );
 
     expect(langs).toEqual({
       block: "en",

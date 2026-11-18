@@ -21,7 +21,7 @@ A PR that changes one of these says so, gives the reason and updates this page.
 
 ## The panels
 
-- The Side panel, its settings, the format bar, and the Block, Row and floating toolbars reach the editor only through `PanelApi` in `packages/editor/src/panel-api.ts`: what's selected and its settings, and every change they make. It isn't exported or documented in 0.2. Its `apply` treats a refused Command as an answer, not a bug, as a host's own panel would. (#147)
+- The Side panel, its settings, the format bar, and the Block, Row and floating toolbars reach the editor only through `PanelApi` in `packages/editor/src/panel-api.ts`: what's selected and its settings, and every change they make. It isn't exported or documented in 0.2. (#147)
 
 ## Editing
 

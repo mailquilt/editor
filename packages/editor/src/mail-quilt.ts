@@ -27,7 +27,7 @@ import { createLinkForm, formatBarStyles } from "./format-bar.js";
 import { claim, historyInput, keyFor } from "./key-map.js";
 import type { Action, Binding, Direction, Place } from "./key-map.js";
 import { editorStyles } from "./mail-quilt-styles.js";
-import type { PanelActions, PanelApi } from "./panel-api.js";
+import type { PanelActions, PanelApi, RowPlace } from "./panel-api.js";
 import {
   blocksIn,
   locate,
@@ -163,7 +163,7 @@ export class MailQuilt extends LitElement {
   readonly #panelActions: PanelActions = {
     addBlock: (blockType, place) => this.#addBlock(blockType, place),
     addRow: (layout) => this.#addRow(layout),
-    apply: (command) => this.#apply(command, { refusable: true }),
+    apply: (command) => this.#apply(command),
     cancelLink: () => this.#linkForm.cancel(),
     deleteBlock: (fromKeyboard) => this.#deleteSelectedBlock(fromKeyboard),
     deleteRow: (rowId, fromKeyboard) => this.#deleteRow(rowId, fromKeyboard),
@@ -392,10 +392,6 @@ export class MailQuilt extends LitElement {
 
   /** What the Side panel, its settings and the toolbars show, and what they do. */
   #panelApi(email: BlocksDocument): PanelApi {
-    const rowIndex = email.rows.findIndex(
-      ({ id }) => id === this.#selection.rowId
-    );
-    const row = email.rows[rowIndex];
     return {
       ...this.#panelActions,
       editingText: this.#selection.editingText,
@@ -403,7 +399,7 @@ export class MailQuilt extends LitElement {
       formats: this.#formats,
       linkField: this.#linkForm.state,
       selectedBlock: this.#selectedPosition(email),
-      selectedRow: row && { row, rowIndex },
+      selectedRow: this.#selectedRow(email),
       showsSettings: this.#selection.showsSettings,
       tab: this.#panelTab,
     };
@@ -478,19 +474,23 @@ export class MailQuilt extends LitElement {
     return blockId === undefined ? undefined : locate(document, blockId);
   }
 
+  #selectedRow(document: BlocksDocument): RowPlace | undefined {
+    const rowIndex = document.rows.findIndex(
+      ({ id }) => id === this.#selection.rowId
+    );
+    const row = document.rows[rowIndex];
+    return row && { row, rowIndex };
+  }
+
   /** After the selected Block's Row, or else at the end, and selects it. */
   async #addRow(layout: RowLayout) {
     const document = this.#editor?.getDocument();
     if (!document) {
       return;
     }
-    const selectedRow = document.rows.findIndex(
-      ({ id }) => id === this.#selection.rowId
-    );
     const rowIndex =
-      selectedRow === -1
-        ? this.#selectedPosition(document)?.rowIndex
-        : selectedRow;
+      this.#selectedRow(document)?.rowIndex ??
+      this.#selectedPosition(document)?.rowIndex;
     const result = this.#apply({
       index: rowIndex === undefined ? document.rows.length : rowIndex + 1,
       layout,
@@ -609,8 +609,8 @@ export class MailQuilt extends LitElement {
       return { columnId: selected.columnId, index: selected.index + 1 };
     }
     const column =
-      document.rows.find(({ id }) => id === this.#selection.rowId)
-        ?.columns[0] ?? document.rows.at(-1)?.columns.at(-1);
+      this.#selectedRow(document)?.row.columns[0] ??
+      document.rows.at(-1)?.columns.at(-1);
     return column && { columnId: column.id, index: column.blocks.length };
   }
 
@@ -726,7 +726,7 @@ export class MailQuilt extends LitElement {
     backToText: () => this.#selection.focus({ on: "text" }),
     // The drag hears this itself.
     cancelDrag: doNothing,
-    cancelLink: () => this.#linkForm.cancel(),
+    cancelLink: () => this.#panelActions.cancelLink(),
     // The browser closes the dialog.
     closePreview: doNothing,
     // The tooltips hear this themselves.
@@ -757,7 +757,7 @@ export class MailQuilt extends LitElement {
       }
     },
     nextButton: focusToolbarButton,
-    openLinkField: () => this.#linkForm.open(),
+    openLinkField: () => this.#panelActions.openLinkField(),
     previousButton: focusToolbarButton,
     redo: () => this.#stepHistory("redo"),
     selectBlock: (_event, { direction }) => {

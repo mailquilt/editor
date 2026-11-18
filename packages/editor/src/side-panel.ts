@@ -422,7 +422,7 @@ const renderRowProperties = ({ row, rowIndex }: RowPlace, api: PanelApi) => {
           )}
         </div>
       </div>
-      ${renderSettingsPanel(section, api)}
+      ${renderSettingsPanel(section, api.settings)}
     </div>
   `;
 };
@@ -451,7 +451,9 @@ const renderProperties = (
       columnLabel(rowIndex, columnIndex),
       api
     )}
-    <div class="panel-scroll">${renderSettingsPanel(section, api)}</div>
+    <div class="panel-scroll">
+      ${renderSettingsPanel(section, api.settings)}
+    </div>
   `;
 };
 
@@ -530,7 +532,7 @@ const renderTabPanel = (api: PanelApi) => {
           targetId: "",
           values: { ...api.email.settings },
         },
-        api
+        api.settings
       );
     }
   }
