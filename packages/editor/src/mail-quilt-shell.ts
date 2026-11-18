@@ -32,6 +32,30 @@ const parseEmail = (text: string): LoadResult => {
   return loadDocument(parsed);
 };
 
+/**
+ * How the Shell chose the email it has open. Only `#hostSets()` and
+ * `#openSaved()` change it. `value` is the host's latest `value`, and `key` is
+ * the `save-key` the email last opened from, to tell when it changes.
+ */
+type Opening =
+  /** Before the first update. */
+  | { readonly state: "waiting"; readonly value: unknown }
+  /**
+   * A saved email stands in for the host's `value`, or for its first one if
+   * it hasn't set one yet.
+   */
+  | {
+      readonly state: "saved";
+      readonly key: string | null | undefined;
+      readonly value: unknown;
+    }
+  /** The host's `value`, or an email imported over it. */
+  | {
+      readonly state: "open";
+      readonly key: string | null | undefined;
+      readonly value: unknown;
+    };
+
 const downloadFile = (name: string, type: string, text: string) => {
   const url = URL.createObjectURL(new Blob([text], { type }));
   const link = document.createElement("a");
@@ -156,17 +180,8 @@ export class MailQuiltShell extends LitElement {
   declare saveKey: string | null | undefined;
 
   readonly #editor: MailQuilt = document.createElement("mail-quilt");
-  /** Whether the email to open has been chosen, which waits for the first update. */
-  #started = false;
-  /** The `save-key` the email last opened from, to tell when it changes. */
-  #startedKey: string | null | undefined;
-  /** The `value` set before then. */
-  #pendingValue: unknown;
-  /**
-   * Set while the saved email stands in for the host's first email, which it
-   * holds once the host has set one. See the `value` setter.
-   */
-  #savedStandsIn: { replaced: unknown } | undefined;
+  /** The email to open is chosen at the first update, or earlier if asked for. */
+  #opening: Opening = { state: "waiting", value: undefined };
   /**
    * Gives the editor the height the email scrolls in, for its side panel. The
    * underscore keeps it apart from the theme tokens, as it isn't one. Made on
@@ -199,8 +214,8 @@ export class MailQuiltShell extends LitElement {
   get value(): BlocksDocument | undefined {
     // Started early if need be, as for `exportHtml()`, so this is the email the
     // editor opens: with `save-key`, the saved one.
-    if (!this.#started) {
-      this.#start();
+    if (this.#opening.state === "waiting") {
+      this.#openSaved();
     }
     return this.#editor.value;
   }
@@ -212,22 +227,14 @@ export class MailQuiltShell extends LitElement {
    * renders again, or sets its email late, does.
    */
   set value(document: unknown) {
-    if (!this.#started) {
-      this.#pendingValue = document;
-      return;
-    }
-    if (this.#savedStandsInFor(document)) {
-      return;
-    }
-    this.#savedStandsIn = undefined;
-    this.#editor.value = document;
+    this.#hostSets(document);
   }
 
   /** As on `<mail-quilt>`, and also straight after `value` is set. */
   async exportHtml() {
     // The email reaches the editor at the first update, which can be yet to come.
-    if (!this.#started) {
-      this.#start();
+    if (this.#opening.state === "waiting") {
+      this.#openSaved();
     }
     return await this.#editor.exportHtml();
   }
@@ -243,20 +250,7 @@ export class MailQuiltShell extends LitElement {
   }
 
   protected override willUpdate() {
-    if (!this.#started) {
-      this.#start();
-    } else if (this.saveKey !== this.#startedKey) {
-      // Also a key set after `exportHtml()` or `value` started the Shell early.
-      this.#startedKey = this.saveKey;
-      if (this.saveKey) {
-        // Another key keeps another email. With none saved there, the current
-        // email is saved under it from its next change.
-        this.#openSavedEmail(this.saveKey);
-      } else {
-        // Nothing is saved any more, so nothing can fail to be.
-        this.#cantSave = false;
-      }
-    }
+    this.#openSaved();
   }
 
   protected override firstUpdated() {
@@ -352,30 +346,55 @@ export class MailQuiltShell extends LitElement {
     `;
   }
 
-  /** The email saved under `save-key` opens instead of `value`, if it can be. */
-  #start() {
-    this.#started = true;
-    this.#startedKey = this.saveKey;
-    if (this.saveKey && this.#openSavedEmail(this.saveKey)) {
-      this.#savedStandsIn = { replaced: this.#pendingValue };
-    } else {
-      this.#editor.value = this.#pendingValue;
+  /** Until the first update, the host's `value` waits for `#openSaved()`. */
+  #hostSets(value: unknown) {
+    const opening = this.#opening;
+    if (opening.state === "waiting") {
+      this.#opening = { state: "waiting", value };
+      return;
     }
-    this.#pendingValue = undefined;
+    if (opening.state === "saved") {
+      if (opening.value === undefined || opening.value === null) {
+        // The host's first email, or nothing yet.
+        this.#opening = { ...opening, value };
+        return;
+      }
+      if (isSameDocument(value, opening.value)) {
+        return;
+      }
+    }
+    this.#opening = { key: opening.key, state: "open", value };
+    this.#editor.value = value;
   }
 
-  /** Whether the saved email stays open in place of this `value`. */
-  #savedStandsInFor(document: unknown) {
-    const standIn = this.#savedStandsIn;
-    if (!standIn) {
-      return false;
+  /**
+   * The email saved under `save-key` opens instead of the host's `value`, if
+   * it can: at the first update, or before it when `value` or `exportHtml()`
+   * needs the email, and when `save-key` changes.
+   */
+  #openSaved() {
+    const opening = this.#opening;
+    const key = this.saveKey;
+    // Also a key set after `exportHtml()` or `value` started the Shell early.
+    if (opening.state !== "waiting" && key === opening.key) {
+      return;
     }
-    if (standIn.replaced === undefined || standIn.replaced === null) {
-      // The host's first email, or nothing yet.
-      standIn.replaced = document;
-      return true;
+    if (!key) {
+      // Nothing is saved any more, so nothing can fail to be.
+      this.#cantSave = false;
     }
-    return isSameDocument(document, standIn.replaced);
+    const saved = key ? this.#readSavedEmail(key) : undefined;
+    if (saved) {
+      this.#opening = { key, state: "saved", value: opening.value };
+      this.#editor.value = saved;
+    } else if (opening.state === "waiting") {
+      this.#opening = { key, state: "open", value: opening.value };
+      this.#editor.value = opening.value;
+    } else {
+      // Another key keeps another email. With none saved there, the current
+      // email stays, and is saved under it from its next change.
+      this.#opening = { ...opening, key };
+    }
   }
 
   /** Once rendered, and again whenever the Shell is put back on the page. */
@@ -392,21 +411,21 @@ export class MailQuiltShell extends LitElement {
     }
   }
 
-  /** Returns whether it opened. */
-  #openSavedEmail(key: string) {
+  /** The email saved under `key`, if there's one that can be opened. */
+  #readSavedEmail(key: string) {
     let saved: string | null;
     try {
       saved = localStorage.getItem(key);
     } catch {
       this.#cantSave = true;
-      return false;
+      return;
     }
     if (saved === null) {
-      return false;
+      return;
     }
     const loaded = parseEmail(saved);
     if (!loaded.ok) {
-      this.#notice = `Your saved email couldn't be opened: ${loaded.reason}`;
+      this.#showNotice(`Your saved email couldn't be opened: ${loaded.reason}`);
       // The next change is saved over it, and it may only be from a newer
       // version, so it's kept where nothing saves.
       try {
@@ -414,10 +433,9 @@ export class MailQuiltShell extends LitElement {
       } catch {
         // Then nothing can be saved over it either, and the Shell says so.
       }
-      return false;
+      return;
     }
-    this.#editor.value = loaded.document;
-    return true;
+    return loaded.document;
   }
 
   /** Saves a changed email, which also answers whatever went wrong before it. */
