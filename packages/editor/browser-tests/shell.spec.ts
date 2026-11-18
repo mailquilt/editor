@@ -440,6 +440,32 @@ test.describe("saving in the browser", () => {
     ).toBe("{not json");
   });
 
+  test("a damaged saved email opened again is a new alert, read out again", async ({
+    page,
+  }) => {
+    await page.addInitScript(
+      (each) => localStorage.setItem(each, "{not json"),
+      key
+    );
+    await openShell(page, `?save-key=${key}`);
+    const alert = shell(page).getByRole("alert");
+    await expect(alert).toContainText("saved email couldn't be opened");
+    await alert.evaluate((element) => {
+      element.dataset.seen = "true";
+    });
+
+    await shell(page).evaluate((element) =>
+      element.setAttribute("save-key", "test:other")
+    );
+    await shell(page).evaluate(
+      (element, each) => element.setAttribute("save-key", each),
+      key
+    );
+
+    await expect(alert).toContainText("saved email couldn't be opened");
+    await expect(alert).not.toHaveAttribute("data-seen");
+  });
+
   test("says it can't save when storage is full, until it can again", async ({
     page,
   }) => {
@@ -625,6 +651,22 @@ test.describe("a saved email standing in for the host's", () => {
     );
 
     expect(opened).toContain("Saved");
+  });
+
+  test("stays when it opened from a new save-key and the host passes its email again", async ({
+    page,
+  }) => {
+    await saveFirst(page);
+    await openShell(page);
+    await shell(page).evaluate(
+      (element, each) => element.setAttribute("save-key", each),
+      key
+    );
+    await expect(textBlock(page)).toHaveText("Saved");
+
+    await setShellValue(page, emailWith([[["Hello"]]]));
+
+    await expect(textBlock(page)).toHaveText("Saved");
   });
 
   test("gives way to a different email from the host", async ({ page }) => {
