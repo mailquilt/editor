@@ -33,23 +33,36 @@ const parseEmail = (text: string): LoadResult => {
 };
 
 /**
- * How the Shell chose the email it has open. Only `#hostSets()` and
+ * What the host's next `value` does to the open email. Only `#hostSets()` and
  * `#openSaved()` change it. `value` is the host's latest `value`, and `key` is
- * the `save-key` the email last opened from, to tell when it changes.
+ * the `save-key` the Shell last read, to tell when it changes.
  */
 type Opening =
   /** Before the first update. */
   | { readonly state: "waiting"; readonly value: unknown }
   /**
-   * A saved email stands in for the host's `value`, or for its first one if
-   * it hasn't set one yet.
+   * A saved email opened in place of the host's `value`, or of its first one
+   * if it hasn't set one yet. That first one, or a copy of it, doesn't open.
    */
   | {
       readonly state: "saved";
       readonly key: string | null | undefined;
       readonly value: unknown;
     }
-  /** The host's `value`, or an email imported over it. */
+  /**
+   * With `save-key` and no saved email that opens, the host's first `value`
+   * opened, when it was set. A copy of it doesn't open, so the person's work
+   * stays.
+   */
+  | {
+      readonly state: "first";
+      readonly key: string | null | undefined;
+      readonly value: unknown;
+    }
+  /**
+   * Every `value` the host sets opens, as on `<mail-quilt>`: without
+   * `save-key` at the first update, or once the host has set a different email.
+   */
   | {
       readonly state: "open";
       readonly key: string | null | undefined;
@@ -184,12 +197,17 @@ export class MailQuiltShell extends LitElement {
   #opening: Opening = { state: "waiting", value: undefined };
   /**
    * Gives the editor the height the email scrolls in, for its side panel. The
-   * underscore keeps it apart from the theme tokens, as it isn't one. Made on
-   * the page, as a server rendering the Shell has no ResizeObserver.
+   * underscore keeps it apart from the theme tokens, as it isn't one. Made at
+   * the first render, as that's when there's a body to observe.
    */
   #bodyObserver: ResizeObserver | undefined;
   /** Set while the browser can't save the email. */
   #cantSave = false;
+  /**
+   * A `save-key` whose saved email couldn't be opened or copied to
+   * `<save-key>:unopened`, so nothing is saved over it.
+   */
+  #uncopiedKey: string | undefined;
   /** The latest refused email or failed export, until the next change. */
   #notice: string | undefined;
   /** Counts notices, so the same one again is a new alert and is read out. */
@@ -222,9 +240,10 @@ export class MailQuiltShell extends LitElement {
 
   /**
    * As on `<mail-quilt>`. With `save-key`, a saved email opens instead of the
-   * host's first email. Until the host sets a different one, setting nothing
-   * or that first email again leaves the saved email open, as a host that
-   * renders again, or sets its email late, does.
+   * host's first email. Until the host sets a different one, setting that
+   * first email again leaves the open email as it is, saved or typed, as a
+   * host that renders again does. While a saved email stands in, so do
+   * setting nothing before the first email and that first email set late.
    */
   set value(document: unknown) {
     this.#hostSets(document);
@@ -353,17 +372,24 @@ export class MailQuiltShell extends LitElement {
       this.#opening = { state: "waiting", value };
       return;
     }
-    if (opening.state === "saved") {
-      if (opening.value === undefined || opening.value === null) {
-        // The host's first email, or nothing yet.
-        this.#opening = { ...opening, value };
-        return;
-      }
-      if (isSameDocument(value, opening.value)) {
-        return;
-      }
+    const isFirst = opening.value === undefined || opening.value === null;
+    if (opening.state === "saved" && isFirst) {
+      // The host's first email, or nothing yet, which the saved one stands in for.
+      this.#opening = { ...opening, value };
+      return;
     }
-    this.#opening = { key: opening.key, state: "open", value };
+    // With no email open, such as when the editor refused the first one, there's
+    // nothing to keep, so a copy goes to the editor and is refused again.
+    if (
+      opening.state !== "open" &&
+      this.#editor.value !== undefined &&
+      isSameDocument(value, opening.value)
+    ) {
+      return;
+    }
+    // A first email set late opens, and a copy of it then doesn't.
+    const state = opening.state === "first" && isFirst ? "first" : "open";
+    this.#opening = { key: opening.key, state, value };
     this.#editor.value = value;
   }
 
@@ -388,7 +414,11 @@ export class MailQuiltShell extends LitElement {
       this.#opening = { key, state: "saved", value: opening.value };
       this.#editor.value = saved;
     } else if (opening.state === "waiting") {
-      this.#opening = { key, state: "open", value: opening.value };
+      this.#opening = {
+        key,
+        state: key ? "first" : "open",
+        value: opening.value,
+      };
       this.#editor.value = opening.value;
     } else {
       // Another key keeps another email. With none saved there, the current
@@ -413,6 +443,7 @@ export class MailQuiltShell extends LitElement {
 
   /** The email saved under `key`, if there's one that can be opened. */
   #readSavedEmail(key: string) {
+    this.#uncopiedKey = undefined;
     let saved: string | null;
     try {
       saved = localStorage.getItem(key);
@@ -431,7 +462,9 @@ export class MailQuiltShell extends LitElement {
       try {
         localStorage.setItem(`${key}:unopened`, saved);
       } catch {
-        // Then nothing can be saved over it either, and the Shell says so.
+        // Then no change is saved over it, and the Shell says it can't save.
+        this.#uncopiedKey = key;
+        this.#cantSave = true;
       }
       return;
     }
@@ -441,11 +474,13 @@ export class MailQuiltShell extends LitElement {
   /** Saves a changed email, which also answers whatever went wrong before it. */
   #keep(document: BlocksDocument) {
     if (this.saveKey) {
-      let cantSave = false;
-      try {
-        localStorage.setItem(this.saveKey, JSON.stringify(document));
-      } catch {
-        cantSave = true;
+      let cantSave = this.saveKey === this.#uncopiedKey;
+      if (!cantSave) {
+        try {
+          localStorage.setItem(this.saveKey, JSON.stringify(document));
+        } catch {
+          cantSave = true;
+        }
       }
       if (cantSave !== this.#cantSave) {
         this.#cantSave = cantSave;

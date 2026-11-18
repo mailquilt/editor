@@ -31,7 +31,7 @@ Opening a different email clears undo history. Setting `value` to the email the 
 | `value` | The email the Shell shows, as on `<mail-quilt>`. With `save-key`, a saved email opens instead of the first one you set. With no `value` and nothing saved, the editor is empty and the export buttons say there's no email to export. |
 | `heading` | The text in the header. It's "Email" when unset. |
 | `actions` | The buttons to show, by name and separated by spaces: `import-json`, `export-json` and `export-html`. Leave it out to show all three. |
-| `save-key` | Where the email is kept in the browser, as the `saveKey` property. Leave it out to store nothing. [Saving](./shell#saving) says how it works. |
+| `save-key` | Where the email is kept in the browser, as the `saveKey` property. Use one for each email and each person. Leave it out to store nothing. [Saving](./shell#saving) says how it works. |
 | `mq-change` | Fired after every change, including an import. The new email is in `event.detail.document`. |
 | `mq-error` | Fired when the editor refuses an email you set as `value`. The reason is in `event.detail.reason`, and the message bar shows it too. |
 | `exportHtml()` | Returns a promise of the email's HTML, as on `<mail-quilt>`. |

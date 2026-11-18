@@ -34,10 +34,10 @@ A PR that changes one of these says so, gives the reason and updates this page.
 
 ## The Shell
 
-- With `save-key`, a saved email opens instead of the host's first `value`, and stays when the host sets that first email again. One opened by a new `save-key` stays when the host sets its email again too. Removing `save-key` leaves the open email standing in, so a host that renders again can't replace the person's work. (#42, #142)
+- With `save-key`, a saved email opens instead of the host's first `value`. Setting that first email again leaves the open email as it is, whether it's a saved one or the first email the person has edited on a first visit. One opened by a new `save-key` stays when the host sets its email again too. Removing `save-key` leaves the open email standing in, so a host that renders again can't replace the person's work. A different email opens, as on `<mail-quilt>`. (#42, #142, #160)
 - Reading `value` or calling `exportHtml()` before the first update starts the Shell, so `value` is the email the editor opens. (#79)
 - `actions` isn't reflected back to its attribute. (#78)
-- A saved email that can't be opened is kept under `<save-key>:unopened`. (#66)
+- A saved email that can't be opened is kept under `<save-key>:unopened`. If it can't be copied there, nothing is saved over it, and the Shell says it can't save. (#66, #160)
 
 ## Core and the document
 
