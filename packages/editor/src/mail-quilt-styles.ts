@@ -472,7 +472,8 @@ export const editorStyles = css`
     inset-block-start: 0;
     inset-inline-end: calc(100% + 4px);
     position: absolute;
-    z-index: 5;
+    /* Over the floating toolbar, which it can be moved onto at the canvas's end. */
+    z-index: 8;
   }
 
   .block-toolbar .icon-button {

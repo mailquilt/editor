@@ -1,6 +1,6 @@
 import type { Command, RowLayout } from "@mailquilt/core";
 
-import { contains, shadowRootsUpFrom } from "./geometry.js";
+import { contains, scaleOf, shadowRootsUpFrom } from "./geometry.js";
 import { claim, keyFor } from "./key-map.js";
 
 /**
@@ -132,10 +132,6 @@ const grabAt = (target: Element): Grab | undefined => {
   }
   return undefined;
 };
-
-/** How much the host page scales a length, such as with a CSS transform. */
-const scaleOf = (onScreen: number, laidOut: number) =>
-  Math.abs(onScreen - laidOut) > 1 ? onScreen / laidOut : 1;
 
 /**
  * A copy of what's dragged, fixed to the window. Where the browser has popovers,

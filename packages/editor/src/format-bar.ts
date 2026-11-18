@@ -11,7 +11,8 @@ import type { TextBlockView, ToggleableMark } from "./text-block-view.js";
 export const formatBarStyles = css`
   /*
    * Below the text being edited, at its end: clear of where the next Block's
-   * text starts, and of its drag handle.
+   * text starts, and of its drag handle. Moved from here where there's no room
+   * (tool-placement.ts).
    */
   .format-bar {
     flex-wrap: wrap;
@@ -20,7 +21,8 @@ export const formatBarStyles = css`
     max-width: min(360px, calc(100vw - 32px));
     position: absolute;
     width: max-content;
-    z-index: 5;
+    /* Over the floating toolbar, as the Block's toolbar is. */
+    z-index: 8;
   }
 
   .link-form {
