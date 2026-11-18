@@ -435,6 +435,22 @@ test.describe("saving in the browser", () => {
     await expect(textBlock(page)).toHaveText("Typed Hello");
   });
 
+  test("on a first visit, a refused first email set again fires mq-error again", async ({
+    page,
+  }) => {
+    await page.goto(`/shell.html?save-key=${key}&refused-first`);
+    const errors = page.locator("#errors");
+    await expect(errors).toContainText("newer");
+    const reason = await errors.textContent();
+
+    await setShellValue(page, {
+      ...emailWith([[["Refused"]]]),
+      version: 999,
+    });
+
+    await expect(errors).toHaveText(`${reason}${reason}`);
+  });
+
   test("a reload reopens an imported email", async ({ page }) => {
     await openShell(page, `?save-key=${key}`);
     await importFile(page, JSON.stringify(emailWith([[["Imported"]]])));

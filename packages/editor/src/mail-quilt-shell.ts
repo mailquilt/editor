@@ -378,7 +378,13 @@ export class MailQuiltShell extends LitElement {
       this.#opening = { ...opening, value };
       return;
     }
-    if (opening.state !== "open" && isSameDocument(value, opening.value)) {
+    // With no email open, such as when the editor refused the first one, there's
+    // nothing to keep, so a copy goes to the editor and is refused again.
+    if (
+      opening.state !== "open" &&
+      this.#editor.value !== undefined &&
+      isSameDocument(value, opening.value)
+    ) {
       return;
     }
     // A first email set late opens, and a copy of it then doesn't.
