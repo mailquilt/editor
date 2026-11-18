@@ -53,6 +53,7 @@ mail-quilt {
   --mq-color-tooltip: #e8eaed;
   --mq-color-on-tooltip: #16181d;
   --mq-color-backdrop: rgb(0 0 0 / 65%);
+  --mq-color-scheme: dark;
   --mq-shadow-small: 0 1px 2px rgb(0 0 0 / 40%);
   --mq-shadow:
     0 0 0 1px rgb(255 255 255 / 6%), 0 2px 4px rgb(0 0 0 / 30%),
@@ -67,7 +68,7 @@ A few tokens pair with each other, so change them together:
 - `--mq-color-accent-strong` is the text and icons of pressed buttons, such as Bold, on `--mq-color-accent-soft`. On a dark theme, make it lighter than the accent, not darker.
 - `--mq-color-on-tooltip` is the text on `--mq-color-tooltip`.
 
-What the browser draws itself, such as the open list of a dropdown in the side panel and scrollbars, stays light for now. No token changes it yet.
+`--mq-color-scheme: dark` turns what the browser draws itself dark too: the open list of a dropdown in the side panel, and the color picker. The editor doesn't take it from your page's own `color-scheme`.
 
 The email itself stays as its sender designed it, with its own background, colors and font, because that's how it will look when it's sent. A white email on a dark workspace is expected.
 

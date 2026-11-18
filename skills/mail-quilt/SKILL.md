@@ -52,7 +52,7 @@ Work in this order, and stop as soon as it matches the app:
    - `--mq-color-accent-strong` on `--mq-color-accent-soft`, pressed buttons such as Bold. On a dark theme the strong accent is the lighter one.
    - `--mq-color-on-tooltip` on `--mq-color-tooltip`
 
-   The browser's own dropdown lists and scrollbars stay light; no token changes them yet.
+   Set `--mq-color-scheme: dark` too, or the browser's own dropdown lists and color picker stay light. The page's own `color-scheme` doesn't reach the editor.
 4. **The frame.** Only if tokens aren't enough, style `mail-quilt::part(frame)`, such as `border-radius: 0` for an editor that fills a panel.
 5. **The Shell's header and messages.** Choose its buttons with `actions`, name it with `heading`, and style its CSS parts, such as `mail-quilt-shell::part(header)`: [Shell](https://editor.mailquilt.com/docs/shell.md).
 
