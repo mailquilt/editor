@@ -38,6 +38,7 @@ import {
   positionLabel,
 } from "./places.js";
 import { createPreview, previewStyles, renderPreview } from "./preview.js";
+import { refuseFiles } from "./refuse-files.js";
 import { createSelection, focusToolbarButton } from "./selection.js";
 import { createSettingsDrafts, settingsPanelStyles } from "./settings-panel.js";
 import { renderSidePanel, sidePanelStyles } from "./side-panel.js";
@@ -50,17 +51,6 @@ import type { Tooltips } from "./tooltips.js";
 
 /** Typing after a gap this long starts a new undo step. */
 const TYPING_PAUSE_MS = 1000;
-
-/**
- * A file dropped on the editor would open in the tab, in place of the page and
- * the email. Dragged text still moves.
- */
-const refuseFiles = (event: DragEvent) => {
-  if (event.dataTransfer?.types.includes("Files")) {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "none";
-  }
-};
 
 type MoveOperation = Extract<Operation, { type: "move" }>;
 
@@ -201,6 +191,8 @@ export class MailQuilt extends LitElement {
     super();
     // On the way in, because ProseMirror handles the key before it bubbles here.
     this.addEventListener("keydown", this.#onKeydownCapture, { capture: true });
+    this.addEventListener("dragover", refuseFiles);
+    this.addEventListener("drop", refuseFiles);
     // A host may set `value` before this element is defined, which leaves an
     // own property in front of the setter.
     if (Object.hasOwn(this, "value")) {
@@ -354,8 +346,6 @@ export class MailQuilt extends LitElement {
         part="frame"
         ?data-collapsed=${this.#narrow}
         style=${styleMap({ "--email-width": `${settings.width}px` })}
-        @dragover=${refuseFiles}
-        @drop=${refuseFiles}
       >
         <div
           class="canvas-area"

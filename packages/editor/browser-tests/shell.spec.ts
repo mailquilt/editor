@@ -7,6 +7,7 @@ import type { MailQuiltShell } from "../src/index.js";
 import {
   boxOf,
   canvas,
+  dropFileOn,
   emailWith,
   emailWithLink,
   focusStartOfTextBlock,
@@ -1025,6 +1026,14 @@ test("shows the dragging cursor over the Shell during a drag", async ({
   await page.mouse.up();
 
   await expect.poll(cursor).toBe("pointer");
+});
+
+test("a file dropped on the header doesn't open in the page", async ({
+  page,
+}) => {
+  await openShell(page);
+
+  await expect(dropFileOn(header(page))).resolves.toEqual([false, false]);
 });
 
 test.describe("accessibility", () => {
