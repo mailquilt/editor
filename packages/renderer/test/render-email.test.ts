@@ -35,6 +35,14 @@ const linked = (href: string, text = "Click") => ({
   type: "text",
 });
 
+const bold = (text: string) => ({
+  marks: [{ type: "bold" }],
+  text,
+  type: "text",
+});
+
+const plain = (text: string) => ({ text, type: "text" });
+
 const emailWithColumns = (
   ...columns: { texts: string[]; width: number }[]
 ): BlocksDocument => ({
@@ -135,6 +143,37 @@ describe(renderEmail, () => {
 
     expect(html).not.toContain("\n");
     expect(html).toContain(">a b c</p>");
+  });
+
+  it("keeps no-break spaces at the ends of a Button's label and in text, and as typed in a Merge Tag", async () => {
+    const noBreak = String.fromCodePoint(0xa0);
+    const email = emailWithText(
+      `${noBreak}a${noBreak}{{${noBreak}name${noBreak}}}`
+    );
+    email.rows[0]?.columns[0]?.blocks.push({
+      id: "button-1",
+      props: { label: `${noBreak}${noBreak}Go${noBreak}${noBreak}` },
+      type: "button",
+    });
+
+    const html = await renderEmail(email);
+
+    expect(html).toContain(`>&#160;a&#160;{{${noBreak}name${noBreak}}}</p>`);
+    expect(html).toContain("> &#160;&#160;Go&#160;&#160; </p>");
+  });
+
+  // Without a line break in it, a run of whitespace was once read again from
+  // each of its characters: 3 s for 80,000 tabs, blocking the server process.
+  it("renders a long run of tabs and spaces in time that grows with its length", async () => {
+    const email = emailWith({
+      props: { label: `a${" \t".repeat(100_000)}b` },
+      type: "button",
+    });
+
+    const start = performance.now();
+    await renderEmail(email);
+
+    expect(performance.now() - start).toBeLessThan(2500);
   });
 
   it("loads no web fonts, even for a font MJML would load", async () => {
@@ -273,12 +312,12 @@ describe(renderEmail, () => {
   it("links a www. URL written as text, and one with its scheme in capitals, as other URLs", async () => {
     const html = await renderEmail(
       emailWithText(
-        "Visit www.x.test/a, HTTPS://X.TEST, WWW.X.TEST or swww.x.test."
+        "Visit www.x.test/a, HTTPS://X.TEST, WWW.X.TEST, swww.x.test or éwww.x.test."
       )
     );
 
     expect(html).toContain(
-      '>Visit <a href="http://www.x.test/a" target="_blank" style="color:#000000;text-decoration:underline">www.x.test/a</a>, <a href="HTTPS://X.TEST" target="_blank" style="color:#000000;text-decoration:underline">HTTPS://X.TEST</a>, <a href="http://WWW.X.TEST" target="_blank" style="color:#000000;text-decoration:underline">WWW.X.TEST</a> or swww.x.test.</p>'
+      '>Visit <a href="http://www.x.test/a" target="_blank" style="color:#000000;text-decoration:underline">www.x.test/a</a>, <a href="HTTPS://X.TEST" target="_blank" style="color:#000000;text-decoration:underline">HTTPS://X.TEST</a>, <a href="http://WWW.X.TEST" target="_blank" style="color:#000000;text-decoration:underline">WWW.X.TEST</a>, swww.x.test or éwww.x.test.</p>'
     );
   });
 
@@ -293,6 +332,35 @@ describe(renderEmail, () => {
       `>Write to <a href="mailto:first.last-name@mail.example.com" target="_blank" style="color:#000000;text-decoration:underline">first.&#8203;last-&#8203;name@mail.&#8203;example.&#8203;com</a> or <a href="mailto:o'brien@x.test" target="_blank" style="color:#000000;text-decoration:underline">o'brien@x.test</a>, not {{ first }}sales@x.&#8203;test, wait...@x.test or x.co/a@b.co.</p>`
     );
   });
+
+  it.each([
+    ["a letter outside ASCII in its name", "müller@x.test", "müller@x.test"],
+    [
+      "a letter outside ASCII in its domain",
+      "info@sub.müller.de",
+      "info@sub.müller.de",
+    ],
+    ["an _ straight after it", "a@b.c_d", undefined],
+    ["a - straight after it", "a@b.co-", undefined],
+    ["an @ straight before it", "a@b@c.de", undefined],
+    ["Japanese written around it", "連絡先a@x.jpまで", "a@x.jp"],
+  ])(
+    "links an email address as written, with %s, or not at all",
+    async (_name, text, address) => {
+      const html = await renderEmail(emailWithText(`Write ${text} now`));
+
+      expect(html).toContain(
+        `>Write ${
+          address === undefined
+            ? text
+            : text.replace(
+                address,
+                `<a href="mailto:${address}" target="_blank" style="color:#000000;text-decoration:underline">${address}</a>`
+              )
+        } now</p>`
+      );
+    }
+  );
 
   it("doesn't link an email address inside a Merge Tag, so the tag is still filled in", async () => {
     const html = await renderEmail(
@@ -312,6 +380,44 @@ describe(renderEmail, () => {
     expect(html.match(/<a\b/gu)).toHaveLength(1);
     expect(html).toContain(
       ">https://&#8203;example.&#8203;com/&#8203;a/&#8203;long/&#8203;path</a>"
+    );
+  });
+
+  it.each([
+    [
+      "a URL",
+      [plain("https://example.co"), bold("m")],
+      '<a href="https://example.com" target="_blank" style="color:#000000;text-decoration:underline">https://example.co<strong>m</strong></a>',
+    ],
+    [
+      "an email address",
+      [bold("foo"), plain("bar@example.com")],
+      '<a href="mailto:foobar@example.com" target="_blank" style="color:#000000;text-decoration:underline"><strong>foo</strong>bar@example.com</a>',
+    ],
+    [
+      "a www. URL",
+      [plain("www.exa"), bold("mple.com")],
+      '<a href="http://www.example.com" target="_blank" style="color:#000000;text-decoration:underline">www.exa<strong>mple.com</strong></a>',
+    ],
+  ])(
+    "links %s written as text whole when its formatting changes partway",
+    async (_name, inline, expected) => {
+      const html = await renderEmail(emailWithInline(...inline));
+
+      expect(html).toContain(`exactly">${expected}</p>`);
+    }
+  );
+
+  it("doesn't link a URL written as text that runs into a link, so no link goes to a part of it", async () => {
+    const html = await renderEmail(
+      emailWithInline(
+        plain("https://exa"),
+        linked("https://x.test", "mple.com")
+      )
+    );
+
+    expect(html).toContain(
+      'exactly">https://exa<a href="https://x.test" target="_blank" style="color:#000000;text-decoration:underline">mple.com</a></p>'
     );
   });
 

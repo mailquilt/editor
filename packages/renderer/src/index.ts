@@ -19,9 +19,18 @@ export const renderEmail = async (document: unknown) => {
   });
   // MJML indents its HTML, which is over a quarter of an email's size. Gmail
   // cuts off an email it counts as over 102 KB. The email's own line breaks are
-  // escaped, so whitespace with one is only MJML's layout.
+  // escaped, so whitespace with one is only MJML's layout: none between tags,
+  // and a space elsewhere. Only HTML's own whitespace, as `\s` would take a
+  // no-break space too. Each run is read once, however long.
   return limitColumnWidths(
-    html.replaceAll(/>\s*\n\s*</gu, "><").replaceAll(/\s*\n\s*/gu, " "),
+    html.replaceAll(/[\t\n\f\r ]+/gu, (space, offset: number) => {
+      if (!space.includes("\n")) {
+        return space;
+      }
+      return html[offset - 1] === ">" && html[offset + space.length] === "<"
+        ? ""
+        : " ";
+    }),
     emailWidth
   );
 };

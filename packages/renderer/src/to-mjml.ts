@@ -15,17 +15,28 @@ import {
 } from "@mailquilt/core/internal";
 import type { BlockProps } from "@mailquilt/core/internal";
 
+/** A space HTML doesn't collapse, or a Merge Tag, which may have one. */
+const KEPT_SPACE_OR_MERGE_TAG = new RegExp(
+  `${MERGE_TAG.source}|[^\\S\\t\\n\\f\\r ]`,
+  "gu"
+);
+
 /**
  * A line break is escaped too, so `renderEmail` can tell it from MJML's layout.
  * In text it still shows as a space, and browsers leave one out of a link or
- * image address.
+ * image address. So is each space HTML doesn't collapse, such as a no-break
+ * space, as MJML trims every kind of space from the ends of a Button's label.
+ * A Merge Tag's spaces stay as typed, so it's still filled in.
  */
 const escapeText = (text: string) =>
   text
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
-    .replaceAll("\n", "&#10;");
+    .replaceAll("\n", "&#10;")
+    .replaceAll(KEPT_SPACE_OR_MERGE_TAG, (match) =>
+      match.length === 1 ? `&#${match.codePointAt(0) as number};` : match
+    );
 
 const escapeAttribute = (value: string) =>
   escapeText(value).replaceAll('"', "&quot;");
@@ -130,12 +141,26 @@ const openTag = (mark: RichTextMark, linkColor: string) =>
 const URL_REST = `(?:${TAG_OR}[^\\s<>"])*(?:${TAG_OR}[^\\s<>".,;:!?)'\\]])`;
 
 /**
- * An email address. It may have an apostrophe, as in o'brien@example.com, and a
- * dot only between characters. It never starts right after a character it may
- * hold, a Merge Tag or a path, so it's never the end of something longer, and a
- * long word without an @ is read once, not once for each character.
+ * Scripts written without spaces between words, such as Japanese, whose letters
+ * end an address rather than join it, as in `info@example.comまで`.
  */
-const EMAIL_ADDRESS = `(?<![\\w'./+}-])\\w[\\w'+-]*(?:\\.[\\w'+-]+)*@[A-Za-z\\d-]+(?:\\.[A-Za-z\\d-]+)+`;
+const WITHOUT_SPACES = String.raw`\p{scx=Han}\p{scx=Hiragana}\p{scx=Katakana}\p{scx=Thai}\p{scx=Lao}\p{scx=Khmer}\p{scx=Myanmar}`;
+
+/** A letter or digit in any other script, which `\w` limits to ASCII. */
+const LETTER = String.raw`(?![${WITHOUT_SPACES}])[\p{L}\p{M}\p{N}]`;
+
+/** A part of a domain, which starts and ends with a letter or digit. */
+const DOMAIN_PART = `${LETTER}(?:(?:${LETTER}|-)*${LETTER})?`;
+
+/**
+ * An email address, in any language. It may have an apostrophe, as in
+ * o'brien@example.com, and a dot only between characters. It never starts right
+ * after a character it may hold, a Merge Tag, a path or an @, nor ends right
+ * before a letter, `_`, `-`, an @ or another part of its domain, so it's never a
+ * part of something longer. A long word without an @ is read once, not once for
+ * each character.
+ */
+const EMAIL_ADDRESS = `(?<!${LETTER}|[_'./+}@-])(?:${LETTER}|_)(?:${LETTER}|[_'+-])*(?:\\.(?:${LETTER}|[_'+-])+)*@${DOMAIN_PART}(?:\\.${DOMAIN_PART})+(?!${LETTER}|[_@-]|\\.${LETTER})`;
 
 /**
  * A URL or email address written as text, or a Merge Tag, which is tried first
@@ -145,7 +170,7 @@ const EMAIL_ADDRESS = `(?<![\\w'./+}-])\\w[\\w'+-]*(?:\\.[\\w'+-]+)*@[A-Za-z\\d-
  * starting with it is still an address.
  */
 const ADDRESS_IN_TEXT = new RegExp(
-  `${MERGE_TAG.source}|(?<url>[Hh][Tt]{2}[Pp][Ss]?://${URL_REST})|(?<email>${EMAIL_ADDRESS})|(?<www>(?<![\\w./-])[Ww]{3}\\.${URL_REST})`,
+  `${MERGE_TAG.source}|(?<url>[Hh][Tt]{2}[Pp][Ss]?://${URL_REST})|(?<email>${EMAIL_ADDRESS})|(?<www>(?<!${LETTER}|[_./-])[Ww]{3}\\.${URL_REST})`,
   "gu"
 );
 
@@ -176,38 +201,73 @@ const addressAt = (
   };
 };
 
+type Inline = NonNullable<RichTextParagraph["content"]>[number];
+
 /**
- * A text's HTML. A URL or email address in text that isn't already linked
- * becomes a link, as Apple Mail and Gmail would make it, because its break
- * points stop them recognizing it (#91).
+ * A paragraph's text and line breaks, with a link mark on each URL or email
+ * address written in its text, as Apple Mail and Gmail would link it, because
+ * its break points stop them recognizing it (#91). The text is read as the
+ * reader sees it, across any change of formatting, so the link goes to the
+ * whole address. One that runs into a link isn't linked, as that link already
+ * goes somewhere else from a part of it. Each node and address is read once.
  */
-const textToHtml = (
-  text: string,
-  linkColor: string,
-  afterSpace: boolean,
-  linked: boolean
-) => {
-  if (linked) {
-    return keepSpaces(breakLongWords(text), afterSpace);
-  }
-  let html = "";
-  let end = 0;
-  const addTextTo = (start: number) => {
-    html += keepSpaces(
-      breakLongWords(text.slice(end, start)),
-      end === 0 && afterSpace
-    );
-  };
+const linkWrittenAddresses = (inline: Inline[]) => {
+  let offset = 0;
+  const spans = inline.map((node) => {
+    const start = offset;
+    offset += node.type === "text" ? node.text.length : 1;
+    return { end: offset, node, start };
+  });
+  // A line break ends a URL or address, as a space would.
+  const text = inline
+    .map((node) => (node.type === "text" ? node.text : "\n"))
+    .join("");
+  const links: { end: number; href: string; start: number }[] = [];
+  let first = 0;
   for (const match of text.matchAll(ADDRESS_IN_TEXT)) {
     const address = addressAt(text, match);
     if (address !== undefined) {
-      addTextTo(match.index);
-      html += `${openTag({ attrs: { href: address.href }, type: "link" }, linkColor)}${breakLongWords(address.written)}</a>`;
-      end = match.index + address.written.length;
+      const start = match.index;
+      const end = start + address.written.length;
+      while ((spans[first]?.end ?? end) <= start) {
+        first += 1;
+      }
+      let linked = false;
+      for (let index = first; (spans[index]?.start ?? end) < end; index += 1) {
+        linked ||=
+          spans[index]?.node.marks?.some((mark) => mark.type === "link") ??
+          false;
+      }
+      if (!linked) {
+        links.push({ end, href: address.href, start });
+      }
     }
   }
-  addTextTo(text.length);
-  return html;
+  let next = 0;
+  return spans.flatMap(({ end, node, start }): Inline[] => {
+    const pieces: Inline[] = [];
+    let from = start;
+    while (node.type === "text" && from < end) {
+      while ((links[next]?.end ?? end) <= from) {
+        next += 1;
+      }
+      const link = links[next];
+      const inLink = link !== undefined && link.start <= from;
+      const to = Math.min(end, inLink ? link.end : (link?.start ?? end));
+      pieces.push({
+        ...node,
+        marks: inLink
+          ? [
+              { attrs: { href: link.href }, type: "link" },
+              ...(node.marks ?? []),
+            ]
+          : node.marks,
+        text: node.text.slice(from - start, to - start),
+      });
+      from = to;
+    }
+    return pieces.length > 0 ? pieces : [node];
+  });
 };
 
 const isSameMark = (a: RichTextMark, b: RichTextMark) =>
@@ -233,7 +293,7 @@ const inlineToHtml = (
       html += `</${MARK_TAGS[mark.type]}>`;
     }
   };
-  for (const node of inline) {
+  for (const node of linkWrittenAddresses(inline)) {
     const marks = (node.marks ?? []).toSorted(
       (a, b) => MARK_ORDER.indexOf(a.type) - MARK_ORDER.indexOf(b.type)
     );
@@ -252,12 +312,7 @@ const inlineToHtml = (
         html += openTag(mark, linkColor);
         open.push(mark);
       }
-      html += textToHtml(
-        node.text,
-        linkColor,
-        afterSpace,
-        marks[0]?.type === "link"
-      );
+      html += keepSpaces(breakLongWords(node.text), afterSpace);
       afterSpace = node.text.endsWith(" ");
     }
   }
