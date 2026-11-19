@@ -7,8 +7,7 @@
     "check-types": "turbo run check-types",
     "test": "turbo run test test:unit",
     "lint": "ultracite check",
-    "fix": "ultracite fix",
-    "release": "node scripts/check-release.mjs && turbo run build --filter=@mailquilt/* && changeset publish"
+    "fix": "ultracite fix"
   },
   "devDependencies": {
     "@changesets/cli": "^3.0.3",

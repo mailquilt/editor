@@ -66,6 +66,7 @@ A PR that changes one of these says so, gives the reason and updates this page.
 
 ## Packages and the docs site
 
+- Releases are published by CI's release job, on every commit on `main` that passes the checks. `changeset publish` publishes only versions npm doesn't have, so the job needs no test for whether a commit is a release, and a failed publish goes out on a rerun. The job uses npm's trusted publishing, with no token, and fails without provenance. Each commit on `main` has a CI concurrency group of its own, so none is cancelled while waiting and each release comes from the commit that versioned it. (#179)
 - The editor has no `jsdelivr` or `unpkg` field. The CDN build is loaded by its full path, as `apps/docs/docs/html.mdx` shows. (#36 R7)
 - `@repo/typescript-config` stays in the published devDependencies, and core's types keep tsdown's bare `import "valibot"`. Neither affects installs. (#36)
 - `withBase` stays: it's Blume's own helper. (#36)

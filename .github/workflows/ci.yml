@@ -7,19 +7,22 @@ on:
   push:
     branches: [main]
 
-# Read-only, as nothing here writes to the repository.
+# Read-only. The release job alone adds what it needs to publish.
 permissions:
   contents: read
 
 # A newer push to a pull request replaces its run. On main every commit is
-# checked to the end, as any of them could be released.
+# checked to the end, as any of them could be released, so each one has a
+# group of its own. In a shared group, a run waiting behind another is
+# cancelled when a newer one joins.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-# Both jobs run in Playwright's own image, which has every browser and the
-# system libraries they need, so they install nothing from Ubuntu's package
-# servers. Its version must match @playwright/test in the packages.
+# The check and browser jobs run in Playwright's own image, which has every
+# browser and the system libraries they need, so they install nothing from
+# Ubuntu's package servers. Its version must match @playwright/test in the
+# packages.
 
 # Each action is pinned to a commit, as a tag can be moved to other code.
 
@@ -110,3 +113,45 @@ jobs:
             apps/*/test-results/
           if-no-files-found: ignore
           retention-days: 14
+
+  # A commit on main that both jobs above passed publishes any package whose
+  # version isn't on npm yet, so only the version pull request's merge publishes
+  # anything. npm trusts this workflow as the packages' publisher, so no token is
+  # kept, and each package gets provenance that names the commit it came from.
+  release:
+    name: Publish to npm
+    needs: [check, browsers]
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      # To push the release's tags.
+      contents: write
+      # To prove to npm that this workflow is publishing, and sign provenance.
+      id-token: write
+    steps:
+      # The token that can push is kept out of the checkout, so the install and
+      # build can't use it. Only the last step has it.
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      # No cache, so nothing another run saved goes into what's published.
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 24
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm turbo run build --filter=@mailquilt/*
+      # Changesets tags each published package with an annotated tag, which
+      # records who made it.
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      # Provenance is required, so a publish without it fails rather than
+      # going ahead unsigned.
+      - run: pnpm changeset publish
+        env:
+          PNPM_CONFIG_PROVENANCE: true
+      - run: git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" --tags
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
