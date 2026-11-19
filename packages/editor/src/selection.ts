@@ -1,12 +1,18 @@
-import { BLOCKS } from "./block-dragging.js";
+import {
+  closestPlace,
+  findBlock,
+  findPlace,
+  findRow,
+  pressOn,
+} from "./editor-places.js";
 import type { Action, Binding } from "./key-map.js";
 import type { PanelTab } from "./side-panel.js";
 import type { TextBlockView } from "./text-block-view.js";
 
 /**
- * Which Block or Row is selected, and where focus is. Everything else in the
- * editor asks this module to select something or to move focus, and none of it
- * moves focus itself.
+ * Which Block or Row is selected, where focus is, and what the Side panel shows.
+ * Everything else in the editor asks this module to select something or to move
+ * focus, and none of it moves focus itself.
  */
 
 /** A Block, which the toolbars act on, a Row, or nothing. */
@@ -80,30 +86,48 @@ export const focusToolbarButton = (
 
 /** What focus on an element in the editor is on, or else the floating toolbar. */
 const targetOf = (element: Element): FocusTarget => {
-  if (element.closest(".link-form")) {
-    return { on: "linkField" };
-  }
-  if (element.closest(".format-bar")) {
-    return { on: "formatBar" };
-  }
+  const found = closestPlace(
+    element,
+    "linkField",
+    "formatBar",
+    "text",
+    "blockToolbar",
+    "block",
+    "rowToolbar"
+  );
+  const place = found?.dataset.place;
   const { action } = (element as HTMLElement).dataset;
-  const rowId = element.closest(".row-toolbar")
-    ? element.closest<HTMLElement>(".row-frame")?.dataset.rowId
-    : undefined;
-  if (rowId !== undefined) {
-    return { action, on: "rowTool", rowId };
+  switch (place) {
+    case "linkField":
+    case "formatBar": {
+      return { on: place };
+    }
+    case "rowToolbar": {
+      const rowId = closestPlace(element, "row")?.dataset.rowId;
+      return rowId === undefined
+        ? { on: "emailTools" }
+        : { action, on: "rowTool", rowId };
+    }
+    case "blockToolbar": {
+      return action === undefined
+        ? { on: "emailTools" }
+        : { action, on: "blockTool" };
+    }
+    case "text": {
+      return {
+        blockId: closestPlace(element, "block")?.dataset.blockId,
+        on: "text",
+      };
+    }
+    case "block": {
+      return element === found
+        ? { blockId: found.dataset.blockId, on: "block" }
+        : { on: "emailTools" };
+    }
+    default: {
+      return { on: "emailTools" };
+    }
   }
-  const block = element.closest<HTMLElement>(BLOCKS);
-  if (block && element.closest(".block-toolbar") && action !== undefined) {
-    return { action, on: "blockTool" };
-  }
-  if (block && (element === block || element.closest(".ProseMirror"))) {
-    return {
-      blockId: block.dataset.blockId,
-      on: element === block ? "block" : "text",
-    };
-  }
-  return { on: "emailTools" };
 };
 
 export const createSelection = (host: SelectionHost) => {
@@ -112,6 +136,8 @@ export const createSelection = (host: SelectionHost) => {
   let editingText = false;
   /** Whether the side panel shows what's selected, not its tabs. */
   let showsSettings = false;
+  /** The Side panel's tab, which it shows while it doesn't show what's selected. */
+  let tab: PanelTab = "content";
   /** Where focus was when the current update began. */
   let focusedBeforeUpdate: FocusTarget | undefined;
   /** Set while focus goes back after an update, which selects nothing new. */
@@ -125,26 +151,20 @@ export const createSelection = (host: SelectionHost) => {
   const selectedRowId = () =>
     selected && "rowId" in selected ? selected.rowId : undefined;
 
-  const blockElement = (blockId: string) =>
-    host
-      .root()
-      .querySelector<HTMLElement>(
-        `${BLOCKS}[data-block-id="${CSS.escape(blockId)}"]`
-      );
+  const blockElement = (blockId: string) => findBlock(host.root(), blockId);
 
-  const rowFrame = (rowId: string) =>
-    host
-      .root()
-      .querySelector<HTMLElement>(
-        `.row-frame[data-row-id="${CSS.escape(rowId)}"]`
-      );
+  const rowFrame = (rowId: string) => findRow(host.root(), rowId);
 
   /** A Row's tools that work, the Select Row button first. */
-  const rowTools = (rowId: string) => [
-    ...(rowFrame(rowId)?.querySelectorAll<HTMLButtonElement>(
-      ".row-toolbar button:not(:disabled)"
-    ) ?? []),
-  ];
+  const rowTools = (rowId: string) => {
+    const row = rowFrame(rowId);
+    const toolbar = row && findPlace(row, "rowToolbar");
+    return [
+      ...(toolbar?.querySelectorAll<HTMLButtonElement>(
+        "button:not(:disabled)"
+      ) ?? []),
+    ];
+  };
 
   /** What takes focus for a target, if it's there. */
   const focusableFor = (target: FocusTarget): Focusable | null | undefined => {
@@ -161,21 +181,21 @@ export const createSelection = (host: SelectionHost) => {
       }
       case "blockTool": {
         const blockId = selectedBlockId();
-        return blockId === undefined
-          ? undefined
-          : blockElement(blockId)?.querySelector<HTMLElement>(
-              `.block-toolbar [data-action="${CSS.escape(target.action)}"]`
-            );
+        const block = blockId === undefined ? undefined : blockElement(blockId);
+        const toolbar = block && findPlace(block, "blockToolbar");
+        return toolbar?.querySelector<HTMLElement>(
+          `[data-action="${CSS.escape(target.action)}"]`
+        );
       }
       case "formatBar": {
-        return host
-          .root()
-          .querySelector<HTMLElement>(".format-bar > button:not(:disabled)");
+        return findPlace(host.root(), "formatBar")?.querySelector<HTMLElement>(
+          ":scope > button:not(:disabled)"
+        );
       }
       case "linkField": {
-        const field = host
-          .root()
-          .querySelector<HTMLInputElement>(".link-form input");
+        const field = findPlace(host.root(), "linkField")?.querySelector(
+          "input"
+        );
         return (
           field && {
             focus: (options) => {
@@ -196,9 +216,7 @@ export const createSelection = (host: SelectionHost) => {
         return host.root().querySelector<HTMLElement>(`#tab-${target.tab}`);
       }
       case "emailTools": {
-        const toolbar = host
-          .root()
-          .querySelector<HTMLElement>(".floating-toolbar");
+        const toolbar = findPlace(host.root(), "emailTools");
         // Without scrolling the page to it: in a Shell whose bottom is below the
         // window, the toolbar is out of view.
         return (
@@ -286,9 +304,8 @@ export const createSelection = (host: SelectionHost) => {
     block?.scrollIntoView({ block: "nearest" });
     // Its tools can reach past a thin Block, under the floating toolbar, which
     // would hide the one with focus.
-    block
-      ?.querySelector(".block-toolbar")
-      ?.scrollIntoView({ block: "nearest" });
+    const toolbar = block && findPlace(block, "blockToolbar");
+    toolbar?.scrollIntoView({ block: "nearest" });
   };
 
   /**
@@ -297,8 +314,39 @@ export const createSelection = (host: SelectionHost) => {
    */
   const commitFocusedField = () => {
     const element = active();
-    if (element?.closest(".settings")) {
+    if (element && closestPlace(element, "settings")) {
       (element as HTMLElement).blur();
+    }
+  };
+
+  /**
+   * Pressing a control leaves focus and the selection in the Block. With no
+   * focus in the editor, the control takes it, without a ring as for any other
+   * press with the pointer, because keyboard undo only reaches the editor from
+   * inside it.
+   */
+  const onControlMousedown = (event: MouseEvent, target: Element) => {
+    if (target instanceof HTMLInputElement) {
+      return;
+    }
+    event.preventDefault();
+    commitFocusedField();
+    const button = target.closest("button");
+    if (button && !active()) {
+      button.focus({ focusVisible: false } as FocusOptions);
+    }
+  };
+
+  /**
+   * A press on a drag handle leaves focus and the selection where they are.
+   * With no focus in the editor, the floating toolbar takes it, because
+   * keyboard undo only reaches the editor from inside.
+   */
+  const onHandleMousedown = (event: MouseEvent) => {
+    event.preventDefault();
+    commitFocusedField();
+    if (!active()) {
+      focus({ on: "emailTools" });
     }
   };
 
@@ -378,10 +426,10 @@ export const createSelection = (host: SelectionHost) => {
      * Shows the selected Block's settings again after Back, when its text still has
      * focus and so gets no new focus event. Its own toolbars leave the panel be.
      */
-    onBlockClick({ currentTarget, target }: MouseEvent) {
+    onBlockClick(blockId: string, target: Element) {
       if (
-        (currentTarget as HTMLElement).dataset.blockId === selectedBlockId() &&
-        !(target as Element).closest(".block-toolbar, .format-bar")
+        blockId === selectedBlockId() &&
+        !closestPlace(target, "blockToolbar", "formatBar")
       ) {
         showSettings();
       }
@@ -403,10 +451,11 @@ export const createSelection = (host: SelectionHost) => {
         return;
       }
       setTimeout(() => {
+        const element = active();
         if (
           editingText &&
           document.hasFocus() &&
-          !active()?.closest(".ProseMirror, .format-bar, .preview")
+          !(element && closestPlace(element, "text", "formatBar", "preview"))
         ) {
           editingText = false;
           host.requestUpdate();
@@ -415,37 +464,19 @@ export const createSelection = (host: SelectionHost) => {
     },
 
     /**
-     * Pressing a control leaves focus and the selection in the Block. With no
-     * focus in the editor, the control takes it, without a ring as for any other
-     * press with the pointer, because keyboard undo only reaches the editor from
-     * inside it. A drag handle in a toolbar has its own.
+     * Any press in the editor. One on a drag handle, a Row's tag, or a place
+     * where a press keeps focus, leaves focus and the selection where they are.
      */
-    onControlMousedown(event: MouseEvent) {
+    onMousedown(event: MouseEvent) {
       const { target } = event;
-      if (
-        target instanceof HTMLInputElement ||
-        (target instanceof Element && target.closest(".drag-handle"))
-      ) {
+      if (!(target instanceof Element)) {
         return;
       }
-      event.preventDefault();
-      commitFocusedField();
-      const button = target instanceof Element && target.closest("button");
-      if (button && !active()) {
-        button.focus({ focusVisible: false } as FocusOptions);
-      }
-    },
-
-    /**
-     * Leaves focus and the selection where they are. With no focus in the editor,
-     * the floating toolbar takes it, because keyboard undo only reaches the editor
-     * from inside.
-     */
-    onHandleMousedown(event: MouseEvent) {
-      event.preventDefault();
-      commitFocusedField();
-      if (!active()) {
-        focus({ on: "emailTools" });
+      const press = pressOn(target);
+      if (press === "grabs") {
+        onHandleMousedown(event);
+      } else if (press === "keepsFocus") {
+        onControlMousedown(event, target);
       }
     },
 
@@ -494,6 +525,14 @@ export const createSelection = (host: SelectionHost) => {
       }
     },
 
+    /** The ARIA tabs pattern: a tab that arrow keys move to shows its panel too. */
+    selectTab(next: PanelTab) {
+      if (next !== tab) {
+        tab = next;
+        host.requestUpdate();
+      }
+    },
+
     /** The selected Block's text, if it has any. */
     get selectedText() {
       const blockId = selectedBlockId();
@@ -501,11 +540,12 @@ export const createSelection = (host: SelectionHost) => {
     },
 
     /**
-     * Back to the side panel's tabs, at this one if Back was pressed from the
-     * keyboard, with the Block still selected for what's added next.
+     * Back to the side panel's tabs, at the current one if Back has focus, as from
+     * the keyboard, with the Block still selected for what's added next.
      */
-    async showTabs(tab: PanelTab) {
-      const fromKeyboard = active()?.matches(".back-button") ?? false;
+    async showTabs() {
+      const fromKeyboard =
+        (active() as HTMLElement | null)?.dataset.action === "back";
       showsSettings = false;
       host.requestUpdate();
       if (fromKeyboard) {
@@ -515,6 +555,10 @@ export const createSelection = (host: SelectionHost) => {
 
     get showsSettings() {
       return showsSettings;
+    },
+
+    get tab() {
+      return tab;
     },
   };
 };

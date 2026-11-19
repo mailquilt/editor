@@ -523,6 +523,7 @@ export const createTextBlockView = ({
     attributes: {
       "aria-label": label,
       "aria-multiline": "true",
+      "data-place": "text",
       role: "textbox",
       tabindex: "0",
     },

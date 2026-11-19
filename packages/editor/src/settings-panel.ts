@@ -19,9 +19,17 @@ export interface SettingsSection {
   command: (changes: Record<string, unknown>) => Command;
 }
 
-/** Text in a field that isn't the document's value. */
-interface FieldDraft {
+/**
+ * What's typed in a field. A number field the browser can't read, such as
+ * "1e", has empty text and `badInput`.
+ */
+export interface Typed {
   text: string;
+  badInput: boolean;
+}
+
+/** Text in a field that isn't the document's value. */
+interface FieldDraft extends Typed {
   /**
    * How many times a person's tries to commit it were refused, or 0. Each one
    * counts, so the same refusal again is a new alert and is read out.
@@ -31,15 +39,16 @@ interface FieldDraft {
 
 export interface SettingsPanelEvents {
   draftOf: (key: string) => FieldDraft | undefined;
+  /** Each change to what's typed, before it's committed. */
   onInput: (
     section: SettingsSection,
     field: SettingsField,
-    control: HTMLInputElement
+    typed: Typed
   ) => void;
   onCommit: (
     section: SettingsSection,
     field: SettingsField,
-    control: HTMLInputElement | HTMLSelectElement
+    typed: Typed
   ) => void;
 }
 
@@ -279,15 +288,18 @@ const fieldText = (
 const leaveOnWheel = ({ currentTarget }: Event) =>
   (currentTarget as HTMLInputElement).blur();
 
-/** What a control's text means. Empty asks for the property to be removed. */
-const fieldValue = (
-  field: SettingsField,
-  control: HTMLInputElement | HTMLSelectElement
-) => {
-  if ("validity" in control && control.validity.badInput) {
+/** What a control holds. */
+const typedIn = (control: HTMLInputElement | HTMLSelectElement): Typed => ({
+  badInput: "validity" in control && control.validity.badInput,
+  text: control.value,
+});
+
+/** What typed text means. Empty asks for the property to be removed. */
+const fieldValue = (field: SettingsField, typed: Typed) => {
+  if (typed.badInput) {
     return Number.NaN;
   }
-  const text = control.value.trim();
+  const text = typed.text.trim();
   if (!text) {
     return null;
   }
@@ -321,12 +333,12 @@ const renderField = (
     .filter(Boolean)
     .join(" ");
   const onInput = ({ currentTarget }: Event) =>
-    events.onInput(section, field, currentTarget as HTMLInputElement);
+    events.onInput(section, field, typedIn(currentTarget as HTMLInputElement));
   const onCommit = ({ currentTarget }: Event) =>
     events.onCommit(
       section,
       field,
-      currentTarget as HTMLInputElement | HTMLSelectElement
+      typedIn(currentTarget as HTMLInputElement | HTMLSelectElement)
     );
 
   const textControl = (
@@ -455,7 +467,7 @@ export const renderSettingsPanel = (
   section: SettingsSection,
   events: SettingsPanelEvents
 ) => html`
-  <div class="settings">
+  <div class="settings" data-place="settings">
     <div class="section">
       <fieldset>
         <legend>${section.legend}</legend>
@@ -468,8 +480,6 @@ export const renderSettingsPanel = (
 interface DraftsHost {
   /** Applies what a person typed, which can be refused. */
   apply: (command: Command) => ApplyResult | undefined;
-  /** The control that holds the draft. */
-  controlOf: (key: string) => HTMLInputElement | null;
   /** Each value a person enters, before it's applied. */
   onEnter: (value: unknown) => void;
   requestUpdate: () => void;
@@ -492,11 +502,11 @@ export const createSettingsDrafts = (host: DraftsHost) => {
   const commit = (
     section: SettingsSection,
     field: SettingsField,
-    control: HTMLInputElement | HTMLSelectElement,
+    typed: Typed,
     retry: boolean
   ) => {
     const key = draftKey(section, field);
-    const value = fieldValue(field, control);
+    const value = fieldValue(field, typed);
     host.onEnter(value);
     const result = host.apply(section.command({ [field.key]: value }));
     if (result?.ok || result?.unchanged) {
@@ -504,17 +514,16 @@ export const createSettingsDrafts = (host: DraftsHost) => {
     } else {
       const refusals = drafts.get(key)?.refusals ?? 0;
       drafts.set(key, {
+        ...typed,
         refusals: retry ? refusals : refusals + 1,
-        text: control.value,
       });
     }
     if (result?.ok) {
       // A change to one field can make what another was refused for fine.
       for (const other of section.fields) {
-        const otherKey = draftKey(section, other);
-        const otherControl = host.controlOf(otherKey);
-        if (otherControl && drafts.get(otherKey)?.refusals) {
-          commit(section, other, otherControl, true);
+        const draft = drafts.get(draftKey(section, other));
+        if (draft?.refusals) {
+          commit(section, other, draft, true);
         }
       }
     } else {
@@ -524,21 +533,19 @@ export const createSettingsDrafts = (host: DraftsHost) => {
 
   const events: SettingsPanelEvents = {
     draftOf: (key) => drafts.get(key),
-    onCommit: (section, field, control) =>
-      commit(section, field, control, false),
-    onInput: (section, field, control) => {
+    onCommit: (section, field, typed) => commit(section, field, typed, false),
+    onInput: (section, field, typed) => {
       const key = draftKey(section, field);
       const refusals = drafts.get(key)?.refusals ?? 0;
-      const text = control.value;
       // What isn't a number reads as empty, as if an empty field were unchanged.
       if (
-        text === fieldText(field, section.values) &&
+        typed.text === fieldText(field, section.values) &&
         !refusals &&
-        !control.validity.badInput
+        !typed.badInput
       ) {
         drafts.delete(key);
       } else {
-        drafts.set(key, { refusals, text });
+        drafts.set(key, { ...typed, refusals });
       }
     },
   };

@@ -1,5 +1,6 @@
 import type { Command, RowLayout } from "@mailquilt/core";
 
+import { closestPlace, findPlace, findPlaces } from "./editor-places.js";
 import { contains, scaleOf, shadowRootsUpFrom } from "./geometry.js";
 import { claim, keyFor } from "./key-map.js";
 
@@ -53,11 +54,6 @@ interface Point {
   y: number;
 }
 
-/** The copy that follows the pointer has the same classes, and so does what's in it. */
-const NOT_GHOST = ":not([data-drag-ghost], [data-drag-ghost] *)";
-export const BLOCKS = `.block${NOT_GHOST}`;
-const ROWS = `.row-frame${NOT_GHOST}`;
-
 /** A press alone stays a click, however long it lasts. */
 const START_DISTANCE_PX = 5;
 
@@ -99,22 +95,24 @@ interface Grab {
  * or its tag, or an item in the palette or the Rows tab.
  */
 const grabAt = (target: Element): Grab | undefined => {
-  const handle = target.closest(".drag-handle");
-  const row = (handle?.closest(".row-toolbar") ?? target.closest(".row-tag"))
-    ?.parentElement;
-  if (row?.matches(ROWS)) {
+  const handle = closestPlace(target, "dragHandle");
+  const rowGrip =
+    (handle && closestPlace(handle, "rowToolbar")) ??
+    closestPlace(target, "rowTag");
+  const row = rowGrip && closestPlace(rowGrip, "row");
+  if (row) {
     return {
       element: row,
       source: { rowId: row.dataset.rowId as string },
-      toolbar: row.querySelector(":scope > .row-toolbar") ?? undefined,
+      toolbar: findPlace(row, "rowToolbar") ?? undefined,
     };
   }
-  const block = handle?.closest<HTMLElement>(BLOCKS);
+  const block = handle && closestPlace(handle, "block");
   if (handle && block) {
     return {
       element: block,
       source: { blockId: block.dataset.blockId as string },
-      toolbar: handle.closest(".block-toolbar") ?? undefined,
+      toolbar: closestPlace(handle, "blockToolbar") ?? undefined,
     };
   }
   const tile = target.closest<HTMLElement>(
@@ -361,12 +359,15 @@ export const createBlockDragging = ({
     pointer: Point,
     scrollContainers: ScrollContainer[]
   ) => {
-    const email = root.querySelector(".email");
-    const controls = root.querySelectorAll(".side-panel, .floating-toolbar");
+    const email = findPlace(root, "email");
+    const controls = [
+      ...findPlaces(root, "sidePanel"),
+      ...findPlaces(root, "emailTools"),
+    ];
     if (
       !email ||
       (startedOn && contains(startedOn, pointer)) ||
-      [...controls].some((control) => contains(control, pointer)) ||
+      controls.some((control) => contains(control, pointer)) ||
       !contains(root.host, pointer, DROP_MARGIN_PX) ||
       scrollContainers.some(
         (container) =>
@@ -378,11 +379,9 @@ export const createBlockDragging = ({
     }
     const column = isRowSource(source)
       ? undefined
-      : [...email.querySelectorAll<HTMLElement>(`.column${NOT_GHOST}`)].find(
-          (each) => contains(each, pointer)
-        );
+      : findPlaces(email, "column").find((each) => contains(each, pointer));
     const parent = column ?? email;
-    const items = [...parent.querySelectorAll(column ? BLOCKS : ROWS)].filter(
+    const items = findPlaces(parent, column ? "block" : "row").filter(
       (each) => each !== element
     );
     const index = items.filter((each) => midpointY(each) < pointer.y).length;
@@ -406,8 +405,8 @@ export const createBlockDragging = ({
 
   /** The line where a drop would land, and the Column it would land in. */
   const showIndicator = (target?: ReturnType<typeof landing>) => {
-    const email = root.querySelector(".email");
-    const indicator = root.querySelector<HTMLElement>(".drop-indicator");
+    const email = findPlace(root, "email");
+    const indicator = findPlace(root, "dropIndicator");
     if (!(email && indicator)) {
       return;
     }
@@ -457,7 +456,7 @@ export const createBlockDragging = ({
     delete grab.element.dataset.dragSource;
     dragged.restoreCursor();
     showIndicator();
-    const email = root.querySelector<HTMLElement>(".email");
+    const email = findPlace(root, "email");
     if (email) {
       delete email.dataset.dragging;
     }
@@ -513,7 +512,7 @@ export const createBlockDragging = ({
     if (isOnCanvas(grab.source)) {
       grab.element.dataset.dragSource = "";
     }
-    const email = root.querySelector<HTMLElement>(".email");
+    const email = findPlace(root, "email");
     if (email) {
       // Which, so that only a Block's drag highlights the Columns.
       email.dataset.dragging = isRowSource(grab.source) ? "row" : "block";

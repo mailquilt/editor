@@ -1,3 +1,4 @@
+import { findPlace, findPlaces } from "./editor-places.js";
 import { scaleOf } from "./geometry.js";
 
 /** Space kept between a tool and the canvas's edge, its Block or the other tool. */
@@ -31,9 +32,9 @@ export const createToolPlacement = (
   let observed: Element[] = [];
 
   const place = () => {
-    const workspace = root.querySelector<HTMLElement>(".canvas-area");
-    const toolbar = root.querySelector<HTMLElement>(".block-toolbar");
-    const bar = root.querySelector<HTMLElement>(".format-bar");
+    const workspace = findPlace(root, "workspace");
+    const toolbar = findPlace(root, "blockToolbar");
+    const bar = findPlace(root, "formatBar");
     for (const tool of [toolbar, bar]) {
       tool?.style.removeProperty("translate");
     }
@@ -107,10 +108,12 @@ export const createToolPlacement = (
     destroy: () => observer.disconnect(),
     sync: () => {
       const targets = [
-        ...root.querySelectorAll(
-          '.canvas-area, .email, .block[aria-current="true"]'
+        findPlace(root, "workspace"),
+        findPlace(root, "email"),
+        ...findPlaces(root, "block").filter(
+          (block) => block.getAttribute("aria-current") === "true"
         ),
-      ];
+      ].filter((target) => target !== null);
       if (
         targets.length !== observed.length ||
         targets.some((target, index) => target !== observed[index])

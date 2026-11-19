@@ -153,9 +153,6 @@ export const createLinkForm = (host: LinkFormHost) => {
   };
 };
 
-/** For what has to stay with the element it happened in. */
-const stopPropagation = (event: Event) => event.stopPropagation();
-
 const renderLinkForm = (
   refusals: number,
   href: string | undefined,
@@ -163,8 +160,8 @@ const renderLinkForm = (
 ) => html`
   <form
     class="link-form"
+    data-place="linkField"
     novalidate
-    @beforeinput=${stopPropagation}
     @submit=${(event: SubmitEvent) => {
       event.preventDefault();
       const form = event.target as HTMLFormElement;
@@ -220,8 +217,8 @@ export const renderFormatBar = (api: PanelApi) => {
     <div
       aria-label="Text formatting"
       class="ui bar format-bar"
+      data-place="formatBar"
       role="toolbar"
-      @mousedown=${api.onControlMousedown}
     >
       ${MARK_BUTTONS.map(
         ({ keys, label, mark }) => html`
