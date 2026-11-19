@@ -1,8 +1,34 @@
+import { appendFile } from "node:fs/promises";
+
+import type { AstroIntegration } from "astro";
 import { defineConfig } from "blume";
 import { filesystem } from "blume/sources";
 
 import { codeDark, codeLight } from "./site/code-themes";
 import { DESCRIPTION, NPM, REPO, SITE_URL, SOCIAL_IMAGE } from "./site/project";
+
+/**
+ * Security headers for every page. Cloudflare reads them from `_headers`, which
+ * Blume writes with its own rules, and skips writing if `public/` has one. So
+ * these are added to Blume's file once the build is done. Pages may be framed
+ * only by the site itself, as the examples' previews are.
+ */
+const SECURITY_HEADERS = `
+/*
+  Strict-Transport-Security: max-age=31536000
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Content-Security-Policy: frame-ancestors 'self'
+`;
+
+const securityHeaders: AstroIntegration = {
+  hooks: {
+    "astro:build:done": async ({ dir }) => {
+      await appendFile(new URL("_headers", dir), SECURITY_HEADERS);
+    },
+  },
+  name: "mailquilt-security-headers",
+};
 
 export default defineConfig({
   agents: {
@@ -23,6 +49,11 @@ export default defineConfig({
     owner: "mailquilt",
     repo: "editor",
   },
+  // Blume runs its own first, so `_headers` is there to add to.
+  integrations: [securityHeaders],
+  // Each docs page's date comes from the last commit that changed it, for
+  // the page and the sitemap.
+  lastModified: "git",
   // The wordmark is part of the image, so there is no text beside it.
   logo: {
     image: { alt: "Mail Quilt", dark: "/logo-dark.svg", light: "/logo.svg" },

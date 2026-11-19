@@ -59,7 +59,21 @@ import Playground from "../islands/Playground.tsx";
   }
 
   .editor {
+    container-type: inline-size;
     padding: 0 1rem 1.5rem;
+  }
+
+  /*
+   * The Shell only arrives once its script has run. Until then its place is
+   * kept, the Shell's height and the room above and below it, so the page
+   * doesn't jump. Narrower than the editor, it's a notice of no set height.
+   */
+  @container (width >= 640px) {
+    .editor :global(astro-island:empty) {
+      display: block;
+      height: calc(100dvh - 6rem + 2rem);
+      min-height: calc(600px + 48px + 2rem);
+    }
   }
 
   .editor :global(.playground) {

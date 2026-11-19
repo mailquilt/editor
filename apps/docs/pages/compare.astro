@@ -5,17 +5,17 @@
 import { withBase } from "blume/components/islands/base-path.ts";
 
 import SitePage from "../components/site-page.astro";
-import { ISSUES } from "../site/project.ts";
+import { ISSUES, MAIL_QUILT, REASONS } from "../site/project.ts";
 
 const CHECKED = "16 November 2026";
 
 const tools = [
   {
-    cost: "MIT. Free, with no paid plan.",
-    kind: "Packages for building an email editor into an app: a drag-and-drop editor, and the document model under it. Emails are saved as JSON.",
+    cost: MAIL_QUILT.cost,
+    kind: MAIL_QUILT.what,
     name: "Mail Quilt",
-    runs: "In your app, from npm or a CDN build you pin.",
-    works: "Any framework, as a Web Component. React component.",
+    runs: MAIL_QUILT.source,
+    works: MAIL_QUILT.frameworks,
   },
   {
     cost: "Commercial. A free plan, then paid plans from $250 a month.",
@@ -119,16 +119,16 @@ const elsewhere = [
 ];
 
 const reasons = [
-  "You want the editor inside your product, with no fee and no other company's servers involved.",
+  REASONS.noFee,
   "Your app isn't a React app, or you don't want the choice of editor to depend on your framework.",
-  "You want each email saved as a documented JSON format that you can check, change and render on your own server.",
-  "You want everything that can be dragged to work from the keyboard too.",
-  "A small set of Blocks is enough for the emails you send.",
+  REASONS.saved,
+  REASONS.keyboard,
+  REASONS.fewBlocks,
 ];
 ---
 
 <SitePage
-  description="How Mail Quilt compares with Unlayer, Beefree, Topol, GrapesJS, Easy Email, Templatical, Maily, React Email and EmailBuilder.js, and when one of them is the better choice."
+  description="How Mail Quilt compares with Unlayer, Beefree, Topol, GrapesJS, Easy Email, Templatical, Maily, React Email and EmailBuilder.js, and when to choose them."
   title="Mail Quilt compared with Unlayer, Beefree, GrapesJS and others"
 >
   <header class="site-intro">

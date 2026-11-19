@@ -1,26 +1,32 @@
 ---
 // One example email on a page of its own, so each can be found by what it is,
-// such as a receipt email template.
+// such as a receipt email template. Each example has a file of its own under
+// pages/examples/ that renders this, rather than one [slug] route, because
+// Blume leaves a [slug] route's pages out of the sitemap.
 import { withBase } from "blume/components/islands/base-path.ts";
 
-import ExampleEmail from "../../components/example-email.astro";
-import SitePage from "../../components/site-page.astro";
-import { renderedExamples } from "../../site/rendered-examples.ts";
-import type { RenderedExample } from "../../site/rendered-examples.ts";
+import { renderedExamples } from "../site/rendered-examples.ts";
+import ExampleEmail from "./example-email.astro";
+import SitePage from "./site-page.astro";
 
-export const getStaticPaths = () =>
-  renderedExamples.map((example) => ({
-    params: { slug: example.slug },
-    props: { example },
-  }));
+interface Props {
+  /** The example's `slug` in site/examples.ts. */
+  slug: string;
+}
 
-const { example } = Astro.props as { example: RenderedExample };
-const others = renderedExamples.filter(({ slug }) => slug !== example.slug);
+const { slug } = Astro.props;
+const example = renderedExamples.find((each) => each.slug === slug);
+if (!example) {
+  throw new Error(`No example email has the slug "${slug}".`);
+}
+const others = renderedExamples.filter((other) => other !== example);
 const kind = example.name.toLowerCase();
+/** What the email is, from the start of its text, such as "an order confirmation". */
+const what = example.text.split(/[.:]/u)[0] ?? "";
 ---
 
 <SitePage
-  description={`A free ${kind} email template. ${example.text} Download its HTML, or its JSON to change it in the Mail Quilt editor.`}
+  description={`A free ${kind} email template, ${what.charAt(0).toLowerCase()}${what.slice(1)}. Download its HTML, or its JSON to change it in the Mail Quilt editor.`}
   title={`${example.name} email template: free HTML and JSON - Mail Quilt`}
 >
   <ExampleEmail

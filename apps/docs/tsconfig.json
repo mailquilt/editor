@@ -1,12 +1,24 @@
 {
   "extends": "@repo/typescript-config/react-library.json",
   "compilerOptions": {
+    // As Astro has it, so the .astro files can import the .ts ones by name.
+    "allowImportingTsExtensions": true,
+    // Nothing is emitted, and Blume's generated content config has types
+    // a declaration file couldn't name.
+    "declaration": false,
+    "declarationMap": false,
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "noEmit": true,
     "types": ["node"]
   },
+  // `blume check` type-checks the .astro files as well as these. Astro's types
+  // come from the runtime Blume generates, and the checker reads .astro files
+  // only because pnpm-workspace.yaml hoists Blume's `astro` where it's found.
   "include": [
+    ".blume/.astro/types.d.ts",
+    "components",
+    "pages",
     "islands",
     "site",
     "browser-tests",

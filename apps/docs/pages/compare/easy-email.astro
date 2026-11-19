@@ -4,53 +4,55 @@
 // changing it.
 import SitePage from "../../components/site-page.astro";
 import Versus from "../../components/versus.astro";
+import { REASONS } from "../../site/project.ts";
+import type { CompareRow } from "../../site/project.ts";
 
 const CHECKED = "16 November 2026";
 
-const rows = [
+const rows: CompareRow[] = [
   {
     label: "What it is",
-    ours: "Packages for building an email editor into your app: a drag-and-drop editor, a ready-made editor page, and the document model and renderer under them.",
+    ours: "what",
     theirs:
       "An open-source drag-and-drop email editor for React, built on MJML, with a paid Pro version.",
   },
   {
     label: "License and cost",
-    ours: "MIT. Free, with no paid plan.",
+    ours: "cost",
     theirs: "The editor is MIT and free. Easy Email Pro starts at $99 a month.",
   },
   {
     label: "Where the editor comes from",
-    ours: "Installed from npm and bundled with your app, or loaded from a CDN build you pin to a version.",
+    ours: "source",
     theirs: "Installed from npm and bundled with your app.",
   },
   {
     label: "Frameworks",
-    ours: "Any framework, as a Web Component, and a React component for React 19.",
+    ours: "frameworks",
     theirs:
       "React 18. Its README says the open-source version doesn't support React 19, and Pro does.",
   },
   {
     label: "Browsers",
-    ours: "Its tests run in Chromium, Firefox and WebKit, Safari's engine.",
+    ours: "browsers",
     theirs:
       "Its README says the open-source version only supports Chrome, and Pro works in other browsers.",
   },
   {
     label: "What you save",
-    ours: "A documented JSON format of Rows, Columns and Blocks. The HTML is written by MJML, in the browser or on your own server.",
+    ours: "saved",
     theirs:
       "Its own JSON, with the email's content, subject and subtitle, which it turns into MJML.",
   },
   {
     label: "Blocks and extras",
-    ours: "Six Blocks, no template library and no image upload.",
+    ours: "blocks",
     theirs:
       "More blocks, such as hero, navbar, carousel and accordion, and a free collection of templates. Pro adds AMP blocks, an Unsplash image library, a File Manager and more blocks.",
   },
   {
     label: "Support",
-    ours: "One maintainer and a public issue tracker.",
+    ours: "support",
     theirs: "The community, with paid support on Pro.",
   },
 ];
@@ -64,8 +66,8 @@ const theirs = [
 const ours = [
   "Your app uses React 19, or isn't a React app at all.",
   "People will use the editor in Firefox or Safari as well as Chrome.",
-  "You want each email saved as a documented JSON format of Rows, Columns and Blocks, which you can check, change and render on your own server.",
-  "You want everything that can be dragged to work from the keyboard too.",
+  REASONS.saved,
+  REASONS.keyboard,
 ];
 
 const sources = [

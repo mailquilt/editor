@@ -7,7 +7,7 @@
 export const INK = "#111113";
 export const ORANGE = "#d4380f";
 export const WASH = "#f4f4f5";
-export const LINE = "#d4d4d8";
+const LINE = "#d4d4d8";
 export const SOFT = "#e4e4e7";
 export const PAPER = "#ffffff";
 

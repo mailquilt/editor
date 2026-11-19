@@ -1,13 +1,19 @@
-/* The landing page. Shared pieces are in site.css, and tokens in theme.css. */
+/*
+ * The landing page. Shared pieces are in site.css, and tokens in theme.css.
+ *
+ * A build loads this file before site.css, so a rule here that changes one of
+ * site.css's pieces names that piece's class too, as in .site-section.home-hero.
+ * Without it, site.css's rule wins on the built site.
+ */
 
 /* ---------- Hero ---------- */
 
-.home-hero {
+.site-section.home-hero {
   padding-top: 3.5rem;
 }
 
 @media (min-width: 60rem) {
-  .home-hero {
+  .site-section.home-hero {
     padding-top: 6rem;
     padding-bottom: 5rem;
   }
@@ -30,11 +36,11 @@
 }
 
 /* The hero's facts put each value at the far end of its line. */
-.home-facts {
+.site-facts.home-facts {
   line-height: 1.4;
 }
 
-.home-facts > div {
+.site-facts.home-facts > div {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -66,7 +72,9 @@
   margin-top: 0.875rem;
 }
 
-.home-themes {
+.home-start-note,
+.home-themes,
+.site-button.home-skip {
   display: none;
 }
 
@@ -120,6 +128,35 @@
   .home-phone-note {
     display: none;
   }
+
+  /* Says what the picture is until the editor takes its place. */
+  .home-start-note {
+    display: block;
+    max-width: 38em;
+    margin-top: 1.5rem;
+  }
+}
+
+.home-slot:has([data-live]) ~ .home-start-note {
+  display: none;
+}
+
+/* In the room above the editor, and seen only when it has focus. */
+.home-slot:has([data-live]) > .home-skip {
+  display: inline-flex;
+  position: absolute;
+  bottom: calc(100% + 1.5rem);
+  left: 0;
+}
+
+.home-slot:has([data-live]) > .home-skip:not(:focus) {
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  white-space: nowrap;
+  clip-path: inset(50%);
 }
 
 /* Only once the editor is really there, since this row says it is. */

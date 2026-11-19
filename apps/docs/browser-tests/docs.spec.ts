@@ -1,5 +1,9 @@
+import { readFile } from "node:fs/promises";
+
 import { BLOCK_TYPES, loadDocument } from "@mailquilt/core";
 import { expect, test } from "@playwright/test";
+
+import { examples } from "../site/examples";
 
 /** For tests of the site's content, which is the same in every browser. */
 const SAME_IN_EVERY_BROWSER = "Checks content, so Chromium alone runs it.";
@@ -17,8 +21,34 @@ test("the landing page's editor is live, and shows the email it would save", asy
   await page.keyboard.type("Typed on the landing page. ");
 
   await expect(json).toContainText("Typed on the landing page.");
-  await page.getByRole("button", { name: "Export it again" }).click();
+  const exportAgain = page.getByRole("button", { name: "Export it again" });
+  await exportAgain.focus();
+  await page.keyboard.press("Enter");
   await expect(html).toContainText("Typed on the landing page.");
+  // Focus stays where it was, and the result is said.
+  await expect(exportAgain).toBeFocused();
+  await expect(
+    page.getByRole("status").filter({ hasText: "the email as it is now" })
+  ).toBeVisible();
+});
+
+test("a keyboard user can skip past the landing page's editor", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(
+    page.getByRole("textbox", { name: "Text Block" }).first()
+  ).toBeVisible();
+  const skip = page.getByRole("link", { name: "Skip past the editor" });
+
+  await skip.focus();
+  await expect(skip).toBeVisible();
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Tab");
+
+  await expect(
+    page.getByRole("button", { name: "Orange, to match this site" })
+  ).toBeFocused();
 });
 
 test("the landing page's editor stays inside its frame as the email grows", async ({
@@ -183,6 +213,53 @@ test.describe("without JavaScript", () => {
       ).toBeVisible();
     }
   });
+
+  test("the landing page says its editor is only a picture", async ({
+    browserName,
+    page,
+  }) => {
+    test.skip(browserName !== "chromium", SAME_IN_EVERY_BROWSER);
+    await page.goto("/");
+
+    await expect(
+      page.getByText("This is a picture of the editor", { exact: false })
+    ).toBeVisible();
+  });
+});
+
+test("the built site sets its security headers, beside Blume's own", async ({
+  browserName,
+}) => {
+  test.skip(browserName !== "chromium", SAME_IN_EVERY_BROWSER);
+  // Cloudflare reads these from the file. The server the tests use doesn't.
+  const headers = await readFile(new URL("../dist/_headers", import.meta.url), {
+    encoding: "utf-8",
+  });
+
+  expect(headers).toContain("Content-Type: text/markdown; charset=utf-8");
+  for (const header of [
+    "Strict-Transport-Security",
+    "X-Content-Type-Options",
+    "Referrer-Policy",
+    "Content-Security-Policy: frame-ancestors",
+  ]) {
+    expect(headers).toMatch(
+      new RegExp(`^/\\*\\n(?:  .+\\n)*  ${header}`, "mu")
+    );
+  }
+});
+
+test("the sitemap lists each example's own page", async ({
+  browserName,
+  request,
+}) => {
+  test.skip(browserName !== "chromium", SAME_IN_EVERY_BROWSER);
+  const response = await request.get("/sitemap.xml");
+  const sitemap = await response.text();
+
+  for (const { slug } of examples) {
+    expect(sitemap).toContain(`/examples/${slug}</loc>`);
+  }
 });
 
 test("the document format reference's example is an email core loads", async ({
@@ -213,6 +290,28 @@ test("the document format reference's example is an email core loads", async ({
 /** A path to a page rather than a file, without a trailing slash. */
 const pagePath = (path: string) =>
   /\.\w+$/u.test(path) ? undefined : path.replace(/(?<=.)\/$/u, "");
+
+/** How many tabs the link test keeps open at once. */
+const TABS = 4;
+
+/** Runs `each` on every item, `TABS` at a time, and keeps the results in order. */
+const fewAtATime = async <Item, Result>(
+  items: Item[],
+  each: (item: Item) => Promise<Result>
+) => {
+  const results: Result[] = [];
+  let next = 0;
+  const work = async () => {
+    while (next < items.length) {
+      const index = next;
+      next += 1;
+      // oxlint-disable-next-line no-await-in-loop -- One item at a time per tab.
+      results[index] = await each(items[index] as Item);
+    }
+  };
+  await Promise.all(Array.from({ length: TABS }, work));
+  return results;
+};
 
 test("every page's links and assets resolve", async ({
   baseURL,
@@ -256,15 +355,27 @@ test("every page's links and assets resolve", async ({
     return here.map((url) => url.pathname);
   };
 
-  // The landing page links to every section, and the docs' sidebar to every
-  // docs page, so between them every page is opened and its assets checked.
-  const fromHomeAndDocs = await Promise.all(["/", "/docs"].map(linksFrom));
-  const fromStart = fromHomeAndDocs.flat();
-  const pages = [...new Set(fromStart.flatMap((path) => pagePath(path) ?? []))];
-  const fromPages = await Promise.all(pages.map(linksFrom));
-  const linked = [...new Set([...fromStart, ...fromPages.flat()])];
+  // From the landing page and the docs, every page each one links to is
+  // opened in turn, until a round finds no page that hasn't been.
+  const pages = new Set<string>();
+  const linked = new Set<string>();
+  let round = ["/", "/docs"];
+  while (round.length > 0) {
+    for (const path of round) {
+      pages.add(path);
+    }
+    // oxlint-disable-next-line no-await-in-loop -- Each round needs the last one's links.
+    const fromRound = await fewAtATime(round, linksFrom);
+    const found = fromRound.flat();
+    for (const path of found) {
+      linked.add(path);
+    }
+    round = [...new Set(found.flatMap((path) => pagePath(path) ?? []))].filter(
+      (path) => !pages.has(path)
+    );
+  }
   const statuses = await Promise.all(
-    linked.map(async (path) => {
+    [...linked].map(async (path) => {
       const response = await request.get(path);
       return { path, status: response.status() };
     })
@@ -272,23 +383,21 @@ test("every page's links and assets resolve", async ({
 
   expect(statuses.filter(({ status }) => status >= 400)).toStrictEqual([]);
   expect(failedAssets).toStrictEqual([]);
-  const missingAnchors = await Promise.all(
-    [...anchors].map(async (anchor) => {
-      const tab = await context.newPage();
-      await tab.goto(anchor);
-      const id = decodeURIComponent(anchor.slice(anchor.indexOf("#") + 1));
-      const found = await tab.evaluate(
-        (each) => document.querySelector(`#${CSS.escape(each)}`) !== null,
-        id
-      );
-      await tab.close();
-      return found ? [] : [anchor];
-    })
-  );
+  const missingAnchors = await fewAtATime([...anchors], async (anchor) => {
+    const tab = await context.newPage();
+    await tab.goto(anchor);
+    const id = decodeURIComponent(anchor.slice(anchor.indexOf("#") + 1));
+    const found = await tab.evaluate(
+      (each) => document.querySelector(`#${CSS.escape(each)}`) !== null,
+      id
+    );
+    await tab.close();
+    return found ? [] : [anchor];
+  });
   expect(missingAnchors.flat()).toStrictEqual([]);
   expect(anchors.size).toBeGreaterThan(0);
-  // So a crawl that finds nothing can't pass.
-  expect(pages).toStrictEqual(
+  // So a crawl that finds nothing can't pass, or stops a page short.
+  expect([...pages]).toStrictEqual(
     expect.arrayContaining([
       "/docs",
       "/docs/quick-start",
@@ -302,7 +411,9 @@ test("every page's links and assets resolve", async ({
       "/docs/email-clients",
       "/playground",
       "/examples",
+      "/examples/receipt",
       "/compare",
+      "/compare/unlayer",
       "/why",
       "/roadmap",
     ])

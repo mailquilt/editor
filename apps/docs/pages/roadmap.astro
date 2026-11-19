@@ -1,5 +1,7 @@
 ---
 // What's being built now, next and later. The detail lives in GitHub Issues.
+// Next and Later are in the order the roadmap in PROJECT.md gives them, so
+// change the two together. Nothing here names a version, so it can't go stale.
 import SitePage from "../components/site-page.astro";
 import { ISSUES } from "../site/project.ts";
 
@@ -16,8 +18,9 @@ const stages = [
       "HTML checked in Gmail, Apple Mail, Outlook, Yahoo and other email clients",
     ],
     name: "Now",
+    ordered: false,
     planned: false,
-    text: "The first release, 0.1.0.",
+    text: "In the current release.",
   },
   {
     items: [
@@ -38,8 +41,9 @@ const stages = [
       "A JSON Schema for the email format",
     ],
     name: "Next",
+    ordered: true,
     planned: true,
-    text: "What a team needs before its customers can use the editor.",
+    text: "What a team needs before its customers can use the editor, in this order. The first six are specified together.",
   },
   {
     items: [
@@ -62,8 +66,9 @@ const stages = [
       "The pieces for editing an email together",
     ],
     name: "Later",
+    ordered: false,
     planned: true,
-    text: "Wanted, with no order yet.",
+    text: "Wanted. The first five open the editor up to your app, so they come first, in this order. The rest have no order yet.",
   },
 ];
 ---
@@ -87,16 +92,19 @@ const stages = [
     <div class="site-wrap">
       <div class="site-grid">
         {
-          stages.map(({ items, name, planned, text }) => (
-            // What isn't built yet is a slot, drawn dashed.
-            <div class="site-card site-card-body" data-slot={planned ? "" : undefined}>
-              <h2 class="site-h3">{name}</h2>
-              <p class="site-small site-muted">{text}</p>
-              <ul class="site-list site-small stage">
-                {items.map((item) => <li>{item}</li>)}
-              </ul>
-            </div>
-          ))
+          stages.map(({ items, name, ordered, planned, text }) => {
+            const List = ordered ? "ol" : "ul";
+            return (
+              // What isn't built yet is a slot, drawn dashed.
+              <div class="site-card site-card-body" data-slot={planned ? "" : undefined}>
+                <h2 class="site-h3">{name}</h2>
+                <p class="site-small site-muted">{text}</p>
+                <List class="site-list site-small stage">
+                  {items.map((item) => <li>{item}</li>)}
+                </List>
+              </div>
+            );
+          })
         }
       </div>
       <p class="site-measure more">

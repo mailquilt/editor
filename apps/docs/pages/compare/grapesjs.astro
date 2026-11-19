@@ -3,52 +3,54 @@
 // site, docs or packages on the date below. Check them again before changing it.
 import SitePage from "../../components/site-page.astro";
 import Versus from "../../components/versus.astro";
+import { REASONS } from "../../site/project.ts";
+import type { CompareRow } from "../../site/project.ts";
 
 const CHECKED = "16 November 2026";
 
-const rows = [
+const rows: CompareRow[] = [
   {
     label: "What it is",
-    ours: "Packages for building an email editor into your app: a drag-and-drop editor, a ready-made editor page, and the document model and renderer under them. It makes emails only.",
+    ours: "what",
     theirs:
       "An open-source framework for building visual editors, for web pages and emails. Its MJML plugin, grapesjs-mjml, makes it an email editor.",
   },
   {
     label: "License and cost",
-    ours: "MIT. Free, with no paid plan.",
+    ours: "cost",
     theirs:
       "BSD-3-Clause, and free. Studio SDK, a ready-made editor from the GrapesJS team, comes with its Enterprise plan, priced on request.",
   },
   {
     label: "Where the editor comes from",
-    ours: "Installed from npm and bundled with your app, or loaded from a CDN build you pin to a version.",
+    ours: "source",
     theirs: "Installed from npm and bundled with your app.",
   },
   {
     label: "Account",
-    ours: "None.",
+    ours: "account",
     theirs: "None for the open-source framework.",
   },
   {
     label: "Frameworks",
-    ours: "Any framework, as a Web Component, and a React component.",
+    ours: "frameworks",
     theirs: "Plain JavaScript, and an MIT React wrapper, @grapesjs/react.",
   },
   {
     label: "What you save",
-    ours: "A documented JSON format of Rows, Columns and Blocks. The HTML is written by MJML, in the browser or on your own server.",
+    ours: "saved",
     theirs:
       "Its project data, a JSON object with the project's pages and styles. The MJML plugin turns the email into HTML.",
   },
   {
     label: "What you build",
-    ours: "Nothing: the editor and its panel come ready, with six Blocks.",
+    ours: "build",
     theirs:
       "The editor you want, from its blocks, panels and plugins, such as a newsletter preset and the MJML components.",
   },
   {
     label: "Support",
-    ours: "One maintainer and a public issue tracker.",
+    ours: "support",
     theirs:
       "The community for the framework. Studio SDK comes with support from the GrapesJS team.",
   },
@@ -62,9 +64,9 @@ const theirs = [
 
 const ours = [
   "You want an email editor that works as it comes, rather than a framework to assemble one from.",
-  "You want each email saved as a documented JSON format of Rows, Columns and Blocks, which you can check, change and render on your own server.",
-  "You want everything that can be dragged to work from the keyboard too.",
-  "Six Blocks are enough for the emails your customers send.",
+  REASONS.saved,
+  REASONS.keyboard,
+  REASONS.fewBlocks,
 ];
 
 const sources = [

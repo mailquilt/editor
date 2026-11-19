@@ -161,8 +161,10 @@ const startEditor = async (stage: HTMLElement) => {
         jsonMeta.textContent = emailShape(detail.document);
       });
     }
-    if (htmlNote && exportAgain) {
-      htmlNote.textContent = "You've changed the email since this export.";
+    // Said once, as the note is announced each time its words change.
+    const changed = "You've changed the email since this export.";
+    if (htmlNote && exportAgain && htmlNote.textContent !== changed) {
+      htmlNote.textContent = changed;
       exportAgain.hidden = false;
     }
   });
@@ -170,13 +172,15 @@ const startEditor = async (stage: HTMLElement) => {
     if (!(html && htmlMeta && htmlNote)) {
       return;
     }
+    // Emptied while it works, so the same result said again is still heard.
+    htmlNote.textContent = "";
     try {
       const exported = await editor.exportHtml();
       html.innerHTML = paintHtml(exported);
       htmlMeta.textContent = htmlSize(exported);
       showFirstMergeTag(html);
+      // The button stays, so focus isn't lost from under the person who pressed it.
       htmlNote.textContent = "This is the email as it is now.";
-      exportAgain.hidden = true;
     } catch {
       htmlNote.textContent = "The export didn't work. Try it again.";
     }

@@ -66,6 +66,10 @@ const themes = [
 
     <!-- The editor sits lifted out of a dashed slot, as the envelope does in the logo. -->
     <div class="home-slot">
+      <!-- Once the editor is live, its Blocks and panels are a long way to Tab through. -->
+      <a class="home-skip site-button" data-tone="quiet" href="#editor-themes"
+        >Skip past the editor</a
+      >
       <div class="home-editor" data-home-editor>
         <img
           alt="The Mail Quilt editor. An email sits on a canvas, with a side panel of Blocks to drag onto it."
@@ -81,7 +85,16 @@ const themes = [
       This is a picture. The editor needs more room than this, so open the
       page in a wider window to try it.
     </p>
-    <div class="home-themes site-small" data-home-themes>
+    <p class="home-start-note site-small site-muted">
+      This is a picture of the editor, which starts here once the page has
+      loaded. If it doesn't, try it in the{" "}
+      <a class="site-link" href={withBase("/playground")}>Playground</a>.
+    </p>
+    <div
+      class="home-themes site-small"
+      data-home-themes
+      id="editor-themes"
+      tabindex="-1">
       <span id="themes-label"
         >This is the editor, one of the four packages, recolored with theme
         tokens. Try another:</span
