@@ -130,6 +130,8 @@ const targetOf = (element: Element): FocusTarget => {
   }
 };
 
+export type Selection = ReturnType<typeof createSelection>;
+
 export const createSelection = (host: SelectionHost) => {
   let selected: Selected;
   /** Whether focus is in the selected Block's text or its format bar. */
