@@ -185,7 +185,7 @@ const welcome = (): BlocksDocument => {
       ),
     ],
     settings: settings("Your workspace is ready to set up"),
-    version: 1,
+    version: 2,
   };
 };
 
@@ -275,7 +275,7 @@ const receipt = (): BlocksDocument => {
       ),
     ],
     settings: settings("Your order is packed and leaves tomorrow"),
-    version: 1,
+    version: 2,
   };
 };
 
@@ -353,7 +353,7 @@ const update = (): BlocksDocument => {
       ),
     ],
     settings: settings("Shared folders, faster search and CSV export"),
-    version: 1,
+    version: 2,
   };
 };
 

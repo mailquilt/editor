@@ -1,0 +1,162 @@
+{
+  "kind": "blocks",
+  "version": 1,
+  "settings": {
+    "width": 600,
+    "backgroundColor": "rgb(244,\t244,\t245)",
+    "fontFamily": "Arial, Helvetica, sans-serif",
+    "preheader": "Welcome to the team",
+    "language": "en"
+  },
+  "rows": [
+    {
+      "id": "row-1",
+      "props": {
+        "backgroundColor": "rgb(255,\n255,\n255)"
+      },
+      "columns": [
+        {
+          "id": "column-1",
+          "width": 100,
+          "props": {},
+          "blocks": [
+            {
+              "id": "block-1",
+              "type": "text",
+              "props": {
+                "align": "center",
+                "color": "rgba(51,\u00a051,\u00a051,\u00a00.9)",
+                "fontSize": 18,
+                "content": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Hello {{first_name}},"
+                        },
+                        {
+                          "type": "hardBreak"
+                        },
+                        {
+                          "type": "text",
+                          "text": "see the ",
+                          "marks": [
+                            {
+                              "type": "italic"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "sale",
+                          "marks": [
+                            {
+                              "type": "link",
+                              "attrs": {
+                                "href": "httpſ://shop.example/sale"
+                              }
+                            },
+                            {
+                              "type": "bold"
+                            },
+                            {
+                              "type": "underline"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "paragraph"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "id": "block-2",
+              "type": "heading",
+              "props": {
+                "align": "left",
+                "color": "#111111",
+                "fontSize": 28,
+                "level": 2,
+                "content": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Welcome"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "id": "block-3",
+              "type": "image",
+              "props": {
+                "alt": "{{company}} logo",
+                "href": "https://example.com",
+                "src": "HTTPſ://example.com/logo.png",
+                "width": 200
+              }
+            },
+            {
+              "id": "block-4",
+              "type": "button",
+              "props": {
+                "align": "right",
+                "backgroundColor": "#2563eb",
+                "color": "#ffffff",
+                "href": "{{cta_url}}",
+                "label": "Shop now"
+              }
+            },
+            {
+              "id": "block-5",
+              "type": "divider",
+              "props": {
+                "color": "#dddddd",
+                "thickness": 2
+              }
+            },
+            {
+              "id": "block-6",
+              "type": "spacer",
+              "props": {
+                "height": 40
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "row-2",
+      "props": {},
+      "columns": [
+        {
+          "id": "column-2",
+          "width": 50,
+          "props": {},
+          "blocks": []
+        },
+        {
+          "id": "column-3",
+          "width": 50,
+          "props": {},
+          "blocks": []
+        }
+      ]
+    }
+  ]
+}

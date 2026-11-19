@@ -72,11 +72,11 @@ export const checkRefusedDocument = async (page: Page, url: string) => {
     const editor = document.querySelector("mail-quilt") as unknown as {
       value: unknown;
     };
-    editor.value = { kind: "blocks", rows: [], version: 2 };
+    editor.value = { kind: "blocks", rows: [], version: 999 };
   });
 
   await expect(page.getByTestId("load-error")).toContainText(
-    /version 2 is newer/iu
+    /version 999 is newer/iu
   );
   await expect(text).toHaveText("Hello");
 };

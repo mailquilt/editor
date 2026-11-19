@@ -45,7 +45,7 @@ const emailWith = (text: string): Document => ({
     fontFamily: "Arial, Helvetica, sans-serif",
     width: 600,
   },
-  version: 1,
+  version: 2,
 });
 
 /** A newer version than this editor can read, so it's refused. */

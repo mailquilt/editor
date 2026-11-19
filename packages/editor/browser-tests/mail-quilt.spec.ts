@@ -674,11 +674,11 @@ test.describe("refusing a document", () => {
 
     const reasons = await setValueAndCollectErrors(page, {
       ...before,
-      version: 2,
+      version: 999,
     });
 
     expect(reasons).toStrictEqual([
-      expect.stringMatching(/version 2 is newer/iu),
+      expect.stringMatching(/version 999 is newer/iu),
     ]);
     await expect(textBlock(page)).toHaveText("abHello");
     expect(await currentValue(page)).toStrictEqual(before);
@@ -719,7 +719,7 @@ test.describe("refusing a document", () => {
         // oxlint-disable-next-line promise/avoid-new -- Events have no promise form.
         new Promise((resolve) => {
           const element = document.createElement("mail-quilt");
-          element.value = { version: 2 } as unknown as MailQuilt["value"];
+          element.value = { version: 999 } as unknown as MailQuilt["value"];
           // Outside the element, as a host's page-level handler would be.
           document.addEventListener("mq-error", (event) => {
             resolve((event as HTMLElementEventMap["mq-error"]).detail.reason);
@@ -728,7 +728,7 @@ test.describe("refusing a document", () => {
         })
     );
 
-    expect(reason).toMatch(/version 2 is newer/iu);
+    expect(reason).toMatch(/version 999 is newer/iu);
   });
 
   test("a refused first document leaves nothing to edit or export", async ({
@@ -736,7 +736,7 @@ test.describe("refusing a document", () => {
   }) => {
     const result = await page.evaluate(async () => {
       const element = document.createElement("mail-quilt");
-      element.value = { version: 2 } as unknown as MailQuilt["value"];
+      element.value = { version: 999 } as unknown as MailQuilt["value"];
       document.body.append(element);
       await element.updateComplete;
       return {

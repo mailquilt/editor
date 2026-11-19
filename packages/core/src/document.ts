@@ -1,5 +1,5 @@
 /** The version of the saved format that this code writes. */
-export const DOCUMENT_VERSION = 1;
+export const DOCUMENT_VERSION = 2;
 
 export const createId = () => {
   // getRandomValues, unlike randomUUID, also works on plain-HTTP host pages.
