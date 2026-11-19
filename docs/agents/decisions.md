@@ -67,7 +67,6 @@ A PR that changes one of these says so, gives the reason and updates this page.
 - `@repo/typescript-config` stays in the published devDependencies, and core's types keep tsdown's bare `import "valibot"`. Neither affects installs. (#36)
 - `withBase` stays: it's Blume's own helper. (#36)
 - `loadDocument` runs before `renderEmail` on the docs pages, for a clearer build error. (#36)
-- The docs site's build keeps `path-to-regexp` 6.1.0 and `postcss-selector-parser` 6.0.10, which have advisories, because the latest `@vercel/routing-utils` and `@tailwindcss/typography` pin them exactly. Neither is in a published package, and the build gives them only the repo's own files. Update when those packages do. (#173)
 
 ## Tests
 
