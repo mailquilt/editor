@@ -1,6 +1,6 @@
 import { MailQuiltShell } from "@mailquilt/react";
 
-import { starterEmail } from "./starter-email";
+import { starterEmail } from "../starter-email";
 
 // A Server Component, as the Shell needs no callbacks to save the email.
 const Page = () => (

@@ -64,9 +64,10 @@ Opening a different email clears undo history. Setting `value` to the email the 
 | `Editor` | `@mailquilt/core` | What `createEditor()` returns. |
 | `ApplyOptions`, `ApplyResult`, `RefusalCode` | `@mailquilt/core` | What `apply()` takes as its second argument, what it returns, and the [`code`](./change-emails-in-code#commands) of a refusal. |
 | `LoadResult` | `@mailquilt/core` | What `loadDocument()` returns: the email, or the reason it was refused. |
+| `MailQuilt`, `MailQuiltShell` | `@mailquilt/editor` | The classes of `<mail-quilt>` and `<mail-quilt-shell>`, for a type or `instanceof`. Importing the package registers them, and `querySelector("mail-quilt")` already returns a `MailQuilt`. |
 | `MailQuiltChangeEvent` | `@mailquilt/editor` | The `mq-change` event. |
 | `MailQuiltErrorEvent` | `@mailquilt/editor` | The `mq-error` event. |
-| `MailQuiltElement`, `MailQuiltShellElement` | `@mailquilt/react` | The elements a `ref` gives you. |
+| `MailQuiltElement`, `MailQuiltShellElement` | `@mailquilt/react` | The elements a `ref` gives you: `MailQuilt` and `MailQuiltShell` under the names React uses. |
 | `MailQuiltProps`, `MailQuiltShellProps` | `@mailquilt/react` | The components' props. |
 | `ShellAction` | `@mailquilt/editor` and `@mailquilt/react` | One of the Shell's button names. |
 

@@ -20,9 +20,9 @@ File issues only into the user's own repo. Never file into `mattpocock/skills` (
 
 ## Keeping issues and PRs accurate
 
-The repo is owned by a user, not an organization, so GitHub's issue types aren't available. A type label does that job.
+The repo is owned by the `mailquilt` organization, which has GitHub's issue types: Task, Bug and Feature. A PR has no issue type, so a type label does that job there.
 
-- **Labels at creation.** Every issue gets a type label (`enhancement`, `bug` or `documentation`) and a triage label. Every PR gets the type label that matches its title prefix: `feat:` and `perf:` → `enhancement`, `fix:` → `bug`, `docs:` → `documentation`. Assign both to the maintainer.
+- **Type and labels at creation.** Every issue gets an issue type (`gh issue create --type Bug`), a type label (`enhancement`, `bug` or `documentation`) and a triage label. Every PR gets the type label that matches its title prefix: `feat:` and `perf:` → `enhancement`, `fix:` → `bug`, `docs:` → `documentation`. Assign both to the maintainer.
 - **Every PR names an issue.** Put `Closes #<n>` in the PR body, or `Part of #<n>` for work under an umbrella issue. A commit message isn't enough: it closes the issue but doesn't link the PR. Fixes, performance and cleanup work get an issue first, or go under an umbrella issue such as a review.
 - **The issue body is the contract.** When triage produces an agent brief or changes a decision, rewrite the body. The old text stays in the edit history. Don't leave a comment that overrides a stale body.
 - **Write decisions back before closing.** Replace a "Decisions to make in triage" section, or any "confirm in triage" note, with the decision taken.

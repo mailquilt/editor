@@ -173,6 +173,6 @@ A link starts with `https:`, `http:`, `mailto:` or `tel:`, or with a [Merge Tag]
 
 ### Merge Tags
 
-A Merge Tag such as `{{first_name}}` can go anywhere in text, and at the start of a link or image URL. Mail Quilt keeps it as written in the exported HTML, so your sending tool can fill it in. In a URL that starts with a Merge Tag, no colon can come between the tag and the first `/`, `?` or `#`, so `{{base}}/path` is a link but `{{x}}javascript:` isn't.
+A Merge Tag such as `{{first_name}}` can go anywhere in text, and in a link or image URL, at its start or after it, as in `https://example.com/u/{{user_id}}`. Mail Quilt keeps it as written in the exported HTML, so your sending tool can fill it in. In a URL that starts with a Merge Tag, no colon can come between the tag and the first `/`, `?` or `#`, so `{{base}}/path` is a link but `{{x}}javascript:` isn't.
 
-Mail Quilt escapes any `&`, `<` or `>` in a Merge Tag, and any `"` too in a link or image URL, such as `&` to `&amp;`. Your sending tool sees the escaped tag, so keep tags to names, such as `{{cta_url}}`.
+Mail Quilt escapes any `&`, `<` or `>` in a Merge Tag, and any `"` too in a link or image URL or an Image's alt text, such as `&` to `&amp;`. Your sending tool sees the escaped tag, so keep tags to names, such as `{{cta_url}}`.

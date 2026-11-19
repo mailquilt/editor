@@ -1,11 +1,7 @@
-// @ts-check
-/**
- * The email each fresh project opens when nothing is saved, copied in beside
- * its quick start. The React projects read the type.
- *
- * @type {import("@mailquilt/editor").BlocksDocument}
- */
-export const starterEmail = {
+import type { BlocksDocument } from "@mailquilt/react";
+
+/** The email to open when nothing is saved yet: one Text Block saying "Hello". */
+export const starterEmail: BlocksDocument = {
   kind: "blocks",
   rows: [
     {

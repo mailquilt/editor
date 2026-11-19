@@ -9,11 +9,13 @@ npm install @mailquilt/core
 ```js
 import { createEditor, createEmail, loadDocument } from "@mailquilt/core";
 
-// Check an email your app saved before trusting it.
-const loaded = loadDocument(JSON.parse(savedJson));
-const editor = createEditor({
-  document: loaded.ok ? loaded.document : createEmail(),
-});
+// Start a new email, or check one your app saved before trusting it.
+const loaded = savedJson ? loadDocument(JSON.parse(savedJson)) : undefined;
+if (loaded && !loaded.ok) {
+  // Keep the saved email as it is, rather than saving a blank one over it.
+  throw new Error(`The saved email can't be opened: ${loaded.reason}`);
+}
+const editor = createEditor({ document: loaded?.document ?? createEmail() });
 
 // Commands change the email, and each one can be undone.
 const result = editor.apply({

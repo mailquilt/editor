@@ -29,6 +29,10 @@ npm install @mailquilt/editor
 
 <include meta='title="main.js"'>./_shell/plain-js/main.js</include>
 
+<include meta='title="starter-email.js"'>
+  ./_quick-start/starter-email.js
+</include>
+
 Importing `@mailquilt/editor` registers both `<mail-quilt>` and `<mail-quilt-shell>`. On a page with no build step, load the CDN build as [HTML, no build step](./html) shows. It registers both too.
 
 The Shell fills the width and height of the space you give it, and the editor takes everything below the header. If the email is longer than that, the editor scrolls inside the Shell.
@@ -39,7 +43,13 @@ The Shell fills the width and height of the space you give it, and the editor ta
 npm install @mailquilt/react
 ```
 
-<include meta='title="app/page.tsx"'>./_shell/nextjs/page.tsx</include>
+<include meta='title="app/shell/page.tsx"'>./_shell/nextjs/page.tsx</include>
+
+The starter email is the one above, in TypeScript with its type:
+
+<include meta='title="app/starter-email.ts"'>
+  ./_quick-start/starter-email.ts
+</include>
 
 `MailQuiltShell` renders an empty `<mail-quilt-shell>` on the server, with its attributes, and the editor loads in the browser. Because `saveKey` keeps the email, this page can stay a Server Component. Pass `onChange` or `onError` from a Client Component, as with [`MailQuilt`](./nextjs). Outside Next.js, the [React](./react) page has a Shell in a plain component.
 
