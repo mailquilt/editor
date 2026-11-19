@@ -115,6 +115,19 @@ test.describe("bold, italic and underline", () => {
     expect(await exportHtml(page)).toContain("<u>Hello</u>");
   });
 
+  // Or the browser formats the text itself on Windows and Linux.
+  test("Shift with the shortcut formats too", async ({ page }) => {
+    await selectAllInBlock(page);
+
+    await page.keyboard.press("ControlOrMeta+Shift+i");
+
+    await expect
+      .poll(() => savedInline(page))
+      .toStrictEqual([
+        { marks: [{ type: "italic" }], text: "Hello", type: "text" },
+      ]);
+  });
+
   test("the toolbar shows the formatting at the cursor", async ({ page }) => {
     await selectAllInBlock(page);
     await page.keyboard.press("ControlOrMeta+b");

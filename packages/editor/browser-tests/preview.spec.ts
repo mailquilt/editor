@@ -235,7 +235,7 @@ test.describe("the sandbox", () => {
     expect(opened).toEqual(["https://example.com/"]);
     // No token lets the frame run a script, open a popup or move the page. Its
     // origin is the host page's only so the editor can refuse a file dropped
-    // on it.
+    // on it, and keep Alt+← from going back a page.
     expect(
       await previewFrame(page).evaluate((frame) => [
         ...(frame as HTMLIFrameElement).sandbox,

@@ -23,7 +23,7 @@ import {
 } from "./canvas.js";
 import type { CanvasEvents, CanvasState } from "./canvas.js";
 import { createLinkForm, formatBarStyles } from "./format-bar.js";
-import { claim, historyInput, keyFor } from "./key-map.js";
+import { claim, historyInput, keyFor, keyLabel } from "./key-map.js";
 import type { Action, Binding, Direction, Place } from "./key-map.js";
 import { editorStyles } from "./mail-quilt-styles.js";
 import type { PanelActions, PanelApi, RowPlace } from "./panel-api.js";
@@ -67,6 +67,14 @@ const PLACES: [selector: string, place: Place][] = [
   [".email", "email"],
   ['[role="tablist"]', "panelTabs"],
 ];
+
+/**
+ * For the Block key help, which a screen reader reads, so each key is named as
+ * `aria-keyshortcuts` names it.
+ */
+const EDIT_TEXT = keyLabel("block", "editText").shortcuts;
+const BACK_TO_BLOCK = keyLabel("text", "backToBlock").shortcuts;
+const FORMAT_BAR = keyLabel("text", "focusFormatBar").shortcuts;
 
 /** For a key whose press only needs keeping from the browser, or stopping. */
 const doNothing = () => {
@@ -344,9 +352,9 @@ export class MailQuilt extends LitElement {
         ${keyed(this.#announcementId, html`<span>${this.#announcement}</span>`)}
       </div>
       <p hidden id="block-keys" lang=${UI_LANG}>
-        Press Enter to edit the text, and Escape to come back. In the text,
-        press Alt+F10 to reach its formatting. Use arrow keys to select another
-        Block, and Alt with arrow keys to move this one.
+        Press ${EDIT_TEXT} to edit the text, and ${BACK_TO_BLOCK} to come back.
+        In the text, press ${FORMAT_BAR} to reach its formatting. Use arrow keys
+        to select another Block, and Alt with arrow keys to move this one.
       </p>
       <p hidden id="block-keys-no-text" lang=${UI_LANG}>
         Use arrow keys to select another Block, and Alt with arrow keys to move
@@ -702,6 +710,7 @@ export class MailQuilt extends LitElement {
       place &&
       keyFor(place, keydown, {
         dragging: this.#dragging?.isDragging() ?? false,
+        selectedText: this.#selection.selectedText !== undefined,
       });
     if (binding) {
       claim(keydown, binding);
@@ -715,7 +724,9 @@ export class MailQuilt extends LitElement {
     if (target.closest(".preview")) {
       return "preview";
     }
-    // Such as the narrow notice.
+    if (target.closest(".narrow-notice")) {
+      return "notice";
+    }
     if (!target.closest(".editor")) {
       return;
     }
