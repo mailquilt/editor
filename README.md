@@ -52,7 +52,7 @@ npx skills add mailquilt/editor --skill mail-quilt
 
 ## Working on it
 
-You need Node 24 or later and pnpm.
+You need pnpm, and Node 24.15 or a later 24, or Node 26 or later. The build and lint tools support no other versions.
 
 ```sh
 pnpm install

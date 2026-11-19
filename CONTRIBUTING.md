@@ -17,7 +17,7 @@ The README's [Working on it](README.md#working-on-it) section has the setup and 
 
 - **Tests** for what it changes, written as [`docs/agents/testing.md`](docs/agents/testing.md) says.
 - **Every check passing:** `pnpm lint`, `pnpm check-types` and `pnpm test`. CI runs them too, in Chromium, Firefox and WebKit.
-- **A changeset** if it changes a published package. Run `pnpm changeset` and describe the change for people who use the package.
+- **A changeset** if it changes a published package. Run `pnpm changeset` and describe the change for people who use the package. CI fails without one. If the change needs no release, such as a test, run `pnpm changeset add --empty`.
 - **The words in [`GLOSSARY.md`](GLOSSARY.md),** in code and docs, such as Row, Column and Block.
 - **A title in the repo's style:** `fix:`, `feat:`, `docs:`, `perf:`, `refactor:` or `test:`, then what changes, such as `fix: long words wrap in Yahoo`. Pull requests are squashed, so the title becomes the commit.
 
