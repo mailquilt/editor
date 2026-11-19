@@ -124,16 +124,14 @@ export const settingsPanelStyles = css`
     color: var(--mq-color-danger);
   }
 
-  /* White fields with a defined edge, so an empty one still reads as a field. */
+  /*
+   * White fields with an edge at 3:1 or more, so an empty one still reads as a
+   * field.
+   */
   .settings input,
   .settings select {
     background-color: var(--mq-color-surface);
-    border: 1px solid
-      color-mix(
-        in srgb,
-        var(--mq-color-border-strong) 45%,
-        var(--mq-color-border)
-      );
+    border: 1px solid var(--mq-color-border-strong);
     border-radius: var(--mq-radius-small);
     box-shadow: 0 1px 2px rgb(22 24 29 / 4%);
     color: var(--mq-color-text);
@@ -148,7 +146,7 @@ export const settingsPanelStyles = css`
 
   .settings input:hover:not(:disabled, :focus),
   .settings select:hover:not(:focus) {
-    border-color: var(--mq-color-border-strong);
+    border-color: var(--mq-color-text-muted);
   }
 
   .settings input::placeholder {

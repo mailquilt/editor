@@ -123,6 +123,17 @@ export const editorStyles = css`
     right: -5px;
   }
 
+  /*
+   * Forced colors drop the line's background, which is all it's drawn with.
+   * The text's color stands out from the email in every palette.
+   */
+  @media (forced-colors: active) {
+    .drop-indicator {
+      background: CanvasText;
+      forced-color-adjust: none;
+    }
+  }
+
   .row-frame {
     position: relative;
   }

@@ -141,10 +141,12 @@ export const uiStyles = css`
     color: var(--mq-color-text);
   }
 
+  /* An edge too, so "on" doesn't rest on color alone. */
   .icon-button[aria-pressed="true"],
   .icon-button[aria-expanded="true"],
   .icon-button[data-active] {
     background: var(--mq-color-accent-soft);
+    box-shadow: inset 0 0 0 1px var(--mq-color-accent-strong);
     color: var(--mq-color-accent-strong);
   }
 

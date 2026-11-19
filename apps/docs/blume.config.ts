@@ -112,6 +112,7 @@ export default defineConfig({
               "/docs/document-format",
               "/docs/theme-tokens",
               "/docs/keyboard",
+              "/docs/accessibility",
               "/docs/email-clients",
             ],
             label: "Reference",

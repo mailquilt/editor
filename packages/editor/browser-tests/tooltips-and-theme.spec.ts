@@ -4,15 +4,21 @@ import type { Page } from "@playwright/test";
 import {
   blockGroup,
   blockTools,
+  blockWith,
   boxOf,
   canvas,
   centerOf,
+  moveTo,
   openBlocks,
+  openEmail,
   openTab,
+  pickUp,
   previewButton,
   settle,
+  TALL_VIEWPORT,
   textBlock,
   tooltip,
+  topOf,
   undoButton,
 } from "./helpers.js";
 
@@ -227,7 +233,7 @@ test.describe("theme tokens", () => {
   });
 });
 
-test("in forced colors, a selected tab and a pressed button are outlined", async ({
+test("in forced colors, a selected tab, a pressed button and a palette tile are outlined", async ({
   page,
 }) => {
   await page.emulateMedia({ forcedColors: "active" });
@@ -237,6 +243,10 @@ test("in forced colors, a selected tab and a pressed button are outlined", async
     "outline-style",
     "solid"
   );
+  // Its edge is otherwise a shadow, which forced colors drop.
+  await expect(
+    canvas(page).getByRole("button", { name: "Add Text Block" })
+  ).toHaveCSS("outline-style", "solid");
 
   await textBlock(page).click();
   await page.keyboard.press("ControlOrMeta+a");
@@ -246,14 +256,18 @@ test("in forced colors, a selected tab and a pressed button are outlined", async
   await expect(bold).toHaveCSS("outline-style", "solid");
 });
 
-/** The contrast between two colors that `getComputedStyle` gives as `rgb()`. */
+/**
+ * The contrast between two colors that `getComputedStyle` gives as `rgb()`, or
+ * as `color(srgb …)` with channels from 0 to 1, as it gives a `color-mix()`.
+ */
 const contrast = (...colors: string[]) => {
   const [lighter = 0, darker = 0] = colors
     .map((color) => {
+      const scale = color.startsWith("color(srgb") ? 1 : 255;
       const [red = 0, green = 0, blue = 0] = (
         color.match(/[\d.]+/gu) ?? []
       ).map((value) => {
-        const channel = Number(value) / 255;
+        const channel = Number(value) / scale;
         return channel <= 0.04045
           ? channel / 12.92
           : ((channel + 0.055) / 1.055) ** 2.4;
@@ -263,6 +277,67 @@ const contrast = (...colors: string[]) => {
     .toSorted((a, b) => b - a);
   return (lighter + 0.05) / (darker + 0.05);
 };
+
+test("a pressed button has an edge at 3:1, so it isn't told by color alone", async ({
+  page,
+}) => {
+  await openBlocks(page, ["text"]);
+  await textBlock(page).click();
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.press("ControlOrMeta+b");
+  const bold = canvas(page).getByRole("button", { exact: true, name: "Bold" });
+  await expect(bold).toHaveAttribute("aria-pressed", "true");
+
+  const [edge, bar] = await bold.evaluate((button) => [
+    getComputedStyle(button).boxShadow,
+    getComputedStyle(button.closest('[role="toolbar"]') as Element)
+      .backgroundColor,
+  ]);
+
+  expect(edge).toContain("inset");
+  expect(
+    contrast(edge?.match(/rgba?\([^)]*\)/u)?.[0] ?? "", bar ?? "")
+  ).toBeGreaterThanOrEqual(3);
+});
+
+test("a settings field's edge is at 3:1 against the panel, so an empty one shows", async ({
+  page,
+}) => {
+  await openBlocks(page, ["text"]);
+  await openTab(page, "Settings");
+  const preheader = page
+    .getByRole("group", { exact: true, name: "Email" })
+    .getByLabel("Preheader", { exact: true });
+  await expect(preheader).toHaveValue("");
+
+  const [edge, panel] = await preheader.evaluate((field) => [
+    getComputedStyle(field).borderTopColor,
+    getComputedStyle(field).backgroundColor,
+  ]);
+
+  expect(contrast(edge ?? "", panel ?? "")).toBeGreaterThanOrEqual(3);
+});
+
+test("in forced colors, the drop line stands out from the email", async ({
+  page,
+}) => {
+  await page.setViewportSize(TALL_VIEWPORT);
+  await page.emulateMedia({ forcedColors: "active" });
+  await openEmail(page, [[["One", "Two"]]]);
+
+  await pickUp(page, blockWith(page, "Two").getByTestId("drag-handle"));
+  await moveTo(page, await topOf(blockWith(page, "One")));
+  const line = canvas(page).getByTestId("drop-indicator");
+  await expect(line).toBeVisible();
+
+  const [drawn, email] = await line.evaluate((element) => [
+    getComputedStyle(element).backgroundColor,
+    getComputedStyle(element.closest('[data-testid="email"]') as Element)
+      .backgroundColor,
+  ]);
+
+  expect(contrast(drawn ?? "", email ?? "")).toBeGreaterThanOrEqual(3);
+});
 
 test("in forced colors, a dropdown's arrow stands out from its field", async ({
   page,

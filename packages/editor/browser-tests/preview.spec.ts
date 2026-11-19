@@ -248,7 +248,6 @@ test.describe("the sandbox", () => {
 });
 
 test.describe("closing", () => {
-  // A sandboxed frame keeps Escape to itself, so a person leaves by the keyboard.
   test("the keyboard can leave the email to reach Close", async ({ page }) => {
     await previewButton(page).click();
     await previewEmail(page).click();
@@ -271,6 +270,24 @@ test.describe("closing", () => {
 
     await expect(previewDialog(page)).toBeHidden();
     await expect(hostEscapes()).resolves.toBe(0);
+  });
+
+  test("Escape in the email closes it too, and focus goes back", async ({
+    browserName,
+    page,
+  }) => {
+    test.skip(
+      browserName === "webkit",
+      "WebKit runs no listener in a document whose scripts are off"
+    );
+    await previewButton(page).focus();
+    await page.keyboard.press("Enter");
+    await previewEmail(page).click();
+
+    await page.keyboard.press("Escape");
+
+    await expect(previewDialog(page)).toBeHidden();
+    await expect(previewButton(page)).toBeFocused();
   });
 
   test("the Block keeps its cursor and undo history after the Preview", async ({
