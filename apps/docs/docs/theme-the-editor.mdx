@@ -1,6 +1,6 @@
 ---
 title: Theme the editor
-description: Match the Mail Quilt editor to your app with its theme tokens, from the font and accent to a complete dark theme that meets WCAG AA contrast.
+description: Match the Mail Quilt editor to your app with its theme tokens, from the font and accent to a complete dark theme whose text and focus rings meet WCAG AA contrast.
 seo:
   title: "Theme the email editor: match your app, and a dark theme"
 ---
@@ -32,7 +32,7 @@ mail-quilt::part(frame) {
 
 ## A dark theme
 
-The defaults are a light theme. For a dark one, set every color token, not only a few, so that no light default is left next to a dark one. Each pair of colors in this theme meets WCAG AA contrast, 4.5:1 for text and 3:1 for borders and focus rings:
+The defaults are a light theme. For a dark one, set every color token, not only a few, so that no light default is left next to a dark one:
 
 ```css title="styles.css"
 mail-quilt {
@@ -60,6 +60,8 @@ mail-quilt {
     0 12px 32px -8px rgb(0 0 0 / 60%);
 }
 ```
+
+In this theme, text meets WCAG AA's 4.5:1 against what it sits on, and focus rings and `--mq-color-border-strong` meet 3:1 against the surfaces. The quieter borders don't: `--mq-color-border`, which separates areas such as toolbars and tiles, is 1.3:1 against `--mq-color-surface`, and a settings field's border, a mix of the two until the pointer is over it, is about 2.3:1. The light theme's are quieter still.
 
 A few tokens pair with each other, so change them together:
 

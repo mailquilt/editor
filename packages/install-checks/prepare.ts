@@ -27,12 +27,15 @@ const shellPages = {
   "plain-js": "shell",
   "react-vite": "src",
 } as const;
-/** Where each quick start imports the starter email from. */
-const starterEmailDirs = {
-  cdn: ".",
-  nextjs: "app",
-  "plain-js": ".",
-  "react-vite": "src",
+/**
+ * The starter email the setup pages show, and each folder whose samples import
+ * it from beside them.
+ */
+const starterEmails = {
+  cdn: { dirs: ["."], file: "starter-email.js" },
+  nextjs: { dirs: ["app"], file: "starter-email.ts" },
+  "plain-js": { dirs: [".", "save", "shell"], file: "starter-email.js" },
+  "react-vite": { dirs: ["src"], file: "starter-email.ts" },
 } as const;
 /** The docs' server-side examples, run in Node against the packed packages. */
 const serverCode = path.join(quickStart, "..", "_code");
@@ -64,10 +67,6 @@ for (const name of projectNames) {
   const dir = freshProjectDir(name);
   cpSync(path.join(here, "projects", name), dir, { recursive: true });
   cpSync(path.join(quickStart, name), dir, { recursive: true });
-  cpSync(
-    path.join(here, "projects", "starter-email.js"),
-    path.join(dir, starterEmailDirs[name], "starter-email.js")
-  );
   if (name === "plain-js") {
     cpSync(serverCode, path.join(dir, "server"), { recursive: true });
   }
@@ -80,6 +79,10 @@ for (const name of projectNames) {
       path.join(dir, shellPages[name as keyof typeof shellPages]),
       { recursive: true }
     );
+  }
+  const { dirs, file } = starterEmails[name];
+  for (const each of dirs) {
+    cpSync(path.join(quickStart, file), path.join(dir, each, file));
   }
   writeFileSync(
     path.join(dir, "pnpm-workspace.yaml"),

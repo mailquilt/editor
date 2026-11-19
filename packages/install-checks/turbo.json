@@ -2,6 +2,13 @@
   "$schema": "https://turborepo.dev/schema.json",
   "extends": ["//"],
   "tasks": {
+    // Tests import the docs' starter emails.
+    "check-types": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/apps/docs/docs/_quick-start/starter-email.*"
+      ]
+    },
     "test": {
       // The fresh projects are built from the docs' quick-start, Shell, Next.js
       // and server code, and the checks post the docs' example email. Every CDN

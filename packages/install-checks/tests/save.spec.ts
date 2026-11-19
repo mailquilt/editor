@@ -3,8 +3,8 @@ import { once } from "node:events";
 import { expect, test } from "@playwright/test";
 import type { Page, Route } from "@playwright/test";
 
+import { starterEmail } from "../../../apps/docs/docs/_quick-start/starter-email.js";
 import { freshProjects } from "../ports.ts";
-import { starterEmail } from "../projects/starter-email.js";
 import { focusStartOfTextBlock } from "./load-save-export.ts";
 
 const url = `http://localhost:${freshProjects["plain-js"].port}/save/`;

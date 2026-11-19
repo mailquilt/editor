@@ -316,6 +316,9 @@ const HEARD_FIRST: Record<HeardFirst, readonly Entry<HeardFirstAction>[]> = {
   ],
 };
 
+/** Read by the test that checks the keyboard page names every key, and no other. */
+export { HEARD_FIRST, KEY_MAP };
+
 // As ProseMirror decides it for Bold and the other text keys, so they all agree.
 // A server importing the editor may have no navigator.
 const IS_MAC =

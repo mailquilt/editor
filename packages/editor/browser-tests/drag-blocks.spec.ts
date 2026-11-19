@@ -960,28 +960,33 @@ test.describe("auto-scrolling", () => {
     await pickUp(page, handle);
     await page.mouse.move(640, 10, { steps: 8 });
 
-    const scrolled = await page.evaluate(async () => {
+    const steps = await page.evaluate(async () => {
       const scroller = document.scrollingElement as Element;
       // oxlint-disable-next-line promise/avoid-new -- These browser callbacks have no promise form.
       await new Promise(requestAnimationFrame);
-      const before = scroller.scrollTop;
+      let last = scroller.scrollTop;
       // Three tenths of a second with no frames.
       const end = performance.now() + 300;
       while (performance.now() < end) {
         // Busy.
       }
-      // Two frames, as the drag's can come after this one.
-      // oxlint-disable-next-line promise/avoid-new -- As above.
-      await new Promise((resolve) => {
-        requestAnimationFrame(() => requestAnimationFrame(resolve));
-      });
-      return before - scroller.scrollTop;
+      // How far each of the next frames scrolled. Each step holds one of the
+      // drag's frames, and on a slow machine the one after the late frame can
+      // count for a tenth of a second too.
+      const scrolled: number[] = [];
+      for (const _ of [1, 2, 3]) {
+        // oxlint-disable-next-line promise/avoid-new, no-await-in-loop -- As above, and each frame waits for the last.
+        await new Promise(requestAnimationFrame);
+        scrolled.push(last - scroller.scrollTop);
+        last = scroller.scrollTop;
+      }
+      return scrolled;
     });
 
-    // At most 1500px a second, for a tenth of a second and one more frame,
-    // where three tenths would be 450px.
-    expect(scrolled).toBeGreaterThan(0);
-    expect(scrolled).toBeLessThan(250);
+    // The pointer is 50px into the 60px edge, so 1250px a second: 125px in a
+    // tenth of a second, give or take rounding, where three tenths would be 375px.
+    expect(Math.max(...steps)).toBeGreaterThan(0);
+    expect(Math.max(...steps)).toBeLessThan(130);
     await page.keyboard.press("Escape");
     await page.mouse.up();
   });

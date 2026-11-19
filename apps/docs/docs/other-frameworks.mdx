@@ -19,6 +19,14 @@ Mail Quilt's tests don't cover these frameworks yet. The code on this page follo
 
 Each example keeps the email in memory. In your app, save it to your server from `mq-change`, as [Save emails to your server](./save-emails) shows. The [editor's API](./api#the-editor) lists everything the element has.
 
+Each example opens `starterEmail` from a file beside it:
+
+<include meta='title="starter-email.js"'>
+  ./_quick-start/starter-email.js
+</include>
+
+In TypeScript, as for Angular, name it `starter-email.ts` and give it the `BlocksDocument` type, from `@mailquilt/editor` here as it's the package you installed.
+
 ## Vue
 
 Tell Vue's compiler that tags starting with `mail-quilt` are custom elements, in your Vite config:
@@ -141,18 +149,20 @@ Svelte's docs don't say how it passes values to a custom element made somewhere 
   import { starterEmail } from "./starter-email.js";
 
   let editor;
+  let email = starterEmail;
   let loadError = $state("");
 
   $effect(() => {
     const save = (event) => {
-      // Send event.detail.document to your server.
+      email = event.detail.document;
+      // Send it to your server too.
     };
     const showError = (event) => {
       loadError = event.detail.reason;
     };
     editor.addEventListener("mq-change", save);
     editor.addEventListener("mq-error", showError);
-    editor.value = starterEmail;
+    editor.value = email;
     return () => {
       editor.removeEventListener("mq-change", save);
       editor.removeEventListener("mq-error", showError);

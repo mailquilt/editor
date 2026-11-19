@@ -1,0 +1,10 @@
+{
+  "$schema": "https://turborepo.dev/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "test:unit": {
+      // A unit test checks the keyboard page against the key map.
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/apps/docs/docs/keyboard.mdx"]
+    }
+  }
+}

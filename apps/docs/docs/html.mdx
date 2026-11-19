@@ -9,7 +9,11 @@ For a page with no build step, such as plain HTML or a template in Rails, Larave
 
 <include meta='title="index.html"'>./_quick-start/cdn/index.html</include>
 
-The page opens an email, saves every change in the browser, shows the reason if the editor refuses an email, and exports the email as HTML. `starterEmail` is the email to open when nothing is saved yet. Use one your app already has, or copy the [example email](./document-format#example).
+<include meta='title="starter-email.js"'>
+  ./_quick-start/starter-email.js
+</include>
+
+The page opens an email, saves every change in the browser, shows the reason if the editor refuses an email, and exports the email as HTML. `starterEmail` is the email to open when nothing is saved yet. Your app can open one it already has, or the [example email](./document-format#example), which has a Block of each type.
 
 - **Use the full path to `dist/cdn/index.js`.** A shorter URL, such as `https://cdn.jsdelivr.net/npm/@mailquilt/editor`, loads a different build that won't run without a bundler.
 - **Pin the version.** MJML, the library that writes the HTML, loads from a file beside the build the first time someone opens Preview or exports, and its name can change between releases. An unpinned URL could ask for a file the latest release no longer has.

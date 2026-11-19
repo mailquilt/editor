@@ -1,5 +1,5 @@
 import "@mailquilt/editor";
-import { starterEmail } from "../starter-email.js";
+import { starterEmail } from "./starter-email.js";
 
 /** Where your server keeps this email. */
 const url = "/api/emails/welcome";

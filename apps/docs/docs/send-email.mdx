@@ -29,7 +29,7 @@ const html = fillMergeTags(await htmlFor(email), {
 
 ### What it does
 
-- **It fills tags in text and in URLs.** A link or image URL can start with a tag, such as `{{unsubscribe_url}}`, so that value should be a whole URL.
+- **It fills tags in text and in URLs.** A link or image URL can start with a tag, such as `{{unsubscribe_url}}`, so that value should be a whole URL. A tag later in a URL, as in `https://example.com/u/{{user_id}}`, fills in the part it stands for.
 - **It escapes each value.** An `&`, `<`, `>`, `"` or `'` becomes an HTML entity, so a name such as `<b>Ada</b>` shows as typed rather than adding markup, and a value can't end the link it's in. An `&` in a URL becomes `&amp;`, which HTML reads as the same URL.
 - **It refuses an email with a tag it has no value for.** It throws, and the message names the tags, such as `No value for {{frist_name}}`. Customers type their own tags and Mail Quilt doesn't check their names, so leaving the tag would send `{{frist_name}}` to the reader. A send that stops is easier to fix than an email you can't take back. To send anyway, give the tag a value, even an empty one.
 - **Spaces inside the braces don't matter,** so `{{ first_name }}` is filled from `first_name`.
@@ -37,6 +37,7 @@ const html = fillMergeTags(await htmlFor(email), {
 ### What it doesn't do
 
 - **It doesn't check a URL.** Escaping stops a value from breaking out of a link, but a value such as `javascript:alert(1)` would still become the link. Make link values on your server, rather than taking them from what someone typed.
+- **It doesn't know triple braces.** It fills the two braces inside them and leaves the outer ones, so `{{{first_name}}}` becomes `{Ada}`. Tell customers to use two braces, as a service that knows triple braces wouldn't escape the value either.
 - **It only knows names.** A tag such as `{{#if vip}}` has no value, so the function throws. For logic like that, use a service's templates.
 - **It doesn't fill the subject,** which isn't part of the HTML. A subject is plain text, so put values in it without HTML escaping.
 
