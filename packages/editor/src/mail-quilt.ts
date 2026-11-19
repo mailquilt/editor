@@ -44,7 +44,9 @@ import { createSettingsDrafts, settingsPanelStyles } from "./settings-panel.js";
 import { renderSidePanel, sidePanelStyles } from "./side-panel.js";
 import { styleProperties } from "./style-properties.js";
 import { createTextBlockView } from "./text-block-view.js";
-import type { TextBlockView, TextFormats } from "./text-block-view.js";
+import type { TextBlockView } from "./text-block-view.js";
+import type { TextFormats } from "./text-commands.js";
+import { TEXT_SCHEMAS } from "./text-schema.js";
 import { themeTokens, UI_LANG, uiStyles } from "./theme.js";
 import { createToolPlacement } from "./tool-placement.js";
 import type { ToolPlacement } from "./tool-placement.js";
@@ -305,6 +307,7 @@ export class MailQuilt extends LitElement {
             onTypingBreak: () => {
               this.#typingSession += 1;
             },
+            schema: TEXT_SCHEMAS[block.type],
           })
         );
       }

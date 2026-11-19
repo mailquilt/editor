@@ -1,3 +1,4 @@
+import { macBaseKeymap, pcBaseKeymap } from "prosemirror-commands";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -148,13 +149,19 @@ describe("in a Block's text", () => {
     ).toBeUndefined();
   });
 
-  it("isn't the editor's for a key ProseMirror answers first", () => {
-    const answered = TEXT_KEYS.flatMap(({ aliases = [], keys }) => [
-      ...keys,
-      ...aliases,
-    ]).filter((name) => keyIn("text", press(name)));
-    expect(answered).toStrictEqual([]);
-  });
+  it.each([
+    ["Windows and Linux", false],
+    ["Apple devices", true],
+  ])(
+    "isn't the editor's for a key ProseMirror answers first, on %s",
+    (_platform, apple) => {
+      const answered = TEXT_KEYS.flatMap(({ aliases = [], keys }) => [
+        ...keys,
+        ...aliases,
+      ]).filter((name) => keyIn("text", press(name, { apple }), { apple }));
+      expect(answered).toStrictEqual([]);
+    }
+  );
 });
 
 describe("in the format bar", () => {
@@ -422,7 +429,7 @@ describe("a key held down", () => {
 
 describe("ProseMirror's names for the text's keys", () => {
   it("are each text key, with Shift and a letter written as the capital, so Shift+Ctrl/⌘+B, I and U still format", () => {
-    expect(proseMirrorKeys()).toStrictEqual([
+    expect(proseMirrorKeys({ apple: false })).toStrictEqual([
       ["Mod-b", "bold"],
       ["Mod-B", "bold"],
       ["Mod-i", "italic"],
@@ -431,10 +438,34 @@ describe("ProseMirror's names for the text's keys", () => {
       ["Mod-U", "underline"],
       ["Shift-Enter", "lineBreak"],
       ["Mod-Enter", "lineBreak"],
+      ["Enter", "newParagraph"],
+      ["Delete", "deleteForward"],
+      ["Mod-Delete", "deleteForward"],
       ["ArrowLeft", "toStart"],
       ["ArrowRight", "toEnd"],
     ]);
   });
+
+  it.each([
+    ["Windows and Linux", false, pcBaseKeymap],
+    ["Apple devices", true, macBaseKeymap],
+  ])(
+    "on %s, include every key ProseMirror binds to Enter or Delete, so none of them skips the editor's rules",
+    (_platform, apple, base) => {
+      const named = new Map(proseMirrorKeys({ apple }));
+      const rules = new Map([
+        [pcBaseKeymap.Enter, "newParagraph"],
+        [pcBaseKeymap.Delete, "deleteForward"],
+      ]);
+      const bound = Object.entries(base).filter(([, command]) =>
+        rules.has(command)
+      );
+      expect(bound.length).toBeGreaterThan(0);
+      for (const [key, command] of bound) {
+        expect(named.get(key)).toBe(rules.get(command));
+      }
+    }
+  );
 });
 
 describe("how a key is named, for a tooltip and for aria-keyshortcuts", () => {

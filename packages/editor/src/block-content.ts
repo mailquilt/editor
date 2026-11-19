@@ -103,8 +103,10 @@ export const blockContentStyles = css`
 `;
 
 /** Whether a Block has text to edit on the canvas, and so a TextBlockView. */
-export const hasRichText = ({ type }: Pick<Block, "type">) =>
-  type === "text" || type === "heading";
+export const hasRichText = <B extends Pick<Block, "type">>(
+  block: B
+): block is B & { type: "heading" | "text" } =>
+  block.type === "text" || block.type === "heading";
 
 /**
  * A Button's face, and no link, because a click on the canvas selects it. Its
