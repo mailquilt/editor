@@ -1,0 +1,102 @@
+---
+title: Accessibility statement
+description: How the Mail Quilt editor measures up to WCAG 2.2 at level AA, the one criterion it doesn't meet yet, and how each one was checked.
+seo:
+  title: "Accessibility statement: WCAG 2.2 AA for the email editor"
+---
+
+**The editor partly meets WCAG 2.2 at level AA.** It meets every criterion that applies, except one: below 640 pixels wide, such as at 400% zoom, it can't be edited at all.
+
+This page covers `<mail-quilt>` and `<mail-quilt-shell>`, version 0.2. It makes no claim about the emails people design with them. Those are their authors' content. To make an email accessible, give every Image alt text that says what it shows, and give each Button words that make sense on their own.
+
+## What doesn't meet AA
+
+**1.4.10 Reflow.** When the editor is narrower than 640 pixels, as at 400% zoom on a 1280-pixel screen, it shows a notice in place of the canvas and the side panel. The email can still be previewed, but not changed.
+
+WCAG allows content that needs a two-dimensional layout to scroll in both directions, and an email that is 600 pixels wide is that kind of content. The side panel isn't, so its settings should still be reachable at that width. They aren't yet.
+
+At 200% zoom on a 1280-pixel screen, the editor has 640 pixels and everything works. The side panel moves below the email.
+
+## How it was checked
+
+The audit was done on 19 November 2026.
+
+- **Automated checks.** [axe-core](https://github.com/dequelabs/axe-core) 4.14, with its WCAG 2.2 AA rules, ran against the Shell and the editor in Chromium 158, Firefox 159 and WebKit 27.2. It checked nothing selected, a Block selected, each tab of the side panel, the link field showing an error, and Preview open. It found no violations.
+- **The keyboard.** The editor's browser tests press every key on the [Keyboard and screen readers](./keyboard) page in the same three browsers.
+- **Measurements in the browser.** These covered the size of every control, the contrast of control edges and states, extra text spacing, widths from 320 to 1280 pixels, and forced colors as the browser emulates them.
+- **Reading the code.** Every criterion below was checked against the source, including what each control is named and what a screen reader is told.
+
+Screen readers, real browser zoom and Windows High Contrast haven't been checked by hand yet.
+
+## Every criterion
+
+"Doesn't apply" means the editor has nothing the criterion is about, such as video, or that the criterion is about the host page, such as its title.
+
+| Criterion | Level | Result | How it was checked |
+| --- | --- | --- | --- |
+| 1.1.1 Non-text content | A | Meets | axe, code: icons are hidden, and every control has a name |
+| 1.2.1 Audio-only and video-only | A | Doesn't apply | No audio or video |
+| 1.2.2 Captions (prerecorded) | A | Doesn't apply | No audio or video |
+| 1.2.3 Audio description or media alternative | A | Doesn't apply | No audio or video |
+| 1.2.4 Captions (live) | AA | Doesn't apply | No audio or video |
+| 1.2.5 Audio description (prerecorded) | AA | Doesn't apply | No audio or video |
+| 1.3.1 Info and relationships | A | Meets | axe, code: tabs, toolbars, groups, labels and fieldsets |
+| 1.3.2 Meaningful sequence | A | Meets | Code, keyboard tests |
+| 1.3.3 Sensory characteristics | A | Meets | Code: no instruction relies on shape or place alone |
+| 1.3.4 Orientation | AA | Meets | Measured: only width matters, not orientation |
+| 1.3.5 Identify input purpose | AA | Doesn't apply | No fields ask about the person |
+| 1.4.1 Use of color | A | Meets | Measured: a pressed button has an edge, not only a tint |
+| 1.4.2 Audio control | A | Doesn't apply | No audio |
+| 1.4.3 Contrast (minimum) | AA | Meets | axe in each state |
+| 1.4.4 Resize text | AA | Meets | Measured at 640 pixels, the width at 200% zoom |
+| 1.4.5 Images of text | AA | Meets | Code: no text is drawn as an image |
+| 1.4.10 Reflow | AA | **Doesn't meet** | Measured at 320 pixels: see above |
+| 1.4.11 Non-text contrast | AA | Meets | Measured: field edges, button states and focus rings are at 3:1 or more |
+| 1.4.12 Text spacing | AA | Meets | Measured: no text is cut off with extra spacing |
+| 1.4.13 Content on hover or focus | AA | Meets | Code, tests: tooltips stay while hovered and close with Escape |
+| 2.1.1 Keyboard | A | Meets | Keyboard tests: every drag has keys and buttons too |
+| 2.1.2 No keyboard trap | A | Meets | Keyboard tests: text, toolbars, the link field and Preview |
+| 2.1.4 Character key shortcuts | A | Meets | Code: every letter key needs Ctrl or ⌘ |
+| 2.2.1 Timing adjustable | A | Doesn't apply | No time limits |
+| 2.2.2 Pause, stop, hide | A | Meets | Code: the only animation shows while the Preview loads, and stops for reduced motion |
+| 2.3.1 Three flashes or below | A | Meets | Code: nothing flashes |
+| 2.4.1 Bypass blocks | A | Doesn't apply | The host page's |
+| 2.4.2 Page titled | A | Doesn't apply | The host page's |
+| 2.4.3 Focus order | A | Meets | Keyboard tests, including after a delete and after Preview |
+| 2.4.4 Link purpose (in context) | A | Doesn't apply | The editor's own controls have no links |
+| 2.4.5 Multiple ways | AA | Doesn't apply | The host page's |
+| 2.4.6 Headings and labels | AA | Meets | Code |
+| 2.4.7 Focus visible | AA | Meets | Code, measured in forced colors too |
+| 2.4.11 Focus not obscured (minimum) | AA | Meets | Measured: the floating toolbar never covers what has focus |
+| 2.5.1 Pointer gestures | A | Meets | Code: no gesture needs more than one finger or a path |
+| 2.5.2 Pointer cancellation | A | Meets | Code: a drag lands on release, and Escape cancels it |
+| 2.5.3 Label in name | A | Meets | Code: each name starts with its visible words |
+| 2.5.4 Motion actuation | A | Doesn't apply | Nothing responds to motion |
+| 2.5.7 Dragging movements | AA | Meets | Code, tests: Move buttons do what a drag does |
+| 2.5.8 Target size (minimum) | AA | Meets | Measured: every control is at least 24 by 24 pixels, or has one that is |
+| 3.1.1 Language of page | A | Meets | Code: the editor's controls are marked as English |
+| 3.1.2 Language of parts | AA | Meets | Code: the email's text has the email's language |
+| 3.2.1 On focus | A | Meets | Code: focus selects a Block but changes nothing else |
+| 3.2.2 On input | A | Meets | Code: a setting applies when the field is left, and focus stays |
+| 3.2.3 Consistent navigation | AA | Doesn't apply | One screen |
+| 3.2.4 Consistent identification | AA | Meets | Code: each control has the same name wherever it shows |
+| 3.2.6 Consistent help | A | Doesn't apply | The editor offers no help of its own |
+| 3.3.1 Error identification | A | Meets | axe, tests: a refused value is marked and described |
+| 3.3.2 Labels or instructions | A | Meets | axe, code |
+| 3.3.3 Error suggestion | AA | Meets | Code: each message says what's allowed |
+| 3.3.4 Error prevention | AA | Doesn't apply | No legal, financial or data submission |
+| 3.3.7 Redundant entry | A | Doesn't apply | Nothing asks for the same thing twice |
+| 3.3.8 Accessible authentication (minimum) | AA | Doesn't apply | No sign-in |
+| 4.1.2 Name, role, value | A | Meets | axe, code: states such as pressed, selected and expanded are set |
+| 4.1.3 Status messages | AA | Meets | Code: moves, deletions and Shell messages are announced |
+
+4.1.1 Parsing was removed in WCAG 2.2, so it isn't listed.
+
+## Known limits outside WCAG
+
+- **Safari and the Preview.** In Safari, <kbd>Escape</kbd> doesn't close the Preview once focus is inside the email. <kbd>Shift</kbd> + <kbd>Tab</kbd> goes back to its Close button.
+- **The host page.** The page title, landmarks and a way to skip to the editor belong to the page the editor is on.
+
+## Report a problem
+
+If something in the editor is hard to use with a screen reader, the keyboard, zoom or another tool, please [open an issue](https://github.com/mailquilt/editor/issues). Say which browser and tool you used.

@@ -20,6 +20,8 @@ A PR that changes one of these says so, gives the reason and updates this page.
 - The Block and Row toolbars are one Tab stop each, with arrow keys between their buttons. Shift+Tab leaves the toolbar. (#60, #78)
 - Each empty Column has one Tab stop per Block type, and `keyboard.mdx` says so. (#36)
 - After Delete Block or Delete Row from the keyboard, focus goes to the neighbour and the deletion is announced. (#54)
+- Escape in the Preview's email closes the Preview, from the email's own key listener, as the browser only closes a dialog for an Escape in the page. Safari runs no listener there, so in Safari Shift+Tab to Close is the way out, and `keyboard.mdx` says so. (#143)
+- The editor partly meets WCAG 2.2 AA. Below 640px, as at 400% zoom, it shows the narrow notice and the side panel can't be reached, which fails 1.4.10. The accessibility statement says so. (#143)
 - The Link button is named "Edit link" when the cursor is on a link, and has no pressed state, as pressing it opens the link field rather than taking the link away. (#36, #67)
 
 ## The panels

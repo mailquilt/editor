@@ -188,11 +188,18 @@ interface Preview {
   result?: { html: string } | { failure: string };
 }
 
-/** A key pressed in the email is pressed in the Preview, as the key map has it. */
+/**
+ * A key pressed in the email is pressed in the Preview, as the key map has it.
+ * The browser doesn't close the dialog for an Escape in the email's own
+ * document, so that one closes it here.
+ */
 const claimKey = (event: KeyboardEvent) => {
   const binding = keyFor("preview", event);
   if (binding) {
     claim(event, binding);
+  }
+  if (binding?.action === "closePreview") {
+    event.view?.frameElement?.closest("dialog")?.close();
   }
 };
 

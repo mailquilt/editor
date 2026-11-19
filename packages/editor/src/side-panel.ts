@@ -259,6 +259,10 @@ export const sidePanelStyles = css`
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  /*
+   * The edge is a shadow. Forced colors drop shadows, and draw the transparent
+   * outline in the system's color instead.
+   */
   .tile,
   .layout-tile {
     align-items: center;
@@ -276,6 +280,8 @@ export const sidePanelStyles = css`
     font-weight: 500;
     gap: 10px;
     justify-content: center;
+    outline: 1px solid transparent;
+    outline-offset: -1px;
     padding: var(--mq-space-3) var(--mq-space-2);
     /* Dragged by touch too, which would otherwise scroll the panel. */
     touch-action: none;
