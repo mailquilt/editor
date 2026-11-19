@@ -3,18 +3,16 @@ import type {
   BlocksDocument,
   Command,
   Editor,
-  Operation,
   RichTextDocument,
-  RowLayout,
 } from "@mailquilt/core";
 import { blockLabel } from "@mailquilt/core/internal";
 import { renderEmail } from "@mailquilt/renderer";
 import { html, LitElement, nothing } from "lit";
-import { keyed } from "lit/directives/keyed.js";
 
+import { createAnnouncements } from "./announcements.js";
 import { blockContentStyles, hasRichText } from "./block-content.js";
-import { createBlockDragging, dropCommand } from "./block-dragging.js";
-import type { BlockDragging, DragSource, DropPlace } from "./block-dragging.js";
+import { createBlockDragging } from "./block-dragging.js";
+import type { BlockDragging } from "./block-dragging.js";
 import {
   MIN_EDITOR_WIDTH,
   renderFloatingToolbar,
@@ -22,24 +20,17 @@ import {
   renderRows,
 } from "./canvas.js";
 import type { CanvasEvents, CanvasState } from "./canvas.js";
-import { closestPlace, findPlace, placeOf } from "./editor-places.js";
+import { createEditingActions } from "./editing-actions.js";
+import { findPlace } from "./editor-places.js";
 import { createLinkForm, formatBarStyles } from "./format-bar.js";
-import { claim, hasKeys, historyInput, keyFor, keyLabel } from "./key-map.js";
-import type { Action, Binding, Direction, Place } from "./key-map.js";
+import { createKeyDispatch } from "./key-dispatch.js";
+import { keyLabel } from "./key-map.js";
 import { editorStyles } from "./mail-quilt-styles.js";
-import type { PanelActions, PanelApi, RowPlace } from "./panel-api.js";
-import {
-  blocksIn,
-  locate,
-  moveCommand,
-  moveRowCommand,
-  neighbourBlockId,
-  placeLabel,
-  positionLabel,
-} from "./places.js";
+import type { PanelActions, PanelApi } from "./panel-api.js";
+import { blocksIn } from "./places.js";
 import { createPreview, previewStyles, renderPreview } from "./preview.js";
 import { refuseFiles } from "./refuse-files.js";
-import { createSelection, focusToolbarButton } from "./selection.js";
+import { createSelection } from "./selection.js";
 import { createSettingsDrafts, settingsPanelStyles } from "./settings-panel.js";
 import { renderSidePanel, sidePanelStyles } from "./side-panel.js";
 import { styleProperties } from "./style-properties.js";
@@ -56,8 +47,6 @@ import type { Tooltips } from "./tooltips.js";
 /** Typing after a gap this long starts a new undo step. */
 const TYPING_PAUSE_MS = 1000;
 
-type MoveOperation = Extract<Operation, { type: "move" }>;
-
 /**
  * For the Block key help, which a screen reader reads, so each key is named as
  * `aria-keyshortcuts` names it.
@@ -65,11 +54,6 @@ type MoveOperation = Extract<Operation, { type: "move" }>;
 const EDIT_TEXT = keyLabel("block", "editText").shortcuts;
 const BACK_TO_BLOCK = keyLabel("text", "backToBlock").shortcuts;
 const FORMAT_BAR = keyLabel("text", "focusFormatBar").shortcuts;
-
-/** For a key whose press only needs keeping from the browser, or stopping. */
-const doNothing = () => {
-  // Nothing more.
-};
 
 export class MailQuilt extends LitElement {
   static override styles = [
@@ -84,8 +68,6 @@ export class MailQuilt extends LitElement {
   ];
 
   #editor: Editor | undefined;
-  /** What the latest change moved, for undo and redo to announce. */
-  #lastMoves: MoveOperation[] = [];
   /** A private copy of the document last received from or sent to the host. */
   #lastKnownDocument: BlocksDocument | undefined;
   readonly #views = new Map<string, TextBlockView>();
@@ -136,12 +118,6 @@ export class MailQuilt extends LitElement {
   /** Set while the element is connected, as it observes sizes on the page. */
   #toolPlacement: ToolPlacement | undefined;
   #tooltips: { element: HTMLElement; tooltips: Tooltips } | undefined;
-  /** What the screen reader last heard about a move. */
-  #announcement = "";
-  /** Each announcement gets a new element, so the same words are read again. */
-  #announcementId = 0;
-  /** The last key pressed, and where, before it was held down. */
-  #lastPress: { key: string; target: EventTarget | undefined } | undefined;
   /** The last press began on the workspace itself, not after a drag from a Block. */
   #pressedOnWorkspace = false;
   /** Too narrow to edit in, as on a phone or in a narrow part of a page. */
@@ -149,17 +125,38 @@ export class MailQuilt extends LitElement {
   /** Made on the page, as a server rendering the editor has no ResizeObserver. */
   #resizeObserver: ResizeObserver | undefined;
 
+  readonly #announcements = createAnnouncements({
+    document: () => this.#editor?.getDocument(),
+    requestUpdate: () => this.requestUpdate(),
+  });
+  readonly #editing = createEditingActions({
+    announcements: this.#announcements,
+    apply: (command) => this.#apply(command),
+    document: () => this.#editor?.getDocument(),
+    selection: this.#selection,
+  });
+  readonly #keys = createKeyDispatch({
+    drafts: this.#drafts,
+    editing: this.#editing,
+    isDragging: () => this.#dragging?.isDragging() ?? false,
+    linkForm: this.#linkForm,
+    previewIsOpen: () => this.#preview.isOpen,
+    selection: this.#selection,
+    stepHistory: (step) => this.#stepHistory(step),
+  });
+
   /** Every change the Side panel, its settings and the toolbars make. */
   readonly #panelActions: PanelActions = {
-    addBlock: (blockType, place) => this.#addBlock(blockType, place),
-    addRow: (layout) => this.#addRow(layout),
+    addBlock: (blockType, place) => this.#editing.addBlock(blockType, place),
+    addRow: (layout) => this.#editing.addRow(layout),
     apply: (command) => this.#apply(command),
     cancelLink: () => this.#linkForm.cancel(),
-    deleteBlock: (fromKeyboard) => this.#deleteSelectedBlock(fromKeyboard),
-    deleteRow: (rowId, fromKeyboard) => this.#deleteRow(rowId, fromKeyboard),
+    deleteBlock: (fromKeyboard) => this.#editing.deleteBlock(fromKeyboard),
+    deleteRow: (rowId, fromKeyboard) =>
+      this.#editing.deleteRow(rowId, fromKeyboard),
     insertLineBreak: () => this.#selection.selectedText?.insertLineBreak(),
-    moveBlock: (direction) => this.#moveSelectedBlock(direction),
-    moveRow: (rowId, direction) => this.#moveRow(rowId, direction),
+    moveBlock: (direction) => this.#editing.moveBlock(direction),
+    moveRow: (rowId, direction) => this.#editing.moveRow(rowId, direction),
     openLinkField: () => this.#linkForm.open(),
     openPreview: () => this.#openPreview(),
     removeLink: () => this.#linkForm.remove(),
@@ -182,7 +179,7 @@ export class MailQuilt extends LitElement {
 
   protected override createRenderRoot() {
     const root = super.createRenderRoot();
-    root.addEventListener("keydown", this.#onKeydown);
+    root.addEventListener("keydown", this.#keys.onKeydown);
     root.addEventListener("mousedown", (event) =>
       this.#selection.onMousedown(event as MouseEvent)
     );
@@ -192,7 +189,9 @@ export class MailQuilt extends LitElement {
   constructor() {
     super();
     // On the way in, because ProseMirror handles the key before it bubbles here.
-    this.addEventListener("keydown", this.#onKeydownCapture, { capture: true });
+    this.addEventListener("keydown", this.#keys.onKeydownCapture, {
+      capture: true,
+    });
     this.addEventListener("dragover", refuseFiles);
     this.addEventListener("drop", refuseFiles);
     // A host may set `value` before this element is defined, which leaves an
@@ -257,7 +256,7 @@ export class MailQuilt extends LitElement {
     });
     this.#resizeObserver.observe(this);
     this.#dragging = createBlockDragging({
-      onDrop: (source, place) => this.#drop(source, place),
+      onDrop: (source, place) => this.#editing.drop(source, place),
       root: this.renderRoot as ShadowRoot,
     });
     this.#toolPlacement = createToolPlacement(
@@ -337,9 +336,7 @@ export class MailQuilt extends LitElement {
 
     return html`
       ${renderPreview(this.#preview.shown, this.#preview.events)}
-      <div class="visually-hidden" lang=${UI_LANG} role="status">
-        ${keyed(this.#announcementId, html`<span>${this.#announcement}</span>`)}
-      </div>
+      ${this.#announcements.render()}
       <p hidden id="block-keys" lang=${UI_LANG}>
         Press ${EDIT_TEXT} to edit the text, and ${BACK_TO_BLOCK} to come back.
         In the text, press ${FORMAT_BAR} to reach its formatting. Use arrow keys
@@ -370,7 +367,7 @@ export class MailQuilt extends LitElement {
             class="email"
             data-place="email"
             data-testid="email"
-            @beforeinput=${this.#onBeforeInput}
+            @beforeinput=${this.#keys.onBeforeInput}
             style=${styleProperties({
               // Also for what's dragged, which has nothing behind it.
               "--_mq-email-background": settings.backgroundColor,
@@ -410,8 +407,8 @@ export class MailQuilt extends LitElement {
       email,
       formats: this.#formats,
       linkField: this.#linkForm.state,
-      selectedBlock: this.#selectedPosition(email),
-      selectedRow: this.#selectedRow(email),
+      selectedBlock: this.#editing.selectedBlock(email),
+      selectedRow: this.#editing.selectedRow(email),
       showsSettings: this.#selection.showsSettings,
       tab: this.#selection.tab,
     };
@@ -487,38 +484,6 @@ export class MailQuilt extends LitElement {
     return result;
   }
 
-  #selectedPosition(document: BlocksDocument) {
-    const { blockId } = this.#selection;
-    return blockId === undefined ? undefined : locate(document, blockId);
-  }
-
-  #selectedRow(document: BlocksDocument): RowPlace | undefined {
-    const rowIndex = document.rows.findIndex(
-      ({ id }) => id === this.#selection.rowId
-    );
-    const row = document.rows[rowIndex];
-    return row && { row, rowIndex };
-  }
-
-  /** After the selected Block's Row, or else at the end, and selects it. */
-  async #addRow(layout: RowLayout) {
-    const document = this.#editor?.getDocument();
-    if (!document) {
-      return;
-    }
-    const rowIndex =
-      this.#selectedRow(document)?.rowIndex ??
-      this.#selectedPosition(document)?.rowIndex;
-    const result = this.#apply({
-      index: rowIndex === undefined ? document.rows.length : rowIndex + 1,
-      layout,
-      type: "insertRow",
-    });
-    if (result?.ok && result.createdId !== undefined) {
-      await this.#selection.selectRow(result.createdId);
-    }
-  }
-
   #onWorkspacePointerdown({ currentTarget, target }: PointerEvent) {
     this.#pressedOnWorkspace = target === currentTarget;
   }
@@ -542,111 +507,6 @@ export class MailQuilt extends LitElement {
     } as FocusOptions);
   }
 
-  /**
-   * From the keyboard, focus goes to the next Block, or else the one before, as
-   * it would be lost. A button pressed with a key clicks with a `detail` of 0.
-   */
-  async #deleteSelectedBlock(fromKeyboard: boolean) {
-    const document = this.#editor?.getDocument();
-    const { blockId } = this.#selection;
-    if (!document || blockId === undefined) {
-      return;
-    }
-    const neighbour =
-      neighbourBlockId(document, blockId, "down") ??
-      neighbourBlockId(document, blockId, "up");
-    if (this.#apply({ blockId, type: "removeBlock" })?.ok) {
-      this.#announce("Block deleted.");
-      if (fromKeyboard && neighbour !== undefined) {
-        await this.#selection.focusWhenRendered({
-          blockId: neighbour,
-          on: "block",
-        });
-      }
-    }
-  }
-
-  /**
-   * From the keyboard, focus goes to the next Row's tools, or else the one
-   * before, as it would be lost.
-   */
-  async #deleteRow(rowId: string, fromKeyboard: boolean) {
-    const rows = this.#editor?.getDocument().rows ?? [];
-    const index = rows.findIndex(({ id }) => id === rowId);
-    const neighbour = rows[index + 1] ?? rows[index - 1];
-    if (this.#apply({ rowId, type: "removeRow" })?.ok) {
-      this.#announce("Row deleted.");
-      if (fromKeyboard && neighbour) {
-        await this.#selection.focusWhenRendered({
-          on: "rowTool",
-          rowId: neighbour.id,
-        });
-      }
-    }
-  }
-
-  /**
-   * Adds a Block and selects it, ready to type in if it has text. By default it
-   * goes where `#defaultBlockPlace` says.
-   */
-  async #addBlock(
-    blockType: string,
-    place?: { columnId: string; index: number }
-  ) {
-    const editor = this.#editor;
-    if (!editor) {
-      return;
-    }
-    const target = place ?? this.#defaultBlockPlace(editor);
-    const result = this.#apply(
-      target
-        ? { blockType, ...target, type: "insertBlock" }
-        : { blockType, rowIndex: 0, type: "insertBlockInNewRow" }
-    );
-    if (result?.ok) {
-      await this.#selection.selectPlaced(result.createdId);
-    }
-  }
-
-  /**
-   * After the selected Block, at the end of the selected Row's first Column, or
-   * else at the end of the email.
-   */
-  #defaultBlockPlace(editor: Editor) {
-    const document = editor.getDocument();
-    const selected = this.#selectedPosition(document);
-    if (selected) {
-      return { columnId: selected.columnId, index: selected.index + 1 };
-    }
-    const column =
-      this.#selectedRow(document)?.row.columns[0] ??
-      document.rows.at(-1)?.columns.at(-1);
-    return column && { columnId: column.id, index: column.blocks.length };
-  }
-
-  async #drop(source: DragSource, place: DropPlace) {
-    const result = this.#apply(dropCommand(source, place));
-    if (!result?.ok) {
-      return;
-    }
-    if ("rowId" in source) {
-      this.#announceRowMove(source.rowId);
-      return;
-    }
-    if ("rowLayout" in source) {
-      if (result.createdId !== undefined) {
-        await this.#selection.selectRow(result.createdId);
-      }
-      return;
-    }
-    if ("blockId" in source) {
-      this.#announceMove(source.blockId);
-    }
-    await this.#selection.selectPlaced(
-      "blockId" in source ? source.blockId : result.createdId
-    );
-  }
-
   /** The text schema is no wider than core's, so a rejection is a bug here. */
   #commitText(blockId: string, content: RichTextDocument) {
     const now = performance.now();
@@ -658,183 +518,6 @@ export class MailQuilt extends LitElement {
       { blockId, props: { content }, type: "updateBlockProps" },
       { mergeKey: `${blockId}:${this.#typingSession}`, render: false }
     );
-  }
-
-  /** Input to a Block's text. A field has its own typing and undo. */
-  #onBeforeInput(event: InputEvent) {
-    if (!closestPlace(event.target as Element, "text")) {
-      return;
-    }
-    // WebKit types into a Block's selection, and undoes there too, even with focus
-    // on the dialog, a control, the link field or the Block itself.
-    if (this.#preview.isOpen || this.#selection.focusIsOutsideText) {
-      event.preventDefault();
-      return;
-    }
-    this.#runHistoryStep(event, historyInput(event));
-  }
-
-  /**
-   * Heard on the way in, before a Block's text, which acts on a key before it
-   * bubbles out. A held key's repeats count only where it was pressed.
-   */
-  readonly #onKeydownCapture = (event: KeyboardEvent) => {
-    const [target] = event.composedPath();
-    if (!event.repeat) {
-      this.#lastPress = { key: event.key, target };
-      return;
-    }
-    const binding =
-      this.#lastPress?.key === event.key && this.#lastPress.target === target
-        ? undefined
-        : keyFor("heldElsewhere", event);
-    if (binding) {
-      claim(event, binding);
-    }
-  };
-
-  /**
-   * Every key pressed in the editor, once what it was pressed on, such as a
-   * Block's text, has had it. The key map says what it does there.
-   */
-  readonly #onKeydown = (event: Event) => {
-    const keydown = event as KeyboardEvent;
-    const place = this.#placeOf(keydown);
-    const binding =
-      place &&
-      keyFor(place, keydown, {
-        dragging: this.#dragging?.isDragging() ?? false,
-        selectedText: this.#selection.selectedText !== undefined,
-      });
-    if (binding) {
-      claim(keydown, binding);
-      this.#keyActions[binding.action](keydown, binding);
-    }
-  };
-
-  /**
-   * Where in the editor a key was pressed: the innermost place with keys of its
-   * own, or a settings field holding a draft.
-   */
-  #placeOf(event: KeyboardEvent): Place | undefined {
-    const place = placeOf(event.target as Element, hasKeys);
-    return place === "editor" && this.#drafts.draftKeyOf(event) !== undefined
-      ? "settingsDraft"
-      : place;
-  }
-
-  /** What each action in the key map does here. */
-  readonly #keyActions: Record<
-    Action,
-    (event: KeyboardEvent, binding: Binding) => void
-  > = {
-    backToBlock: () => this.#selection.focus({ on: "block" }),
-    backToText: () => this.#selection.focus({ on: "text" }),
-    // The drag hears this itself.
-    cancelDrag: doNothing,
-    cancelLink: () => this.#panelActions.cancelLink(),
-    // The browser closes the dialog.
-    closePreview: doNothing,
-    // The tooltips hear this themselves.
-    closeTooltip: doNothing,
-    discardDraft: (event) => this.#drafts.discard(event),
-    editText: () => this.#selection.focus({ on: "text" }),
-    firstButton: focusToolbarButton,
-    focusFormatBar: () => this.#selection.focus({ on: "formatBar" }),
-    ignore: doNothing,
-    keepPage: doNothing,
-    lastButton: focusToolbarButton,
-    leaveToolbar: focusToolbarButton,
-    moveBlock: (_event, { direction }) => {
-      if (direction) {
-        this.#moveSelectedBlock(direction);
-      }
-    },
-    moveRow: ({ target }, { direction }) => {
-      const rowId = closestPlace(target as Element, "row")?.dataset.rowId;
-      if (rowId === undefined) {
-        return;
-      }
-      if (direction === "up" || direction === "down") {
-        this.#moveRow(rowId, direction);
-      } else {
-        this.#announce(`The Row can't move ${direction}.`);
-      }
-    },
-    nextButton: focusToolbarButton,
-    openLinkField: () => this.#panelActions.openLinkField(),
-    previousButton: focusToolbarButton,
-    redo: () => this.#stepHistory("redo"),
-    selectBlock: (_event, { direction }) => {
-      if (direction) {
-        this.#selectNeighbour(direction);
-      }
-    },
-    typeInField: doNothing,
-    undo: () => this.#stepHistory("undo"),
-  };
-
-  #selectNeighbour(direction: Direction) {
-    const document = this.#editor?.getDocument();
-    const { blockId } = this.#selection;
-    const next =
-      document &&
-      blockId !== undefined &&
-      neighbourBlockId(document, blockId, direction);
-    if (next) {
-      this.#selection.focus({ blockId: next, on: "block" });
-    }
-  }
-
-  #moveSelectedBlock(direction: Direction) {
-    const document = this.#editor?.getDocument();
-    const { blockId } = this.#selection;
-    if (!document || blockId === undefined) {
-      return;
-    }
-    const command = moveCommand(document, blockId, direction);
-    if (command && this.#apply(command)?.ok) {
-      this.#announceMove(blockId);
-      this.#selection.revealBlock(blockId);
-    } else {
-      this.#announce(`The Block can't move ${direction}.`);
-    }
-  }
-
-  #announceMove(blockId: string, prefix = "Moved to") {
-    const document = this.#editor?.getDocument();
-    const place = document && placeLabel(document, blockId);
-    if (place) {
-      this.#announce(`${prefix} ${place}.`);
-    }
-  }
-
-  #announce(text: string) {
-    this.#announcement = text;
-    this.#announcementId += 1;
-    this.requestUpdate();
-  }
-
-  /** One step, keeping the selection, and focus on the Row's tools if it was there. */
-  #moveRow(rowId: string, direction: "down" | "up") {
-    const document = this.#editor?.getDocument();
-    const command = document && moveRowCommand(document, rowId, direction);
-    if (!command) {
-      this.#announce(`The Row can't move ${direction}.`);
-      return;
-    }
-    if (this.#apply(command)?.ok) {
-      this.#announceRowMove(rowId);
-      this.#selection.revealRow(rowId);
-    }
-  }
-
-  #announceRowMove(rowId: string, prefix = "Row moved to") {
-    const rows = this.#editor?.getDocument().rows ?? [];
-    const index = rows.findIndex(({ id }) => id === rowId);
-    if (index !== -1) {
-      this.#announce(`${prefix} ${positionLabel(index, rows.length)}.`);
-    }
   }
 
   /** A new render can replace the tooltip, along with everything else. */
@@ -849,17 +532,6 @@ export class MailQuilt extends LitElement {
     this.#tooltips?.tooltips.sync();
   }
 
-  #runHistoryStep(event: Event, step: "redo" | "undo" | undefined) {
-    if (!step) {
-      return;
-    }
-    // The browser's own undo would change the text behind the document's back,
-    // and a host page's own undo would act on the same keys.
-    event.preventDefault();
-    event.stopPropagation();
-    this.#stepHistory(step);
-  }
-
   #stepHistory(step: "redo" | "undo") {
     const editor = this.#editor;
     if (!editor) {
@@ -872,7 +544,7 @@ export class MailQuilt extends LitElement {
     this.#linkForm.close();
     // What was refused may be fine now, and the fields show what's come back.
     this.#drafts.clear();
-    this.#announceHistoryStep(step, this.#lastMoves);
+    this.#editing.historyStepped(step);
     const document = editor.getDocument();
     for (const block of blocksIn(document)) {
       this.#views
@@ -884,40 +556,17 @@ export class MailQuilt extends LitElement {
     this.#emitChange(document);
   }
 
-  /** One Block or Row moved, or nothing to say. A layout can move many at once. */
-  #announceHistoryStep(step: "redo" | "undo", moved: MoveOperation[]) {
-    const [operation] = moved;
-    if (operation === undefined || moved.length > 1) {
-      this.#announce("");
-      return;
-    }
-    const prefix = step === "undo" ? "Undo moved" : "Redo moved";
-    if ("rowId" in operation) {
-      this.#announceRowMove(operation.rowId, `${prefix} a Row to`);
-      return;
-    }
-    const { blockId } = operation;
-    this.#announceMove(blockId, `${prefix} a Block to`);
-    if (blockId === this.#selection.blockId) {
-      this.#selection.revealBlock(blockId);
-    }
-  }
-
   #show(document: BlocksDocument | undefined) {
     this.#lastKnownDocument = document;
     this.#preview.forget();
-    this.#announcement = "";
+    this.#announcements.clear();
     this.#drafts.clear();
     // A URL that failed before may load now, as its image may have been
     // uploading, or the connection down.
     this.#failedImages.clear();
     this.#reset();
     this.#editor = document && createEditor({ document });
-    this.#editor?.subscribe((operations) => {
-      this.#lastMoves = operations.filter(
-        (operation): operation is MoveOperation => operation.type === "move"
-      );
-    });
+    this.#editor?.subscribe(this.#editing.onOperations);
     this.requestUpdate();
   }
 
