@@ -59,9 +59,9 @@ describe("applying a Command", () => {
   });
 });
 
-describe("rejecting a Command", () => {
+describe("refusing a Command", () => {
   type Email = ReturnType<typeof createEmail>;
-  const rejected: [string, (email: Email) => unknown, string, RegExp][] = [
+  const refused: [string, (email: Email) => unknown, string, RegExp][] = [
     [
       "an unknown Command type",
       () => ({ type: "explode" }),
@@ -134,8 +134,8 @@ describe("rejecting a Command", () => {
     ],
   ];
 
-  it.each(rejected)(
-    "rejects %s with a code and a reason",
+  it.each(refused)(
+    "refuses %s with a code and a reason",
     (_name, command, code, reason) => {
       const document = createEmail();
       const editor = createEditor({ document });

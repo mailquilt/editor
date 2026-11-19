@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { createEditor, createEmail } from "../src/index.js";
-import type { Operation } from "../src/index.js";
+import type { ApplyResult, Operation } from "../src/index.js";
 
 const paragraph = (text: string) => ({
   content: [{ content: [{ text, type: "text" }], type: "paragraph" }],
@@ -80,7 +80,7 @@ describe("the undo history", () => {
     expect(can()).toStrictEqual([false, true]);
   });
 
-  it("has no step for a rejected Command", () => {
+  it("has no step for a refused Command", () => {
     const { blockId, editor, setText } = setup();
     setText("Kept");
     const before = editor.getDocument();
@@ -193,7 +193,7 @@ describe("merging Commands into one undo step", () => {
     expect(editor.getDocument()).toStrictEqual(afterA);
   });
 
-  it("keeps merging after a rejected Command", () => {
+  it("keeps merging after a refused Command", () => {
     const { blockId, document, editor, setText } = setup();
     setText("H", { mergeKey: "typing" });
     editor.apply(
@@ -310,6 +310,34 @@ describe("merging Commands into one undo step", () => {
     expect(editor.undo()).toBeFalsy();
   });
 
+  it("leaves no step when changes to a Block and a Row take turns and end where they started", () => {
+    const { blockId, document, editor, setText } = setup();
+    const [row] = document.rows;
+    const rowColor = (backgroundColor: string | null) =>
+      editor.apply(
+        {
+          props: { backgroundColor },
+          rowId: row?.id ?? "",
+          type: "updateRowProps",
+        },
+        { mergeKey: "typing" }
+      );
+    setText("A", { mergeKey: "typing" });
+    rowColor("#ff0000");
+    editor.apply(
+      {
+        blockId,
+        props: row?.columns[0]?.blocks[0]?.props ?? {},
+        type: "updateBlockProps",
+      },
+      { mergeKey: "typing" }
+    );
+    rowColor(null);
+
+    expect(editor.canUndo()).toBeFalsy();
+    expect(editor.getDocument()).toStrictEqual(document);
+  });
+
   it("starts a new step after changes that ended where they started", () => {
     const { editor, setText } = setup();
     setText("X");
@@ -383,7 +411,7 @@ describe("subscribing to Operations", () => {
     ]);
   });
 
-  it("sends nothing for a rejected Command or an empty undo", () => {
+  it("sends nothing for a refused Command or an empty undo", () => {
     const { blockId, editor } = setup();
     const received: unknown[] = [];
     editor.subscribe((operations) => received.push(operations));
@@ -510,6 +538,56 @@ describe("subscribing to Operations", () => {
     expect(heard).toHaveLength(2);
     expect(heard[0]).toContain("First");
     expect(heard[1]).toContain("From listener");
+  });
+
+  it("throws an error from hearing of a listener's Command from the call that made the first change", () => {
+    const { editor, setText } = setup();
+    let fromListener: ApplyResult | undefined;
+    editor.subscribe(() => {
+      fromListener ??= setText("From listener");
+    });
+    editor.subscribe((operations) => {
+      if (JSON.stringify(operations).includes("From listener")) {
+        throw new Error("Listener failed");
+      }
+    });
+
+    expect(() => setText("First")).toThrow("Listener failed");
+    expect(fromListener).toStrictEqual({ ok: true });
+  });
+
+  it("tells every listener exactly the Operations of a change that a listener joins to its step", () => {
+    const { blockId, document, editor, setText } = setup();
+    let joined = false;
+    editor.subscribe(() => {
+      if (!joined) {
+        joined = true;
+        setText("AB", { mergeKey: "typing" });
+      }
+    });
+    const heard: Operation[][] = [];
+    editor.subscribe((operations) => heard.push(operations));
+
+    setText("A", { mergeKey: "typing" });
+
+    expect(heard).toStrictEqual([
+      [
+        {
+          blockId,
+          previousProps: document.rows[0]?.columns[0]?.blocks[0]?.props,
+          props: { content: paragraph("A") },
+          type: "setProps",
+        },
+      ],
+      [
+        {
+          blockId,
+          previousProps: { content: paragraph("A") },
+          props: { content: paragraph("AB") },
+          type: "setProps",
+        },
+      ],
+    ]);
   });
 
   it("tells every listener of changes in the order they were made", () => {

@@ -27,7 +27,7 @@ _Avoid_: Variable, placeholder
 ### Editing
 
 **Command**:
-A request to change an email, such as moving a Block to another Column. It can be rejected.
+A request to change an email, such as moving a Block to another Column. It can be refused.
 _Avoid_: Action
 
 **Operation**:

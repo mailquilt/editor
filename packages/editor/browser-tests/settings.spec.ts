@@ -365,11 +365,11 @@ test.describe("validation", () => {
 
     const error = panelBlock(page).getByRole("alert");
     await expect(error).toHaveText(
-      "Use a color such as #ff0000, or rgb(255, 0, 0)."
+      "Use a color such as #ff0000, rgb(255, 0, 0) or rgba(255, 0, 0, 0.5)."
     );
     await expect(color).toHaveAttribute("aria-invalid", "true");
     await expect(color).toHaveAccessibleDescription(
-      "Use a color such as #ff0000, or rgb(255, 0, 0)."
+      "Use a color such as #ff0000, rgb(255, 0, 0) or rgba(255, 0, 0, 0.5)."
     );
     await expect(color).toHaveValue("red");
     expect(await currentValue(page)).toStrictEqual(before);

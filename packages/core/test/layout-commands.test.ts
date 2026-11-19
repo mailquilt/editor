@@ -155,6 +155,22 @@ describe("the removeBlock Command", () => {
     expect(columnsOf(editor.getDocument())).toStrictEqual([[["b"], ["c"]]]);
   });
 
+  it("records one remove Operation, with the Block", () => {
+    const { editor, operations } = setup();
+
+    send(editor, { blockId: "b", type: "removeBlock" });
+
+    expect(operations).toStrictEqual([
+      [
+        {
+          at: { columnId: "left", index: 1 },
+          block: block("b"),
+          type: "remove",
+        },
+      ],
+    ]);
+  });
+
   it("leaves an empty Column in place, with its width", () => {
     const { editor } = setup();
 
@@ -231,19 +247,25 @@ describe("the moveBlock Command", () => {
   });
 
   it.each([
-    ["an unknown Block", move("nope", "right", 0), /No Block/u],
-    ["an unknown Column", move("a", "nope", 0), /No Column/u],
-    ["an index past the end", move("a", "right", 2), /past the end/u],
+    ["an unknown Block", move("nope", "right", 0), "noSuchBlock", /No Block/u],
+    ["an unknown Column", move("a", "nope", 0), "noSuchColumn", /No Column/u],
+    [
+      "an index past the end",
+      move("a", "right", 2),
+      "indexPastEnd",
+      /past the end/u,
+    ],
     [
       "an index past the end of its own Column",
       move("a", "left", 2),
+      "indexPastEnd",
       /past the end/u,
     ],
-  ])("rejects %s with a reason", (_name, command, reason) => {
+  ])("refuses %s with a code and a reason", (_name, command, code, reason) => {
     const { editor } = setup();
 
     expect(editor.apply(command)).toStrictEqual({
-      code: expect.any(String),
+      code,
       ok: false,
       reason: expect.stringMatching(reason),
     });
@@ -289,6 +311,33 @@ describe("the Commands that add a Row for a Block", () => {
     expectValid(document);
   });
 
+  it("records the new Row's insert, then the Block's", () => {
+    const { editor, operations } = setup();
+
+    editor.apply({
+      blockType: "text",
+      rowIndex: 1,
+      type: "insertBlockInNewRow",
+    });
+
+    const [, added] = editor.getDocument().rows;
+    const column = added?.columns[0];
+    expect(operations).toStrictEqual([
+      [
+        {
+          at: { index: 1 },
+          row: { ...added, columns: [{ ...column, blocks: [] }] },
+          type: "insert",
+        },
+        {
+          at: { columnId: column?.id, index: 0 },
+          block: column?.blocks[0],
+          type: "insert",
+        },
+      ],
+    ]);
+  });
+
   it("adds the first Row and Block to an email with none", () => {
     const { editor } = setup({ ...createEmail(), rows: [] });
 
@@ -320,25 +369,32 @@ describe("the Commands that add a Row for a Block", () => {
     [
       "an unknown Block",
       { blockId: "nope", rowIndex: 5, type: "moveBlockToNewRow" },
+      "noSuchBlock",
       /No Block/u,
     ],
     [
       "an unknown Block type",
       { blockType: "nope", rowIndex: 5, type: "insertBlockInNewRow" },
+      "unknownBlockType",
       /Unknown Block type/u,
     ],
     [
       "a Row index past the end",
       { blockId: "a", rowIndex: 2, type: "moveBlockToNewRow" },
+      "indexPastEnd",
       /past the end/u,
     ],
-  ])("rejects %s, adding no Row", (_name, command, reason) => {
+  ])("refuses %s, adding no Row", (_name, command, code, reason) => {
     const { editor, operations } = setup();
     const before = editor.getDocument();
 
     const result = send(editor, command);
 
-    expect(result).toHaveProperty("reason", expect.stringMatching(reason));
+    expect(result).toStrictEqual({
+      code,
+      ok: false,
+      reason: expect.stringMatching(reason),
+    });
     expect(editor.getDocument()).toStrictEqual(before);
     expect(operations).toStrictEqual([]);
     expect(editor.undo()).toBeFalsy();
@@ -346,15 +402,14 @@ describe("the Commands that add a Row for a Block", () => {
 });
 
 describe("a Command for what's already so", () => {
-  it("says so, unlike a Command that can't be done", () => {
+  it("says so with its code alone", () => {
     const { editor } = setup();
 
-    expect(editor.apply(move("a", "left", 0))).toMatchObject({
+    expect(editor.apply(move("a", "left", 0))).toStrictEqual({
       code: "unchanged",
       ok: false,
-      unchanged: true,
+      reason: 'Block "a" is already at index 0',
     });
-    expect(editor.apply(move("a", "nope", 0))).not.toHaveProperty("unchanged");
   });
 
   it("says a Block alone in its Row already has a Row of its own", () => {
@@ -372,7 +427,7 @@ describe("a Command for what's already so", () => {
     for (const rowIndex of [0, 1]) {
       expect(
         editor.apply({ blockId: "a", rowIndex, type: "moveBlockToNewRow" })
-      ).toMatchObject({ ok: false, unchanged: true });
+      ).toMatchObject({ code: "unchanged", ok: false });
     }
     expect(operations).toStrictEqual([]);
   });
@@ -428,54 +483,45 @@ describe("a Command for what's already so", () => {
 
     expect(
       editor.apply({ layout: "50/50", rowId: "row", type: "setRowLayout" })
-    ).toMatchObject({ ok: false, unchanged: true });
+    ).toMatchObject({ code: "unchanged", ok: false });
     expect(operations).toStrictEqual([]);
   });
 });
 
-describe("rejecting a Block Command", () => {
-  const rejected: [string, unknown, RegExp][] = [
-    [
-      "a Block type that doesn't exist",
-      {
-        blockType: "hologram",
-        columnId: "left",
-        index: 0,
-        type: "insertBlock",
-      },
-      /hologram/u,
-    ],
-    [
-      "a Column that doesn't exist",
-      { blockType: "text", columnId: "missing", index: 0, type: "insertBlock" },
-      /no column.*missing/iu,
-    ],
+describe("refusing a Block Command", () => {
+  const refused: [string, unknown, string, RegExp][] = [
     [
       "an index past the end of the Column",
       { blockType: "text", columnId: "left", index: 3, type: "insertBlock" },
+      "indexPastEnd",
       /index 3/iu,
     ],
     [
       "a negative index",
       { blockType: "text", columnId: "left", index: -1, type: "insertBlock" },
+      "invalidCommand",
       /index/u,
     ],
     [
       "removing a Block that doesn't exist",
       { blockId: "missing", type: "removeBlock" },
+      "noSuchBlock",
       /no block.*missing/iu,
     ],
   ];
 
-  it.each(rejected)("rejects %s with a reason", (_name, command, reason) => {
-    const { editor } = setup();
+  it.each(refused)(
+    "refuses %s with a code and a reason",
+    (_name, command, code, reason) => {
+      const { editor } = setup();
 
-    expect(send(editor, command)).toStrictEqual({
-      code: expect.any(String),
-      ok: false,
-      reason: expect.stringMatching(reason),
-    });
-  });
+      expect(send(editor, command)).toStrictEqual({
+        code,
+        ok: false,
+        reason: expect.stringMatching(reason),
+      });
+    }
+  );
 });
 
 describe("the insertRow Command", () => {
@@ -495,6 +541,16 @@ describe("the insertRow Command", () => {
     expect(added?.columns.map(({ blocks }) => blocks)).toStrictEqual([[], []]);
     expectValid(editor.getDocument());
   });
+
+  it("records one insert Operation, with the Row", () => {
+    const { editor, operations } = setup();
+
+    send(editor, { index: 1, layout: "50/50", type: "insertRow" });
+
+    expect(operations).toStrictEqual([
+      [{ at: { index: 1 }, row: editor.getDocument().rows[1], type: "insert" }],
+    ]);
+  });
 });
 
 describe("the removeRow Command", () => {
@@ -505,6 +561,16 @@ describe("the removeRow Command", () => {
 
     expect(editor.getDocument().rows).toStrictEqual([]);
     expectValid(editor.getDocument());
+  });
+
+  it("records one remove Operation, with everything in the Row", () => {
+    const { document, editor, operations } = setup();
+
+    send(editor, { rowId: "row", type: "removeRow" });
+
+    expect(operations).toStrictEqual([
+      [{ at: { index: 0 }, row: document.rows[0], type: "remove" }],
+    ]);
   });
 
   it("brings back the Row's latest content on undo", () => {
@@ -675,39 +741,34 @@ describe(rowLayoutOf, () => {
   });
 });
 
-describe("rejecting a Row Command", () => {
-  const rejected: [string, unknown, RegExp][] = [
+describe("refusing a Row Command", () => {
+  const refused: [string, unknown, string, RegExp][] = [
     [
       "an unknown layout",
       { layout: "60/40", rowId: "row", type: "setRowLayout" },
+      "invalidCommand",
       /layout/u,
     ],
     [
       "a layout for a Row that doesn't exist",
       { layout: "100", rowId: "missing", type: "setRowLayout" },
-      /no row.*missing/iu,
-    ],
-    [
-      "a new Row past the end of the email",
-      { index: 2, layout: "100", type: "insertRow" },
-      /index 2/iu,
-    ],
-    [
-      "removing a Row that doesn't exist",
-      { rowId: "missing", type: "removeRow" },
+      "noSuchRow",
       /no row.*missing/iu,
     ],
   ];
 
-  it.each(rejected)("rejects %s with a reason", (_name, command, reason) => {
-    const { editor } = setup();
+  it.each(refused)(
+    "refuses %s with a code and a reason",
+    (_name, command, code, reason) => {
+      const { editor } = setup();
 
-    expect(send(editor, command)).toStrictEqual({
-      code: expect.any(String),
-      ok: false,
-      reason: expect.stringMatching(reason),
-    });
-  });
+      expect(send(editor, command)).toStrictEqual({
+        code,
+        ok: false,
+        reason: expect.stringMatching(reason),
+      });
+    }
+  );
 });
 
 const rowOrder = (document: BlocksDocument) =>
@@ -751,17 +812,18 @@ describe("the moveRow Command", () => {
   });
 
   it.each([
-    ["an unknown Row", moveRow("nope", 0), /No Row.*nope/u],
+    ["an unknown Row", moveRow("nope", 0), "noSuchRow", /No Row.*nope/u],
     [
       "an index past the end, counted once the Row has left",
       moveRow("first", 3),
+      "indexPastEnd",
       /index 3.*past the end.*2 other Rows/iu,
     ],
-  ])("rejects %s with a reason", (_name, command, reason) => {
+  ])("refuses %s with a code and a reason", (_name, command, code, reason) => {
     const { editor } = setup(threeRowEmail());
 
     expect(editor.apply(command)).toStrictEqual({
-      code: expect.any(String),
+      code,
       ok: false,
       reason: expect.stringMatching(reason),
     });
@@ -771,8 +833,8 @@ describe("the moveRow Command", () => {
     const { editor, operations } = setup(threeRowEmail());
 
     expect(editor.apply(moveRow("second", 1))).toMatchObject({
+      code: "unchanged",
       ok: false,
-      unchanged: true,
     });
     expect(operations).toStrictEqual([]);
   });

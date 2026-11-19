@@ -2,7 +2,8 @@ import type { Command } from "./command-schema.js";
 import { planCommand } from "./commands.js";
 import type { RefusalCode } from "./commands.js";
 import type { BlocksDocument } from "./document.js";
-import { isSameDocument, loadDocument } from "./load-document.js";
+import { isSameDocument } from "./is-same-document.js";
+import { loadDocument } from "./load-document.js";
 import { applyOperation, reverseOperation } from "./operations.js";
 import type { Operation, PropsTarget } from "./operations.js";
 
@@ -22,8 +23,6 @@ export type ApplyResult =
       code: RefusalCode;
       /** Why, in English, for a person to read. */
       reason: string;
-      /** Things are already as the Command asks, so nothing went wrong. */
-      unchanged?: true;
     };
 
 export interface ApplyOptions {
@@ -31,7 +30,8 @@ export interface ApplyOptions {
    * Joins this Command to the undo step made by the Command just before it, if
    * that one had the same key. Undo and redo end a step, so it can't be joined.
    * Property changes that end where they started leave no step, and the next
-   * Command with the key starts a new one.
+   * Command with the key starts a new one. That holds when changes to several
+   * things take turns, too.
    */
   mergeKey?: string;
 }
@@ -53,7 +53,10 @@ export interface Editor {
    * that's already subscribed adds nothing, so one call ends it. A listener
    * that throws doesn't stop the others hearing of the change. Once they all
    * have, the first error is thrown from the `apply()`, `undo()` or `redo()`
-   * that made it.
+   * that made it. A Command that a listener applies is heard of once every
+   * listener has heard of the change before it, which is after that `apply()`
+   * has returned, so an error from hearing of it is thrown from the call that
+   * made the first change.
    */
   subscribe: (listener: (operations: Operation[]) => void) => () => void;
 }
@@ -139,22 +142,27 @@ export const createEditor = ({
       const openStep = undoStack.at(-1);
       if (openStep && mergeKey !== undefined && mergeKey === openMergeKey) {
         for (const operation of operations) {
-          const last = openStep.at(-1);
           // One Operation per thing, from its first props to its latest, so a
           // step doesn't keep a copy of a Block's text for every keystroke.
-          if (
-            last?.type === "setProps" &&
-            operation.type === "setProps" &&
-            isSameTarget(last, operation)
-          ) {
+          // Each setProps holds the whole props before and after, so it joins
+          // the latest change to the same thing, whatever came between. That
+          // holds while no Command puts back a Block or Row it removed, whose
+          // insert would hold a copy of its props.
+          const index =
+            operation.type === "setProps"
+              ? openStep.findLastIndex(
+                  (earlier) =>
+                    earlier.type === "setProps" &&
+                    isSameTarget(earlier, operation)
+                )
+              : -1;
+          const earlier = openStep[index];
+          if (earlier?.type === "setProps" && operation.type === "setProps") {
             // Back where it started, as when a character is typed and deleted.
-            if (isSameDocument(operation.props, last.previousProps)) {
-              openStep.pop();
+            if (isSameDocument(operation.props, earlier.previousProps)) {
+              openStep.splice(index, 1);
             } else {
-              openStep[openStep.length - 1] = {
-                ...last,
-                props: operation.props,
-              };
+              openStep[index] = { ...earlier, props: operation.props };
             }
           } else {
             openStep.push(operation);
@@ -167,7 +175,9 @@ export const createEditor = ({
           openMergeKey = undefined;
         }
       } else {
-        undoStack.push(operations);
+        // A copy, as a listener's Command can join this step, and every
+        // listener must hear only this Command's Operations.
+        undoStack.push([...operations]);
         openMergeKey = mergeKey;
       }
       redoStack.length = 0;

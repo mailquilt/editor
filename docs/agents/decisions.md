@@ -51,7 +51,9 @@ A PR that changes one of these says so, gives the reason and updates this page.
 
 - An insert or a removal gives its place as `at`, as a move gives `from` and `to`. An ID at the top of an Operation names what changed. (#80)
 - `undo()` returns a boolean. (#36)
-- `setRowLayout` to the layout a Row already has comes back `unchanged`. (#52)
+- `setRowLayout` to the layout a Row already has comes back `unchanged`. (#52) A Command that would change nothing is refused with the code `unchanged`, and that's the only way it says so. (#210)
+- A color is checked as MJML's strict check takes it, which the export runs: at most one space after each comma, an alpha as `0.5` and not `.5`, and up to three digits in a channel, which CSS shows past 255 as 255. Loosening it would make emails that don't export, and tightening it would need a migration. The reason and the settings panel show how to write one. (#210)
+- A listener's error is thrown once every listener has heard of each change, from the call that started the changes. A Command a listener applies returns before anyone hears of it, so each listener hears of the changes in order. (#210)
 - A saved language that isn't a code still loads, and can be sent back unchanged. Only a new one has to be a code. (#79)
 - A check on saved data that gets stricter comes with a migration, which raises the format version and rewrites what an older version saved as the check now takes it, so every email a release accepted keeps opening. Version 2 rewrites the colors and URLs that 0.1.0's version 1 took and the checks no longer do. A migration finds what it rewrites by the keys that hold it. (#209)
 - An email is at most 1200px wide, and a font family needs at least one name. (#78)

@@ -21,5 +21,6 @@ export { ROW_LAYOUTS } from "./row-layouts.js";
 export type { ApplyOptions, ApplyResult, Editor } from "./editor.js";
 export { createEditor } from "./editor.js";
 export type { LoadResult } from "./load-document.js";
-export { isSameDocument, loadDocument } from "./load-document.js";
+export { isSameDocument } from "./is-same-document.js";
+export { loadDocument } from "./load-document.js";
 export type { Operation } from "./operations.js";

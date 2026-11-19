@@ -20,7 +20,7 @@ npm install @mailquilt/core
 The last Command sets a color that isn't one, so it's refused. `refused.ok` is `false`, `refused.code` is `"invalidProps"`, and `refused.reason` reads:
 
 ```text
-Invalid props for Block "8f5b928cfc0fd74ae8": color: Must be a color written as #rgb, #rrggbb, rgb() or rgba()
+Invalid props for Block "8f5b928cfc0fd74ae8": color: Must be a color written as #rgb, #rrggbb, rgb(255, 0, 0) or rgba(255, 0, 0, 0.5), with at most one space after each comma
 ```
 
 `getDocument()` returns the email as it stands. Save it, pass it to `<mail-quilt>` as `value`, or [render it](./render-on-a-server).
@@ -36,7 +36,7 @@ A Command is a plain object with a `type`. `apply()` returns `{ ok: true }` when
 | `noSuchBlock`, `noSuchColumn`, `noSuchRow` | the email has no Block, Column or Row with the ID it names. |
 | `unknownBlockType` | its `blockType` isn't one of the Block types. |
 | `indexPastEnd` | its index is past the end of the Column, or of the email's Rows. |
-| `unchanged` | the email is already as it asks, so nothing went wrong. The result also has `unchanged: true`. |
+| `unchanged` | the email is already as it asks, so nothing went wrong. |
 
 | `type` | Other fields | What it does |
 | --- | --- | --- |
@@ -76,7 +76,7 @@ editor.redo();
 undoButton.disabled = !editor.canUndo();
 ```
 
-To make several Commands one step, give them the same `mergeKey`. The editor does this while someone types, so that a word is undone at once rather than a letter at a time. If property changes end where they started, as when someone types a letter and deletes it, they leave no step to undo.
+To make several Commands one step, give them the same `mergeKey`. The editor does this while someone types, so that a word is undone at once rather than a letter at a time. If property changes end where they started, as when someone types a letter and deletes it, they leave no step to undo, even when changes to several Blocks take turns.
 
 ```js
 editor.apply(first, { mergeKey: "import" });
@@ -93,7 +93,7 @@ const stop = editor.subscribe((operations) => {
 });
 ```
 
-A listener that throws doesn't stop the others hearing of the change. Once they all have, its error is thrown from the `apply()`, `undo()` or `redo()` that made the change, which still happened.
+A listener that throws doesn't stop the others hearing of the change. Once they all have, its error is thrown from the `apply()`, `undo()` or `redo()` that made the change, which still happened. A listener can apply a Command of its own. Its `apply()` returns before anyone hears of it, as each listener hears of every change in order, so an error from hearing of it is thrown from the call that made the first change.
 
 Each Operation is a record of one thing that happened to the email: an insert, a removal, a move, a change of properties, or a Column's new width. One Command can produce several.
 

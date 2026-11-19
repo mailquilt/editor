@@ -11,6 +11,25 @@ const readFixture = (name: string) =>
     readFileSync(new URL(`fixtures/${name}.json`, import.meta.url), "utf-8")
   );
 
+/** The saved email, as version 1 of the format would have it. */
+const version1 = () => ({ ...readFixture("version-2"), version: 1 });
+
+/**
+ * A pretend version 0, which called `settings.backgroundColor`
+ * `settings.background`.
+ */
+const pretendVersion0 = () => {
+  const {
+    settings: { backgroundColor, ...settings },
+    ...email
+  } = readFixture("version-2");
+  return {
+    ...email,
+    settings: { ...settings, background: backgroundColor },
+    version: 0,
+  };
+};
+
 describe(loadDocument, () => {
   it("loads a saved email exactly as it was saved", () => {
     expect(loadDocument(readFixture("version-2"))).toStrictEqual({
@@ -30,15 +49,21 @@ describe(loadDocument, () => {
     expect(loadDocument(email)).toMatchObject({ ok: true });
   });
 
-  it.each(["#fff", "#F4F4F5", "rgb(1,2,3)", "rgb(1, 2, 3)", "rgba(1,2,3,0.5)"])(
-    "reads the background color %s",
-    (backgroundColor) => {
-      const email = readFixture("version-2");
-      email.settings.backgroundColor = backgroundColor;
+  // MJML's strict check, which the export runs, takes a channel up to 999, and
+  // CSS reads one past 255 as 255.
+  it.each([
+    "#fff",
+    "#F4F4F5",
+    "rgb(1,2,3)",
+    "rgb(1, 2, 3)",
+    "rgba(1,2,3,0.5)",
+    "rgb(999, 999, 999)",
+  ])("reads the background color %s", (backgroundColor) => {
+    const email = readFixture("version-2");
+    email.settings.backgroundColor = backgroundColor;
 
-      expect(loadDocument(email)).toMatchObject({ ok: true });
-    }
-  );
+    expect(loadDocument(email)).toMatchObject({ ok: true });
+  });
 
   it("keeps an email with no Rows, which deleting every Row leaves behind", () => {
     const email = readFixture("version-2");
@@ -124,6 +149,24 @@ describe("refusing a document", () => {
         return email;
       },
       /columns\.0\.props.*list/u,
+    ],
+    // The object schemas would read it as {}, as it has no keys of its own.
+    [
+      "Column props that are a Date, which JSON can't hold",
+      (email) => {
+        email.rows[0].columns[0].props = new Date(0);
+        return email;
+      },
+      /columns\.0\.props: Expected an object/u,
+    ],
+    // Copied as it's migrated, which mustn't make it a plain object.
+    [
+      "Row props in an older version that are a Date",
+      (email) => {
+        email.rows[0].props = new Date(0);
+        return { ...email, version: 1 };
+      },
+      /rows\.0\.props: Expected an object/u,
     ],
     [
       "Block props that are a list",
@@ -228,7 +271,7 @@ describe("refusing a document", () => {
         );
         return email;
       },
-      /"block-1".*constructor/u,
+      /blocks\.0\.props\.constructor: /u,
     ],
     [
       "a Block prop named __proto__",
@@ -243,7 +286,7 @@ describe("refusing a document", () => {
         );
         return email;
       },
-      /"block-1".*__proto__/u,
+      /blocks\.0\.props\.__proto__: /u,
     ],
     [
       "Block props that aren't an object",
@@ -251,7 +294,7 @@ describe("refusing a document", () => {
         email.rows[0].columns[0].blocks[0].props = "Hello";
         return email;
       },
-      /"block-1"/u,
+      /blocks\.0\.props: /u,
     ],
     [
       "a Block with no props",
@@ -320,7 +363,7 @@ describe("refusing a document", () => {
         email.rows[0].columns[0].blocks[0].type = "hologram";
         return email;
       },
-      /"block-1".*unknown type "hologram"/u,
+      /blocks\.0\.type: /u,
     ],
     [
       "Block props outside its schema",
@@ -328,7 +371,7 @@ describe("refusing a document", () => {
         email.rows[0].columns[0].blocks[0].props.colour = "red";
         return email;
       },
-      /"block-1".*colour/u,
+      /blocks\.0\.props\.colour: /u,
     ],
     [
       "text that isn't limited rich text",
@@ -336,7 +379,7 @@ describe("refusing a document", () => {
         email.rows[0].columns[0].blocks[0].props.content = "<p>Hello</p>";
         return email;
       },
-      /"block-1".*content/u,
+      /blocks\.0\.props\.content: /u,
     ],
     [
       "two Blocks with the same ID",
@@ -347,6 +390,14 @@ describe("refusing a document", () => {
         return email;
       },
       /duplicate id "block-1"/iu,
+    ],
+    [
+      "two Rows with the same ID",
+      (email) => {
+        email.rows[1].id = email.rows[0].id;
+        return email;
+      },
+      /duplicate id "row-1"/iu,
     ],
     [
       "a Row and a Column with the same ID",
@@ -366,7 +417,7 @@ describe("refusing a document", () => {
   });
 
   // Two, as no refusal writes to what it was given: one the schema refuses, and
-  // one refused only once every Block's props have been checked.
+  // one refused after the schema has read the whole email.
   const untouched = refused.filter(([name]) =>
     ["a document of another kind", "two Blocks with the same ID"].includes(name)
   );
@@ -419,8 +470,8 @@ describe("migrating an older document", () => {
   it("loads a saved older email as the current version", () => {
     const load = createDocumentLoader(1, { 0: renameBackground });
 
-    expect(load(readFixture("pretend-version-0"))).toStrictEqual({
-      document: readFixture("version-1"),
+    expect(load(pretendVersion0())).toStrictEqual({
+      document: version1(),
       ok: true,
     });
   });
@@ -428,9 +479,10 @@ describe("migrating an older document", () => {
   it("migrates one wrapped in a Proxy, as Vue's reactive() makes", () => {
     const load = createDocumentLoader(1, { 0: renameBackground });
 
-    expect(load(new Proxy(readFixture("pretend-version-0"), {}))).toStrictEqual(
-      { document: readFixture("version-1"), ok: true }
-    );
+    expect(load(new Proxy(pretendVersion0(), {}))).toStrictEqual({
+      document: version1(),
+      ok: true,
+    });
   });
 
   it("runs each migration in order, from the saved version", () => {
@@ -449,7 +501,7 @@ describe("migrating an older document", () => {
       }),
     });
 
-    expect(load(readFixture("pretend-version-0"))).toMatchObject({
+    expect(load(pretendVersion0())).toMatchObject({
       document: {
         settings: { language: "fr", preheader: "fr first" },
         version: 3,
@@ -466,7 +518,7 @@ describe("migrating an older document", () => {
       1: (document) => document,
     });
 
-    expect(load(readFixture("version-1"))).toMatchObject({
+    expect(load(version1())).toMatchObject({
       document: { version: 2 },
       ok: true,
     });
@@ -480,15 +532,15 @@ describe("migrating an older document", () => {
         return document;
       },
     });
-    const saved = readFixture("pretend-version-0");
+    const saved = pretendVersion0();
 
     expect(load(saved)).toMatchObject({ ok: true });
 
-    expect(saved).toStrictEqual(readFixture("pretend-version-0"));
+    expect(saved).toStrictEqual(pretendVersion0());
   });
 
   it("refuses a version it has no migration from", () => {
-    expect(loadDocument(readFixture("pretend-version-0"))).toStrictEqual({
+    expect(loadDocument(pretendVersion0())).toStrictEqual({
       ok: false,
       reason: expect.stringMatching(/no migration from version 0/iu),
     });
@@ -501,7 +553,7 @@ describe("migrating an older document", () => {
       },
     });
 
-    expect(load(readFixture("pretend-version-0"))).toStrictEqual({
+    expect(load(pretendVersion0())).toStrictEqual({
       ok: false,
       reason: expect.stringMatching(/version 0.*settings is missing/iu),
     });
@@ -510,7 +562,7 @@ describe("migrating an older document", () => {
   it("refuses an older document that isn't valid once migrated", () => {
     const load = createDocumentLoader(1, { 0: (document) => document });
 
-    expect(load(readFixture("pretend-version-0"))).toStrictEqual({
+    expect(load(pretendVersion0())).toStrictEqual({
       ok: false,
       reason: expect.stringMatching(/background/u),
     });
@@ -519,7 +571,7 @@ describe("migrating an older document", () => {
   it("refuses an older document that can't be copied, rather than throwing", () => {
     const load = createDocumentLoader(1, { 0: renameBackground });
     const saved = {
-      ...readFixture("pretend-version-0"),
+      ...pretendVersion0(),
       get settings() {
         throw new Error("Can't be read");
       },
@@ -593,6 +645,16 @@ describe(isSameDocument, () => {
       "a list with an extra empty entry",
       (email) => {
         email.rows.push(undefined);
+      },
+    ],
+    // Read as `object.__proto__`, it would be the prototype on the other side.
+    [
+      "a key named __proto__",
+      (email) => {
+        Object.defineProperty(email.rows[0].props, "__proto__", {
+          enumerable: true,
+          value: {},
+        });
       },
     ],
     [

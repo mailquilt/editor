@@ -10,15 +10,17 @@ import {
 } from "./rich-text.js";
 import {
   colorField,
-  colorSchema,
   INVALID_SOLID_COLOR,
   pixelField,
-  pixelSchema,
-  wholePixelsSchema,
-  solidColorSchema,
-} from "./settings.js";
-import type { SettingsField } from "./settings.js";
+} from "./settings-fields.js";
+import type { SettingsField } from "./settings-fields.js";
 import { parseProps } from "./validation.js";
+import {
+  colorSchema,
+  pixelSchema,
+  solidColorSchema,
+  wholePixelsSchema,
+} from "./value-schemas.js";
 
 const MAX_FONT_SIZE = 200;
 
@@ -43,7 +45,7 @@ const alignField = (fallback: string): SettingsField => ({
 });
 
 const fontSizeField = (fallback: number) =>
-  pixelField("fontSize", "Font size", fallback, MAX_FONT_SIZE);
+  pixelField("fontSize", "Font size", { fallback, max: MAX_FONT_SIZE });
 
 const LINK_FIELD: SettingsField = {
   description: "A URL, or a Merge Tag such as {{cta_url}}.",
@@ -54,14 +56,16 @@ const LINK_FIELD: SettingsField = {
 };
 
 /** One type of Block's part of the definition that lives in `core`. */
-interface BlockDefinition {
+interface BlockDefinition<
+  Props extends Record<string, unknown> = Record<string, unknown>,
+> {
   label: string;
-  defaults: Record<string, unknown>;
-  schema: v.GenericSchema<unknown, Record<string, unknown>>;
+  defaults: Props;
+  schema: v.GenericSchema<unknown, Props>;
   /** The settings panel's fields, whose defaults can depend on the properties. */
-  fields: (props: Record<string, unknown>) => readonly SettingsField[];
+  fields: (props: Props) => readonly SettingsField[];
   /** The Block's CSS, for both the canvas and the email output. */
-  styles: (props: Record<string, unknown>) => Record<string, string>;
+  styles: (props: Props) => Record<string, string>;
 }
 
 /** Text's line height, as a multiple of its font size. */
@@ -88,7 +92,7 @@ type TextBlockProps = v.InferOutput<typeof textBlockSchema>;
 
 const TEXT_FIELDS: readonly SettingsField[] = [
   alignField(TEXT_LOOK.align),
-  colorField(TEXT_LOOK.color),
+  colorField({ fallback: TEXT_LOOK.color }),
   fontSizeField(TEXT_LOOK.fontSize),
 ];
 
@@ -99,20 +103,17 @@ export const textBlock = {
   fields: () => TEXT_FIELDS,
   label: "Text",
   schema: textBlockSchema,
-  styles: (props) => {
-    const {
-      align = TEXT_LOOK.align,
-      color = TEXT_LOOK.color,
-      fontSize = TEXT_LOOK.fontSize,
-    } = props as TextBlockProps;
-    return {
-      color,
-      "font-size": `${fontSize}px`,
-      "line-height": lineHeightFor(fontSize),
-      "text-align": align,
-    };
-  },
-} satisfies BlockDefinition;
+  styles: ({
+    align = TEXT_LOOK.align,
+    color = TEXT_LOOK.color,
+    fontSize = TEXT_LOOK.fontSize,
+  }) => ({
+    color,
+    "font-size": `${fontSize}px`,
+    "line-height": lineHeightFor(fontSize),
+    "text-align": align,
+  }),
+} satisfies BlockDefinition<TextBlockProps>;
 
 /** What a Heading looks like until a person changes it. */
 const HEADING_LOOK = { align: "left", color: "#000000" } as const;
@@ -145,7 +146,7 @@ const headingFields = (fontSize: number): readonly SettingsField[] => [
     type: "select",
   },
   alignField(HEADING_LOOK.align),
-  colorField(HEADING_LOOK.color),
+  colorField({ fallback: HEADING_LOOK.color }),
   fontSizeField(fontSize),
 ];
 
@@ -161,25 +162,22 @@ const headingBlock = {
     content: { content: [{ type: "paragraph" }], type: "doc" },
     level: 1,
   } satisfies HeadingBlockProps,
-  fields: (props) => HEADING_FIELDS[(props as HeadingBlockProps).level],
+  fields: ({ level }) => HEADING_FIELDS[level],
   label: "Heading",
   schema: headingBlockSchema,
-  styles: (props) => {
-    const {
-      align = HEADING_LOOK.align,
-      color = HEADING_LOOK.color,
-      level,
-      fontSize = HEADING_FONT_SIZES[level],
-    } = props as HeadingBlockProps;
-    return {
-      color,
-      "font-size": `${fontSize}px`,
-      "font-weight": "700",
-      "line-height": lineHeightFor(fontSize),
-      "text-align": align,
-    };
-  },
-} satisfies BlockDefinition;
+  styles: ({
+    align = HEADING_LOOK.align,
+    color = HEADING_LOOK.color,
+    level,
+    fontSize = HEADING_FONT_SIZES[level],
+  }) => ({
+    color,
+    "font-size": `${fontSize}px`,
+    "font-weight": "700",
+    "line-height": lineHeightFor(fontSize),
+    "text-align": align,
+  }),
+} satisfies BlockDefinition<HeadingBlockProps>;
 
 /** What a Button looks like until a person changes it. */
 const BUTTON_LOOK = {
@@ -210,12 +208,13 @@ const BUTTON_FIELDS: readonly SettingsField[] = [
     type: "text",
   },
   LINK_FIELD,
-  colorField(BUTTON_LOOK.backgroundColor, {
+  colorField({
+    fallback: BUTTON_LOOK.backgroundColor,
     invalidMessage: INVALID_SOLID_COLOR,
     key: "backgroundColor",
     label: "Background color",
   }),
-  colorField(BUTTON_LOOK.color, { label: "Text color" }),
+  colorField({ fallback: BUTTON_LOOK.color, label: "Text color" }),
   alignField(BUTTON_LOOK.align),
 ];
 
@@ -224,19 +223,16 @@ const buttonBlock = {
   fields: () => BUTTON_FIELDS,
   label: "Button",
   schema: buttonBlockSchema,
-  styles: (props) => {
-    const {
-      align = BUTTON_LOOK.align,
-      backgroundColor = BUTTON_LOOK.backgroundColor,
-      color = BUTTON_LOOK.color,
-    } = props as ButtonBlockProps;
-    return {
-      "background-color": backgroundColor,
-      color,
-      "text-align": align,
-    };
-  },
-} satisfies BlockDefinition;
+  styles: ({
+    align = BUTTON_LOOK.align,
+    backgroundColor = BUTTON_LOOK.backgroundColor,
+    color = BUTTON_LOOK.color,
+  }) => ({
+    "background-color": backgroundColor,
+    color,
+    "text-align": align,
+  }),
+} satisfies BlockDefinition<ButtonBlockProps>;
 
 const hasAltText = (alt: unknown) =>
   typeof alt === "string" && alt.trim() !== "";
@@ -296,11 +292,9 @@ const imageBlock = {
     hasAltText(alt) ? IMAGE_FIELDS : IMAGE_FIELDS_WITHOUT_ALT,
   label: "Image",
   schema: imageBlockSchema,
-  styles: (props): Record<string, string> => {
-    const { width } = props as ImageBlockProps;
-    return width === undefined ? {} : { width: `${width}px` };
-  },
-} satisfies BlockDefinition;
+  styles: ({ width }): Record<string, string> =>
+    width === undefined ? {} : { width: `${width}px` },
+} satisfies BlockDefinition<ImageBlockProps>;
 
 /** What a Divider looks like until a person changes it. */
 const DIVIDER_LOOK = { color: "#d4d4d8", thickness: 1 } as const;
@@ -315,13 +309,11 @@ const dividerBlockSchema = v.strictObject({
 type DividerBlockProps = v.InferOutput<typeof dividerBlockSchema>;
 
 const DIVIDER_FIELDS: readonly SettingsField[] = [
-  colorField(DIVIDER_LOOK.color),
-  pixelField(
-    "thickness",
-    "Thickness",
-    DIVIDER_LOOK.thickness,
-    MAX_DIVIDER_THICKNESS
-  ),
+  colorField({ fallback: DIVIDER_LOOK.color }),
+  pixelField("thickness", "Thickness", {
+    fallback: DIVIDER_LOOK.thickness,
+    max: MAX_DIVIDER_THICKNESS,
+  }),
 ];
 
 const dividerBlock = {
@@ -329,12 +321,14 @@ const dividerBlock = {
   fields: () => DIVIDER_FIELDS,
   label: "Divider",
   schema: dividerBlockSchema,
-  styles: (props) => {
-    const { color = DIVIDER_LOOK.color, thickness = DIVIDER_LOOK.thickness } =
-      props as DividerBlockProps;
-    return { "border-color": color, "border-width": `${thickness}px` };
-  },
-} satisfies BlockDefinition;
+  styles: ({
+    color = DIVIDER_LOOK.color,
+    thickness = DIVIDER_LOOK.thickness,
+  }) => ({
+    "border-color": color,
+    "border-width": `${thickness}px`,
+  }),
+} satisfies BlockDefinition<DividerBlockProps>;
 
 const DEFAULT_SPACER_HEIGHT = 24;
 
@@ -347,7 +341,10 @@ const spacerBlockSchema = v.strictObject({
 type SpacerBlockProps = v.InferOutput<typeof spacerBlockSchema>;
 
 const SPACER_FIELDS: readonly SettingsField[] = [
-  pixelField("height", "Height", DEFAULT_SPACER_HEIGHT, MAX_SPACER_HEIGHT),
+  pixelField("height", "Height", {
+    fallback: DEFAULT_SPACER_HEIGHT,
+    max: MAX_SPACER_HEIGHT,
+  }),
 ];
 
 const spacerBlock = {
@@ -355,11 +352,8 @@ const spacerBlock = {
   fields: () => SPACER_FIELDS,
   label: "Spacer",
   schema: spacerBlockSchema,
-  styles: (props) => {
-    const { height = DEFAULT_SPACER_HEIGHT } = props as SpacerBlockProps;
-    return { height: `${height}px` };
-  },
-} satisfies BlockDefinition;
+  styles: ({ height = DEFAULT_SPACER_HEIGHT }) => ({ height: `${height}px` }),
+} satisfies BlockDefinition<SpacerBlockProps>;
 
 /** Each type of Block, in the order the palette shows them. */
 const BLOCKS = [
@@ -371,7 +365,14 @@ const BLOCKS = [
   ["spacer", spacerBlock],
 ] as const;
 
-export const blockDefinitions = new Map<string, BlockDefinition>(BLOCKS);
+/**
+ * Each type's definition, found by its type. Each one takes only its own type's
+ * props, which is safe as they're checked against its schema before they're
+ * used, as a loaded email's and a Command's are.
+ */
+export const blockDefinitions = new Map(
+  BLOCKS as unknown as readonly (readonly [string, BlockDefinition])[]
+);
 
 /**
  * Each type of Block's props, as its schema checks them.

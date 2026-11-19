@@ -38,7 +38,7 @@ describe("limited rich text", () => {
     [
       "a mark it doesn't know",
       { marks: [{ type: "strike" }], text: "x" },
-      /marks\.0\.type.*"strike"/u,
+      /marks\.0\.type: /u,
     ],
     [
       "a mark with attributes it doesn't know",
@@ -76,7 +76,7 @@ describe("limited rich text", () => {
 
     expect(loadDocument(email)).toStrictEqual({
       ok: false,
-      reason: expect.stringMatching(/content\.0\.type.*"image"/u),
+      reason: expect.stringMatching(/content\.0\.content\.0\.type: /u),
     });
   });
 
@@ -94,9 +94,7 @@ describe("limited rich text", () => {
 
     expect(loadDocument(email)).toStrictEqual({
       ok: false,
-      reason: expect.stringMatching(
-        /Expected "paragraph" but received "heading"/u
-      ),
+      reason: expect.stringMatching(/props\.content\.content\.0\.type: /u),
     });
   });
 
@@ -148,7 +146,7 @@ describe(isAllowedLinkHref, () => {
     "//example.com",
     "/relative",
     "",
-  ])("rejects %j", (href) => {
+  ])("refuses %j", (href) => {
     expect(isAllowedLinkHref(href)).toBeFalsy();
   });
 });
