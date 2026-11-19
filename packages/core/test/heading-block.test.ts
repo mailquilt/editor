@@ -101,18 +101,22 @@ describe("Heading Block", () => {
   });
 
   it.each([
-    [1, "32px"],
-    [2, "24px"],
-    [3, "20px"],
-  ])("sizes level %i as %s until a font size is set", (level, fontSize) => {
-    const props = { content: emptyText, level };
+    [1, "32px", "48px"],
+    [2, "24px", "36px"],
+    [3, "20px", "30px"],
+  ])(
+    "sizes level %i as %s until a font size is set",
+    (level, fontSize, lineHeight) => {
+      const props = { content: emptyText, level };
 
-    expect(blockStyles({ props, type: "heading" })).toStrictEqual({
-      color: "#000000",
-      "font-size": fontSize,
-      "font-weight": "700",
-      "text-align": "left",
-    });
-    expect(`${fontSizeField(level).default}px`).toBe(fontSize);
-  });
+      expect(blockStyles({ props, type: "heading" })).toStrictEqual({
+        color: "#000000",
+        "font-size": fontSize,
+        "font-weight": "700",
+        "line-height": lineHeight,
+        "text-align": "left",
+      });
+      expect(`${fontSizeField(level).default}px`).toBe(fontSize);
+    }
+  );
 });

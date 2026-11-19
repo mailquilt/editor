@@ -47,7 +47,7 @@
   "dependencies": {
     "@mailquilt/core": "workspace:*",
     "cheerio": "^1.2.0",
-    "mjml-browser": "^5.4.1"
+    "mjml-browser": "5.4.1"
   },
   "devDependencies": {
     "@repo/typescript-config": "workspace:*",

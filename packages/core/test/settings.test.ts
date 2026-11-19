@@ -385,6 +385,7 @@ describe(blockStyles, () => {
     ).toStrictEqual({
       color: "#000000",
       "font-size": "16px",
+      "line-height": "24px",
       "text-align": "left",
     });
   });

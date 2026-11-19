@@ -64,6 +64,16 @@ interface BlockDefinition {
   styles: (props: Record<string, unknown>) => Record<string, string>;
 }
 
+/** Text's line height, as a multiple of its font size. */
+const LINE_HEIGHT = 1.5;
+
+/**
+ * A text's line height in pixels, rounded up. Classic Outlook draws a thin line
+ * under text whose line height is 1.5, and squeezes its lines (#95).
+ */
+const lineHeightFor = (fontSize: number) =>
+  `${Math.ceil(fontSize * LINE_HEIGHT)}px`;
+
 /** What a Text Block looks like until a person changes it. */
 const TEXT_LOOK = { align: "left", color: "#000000", fontSize: 16 } as const;
 
@@ -98,6 +108,7 @@ export const textBlock = {
     return {
       color,
       "font-size": `${fontSize}px`,
+      "line-height": lineHeightFor(fontSize),
       "text-align": align,
     };
   },
@@ -164,6 +175,7 @@ const headingBlock = {
       color,
       "font-size": `${fontSize}px`,
       "font-weight": "700",
+      "line-height": lineHeightFor(fontSize),
       "text-align": align,
     };
   },
@@ -405,7 +417,7 @@ export const validateProps = (
 export const EMAIL_LOOK = {
   blockPadding: "16px",
   fontSize: `${TEXT_LOOK.fontSize}px`,
-  lineHeight: "1.5",
+  lineHeight: String(LINE_HEIGHT),
 } as const;
 
 /**
