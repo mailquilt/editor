@@ -158,14 +158,23 @@ const cursorAfterChange = (
 /** Marks a focus change: true when the text gains focus, false when it loses it. */
 const FOCUSED = "mailquilt:focused";
 
-/** Pasted or dropped text with no bold, for a Block that can't have it. */
-const withoutBold = (fragment: Fragment, bold: MarkType): Fragment =>
+/**
+ * Pasted or dropped text with each tab as a space, and no bold for a Block that
+ * can't have it. The canvas would show a tab at a tab stop, which no email
+ * client can draw, and the export as one space.
+ */
+const asPasted = (fragment: Fragment, bold?: MarkType): Fragment =>
   Fragment.from(
-    fragment.content.map((node) =>
-      node.isLeaf
-        ? node.mark(bold.removeFromSet(node.marks))
-        : node.copy(withoutBold(node.content, bold))
-    )
+    fragment.content.map((node) => {
+      if (!node.isLeaf) {
+        return node.copy(asPasted(node.content, bold));
+      }
+      const marks = bold ? bold.removeFromSet(node.marks) : node.marks;
+      const text = node.text ?? "";
+      return node.isText && text.includes("\t")
+        ? node.type.schema.text(text.replaceAll("\t", " "), marks)
+        : node.mark(marks);
+    })
   );
 
 /**
@@ -302,13 +311,11 @@ export const createTextBlockView = ({
       ],
     }),
     transformPasted: (slice) =>
-      canBold
-        ? slice
-        : new Slice(
-            withoutBold(slice.content, schema.marks.bold),
-            slice.openStart,
-            slice.openEnd
-          ),
+      new Slice(
+        asPasted(slice.content, canBold ? undefined : schema.marks.bold),
+        slice.openStart,
+        slice.openEnd
+      ),
   });
 
   /** Runs a command on the text, then puts focus back in it. */

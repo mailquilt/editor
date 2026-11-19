@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { BLOCK_TYPES, createEditor } from "@mailquilt/core";
 import type { Block, BlocksDocument } from "@mailquilt/core";
@@ -102,6 +103,27 @@ describe(renderEmail, () => {
 
     expect(widths).toStrictEqual([199.64, 199.64, 199.7]);
     expect(widths.reduce((sum, width) => sum + width)).toBeLessThanOrEqual(599);
+  });
+
+  it("adds no width to a preheader or Button label that reads like MJML's Column markup", async () => {
+    const markup =
+      'class="mj-column-per-50 mj-outlook-group-fix mq-column" style="width:100%;';
+    const email = emailWithColumns(
+      { texts: ["One"], width: 50 },
+      { texts: ["Two"], width: 50 }
+    );
+    email.settings.preheader = markup;
+    email.rows[0]?.columns[0]?.blocks.push({
+      id: "button-1",
+      props: { label: markup },
+      type: "button",
+    });
+
+    const html = await renderEmail(email);
+
+    expect(html.match(/max-width:300px;/gu)).toHaveLength(2);
+    // The preheader as typed. The label has break points, as text does.
+    expect(html).toContain(`>${markup}`);
   });
 
   it("matches the saved HTML for an email with every setting", async () => {
@@ -292,13 +314,15 @@ describe(renderEmail, () => {
     );
   });
 
-  it("keeps a Merge Tag whole in a long word, so it's still filled in", async () => {
+  it("keeps a Merge Tag whole in a long word, escaped, so it's still filled in", async () => {
     const html = await renderEmail(
-      emailWithText("https://example.com/{{unsubscribe_token.value}}/x")
+      emailWithText(
+        "https://example.com/{{unsubscribe_token.value}}/x and files/{{a&b<c>}}/welcome_v2.json"
+      )
     );
 
     expect(html).toContain(
-      '<a href="https://example.com/{{unsubscribe_token.value}}/x" target="_blank" style="color:#000000;text-decoration:underline">https://&#8203;example.&#8203;com/&#8203;{{unsubscribe_token.value}}/&#8203;x</a>'
+      '<a href="https://example.com/{{unsubscribe_token.value}}/x" target="_blank" style="color:#000000;text-decoration:underline">https://&#8203;example.&#8203;com/&#8203;{{unsubscribe_token.value}}/&#8203;x</a> and files/&#8203;{{a&amp;b&lt;c&gt;}}/&#8203;welcome_&#8203;v2.&#8203;json</p>'
     );
   });
 
@@ -690,17 +714,31 @@ describe(renderEmail, () => {
     async (blockType) => {
       const editor = createEditor({ document: emailWithText("") });
       const columnId = editor.getDocument().rows[0]?.columns[0]?.id ?? "";
-      editor.apply({ blockType, columnId, index: 0, type: "insertBlock" });
 
+      expect(
+        editor.apply({ blockType, columnId, index: 0, type: "insertBlock" })
+      ).toMatchObject({ ok: true });
       await expect(renderEmail(editor.getDocument())).resolves.toContain(
         "<!doctype html>"
       );
     }
   );
 
-  it("runs in plain Node with no DOM, editor or ProseMirror code loaded", () => {
-    // Runs the built package in its own process, because the test runner's own
-    // modules would hide what the package actually loads.
+  it("runs in plain Node with no DOM, editor or ProseMirror code loaded", async () => {
+    // Runs the package, built as it's published, in its own process, because
+    // the test runner's own modules would hide what the package actually loads.
+    // It's built here, so it's never an older build, and into a folder of its
+    // own, so it can't change one another task is reading.
+    const outDir = fileURLToPath(
+      new URL("../node_modules/.cache/plain-node", import.meta.url)
+    );
+    const { build } = await import("tsdown");
+    await build({
+      cwd: fileURLToPath(new URL("..", import.meta.url)),
+      dts: false,
+      logLevel: "silent",
+      outDir,
+    });
     const script = `
       import { registerHooks } from "node:module";
       const loaded = [];
@@ -711,7 +749,7 @@ describe(renderEmail, () => {
           return result;
         },
       });
-      const { renderEmail } = await import("@mailquilt/renderer");
+      const { renderEmail } = await import(${JSON.stringify(pathToFileURL(`${outDir}/index.js`).href)});
       const html = await renderEmail(${JSON.stringify(emailWithText("Hi {{first_name}}"))});
       console.log(JSON.stringify({
         hasDom: typeof document !== "undefined" || typeof window !== "undefined",

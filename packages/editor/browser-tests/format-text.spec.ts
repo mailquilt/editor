@@ -10,6 +10,7 @@ import {
   latestDocument,
   linkUrlField,
   pasteHtml,
+  pasteText,
   redoByKey,
   settle,
   stopClock,
@@ -981,6 +982,27 @@ test.describe("copy and paste", () => {
     expect(text).not.toContain("alert");
     await expect(firstTextBlock(page).locator("img")).toHaveCount(0);
     expect(await exportHtml(page)).not.toContain("color:red");
+  });
+
+  // A tab would show at a tab stop on the canvas, which no email client can
+  // draw, and as one space in the export.
+  test("a pasted tab is a space, as the export shows it", async ({ page }) => {
+    await selectAllInBlock(page);
+    await pasteText(firstTextBlock(page), "Name\tEmail");
+
+    await expect
+      .poll(() => savedInline(page))
+      .toStrictEqual([{ text: "Name Email", type: "text" }]);
+
+    await selectAll(page);
+    await pasteHtml(
+      firstTextBlock(page),
+      `<div style="white-space:pre">\tcode</div>`
+    );
+
+    await expect
+      .poll(() => savedInline(page))
+      .toStrictEqual([{ text: " code", type: "text" }]);
   });
 
   test("a pasted executable link keeps its text but not the link", async ({

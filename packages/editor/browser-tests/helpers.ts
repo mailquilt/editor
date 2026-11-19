@@ -313,20 +313,31 @@ export const copySelection = (target: Locator) =>
     };
   });
 
+/** Pastes into some text, as a paste of `type` from another app would. */
+const paste = (target: Locator, type: string, data: string) =>
+  target.evaluate(
+    (element, { format, value }) => {
+      const clipboardData = new DataTransfer();
+      clipboardData.setData(format, value);
+      // Not a ClipboardEvent, whose constructor ignores this data in Firefox.
+      const event = new Event("paste", {
+        bubbles: true,
+        cancelable: true,
+        composed: true,
+      });
+      Object.defineProperty(event, "clipboardData", { value: clipboardData });
+      element.dispatchEvent(event);
+    },
+    { format: type, value: data }
+  );
+
 /** Pastes HTML into some text, as a paste from another app would. */
 export const pasteHtml = (target: Locator, html: string) =>
-  target.evaluate((element, value) => {
-    const clipboardData = new DataTransfer();
-    clipboardData.setData("text/html", value);
-    // Not a ClipboardEvent, whose constructor ignores this data in Firefox.
-    const event = new Event("paste", {
-      bubbles: true,
-      cancelable: true,
-      composed: true,
-    });
-    Object.defineProperty(event, "clipboardData", { value: clipboardData });
-    element.dispatchEvent(event);
-  }, html);
+  paste(target, "text/html", html);
+
+/** Pastes plain text into some text, as a paste from a text editor would. */
+export const pasteText = (target: Locator, text: string) =>
+  paste(target, "text/plain", text);
 
 export const blockTool = (page: Page, name: string) =>
   blockTools(page).getByRole("button", { exact: true, name });

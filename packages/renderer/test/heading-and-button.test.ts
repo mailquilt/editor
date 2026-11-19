@@ -147,6 +147,21 @@ describe("a Button Block", () => {
     expect(html).toMatch(/>\s*Hi \{\{first_name\}\}\s*<\/a>/u);
   });
 
+  it("lets a label's word of 20 or more characters wrap, in clients that won't break it", async () => {
+    const html = await renderEmail(
+      emailWith(
+        button({
+          href: "https://x.test",
+          label: "Download welcome_guide_v2.pdf now",
+        })
+      )
+    );
+
+    expect(html).toMatch(
+      />\s*Download welcome_&#8203;guide_&#8203;v2.&#8203;pdf now\s*<\/a>/u
+    );
+  });
+
   it("keeps a label plain text, whatever it holds", async () => {
     const html = await renderEmail(
       emailWith(
@@ -160,7 +175,7 @@ describe("a Button Block", () => {
     expect(html).not.toContain("<script>");
     expect(html).not.toContain("<b>");
     expect(html).toContain(
-      "&lt;/mj-button&gt;&lt;script&gt;alert(1)&lt;/script&gt;&lt;b&gt;&amp;"
+      "&lt;/&#8203;mj-&#8203;button&gt;&lt;script&gt;alert(1)&lt;/&#8203;script&gt;&lt;b&gt;&amp;"
     );
   });
 
