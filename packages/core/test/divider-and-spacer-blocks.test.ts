@@ -48,7 +48,7 @@ describe("Divider Block", () => {
   it.each([
     ["a color that isn't hex or rgb()", { color: "red" }, /color/u],
     ["a thickness over the limit", { thickness: 101 }, /thickness/u],
-  ])("rejects %s", (_name, props, reason) => {
+  ])("refuses %s", (_name, props, reason) => {
     expect(setProps("divider", props).result).toStrictEqual({
       code: "invalidProps",
       ok: false,
@@ -72,7 +72,7 @@ describe("Spacer Block", () => {
     expect(propsOf(document)).toStrictEqual({ height: 40 });
   });
 
-  it("rejects a height over the limit", () => {
+  it("refuses a height over the limit", () => {
     expect(setProps("spacer", { height: 1001 }).result).toStrictEqual({
       code: "invalidProps",
       ok: false,

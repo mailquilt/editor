@@ -508,7 +508,7 @@ export const createSettingsDrafts = (host: DraftsHost) => {
     const value = fieldValue(field, typed);
     host.onEnter(value);
     const result = host.apply(section.command({ [field.key]: value }));
-    if (result?.ok || result?.unchanged) {
+    if (result?.ok || result?.code === "unchanged") {
       drafts.delete(key);
     } else {
       const refusals = drafts.get(key)?.refusals ?? 0;

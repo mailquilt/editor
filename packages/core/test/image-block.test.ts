@@ -99,7 +99,7 @@ describe("Image Block", () => {
     });
   });
 
-  it("rejects a width of 0", () => {
+  it("refuses a width of 0", () => {
     expect(setProps({ width: 0 }).result).toStrictEqual({
       code: "invalidProps",
       ok: false,

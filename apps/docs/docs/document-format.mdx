@@ -165,7 +165,7 @@ An ID is a string that isn't empty. Every Row, Column and Block in a document ne
 
 ### Colors
 
-A color is written as `#rgb`, `#rrggbb`, `rgb()` or `rgba()`, such as `#f00`, `#ff0000`, `rgb(255, 0, 0)` or `rgba(255, 0, 0, 0.5)`. Named colors such as `red` are refused. These are the formats MJML accepts, so every email that opens can also be exported.
+A color is written as `#rgb`, `#rrggbb`, `rgb()` or `rgba()`, such as `#f00`, `#ff0000`, `rgb(255, 0, 0)` or `rgba(255, 0, 0, 0.5)`. Named colors such as `red` are refused. These are the formats MJML accepts, so every email that opens can also be exported. That means at most one space after each comma, and an alpha with its leading 0, as in `0.5` rather than `.5`. A channel can have up to three digits, and one past 255 shows as 255.
 
 ### Links
 

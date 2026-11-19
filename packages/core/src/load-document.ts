@@ -1,9 +1,10 @@
 import * as v from "valibot";
 
-import { validateProps } from "./blocks.js";
+import { blockDefinitions } from "./blocks.js";
 import { DOCUMENT_VERSION } from "./document.js";
 import type { BlocksDocument } from "./document.js";
-import { emailSettingsSchema, rowPropsSchema } from "./settings.js";
+import { emailSettingsSchema } from "./email-settings.js";
+import { rowPropsSchema } from "./row-settings.js";
 import { describeIssues } from "./validation.js";
 
 export type LoadResult =
@@ -24,10 +25,32 @@ const COLUMN_WIDTH_TOLERANCE = 1e-6;
 
 const idSchema = v.pipe(v.string(), v.nonEmpty());
 
-// The object schemas let an array through, and would load `[]` as `{}`.
-const notAList = v.check(
-  (input: unknown) => !Array.isArray(input),
-  "Expected an object, not a list"
+/**
+ * An object JSON can hold, so not a list, a Date or a Map. A Proxy of one, as
+ * Vue's reactive() makes, is one too.
+ */
+const isPlainObject = (value: unknown) =>
+  Object.prototype.toString.call(value) === "[object Object]";
+
+// The object schemas let any object through, so props whose keys are all
+// optional would load a list, a Date or a Map as `{}`. Anything that isn't an
+// object is left for them to refuse.
+const plainObject = v.check(
+  (input: unknown) =>
+    typeof input !== "object" || input === null || isPlainObject(input),
+  "Expected an object, not a list or another kind of object"
+);
+
+// Each type of Block's props are checked by its own schema, found by its type.
+const blockSchema = v.variant(
+  "type",
+  [...blockDefinitions].map(([type, { schema }]) =>
+    v.strictObject({
+      id: idSchema,
+      props: v.pipe(v.unknown(), plainObject, schema),
+      type: v.literal(type),
+    })
+  )
 );
 
 // Strict at every level, so a field this version doesn't know is refused rather
@@ -39,17 +62,9 @@ const documentSchema = v.strictObject({
       columns: v.pipe(
         v.array(
           v.strictObject({
-            blocks: v.array(
-              v.strictObject({
-                id: idSchema,
-                // Checked by validateProps, because v.record would silently drop
-                // a key such as "constructor".
-                props: v.pipe(v.unknown(), notAList),
-                type: v.string(),
-              })
-            ),
+            blocks: v.array(blockSchema),
             id: idSchema,
-            props: v.pipe(v.unknown(), notAList, v.strictObject({})),
+            props: v.pipe(v.unknown(), plainObject, v.strictObject({})),
             width: v.pipe(v.number(), v.minValue(1), v.maxValue(100)),
           })
         ),
@@ -57,7 +72,7 @@ const documentSchema = v.strictObject({
         v.maxLength(4)
       ),
       id: idSchema,
-      props: v.pipe(v.unknown(), notAList, rowPropsSchema),
+      props: v.pipe(v.unknown(), plainObject, rowPropsSchema),
     })
   ),
   settings: emailSettingsSchema,
@@ -66,7 +81,7 @@ const documentSchema = v.strictObject({
 
 type ParsedDocument = v.InferOutput<typeof documentSchema>;
 
-/** What the schema can't see: Block props, and rules across several items. */
+/** What the schema can't see: rules across several items. */
 const findProblem = ({ rows }: ParsedDocument) => {
   const ids = new Set<string>();
   const isRepeat = (id: string) => {
@@ -91,13 +106,6 @@ const findProblem = ({ rows }: ParsedDocument) => {
         if (isRepeat(block.id)) {
           return `Duplicate ID "${block.id}"`;
         }
-        const validated = validateProps(block, block.props);
-        if (!validated.ok) {
-          return validated.reason;
-        }
-        // The schema passes props through, so this also stops them being shared
-        // with the document the host passed in.
-        block.props = validated.props;
       }
     }
   }
@@ -105,18 +113,20 @@ const findProblem = ({ rows }: ParsedDocument) => {
 
 /**
  * A copy of a document, read through any Proxy, as Vue's reactive() makes,
- * which structuredClone would refuse. Each list is copied as a list and every
- * other object as a plain object, so the schema refuses one, such as a Date,
- * that JSON couldn't have saved. A function stays as it is, for the schema to
- * refuse too.
+ * which structuredClone would refuse. Lists and plain objects are copied. Any
+ * other object, such as a Date that JSON couldn't have saved, or a function,
+ * stays as it is, for the schema to refuse.
  */
 const copyData = (value: unknown): unknown => {
   if (Array.isArray(value)) {
     return value.map((item) => copyData(item));
   }
-  return typeof value === "object" && value !== null
+  return isPlainObject(value)
     ? Object.fromEntries(
-        Object.entries(value).map(([key, item]) => [key, copyData(item)])
+        Object.entries(value as object).map(([key, item]) => [
+          key,
+          copyData(item),
+        ])
       )
     : value;
 };
@@ -138,8 +148,7 @@ const migrate = (
     }
     try {
       document = {
-        // A copy, so that a migration can't change the host's document. The
-        // copy of an object that isn't a list is a plain object.
+        // A copy, so that a migration can't change the host's document.
         ...migration(copyData(document) as Record<string, unknown>),
         version: version + 1,
       };
@@ -184,7 +193,7 @@ export const createDocumentLoader =
     const problem = findProblem(parsed.output);
     return problem
       ? { ok: false, reason: problem }
-      : { document: parsed.output as BlocksDocument, ok: true };
+      : { document: parsed.output, ok: true };
   };
 
 /**
@@ -226,32 +235,3 @@ const fromVersion1 = (document: Record<string, unknown>) => {
 export const loadDocument = createDocumentLoader(DOCUMENT_VERSION, {
   1: fromVersion1,
 });
-
-/**
- * Compares content, not identity or key order, because a host may clone a
- * document or get it back from a store that reorders keys. A field set to
- * undefined counts as missing, because JSON drops it. List entries always count.
- * Two values that each hold a cycle, which JSON can't, overflow the stack.
- */
-export const isSameDocument = (a: unknown, b: unknown): boolean => {
-  if (a === b) {
-    return true;
-  }
-  if (
-    typeof a !== "object" ||
-    typeof b !== "object" ||
-    a === null ||
-    b === null ||
-    Array.isArray(a) !== Array.isArray(b)
-  ) {
-    return false;
-  }
-  if (Array.isArray(a) && a.length !== (b as unknown[]).length) {
-    return false;
-  }
-  const first = a as Record<string, unknown>;
-  const second = b as Record<string, unknown>;
-  return Object.keys({ ...first, ...second }).every((key) =>
-    isSameDocument(first[key], second[key])
-  );
-};

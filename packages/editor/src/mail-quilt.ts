@@ -466,7 +466,7 @@ export class MailQuilt extends LitElement {
     const could = { redo: editor.canRedo(), undo: editor.canUndo() };
     const result = editor.apply(command, { mergeKey });
     if (!result.ok) {
-      if (!(result.unchanged || refusable)) {
+      if (!(result.code === "unchanged" || refusable)) {
         // The controls only offer what's allowed, so this is a bug here.
         console.error(`<mail-quilt> rejected a Command: ${result.reason}`);
       }

@@ -75,7 +75,7 @@ describe("Heading Block", () => {
   it.each([
     ["level 4", { level: 4 }, /level/u],
     ["no level", { level: null }, /level/u],
-  ])("rejects %s", (_name, props, reason) => {
+  ])("refuses %s", (_name, props, reason) => {
     const { editor } = setup();
     const before = editor.getDocument();
 
@@ -96,7 +96,7 @@ describe("Heading Block", () => {
   it("refuses a saved email with no content", () => {
     expect(loadDocument(withHeading({ level: 1 }))).toStrictEqual({
       ok: false,
-      reason: expect.stringContaining('Block "heading-1"'),
+      reason: expect.stringMatching(/blocks\.0\.props\.content: /u),
     });
   });
 

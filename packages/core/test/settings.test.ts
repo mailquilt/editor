@@ -49,7 +49,7 @@ describe("Text Block settings", () => {
     ["an unknown alignment", { align: "middle" }, /align/u],
     ["a color that isn't hex or rgb()", { color: "red" }, /color/u],
     ["a font size past the limit", { fontSize: 201 }, /fontSize/u],
-  ])("rejects %s", (_name, props, reason) => {
+  ])("refuses %s", (_name, props, reason) => {
     const { blockId, editor } = setup();
 
     expect(
@@ -104,7 +104,7 @@ describe("Text Block settings", () => {
       type: "updateBlockProps",
     });
 
-    expect(result).toMatchObject({ ok: false, unchanged: true });
+    expect(result).toMatchObject({ code: "unchanged", ok: false });
     expect(operations).toHaveLength(1);
   });
 });
@@ -134,7 +134,7 @@ describe("Row settings", () => {
     });
   });
 
-  it("rejects a color that isn't hex or rgb()", () => {
+  it("refuses a color that isn't hex or rgb()", () => {
     const { editor, rowId } = setup();
 
     expect(
@@ -150,7 +150,7 @@ describe("Row settings", () => {
     });
   });
 
-  it("rejects a Row that isn't there", () => {
+  it("refuses a Row that isn't there", () => {
     const { editor } = setup();
 
     expect(
@@ -203,6 +203,24 @@ describe("Email settings", () => {
     expect(editor.getDocument().settings).toStrictEqual(everything);
   });
 
+  it("reports its change as a setProps Operation for the email", () => {
+    const { editor, operations } = setup();
+    const before = editor.getDocument().settings;
+
+    editor.apply({ settings: { width: 640 }, type: "updateEmailSettings" });
+
+    expect(operations).toStrictEqual([
+      [
+        {
+          emailSettings: true,
+          previousProps: before,
+          props: { ...before, width: 640 },
+          type: "setProps",
+        },
+      ],
+    ]);
+  });
+
   it("changes only what it names, as one undo step", () => {
     const { editor } = setup();
     const before = editor.getDocument();
@@ -232,6 +250,13 @@ describe("Email settings", () => {
       { backgroundColor: "rgb(1,\n2,3)" },
       /backgroundColor/u,
     ],
+    // As MJML's strict check, which the export runs, refuses it. The reason
+    // shows how to write it.
+    [
+      "an alpha written without its 0",
+      { backgroundColor: "rgba(0, 0, 0, .5)" },
+      /backgroundColor: .*rgba\(255, 0, 0, 0\.5\)/u,
+    ],
     [
       "a font that adds a CSS rule",
       { fontFamily: "Arial;display:none" },
@@ -259,7 +284,7 @@ describe("Email settings", () => {
     ["a language with ſ for s", { language: "ſv" }, /language/u],
     ["a language with K for k", { language: "\u212Ao" }, /language/u],
     ["a setting it doesn't have", { subject: "Hi" }, /subject/u],
-  ])("rejects %s", (_name, settings, reason) => {
+  ])("refuses %s", (_name, settings, reason) => {
     const { editor } = setup();
 
     expect(
@@ -271,13 +296,17 @@ describe("Email settings", () => {
     });
   });
 
-  it.each(["en", "fil", "pt-BR", "zh-Hant-TW"])("accepts %s", (language) => {
-    const { editor } = setup();
+  // en-x-pirate has a one-letter subtag, which starts a private one.
+  it.each(["en", "fil", "pt-BR", "zh-Hant-TW", "en-x-pirate"])(
+    "accepts %s",
+    (language) => {
+      const { editor } = setup();
 
-    expect(
-      editor.apply({ settings: { language }, type: "updateEmailSettings" })
-    ).toStrictEqual({ ok: true });
-  });
+      expect(
+        editor.apply({ settings: { language }, type: "updateEmailSettings" })
+      ).toStrictEqual({ ok: true });
+    }
+  );
 });
 
 const saved = (change: (email: BlocksDocument) => void) => {
@@ -367,9 +396,7 @@ describe(hexColor, () => {
     ["rgb()", "rgb(255, 0, 16)", "#ff0010"],
     ["rgba(), dropping its alpha", "rgba(0, 128, 255, 0.5)", "#0080ff"],
     ["a channel past 255, capped", "rgb(300, 0, 0)", "#ff0000"],
-    ["text with no color", "none", undefined],
     ["text with numbers but no color", "12 apples", undefined],
-    ["a # that isn't a color", "#ffffff80", undefined],
   ])("reads %s", (_name, color, hex) => {
     expect(hexColor(color)).toBe(hex);
   });

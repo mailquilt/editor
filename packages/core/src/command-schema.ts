@@ -25,7 +25,7 @@ const changesSchema = v.pipe(
   )
 );
 
-/** A request to change an email. It can be rejected. */
+/** A request to change an email. It can be refused. */
 export type Command =
   | {
       type: "updateBlockProps";

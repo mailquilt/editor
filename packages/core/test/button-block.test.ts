@@ -69,7 +69,7 @@ describe("Button Block", () => {
       /backgroundColor/u,
     ],
     ["a text color that isn't hex or rgb()", { color: "red" }, /color/u],
-  ])("rejects %s", (_name, props, reason) => {
+  ])("refuses %s", (_name, props, reason) => {
     const { editor } = setup();
 
     expect(

@@ -87,13 +87,21 @@ export const findBlock = (document: BlocksDocument, blockId: string) =>
 export const findColumn = (document: BlocksDocument, columnId: string) =>
   columnsIn(document).find(({ id }) => id === columnId);
 
+/** -1 if the Row isn't in the document. */
+export const findRowIndex = (document: BlocksDocument, rowId: string) =>
+  document.rows.findIndex(({ id }) => id === rowId);
+
 export const findRow = (document: BlocksDocument, rowId: string) =>
-  document.rows.find(({ id }) => id === rowId);
+  document.rows[findRowIndex(document, rowId)];
+
+/** What a Command refusal and an Operation's error say of a missing item. */
+export const noSuchItem = (kind: "Block" | "Column" | "Row", id: string) =>
+  `No ${kind} with ID "${id}"`;
 
 const getColumn = (document: BlocksDocument, columnId: string) => {
   const column = findColumn(document, columnId);
   if (!column) {
-    throw new Error(`No Column with ID "${columnId}"`);
+    throw new Error(noSuchItem("Column", columnId));
   }
   return column;
 };
@@ -101,7 +109,7 @@ const getColumn = (document: BlocksDocument, columnId: string) => {
 const getRow = (document: BlocksDocument, rowId: string) => {
   const row = findRow(document, rowId);
   if (!row) {
-    throw new Error(`No Row with ID "${rowId}"`);
+    throw new Error(noSuchItem("Row", rowId));
   }
   return row;
 };
@@ -194,7 +202,7 @@ export const applyOperation = (
       } else {
         const block = findBlock(document, operation.blockId);
         if (!block) {
-          throw new Error(`No Block with ID "${operation.blockId}"`);
+          throw new Error(noSuchItem("Block", operation.blockId));
         }
         block.props = operation.props;
       }
