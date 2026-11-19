@@ -4,14 +4,15 @@
   "tasks": {
     "test": {
       // The fresh projects are built from the docs' quick-start, Shell, Next.js
-      // and server code, and the checks post the docs' example email.
+      // and server code, and the checks post the docs' example email. Every CDN
+      // URL in the docs, the READMEs and the skill must name the editor's version.
       "inputs": [
         "$TURBO_DEFAULT$",
-        "$TURBO_ROOT$/apps/docs/docs/_code/**",
-        "$TURBO_ROOT$/apps/docs/docs/_document-format/**",
-        "$TURBO_ROOT$/apps/docs/docs/_nextjs/**",
-        "$TURBO_ROOT$/apps/docs/docs/_quick-start/**",
-        "$TURBO_ROOT$/apps/docs/docs/_shell/**"
+        "$TURBO_ROOT$/PROJECT.md",
+        "$TURBO_ROOT$/README.md",
+        "$TURBO_ROOT$/apps/docs/docs/**",
+        "$TURBO_ROOT$/packages/*/README.md",
+        "$TURBO_ROOT$/skills/**"
       ]
     }
   }

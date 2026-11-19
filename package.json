@@ -8,7 +8,7 @@
     "test": "turbo run test test:unit",
     "lint": "ultracite check",
     "fix": "ultracite fix",
-    "release": "turbo run build --filter=@mailquilt/* && changeset publish"
+    "release": "node scripts/check-release.mjs && turbo run build --filter=@mailquilt/* && changeset publish"
   },
   "devDependencies": {
     "@changesets/cli": "^3.0.3",
@@ -19,7 +19,7 @@
     "ultracite": "8.1.1"
   },
   "engines": {
-    "node": ">=24"
+    "node": "^24.15.0 || >=26.0.0"
   },
   "packageManager": "pnpm@11.25.0"
 }

@@ -534,13 +534,15 @@ To release, version on a branch, so CI checks the exact commit that's published:
 
 ```bash
 pnpm changeset version   # bumps versions and writes the changelogs
-# The CDN links name the version, and no check can tell they're out of date.
-git grep -l "@mailquilt/editor@" -- PROJECT.md apps packages
+# The CDN links name the version. The install checks fail until each one in
+# the docs pages, the READMEs and the skill matches. These are the files:
+git grep -l "/@mailquilt/editor@[0-9]" -- PROJECT.md README.md apps/docs/docs "packages/*/README.md" skills
 # Set each to the new version, and move what shipped out of the roadmap's "Now".
 git add -A && git commit -m "chore: release"
 # Push, open a pull request, and merge it once CI passes. Then, on main:
 git pull
-pnpm release             # builds, then publishes to npm and tags the release
+pnpm release             # refuses a tree with changes or a commit not on main,
+                         # then builds, publishes to npm and tags the release
 git push --follow-tags
 ```
 

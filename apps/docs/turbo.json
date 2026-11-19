@@ -1,0 +1,10 @@
+{
+  "$schema": "https://turborepo.dev/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      // The site publishes the agent skill from the repo root's skills folder.
+      "inputs": ["$TURBO_EXTENDS$", "$TURBO_ROOT$/skills/**"]
+    }
+  }
+}

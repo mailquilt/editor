@@ -1,6 +1,10 @@
+import { globSync, readFileSync } from "node:fs";
+import path from "node:path";
+
 import { expect, test } from "@playwright/test";
 import type { Response } from "@playwright/test";
 
+import { freshProjectDir } from "../fresh-projects.ts";
 import { cdnPort, freshProjects } from "../ports.ts";
 import {
   checkLoadSaveExport,
@@ -9,6 +13,7 @@ import {
 
 const pageUrl = `http://localhost:${freshProjects.cdn.port}/`;
 const cdnBuildUrl = `http://localhost:${cdnPort}/dist/cdn/`;
+const repoRoot = path.join(import.meta.dirname, "../../..");
 
 /** Only MJML itself has this. The renderer's own output never uses it. */
 const mjmlOnly = "mj-accordion";
@@ -81,5 +86,57 @@ test("the CDN build lists the license of each package it bundles", async ({
   ]) {
     expect(licenses).toMatch(new RegExp(`^${name}@`, "mu"));
   }
-  expect(licenses).toContain("Permission is hereby granted");
+  // Each entry is its package's name, then its license. A copyright line
+  // alone isn't the license. The packages inside mjml-browser's own file
+  // follow a line that says so.
+  const withoutText = licenses
+    .split(`\n${"-".repeat(72)}\n`)
+    .map((entry) =>
+      entry
+        .trim()
+        .replace(/^Bundled in .*\n+/u, "")
+        .split("\n")
+    )
+    .filter(([, ...text]) =>
+      text.every((line) => line.trim() === "" || /^copyright/iu.test(line))
+    )
+    .map(([header]) => header);
+  expect(withoutText).toStrictEqual([]);
+});
+
+test("every CDN URL in the docs and READMEs names the editor's version", () => {
+  const { version } = JSON.parse(
+    readFileSync(
+      path.join(
+        freshProjectDir("cdn"),
+        "node_modules/@mailquilt/editor/package.json"
+      ),
+      "utf-8"
+    )
+  );
+  // The places a host copies a URL from. The skill's `<version>` isn't one.
+  const files = globSync(
+    [
+      "PROJECT.md",
+      "README.md",
+      "apps/docs/docs/**/*",
+      "packages/*/README.md",
+      "skills/**/*",
+    ],
+    { cwd: repoRoot, withFileTypes: true }
+  ).filter((each) => each.isFile());
+  const urls = files.flatMap((each) => {
+    const file = path.join(each.parentPath, each.name);
+    return [
+      ...readFileSync(file, "utf-8").matchAll(
+        /\/@mailquilt\/editor@(?<named>\d[^/\s]*)\//gu
+      ),
+    ].map((match) => ({
+      file: path.relative(repoRoot, file),
+      version: match.groups?.named,
+    }));
+  });
+
+  expect(urls.length).toBeGreaterThan(0);
+  expect(urls.filter((url) => url.version !== version)).toStrictEqual([]);
 });
