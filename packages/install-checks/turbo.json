@@ -2,11 +2,11 @@
   "$schema": "https://turborepo.dev/schema.json",
   "extends": ["//"],
   "tasks": {
-    // A test imports the docs' starter email.
+    // Tests import the docs' starter emails.
     "check-types": {
       "inputs": [
         "$TURBO_DEFAULT$",
-        "$TURBO_ROOT$/apps/docs/docs/_quick-start/starter-email.js"
+        "$TURBO_ROOT$/apps/docs/docs/_quick-start/starter-email.*"
       ]
     },
     "test": {

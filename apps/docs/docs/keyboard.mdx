@@ -9,11 +9,12 @@ Anything a person can do in the editor by dragging, they can also do from the ke
 
 ## Selecting a Block
 
-Tab moves into the email and selects a Block. The arrow keys then go from Block to Block.
+<kbd>Tab</kbd> moves into the email and selects a Block. The arrow keys then go
+from Block to Block.
 
 | Key | What it does |
 | --- | --- |
-| <kbd>Tab</kbd> | Reaches a Block and selects it. From there, Tab goes into its text, if it has any, and then to its toolbar. |
+| <kbd>Tab</kbd> | Reaches a Block and selects it. From there, <kbd>Tab</kbd> goes into its text, if it has any, and then to its toolbar. |
 | <kbd>Up</kbd> <kbd>Down</kbd> | Selects the Block before or after this one, in reading order. This reaches every Block in the email. |
 | <kbd>Left</kbd> <kbd>Right</kbd> | Selects a Block in the next Column that has one, as close as it can get to the same position. |
 | <kbd>Enter</kbd> | Goes into the Block's text to edit it. |
@@ -23,7 +24,7 @@ Selecting a Block changes nothing in the email, so it doesn't fire `mq-change`.
 
 ## Moving a Block
 
-Hold Alt (Option on a Mac) and press an arrow key to move the selected Block. The same keys work while focus is in the Block's toolbar.
+Hold <kbd>Alt</kbd> (Option on a Mac) and press an arrow key to move the selected Block. The same keys work while focus is in the Block's toolbar.
 
 | Key | What it does |
 | --- | --- |
@@ -32,17 +33,17 @@ Hold Alt (Option on a Mac) and press an arrow key to move the selected Block. Th
 
 Each move is one step for undo, and focus stays on the Block, so the next press moves it again.
 
-Inside a Block's text, the arrow keys move the cursor instead, and Alt with an arrow key moves it by a word on macOS. Press Escape first to move the Block.
+Inside a Block's text, the arrow keys move the cursor instead, and <kbd>Alt</kbd> with an arrow key moves it by a word on macOS. Press <kbd>Escape</kbd> first to move the Block.
 
 On Windows and Linux, <kbd>Alt</kbd> + <kbd>Left</kbd> and <kbd>Alt</kbd> + <kbd>Right</kbd> also go back and forward a page in the browser. Nowhere in the editor do they do that, so a press meant to move a Block never leaves your page.
 
 ## The Block's toolbar
 
-A selected Block has a toolbar with a drag handle, four move buttons and a delete button. It's one stop for Tab, and the arrow keys go across its buttons. <kbd>Home</kbd> and <kbd>End</kbd> go to its first and last button. Escape goes back to the Block, once it has closed the tooltip of the button with focus.
+A selected Block has a toolbar with a drag handle, four move buttons and a delete button. It's one stop for <kbd>Tab</kbd>, and the arrow keys go across its buttons. <kbd>Home</kbd> and <kbd>End</kbd> go to its first and last button. <kbd>Escape</kbd> goes back to the Block, once it has closed the tooltip of the button with focus.
 
 ## Rows
 
-A Row's toolbar comes just before the Row's Blocks, so Shift+Tab from the Row's first Block reaches it. It has a drag handle, Select Row, the two Move Row buttons and Delete Row. Like the Block's toolbar, it's one stop for Tab, the arrow keys go across its buttons, and Home and End go to its first and last.
+A Row's toolbar comes just before the Row's Blocks, so <kbd>Shift</kbd> + <kbd>Tab</kbd> from the Row's first Block reaches it. It has a drag handle, Select Row, the two Move Row buttons and Delete Row. Like the Block's toolbar, it's one stop for <kbd>Tab</kbd>, the arrow keys go across its buttons, and <kbd>Home</kbd> and <kbd>End</kbd> go to its first and last.
 
 | Key | What it does |
 | --- | --- |
@@ -50,15 +51,15 @@ A Row's toolbar comes just before the Row's Blocks, so Shift+Tab from the Row's 
 
 ## Adding a Block
 
-The side panel's tabs, Content, Rows and Settings, are one stop for Tab. The arrow keys open the next or previous tab, and Home and End the first or last.
+The side panel's tabs, Content, Rows and Settings, are one stop for <kbd>Tab</kbd>. The arrow keys open the next or previous tab, and <kbd>Home</kbd> and <kbd>End</kbd> the first or last.
 
-In the side panel's Content tab, press Enter on a Block to add it after the selected Block, in the same Column. With a Row selected instead, it goes to the end of that Row's first Column. With nothing selected, it goes to the end of the email's last Column.
+In the side panel's Content tab, press <kbd>Enter</kbd> on a Block to add it after the selected Block, in the same Column. With a Row selected instead, it goes to the end of that Row's first Column. With nothing selected, it goes to the end of the email's last Column.
 
-An empty Column has a button for each type of Block, such as "Add Text Block here". Tab reaches them, and Enter adds that Block to the Column.
+An empty Column has a button for each type of Block, such as "Add Text Block here". <kbd>Tab</kbd> reaches them, and <kbd>Enter</kbd> adds that Block to the Column.
 
 ## Adding a Row
 
-In the side panel's Rows tab, press Enter on a layout to add a Row with it after the selected Row, or after the Row of the selected Block. With nothing selected, it goes at the end of the email.
+In the side panel's Rows tab, press <kbd>Enter</kbd> on a layout to add a Row with it after the selected Row, or after the Row of the selected Block. With nothing selected, it goes at the end of the email.
 
 ## Editing text
 
@@ -75,8 +76,8 @@ line, and put it back.
 | <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>B</kbd> | Turns bold on or off for the selected text. A Heading is bold already, so it does nothing there. |
 | <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>I</kbd> | Turns italic on or off. |
 | <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>U</kbd> | Turns underline on or off. |
-| <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>K</kbd> | Opens the link field for the selected Block's text, from anywhere in the email or its toolbars, such as the text, the Block or its toolbar. Escape closes it and leaves the text as it was. With no text to link, such as on a Button, the key is left to your page. |
-| <kbd>Alt</kbd> + <kbd>F10</kbd> | Goes to the formatting toolbar, for bold, italic, underline, links and line breaks. The arrow keys go across its buttons, and Home and End go to the first and last. Escape goes back to the text, once it has closed the tooltip of the button with focus. |
+| <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>K</kbd> | Opens the link field for the selected Block's text, from anywhere in the email or its toolbars, such as the text, the Block or its toolbar. <kbd>Escape</kbd> closes it and leaves the text as it was. With no text to link, such as on a Button, the key is left to your page. |
+| <kbd>Alt</kbd> + <kbd>F10</kbd> | Goes to the formatting toolbar, for bold, italic, underline, links and line breaks. The arrow keys go across its buttons, and <kbd>Home</kbd> and <kbd>End</kbd> go to the first and last. <kbd>Escape</kbd> goes back to the text, once it has closed the tooltip of the button with focus. |
 
 ## Undo and redo
 
@@ -88,7 +89,7 @@ line, and put it back.
 
 ## Preview
 
-Opening Preview moves focus to its Close button. Escape closes it, and focus returns to where it was.
+Opening Preview moves focus to its Close button. <kbd>Escape</kbd> closes it, and focus returns to where it was.
 
 ## What a screen reader announces
 

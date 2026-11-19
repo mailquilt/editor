@@ -86,6 +86,14 @@ const known = new Set([
   ...named,
   ...TEXT_KEYS.flatMap(({ aliases = [] }) => aliases).map(sameOrder),
 ]);
+/** Keys that act with any modifiers held, such as Tab, so Shift+Tab too. */
+const withAnyModifiers = new Set(
+  entries.flatMap(({ anyModifiers, keys }) =>
+    anyModifiers && keys !== "any" ? keys : []
+  )
+);
+const isKnown = (key: string) =>
+  known.has(key) || withAnyModifiers.has(key.split("-").at(-1) ?? "");
 
 describe("the keyboard page", () => {
   it("names every key the key map names", () => {
@@ -94,6 +102,6 @@ describe("the keyboard page", () => {
 
   it("names no key the key map doesn't have", () => {
     expect(onPage.size).toBeGreaterThan(0);
-    expect([...onPage].filter((key) => !known.has(key))).toStrictEqual([]);
+    expect([...onPage].filter((key) => !isKnown(key))).toStrictEqual([]);
   });
 });

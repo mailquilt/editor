@@ -155,6 +155,7 @@ Svelte's docs don't say how it passes values to a custom element made somewhere 
   $effect(() => {
     const save = (event) => {
       email = event.detail.document;
+      // Send it to your server too.
     };
     const showError = (event) => {
       loadError = event.detail.reason;
