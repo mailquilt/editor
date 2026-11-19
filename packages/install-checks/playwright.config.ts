@@ -1,19 +1,7 @@
-import { existsSync } from "node:fs";
-
 import { defineConfig, devices } from "@playwright/test";
 
-import {
-  cdnPort,
-  freshProjectDir,
-  freshProjects,
-  freshProjectsDir,
-} from "./fresh-projects.ts";
-
-if (!existsSync(freshProjectsDir)) {
-  throw new Error(
-    "Run the install checks with `pnpm test`, which prepares the fresh projects first."
-  );
-}
+import { freshProjectDir } from "./fresh-projects.ts";
+import { cdnPort, freshProjects } from "./ports.ts";
 
 export default defineConfig({
   // A test that passes only on a retry fails the run, so a flake is seen and

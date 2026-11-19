@@ -89,7 +89,8 @@ const useEditorElement = <
   });
 
   useEffect(() => {
-    // Unmounted, or mounted again by StrictMode, which reports it instead.
+    // Unmounted, or mounted again by StrictMode, which reports it instead. A
+    // controller, as React Compiler's lint rule rejects reassigning a `let` here.
     const unmounted = new AbortController();
     const load = async () => {
       try {

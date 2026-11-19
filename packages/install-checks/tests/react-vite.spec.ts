@@ -1,6 +1,6 @@
 import { test } from "@playwright/test";
 
-import { freshProjects } from "../fresh-projects.ts";
+import { freshProjects } from "../ports.ts";
 import {
   checkLoadSaveExport,
   checkRefusedDocument,

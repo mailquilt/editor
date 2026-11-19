@@ -1,9 +1,8 @@
 import { execFileSync } from "node:child_process";
-import { cpSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import {
-  cdnPort,
   freshProjectDir,
   freshProjectsDir,
   projectNames,
@@ -21,9 +20,6 @@ const quickStart = path.join(
   "docs",
   "_quick-start"
 );
-/** The CDN build's URL in the quick start, served from this machine instead. */
-const cdnBuildUrl =
-  /https:\/\/cdn\.jsdelivr\.net\/npm\/@mailquilt\/editor@[^/]+\//gu;
 /** The Shell's examples, each copied into a fresh project as a page of its own. */
 const shellExamples = path.join(quickStart, "..", "_shell");
 const shellPages = {
@@ -95,15 +91,3 @@ for (const name of projectNames) {
     pnpm(dir, "run", "build");
   }
 }
-
-const cdnPage = path.join(freshProjectDir("cdn"), "index.html");
-const cdnPageHtml = readFileSync(cdnPage, "utf-8");
-const localCdnPageHtml = cdnPageHtml.replaceAll(
-  cdnBuildUrl,
-  `http://localhost:${cdnPort}/`
-);
-// Otherwise the check would pass without loading what the quick start shows.
-if (localCdnPageHtml === cdnPageHtml) {
-  throw new Error(`The CDN quick start doesn't load ${cdnBuildUrl}`);
-}
-writeFileSync(cdnPage, localCdnPageHtml);

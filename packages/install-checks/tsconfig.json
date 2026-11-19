@@ -10,6 +10,7 @@
     "tests",
     "fresh-projects.ts",
     "playwright.config.ts",
+    "ports.ts",
     "prepare.ts",
     "run.ts"
   ]

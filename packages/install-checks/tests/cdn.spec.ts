@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import type { Response } from "@playwright/test";
 
-import { cdnPort, freshProjects } from "../fresh-projects.ts";
+import { cdnPort, freshProjects } from "../ports.ts";
 import {
   checkLoadSaveExport,
   checkRefusedDocument,
