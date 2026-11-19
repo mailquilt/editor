@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "check-types": "tsc --noEmit",
-    "test": "node prepare.ts && playwright test"
+    "test": "node run.ts"
   },
   "devDependencies": {
     "@mailquilt/core": "workspace:*",

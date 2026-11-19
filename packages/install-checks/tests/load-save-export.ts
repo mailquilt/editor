@@ -1,6 +1,29 @@
 import { expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
+/**
+ * Puts the cursor at the start of the Text Block, waiting as the editor's own
+ * tests do, so a lost cursor scrambles what's typed next.
+ */
+export const focusStartOfTextBlock = async (page: Page) => {
+  const block = page.getByRole("textbox", { name: "Text Block" });
+  await block.click();
+  await expect(block).toBeFocused();
+  await page.keyboard.press(
+    process.platform === "darwin" ? "Meta+ArrowLeft" : "Home"
+  );
+  // The editor learns of the moved cursor a moment later, after a frame.
+  await page.evaluate(
+    () =>
+      // oxlint-disable-next-line promise/avoid-new -- These browser callbacks have no promise form.
+      new Promise((resolve) => {
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => setTimeout(resolve, 0))
+        );
+      })
+  );
+};
+
 /** Everything the page reports as going wrong, from here on. */
 const collectProblems = (page: Page) => {
   const problems: string[] = [];
@@ -21,10 +44,7 @@ export const checkLoadSaveExport = async (page: Page, url: string) => {
   await page.goto(url);
   await expect(text).toHaveText("Hello");
 
-  await text.click();
-  await page.keyboard.press(
-    process.platform === "darwin" ? "Meta+ArrowLeft" : "Home"
-  );
+  await focusStartOfTextBlock(page);
   await page.keyboard.type("Saved ");
   await expect(text).toHaveText("Saved Hello");
   await expect
@@ -77,10 +97,7 @@ export const checkShell = async (page: Page, url: string) => {
     shell.getByRole("button", { name: "Import JSON" })
   ).toBeVisible();
 
-  await text.click();
-  await page.keyboard.press(
-    process.platform === "darwin" ? "Meta+ArrowLeft" : "Home"
-  );
+  await focusStartOfTextBlock(page);
   await page.keyboard.type("Saved ");
   await expect(text).toHaveText("Saved Hello");
   await expect

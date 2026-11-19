@@ -3,7 +3,8 @@ import { promisify } from "node:util";
 
 import { expect, test } from "@playwright/test";
 
-import { freshProjectDir, freshProjects } from "../fresh-projects.ts";
+import { freshProjectDir } from "../fresh-projects.ts";
+import { freshProjects } from "../ports.ts";
 import {
   checkLoadSaveExport,
   checkRefusedDocument,

@@ -5,14 +5,15 @@ import { promisify } from "node:util";
 
 import { expect, test } from "@playwright/test";
 
-import { freshProjectDir, freshProjects } from "../fresh-projects.ts";
+import { freshProjectDir } from "../fresh-projects.ts";
+import { freshProjects } from "../ports.ts";
 import {
   checkLoadSaveExport,
   checkRefusedDocument,
   checkShell,
 } from "./load-save-export.ts";
 
-const url = `http://localhost:${freshProjects.react.port}/`;
+const url = `http://localhost:${freshProjects.nextjs.port}/`;
 
 /** The docs' example email, as an app would have saved it. */
 const exampleEmail: unknown = JSON.parse(
@@ -25,17 +26,21 @@ const exampleEmail: unknown = JSON.parse(
   )
 );
 
-test("a React project loads, saves and exports an email", async ({ page }) => {
+test("a Next.js project loads, saves and exports an email", async ({
+  page,
+}) => {
   await checkLoadSaveExport(page, url);
 });
 
-test("a refused document reaches onError", async ({ page }) => {
+test("a refused document reaches onError in a Next.js project", async ({
+  page,
+}) => {
   await checkRefusedDocument(page, url);
 });
 
 test("renders on a server, with nothing for the element there", async () => {
   const { stdout } = await promisify(execFile)("node", ["server-render.js"], {
-    cwd: freshProjectDir("react"),
+    cwd: freshProjectDir("nextjs"),
   });
 
   expect(JSON.parse(stdout)).toStrictEqual({

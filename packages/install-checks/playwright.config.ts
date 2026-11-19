@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
-import { cdnPort, freshProjectDir, freshProjects } from "./fresh-projects.ts";
+import { freshProjectDir } from "./fresh-projects.ts";
+import { cdnPort, freshProjects } from "./ports.ts";
 
 export default defineConfig({
   // A test that passes only on a retry fails the run, so a flake is seen and
@@ -40,10 +41,10 @@ export default defineConfig({
       port: freshProjects["react-vite"].port,
     },
     {
-      command: `node_modules/.bin/next start --port ${freshProjects.react.port}`,
-      cwd: freshProjectDir("react"),
+      command: `node_modules/.bin/next start --port ${freshProjects.nextjs.port}`,
+      cwd: freshProjectDir("nextjs"),
       env: { NEXT_TELEMETRY_DISABLED: "1" },
-      port: freshProjects.react.port,
+      port: freshProjects.nextjs.port,
     },
   ],
 });

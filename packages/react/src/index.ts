@@ -11,6 +11,7 @@ import {
   useEffect,
   useImperativeHandle,
   useLayoutEffect,
+  useRef,
   useState,
 } from "react";
 import type { HTMLAttributes, ReactElement, Ref } from "react";
@@ -24,7 +25,10 @@ export type {
 
 interface EditorProps<Host> {
   onChange?: (document: BlocksDocument) => void;
-  /** Why the editor refused a document, as `mq-error` says it. */
+  /**
+   * Why the editor refused a document, as `mq-error` says it, or why the
+   * editor's code couldn't load.
+   */
   onError?: (reason: string) => void;
   /** The element, once the editor has loaded in the browser. */
   ref?: Ref<Host>;
@@ -78,10 +82,34 @@ const useEditorElement = <
   const [element, setElement] = useState<Host | null>(null);
   const [loaded, setLoaded] = useState(false);
   const editor = loaded ? element : null;
+  // The newest, for a load that fails after a later render.
+  const reportError = useRef(onError);
+  useLayoutEffect(() => {
+    reportError.current = onError;
+  });
 
   useEffect(() => {
-    // oxlint-disable-next-line promise/catch-or-return -- A bundle that won't load is an unhandled rejection, as with any other import.
-    loadEditor().then(() => setLoaded(true));
+    // Unmounted, or mounted again by StrictMode, which reports it instead. A
+    // controller, as React Compiler's lint rule rejects reassigning a `let` here.
+    const unmounted = new AbortController();
+    const load = async () => {
+      try {
+        await loadEditor();
+        setLoaded(true);
+      } catch (error) {
+        // With nowhere to report it, it stays an unhandled rejection.
+        if (!reportError.current) {
+          throw error;
+        }
+        if (unmounted.signal.aborted) {
+          return;
+        }
+        const reason = error instanceof Error ? error.message : String(error);
+        reportError.current(`The editor couldn't load: ${reason}`);
+      }
+    };
+    load();
+    return () => unmounted.abort();
   }, []);
 
   useLayoutEffect(() => {

@@ -3,10 +3,13 @@
   "extends": ["//"],
   "tasks": {
     "test": {
-      // The fresh projects are built from the docs' quick-start, Shell and server code.
+      // The fresh projects are built from the docs' quick-start, Shell, Next.js
+      // and server code, and the checks post the docs' example email.
       "inputs": [
         "$TURBO_DEFAULT$",
         "$TURBO_ROOT$/apps/docs/docs/_code/**",
+        "$TURBO_ROOT$/apps/docs/docs/_document-format/**",
+        "$TURBO_ROOT$/apps/docs/docs/_nextjs/**",
         "$TURBO_ROOT$/apps/docs/docs/_quick-start/**",
         "$TURBO_ROOT$/apps/docs/docs/_shell/**"
       ]

@@ -45,7 +45,7 @@ Opening a different email clears undo history. Setting `value` to the email the 
 | `MailQuilt` | `value`, `onChange`, `onError` and `ref`. |
 | `MailQuiltShell` | The same, and `heading`, `actions` and `saveKey`. `actions` is an array of names, such as `["export-html"]`. |
 
-- `value` is the email to open. `onChange` gets the new email after every change, and `onError` gets the reason when the editor refuses one. `onError` is always listening in time.
+- `value` is the email to open. `onChange` gets the new email after every change, and `onError` gets the reason when the editor refuses one, or when the editor's code can't load. `onError` is always listening in time.
 - `ref` gives you the element once the editor has loaded, so you can call `exportHtml()`.
 - Other props, such as `className`, `style`, `id` and `aria-label`, go to the element.
 - On the server, each component renders its empty element, and the editor loads in the browser.
