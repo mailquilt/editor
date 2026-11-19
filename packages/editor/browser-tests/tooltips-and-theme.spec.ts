@@ -8,6 +8,7 @@ import {
   canvas,
   centerOf,
   openBlocks,
+  openTab,
   previewButton,
   settle,
   textBlock,
@@ -243,6 +244,44 @@ test("in forced colors, a selected tab and a pressed button are outlined", async
   const bold = canvas(page).getByRole("button", { exact: true, name: "Bold" });
   await expect(bold).toHaveAttribute("aria-pressed", "true");
   await expect(bold).toHaveCSS("outline-style", "solid");
+});
+
+/** The contrast between two colors that `getComputedStyle` gives as `rgb()`. */
+const contrast = (...colors: string[]) => {
+  const [lighter = 0, darker = 0] = colors
+    .map((color) => {
+      const [red = 0, green = 0, blue = 0] = (
+        color.match(/[\d.]+/gu) ?? []
+      ).map((value) => {
+        const channel = Number(value) / 255;
+        return channel <= 0.04045
+          ? channel / 12.92
+          : ((channel + 0.055) / 1.055) ** 2.4;
+      });
+      return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+    })
+    .toSorted((a, b) => b - a);
+  return (lighter + 0.05) / (darker + 0.05);
+};
+
+test("in forced colors, a dropdown's arrow stands out from its field", async ({
+  page,
+}) => {
+  await page.emulateMedia({ forcedColors: "active" });
+  await openBlocks(page, ["text"]);
+  await openTab(page, "Settings");
+  const font = page
+    .getByRole("group", { exact: true, name: "Email" })
+    .getByLabel("Font", { exact: true });
+
+  const [arrow, field] = await font.evaluate((select) => [
+    getComputedStyle(select.parentElement as Element, "::after")
+      .backgroundColor,
+    getComputedStyle(select).backgroundColor,
+  ]);
+
+  // The contrast WCAG asks of a control's parts.
+  expect(contrast(arrow ?? "", field ?? "")).toBeGreaterThanOrEqual(3);
 });
 
 test("a host restyles the editor's frame through its part", async ({

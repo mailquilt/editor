@@ -1,7 +1,19 @@
 import type { EditingActions } from "./editing-actions.js";
 import { closestPlace, placeOf } from "./editor-places.js";
-import { claim, hasKeys, historyInput, keyFor } from "./key-map.js";
-import type { Action, Binding, Place } from "./key-map.js";
+import {
+  claim,
+  hasKeys,
+  historyInput,
+  keyFor,
+  keyHeardFirst,
+} from "./key-map.js";
+import type {
+  Action,
+  Binding,
+  DirectedAction,
+  Direction,
+  Place,
+} from "./key-map.js";
 import { focusToolbarButton } from "./selection.js";
 import type { Selection } from "./selection.js";
 
@@ -55,48 +67,42 @@ export const createKeyDispatch = ({
 
   /** What each action in the key map does here. */
   const actions: Record<
-    Action,
+    Exclude<Action, DirectedAction>,
     (event: KeyboardEvent, binding: Binding) => void
   > = {
     backToBlock: () => selection.focus({ on: "block" }),
     backToText: () => selection.focus({ on: "text" }),
-    // The drag hears this itself.
-    cancelDrag: doNothing,
     cancelLink: () => linkForm.cancel(),
     // The browser closes the dialog.
     closePreview: doNothing,
-    // The tooltips hear this themselves.
-    closeTooltip: doNothing,
     discardDraft: (event) => drafts.discard(event),
     editText: () => selection.focus({ on: "text" }),
     firstButton: focusToolbarButton,
     focusFormatBar: () => selection.focus({ on: "formatBar" }),
-    ignore: doNothing,
     keepPage: doNothing,
     lastButton: focusToolbarButton,
     leaveToolbar: focusToolbarButton,
-    moveBlock: (_event, { direction }) => {
-      if (direction) {
-        editing.moveBlock(direction);
-      }
-    },
-    moveRow: ({ target }, { direction }) => {
-      const rowId = closestPlace(target as Element, "row")?.dataset.rowId;
-      if (rowId !== undefined && direction) {
-        editing.moveRow(rowId, direction);
-      }
-    },
     nextButton: focusToolbarButton,
     openLinkField: () => linkForm.open(),
     previousButton: focusToolbarButton,
     redo: () => stepHistory("redo"),
-    selectBlock: (_event, { direction }) => {
-      if (direction) {
-        editing.selectNeighbour(direction);
-      }
-    },
     typeInField: doNothing,
     undo: () => stepHistory("undo"),
+  };
+
+  /** What each arrow key's action does here, the way it goes. */
+  const moves: Record<
+    DirectedAction,
+    (event: KeyboardEvent, direction: Direction) => void
+  > = {
+    moveBlock: (_event, direction) => editing.moveBlock(direction),
+    moveRow: ({ target }, direction) => {
+      const rowId = closestPlace(target as Element, "row")?.dataset.rowId;
+      if (rowId !== undefined) {
+        editing.moveRow(rowId, direction);
+      }
+    },
+    selectBlock: (_event, direction) => editing.selectNeighbour(direction),
   };
 
   return {
@@ -135,9 +141,14 @@ export const createKeyDispatch = ({
           dragging: isDragging(),
           selectedText: selection.selectedText !== undefined,
         });
-      if (binding) {
-        claim(keydown, binding);
+      if (!binding) {
+        return;
+      }
+      claim(keydown, binding);
+      if (binding.direction === undefined) {
         actions[binding.action](keydown, binding);
+      } else {
+        moves[binding.action](keydown, binding.direction);
       }
     },
 
@@ -154,7 +165,7 @@ export const createKeyDispatch = ({
       const binding =
         lastPress?.key === event.key && lastPress.target === target
           ? undefined
-          : keyFor("heldElsewhere", event);
+          : keyHeardFirst("heldElsewhere", event);
       if (binding) {
         claim(event, binding);
       }

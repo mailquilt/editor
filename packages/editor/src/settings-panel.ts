@@ -23,7 +23,7 @@ export interface SettingsSection {
  * What's typed in a field. A number field the browser can't read, such as
  * "1e", has empty text and `badInput`.
  */
-export interface Typed {
+interface Typed {
   text: string;
   badInput: boolean;
 }
@@ -190,6 +190,13 @@ export const settingsPanelStyles = css`
     width: 16px;
   }
 
+  /* Forced colors replace any background but a system color, which would hide it. */
+  @media (forced-colors: active) {
+    .settings .select-field::after {
+      background-color: FieldText;
+    }
+  }
+
   .settings [aria-invalid="true"] {
     border-color: var(--mq-color-danger);
   }
@@ -283,11 +290,6 @@ const fieldText = (
   values: Record<string, unknown>
 ) => String(values[key] ?? fallback ?? "");
 
-// A focused number field would step with the wheel, though it has no arrows,
-// while the person only meant to scroll the panel.
-const leaveOnWheel = ({ currentTarget }: Event) =>
-  (currentTarget as HTMLInputElement).blur();
-
 /** What a control holds. */
 const typedIn = (control: HTMLInputElement | HTMLSelectElement): Typed => ({
   badInput: "validity" in control && control.validity.badInput,
@@ -361,7 +363,6 @@ const renderField = (
       .value=${live(draft?.text ?? text)}
       @change=${onCommit}
       @input=${onInput}
-      @wheel=${type === "number" ? leaveOnWheel : nothing}
     />
   `;
 

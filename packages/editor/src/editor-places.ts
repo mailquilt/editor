@@ -33,6 +33,11 @@ const PLACES = {
   linkField: {},
   /** The notice shown in place of the editor when there's no room to edit. */
   notice: {},
+  /**
+   * An item in the palette or the Rows tab, which a drag adds. Its
+   * `data-block-type` or `data-row-layout` names it.
+   */
+  paletteItem: {},
   /** The Side panel's tabs. */
   panelTabs: {},
   /** The Preview dialog. */
@@ -61,9 +66,9 @@ const PLACES = {
  * `grabs` starts a drag, and one that `keepsFocus` acts on what's selected,
  * though a field in it still takes focus.
  */
-export type Press = "grabs" | "keepsFocus";
+type Press = "grabs" | "keepsFocus";
 
-export type EditorPlace = keyof typeof PLACES;
+type EditorPlace = keyof typeof PLACES;
 
 /** The copy that follows the pointer during a drag is no place. */
 const NOT_GHOST = ":not([data-drag-ghost], [data-drag-ghost] *)";

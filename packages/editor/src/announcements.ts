@@ -2,7 +2,7 @@ import type { BlocksDocument } from "@mailquilt/core";
 import { html } from "lit";
 import { keyed } from "lit/directives/keyed.js";
 
-import { placeLabel, positionLabel } from "./places.js";
+import { locateRow, placeLabel, positionLabel } from "./places.js";
 import { UI_LANG } from "./theme.js";
 
 /**
@@ -39,10 +39,10 @@ export const createAnnouncements = (host: AnnouncementsHost) => {
   };
 
   const rowMoved = (rowId: string, prefix = "Row moved to") => {
-    const rows = host.document()?.rows ?? [];
-    const index = rows.findIndex(({ id: other }) => other === rowId);
-    if (index !== -1) {
-      say(`${prefix} ${positionLabel(index, rows.length)}.`);
+    const document = host.document();
+    const place = document && locateRow(document, rowId);
+    if (place) {
+      say(`${prefix} ${positionLabel(place.rowIndex, document.rows.length)}.`);
     }
   };
 

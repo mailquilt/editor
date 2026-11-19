@@ -1,5 +1,5 @@
 import { contains, shadowRootsUpFrom } from "./geometry.js";
-import { claim, keyFor } from "./key-map.js";
+import { claim, keyHeardFirst } from "./key-map.js";
 
 /** What has a tooltip: the attribute holds its words. */
 const TOOLTIP_TRIGGERS = "[data-tooltip]";
@@ -139,11 +139,11 @@ export const createTooltips = (
       return;
     }
     const shown = hovered ?? focused();
-    const binding = keyFor(
+    const binding = keyHeardFirst(
       shown === focused() ? "focusedTooltip" : "hoveredTooltip",
       event
     );
-    if (binding?.action === "closeTooltip") {
+    if (binding) {
       dismissed = shown;
       claim(event, binding);
       update();

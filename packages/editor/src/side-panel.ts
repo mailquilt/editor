@@ -277,15 +277,11 @@ export const sidePanelStyles = css`
     gap: 10px;
     justify-content: center;
     padding: var(--mq-space-3) var(--mq-space-2);
+    /* Dragged by touch too, which would otherwise scroll the panel. */
+    touch-action: none;
     transition:
       background-color 120ms,
       box-shadow 120ms;
-  }
-
-  /* Dragged by touch too, which would otherwise scroll the panel. */
-  .tile,
-  .layout-tile {
-    touch-action: none;
   }
 
   .tile {
@@ -482,6 +478,7 @@ const renderTabPanel = (api: PanelApi) => {
                 aria-label=${`Add ${label} Block`}
                 class="tile"
                 data-block-type=${type}
+                data-place="paletteItem"
                 type="button"
                 @click=${() => api.addBlock(type)}
               >
@@ -513,6 +510,7 @@ const renderTabPanel = (api: PanelApi) => {
               <button
                 aria-label=${`Add ${layout} Row`}
                 class="layout-tile"
+                data-place="paletteItem"
                 data-row-layout=${layout}
                 type="button"
                 @click=${() => api.addRow(layout)}

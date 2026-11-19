@@ -948,6 +948,44 @@ test.describe("auto-scrolling", () => {
     await page.mouse.up();
   });
 
+  test("a frame that comes late, as after the tab was in the background, scrolls no further than a tenth of a second's worth", async ({
+    page,
+  }) => {
+    await open(page, [
+      [Array.from({ length: 80 }, (_, index) => `Block ${index}`)],
+    ]);
+    const handle = handleOf(page, "Block 79");
+    await handle.scrollIntoViewIfNeeded();
+    await handle.hover();
+    await pickUp(page, handle);
+    await page.mouse.move(640, 10, { steps: 8 });
+
+    const scrolled = await page.evaluate(async () => {
+      const scroller = document.scrollingElement as Element;
+      // oxlint-disable-next-line promise/avoid-new -- These browser callbacks have no promise form.
+      await new Promise(requestAnimationFrame);
+      const before = scroller.scrollTop;
+      // Three tenths of a second with no frames.
+      const end = performance.now() + 300;
+      while (performance.now() < end) {
+        // Busy.
+      }
+      // Two frames, as the drag's can come after this one.
+      // oxlint-disable-next-line promise/avoid-new -- As above.
+      await new Promise((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(resolve));
+      });
+      return before - scroller.scrollTop;
+    });
+
+    // At most 1500px a second, for a tenth of a second and one more frame,
+    // where three tenths would be 450px.
+    expect(scrolled).toBeGreaterThan(0);
+    expect(scrolled).toBeLessThan(250);
+    await page.keyboard.press("Escape");
+    await page.mouse.up();
+  });
+
   // The other tests have the container as the editor's parent.
   test("a container in another component's shadow root, around its slot, scrolls", async ({
     page,

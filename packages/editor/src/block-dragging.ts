@@ -2,7 +2,7 @@ import type { Command, RowLayout } from "@mailquilt/core";
 
 import { closestPlace, findPlace, findPlaces } from "./editor-places.js";
 import { contains, scaleOf, shadowRootsUpFrom } from "./geometry.js";
-import { claim, keyFor } from "./key-map.js";
+import { claim, keyHeardFirst } from "./key-map.js";
 
 /**
  * What a drag brings: a Block or Row on the canvas, a new Block from the palette,
@@ -71,6 +71,11 @@ const SCROLL_EDGE_PX = 60;
 const SCROLL_SPEED_PX = 1500;
 /** The time a first frame takes, before there's one before it to go by. */
 const FRAME_SECONDS = 1 / 60;
+/**
+ * The longest a frame counts for, so the first one after the tab was in the
+ * background, or the page was busy, doesn't jump.
+ */
+const MAX_FRAME_SECONDS = 0.1;
 /** How far beside a scroll container the pointer can be and still scroll it. */
 const SCROLL_TOLERANCE_PX = 10;
 
@@ -115,9 +120,7 @@ const grabAt = (target: Element): Grab | undefined => {
       toolbar: closestPlace(handle, "blockToolbar") ?? undefined,
     };
   }
-  const tile = target.closest<HTMLElement>(
-    "[data-block-type], [data-row-layout]"
-  );
+  const tile = closestPlace(target, "paletteItem");
   if (tile) {
     const { blockType, rowLayout } = tile.dataset;
     return {
@@ -470,10 +473,15 @@ export const createBlockDragging = ({
     if (!(press && drag)) {
       return;
     }
+    // The first frame runs as the drag starts, at a time that can be later than
+    // the next frame's.
     const seconds =
       drag.lastFrame === undefined
         ? FRAME_SECONDS
-        : (time - drag.lastFrame) / 1000;
+        : Math.min(
+            Math.max((time - drag.lastFrame) / 1000, 0),
+            MAX_FRAME_SECONDS
+          );
     drag.lastFrame = time;
     const { from, grab } = press;
     const { ghost, pointer, scrollContainers } = drag;
@@ -522,8 +530,8 @@ export const createBlockDragging = ({
     window.addEventListener(
       "keydown",
       (keydown) => {
-        const binding = keyFor("drag", keydown);
-        if (binding?.action === "cancelDrag") {
+        const binding = keyHeardFirst("drag", keydown);
+        if (binding) {
           claim(keydown, binding);
           release(false);
           // The button is still down, and the body still has the pointer. A
