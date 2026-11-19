@@ -303,9 +303,10 @@ const KEY_MAP: Record<Place, readonly Entry[]> = {
 const HEARD_FIRST: Record<HeardFirst, readonly Entry<HeardFirstAction>[]> = {
   drag: [escape("cancelDrag")],
   // Closing a focused control's tooltip is all Escape does, as it would
-  // otherwise also move focus. Over another control, it still does what it
-  // does with no tooltip.
-  focusedTooltip: [escape("closeTooltip", { keepsDefault: true })],
+  // otherwise also move focus, and the browser would close a host's dialog
+  // around the editor. Over another control, it still does what it does with
+  // no tooltip.
+  focusedTooltip: [escape("closeTooltip")],
   hoveredTooltip: [
     escape("closeTooltip", { keepsDefault: true, stops: false }),
   ],

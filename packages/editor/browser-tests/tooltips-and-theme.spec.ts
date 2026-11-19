@@ -103,10 +103,20 @@ test.describe("a tooltip", () => {
     await expect(blockGroup(page, "Text")).toBeFocused();
   });
 
-  test("Escape on a Block tool only closes its tooltip, then goes back to the Block", async ({
+  test("Escape on a Block tool only closes its tooltip, then goes back to the Block, in a host's dialog", async ({
     page,
   }) => {
     await openBlocks(page, ["text"]);
+    const hostDialog = page.getByRole("dialog", { name: "Host dialog" });
+    await page.evaluate(() => {
+      const dialog = document.createElement("dialog");
+      dialog.ariaLabel = "Host dialog";
+      // Wide enough to edit in, rather than show the notice.
+      dialog.style.width = "90vw";
+      document.body.append(dialog);
+      dialog.append(document.querySelector("mail-quilt") as HTMLElement);
+      dialog.showModal();
+    });
     await page.mouse.move(0, 0);
     await blockGroup(page, "Text").focus();
     const moveUp = blockTools(page).getByRole("button", {
@@ -118,11 +128,17 @@ test.describe("a tooltip", () => {
     await expect(tooltip(page)).toHaveText(/Move Block up/u);
 
     await page.keyboard.press("Escape");
+    await expect(hostDialog).toBeVisible();
     await expect(tooltip(page)).toBeHidden();
     await expect(moveUp).toBeFocused();
 
     await page.keyboard.press("Escape");
     await expect(blockGroup(page, "Text")).toBeFocused();
+    await expect(hostDialog).toBeVisible();
+
+    // One the editor doesn't use is the host's, and closes its dialog.
+    await page.keyboard.press("Escape");
+    await expect(hostDialog).toBeHidden();
   });
 
   test("closes on a press, and doesn't open while the pointer is held", async ({
