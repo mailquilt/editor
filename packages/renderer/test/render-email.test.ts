@@ -253,6 +253,35 @@ describe(renderEmail, () => {
     );
   });
 
+  it("lets a word of 20 or more characters wrap however it's formatted, as it's measured whole", async () => {
+    const html = await renderEmail(
+      emailWithInline(
+        plain("projects/mail-"),
+        bold("quilt/welcome"),
+        plain(" or short."),
+        bold("example/x"),
+        plain(" for {{ user.first"),
+        bold("_name_long_value }}")
+      )
+    );
+
+    expect(html).toContain(
+      ">projects/&#8203;mail-&#8203;<strong>quilt/&#8203;welcome</strong> or short.<strong>example/x</strong> for {{ user.first<strong>_name_long_value }}</strong></p>"
+    );
+  });
+
+  it("ends a URL written as text before Japanese or Chinese written straight after it, or their punctuation", async () => {
+    const html = await renderEmail(
+      emailWithText(
+        "詳細はhttps://x.jp/aまで、www.y.jpへ。https://example.jp/をご覧ください。详见https://x.cn/b，然后"
+      )
+    );
+
+    expect(html).toContain(
+      '>詳細は<a href="https://x.jp/a" target="_blank" style="color:#000000;text-decoration:underline">https://&#8203;x.&#8203;jp/&#8203;a</a>まで、<a href="http://www.y.jp" target="_blank" style="color:#000000;text-decoration:underline">www.&#8203;y.&#8203;jp</a>へ。<a href="https://example.jp/" target="_blank" style="color:#000000;text-decoration:underline">https://&#8203;example.&#8203;jp/&#8203;</a>をご覧ください。详见<a href="https://x.cn/b" target="_blank" style="color:#000000;text-decoration:underline">https://&#8203;x.&#8203;cn/&#8203;b</a>，然后</p>'
+    );
+  });
+
   it("links a URL written as text, as Apple Mail and Gmail did before its break points", async () => {
     const html = await renderEmail(
       emailWithText("See https://example.com/a/long_path?x=1&y=2.")
@@ -305,7 +334,7 @@ describe(renderEmail, () => {
     );
 
     expect(html).toContain(
-      '>See <a href="https://x.test/(b)" target="_blank" style="color:#000000;text-decoration:underline">https://x.test/(b)</a> (or <a href="https://x.test/(d)" target="_blank" style="color:#000000;text-decoration:underline">https://x.test/(d)</a>), <a href="https://x.co/((e))" target="_blank" style="color:#000000;text-decoration:underline">https://x.co/((e))</a>, <a href="https://x.co/?q=(f" target="_blank" style="color:#000000;text-decoration:underline">https://x.co/?q=(f</a> or <a href="https://x.co/a)b" target="_blank" style="color:#000000;text-decoration:underline">https://x.co/a)b</a></p>'
+      '>See <a href="https://x.test/(b)" target="_blank" style="color:#000000;text-decoration:underline">https://x.test/(b)</a> (or <a href="https://x.test/(d)" target="_blank" style="color:#000000;text-decoration:underline">https://&#8203;x.&#8203;test/&#8203;(d)</a>), <a href="https://x.co/((e))" target="_blank" style="color:#000000;text-decoration:underline">https://x.co/((e))</a>, <a href="https://x.co/?q=(f" target="_blank" style="color:#000000;text-decoration:underline">https://x.co/?q=(f</a> or <a href="https://x.co/a)b" target="_blank" style="color:#000000;text-decoration:underline">https://x.co/a)b</a></p>'
     );
   });
 
