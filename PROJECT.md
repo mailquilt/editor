@@ -538,7 +538,7 @@ Not yet confirmed:
 - A bad release is fixed by publishing a new version, and deprecating the bad one if needed.
 - Each change goes through a short-lived branch and a pull request, with a title that says what's true after it, such as `fix: the Shell keeps a first-time visitor's work`. Pull requests are squashed, so the title becomes the commit.
 
-To release, version on a branch, so CI checks the exact commit that's published:
+To release, version on a branch. CI publishes the commit it checked:
 
 ```bash
 pnpm changeset version   # bumps the versions in package.json and writes the changelogs
@@ -551,12 +551,12 @@ git grep -l "/@mailquilt/editor@[0-9]" -- PROJECT.md README.md apps/docs/docs "p
 # Then move what shipped from "Next" to "Now" on the roadmap page,
 # apps/docs/pages/roadmap.astro.
 git add -A && git commit -m "chore: release"
-# Push, open a pull request, and merge it once CI passes. Then, on main:
-git pull
-pnpm release             # refuses a tree with changes or a commit not on main,
-                         # then builds, publishes to npm and tags the release
-git push --follow-tags
+# Push, open a pull request, and merge it once CI passes.
 ```
+
+On `main`, CI's release job runs once every check has passed. It publishes each package whose version isn't on npm yet, with provenance, and pushes a tag for each. Any other commit on `main` publishes nothing, as its versions are already on npm. If a publish fails, rerun the job.
+
+npm lets the job publish without a token because each package has this repository's `ci.yml` as its trusted publisher, with publishing that skips 2FA turned off.
 
 ## 15. Open source model
 
