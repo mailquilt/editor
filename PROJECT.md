@@ -537,7 +537,8 @@ pnpm changeset version   # bumps versions and writes the changelogs
 # The CDN links name the version. The install checks fail until each one in
 # the docs pages, the READMEs and the skill matches. These are the files:
 git grep -l "/@mailquilt/editor@[0-9]" -- PROJECT.md README.md apps/docs/docs "packages/*/README.md" skills
-# Set each to the new version, and move what shipped out of the roadmap's "Now".
+# Set each to the new version, and move what shipped from "Next" to "Now" on
+# the roadmap page, apps/docs/pages/roadmap.astro.
 git add -A && git commit -m "chore: release"
 # Push, open a pull request, and merge it once CI passes. Then, on main:
 git pull

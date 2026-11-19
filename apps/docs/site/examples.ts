@@ -1,5 +1,6 @@
 // The emails on the Examples page. Each is a document the editor opens, written
-// by hand here so the page can offer the JSON and render the HTML from it.
+// by hand here so the page can offer the JSON and render the HTML from it. Each
+// has its own page too, a file under pages/examples/ named for its slug.
 //
 // They share one look, which is this site's: white, ink and grey, with an
 // orange button. A sender's own data comes in through Merge Tags, pictures included,

@@ -24,4 +24,8 @@ Blume's version is pinned, so an upgrade only comes when you choose one. The sit
 
 - `withBase` from `blume/components/islands/base-path.ts`, which puts the base path on a link.
 - `codeBlockHtml` from `blume/components/content/code-block.ts`, which highlights the landing page's code as the docs' own is.
+- `Tabs` and `Tab` from `blume/components/content/`, the landing page's tabs of code.
 - The selectors in `theme.css` that restyle Blume's header, sidebar, table of contents, cards and page-end links. They match Blume's own attributes and classes, such as `[data-blume-header]` and `a.bg-accent`.
+- `[data-blume-tab-panel]` in `styles/home.css`, which joins an install command to the file under it.
+- `publicHoistPattern` in the root `pnpm-workspace.yaml`, which hoists Blume's `astro` so `blume check` can type-check the `.astro` files.
+- The `_headers` file Blume writes, which `blume.config.ts` adds the security headers to.

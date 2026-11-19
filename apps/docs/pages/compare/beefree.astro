@@ -3,58 +3,60 @@
 // own site, docs or code on the date below. Check them again before changing it.
 import SitePage from "../../components/site-page.astro";
 import Versus from "../../components/versus.astro";
+import { REASONS } from "../../site/project.ts";
+import type { CompareRow } from "../../site/project.ts";
 
 const CHECKED = "16 November 2026";
 
-const rows = [
+const rows: CompareRow[] = [
   {
     label: "What it is",
-    ours: "Packages for building an email editor into your app: a drag-and-drop editor, a ready-made editor page, and the document model and renderer under them. It makes emails only.",
+    ours: "what",
     theirs:
       "A commercial SDK you embed, with an Email Builder, Page Builder, Pop-up Builder and File Manager.",
   },
   {
     label: "License and cost",
-    ours: "MIT. Free, with no paid plan.",
+    ours: "cost",
     theirs:
       "A free plan for prototyping, with 10 users. Then Essentials at $400 a month, Core at $1,200 and Superpowers at $3,000, with Enterprise priced on request. Its docs say the free plan can still bring charges, such as for CDN overages.",
   },
   {
     label: "Where the editor comes from",
-    ours: "Installed from npm and bundled with your app, or loaded from a CDN build you pin to a version.",
+    ours: "source",
     theirs: "Loaded from Beefree's servers, at app-rsrc.getbee.io.",
   },
   {
     label: "Account",
-    ours: "None.",
+    ours: "account",
     theirs:
       "A client ID and secret. Its docs say production apps must sign in from the server, and never expose the secret in the browser.",
   },
   {
     label: "Frameworks",
-    ours: "Any framework, as a Web Component, and a React component.",
+    ours: "frameworks",
     theirs: "React, Angular and Vue packages.",
   },
   {
     label: "What you save",
-    ours: "A documented JSON format. The HTML is written by MJML, in the browser or on your own server.",
+    ours: "saved",
     theirs: "Beefree's JSON, with HTML, and AMP HTML, from the same save.",
   },
   {
     label: "Outlook",
-    ours: "Works in classic Outlook for Windows, with limits: emoji are black and white, and dark mode inverts the colors.",
+    ours: "outlook",
     theirs:
       "Its site says “Broad email compatibility, Outlook included”, without naming versions.",
   },
   {
     label: "Content and templates",
-    ours: "Six Blocks, no template library and no image upload.",
+    ours: "blocks",
     theirs:
       "Eleven content tiles on the free plan, including Social, Icons and Table, with more on paid plans. A File Manager and a Template Catalog API.",
   },
   {
     label: "Support",
-    ours: "One maintainer and a public issue tracker.",
+    ours: "support",
     theirs: "A company, with a help center and sales team.",
   },
 ];
@@ -66,11 +68,11 @@ const theirs = [
 ];
 
 const ours = [
-  "You want the editor inside your product, with no fee and no other company's servers involved.",
+  REASONS.noFee,
   "You'd rather not run a sign-in step on your server before the editor can open.",
-  "You want each email saved as a documented JSON format that you can check, change and render on your own server.",
-  "You want everything that can be dragged to work from the keyboard too.",
-  "Six Blocks are enough for the emails your customers send.",
+  REASONS.saved,
+  REASONS.keyboard,
+  REASONS.fewBlocks,
 ];
 
 const sources = [

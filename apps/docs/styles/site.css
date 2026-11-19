@@ -263,7 +263,7 @@
   min-width: 4.25rem;
   padding: 0.1875rem 0.625rem;
   border: 1px solid var(--blume-border);
-  border-radius: 0.5rem;
+  border-radius: var(--blume-radius);
   background: var(--blume-background);
   color: var(--blume-foreground);
   font-family: var(--blume-font-body);
@@ -572,6 +572,10 @@
 
 .site-mark-slot {
   stroke: var(--site-dash);
+}
+
+.site-mark-envelope {
+  fill: var(--site-accent);
 }
 
 /* The surface's color, so the envelope cuts a gap in the slot beneath it. */

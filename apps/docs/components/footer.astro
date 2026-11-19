@@ -38,8 +38,6 @@ const groups = [
     title: "Elsewhere",
   },
 ];
-
-const hrefOf = (href: string) => (href.startsWith("/") ? withBase(href) : href);
 ---
 
 <footer class="site-footer" data-blume-footer>
@@ -73,7 +71,7 @@ const hrefOf = (href: string) => (href.startsWith("/") ? withBase(href) : href);
           <ul>
             {links.map(({ href, label }) => (
               <li>
-                <a href={hrefOf(href)}>{label}</a>
+                <a href={withBase(href)}>{label}</a>
               </li>
             ))}
           </ul>

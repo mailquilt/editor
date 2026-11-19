@@ -12,7 +12,8 @@ const fill = (html: string, values: Record<string, string | undefined>) => {
   let filled = html;
   for (const [tag, value] of Object.entries(values)) {
     if (value !== undefined) {
-      filled = filled.replaceAll(`{{${tag}}}`, value);
+      // A function, so a `$` in the value, as in a price, is taken as written.
+      filled = filled.replaceAll(`{{${tag}}}`, () => value);
     }
   }
   return filled;

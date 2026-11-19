@@ -6,7 +6,7 @@
   "scripts": {
     "build": "blume build",
     "dev": "blume dev",
-    "check-types": "tsc --noEmit",
+    "check-types": "blume check && tsc --noEmit",
     "test": "playwright test"
   },
   "dependencies": {

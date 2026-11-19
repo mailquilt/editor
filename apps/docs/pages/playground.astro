@@ -18,16 +18,16 @@ import Playground from "../islands/Playground.tsx";
     </p>
   </div>
   <div class="editor">
+    <p class="waiting site-muted">
+      The Playground is loading. If it doesn't appear, it needs JavaScript
+      turned on.
+    </p>
     <Playground client:only="react" />
   </div>
 </SitePage>
 
 <style>
   .intro {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 0.25rem 1.5rem;
     padding: 1.25rem 1rem 0;
   }
 
@@ -54,12 +54,42 @@ import Playground from "../islands/Playground.tsx";
   }
 
   .intro p {
+    margin-top: 0.25rem;
     font-size: 1rem;
     line-height: 1.75rem;
   }
 
   .editor {
+    container-type: inline-size;
     padding: 0 1rem 1.5rem;
+  }
+
+  /*
+   * The Shell only arrives once its script has run. Until then this note is a
+   * slot where it goes, as tall as the Shell and with the same room around
+   * it, so the page doesn't jump. It stays if the script never runs.
+   * Narrower than the editor, the Shell is a notice of no set height.
+   */
+  .waiting {
+    display: none;
+  }
+
+  .editor:has(> :global(astro-island:empty)) > .waiting {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-block: 1rem;
+    padding: 1.5rem;
+    border: var(--site-slot);
+    border-radius: 0.875rem;
+    text-align: center;
+  }
+
+  @container (width >= 640px) {
+    .waiting {
+      height: calc(100dvh - 6rem);
+      min-height: calc(600px + 48px);
+    }
   }
 
   .editor :global(.playground) {

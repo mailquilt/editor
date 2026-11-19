@@ -1,9 +1,11 @@
 ---
 // One other editor beside Mail Quilt, row by row, with when to choose each.
-// The page that uses it holds the facts, and the date they were read on.
+// The page that uses it holds the other editor's facts, and the date they were
+// read on. Mail Quilt's own come from MAIL_QUILT in site/project.ts.
 import { withBase } from "blume/components/islands/base-path.ts";
 
-import { ISSUES } from "../site/project.ts";
+import { ISSUES, MAIL_QUILT } from "../site/project.ts";
+import type { CompareRow } from "../site/project.ts";
 
 interface Props {
   /** The day each line about the other editor was read from its own pages. */
@@ -11,7 +13,7 @@ interface Props {
   /** Reasons to choose Mail Quilt instead. */
   ours: string[];
   /** One fact per row, for both editors. */
-  rows: { label: string; ours: string; theirs: string }[];
+  rows: CompareRow[];
   /** The other editor's own pages each line was read from. */
   sources: { href: string; label: string }[];
   /** Reasons to choose the other editor. */
@@ -45,7 +47,7 @@ const { checked, ours, rows, sources, theirs, them } = Astro.props;
             rows.map((row) => (
               <tr>
                 <th scope="row">{row.label}</th>
-                <td>{row.ours}</td>
+                <td>{MAIL_QUILT[row.ours]}</td>
                 <td>{row.theirs}</td>
               </tr>
             ))

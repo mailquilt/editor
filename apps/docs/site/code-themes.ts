@@ -96,7 +96,8 @@ export const codeLight = codeTheme("mailquilt-light", "light", {
 
 export const codeDark = codeTheme("mailquilt-dark", "dark", {
   background: "#131316",
-  comment: "#7c7c87",
+  // 4.6:1 on the background, as the WCAG AA minimum for text is 4.5:1.
+  comment: "#7e7e89",
   keyword: "#a1a1aa",
   property: "#c4c4cc",
   strong: "#fafafa",

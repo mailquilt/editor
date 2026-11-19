@@ -3,6 +3,12 @@
 {
   "name": "editor",
   "compatibility_date": "2026-06-01",
+  // One address for the site, SITE_URL in apps/docs/site/project.ts. The
+  // workers.dev address and preview addresses would serve the same pages
+  // again, under other names.
+  "routes": [{ "pattern": "editor.mailquilt.com", "custom_domain": true }],
+  "workers_dev": false,
+  "preview_urls": false,
   "assets": {
     "directory": "./apps/docs/dist",
     // Blume links to /docs/quick-start, not /docs/quick-start/. Cloudflare's

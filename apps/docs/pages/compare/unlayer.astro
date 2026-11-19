@@ -3,59 +3,61 @@
 // site, docs or code on the date below. Check them again before changing it.
 import SitePage from "../../components/site-page.astro";
 import Versus from "../../components/versus.astro";
+import { REASONS } from "../../site/project.ts";
+import type { CompareRow } from "../../site/project.ts";
 
 const CHECKED = "16 November 2026";
 
-const rows = [
+const rows: CompareRow[] = [
   {
     label: "What it is",
-    ours: "Packages for building an email editor into your app: a drag-and-drop editor, a ready-made editor page, and the document model and renderer under them. It makes emails only.",
+    ours: "what",
     theirs:
       "A commercial editor you embed, with builders for emails, pages, popups and documents.",
   },
   {
     label: "License and cost",
-    ours: "MIT. Free, with no paid plan.",
+    ours: "cost",
     theirs:
       "A free plan, then Launch at $250 a month, Scale at $750 and Optimize at $2,000, with Enterprise priced on request. The React wrapper is MIT.",
   },
   {
     label: "Where the editor comes from",
-    ours: "Installed from npm and bundled with your app, or loaded from a CDN build you pin to a version.",
+    ours: "source",
     theirs:
       "Loaded from Unlayer's servers, at editor.unlayer.com. Running it on-premise or offline is an Enterprise option.",
   },
   {
     label: "Account",
-    ours: "None.",
+    ours: "account",
     theirs:
       "In production, your domain must be added in the Unlayer Console.",
   },
   {
     label: "Frameworks",
-    ours: "Any framework, as a Web Component, and a React component.",
+    ours: "frameworks",
     theirs: "React, Angular and Vue wrappers.",
   },
   {
     label: "What you save",
-    ours: "A documented JSON format. The HTML is written by MJML, in the browser or on your own server.",
+    ours: "saved",
     theirs: "Unlayer's JSON design, which it exports as HTML.",
   },
   {
     label: "Outlook",
-    ours: "Works in classic Outlook for Windows, with limits: emoji are black and white, and dark mode inverts the colors.",
+    ours: "outlook",
     theirs:
       "Its docs say exports include markup for classic Outlook for Windows by default.",
   },
   {
     label: "Blocks, images and teams",
-    ours: "Six Blocks, no template library, no image upload and no collaboration.",
+    ours: "blocks",
     theirs:
       "White-labeling and custom tools from Launch. Custom Blocks, team collaboration and a custom image library from Scale.",
   },
   {
     label: "Support",
-    ours: "One maintainer and a public issue tracker.",
+    ours: "support",
     theirs: "A company, with a dedicated success manager on Enterprise.",
   },
 ];
@@ -67,10 +69,10 @@ const theirs = [
 ];
 
 const ours = [
-  "You want the editor inside your product, with no fee and no other company's servers involved.",
-  "You want each email saved as a documented JSON format that you can check, change and render on your own server.",
-  "You want everything that can be dragged to work from the keyboard too.",
-  "Six Blocks are enough for the emails your customers send.",
+  REASONS.noFee,
+  REASONS.saved,
+  REASONS.keyboard,
+  REASONS.fewBlocks,
 ];
 
 const sources = [

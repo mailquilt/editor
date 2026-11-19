@@ -31,6 +31,8 @@ test("runs on the Shell, below the page's title", async ({ page }) => {
   await expect(
     shell.getByRole("button", { name: "Import JSON" })
   ).toBeVisible();
+  // The note that held its place has gone.
+  await expect(page.getByText("The Playground is loading.")).toBeHidden();
 
   const title = await page.getByRole("heading", { level: 1 }).boundingBox();
   const box = await shell.boundingBox();
@@ -83,4 +85,21 @@ test("on a phone, the Shell is only as tall as its notice", async ({
   expect(noticeBox?.height).toBeLessThan(
     (page.viewportSize()?.height ?? 0) / 2
   );
+});
+
+test.describe("without JavaScript", () => {
+  test.use({ javaScriptEnabled: false });
+
+  test("says why the Playground hasn't appeared", async ({
+    browserName,
+    page,
+  }) => {
+    test.skip(
+      browserName !== "chromium",
+      "Checks content, so Chromium alone runs it."
+    );
+    await page.goto(PLAYGROUND);
+
+    await expect(page.getByText("it needs JavaScript")).toBeVisible();
+  });
 });

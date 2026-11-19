@@ -6,6 +6,21 @@ import { withBase } from "blume/components/islands/base-path.ts";
 import ExampleEmail from "../components/example-email.astro";
 import SitePage from "../components/site-page.astro";
 import { renderedExamples } from "../site/rendered-examples.ts";
+
+// Each example's page is a file under pages/examples/, as Blume's sitemap
+// lists no [slug] route. So a new example can't be added without one, the
+// build stops here and names the file.
+const pageFiles = Object.keys(import.meta.glob("./examples/*.astro"));
+const withoutPage = renderedExamples.filter(
+  ({ slug }) => !pageFiles.includes(`./examples/${slug}.astro`)
+);
+if (withoutPage.length > 0) {
+  throw new Error(
+    `An example has no page. Add ${withoutPage
+      .map(({ slug }) => `pages/examples/${slug}.astro`)
+      .join(", ")}, rendering components/example-page.astro.`
+  );
+}
 ---
 
 <SitePage
