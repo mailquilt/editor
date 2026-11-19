@@ -72,8 +72,6 @@ const TEXT_STYLE = "margin:0;word-break:break-word;overflow-wrap:anywhere";
 const exactLineHeight = (fontSize: string) =>
   `${Math.ceil(Number(fontSize.replace("px", "")) * Number(EMAIL_LOOK.lineHeight))}px`;
 
-const MERGE_TAG_PART = new RegExp(`(${MERGE_TAG.source})`, "u");
-
 /**
  * Put before a character class: a whole Merge Tag, spaces and all, or one of
  * those characters that doesn't start one, so a word or URL never cuts a tag.
@@ -86,29 +84,46 @@ const TAG_OR = `${MERGE_TAG.source}|(?!${MERGE_TAG.source})`;
  */
 const WORD_OR_SPACE = new RegExp(`(?:${TAG_OR}\\S)+|\\s+`, "gu");
 
+/** A Merge Tag, or a character a long word may break after. */
+const TAG_OR_BREAK = new RegExp(
+  `${MERGE_TAG.source}|[.\\-?=&_]|\\/(?!\\/)`,
+  "gu"
+);
+
 /**
- * Text as HTML, escaped. A word of 20 or more characters as typed, such as a
- * pasted URL, gets a zero-width space after each / . - ? & = and _, outside
- * Merge Tags and the // of a URL. Yahoo, AOL, GMX, Web.de and classic Outlook
- * ignore CSS that breaks a word, and widened the email with it (#91). Shorter
- * words, and numbers such as 3.5, stay whole.
+ * Where a text may break: after each / . - ? & = and _ in a word of 20 or more
+ * characters as typed, such as a pasted URL, outside Merge Tags and the // of a
+ * URL, and not at the word's end, where it already can. Yahoo, AOL, GMX, Web.de
+ * and classic Outlook ignore CSS that breaks a word, and widened the email with
+ * it (#91). Shorter words, and numbers such as 3.5, stay whole. Read across any
+ * change of formatting, as the reader sees it.
  */
-const breakLongWords = (text: string) =>
-  text.replaceAll(WORD_OR_SPACE, (word) =>
-    [...word].length < 20
-      ? escapeText(word)
-      : word
-          .split(MERGE_TAG_PART)
-          .map((part, index) =>
-            index % 2 === 1
-              ? escapeText(part)
-              : escapeText(part).replaceAll(
-                  /&amp;|\/(?!\/)|[.\-?=_]/gu,
-                  "$&&#8203;"
-                )
-          )
-          .join("")
-  );
+const breakPoints = (text: string) => {
+  const breaks = new Uint8Array(text.length);
+  for (const { 0: word, index } of text.matchAll(WORD_OR_SPACE)) {
+    if ([...word].length >= 20) {
+      for (const { 0: match, index: at } of word.matchAll(TAG_OR_BREAK)) {
+        if (match.length === 1 && at < word.length - 1) {
+          breaks[index + at] = 1;
+        }
+      }
+    }
+  }
+  return breaks;
+};
+
+/** A piece of a text as HTML, escaped, with a zero-width space at each break. */
+const withBreaks = (piece: string, start: number, breaks: Uint8Array) => {
+  let html = "";
+  let from = 0;
+  for (let index = 0; index < piece.length; index += 1) {
+    if (breaks[start + index] === 1) {
+      html += `${escapeText(piece.slice(from, index + 1))}&#8203;`;
+      from = index + 1;
+    }
+  }
+  return html + escapeText(piece.slice(from));
+};
 
 const MARK_TAGS = {
   bold: "strong",
@@ -135,16 +150,19 @@ const openTag = (mark: RichTextMark, linkColor: string) =>
     : `<${MARK_TAGS[mark.type]}>`;
 
 /**
- * What follows a URL's `https://` or `www.`, with any Merge Tag in it whole, and
- * without the punctuation or closing bracket that may end a sentence after it.
+ * Scripts written without spaces between words, such as Japanese, and their
+ * full-width punctuation and letters, which end a URL or address rather than
+ * join it, as in `info@example.comまで`. A URL copied from a browser has any
+ * such letters in its path percent-encoded.
  */
-const URL_REST = `(?:${TAG_OR}[^\\s<>"])*(?:${TAG_OR}[^\\s<>".,;:!?)'\\]])`;
+const WITHOUT_SPACES = String.raw`\u3000-\u303F\uFF00-\uFFEF\p{scx=Han}\p{scx=Hiragana}\p{scx=Katakana}\p{scx=Thai}\p{scx=Lao}\p{scx=Khmer}\p{scx=Myanmar}`;
 
 /**
- * Scripts written without spaces between words, such as Japanese, whose letters
- * end an address rather than join it, as in `info@example.comまで`.
+ * What follows a URL's `https://` or `www.`, with any Merge Tag in it whole, and
+ * without the punctuation or closing bracket that may end a sentence after it.
+ * One of those scripts' letters or punctuation ends it.
  */
-const WITHOUT_SPACES = String.raw`\p{scx=Han}\p{scx=Hiragana}\p{scx=Katakana}\p{scx=Thai}\p{scx=Lao}\p{scx=Khmer}\p{scx=Myanmar}`;
+const URL_REST = `(?:${TAG_OR}[^\\s<>"${WITHOUT_SPACES}])*(?:${TAG_OR}[^\\s<>".,;:!?)'\\]${WITHOUT_SPACES}])`;
 
 /** A letter or digit in any other script, which `\w` limits to ASCII. */
 const LETTER = String.raw`(?![${WITHOUT_SPACES}])[\p{L}\p{M}\p{N}]`;
@@ -210,6 +228,7 @@ type Inline = NonNullable<RichTextParagraph["content"]>[number];
  * reader sees it, across any change of formatting, so the link goes to the
  * whole address. One that runs into a link isn't linked, as that link already
  * goes somewhere else from a part of it. Each node and address is read once.
+ * Each piece comes with where it starts in the text.
  */
 const linkWrittenAddresses = (inline: Inline[]) => {
   let offset = 0;
@@ -244,8 +263,8 @@ const linkWrittenAddresses = (inline: Inline[]) => {
     }
   }
   let next = 0;
-  return spans.flatMap(({ end, node, start }): Inline[] => {
-    const pieces: Inline[] = [];
+  const pieces = spans.flatMap(({ end, node, start }) => {
+    const parts: { node: Inline; start: number }[] = [];
     let from = start;
     while (node.type === "text" && from < end) {
       while ((links[next]?.end ?? end) <= from) {
@@ -254,20 +273,24 @@ const linkWrittenAddresses = (inline: Inline[]) => {
       const link = links[next];
       const inLink = link !== undefined && link.start <= from;
       const to = Math.min(end, inLink ? link.end : (link?.start ?? end));
-      pieces.push({
-        ...node,
-        marks: inLink
-          ? [
-              { attrs: { href: link.href }, type: "link" },
-              ...(node.marks ?? []),
-            ]
-          : node.marks,
-        text: node.text.slice(from - start, to - start),
+      parts.push({
+        node: {
+          ...node,
+          marks: inLink
+            ? [
+                { attrs: { href: link.href }, type: "link" },
+                ...(node.marks ?? []),
+              ]
+            : node.marks,
+          text: node.text.slice(from - start, to - start),
+        },
+        start: from,
       });
       from = to;
     }
-    return pieces.length > 0 ? pieces : [node];
+    return parts.length > 0 ? parts : [{ node, start }];
   });
+  return { pieces, text };
 };
 
 const isSameMark = (a: RichTextMark, b: RichTextMark) =>
@@ -293,7 +316,9 @@ const inlineToHtml = (
       html += `</${MARK_TAGS[mark.type]}>`;
     }
   };
-  for (const node of linkWrittenAddresses(inline)) {
+  const { pieces, text } = linkWrittenAddresses(inline);
+  const breaks = breakPoints(text);
+  for (const { node, start } of pieces) {
     const marks = (node.marks ?? []).toSorted(
       (a, b) => MARK_ORDER.indexOf(a.type) - MARK_ORDER.indexOf(b.type)
     );
@@ -312,7 +337,7 @@ const inlineToHtml = (
         html += openTag(mark, linkColor);
         open.push(mark);
       }
-      html += keepSpaces(breakLongWords(node.text), afterSpace);
+      html += keepSpaces(withBreaks(node.text, start, breaks), afterSpace);
       afterSpace = node.text.endsWith(" ");
     }
   }
