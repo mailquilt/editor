@@ -403,9 +403,9 @@ describe("while a Block or Row is dragged", () => {
 });
 
 describe("while a tooltip shows", () => {
-  it("Escape closes the focused control's, and stops there", () => {
+  it("Escape closes the focused control's, and stops there, so a host's dialog stays open", () => {
     expect(keyHeardFirst("focusedTooltip", press("Escape"))).toStrictEqual(
-      acts("closeTooltip", { keepsDefault: true, stops: true })
+      acts("closeTooltip", { stops: true })
     );
   });
 
