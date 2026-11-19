@@ -1,18 +1,12 @@
 import { execFileSync } from "node:child_process";
-import {
-  cpSync,
-  mkdirSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { cpSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import {
   cdnPort,
   freshProjectDir,
-  freshProjects,
   freshProjectsDir,
+  projectNames,
 } from "./fresh-projects.ts";
 
 const packages = ["core", "renderer", "editor", "react"];
@@ -33,13 +27,20 @@ const cdnBuildUrl =
 /** The Shell's examples, each copied into a fresh project as a page of its own. */
 const shellExamples = path.join(quickStart, "..", "_shell");
 const shellPages = {
+  nextjs: path.join("app", "shell"),
   "plain-js": "shell",
-  react: path.join("app", "shell"),
+  "react-vite": "src",
+} as const;
+/** Where each quick start imports the starter email from. */
+const starterEmailDirs = {
+  cdn: ".",
+  nextjs: "app",
+  "plain-js": ".",
   "react-vite": "src",
 } as const;
 /** The docs' server-side examples, run in Node against the packed packages. */
 const serverCode = path.join(quickStart, "..", "_code");
-/** The Next.js guide's own files, added to the React project, which is a Next.js app. */
+/** The Next.js guide's own files, added to the Next.js project. */
 const nextjsGuide = path.join(quickStart, "..", "_nextjs");
 const tarballs = path.join(freshProjectsDir, "tarballs");
 
@@ -47,7 +48,6 @@ const pnpm = (cwd: string, ...args: string[]) => {
   execFileSync("pnpm", args, { cwd, stdio: "inherit" });
 };
 
-rmSync(freshProjectsDir, { force: true, recursive: true });
 mkdirSync(tarballs, { recursive: true });
 
 // Packed packages name each other by version, so each is pointed at its
@@ -64,23 +64,18 @@ const overrides = packages
   })
   .join("\n");
 
-for (const name of Object.keys(
-  freshProjects
-) as (keyof typeof freshProjects)[]) {
+for (const name of projectNames) {
   const dir = freshProjectDir(name);
   cpSync(path.join(here, "projects", name), dir, { recursive: true });
   cpSync(path.join(quickStart, name), dir, { recursive: true });
-  // The React projects have their own typed copies.
-  if (name !== "react" && name !== "react-vite") {
-    cpSync(
-      path.join(here, "projects", "starter-email.js"),
-      path.join(dir, "starter-email.js")
-    );
-  }
+  cpSync(
+    path.join(here, "projects", "starter-email.js"),
+    path.join(dir, starterEmailDirs[name], "starter-email.js")
+  );
   if (name === "plain-js") {
     cpSync(serverCode, path.join(dir, "server"), { recursive: true });
   }
-  if (name === "react") {
+  if (name === "nextjs") {
     cpSync(nextjsGuide, dir, { recursive: true });
   }
   if (name in shellPages) {

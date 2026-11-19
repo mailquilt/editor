@@ -18,7 +18,7 @@ npm install @mailquilt/react @mailquilt/renderer
 The component that holds the editor keeps the email in state and passes it callbacks, which a Server Component can't do, so it's a Client Component:
 
 <include meta='title="app/editor.tsx"'>
-  ./_quick-start/react/app/editor.tsx
+  ./_quick-start/nextjs/app/editor.tsx
 </include>
 
 `starterEmail` is the email to open when nothing is saved yet. Use one your app already has, or copy the [example email](./document-format#example).
@@ -35,7 +35,7 @@ The page that shows it can stay a Server Component:
 
 If the editor is a page of its own, the [Shell](./shell) gives you the header, Export and Import buttons and messages around it. With `saveKey`, it keeps the email in the browser and needs no callbacks, so the page stays a Server Component:
 
-<include meta='title="app/shell/page.tsx"'>./_shell/react/page.tsx</include>
+<include meta='title="app/shell/page.tsx"'>./_shell/nextjs/page.tsx</include>
 
 ## Render the HTML on the server
 

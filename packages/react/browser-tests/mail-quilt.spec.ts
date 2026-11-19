@@ -9,6 +9,30 @@ test("onError hears a refused first document", async ({ page }) => {
   await expect(page.getByTestId("errors")).toContainText("newer");
 });
 
+test("onError hears why the editor's code can't load", async ({ page }) => {
+  // Only the scripts the page names load, so the editor's code, which the
+  // component imports once it's on the page, can't.
+  const response = await page.request.get("/");
+  const html = await response.text();
+  const pageScripts = new Set(
+    Array.from(
+      html.matchAll(/(?:src|href)="(?<script>[^"]+\.js)"/gu),
+      ({ groups }) => groups?.script
+    )
+  );
+  await page.route("**/*.js", (route) =>
+    pageScripts.has(new URL(route.request().url()).pathname)
+      ? route.continue()
+      : route.abort()
+  );
+
+  await page.goto("/");
+
+  await expect(page.getByTestId("errors")).toContainText(
+    "The editor couldn't load: "
+  );
+});
+
 const fastTyping = "The quick brown fox jumps over the lazy dog. ".repeat(3);
 
 test("a later value replaces the email in the editor", async ({ page }) => {
@@ -47,6 +71,27 @@ test("a new onChange each render replaces the last, so each edit calls it once",
 
   await expect(page.getByTestId("latest-document")).toContainText("Oh Hello");
   await expect(page.getByTestId("change-count")).toHaveText("3");
+});
+
+test("a controlled editor removed and shown again opens the latest email, and its changes still reach onChange", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await focusStartOfTextBlock(page);
+  await page.keyboard.type("Oh ");
+  await expect(page.getByTestId("latest-document")).toContainText("Oh Hello");
+
+  const toggle = page.getByRole("button", { name: "Toggle editor" });
+  await toggle.click();
+  await expect(textBlock(page)).toHaveCount(0);
+  await toggle.click();
+
+  await expect(textBlock(page)).toHaveText("Oh Hello");
+  await focusStartOfTextBlock(page);
+  await page.keyboard.type("Back ");
+  await expect(page.getByTestId("latest-document")).toContainText(
+    "Back Oh Hello"
+  );
 });
 
 const calls = (page: Page) => page.getByTestId("ref-calls");
