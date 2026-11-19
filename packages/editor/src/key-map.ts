@@ -285,10 +285,21 @@ const KEY_MAP: Record<Place, readonly Entry[]> = {
   ],
 };
 
+// As ProseMirror decides it for Bold and the other text keys, so they all agree.
+// A server importing the editor may have no navigator.
+const IS_MAC =
+  typeof navigator === "object" &&
+  /Mac|iPhone|iPod|iPad/u.test(navigator.platform);
+
+const isOnPlatform = ({ platform }: Pick<Entry, "platform">, apple: boolean) =>
+  platform === undefined || (platform === "apple") === apple;
+
 export type TextAction =
   | "bold"
+  | "deleteForward"
   | "italic"
   | "lineBreak"
+  | "newParagraph"
   | "toEnd"
   | "toStart"
   | "underline";
@@ -302,17 +313,31 @@ interface TextEntry {
    */
   aliases?: readonly string[];
   keys: readonly string[];
+  platform?: Entry["platform"];
 }
 
 /**
- * In a Block's text, ProseMirror answers these first. The text's other keys,
- * such as Backspace, are ProseMirror's own.
+ * Every key a Block's text has a rule for, which ProseMirror answers first, with
+ * the command in `text-commands.ts` that each one runs. Names are ProseMirror's,
+ * so Ctrl is Ctrl on every device. The text's other keys, such as Backspace and
+ * select all, are ProseMirror's base keys, and do what they do there.
  */
 export const TEXT_KEYS: readonly TextEntry[] = [
   { action: "bold", aliases: ["Shift-Mod-b"], keys: ["Mod-b"] },
   { action: "italic", aliases: ["Shift-Mod-i"], keys: ["Mod-i"] },
   { action: "underline", aliases: ["Shift-Mod-u"], keys: ["Mod-u"] },
   { action: "lineBreak", aliases: ["Mod-Enter"], keys: ["Shift-Enter"] },
+  // Keeps the formatting, so typing on the new line carries on.
+  { action: "newParagraph", keys: ["Enter"] },
+  // In an empty paragraph, removes it, even the last one.
+  { action: "deleteForward", aliases: ["Mod-Delete"], keys: ["Delete"] },
+  // The keys ProseMirror gives Apple devices that delete forward too.
+  {
+    action: "deleteForward",
+    aliases: ["Ctrl-d", "Ctrl-Alt-Backspace", "Alt-Delete", "Alt-d"],
+    keys: [],
+    platform: "apple",
+  },
   // Only from all the text selected, which some browsers leave alone.
   { action: "toStart", keys: ["ArrowLeft"] },
   { action: "toEnd", keys: ["ArrowRight"] },
@@ -330,19 +355,17 @@ const proseMirrorName = (name: string) => {
 };
 
 /** The text's keys, by ProseMirror's names, with what each does. */
-export const proseMirrorKeys = (): [string, TextAction][] =>
-  TEXT_KEYS.flatMap(({ action, aliases = [], keys }) =>
-    [...keys, ...aliases].map((name): [string, TextAction] => [
-      proseMirrorName(name),
-      action,
-    ])
+export const proseMirrorKeys = ({ apple = IS_MAC }: { apple?: boolean } = {}): [
+  string,
+  TextAction,
+][] =>
+  TEXT_KEYS.filter((entry) => isOnPlatform(entry, apple)).flatMap(
+    ({ action, aliases = [], keys }) =>
+      [...keys, ...aliases].map((name): [string, TextAction] => [
+        proseMirrorName(name),
+        action,
+      ])
   );
-
-// As ProseMirror decides it for Bold and the other text keys, so they all agree.
-// A server importing the editor may have no navigator.
-const IS_MAC =
-  typeof navigator === "object" &&
-  /Mac|iPhone|iPod|iPad/u.test(navigator.platform);
 
 /** WebKit can end a composition first, and then report the key as 229. */
 const isComposing = (press: KeyPress) =>
@@ -396,9 +419,6 @@ export const claim = (event: Event, { keepsDefault, stops }: Binding) => {
     event.stopPropagation();
   }
 };
-
-const isOnPlatform = ({ platform }: Entry, apple: boolean) =>
-  platform === undefined || (platform === "apple") === apple;
 
 /** What a press depends on besides where it is. */
 interface Context {
@@ -539,9 +559,9 @@ export const textKeyLabel = (
   { apple = IS_MAC }: { apple?: boolean } = {}
 ) =>
   nameAll(
-    TEXT_KEYS.filter((entry) => entry.action === action).flatMap(
-      ({ keys }) => keys
-    ),
+    TEXT_KEYS.filter(
+      (entry) => entry.action === action && isOnPlatform(entry, apple)
+    ).flatMap(({ keys }) => keys),
     apple
   );
 

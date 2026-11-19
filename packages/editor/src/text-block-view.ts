@@ -1,31 +1,14 @@
 import type { RichTextDocument } from "@mailquilt/core";
-import { isAllowedLinkHref, MERGE_TAG } from "@mailquilt/core/internal";
-import {
-  baseKeymap,
-  chainCommands,
-  createParagraphNear,
-  deleteSelection,
-  joinForward,
-  liftEmptyBlock,
-  newlineInCode,
-  selectNodeForward,
-  splitBlockKeepMarks,
-} from "prosemirror-commands";
+import { MERGE_TAG } from "@mailquilt/core/internal";
+import { baseKeymap } from "prosemirror-commands";
 import { keymap } from "prosemirror-keymap";
-import { Fragment, Schema, Slice } from "prosemirror-model";
+import { Fragment, Slice } from "prosemirror-model";
 import type {
   Mark,
   MarkType,
   Node as ProseMirrorNode,
-  ResolvedPos,
 } from "prosemirror-model";
-import {
-  AllSelection,
-  EditorState,
-  Plugin,
-  Selection,
-  TextSelection,
-} from "prosemirror-state";
+import { EditorState, Plugin, Selection } from "prosemirror-state";
 import type { Command, Transaction } from "prosemirror-state";
 import {
   AddMarkStep,
@@ -35,15 +18,9 @@ import {
 import { Decoration, DecorationSet, EditorView } from "prosemirror-view";
 
 import { proseMirrorKeys } from "./key-map.js";
-import type { TextAction } from "./key-map.js";
-
-export type ToggleableMark = "bold" | "italic" | "underline";
-
-/** What the toolbar shows for the cursor or selection. */
-export type TextFormats = Record<ToggleableMark, boolean> & {
-  canBold: boolean;
-  linkHref: string | undefined;
-};
+import { createTextCommands } from "./text-commands.js";
+import type { TextFormats, ToggleableMark } from "./text-commands.js";
+import type { TextSchema } from "./text-schema.js";
 
 export interface TextBlockView {
   element: HTMLElement;
@@ -69,290 +46,6 @@ export interface TextBlockView {
   removeLink: () => void;
   destroy: () => void;
 }
-
-/**
- * The JSON of ADR 0001. Its names, mark order and HTML rules are the ones saved
- * and pasted text have always been read with (ADR 0003). Links come first among
- * the marks, so they stay around the others in the JSON and in the HTML.
- */
-const schema = new Schema({
-  // oxlint-disable-next-line sort-keys -- The order is the JSON's.
-  marks: {
-    // Only the URL, as `core` requires. Parsing goes through core's check, so a
-    // pasted link can't get past it.
-    link: {
-      attrs: { href: {} },
-      inclusive: false,
-      parseDOM: [
-        {
-          getAttrs: (element) => {
-            const href = element.getAttribute("href") ?? "";
-            return isAllowedLinkHref(href) ? { href } : false;
-          },
-          tag: "a[href]",
-        },
-      ],
-      toDOM: ({ attrs }) => ["a", { href: attrs.href }, 0],
-    },
-    bold: {
-      parseDOM: [
-        { tag: "strong" },
-        {
-          getAttrs: (element) => element.style.fontWeight !== "normal" && null,
-          tag: "b",
-        },
-        {
-          clearMark: (mark) => mark.type.name === "bold",
-          style: "font-weight=400",
-        },
-        {
-          getAttrs: (value) =>
-            /^(?:bold(?:er)?|[5-9]\d{2,})$/u.test(value) && null,
-          style: "font-weight",
-        },
-      ],
-      toDOM: () => ["strong", 0],
-    },
-    italic: {
-      parseDOM: [
-        { tag: "em" },
-        {
-          getAttrs: (element) => element.style.fontStyle !== "normal" && null,
-          tag: "i",
-        },
-        {
-          clearMark: (mark) => mark.type.name === "italic",
-          style: "font-style=normal",
-        },
-        { style: "font-style=italic" },
-      ],
-      toDOM: () => ["em", 0],
-    },
-    underline: {
-      parseDOM: [
-        { tag: "u" },
-        {
-          consuming: false,
-          getAttrs: (value) => (value.includes("underline") ? {} : false),
-          style: "text-decoration",
-        },
-      ],
-      toDOM: () => ["u", 0],
-    },
-  },
-  nodes: {
-    doc: { content: "block+" },
-    hardBreak: {
-      group: "inline",
-      inline: true,
-      // A line of its own when copied as plain text.
-      leafText: () => "\n",
-      linebreakReplacement: true,
-      parseDOM: [{ tag: "br" }],
-      selectable: false,
-      toDOM: () => ["br"],
-    },
-    paragraph: {
-      content: "inline*",
-      group: "block",
-      parseDOM: [{ tag: "p" }],
-      toDOM: () => ["p", 0],
-    },
-    text: { group: "inline" },
-  },
-});
-
-const { link } = schema.marks;
-
-/**
- * At a cursor, whether typing would get the mark. Over a selection, whether all
- * of its text has it, so that formatting part of a selection formats all of it.
- */
-const isMarkActive = (state: EditorState, type: MarkType) => {
-  if (state.selection.empty) {
-    return Boolean(
-      type.isInSet(state.storedMarks ?? state.selection.$from.marks())
-    );
-  }
-  const { from, to } = state.selection;
-  let selected = 0;
-  let marked = 0;
-  state.doc.nodesBetween(from, to, (node, pos) => {
-    if (node.isText || node.marks.length > 0) {
-      const length = Math.min(to, pos + node.nodeSize) - Math.max(from, pos);
-      selected += length;
-      if (type.isInSet(node.marks)) {
-        marked += length;
-      }
-    }
-  });
-  return selected > 0 && marked >= selected;
-};
-
-/** The link at the cursor, or the first one in the selection. */
-const linkHrefAt = ({ doc, selection, storedMarks }: EditorState) => {
-  const marks: Mark[] = [];
-  if (selection.empty) {
-    marks.push(...(storedMarks ?? []), ...selection.$head.marks());
-  } else {
-    doc.nodesBetween(selection.from, selection.to, (node) => {
-      marks.push(...node.marks);
-    });
-  }
-  return link.isInSet(marks)?.attrs.href as string | undefined;
-};
-
-const findLink = (marks: readonly Mark[], href?: string) =>
-  marks.find(
-    (mark) =>
-      mark.type === link && (href === undefined || mark.attrs.href === href)
-  );
-
-/** The whole of the link beside `$pos`, as far as the same URL goes. */
-const linkRangeAt = ($pos: ResolvedPos, href?: string) => {
-  const { parent } = $pos;
-  let start = parent.childAfter($pos.parentOffset);
-  if (!(start.node && findLink(start.node.marks))) {
-    start = parent.childBefore($pos.parentOffset);
-  }
-  const mark = start.node && findLink(start.node.marks, href);
-  if (!(start.node && mark)) {
-    return;
-  }
-  const sameLink = (index: number) =>
-    Boolean(findLink(parent.child(index).marks, mark.attrs.href as string));
-  let startIndex = start.index;
-  let from = $pos.start() + start.offset;
-  let endIndex = startIndex + 1;
-  let to = from + start.node.nodeSize;
-  while (startIndex > 0 && sameLink(startIndex - 1)) {
-    startIndex -= 1;
-    from -= parent.child(startIndex).nodeSize;
-  }
-  while (endIndex < parent.childCount && sameLink(endIndex)) {
-    to += parent.child(endIndex).nodeSize;
-    endIndex += 1;
-  }
-  return { from, to };
-};
-
-/** Takes a mark off the selection, and off what's typed next. */
-const unmarkSelection = (tr: Transaction, type: MarkType) => {
-  for (const { $from, $to } of tr.selection.ranges) {
-    tr.removeMark($from.pos, $to.pos, type);
-  }
-  return tr.removeStoredMark(type);
-};
-
-/** Puts a mark on the selection, or on what's typed next at a cursor. */
-const markSelection = (tr: Transaction, mark: Mark) => {
-  if (tr.selection.empty) {
-    return tr.addStoredMark(mark);
-  }
-  for (const { $from, $to } of tr.selection.ranges) {
-    tr.addMark($from.pos, $to.pos, mark);
-  }
-  return tr;
-};
-
-/** Takes a mark off if all of the selection has it, or puts it on all of it. */
-const toggleMarkCommand =
-  (type: MarkType): Command =>
-  (state, dispatch) => {
-    dispatch?.(
-      isMarkActive(state, type)
-        ? unmarkSelection(state.tr, type)
-        : markSelection(state.tr, type.create())
-    );
-    return true;
-  };
-
-/** Delete in an empty paragraph removes it, even when it's the last one. */
-const deleteEmptyParagraph: Command = (state, dispatch) => {
-  const { $anchor, empty } = state.selection;
-  if (!empty || $anchor.parent.content.size > 0) {
-    return false;
-  }
-  dispatch?.(
-    state.tr.delete($anchor.before(), $anchor.after()).scrollIntoView()
-  );
-  return true;
-};
-
-/**
- * A line break in place of the selection, with the cursor after it. It keeps
- * the formatting, so typing after it carries on, but has none of its own.
- */
-const insertHardBreak: Command = (state, dispatch) => {
-  const { $from, $to } = state.selection;
-  const marks = state.storedMarks ?? ($to.parentOffset ? $from.marks() : null);
-  if (dispatch) {
-    const tr = state.tr.replaceSelectionWith(
-      schema.nodes.hardBreak.create(),
-      false
-    );
-    if (marks) {
-      tr.ensureMarks(marks);
-    }
-    dispatch(tr.scrollIntoView());
-  }
-  return true;
-};
-
-/**
- * From all the text selected, ← and → go to its start or end, as from any other
- * selection. Select all covers the whole document, and some browsers leave
- * that to an arrow key that then does nothing, such as WebKit on Linux once a
- * link is in it.
- */
-const collapseSelectAll =
-  (toEnd: boolean): Command =>
-  (state, dispatch) => {
-    if (!(state.selection instanceof AllSelection)) {
-      return false;
-    }
-    dispatch?.(
-      state.tr
-        .setSelection(
-          toEnd ? Selection.atEnd(state.doc) : Selection.atStart(state.doc)
-        )
-        .scrollIntoView()
-    );
-    return true;
-  };
-
-/**
- * ProseMirror's own keys, with Enter keeping the formatting and Delete removing
- * an empty paragraph. Commands are matched rather than keys, so the macOS keys
- * that delete forward too, such as Ctrl+D and Alt+Delete, change with Delete.
- */
-const editingKeys = Object.fromEntries(
-  Object.entries(baseKeymap).map(([key, command]) => {
-    if (command === baseKeymap.Enter) {
-      return [
-        key,
-        chainCommands(
-          newlineInCode,
-          createParagraphNear,
-          liftEmptyBlock,
-          splitBlockKeepMarks
-        ),
-      ];
-    }
-    if (command === baseKeymap.Delete) {
-      return [
-        key,
-        chainCommands(
-          deleteSelection,
-          deleteEmptyParagraph,
-          joinForward,
-          selectNodeForward
-        ),
-      ];
-    }
-    return [key, command];
-  })
-);
 
 /**
  * Formatting is its own undo step, unlike the typing around it. A line break
@@ -466,12 +159,12 @@ const cursorAfterChange = (
 const FOCUSED = "mailquilt:focused";
 
 /** Pasted or dropped text with no bold, for a Block that can't have it. */
-const withoutBold = (fragment: Fragment): Fragment =>
+const withoutBold = (fragment: Fragment, bold: MarkType): Fragment =>
   Fragment.from(
     fragment.content.map((node) =>
       node.isLeaf
-        ? node.mark(schema.marks.bold.removeFromSet(node.marks))
-        : node.copy(withoutBold(node.content))
+        ? node.mark(bold.removeFromSet(node.marks))
+        : node.copy(withoutBold(node.content, bold))
     )
   );
 
@@ -488,6 +181,7 @@ export const createTextBlockView = ({
   onFocus,
   onStateChange,
   onTypingBreak,
+  schema,
 }: {
   /** False for text that's bold already, where the mark would change nothing. */
   canBold: boolean;
@@ -500,24 +194,14 @@ export const createTextBlockView = ({
   onStateChange: () => void;
   /** Called when the next change shouldn't merge with the last as typing. */
   onTypingBreak: () => void;
+  /** What the Block's type of text can hold. */
+  schema: TextSchema;
 }): TextBlockView => {
   const element = document.createElement("div");
   // Unknown until set, as in the export of an email with no language.
   let lang = "";
-  // Where bold would change nothing, its shortcut is still taken, or the
-  // browser would make the text bold itself.
-  const bold: Command = canBold
-    ? toggleMarkCommand(schema.marks.bold)
-    : () => true;
-
-  const textCommands: Record<TextAction, Command> = {
-    bold,
-    italic: toggleMarkCommand(schema.marks.italic),
-    lineBreak: insertHardBreak,
-    toEnd: collapseSelectAll(true),
-    toStart: collapseSelectAll(false),
-    underline: toggleMarkCommand(schema.marks.underline),
-  };
+  const commands = createTextCommands(schema, { canBold });
+  const textKeys = proseMirrorKeys();
 
   const view = new EditorView(element, {
     attributes: {
@@ -603,20 +287,28 @@ export const createTextBlockView = ({
       plugins: [
         keymap(
           Object.fromEntries(
-            proseMirrorKeys().map(([key, action]) => [
-              key,
-              textCommands[action],
-            ])
+            textKeys.map(([key, action]) => [key, commands.forKey[action]])
           )
         ),
-        keymap(editingKeys),
+        // The keys the key map leaves to ProseMirror, such as Backspace.
+        keymap(
+          Object.fromEntries(
+            Object.entries(baseKeymap).filter(
+              ([key]) => !textKeys.some(([named]) => named === key)
+            )
+          )
+        ),
         keepMergeTagsWhole,
       ],
     }),
     transformPasted: (slice) =>
       canBold
         ? slice
-        : new Slice(withoutBold(slice.content), slice.openStart, slice.openEnd),
+        : new Slice(
+            withoutBold(slice.content, schema.marks.bold),
+            slice.openStart,
+            slice.openEnd
+          ),
   });
 
   /** Runs a command on the text, then puts focus back in it. */
@@ -629,34 +321,9 @@ export const createTextBlockView = ({
     destroy: () => view.destroy(),
     element,
     focus: () => view.focus(),
-    formats: () => {
-      const { state } = view;
-      return {
-        bold: isMarkActive(state, schema.marks.bold),
-        canBold,
-        italic: isMarkActive(state, schema.marks.italic),
-        linkHref: isMarkActive(state, link) ? linkHrefAt(state) : undefined,
-        underline: isMarkActive(state, schema.marks.underline),
-      };
-    },
-    insertLineBreak: () => run(insertHardBreak),
-    removeLink: () =>
-      run((state, dispatch) => {
-        const { $from, empty } = state.selection;
-        const { tr } = state;
-        // At a cursor, the whole link around it.
-        const range = empty
-          ? linkRangeAt(
-              $from,
-              findLink($from.marks())?.attrs.href as string | undefined
-            )
-          : undefined;
-        if (range) {
-          tr.removeMark(range.from, range.to, link);
-        }
-        dispatch?.(unmarkSelection(tr, link));
-        return true;
-      }),
+    formats: () => commands.formats(view.state),
+    insertLineBreak: () => run(commands.insertLineBreak),
+    removeLink: () => run(commands.removeLink),
     setContent: (next) => {
       const { doc, selection } = view.state;
       const nextDoc = schema.nodeFromJSON(next);
@@ -688,28 +355,7 @@ export const createTextBlockView = ({
         view.updateState(view.state);
       }
     },
-    setLink: (href) =>
-      run((state, dispatch) => {
-        const { doc, selection } = state;
-        const { $from, empty, from, to } = selection;
-        const mark = link.create({ href });
-        const { tr } = state;
-        if (doc.textBetween(from, to)) {
-          markSelection(tr, mark);
-        } else if (empty && isMarkActive(state, link)) {
-          const range = linkRangeAt($from);
-          if (range && range.from <= from && range.to >= to) {
-            tr.addMark(range.from, range.to, mark);
-          }
-          tr.setSelection(TextSelection.create(tr.doc, from));
-        } else {
-          tr.insertText(href);
-          const end = tr.selection.from;
-          tr.addMark(end - href.length, end, mark);
-        }
-        dispatch?.(tr);
-        return true;
-      }),
-    toggleMark: (mark) => run(toggleMarkCommand(schema.marks[mark])),
+    setLink: (href) => run(commands.setLink(href)),
+    toggleMark: (mark) => run(commands.toggleMark(mark)),
   };
 };

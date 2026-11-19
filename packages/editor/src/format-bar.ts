@@ -6,7 +6,8 @@ import { ICONS } from "./icons.js";
 import type { KeyLabel } from "./key-map.js";
 import { keyLabel, textKeyLabel } from "./key-map.js";
 import type { PanelApi, PanelState } from "./panel-api.js";
-import type { TextBlockView, ToggleableMark } from "./text-block-view.js";
+import type { TextBlockView } from "./text-block-view.js";
+import type { ToggleableMark } from "./text-commands.js";
 
 export const formatBarStyles = css`
   /*

@@ -10,7 +10,7 @@ import type { Direction } from "./key-map.js";
 import type { BlockPlace } from "./places.js";
 import type { SettingsPanelEvents } from "./settings-panel.js";
 import type { PanelTab } from "./side-panel.js";
-import type { TextFormats, ToggleableMark } from "./text-block-view.js";
+import type { TextFormats, ToggleableMark } from "./text-commands.js";
 
 /**
  * How the Side panel, its settings, the format bar and the toolbars reach the
