@@ -33,12 +33,15 @@ const press = (
   };
 };
 
-/** Windows and Linux, unless a test says it's an Apple device. */
+/**
+ * With a Block that has text selected, on Windows and Linux, unless a test says
+ * otherwise.
+ */
 const keyIn = (
   place: Place,
   each: KeyPress,
-  context: { apple?: boolean; dragging?: boolean } = {}
-) => keyFor(place, each, { apple: false, ...context });
+  context: { apple?: boolean; dragging?: boolean; selectedText?: boolean } = {}
+) => keyFor(place, each, { apple: false, selectedText: true, ...context });
 
 /** The press acts, and the browser does nothing else with it. */
 const acts = (action: string, extra: object = {}) => ({
@@ -69,20 +72,12 @@ describe("on a Block", () => {
     expect(keyIn("block", press("Enter"))).toStrictEqual(acts("editText"));
   });
 
+  it("Enter with a modifier goes into the text too", () => {
+    expect(keyIn("block", press("Shift-Enter"))?.action).toBe("editText");
+  });
+
   it("Escape reaches the host page", () => {
     expect(keyIn("block", press("Escape"))).toBeUndefined();
-  });
-
-  it("doesn't move the Block while a Block or Row is dragged, which the move would change", () => {
-    expect(
-      keyIn("block", press("Alt-ArrowUp"), { dragging: true })
-    ).toBeUndefined();
-  });
-
-  it("while a Block or Row is dragged, Alt+← still doesn't go back a page", () => {
-    expect(
-      keyIn("block", press("Alt-ArrowLeft"), { dragging: true })
-    ).toStrictEqual(acts("keepPage"));
   });
 });
 
@@ -132,12 +127,6 @@ describe("in a Block's text", () => {
   it("Alt+F10 goes to the format bar", () => {
     expect(keyIn("text", press("Alt-F10"))).toStrictEqual(
       acts("focusFormatBar")
-    );
-  });
-
-  it("Ctrl/⌘+K opens the link field, and stops there", () => {
-    expect(keyIn("text", press("Mod-k"))).toStrictEqual(
-      acts("openLinkField", { stops: true })
     );
   });
 
@@ -243,14 +232,14 @@ describe("in a Row's toolbar", () => {
     );
   });
 
+  it("an arrow key goes along its buttons", () => {
+    expect(keyIn("rowToolbar", press("ArrowLeft"))).toStrictEqual(
+      acts("previousButton")
+    );
+  });
+
   it("Escape reaches the host page", () => {
     expect(keyIn("rowToolbar", press("Escape"))).toBeUndefined();
-  });
-});
-
-describe("elsewhere in the email", () => {
-  it("Ctrl/⌘+K opens the link field", () => {
-    expect(keyIn("email", press("Mod-k"))?.action).toBe("openLinkField");
   });
 });
 
@@ -276,11 +265,90 @@ describe("in a settings field with typed text that isn't applied", () => {
   });
 });
 
-describe("anywhere else in the editor", () => {
-  it("Ctrl/⌘+Z undoes, and stops there", () => {
-    expect(keyIn("editor", press("Mod-z"))).toStrictEqual(
+describe("Ctrl/⌘+K", () => {
+  it.each([
+    "block",
+    "text",
+    "blockToolbar",
+    "formatBar",
+    "rowToolbar",
+    "email",
+  ] as const)(
+    "from %s, opens the link field in the selected Block's text, and stops there",
+    (place) => {
+      expect(keyIn(place, press("Mod-k"))).toStrictEqual(
+        acts("openLinkField", { stops: true })
+      );
+    }
+  );
+
+  it("with no Block that has text selected, such as a Button, reaches the host page", () => {
+    expect(
+      keyIn("block", press("Mod-k"), { selectedText: false })
+    ).toBeUndefined();
+  });
+});
+
+describe("Alt+← and Alt+→", () => {
+  // Some places move a Block or Row with them, but not during a drag.
+  it.each([
+    ["block", acts("keepPage")],
+    ["blockToolbar", acts("keepPage")],
+    ["formatBar", acts("keepPage")],
+    ["rowToolbar", acts("keepPage")],
+    ["email", acts("keepPage")],
+    ["panelTabs", acts("keepPage")],
+    ["settingsDraft", acts("keepPage")],
+    ["editor", acts("keepPage")],
+    ["preview", acts("keepPage")],
+    ["notice", acts("keepPage")],
+    // The field keeps every key to itself.
+    ["linkField", acts("keepPage", { stops: true })],
+  ] as const)(
+    "from %s, even during a drag, don't go forward a page",
+    (place, binding) => {
+      expect(
+        keyIn(place, press("Alt-ArrowRight"), { dragging: true })
+      ).toStrictEqual(binding);
+    }
+  );
+});
+
+describe("while a Block or Row is dragged, which the key would change", () => {
+  it.each([
+    ["block", "ArrowDown"],
+    ["block", "Alt-ArrowUp"],
+    ["block", "Enter"],
+    ["rowToolbar", "Alt-ArrowUp"],
+  ] as const)("on %s, %s does nothing", (place, name) => {
+    expect(keyIn(place, press(name), { dragging: true })).toBeUndefined();
+  });
+});
+
+describe("anywhere in the editor but a field or the Preview", () => {
+  it.each([
+    "block",
+    "text",
+    "blockToolbar",
+    "formatBar",
+    "rowToolbar",
+    "email",
+    "panelTabs",
+    "editor",
+  ] as const)("from %s, Ctrl/⌘+Z undoes, and stops there", (place) => {
+    expect(keyIn(place, press("Mod-z"))).toStrictEqual(
       acts("undo", { stops: true })
     );
+  });
+
+  it("on Apple devices, ⌘+Z undoes", () => {
+    expect(
+      keyIn("editor", press("Mod-z", { apple: true }), { apple: true })?.action
+    ).toBe("undo");
+  });
+
+  it("Ctrl and ⌘ together don't undo", () => {
+    expect(keyIn("editor", press("Mod-z", { metaKey: true }))).toBeUndefined();
   });
 
   it("Shift+Ctrl/⌘+Z redoes", () => {
@@ -353,8 +421,19 @@ describe("a key held down", () => {
 });
 
 describe("ProseMirror's names for the text's keys", () => {
-  it("write Shift with a letter as the capital, so Shift+Ctrl/⌘+B still formats", () => {
-    expect(proseMirrorKeys()).toContainEqual(["Mod-B", "bold"]);
+  it("are each text key, with Shift and a letter written as the capital, so Shift+Ctrl/⌘+B, I and U still format", () => {
+    expect(proseMirrorKeys()).toStrictEqual([
+      ["Mod-b", "bold"],
+      ["Mod-B", "bold"],
+      ["Mod-i", "italic"],
+      ["Mod-I", "italic"],
+      ["Mod-u", "underline"],
+      ["Mod-U", "underline"],
+      ["Shift-Enter", "lineBreak"],
+      ["Mod-Enter", "lineBreak"],
+      ["ArrowLeft", "toStart"],
+      ["ArrowRight", "toEnd"],
+    ]);
   });
 });
 

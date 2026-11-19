@@ -1,5 +1,6 @@
 import { css, html, nothing } from "lit";
 
+import { claim, keyFor } from "./key-map.js";
 import { refuseFiles } from "./refuse-files.js";
 import { UI_LANG } from "./theme.js";
 
@@ -184,11 +185,23 @@ interface Preview {
   result?: { html: string } | { failure: string };
 }
 
-/** The email's own document would let the browser open a dropped file. */
-const refuseFilesInEmail = (event: Event) => {
+/** A key pressed in the email is pressed in the Preview, as the key map has it. */
+const claimKey = (event: KeyboardEvent) => {
+  const binding = keyFor("preview", event);
+  if (binding) {
+    claim(event, binding);
+  }
+};
+
+/**
+ * The email's own document would let the browser open a dropped file, and
+ * Alt+← go back a page, as the editor never hears what happens in it.
+ */
+const guardEmail = (event: Event) => {
   const email = (event.currentTarget as HTMLIFrameElement).contentDocument;
   email?.addEventListener("dragover", refuseFiles);
   email?.addEventListener("drop", refuseFiles);
+  email?.addEventListener("keydown", claimKey);
 };
 
 const renderPreviewContent = ({ result }: Preview) => {
@@ -206,7 +219,7 @@ const renderPreviewContent = ({ result }: Preview) => {
           sandbox="allow-same-origin"
           srcdoc=${result.html}
           title="Email preview"
-          @load=${refuseFilesInEmail}
+          @load=${guardEmail}
         ></iframe>
       `
     : html`
@@ -225,9 +238,10 @@ interface PreviewEvents {
  * The dialog stays rendered so that closing it, not removing it, returns focus.
  * The `sandbox` gives the email no scripts, forms, popups or top-level
  * navigation. Its origin is the host page's, only so the editor can refuse a
- * file dropped on it. Never add `allow-scripts` with it: together they let the
- * email remove its own sandbox. Escape closes it and goes no further, so a
- * modal of the host's around the editor stays open.
+ * file dropped on it, and keep Alt+← from going back a page. Never add
+ * `allow-scripts` with it: together they let the email remove its own sandbox.
+ * Escape closes it and goes no further, so a modal of the host's around the
+ * editor stays open.
  */
 export const renderPreview = (
   preview: Preview | undefined,

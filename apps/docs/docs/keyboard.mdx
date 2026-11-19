@@ -34,6 +34,8 @@ Each move is one step for undo, and focus stays on the Block, so the next press 
 
 Inside a Block's text, the arrow keys move the cursor instead, and Alt with an arrow key moves it by a word on macOS. Press Escape first to move the Block.
 
+On Windows and Linux, <kbd>Alt</kbd> + <kbd>Left</kbd> and <kbd>Alt</kbd> + <kbd>Right</kbd> also go back and forward a page in the browser. Nowhere in the editor do they do that, so a press meant to move a Block never leaves your page.
+
 ## The Block's toolbar
 
 A selected Block has a toolbar with a drag handle, four move buttons and a delete button. It's one stop for Tab, and the arrow keys go across its buttons. Escape goes back to the Block, once it has closed the tooltip of the button with focus.
@@ -70,7 +72,7 @@ usual meaning in text: delete to the end of the line, and put it back.
 | <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>B</kbd> | Turns bold on or off for the selected text. A Heading is bold already, so it does nothing there. |
 | <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>I</kbd> | Turns italic on or off. |
 | <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>U</kbd> | Turns underline on or off. |
-| <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>K</kbd> | Opens the link field. Escape closes it and leaves the text as it was. |
+| <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>K</kbd> | Opens the link field for the selected Block's text, from the text, the Block or its toolbar. Escape closes it and leaves the text as it was. With no text to link, such as on a Button, the key is left to your page. |
 | <kbd>Alt</kbd> + <kbd>F10</kbd> | Goes to the formatting toolbar, for bold, italic, underline, links and line breaks. Escape goes back to the text, once it has closed the tooltip of the button with focus. |
 
 ## Undo and redo

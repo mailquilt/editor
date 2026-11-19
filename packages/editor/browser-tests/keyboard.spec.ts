@@ -309,6 +309,83 @@ test.describe("moving a Block with Alt+Arrow keys", () => {
     await expect(structure(page)).resolves.toEqual([[[], ["A", "B"]]]);
     await expect(blockWith(page, "A")).toBeFocused();
   });
+
+  test("Alt+← doesn't go back a page from an empty Column, the side panel or its tabs", async ({
+    page,
+  }) => {
+    // As on Windows and Linux, where Alt+← goes back a page.
+    await page.addInitScript(() => {
+      Object.defineProperty(Navigator.prototype, "platform", {
+        get: () => "Win32",
+      });
+    });
+    await open(page, [[["A"], []]]);
+    const places = [
+      page.getByRole("button", { name: /^Add Text Block here/u }),
+      palette(page, "Text"),
+      canvas(page).getByRole("tab", { name: "Content" }),
+    ];
+
+    // Listening before the key is pressed, so the press can't come first.
+    const leftPrevented = await watchPrevented(page, "ArrowLeft");
+
+    // oxlint-disable no-await-in-loop -- One place at a time, to name the one that fails.
+    for (const place of places) {
+      await place.focus();
+      // So a place reads its own press, not the one before.
+      await page.evaluate(() =>
+        Reflect.deleteProperty(window, "lastPrevented")
+      );
+      await page.keyboard.press("Alt+ArrowLeft");
+      await expect.poll(leftPrevented).toBe(true);
+      await expect(place).toBeFocused();
+    }
+    // oxlint-enable no-await-in-loop
+  });
+
+  test("Alt+← doesn't go back a page from the narrow notice or the email in the Preview", async ({
+    browserName,
+    page,
+  }) => {
+    test.skip(
+      browserName === "webkit",
+      "WebKit runs no listener in the email, and is only on Apple devices, where Alt+← doesn't go back a page"
+    );
+    await page.addInitScript(() => {
+      Object.defineProperty(Navigator.prototype, "platform", {
+        get: () => "Win32",
+      });
+    });
+    await page.setViewportSize({ height: 800, width: 390 });
+    await page.goto("/");
+    const leftPrevented = await watchPrevented(page, "ArrowLeft");
+    const previewEmail = canvas(page).getByRole("button", {
+      name: "Preview email",
+    });
+    await previewEmail.focus();
+
+    await page.keyboard.press("Alt+ArrowLeft");
+    await expect.poll(leftPrevented).toBe(true);
+
+    await page.keyboard.press("Enter");
+    const email = page.getByTitle("Email preview");
+    await expect(email.contentFrame().locator("body")).toContainText("Hello");
+    // The email's keys don't reach the host page, so this listens in it.
+    await email.evaluate((frame) => {
+      (frame as HTMLIFrameElement).contentDocument?.addEventListener(
+        "keydown",
+        (event) => {
+          Object.assign(window, { emailPrevented: event.defaultPrevented });
+        }
+      );
+    });
+    await email.contentFrame().locator("body").click();
+
+    await page.keyboard.press("Alt+ArrowLeft");
+    await expect
+      .poll(() => page.evaluate(() => Reflect.get(window, "emailPrevented")))
+      .toBe(true);
+  });
 });
 
 test.describe("moving a Block with toolbar buttons", () => {
@@ -578,17 +655,19 @@ test.describe("typing inside a Block", () => {
     await page.keyboard.type("B");
     await expect(structure(page)).resolves.toEqual([[["AB"]]]);
 
-    // Both modifiers, so it's the shortcut on any platform.
+    // The shortcut on this platform, ⌘ on Apple devices and Ctrl elsewhere, as
+    // WebKit can send it after ending a composition.
     await textOf(page, "AB").evaluate((text) => {
+      const apple = /Mac|iPhone|iPod|iPad/u.test(navigator.platform);
       text.dispatchEvent(
         new KeyboardEvent("keydown", {
           bubbles: true,
           code: "KeyZ",
           composed: true,
-          ctrlKey: true,
-          key: "Process",
+          ctrlKey: !apple,
+          key: "z",
           keyCode: 229,
-          metaKey: true,
+          metaKey: apple,
         })
       );
     });
@@ -753,6 +832,32 @@ test.describe("labels and focus states", () => {
         name: "Add Text Block here, Row 2, Column 1",
       })
     ).toBeVisible();
+  });
+
+  test("an empty Column is one Tab stop for each type of Block", async ({
+    page,
+  }) => {
+    await open(page, [[["A"], []]]);
+    const types = await page
+      .getByRole("group", { name: "Add content" })
+      .getByRole("button")
+      .count();
+    const adds = canvas(page).getByTestId("add-blocks");
+    await adds.getByRole("button").first().focus();
+
+    let stops = 1;
+    // oxlint-disable no-await-in-loop -- Each press goes on from the one before.
+    while (stops <= types) {
+      await page.keyboard.press("Tab");
+      if (!(await adds.evaluate((each) => each.matches(":focus-within")))) {
+        break;
+      }
+      stops += 1;
+    }
+    // oxlint-enable no-await-in-loop
+
+    expect(types).toBeGreaterThan(1);
+    expect(stops).toBe(types);
   });
 
   test("every control shows where focus is", async ({ page }) => {

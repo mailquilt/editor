@@ -591,10 +591,24 @@ test.describe("the floating toolbar", () => {
 test.describe("a Block's drag handle and link shortcut", () => {
   test.use({ viewport: TALL_VIEWPORT });
 
-  test("Control or Command+K on the Block opens the link field in its text, and on a Button does nothing", async ({
+  test("Control or Command+K on the Block opens the link field in its text, and on a Button reaches the host page", async ({
     page,
   }) => {
     await openBlocks(page, ["button", "text"]);
+    await page.evaluate(() => {
+      Object.assign(window, { hostLinkKeys: 0 });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "k" && !event.defaultPrevented) {
+          Reflect.set(
+            window,
+            "hostLinkKeys",
+            Reflect.get(window, "hostLinkKeys") + 1
+          );
+        }
+      });
+    });
+    const hostLinkKeys = () =>
+      page.evaluate(() => Reflect.get(window, "hostLinkKeys"));
     const linkUrl = linkUrlField(page);
     await blockGroup(page, "Button").focus();
 
@@ -602,11 +616,13 @@ test.describe("a Block's drag handle and link shortcut", () => {
 
     await expect(linkUrl).toHaveCount(0);
     await expect(blockGroup(page, "Button")).toBeFocused();
+    await expect.poll(hostLinkKeys).toBe(1);
 
     await blockGroup(page, "Text").focus();
     await page.keyboard.press("ControlOrMeta+k");
 
     await expect(linkUrl).toBeFocused();
+    expect(await hostLinkKeys()).toBe(1);
   });
 
   test("a click on another Block's handle leaves the tabs showing", async ({

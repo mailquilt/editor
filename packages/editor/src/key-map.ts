@@ -28,8 +28,10 @@ export type Place =
   | "settingsDraft"
   /** Anywhere else in the editor, such as the side panel or floating toolbar. */
   | "editor"
-  /** The Preview dialog. */
+  /** The Preview dialog, and the email in it. */
   | "preview"
+  /** The notice shown in place of the editor when there's no room to edit. */
+  | "notice"
   /** Anywhere on the page while a Block or Row is dragged, heard first. */
   | "drag"
   /** Anywhere on the page while the focused control's tooltip shows, heard first. */
@@ -102,6 +104,8 @@ interface Entry {
    * "any" is every key, even one an input method handled.
    */
   keys: readonly string[] | "any";
+  /** Only with a Block that has text selected, as it acts on that text. */
+  needsText?: boolean;
   /** Only on Apple devices, or only elsewhere. */
   platform?: "apple" | "other";
   stops: boolean;
@@ -137,11 +141,12 @@ const HISTORY: Entry[] = [
 
 /**
  * Browsers use this one to focus their search or address bar, and a host page
- * may use it for its own search.
+ * may use it for its own search, so it reaches the page where it does nothing.
  */
 const OPEN_LINK: Entry = {
   action: "openLinkField",
   keys: ["Mod-k"],
+  needsText: true,
   stops: true,
 };
 
@@ -174,7 +179,8 @@ const TOOLBAR: Entry[] = [
 
 /**
  * Alt+← and Alt+→ go back and forward a page, except on Apple devices, where
- * they move the cursor by word. Where they do nothing else, they still don't.
+ * they move the cursor by word. Where they do nothing else, they still don't,
+ * anywhere in the editor.
  */
 const KEEP_PAGE: Entry = {
   action: "keepPage",
@@ -245,6 +251,7 @@ const KEY_MAP: Record<Place, readonly Entry[]> = {
   // The field has its own typing and undo.
   linkField: [
     escape("cancelLink"),
+    { ...KEEP_PAGE, stops: true },
     { action: "typeInField", keepsDefault: true, keys: "any", stops: true },
   ],
   rowToolbar: [
@@ -254,14 +261,15 @@ const KEY_MAP: Record<Place, readonly Entry[]> = {
     OPEN_LINK,
     ...HISTORY,
   ],
-  email: [OPEN_LINK, ...HISTORY],
-  panelTabs: [...TOOLBAR, ...HISTORY],
+  email: [KEEP_PAGE, OPEN_LINK, ...HISTORY],
+  panelTabs: [...TOOLBAR, KEEP_PAGE, ...HISTORY],
   // The field has its own undo, as the link field does.
-  settingsDraft: [escape("discardDraft")],
-  editor: HISTORY,
+  settingsDraft: [escape("discardDraft"), KEEP_PAGE],
+  editor: [KEEP_PAGE, ...HISTORY],
   // The browser closes the dialog. Stopping the press keeps a host's own
   // dialog around the editor open.
-  preview: [escape("closePreview", { keepsDefault: true })],
+  preview: [escape("closePreview", { keepsDefault: true }), KEEP_PAGE],
+  notice: [KEEP_PAGE],
   drag: [escape("cancelDrag")],
   // Closing a focused control's tooltip is all Escape does, as it would
   // otherwise also move focus. Over another control, it still does what it
@@ -392,10 +400,20 @@ export const claim = (event: Event, { keepsDefault, stops }: Binding) => {
 const isOnPlatform = ({ platform }: Entry, apple: boolean) =>
   platform === undefined || (platform === "apple") === apple;
 
+/** What a press depends on besides where it is. */
+interface Context {
+  /** An Apple device, where Mod is ⌘. */
+  apple: boolean;
+  /** A Block or Row is being dragged. */
+  dragging: boolean;
+  /** The selected Block has text. */
+  selectedText: boolean;
+}
+
 const applies = (
   entry: Entry,
   press: KeyPress,
-  { apple, dragging }: { apple: boolean; dragging: boolean }
+  { apple, dragging, selectedText }: Context
 ) => {
   if (entry.keys === "any") {
     return true;
@@ -404,6 +422,7 @@ const applies = (
   if (
     isComposing(press) ||
     (dragging && entry.waitsForDrag) ||
+    (!selectedText && entry.needsText) ||
     !isOnPlatform(entry, apple)
   ) {
     return false;
@@ -421,10 +440,11 @@ export const keyFor = (
   {
     apple = IS_MAC,
     dragging = false,
-  }: { apple?: boolean; dragging?: boolean } = {}
+    selectedText = false,
+  }: Partial<Context> = {}
 ): Binding | undefined => {
   const entry = KEY_MAP[place].find((each) =>
-    applies(each, press, { apple, dragging })
+    applies(each, press, { apple, dragging, selectedText })
   );
   return (
     entry && {
