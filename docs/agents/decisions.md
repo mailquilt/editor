@@ -20,7 +20,7 @@ A PR that changes one of these says so, gives the reason and updates this page.
 - The Block and Row toolbars are one Tab stop each, with arrow keys between their buttons. Shift+Tab leaves the toolbar. (#60, #78)
 - Each empty Column has one Tab stop per Block type, and `keyboard.mdx` says so. (#36)
 - After Delete Block or Delete Row from the keyboard, focus goes to the neighbour and the deletion is announced. (#54)
-- The Link button keeps `aria-pressed`, so screen readers say whether the cursor is on a link. (#36)
+- The Link button is named "Edit link" when the cursor is on a link, and has no pressed state, as pressing it opens the link field rather than taking the link away. (#36, #67)
 
 ## The panels
 
@@ -66,7 +66,7 @@ A PR that changes one of these says so, gives the reason and updates this page.
 
 ## Packages and the docs site
 
-- The editor has no `jsdelivr` or `unpkg` field. The CDN build is loaded by its full path, as the quick start shows. (#36 R7)
+- The editor has no `jsdelivr` or `unpkg` field. The CDN build is loaded by its full path, as `apps/docs/docs/html.mdx` shows. (#36 R7)
 - `@repo/typescript-config` stays in the published devDependencies, and core's types keep tsdown's bare `import "valibot"`. Neither affects installs. (#36)
 - `withBase` stays: it's Blume's own helper. (#36)
 - `loadDocument` runs before `renderEmail` on the docs pages, for a clearer build error. (#36)
@@ -82,4 +82,4 @@ A PR that changes one of these says so, gives the reason and updates this page.
 - CI fails on a test that passes only on a retry, so a flake is seen and fixed. The retries stay, to tell a flake from a test that always fails and to keep a trace. (#171)
 - Tests copy and paste through events, not the system's clipboard, which tests running at the same time could share. (#171)
 - Core keeps a "stores…" test for each Block type's own settings. (#82)
-- "A Row on the canvas shows an outline and its toolbar on hover" failed once in WebKit CI and passed on retry, with no cause found in 25 local runs. It isn't treated as flaky unless it fails again. (#36)
+- "a Row on the canvas › shows its toolbar on hover", in `canvas-tools.spec.ts`, failed once in WebKit CI and passed on retry, with no cause found in 25 local runs. It isn't treated as flaky unless it fails again. (#36)

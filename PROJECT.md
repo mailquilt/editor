@@ -287,7 +287,7 @@ Effect isn't used in the published packages, and may be reconsidered for the CLI
 - Settings for each Block, Row and the email
 - Drag and drop, with a keyboard path for every drag action
 - Undo and redo
-- Merge Tags typed into text and links, kept through editing and rendering, with any `&`, `<`, `>` or `"` in them escaped
+- Merge Tags typed into text and links, kept through editing and rendering, with any `&`, `<` or `>` in them escaped, and a `"` too in a link or image URL
 - Save and load as JSON
 - Preview of the real exported HTML, in a sandboxed iframe
 - HTML export, tested in Gmail, Apple Mail, Outlook and other major email clients
@@ -307,7 +307,7 @@ There are no dates, and items can move. Each item is tracked in GitHub Issues.
 
 **Next**
 
-`0.2` comes first and adds no features: it restructures the editor ([ADR 0004](docs/adr/0004-restructure-the-editor-for-0-2.md)). Next starts in `0.3`.
+`0.2` comes first. It restructures the editor ([ADR 0004](docs/adr/0004-restructure-the-editor-for-0-2.md)), fixes what the review before it found, and adds a few small things: `canUndo()`, `canRedo()` and a code for each refused Command in `core`, the `--mq-color-scheme` theme token, and a canvas that works under a strict Content Security Policy. Next starts in `0.3`.
 
 What a team needs before its customers can use the editor. The first six are specified together and ship first. These come before the MCP server and the AI builder because a team that can't upload an image or pick a Merge Tag stops there, whatever else the editor does.
 
@@ -487,18 +487,29 @@ Custom Blocks and settings fields, custom checker rules, image upload and media 
 
 - **Unit tests (Vitest):** Commands, undo and redo, migrations, the renderer and the editor's key map.
 - **Browser tests (Playwright):** drag and drop, the keyboard, undo, settings, export and the React wrapper, in Chromium, Firefox and WebKit, with automated accessibility checks.
-- **Install checks:** the packed packages are installed in fresh plain JavaScript, CDN and Next.js projects, and tested there.
+- **Install checks:** the packed packages are installed in fresh plain JavaScript, CDN, React with Vite, and Next.js projects, and tested there.
 - **Email clients:** `0.1.0` is checked in Email on Acid, in Gmail, Apple Mail, iOS Mail, every version of Outlook, Yahoo, AOL and European webmail, in light and dark mode. The docs list the clients and the known limits.
 - **By hand, before each release that adds a Block or changes what the renderer writes:** the same check in Email on Acid, with a fixed set of test emails that use every Block and layout. The docs' page of tested clients then gets the new date.
-- **By hand, for `0.1.0`:** keyboard and screen reader use, typing Japanese in Safari, Firefox and Chrome (automated tests can only simulate it in Chromium), and touch.
+- **By hand, for `0.1.0`:** typing Japanese in Safari, Firefox and Chrome (automated tests can only simulate it in Chromium), and touch.
 
 [`docs/agents/testing.md`](docs/agents/testing.md) says how tests are written here.
 
 ## 12. Security
 
-- Pasted content, imported files, image URLs, Merge Tag values and AI output are untrusted.
-- HTML is sanitized, and Merge Tag values are escaped.
-- Preview runs in a sandboxed iframe.
+Pasted content, imported files, links, image URLs, Merge Tags and, later, AI output are untrusted.
+
+What's built:
+
+- No email holds HTML of its own yet, so nothing is sanitized. Pasted HTML is read through the text's schema, so it keeps only what a Text or Heading can store, and a link only if its URL is allowed.
+- An email that doesn't match the document format is refused, never repaired.
+- Links and image URLs are limited to the schemes in [the document's rules](#rules).
+- The renderer escapes what it writes in one place. Any `&`, `<` or `>` in a Merge Tag is escaped, and a `"` too in a link or image URL. The value a sending service fills a Merge Tag with is the service's to escape.
+- Preview runs in a sandboxed iframe, with no scripts.
+- Commands from code are validated exactly like the editor's own.
+
+Planned:
+
+- The HTML Block's content, and any HTML the AI writes, are sanitized.
 - Commands from AI, MCP and collaboration are validated exactly like the editor's own.
 - The Playground never stores or logs anyone's AI keys or prompts.
 
@@ -516,9 +527,6 @@ Custom Blocks and settings fields, custom checker rules, image upload and media 
 
 Not yet confirmed:
 
-- Typing with an input method editor, such as for Japanese, works in Shadow DOM in real Safari and Firefox. So far it has only been simulated in Chromium.
-- Drag and drop works with touch.
-- MJML's output, and `mjml-browser`'s handling of Merge Tags, hold up in real email clients.
 - Can I email's data can be used under its license.
 - Sending services' APIs support the planned integrations.
 - The Operation model supports Yjs collaboration without major changes.
@@ -528,17 +536,20 @@ Not yet confirmed:
 - All the published packages share one version, managed with Changesets.
 - On `0.x`, a patch fixes bugs, and a minor version adds features or makes breaking changes. `1.0.0` comes once real users have proven the API.
 - A bad release is fixed by publishing a new version, and deprecating the bad one if needed.
-- Each change goes through a short-lived branch and a pull request, with messages such as `feat(core): add moveBlock command` or `fix(editor): keep selection after undo`.
+- Each change goes through a short-lived branch and a pull request, with a title that says what's true after it, such as `fix: the Shell keeps a first-time visitor's work`. Pull requests are squashed, so the title becomes the commit.
 
 To release, version on a branch, so CI checks the exact commit that's published:
 
 ```bash
-pnpm changeset version   # bumps versions and writes the changelogs
-# The CDN links name the version. The install checks fail until each one in
-# the docs pages, the READMEs and the skill matches. These are the files:
+pnpm changeset version   # bumps the versions in package.json and writes the changelogs
+# The version is written in three more places, set by hand:
+# 1. The CDN links. The install checks fail until each one in the docs pages,
+#    the READMEs and the skill matches. These are the files:
 git grep -l "/@mailquilt/editor@[0-9]" -- PROJECT.md README.md apps/docs/docs "packages/*/README.md" skills
-# Set each to the new version, and move what shipped from "Next" to "Now" on
-# the roadmap page, apps/docs/pages/roadmap.astro.
+# 2. The status line at the top of this file.
+# 3. The version placeholder in the bug report form, .github/ISSUE_TEMPLATE/bug.yml.
+# Then move what shipped from "Next" to "Now" on the roadmap page,
+# apps/docs/pages/roadmap.astro.
 git add -A && git commit -m "chore: release"
 # Push, open a pull request, and merge it once CI passes. Then, on main:
 git pull

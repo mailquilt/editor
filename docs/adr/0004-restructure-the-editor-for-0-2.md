@@ -4,7 +4,7 @@ In 0.2 the editor is restructured around two owners: one key map for every key i
 
 The features that follow 0.2 land on exactly these two: copy, paste and duplicate add keys, lists add rules for Tab and Enter inside text, and the Merge Tag picker takes focus and gives it back.
 
-The Shell needs an owner too. It decides which email opens from four pieces of state, changed in three review rounds. Nothing planned next touches that, so it has an issue of its own and doesn't hold up 0.2. It changes no behavior, and ships in 0.2 or in a patch after it.
+The Shell needs an owner too. It decides which email opens from four pieces of state, changed in three review rounds. Nothing planned next touches that, so it has an issue of its own and doesn't hold up 0.2. It was meant to change no behavior. It shipped in 0.2 (#156) and changed which email stays: a saved email that opened when `save-key` changed now stays when the host sets its email again, where before the host's email replaced it, and the next change saved over it.
 
 The work is tracked in #85. The code is judged against the standard below. When every check passes, the work is done. A finding that no check covers goes to the backlog, as `docs/agents/review.md` says.
 

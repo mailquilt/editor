@@ -43,14 +43,15 @@ test, search for one that already covers the same code, and extend it instead.
   focus, JSON turning a literal into text and back.
 - Output a saved expected-HTML file already pins. Choose either the saved file
   or a specific check.
-- Compatibility with data, keys or APIs nobody has. Nothing is released yet.
+- Compatibility with data, keys or APIs no release has had.
 
 ## Always keep
 
 - Security checks (escaping, link and URL allowlists): the full table of values
   where the check lives, and one case wherever it's used.
 - The public contract: `value`, `mq-change`, `mq-error`, `exportHtml()`,
-  Operations and the saved document format.
+  Operations and the saved document format. `0.1.0` is released, so emails
+  saved with it must keep opening.
 - Accessibility checks, and the only test of an edge case or past bug.
 
 ## Naming
