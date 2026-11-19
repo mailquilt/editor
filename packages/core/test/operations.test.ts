@@ -23,7 +23,7 @@ const email = (): BlocksDocument => ({
     fontFamily: "Arial",
     width: 600,
   },
-  version: 1,
+  version: 2,
 });
 
 const rowIds = (document: BlocksDocument) => document.rows.map(({ id }) => id);

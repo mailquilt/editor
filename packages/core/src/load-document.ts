@@ -188,13 +188,44 @@ export const createDocumentLoader =
   };
 
 /**
+ * Version 1, which 0.1.0 saved, let a color have any one space after a comma,
+ * such as a tab, and an http link or image URL have ſ for its s. They're found
+ * by their keys, which hold nothing else in version 1, and written as the
+ * current checks take them. Anything else is left for the schema to refuse.
+ */
+const fromVersion1 = (document: Record<string, unknown>) => {
+  const upgrade = (value: unknown) => {
+    if (typeof value !== "object" || value === null) {
+      return;
+    }
+    const object = value as Record<string, unknown>;
+    for (const [key, item] of Object.entries(object)) {
+      if (typeof item !== "string") {
+        upgrade(item);
+      } else if (key === "backgroundColor" || key === "color") {
+        object[key] = item.replaceAll(/,\s/gu, ", ");
+      } else if (key === "href" || key === "src") {
+        object[key] = item.replace(
+          /^(?<http>[Hh][Tt][Tt][Pp])ſ:/u,
+          "$<http>s:"
+        );
+      }
+    }
+  };
+  upgrade(document);
+  return document;
+};
+
+/**
  * Checks a saved email and migrates it if it's an older version, without
  * changing what was passed in. It never repairs a document, so a host's
  * auto-save can't overwrite the original with a damaged copy. It gives a reason,
  * rather than throwing, for anything that isn't an email it accepts. Only
  * reading the value can throw, as a getter or a Proxy can.
  */
-export const loadDocument = createDocumentLoader(DOCUMENT_VERSION, {});
+export const loadDocument = createDocumentLoader(DOCUMENT_VERSION, {
+  1: fromVersion1,
+});
 
 /**
  * Compares content, not identity or key order, because a host may clone a

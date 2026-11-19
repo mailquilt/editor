@@ -30,5 +30,5 @@ export const emailWith = (
     fontFamily: "Arial, Helvetica, sans-serif",
     width: 600,
   },
-  version: 1,
+  version: 2,
 });

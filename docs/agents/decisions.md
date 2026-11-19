@@ -53,6 +53,7 @@ A PR that changes one of these says so, gives the reason and updates this page.
 - `undo()` returns a boolean. (#36)
 - `setRowLayout` to the layout a Row already has comes back `unchanged`. (#52)
 - A saved language that isn't a code still loads, and can be sent back unchanged. Only a new one has to be a code. (#79)
+- A check on saved data that gets stricter comes with a migration, which raises the format version and rewrites what an older version saved as the check now takes it, so every email a release accepted keeps opening. Version 2 rewrites the colors and URLs that 0.1.0's version 1 took and the checks no longer do. A migration finds what it rewrites by the keys that hold it. (#209)
 - An email is at most 1200px wide, and a font family needs at least one name. (#78)
 - Exports from `core` marked "not a promise to hosts" are for Mail Quilt's own packages, and come from `@mailquilt/core/internal`, not the main entry. (#61, #84)
 

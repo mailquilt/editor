@@ -24,7 +24,7 @@ The editor never repairs a document. If one doesn't match this format, the edito
 | Field | Value |
 | --- | --- |
 | `kind` | Always `"blocks"`. |
-| `version` | The format version, a whole number. The current version is `1`, and a newer one is refused. When the format changes, documents saved in an older version will be upgraded as they load. |
+| `version` | The format version, a whole number. The current version is `2`, and a newer one is refused. A document saved in an older version is upgraded as it loads. Version `1`, which Mail Quilt 0.1.0 saves, is upgraded by giving a color a plain space where it has another space after a comma, such as a tab, and `https:` in place of `httpſ:` at the start of a link or image URL. |
 | `settings` | The [email settings](#email-settings). |
 | `rows` | A list of [Rows](#row), top to bottom. It can be empty. |
 
