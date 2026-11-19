@@ -430,6 +430,10 @@ const applies = (
   return entry.keys.some((name) => matches(name, press, entry, apple));
 };
 
+/** Whether a place in the editor has keys of its own here. */
+export const hasKeys = (place: string): place is Place =>
+  Object.hasOwn(KEY_MAP, place);
+
 /**
  * What a press in `place` does, or undefined if it isn't the editor's. The
  * first entry for the place that matches answers.

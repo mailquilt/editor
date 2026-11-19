@@ -46,23 +46,20 @@ export interface CanvasState {
 }
 
 export interface CanvasEvents {
-  onBlockClick: (event: MouseEvent) => void;
+  onBlockClick: (blockId: string, target: Element) => void;
   onBlockFocus: (blockId: string) => void;
   onBlockFocusout: () => void;
   onImageError: (src: string) => void;
 }
 
 /** Only a pointer drags, so this isn't offered to assistive technology. */
-const renderDragHandle = (
-  onMousedown: (event: MouseEvent) => void,
-  tooltip = "Drag Block"
-) => html`
+const renderDragHandle = (tooltip = "Drag Block") => html`
   <div
     aria-hidden="true"
     class="drag-handle"
+    data-place="dragHandle"
     data-testid="drag-handle"
     data-tooltip=${tooltip}
-    @mousedown=${onMousedown}
   >
     ${ICONS.grip}
   </div>
@@ -72,11 +69,13 @@ const renderDragHandle = (
  * On a phone there's no room for the canvas and the side panel. The editor
  * stays as it is, so nothing is lost, and the email can still be previewed.
  */
-export const renderNarrowNotice = ({
-  onControlMousedown,
-  openPreview,
-}: PanelApi) => html`
-  <div class="ui frame narrow-notice" lang=${UI_LANG} part="frame">
+export const renderNarrowNotice = ({ openPreview }: PanelApi) => html`
+  <div
+    class="ui frame narrow-notice"
+    data-place="notice"
+    lang=${UI_LANG}
+    part="frame"
+  >
     <span class="notice-icon">${ICONS.monitor}</span>
     <p class="notice-title">Editing needs more room</p>
     <p class="notice-body">
@@ -85,9 +84,9 @@ export const renderNarrowNotice = ({
     </p>
     <button
       class="text-button primary"
+      data-place="controls"
       type="button"
       @click=${openPreview}
-      @mousedown=${onControlMousedown}
     >
       ${ICONS.preview}<span>Preview email</span>
     </button>
@@ -110,11 +109,11 @@ const renderRowToolbar = (
     aria-label=${`Row ${index + 1}`}
     aria-orientation="vertical"
     class="ui row-toolbar"
+    data-place="rowToolbar"
     role="toolbar"
-    @mousedown=${api.onControlMousedown}
   >
     <div class="bar">
-      ${renderDragHandle(api.onHandleMousedown, "Drag Row")}
+      ${renderDragHandle("Drag Row")}
       <button
         aria-label="Select Row"
         class="icon-button"
@@ -164,10 +163,10 @@ const renderBlockToolbar = (api: PanelApi) => html`
     aria-label="Block tools"
     aria-orientation="vertical"
     class="ui bar block-toolbar"
+    data-place="blockToolbar"
     role="toolbar"
-    @mousedown=${api.onControlMousedown}
   >
-    ${renderDragHandle(api.onHandleMousedown)}
+    ${renderDragHandle()}
     <span class="separator"></span>
     ${MOVE_BUTTONS.map(
       ({ direction, keys, shortcuts }, index) => html`
@@ -217,14 +216,16 @@ const renderBlock = (
       class="block"
       data-block-id=${block.id}
       data-label=${blockLabel(block.type)}
+      data-place="block"
       role="group"
       style=${styleProperties(rich ? blockStyles(block) : {})}
       tabindex="0"
-      @click=${events.onBlockClick}
+      @click=${({ target }: MouseEvent) =>
+        events.onBlockClick(block.id, target as Element)}
       @focus=${() => events.onBlockFocus(block.id)}
       @focusout=${events.onBlockFocusout}
     >
-      ${selected ? nothing : renderDragHandle(api.onHandleMousedown)}
+      ${selected ? nothing : renderDragHandle()}
       ${rich ? state.textOf(block.id) : nothing}
       ${renderBlockContent(
         block,
@@ -248,6 +249,7 @@ const renderColumn = (
   <div
     class=${blocks.length === 0 ? "column empty" : "column"}
     data-column-id=${id}
+    data-place="column"
     data-testid="column"
     style=${styleProperties({ width: `${width}%` })}
   >
@@ -313,6 +315,7 @@ export const renderRows = (
     (row, rowIndex) => html`
       <div
         class="row-frame"
+        data-place="row"
         data-row-id=${row.id}
         data-testid="row-frame"
         ?data-row-selected=${row.id === api.selectedRow?.row.id}
@@ -320,9 +323,9 @@ export const renderRows = (
         <div
           aria-hidden="true"
           class="ui row-tag"
+          data-place="rowTag"
           data-testid="row-tag"
           @click=${() => api.selectRow(row.id)}
-          @mousedown=${api.onHandleMousedown}
         >
           Row
         </div>
@@ -355,9 +358,9 @@ export const renderFloatingToolbar = (api: PanelApi) => html`
   <div
     aria-label="Email tools"
     class="ui bar floating-toolbar"
+    data-place="emailTools"
     role="group"
     tabindex="-1"
-    @mousedown=${api.onControlMousedown}
   >
     <button
       aria-keyshortcuts=${UNDO.shortcuts}

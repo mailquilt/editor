@@ -13,7 +13,7 @@ import { html, LitElement, nothing } from "lit";
 import { keyed } from "lit/directives/keyed.js";
 
 import { blockContentStyles, hasRichText } from "./block-content.js";
-import { BLOCKS, createBlockDragging, dropCommand } from "./block-dragging.js";
+import { createBlockDragging, dropCommand } from "./block-dragging.js";
 import type { BlockDragging, DragSource, DropPlace } from "./block-dragging.js";
 import {
   MIN_EDITOR_WIDTH,
@@ -22,8 +22,9 @@ import {
   renderRows,
 } from "./canvas.js";
 import type { CanvasEvents, CanvasState } from "./canvas.js";
+import { closestPlace, findPlace, placeOf } from "./editor-places.js";
 import { createLinkForm, formatBarStyles } from "./format-bar.js";
-import { claim, historyInput, keyFor, keyLabel } from "./key-map.js";
+import { claim, hasKeys, historyInput, keyFor, keyLabel } from "./key-map.js";
 import type { Action, Binding, Direction, Place } from "./key-map.js";
 import { editorStyles } from "./mail-quilt-styles.js";
 import type { PanelActions, PanelApi, RowPlace } from "./panel-api.js";
@@ -41,7 +42,6 @@ import { refuseFiles } from "./refuse-files.js";
 import { createSelection, focusToolbarButton } from "./selection.js";
 import { createSettingsDrafts, settingsPanelStyles } from "./settings-panel.js";
 import { renderSidePanel, sidePanelStyles } from "./side-panel.js";
-import type { PanelTab } from "./side-panel.js";
 import { styleProperties } from "./style-properties.js";
 import { createTextBlockView } from "./text-block-view.js";
 import type { TextBlockView, TextFormats } from "./text-block-view.js";
@@ -55,18 +55,6 @@ import type { Tooltips } from "./tooltips.js";
 const TYPING_PAUSE_MS = 1000;
 
 type MoveOperation = Extract<Operation, { type: "move" }>;
-
-/** The places in the editor that have keys of their own, the innermost first. */
-const PLACES: [selector: string, place: Place][] = [
-  [".link-form", "linkField"],
-  [".format-bar", "formatBar"],
-  [".ProseMirror", "text"],
-  [".block-toolbar", "blockToolbar"],
-  [BLOCKS, "block"],
-  [".row-toolbar", "rowToolbar"],
-  [".email", "email"],
-  ['[role="tablist"]', "panelTabs"],
-];
 
 /**
  * For the Block key help, which a screen reader reads, so each key is named as
@@ -102,7 +90,6 @@ export class MailQuilt extends LitElement {
   /** Edits in the same typing session merge into one undo step. */
   #typingSession = 0;
   #lastTypedAt = 0;
-  #panelTab: PanelTab = "content";
   #formats: TextFormats | undefined;
   readonly #selection = createSelection({
     onSelect: () => {
@@ -117,10 +104,6 @@ export class MailQuilt extends LitElement {
   });
   readonly #drafts = createSettingsDrafts({
     apply: (command) => this.#apply(command, { refusable: true }),
-    controlOf: (key) =>
-      this.renderRoot.querySelector<HTMLInputElement>(
-        `[data-draft-key="${CSS.escape(key)}"]`
-      ),
     onEnter: (value) => {
       // An image URL that failed may load now, so entering it again tries again.
       if (typeof value === "string") {
@@ -141,7 +124,8 @@ export class MailQuilt extends LitElement {
     view: () => this.#selection.selectedText,
   });
   readonly #preview = createPreview({
-    dialog: () => this.renderRoot.querySelector<HTMLDialogElement>(".preview"),
+    dialog: () =>
+      findPlace(this.renderRoot, "preview") as HTMLDialogElement | null,
     exportHtml: () => this.exportHtml(),
     requestUpdate: () => this.requestUpdate(),
   });
@@ -174,22 +158,21 @@ export class MailQuilt extends LitElement {
     insertLineBreak: () => this.#selection.selectedText?.insertLineBreak(),
     moveBlock: (direction) => this.#moveSelectedBlock(direction),
     moveRow: (rowId, direction) => this.#moveRow(rowId, direction),
-    onControlMousedown: (event) => this.#selection.onControlMousedown(event),
-    onHandleMousedown: (event) => this.#selection.onHandleMousedown(event),
     openLinkField: () => this.#linkForm.open(),
     openPreview: () => this.#openPreview(),
     removeLink: () => this.#linkForm.remove(),
     selectRow: (rowId) => this.#selection.selectRow(rowId),
-    selectTab: (tab) => this.#selectTab(tab),
+    selectTab: (tab) => this.#selection.selectTab(tab),
     settings: this.#drafts.events,
-    showTabs: () => this.#selection.showTabs(this.#panelTab),
+    showTabs: () => this.#selection.showTabs(),
     stepHistory: (step) => this.#stepHistory(step),
     submitLink: (href) => this.#linkForm.submit(href),
     toggleMark: (mark) => this.#selection.selectedText?.toggleMark(mark),
   };
 
   readonly #canvasEvents: CanvasEvents = {
-    onBlockClick: (event) => this.#selection.onBlockClick(event),
+    onBlockClick: (blockId, target) =>
+      this.#selection.onBlockClick(blockId, target),
     onBlockFocus: (blockId) => this.#selection.onBlockFocus(blockId),
     onBlockFocusout: () => this.#selection.onBlockFocusout(),
     onImageError: (src) => this.#onImageError(src),
@@ -198,6 +181,9 @@ export class MailQuilt extends LitElement {
   protected override createRenderRoot() {
     const root = super.createRenderRoot();
     root.addEventListener("keydown", this.#onKeydown);
+    root.addEventListener("mousedown", (event) =>
+      this.#selection.onMousedown(event as MouseEvent)
+    );
     return root;
   }
 
@@ -363,6 +349,7 @@ export class MailQuilt extends LitElement {
       ${this.#narrow ? renderNarrowNotice(api) : nothing}
       <div
         class="ui frame editor"
+        data-place="editor"
         data-testid="editor"
         lang=${UI_LANG}
         part="frame"
@@ -371,12 +358,14 @@ export class MailQuilt extends LitElement {
       >
         <div
           class="canvas-area"
+          data-place="workspace"
           data-testid="workspace"
           @click=${this.#onWorkspaceClick}
           @pointerdown=${this.#onWorkspacePointerdown}
         >
           <div
             class="email"
+            data-place="email"
             data-testid="email"
             @beforeinput=${this.#onBeforeInput}
             style=${styleProperties({
@@ -390,6 +379,7 @@ export class MailQuilt extends LitElement {
             ${renderRows(api, this.#canvasState, this.#canvasEvents)}
             <div
               class="drop-indicator"
+              data-place="dropIndicator"
               data-testid="drop-indicator"
               hidden
             ></div>
@@ -397,7 +387,12 @@ export class MailQuilt extends LitElement {
           ${renderFloatingToolbar(api)}
         </div>
         ${renderSidePanel(api)}
-        <div class="ui tooltip" hidden role="tooltip"></div>
+        <div
+          class="ui tooltip"
+          data-place="tooltip"
+          hidden
+          role="tooltip"
+        ></div>
       </div>
     `;
   }
@@ -415,7 +410,7 @@ export class MailQuilt extends LitElement {
       selectedBlock: this.#selectedPosition(email),
       selectedRow: this.#selectedRow(email),
       showsSettings: this.#selection.showsSettings,
-      tab: this.#panelTab,
+      tab: this.#selection.tab,
     };
   }
 
@@ -544,14 +539,6 @@ export class MailQuilt extends LitElement {
     } as FocusOptions);
   }
 
-  /** The ARIA tabs pattern: a tab that arrow keys move to shows its panel too. */
-  #selectTab(tab: PanelTab) {
-    if (tab !== this.#panelTab) {
-      this.#panelTab = tab;
-      this.requestUpdate();
-    }
-  }
-
   /**
    * From the keyboard, focus goes to the next Block, or else the one before, as
    * it would be lost. A button pressed with a key clicks with a `detail` of 0.
@@ -670,7 +657,11 @@ export class MailQuilt extends LitElement {
     );
   }
 
+  /** Input to a Block's text. A field has its own typing and undo. */
   #onBeforeInput(event: InputEvent) {
+    if (!closestPlace(event.target as Element, "text")) {
+      return;
+    }
     // WebKit types into a Block's selection, and undoes there too, even with focus
     // on the dialog, a control, the link field or the Block itself.
     if (this.#preview.isOpen || this.#selection.focusIsOutsideText) {
@@ -718,26 +709,15 @@ export class MailQuilt extends LitElement {
     }
   };
 
-  /** Where in the editor a key was pressed, if it's a place in the key map. */
+  /**
+   * Where in the editor a key was pressed: the innermost place with keys of its
+   * own, or a settings field holding a draft.
+   */
   #placeOf(event: KeyboardEvent): Place | undefined {
-    const target = event.target as Element;
-    if (target.closest(".preview")) {
-      return "preview";
-    }
-    if (target.closest(".narrow-notice")) {
-      return "notice";
-    }
-    if (!target.closest(".editor")) {
-      return;
-    }
-    const [, place] =
-      PLACES.find(([selector]) => target.closest(selector)) ?? [];
-    if (place) {
-      return place;
-    }
-    return this.#drafts.draftKeyOf(event) === undefined
-      ? "editor"
-      : "settingsDraft";
+    const place = placeOf(event.target as Element, hasKeys);
+    return place === "editor" && this.#drafts.draftKeyOf(event) !== undefined
+      ? "settingsDraft"
+      : place;
   }
 
   /** What each action in the key map does here. */
@@ -768,8 +748,7 @@ export class MailQuilt extends LitElement {
       }
     },
     moveRow: ({ target }, { direction }) => {
-      const rowId = (target as Element).closest<HTMLElement>(".row-frame")
-        ?.dataset.rowId;
+      const rowId = closestPlace(target as Element, "row")?.dataset.rowId;
       if (rowId === undefined) {
         return;
       }
@@ -857,7 +836,7 @@ export class MailQuilt extends LitElement {
 
   /** A new render can replace the tooltip, along with everything else. */
   #syncTooltips(root: ShadowRoot) {
-    const element = root.querySelector<HTMLElement>(".tooltip");
+    const element = findPlace(root, "tooltip");
     if (element !== this.#tooltips?.element) {
       this.#tooltips?.tooltips.destroy();
       this.#tooltips = element

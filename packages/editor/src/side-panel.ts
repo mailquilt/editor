@@ -362,10 +362,11 @@ const renderPanelHeader = (
   subtitle: string,
   api: PanelApi
 ) => html`
-  <div class="panel-header" @mousedown=${api.onControlMousedown}>
+  <div class="panel-header" data-place="controls">
     <button
       aria-label="Back"
       class="icon-button back-button"
+      data-action="back"
       data-tooltip="Back"
       type="button"
       @click=${api.showTabs}
@@ -405,8 +406,8 @@ const renderRowProperties = ({ row, rowIndex }: RowPlace, api: PanelApi) => {
         <div
           aria-labelledby="row-layout-title"
           class="layout-choices"
+          data-place="controls"
           role="group"
-          @mousedown=${api.onControlMousedown}
         >
           ${ROW_LAYOUTS.map(
             (layout) => html`
@@ -472,8 +473,8 @@ const renderTabPanel = (api: PanelApi) => {
         <div
           aria-label="Add content"
           class="tiles"
+          data-place="controls"
           role="group"
-          @mousedown=${api.onControlMousedown}
         >
           ${BLOCK_TYPES.map(
             ({ label, type }) => html`
@@ -504,8 +505,8 @@ const renderTabPanel = (api: PanelApi) => {
         <div
           aria-label="Add a Row"
           class="layout-tiles"
+          data-place="controls"
           role="group"
-          @mousedown=${api.onControlMousedown}
         >
           ${ROW_LAYOUTS.map(
             (layout) => html`
@@ -543,7 +544,12 @@ const renderTabs = (api: PanelApi) => {
   const current = api.tab;
   return html`
     <div class="panel-top">
-      <div aria-label="Side panel" class="tabs" role="tablist">
+      <div
+        aria-label="Side panel"
+        class="tabs"
+        data-place="panelTabs"
+        role="tablist"
+      >
         ${PANEL_TABS.map(
           ({ icon, id, label }) => html`
             <button
@@ -586,7 +592,7 @@ const renderPanelView = (api: PanelApi) => {
 };
 
 export const renderSidePanel = (api: PanelApi) => html`
-  <div class="side-panel" data-testid="side-panel">
+  <div class="side-panel" data-place="sidePanel" data-testid="side-panel">
     <div class="side-panel-inner" data-testid="side-panel-content">
       ${renderPanelView(api)}
     </div>

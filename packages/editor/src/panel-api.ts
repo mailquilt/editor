@@ -19,7 +19,7 @@ import type { TextFormats, ToggleableMark } from "./text-block-view.js";
  *
  * It's private in 0.2, and kept to what a host's own panel would need, so that
  * offering the editor in parts later means documenting it (ADR 0004). The last
- * few members of each part are the editor's own panels' state, which `<mail-quilt>`
+ * few members of each part are the editor's own panels' state, which the editor
  * keeps because they're drawn afresh on each update.
  */
 export type PanelApi = PanelState & PanelActions;
@@ -92,12 +92,11 @@ export interface PanelActions {
   /** Selects a Row in place of any Block, and shows its settings. */
   selectRow: (rowId: string) => void;
   openPreview: () => void;
-  /** A press on a control, which keeps focus and the selection where they are. */
-  onControlMousedown: (event: MouseEvent) => void;
-  /** A press on a drag handle, which leaves focus and the selection be. */
-  onHandleMousedown: (event: MouseEvent) => void;
 
-  /** Back from what's selected to the Side panel's tabs. */
+  /**
+   * Back from what's selected to the Side panel's tabs. With focus on Back, it
+   * goes to the current tab.
+   */
   showTabs: () => void;
   selectTab: (tab: PanelTab) => void;
   /** Opens the link field for the selected Block's text. */

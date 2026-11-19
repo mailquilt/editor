@@ -250,6 +250,7 @@ export const renderPreview = (
   <dialog
     aria-labelledby="preview-title"
     class="preview"
+    data-place="preview"
     lang=${UI_LANG}
     @close=${onClosed}
   >
