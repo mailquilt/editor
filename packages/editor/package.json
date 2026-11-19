@@ -44,7 +44,7 @@
   },
   "scripts": {
     "build": "tsdown",
-    "check-types": "tsc --noEmit && tsc --noEmit -p browser-tests",
+    "check-types": "tsc --noEmit && tsc --noEmit -p browser-tests && tsc --noEmit -p scripts",
     "test": "playwright test",
     "test:unit": "vitest run"
   },

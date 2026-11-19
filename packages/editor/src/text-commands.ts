@@ -166,7 +166,7 @@ const collapseSelectAll =
   };
 
 /** What can be done to a Block's text, and what its formatting is. */
-export interface TextCommands {
+interface TextCommands {
   /** What each of the text's keys in the key map runs. */
   forKey: Record<TextAction, Command>;
   formats: (state: EditorState) => TextFormats;

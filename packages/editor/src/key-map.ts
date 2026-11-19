@@ -6,7 +6,7 @@
 
 export type Direction = "down" | "left" | "right" | "up";
 
-/** Where a key is pressed. */
+/** Where in the editor a key is pressed, each a place in `editor-places.ts`. */
 export type Place =
   /** On a Block itself. */
   | "block"
@@ -31,29 +31,35 @@ export type Place =
   /** The Preview dialog, and the email in it. */
   | "preview"
   /** The notice shown in place of the editor when there's no room to edit. */
-  | "notice"
-  /** Anywhere on the page while a Block or Row is dragged, heard first. */
+  | "notice";
+
+/**
+ * Where a key is heard before it reaches any place in the editor, by the
+ * module that's listening then.
+ */
+export type HeardFirst =
+  /** Anywhere on the page while a Block or Row is dragged. */
   | "drag"
-  /** Anywhere on the page while the focused control's tooltip shows, heard first. */
+  /** Anywhere on the page while the focused control's tooltip shows. */
   | "focusedTooltip"
-  /** Anywhere on the page while a hovered control's tooltip shows, heard first. */
+  /** Anywhere on the page while a hovered control's tooltip shows. */
   | "hoveredTooltip"
-  /** A held key repeating somewhere other than where it was pressed, heard first. */
+  /** A held key repeating somewhere other than where it was pressed. */
   | "heldElsewhere";
 
-/** What a key does. */
+/** What a key heard first does. */
+type HeardFirstAction = "cancelDrag" | "closeTooltip" | "ignore";
+
+/** What a key does in the editor. */
 export type Action =
   | "backToBlock"
   | "backToText"
-  | "cancelDrag"
   | "cancelLink"
   | "closePreview"
-  | "closeTooltip"
   | "discardDraft"
   | "editText"
   | "firstButton"
   | "focusFormatBar"
-  | "ignore"
   /** Nothing, but the browser doesn't go back or forward a page. */
   | "keepPage"
   | "lastButton"
@@ -68,16 +74,23 @@ export type Action =
   | "typeInField"
   | "undo";
 
-/** What the editor does with a press. */
-export interface Binding {
-  action: Action;
-  /** For an arrow key, which way. */
-  direction?: Direction;
+/** The actions of the arrow keys, which go one way. */
+export type DirectedAction = "moveBlock" | "moveRow" | "selectBlock";
+
+/** What happens to a press besides its action. */
+interface Effect {
   /** The browser still does its own thing with the key, such as Tab moving focus. */
   keepsDefault: boolean;
   /** The press goes no further: no other handler, nor the host page, hears it. */
   stops: boolean;
 }
+
+/** What the editor does with a press, and for an arrow key, which way. */
+export type Binding<Of extends string = Action> = Effect &
+  (
+    | { action: Exclude<Of, DirectedAction>; direction?: undefined }
+    | { action: Extract<Of, DirectedAction>; direction: Direction }
+  );
 
 /** What `keyFor` reads of a key press, so a test can make one. */
 export type KeyPress = Pick<
@@ -92,26 +105,37 @@ export type KeyPress = Pick<
   | "shiftKey"
 >;
 
-interface Entry {
-  action: Action;
+interface EntryOptions {
   /** Matches with Shift, Ctrl, Alt or ⌘ held too. */
   anyModifiers?: boolean;
-  direction?: Direction;
   keepsDefault?: boolean;
-  /**
-   * Names such as "Alt-ArrowUp" or "Shift-Mod-z", where Mod is ⌘ on Apple
-   * devices and Ctrl elsewhere. A press matches with exactly those modifiers.
-   * "any" is every key, even one an input method handled.
-   */
-  keys: readonly string[] | "any";
   /** Only with a Block that has text selected, as it acts on that text. */
   needsText?: boolean;
-  /** Only on Apple devices, or only elsewhere. */
-  platform?: "apple" | "other";
+  /** Only on devices other than Apple's. */
+  platform?: "other";
   stops: boolean;
   /** Does nothing while a Block or Row is dragged, as it would change them. */
   waitsForDrag?: boolean;
 }
+
+/**
+ * Keys are names such as "Alt-ArrowUp" or "Shift-Mod-z", where Mod is ⌘ on
+ * Apple devices and Ctrl elsewhere. A press matches with exactly those
+ * modifiers. "any" is every key, even one an input method handled.
+ */
+type Entry<Of extends string = Action> = EntryOptions &
+  (
+    | {
+        action: Exclude<Of, DirectedAction>;
+        direction?: undefined;
+        keys: readonly string[] | "any";
+      }
+    | {
+        action: Extract<Of, DirectedAction>;
+        direction: Direction;
+        keys: readonly string[];
+      }
+  );
 
 const ARROW_KEYS = {
   down: "ArrowDown",
@@ -123,7 +147,7 @@ const ARROW_KEYS = {
 /** One entry for each arrow key, with `prefix` such as "Alt-". */
 const arrows = (
   prefix: string,
-  entry: Omit<Entry, "direction" | "keys">
+  entry: EntryOptions & { action: DirectedAction }
 ): Entry[] =>
   Object.entries(ARROW_KEYS).map(([direction, key]) => ({
     ...entry,
@@ -190,7 +214,10 @@ const KEEP_PAGE: Entry = {
 };
 
 /** An Escape that does none of these reaches the host page, so its dialog can close. */
-const escape = (action: Action, entry: Partial<Entry> = {}): Entry => ({
+const escape = <Of extends string>(
+  action: Of,
+  entry: Partial<EntryOptions> = {}
+) => ({
   action,
   anyModifiers: true,
   keys: ["Escape"],
@@ -270,6 +297,10 @@ const KEY_MAP: Record<Place, readonly Entry[]> = {
   // dialog around the editor open.
   preview: [escape("closePreview", { keepsDefault: true }), KEEP_PAGE],
   notice: [KEEP_PAGE],
+};
+
+// oxlint-disable-next-line sort-keys -- In the order of HeardFirst.
+const HEARD_FIRST: Record<HeardFirst, readonly Entry<HeardFirstAction>[]> = {
   drag: [escape("cancelDrag")],
   // Closing a focused control's tooltip is all Escape does, as it would
   // otherwise also move focus. Over another control, it still does what it
@@ -291,8 +322,10 @@ const IS_MAC =
   typeof navigator === "object" &&
   /Mac|iPhone|iPod|iPad/u.test(navigator.platform);
 
-const isOnPlatform = ({ platform }: Pick<Entry, "platform">, apple: boolean) =>
-  platform === undefined || (platform === "apple") === apple;
+const isOnPlatform = (
+  { platform }: { platform?: "apple" | "other" },
+  apple: boolean
+) => platform === undefined || (platform === "apple") === apple;
 
 export type TextAction =
   | "bold"
@@ -313,7 +346,8 @@ interface TextEntry {
    */
   aliases?: readonly string[];
   keys: readonly string[];
-  platform?: Entry["platform"];
+  /** Only on Apple devices. */
+  platform?: "apple";
 }
 
 /**
@@ -392,16 +426,19 @@ const keyOf = ({ code, key }: KeyPress) => {
 const matches = (
   name: string,
   press: KeyPress,
-  { anyModifiers = false }: Entry,
+  { anyModifiers = false }: EntryOptions,
   apple: boolean
 ) => {
   const modifiers = name.split("-");
   const key = modifiers.pop();
+  if (key !== keyOf(press)) {
+    return false;
+  }
+  if (anyModifiers) {
+    return true;
+  }
   const mod = apple ? press.metaKey : press.ctrlKey;
   const other = apple ? press.ctrlKey : press.metaKey;
-  if (key !== keyOf(press) || anyModifiers) {
-    return key === keyOf(press);
-  }
   return (
     press.altKey === modifiers.includes("Alt") &&
     press.shiftKey === modifiers.includes("Shift") &&
@@ -411,7 +448,7 @@ const matches = (
 };
 
 /** Keeps the browser from acting on a press, and stops it, as `binding` says. */
-export const claim = (event: Event, { keepsDefault, stops }: Binding) => {
+export const claim = (event: Event, { keepsDefault, stops }: Effect) => {
   if (!keepsDefault) {
     event.preventDefault();
   }
@@ -431,7 +468,7 @@ interface Context {
 }
 
 const applies = (
-  entry: Entry,
+  entry: EntryOptions & { keys: readonly string[] | "any" },
   press: KeyPress,
   { apple, dragging, selectedText }: Context
 ) => {
@@ -454,31 +491,37 @@ const applies = (
 export const hasKeys = (place: string): place is Place =>
   Object.hasOwn(KEY_MAP, place);
 
-/**
- * What a press in `place` does, or undefined if it isn't the editor's. The
- * first entry for the place that matches answers.
- */
+/** What the first of `entries` that matches a press does, if one does. */
+const bindingIn = <Of extends string>(
+  entries: readonly Entry<Of>[],
+  press: KeyPress,
+  { apple = IS_MAC, dragging = false, selectedText = false }: Partial<Context>
+): Binding<Of> | undefined => {
+  const entry = entries.find((each) =>
+    applies(each, press, { apple, dragging, selectedText })
+  );
+  if (!entry) {
+    return undefined;
+  }
+  const effect = {
+    keepsDefault: entry.keepsDefault ?? false,
+    stops: entry.stops,
+  };
+  return entry.direction === undefined
+    ? { action: entry.action, ...effect }
+    : { action: entry.action, direction: entry.direction, ...effect };
+};
+
+/** What a press in `place` does, or undefined if it isn't the editor's. */
 export const keyFor = (
   place: Place,
   press: KeyPress,
-  {
-    apple = IS_MAC,
-    dragging = false,
-    selectedText = false,
-  }: Partial<Context> = {}
-): Binding | undefined => {
-  const entry = KEY_MAP[place].find((each) =>
-    applies(each, press, { apple, dragging, selectedText })
-  );
-  return (
-    entry && {
-      action: entry.action,
-      ...(entry.direction && { direction: entry.direction }),
-      keepsDefault: entry.keepsDefault ?? false,
-      stops: entry.stops,
-    }
-  );
-};
+  context: Partial<Context> = {}
+) => bindingIn(KEY_MAP[place], press, context);
+
+/** What a press heard first does, or undefined if it goes on as usual. */
+export const keyHeardFirst = (place: HeardFirst, press: KeyPress) =>
+  bindingIn(HEARD_FIRST[place], press, {});
 
 /** How a key is named for people. */
 export interface KeyLabel {

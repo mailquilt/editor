@@ -28,6 +28,13 @@ export const locate = (document: BlocksDocument, blockId: string) => {
 
 export type BlockPlace = NonNullable<ReturnType<typeof locate>>;
 
+/** A Row, and its index. */
+export const locateRow = (document: BlocksDocument, rowId: string) => {
+  const rowIndex = document.rows.findIndex(({ id }) => id === rowId);
+  const row = document.rows[rowIndex];
+  return row && { row, rowIndex };
+};
+
 export const columnLabel = (rowIndex: number, columnIndex: number) =>
   `Row ${rowIndex + 1}, Column ${columnIndex + 1}`;
 
@@ -55,7 +62,10 @@ export const neighbourBlockId = (
 ) => {
   if (direction === "up" || direction === "down") {
     const ids = blocksIn(document).map(({ id }) => id);
-    return ids[ids.indexOf(blockId) + (direction === "down" ? 1 : -1)];
+    const index = ids.indexOf(blockId);
+    return index === -1
+      ? undefined
+      : ids[index + (direction === "down" ? 1 : -1)];
   }
   const place = locate(document, blockId);
   if (!place) {
@@ -123,9 +133,9 @@ export const moveRowCommand = (
   rowId: string,
   direction: "down" | "up"
 ): Command | undefined => {
-  const index = document.rows.findIndex(({ id }) => id === rowId);
-  const to = index + (direction === "up" ? -1 : 1);
-  return index === -1 || to < 0 || to >= document.rows.length
+  const place = locateRow(document, rowId);
+  const to = place && place.rowIndex + (direction === "up" ? -1 : 1);
+  return to === undefined || to < 0 || to >= document.rows.length
     ? undefined
     : { index: to, rowId, type: "moveRow" };
 };

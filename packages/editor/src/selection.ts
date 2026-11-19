@@ -16,14 +16,14 @@ import type { TextBlockView } from "./text-block-view.js";
  */
 
 /** A Block, which the toolbars act on, a Row, or nothing. */
-export type Selected = { blockId: string } | { rowId: string } | undefined;
+type Selected = { blockId: string } | { rowId: string } | undefined;
 
 /**
  * Somewhere focus can go, by what it's on rather than by its element, so that
  * it's found again after an update replaces the element. A Block is the
  * selected one unless it's named.
  */
-export type FocusTarget =
+type FocusTarget =
   | { on: "block" | "text"; blockId?: string }
   /** A button on the selected Block's toolbar, by its `data-action`. */
   | { on: "blockTool"; action: string }
@@ -325,7 +325,7 @@ export const createSelection = (host: SelectionHost) => {
    * Pressing a control leaves focus and the selection in the Block. With no
    * focus in the editor, the control takes it, without a ring as for any other
    * press with the pointer, because keyboard undo only reaches the editor from
-   * inside it.
+   * inside it. The Preview returns focus there too, when it closes.
    */
   const onControlMousedown = (event: MouseEvent, target: Element) => {
     if (target instanceof HTMLInputElement) {
@@ -335,7 +335,7 @@ export const createSelection = (host: SelectionHost) => {
     commitFocusedField();
     const button = target.closest("button");
     if (button && !active()) {
-      button.focus({ focusVisible: false } as FocusOptions);
+      button.focus({ focusVisible: false });
     }
   };
 
@@ -486,6 +486,22 @@ export const createSelection = (host: SelectionHost) => {
       focusedOn(blockId, true);
     },
 
+    /**
+     * A focused number field would step with the wheel, though it has no
+     * arrows, while the person only meant to scroll the panel. Focus leaves it
+     * for the floating toolbar, which commits it and keeps keyboard undo working.
+     */
+    onWheel({ target }: WheelEvent) {
+      const element = active();
+      if (
+        element === target &&
+        element instanceof HTMLInputElement &&
+        element.type === "number"
+      ) {
+        focus({ on: "emailTools" }, { focusVisible: false });
+      }
+    },
+
     revealBlock,
 
     async revealRow(rowId: string) {
@@ -523,7 +539,7 @@ export const createSelection = (host: SelectionHost) => {
       await host.updateComplete();
       const [button] = rowTools(rowId);
       if (button && active() !== button) {
-        button.focus({ focusVisible } as FocusOptions);
+        button.focus({ focusVisible });
       }
     },
 

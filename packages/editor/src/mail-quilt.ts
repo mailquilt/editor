@@ -158,7 +158,7 @@ export class MailQuilt extends LitElement {
     moveBlock: (direction) => this.#editing.moveBlock(direction),
     moveRow: (rowId, direction) => this.#editing.moveRow(rowId, direction),
     openLinkField: () => this.#linkForm.open(),
-    openPreview: () => this.#openPreview(),
+    openPreview: () => this.#preview.open(),
     removeLink: () => this.#linkForm.remove(),
     selectRow: (rowId) => this.#selection.selectRow(rowId),
     selectTab: (tab) => this.#selection.selectTab(tab),
@@ -182,6 +182,11 @@ export class MailQuilt extends LitElement {
     root.addEventListener("keydown", this.#keys.onKeydown);
     root.addEventListener("mousedown", (event) =>
       this.#selection.onMousedown(event as MouseEvent)
+    );
+    root.addEventListener(
+      "wheel",
+      (event) => this.#selection.onWheel(event as WheelEvent),
+      { passive: true }
     );
     return root;
   }
@@ -436,11 +441,6 @@ export class MailQuilt extends LitElement {
     }
   }
 
-  /** The dialog returns focus to whatever had it, which a press gives Preview. */
-  async #openPreview() {
-    await this.#preview.open();
-  }
-
   #onImageError(src: string) {
     this.#failedImages.add(src);
     this.requestUpdate();
@@ -502,9 +502,7 @@ export class MailQuilt extends LitElement {
       return;
     }
     this.#selection.select(undefined);
-    this.#selection.focus({ on: "emailTools" }, {
-      focusVisible: false,
-    } as FocusOptions);
+    this.#selection.focus({ on: "emailTools" }, { focusVisible: false });
   }
 
   /** The text schema is no wider than core's, so a rejection is a bug here. */

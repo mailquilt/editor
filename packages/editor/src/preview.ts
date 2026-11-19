@@ -23,7 +23,10 @@ export const previewStyles = css`
     width: calc(100vw - 32px);
   }
 
-  /* With its default too, as older browsers don't pass tokens to a backdrop. */
+  /*
+   * With its default too, as a backdrop gets no tokens before Chrome 122,
+   * Firefox 120 and Safari 17.4.
+   */
   .preview::backdrop {
     background: var(--mq-color-backdrop, rgb(16 24 40 / 55%));
     backdrop-filter: blur(2px);
@@ -132,7 +135,7 @@ export const previewStyles = css`
     margin-block: var(--mq-space-3);
   }
 
-  .preview-skeleton > .button {
+  .preview-skeleton > .action {
     border-radius: var(--mq-radius-small);
     height: 40px;
     margin-block-start: var(--mq-space-3);
@@ -175,7 +178,7 @@ const previewSkeleton = html`
     <span class="image"></span>
     <span class="long"></span>
     <span class="medium"></span>
-    <span class="button"></span>
+    <span class="action"></span>
   </div>
 `;
 

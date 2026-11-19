@@ -13,6 +13,7 @@ import type { Direction } from "./key-map.js";
 import type { RowPlace } from "./panel-api.js";
 import {
   locate,
+  locateRow,
   moveCommand,
   moveRowCommand,
   neighbourBlockId,
@@ -63,11 +64,8 @@ export const createEditingActions = ({
   };
 
   const selectedRow = (document: BlocksDocument): RowPlace | undefined => {
-    const rowIndex = document.rows.findIndex(
-      ({ id }) => id === selection.rowId
-    );
-    const row = document.rows[rowIndex];
-    return row && { row, rowIndex };
+    const { rowId } = selection;
+    return rowId === undefined ? undefined : locateRow(document, rowId);
   };
 
   /**
@@ -156,9 +154,12 @@ export const createEditingActions = ({
      * before, as it would be lost.
      */
     deleteRow: async (rowId: string, fromKeyboard: boolean) => {
-      const rows = current()?.rows ?? [];
-      const index = rows.findIndex(({ id }) => id === rowId);
-      const neighbour = rows[index + 1] ?? rows[index - 1];
+      const document = current();
+      const place = document && locateRow(document, rowId);
+      const neighbour =
+        place &&
+        (document.rows[place.rowIndex + 1] ??
+          document.rows[place.rowIndex - 1]);
       if (apply({ rowId, type: "removeRow" })?.ok) {
         announcements.say("Row deleted.");
         if (fromKeyboard && neighbour) {

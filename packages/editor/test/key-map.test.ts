@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   keyFor,
+  keyHeardFirst,
   keyLabel,
   proseMirrorKeys,
   TEXT_KEYS,
@@ -395,7 +396,7 @@ describe("in the Preview", () => {
 
 describe("while a Block or Row is dragged", () => {
   it("Escape cancels the drag, before anything else hears it", () => {
-    expect(keyIn("drag", press("Escape"))).toStrictEqual(
+    expect(keyHeardFirst("drag", press("Escape"))).toStrictEqual(
       acts("cancelDrag", { stops: true })
     );
   });
@@ -403,13 +404,13 @@ describe("while a Block or Row is dragged", () => {
 
 describe("while a tooltip shows", () => {
   it("Escape closes the focused control's, and stops there", () => {
-    expect(keyIn("focusedTooltip", press("Escape"))).toStrictEqual(
+    expect(keyHeardFirst("focusedTooltip", press("Escape"))).toStrictEqual(
       acts("closeTooltip", { keepsDefault: true, stops: true })
     );
   });
 
   it("Escape closes a hovered control's, and goes on", () => {
-    expect(keyIn("hoveredTooltip", press("Escape"))).toStrictEqual(
+    expect(keyHeardFirst("hoveredTooltip", press("Escape"))).toStrictEqual(
       acts("closeTooltip", { keepsDefault: true })
     );
   });
@@ -417,13 +418,13 @@ describe("while a tooltip shows", () => {
 
 describe("a key held down", () => {
   it("Enter repeating where it wasn't pressed, such as in text it moved focus to, does nothing", () => {
-    expect(keyIn("heldElsewhere", press("Shift-Enter"))).toStrictEqual(
+    expect(keyHeardFirst("heldElsewhere", press("Shift-Enter"))).toStrictEqual(
       acts("ignore", { stops: true })
     );
   });
 
   it("an arrow key repeating goes on to the next Block", () => {
-    expect(keyIn("heldElsewhere", press("ArrowDown"))).toBeUndefined();
+    expect(keyHeardFirst("heldElsewhere", press("ArrowDown"))).toBeUndefined();
   });
 });
 

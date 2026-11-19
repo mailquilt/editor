@@ -394,7 +394,7 @@ test.describe("an Image", () => {
     expect(await isBadInput()).toBe(false);
   });
 
-  test("scrolling over the focused Width leaves it as it is", async ({
+  test("scrolling over the focused Width leaves it as it is, with focus still in the editor", async ({
     page,
   }) => {
     await open(page, ["image"]);
@@ -406,7 +406,9 @@ test.describe("an Image", () => {
     await width.hover();
     await page.mouse.wheel(0, -200);
 
-    await expect(width).not.toBeFocused();
+    await expect(
+      canvas(page).getByRole("group", { name: "Email tools" })
+    ).toBeFocused();
     await expect(width).toHaveValue("100");
   });
 
