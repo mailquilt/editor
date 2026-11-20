@@ -48,6 +48,26 @@ const fakeServer = async (
 };
 
 /**
+ * Counts each save as the page sends it. The route only hears of one later, so
+ * it can't show that none was sent by a given time.
+ */
+const countSavesSent = async (page: Page) => {
+  await page.addInitScript(() => {
+    const send = window.fetch;
+    const counted = window as unknown as { savesSent: number };
+    counted.savesSent = 0;
+    window.fetch = (input, init) => {
+      if (init?.method === "PUT") {
+        counted.savesSent += 1;
+      }
+      return send(input, init);
+    };
+  });
+  return () =>
+    page.evaluate(() => (window as unknown as { savesSent: number }).savesSent);
+};
+
+/**
  * Opens the page, then stops its clock before typing, so the save pause ends
  * only when a test runs the clock on, however long typing takes.
  */
@@ -63,10 +83,11 @@ test("typing saves once, after a pause, with every keystroke in it", async ({
   page,
 }) => {
   const saves = await fakeServer(page);
+  const savesSent = await countSavesSent(page);
   await openAndTypeAtStart(page, "Saved ");
 
   await page.clock.runFor(SAVE_AFTER_MS - 1);
-  expect(saves).toHaveLength(0);
+  expect(await savesSent()).toBe(0);
   await page.clock.runFor(1);
 
   await expect(page.locator("#save-status")).toHaveText("Saved");

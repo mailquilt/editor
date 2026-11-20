@@ -47,7 +47,7 @@ Opening a different email clears undo history. Setting `value` to the email the 
 
 - `value` is the email to open. `onChange` gets the new email after every change, and `onError` gets the reason when the editor refuses one, or when the editor's code can't load. `onError` is always listening in time.
 - `ref` gives you the element once the editor has loaded, so you can call `exportHtml()`.
-- Other props, such as `className`, `style`, `id` and `aria-label`, go to the element.
+- Other props go to the element: `aria-*` attributes, React's events such as `onKeyDown`, and `className`, `hidden`, `id`, `inert`, `lang`, `role`, `slot`, `style`, `suppressHydrationWarning`, `title` and `translate`.
 - On the server, each component renders its empty element, and the editor loads in the browser.
 
 `@mailquilt/react` needs React 19. The [React](./react) and [Next.js](./nextjs) pages show both components in use.

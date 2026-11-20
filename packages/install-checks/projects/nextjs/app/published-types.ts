@@ -6,6 +6,7 @@ import type {
   MailQuiltChangeEvent,
   MailQuiltErrorEvent,
 } from "@mailquilt/editor";
+import type { MailQuiltProps } from "@mailquilt/react";
 import { renderEmail } from "@mailquilt/renderer";
 
 export const command: Command = {
@@ -26,6 +27,15 @@ export const notANumber: number = ({} as MailQuiltChangeEvent).detail.document;
 // The same for core's second entry, which the editor and renderer import from.
 // @ts-expect-error A link check gives a boolean, not text.
 export const notText: string = isAllowedLinkHref("https://example.com");
+
+export const elementProps: MailQuiltProps = {
+  "aria-label": "Newsletter",
+  className: "editor",
+  onKeyDown: (event) => event.key,
+};
+
+// @ts-expect-error A form field's prop means nothing on the editor.
+export const formFieldProps: MailQuiltProps = { defaultValue: "Hello" };
 
 /** JSON from a database is `unknown` until the renderer has checked it. */
 export const htmlFor = (saved: unknown): Promise<string> => renderEmail(saved);

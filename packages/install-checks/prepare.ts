@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { cpSync, mkdirSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import {
@@ -51,17 +51,64 @@ mkdirSync(tarballs, { recursive: true });
 
 // Packed packages name each other by version, so each is pointed at its
 // tarball, or the install would fetch that version from npm instead.
-const overrides = packages
-  .map((name) => {
+const packed: Record<string, string> = Object.fromEntries(
+  packages.map((name) => {
     const { filename } = JSON.parse(
       execFileSync("pnpm", ["pack", "--json", "--pack-destination", tarballs], {
         cwd: path.join(here, "..", name),
         encoding: "utf-8",
       })
     );
-    return `  "@mailquilt/${name}": "file:${filename}"`;
+    return [`@mailquilt/${name}`, filename];
   })
+);
+// The repo's TypeScript reads the published types, as the packages' own checks do.
+const { devDependencies } = JSON.parse(
+  readFileSync(path.join(here, "..", "..", "package.json"), "utf-8")
+);
+const overrides = Object.entries({
+  ...Object.fromEntries(
+    Object.entries(packed).map(([name, file]) => [name, `file:${file}`])
+  ),
+  typescript: devDependencies.typescript,
+})
+  .map(([name, version]) => `  "${name}": "${version}"`)
   .join("\n");
+
+interface Listed {
+  dependencies?: Record<string, Listed>;
+  devDependencies?: Record<string, Listed>;
+  resolved?: string;
+}
+
+/**
+ * Throws unless every package of ours the project installed is the tarball
+ * packed here. Once a version is on npm, one fetched from there would pass.
+ */
+const checkInstalledFromTarballs = (dir: string) => {
+  const listed: Listed[] = JSON.parse(
+    execFileSync("pnpm", ["list", "--json", "--depth", "Infinity"], {
+      cwd: dir,
+      encoding: "utf-8",
+    })
+  );
+  const pending = [...listed];
+  for (const each of pending) {
+    for (const [name, dependency] of Object.entries({
+      ...each.dependencies,
+      ...each.devDependencies,
+    })) {
+      const tarball = packed[name];
+      const from = dependency.resolved?.replace(/^file:/u, "");
+      if (tarball && (!from || path.resolve(dir, from) !== tarball)) {
+        throw new Error(
+          `${dir} installed ${name} from ${dependency.resolved}, not ${tarball}`
+        );
+      }
+      pending.push(dependency);
+    }
+  }
+};
 
 for (const name of projectNames) {
   const dir = freshProjectDir(name);
@@ -89,6 +136,7 @@ for (const name of projectNames) {
     `overrides:\n${overrides}\n`
   );
   pnpm(dir, "install");
+  checkInstalledFromTarballs(dir);
   // A page with no bundler has no build step.
   if (name !== "cdn") {
     pnpm(dir, "run", "build");

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
-import { focusStartOfTextBlock, textBlock } from "./helpers.js";
+import { afterAFrame, focusStartOfTextBlock, textBlock } from "./helpers.js";
 
 test("onError hears a refused first document", async ({ page }) => {
   await page.goto("/?refused-first");
@@ -9,9 +9,11 @@ test("onError hears a refused first document", async ({ page }) => {
   await expect(page.getByTestId("errors")).toContainText("newer");
 });
 
-test("onError hears why the editor's code can't load", async ({ page }) => {
-  // Only the scripts the page names load, so the editor's code, which the
-  // component imports once it's on the page, can't.
+/**
+ * Lets only the scripts the page names load, so the editor's code, which the
+ * component imports once it's on the page, can't.
+ */
+const blockEditorCode = async (page: Page) => {
   const response = await page.request.get("/");
   const html = await response.text();
   const pageScripts = new Set(
@@ -25,12 +27,38 @@ test("onError hears why the editor's code can't load", async ({ page }) => {
       ? route.continue()
       : route.abort()
   );
+};
 
-  await page.goto("/");
+// StrictMode mounts each effect twice, so each load fails twice, and these
+// also cover a host without it.
+test.describe("when the editor's code can't load, under StrictMode", () => {
+  test("onError hears why, once", async ({ page }) => {
+    await blockEditorCode(page);
 
-  await expect(page.getByTestId("errors")).toContainText(
-    "The editor couldn't load: "
-  );
+    await page.goto("/?strict");
+
+    const errors = page.getByTestId("errors");
+    await expect(errors).toContainText("The editor couldn't load: ");
+    // StrictMode's two loads wait on one download of the editor's code, so
+    // both have failed by the frame after the first report.
+    await afterAFrame(page);
+    const reports = await errors.textContent();
+    expect(reports?.split("\n")).toHaveLength(1);
+  });
+
+  test("with no onError, the page has one unhandled rejection", async ({
+    page,
+  }) => {
+    const rejections: Error[] = [];
+    page.on("pageerror", (error) => rejections.push(error));
+    await blockEditorCode(page);
+
+    await page.goto("/?strict&no-on-error");
+
+    await expect.poll(() => rejections.length).toBeGreaterThan(0);
+    await afterAFrame(page);
+    expect(rejections).toHaveLength(1);
+  });
 });
 
 const fastTyping = "The quick brown fox jumps over the lazy dog. ".repeat(3);
