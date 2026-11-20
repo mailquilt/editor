@@ -17,7 +17,7 @@ from Block to Block.
 | <kbd>Tab</kbd> | Reaches a Block and selects it. From there, <kbd>Tab</kbd> goes into its text, if it has any, and then to its toolbar. |
 | <kbd>Up</kbd> <kbd>Down</kbd> | Selects the Block before or after this one, in reading order. This reaches every Block in the email. |
 | <kbd>Left</kbd> <kbd>Right</kbd> | Selects a Block in the next Column that has one, as close as it can get to the same position. |
-| <kbd>Enter</kbd> | Goes into the Block's text to edit it. |
+| <kbd>Enter</kbd> | Goes into the Block's text to edit it. Held down, it goes in and stops, with no empty paragraphs added. |
 | <kbd>Escape</kbd> | Comes back out of the text to the Block. |
 
 Selecting a Block changes nothing in the email, so it doesn't fire `mq-change`.
@@ -39,7 +39,7 @@ On Windows and Linux, <kbd>Alt</kbd> + <kbd>Left</kbd> and <kbd>Alt</kbd> + <kbd
 
 ## The Block's toolbar
 
-A selected Block has a toolbar with a drag handle, four move buttons and a delete button. It's one stop for <kbd>Tab</kbd>, and the arrow keys go across its buttons. <kbd>Home</kbd> and <kbd>End</kbd> go to its first and last button. <kbd>Escape</kbd> goes back to the Block, once it has closed the tooltip of the button with focus.
+A selected Block has a toolbar with a drag handle, four move buttons and a delete button. It's one stop for <kbd>Tab</kbd>, and the arrow keys go across its buttons. <kbd>Home</kbd> and <kbd>End</kbd> go to its first and last button. <kbd>Escape</kbd> goes back to the Block, once it has closed the tooltip of the button with focus. A tooltip that shows because the pointer is over a button closes with any <kbd>Escape</kbd>, which still does what it would have done.
 
 ## Rows
 
@@ -61,6 +61,14 @@ An empty Column has a button for each type of Block, such as "Add Text Block her
 
 In the side panel's Rows tab, press <kbd>Enter</kbd> on a layout to add a Row with it after the selected Row, or after the Row of the selected Block. With nothing selected, it goes at the end of the email.
 
+## Settings
+
+A settings field, such as a Button's link or a Row's padding, changes the email when you press <kbd>Enter</kbd> or leave the field. Until then, <kbd>Escape</kbd> takes back what you typed and shows the email's value again. A value the editor refuses stays in the field with the reason, until you fix it or press <kbd>Escape</kbd>.
+
+## Cancelling a drag
+
+While a Block or Row is dragged with the pointer, including a new one from the side panel, <kbd>Escape</kbd> cancels the drag. Nothing moves and nothing is added. Until the drag ends, the keys that select or move a Block or Row, or go into a Block's text, do nothing.
+
 ## Editing text
 
 <kbd>⌘</kbd> is for a Mac, and <kbd>Ctrl</kbd> for everything else. On a Mac,
@@ -71,11 +79,11 @@ line, and put it back.
 | --- | --- |
 | <kbd>Enter</kbd> | Starts a new paragraph. |
 | <kbd>Shift</kbd> + <kbd>Enter</kbd> | Adds a line break in the same paragraph. |
-| <kbd>Delete</kbd> | Deletes forward. In an empty paragraph, it removes the paragraph, even the last one in the Block. |
+| <kbd>Delete</kbd> | Deletes forward. In an empty paragraph, it removes the paragraph, even the last one in the Block. <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>Delete</kbd> does the same, and on a Mac so do <kbd>Ctrl</kbd> + <kbd>D</kbd>, <kbd>Alt</kbd> + <kbd>D</kbd>, <kbd>Alt</kbd> + <kbd>Delete</kbd> and <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>Backspace</kbd>. |
 | <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>Enter</kbd> | Also adds a line break. |
-| <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>B</kbd> | Turns bold on or off for the selected text. A Heading is bold already, so it does nothing there. |
-| <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>I</kbd> | Turns italic on or off. |
-| <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>U</kbd> | Turns underline on or off. |
+| <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>B</kbd> | Turns bold on or off for the selected text. A Heading is bold already, so it does nothing there. <kbd>Shift</kbd> + <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>B</kbd> does the same. |
+| <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>I</kbd> | Turns italic on or off. <kbd>Shift</kbd> + <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>I</kbd> does the same. |
+| <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>U</kbd> | Turns underline on or off. <kbd>Shift</kbd> + <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>U</kbd> does the same, so that on Windows and Linux the browser doesn't format the text in its own way. |
 | <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>K</kbd> | Opens the link field for the selected Block's text, from anywhere in the email or its toolbars, such as the text, the Block or its toolbar. <kbd>Escape</kbd> closes it and leaves the text as it was. With no text to link, such as on a Button, the key is left to your page. |
 | <kbd>Alt</kbd> + <kbd>F10</kbd> | Goes to the formatting toolbar, for bold, italic, underline, links and line breaks. The arrow keys go across its buttons, and <kbd>Home</kbd> and <kbd>End</kbd> go to the first and last. <kbd>Escape</kbd> goes back to the text, once it has closed the tooltip of the button with focus. |
 

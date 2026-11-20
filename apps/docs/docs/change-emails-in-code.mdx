@@ -95,9 +95,17 @@ const stop = editor.subscribe((operations) => {
 
 A listener that throws doesn't stop the others hearing of the change. Once they all have, its error is thrown from the `apply()`, `undo()` or `redo()` that made the change, which still happened. A listener can apply a Command of its own. Its `apply()` returns before anyone hears of it, as each listener hears of every change in order, so an error from hearing of it is thrown from the call that made the first change.
 
-Each Operation is a record of one thing that happened to the email: an insert, a removal, a move, a change of properties, or a Column's new width. One Command can produce several.
+Each Operation is a record of one thing that happened to the email, and is plain JSON. One Command can produce several. An ID at the top of an Operation always names what changed, such as `blockId` in a move. These are all of them:
 
-An ID at the top of an Operation always names what changed, such as `blockId` in a move. An insert or a removal carries the Block, Column or Row itself, and says where it is with `at`, as a move does with `from` and `to`:
+| `type` | What it says |
+| --- | --- |
+| `insert` | A Block, Column or Row was added: `block`, `column` or `row`, with the whole of what was added, and `at`, where it is now. |
+| `remove` | A Block, Column or Row was taken out: `block`, `column` or `row`, with the whole of what was removed, and `at`, where it was. |
+| `move` | A Block moved, with `blockId`, or a Row did, with `rowId`. `from` is where it was, and `to` where it is, as an index once it had left `from`. |
+| `setProps` | A Block's, a Row's or the email's settings changed, named by `blockId`, `rowId` or `emailSettings: true`. `props` holds all of them after the change, and `previousProps` all of them before it. |
+| `setColumnWidth` | A Column's width changed: `columnId`, its `width`, and its `previousWidth`, as percentages. |
+
+A Block's position, in `at`, `from` or `to`, is `{ columnId, index }`. A Column's is `{ rowId, index }`, and a Row's is `{ index }`:
 
 ```js
 const operations = [
@@ -108,7 +116,15 @@ const operations = [
     from: { columnId: "c1", index: 0 },
     to: { columnId: "c2", index: 1 },
   },
+  { type: "move", rowId: "r2", from: { index: 1 }, to: { index: 0 } },
   { type: "remove", at: { rowId: "r1", index: 1 }, column: oldColumn },
+  {
+    type: "setProps",
+    blockId: "b3",
+    props: { label: "Shop now" },
+    previousProps: { label: "Buy" },
+  },
+  { type: "setColumnWidth", columnId: "c2", width: 40, previousWidth: 50 },
 ];
 ```
 

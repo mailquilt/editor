@@ -66,8 +66,9 @@ const entries = [
   ...Object.values(HEARD_FIRST).flat(),
 ];
 /**
- * Every key the key map names, as tooltips and `aria-keyshortcuts` do. Mod in
- * a key only for Windows and Linux is Ctrl.
+ * Every key the key map names, and the text's keys that work too without being
+ * named in tooltips, such as Shift+Ctrl+B. Mod in a key only for Windows and
+ * Linux is Ctrl.
  */
 const named = new Set(
   [
@@ -78,14 +79,9 @@ const named = new Set(
             platform === "other" ? key.replace("Mod", "Ctrl") : key
           )
     ),
-    ...TEXT_KEYS.flatMap(({ keys }) => keys),
+    ...TEXT_KEYS.flatMap(({ aliases = [], keys }) => [...keys, ...aliases]),
   ].map(sameOrder)
 );
-/** Those, and the keys that work too without being named, such as Shift+Ctrl+B. */
-const known = new Set([
-  ...named,
-  ...TEXT_KEYS.flatMap(({ aliases = [] }) => aliases).map(sameOrder),
-]);
 /** Keys that act with any modifiers held, such as Tab, so Shift+Tab too. */
 const withAnyModifiers = new Set(
   entries.flatMap(({ anyModifiers, keys }) =>
@@ -93,7 +89,7 @@ const withAnyModifiers = new Set(
   )
 );
 const isKnown = (key: string) =>
-  known.has(key) || withAnyModifiers.has(key.split("-").at(-1) ?? "");
+  named.has(key) || withAnyModifiers.has(key.split("-").at(-1) ?? "");
 
 describe("the keyboard page", () => {
   it("names every key the key map names", () => {
