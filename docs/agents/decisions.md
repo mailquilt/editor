@@ -78,6 +78,7 @@ Which module owns what, and why, is in `docs/adr/`:
 
 - MJML is given `fonts: {}`, so an exported email never loads web fonts. (#52)
 - `mjml-browser` is pinned to one version, as the pass over its HTML reads its exact class and style text. A new one is taken on purpose. (#211, ADR 0010)
+- `prosemirror-view` is held to 1.42 (`~1.42.9`). With 1.43.0, which handles mouse selection itself, a click back into a text put the cursor at its start in WebKit, and the install checks, which install with no lockfile, turned `main` red on it. Three editor browser tests fail on 1.43.0, so they say when a newer one can be taken. (#259)
 - Text and Headings get their line height in pixels, 1.5 times the font size rounded up, with `mso-line-height-rule:exactly`. With 1.5, classic Outlook drew thin lines under text. Core's styles give it, so the canvas shows the same height. (#95, #211)
 - A word of 20 or more characters gets invisible break points after `/ . - ? & = _`, outside Merge Tags and a URL's `//`, which copy with it. The docs say so, and without them the email widens in five clients. A link's address never gets them. (#91, #205)
 - A URL, a `www.` address or an email address written as text is exported as a link to itself, as the break points stop Apple Mail and Gmail linking it. A Merge Tag is never linked inside. (#91, #167)

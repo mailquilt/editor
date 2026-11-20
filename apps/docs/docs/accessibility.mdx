@@ -15,7 +15,7 @@ This page covers `<mail-quilt>` and `<mail-quilt-shell>`, version 0.2. It makes 
 
 WCAG allows content that needs a two-dimensional layout to scroll in both directions, and an email that is {{email-width}} pixels wide is that kind of content. The side panel isn't, so its settings should still be reachable at that width. They aren't yet.
 
-At 200% zoom on a 1280-pixel screen, the editor has 640 pixels and everything works. The side panel moves below the email.
+At 200% zoom on a 1280-pixel screen, an editor that has the page's full width has 640 pixels, and everything works. The side panel moves below the email. An editor that shares the page, with a sidebar beside it for example, is narrower than that and shows the notice.
 
 ## How it was checked
 
@@ -48,7 +48,7 @@ Screen readers, real browser zoom and Windows High Contrast haven't been checked
 | 1.4.1 Use of color | A | Meets | Measured: a pressed button has an edge, not only a tint |
 | 1.4.2 Audio control | A | Doesn't apply | No audio |
 | 1.4.3 Contrast (minimum) | AA | Meets | axe in each state |
-| 1.4.4 Resize text | AA | Meets | Measured at 640 pixels, the width at 200% zoom |
+| 1.4.4 Resize text | AA | Meets | Measured at 640 pixels, the width at 200% zoom when the editor has the page's full width |
 | 1.4.5 Images of text | AA | Meets | Code: no text is drawn as an image |
 | 1.4.10 Reflow | AA | **Doesn't meet** | Measured at 320 pixels: see above |
 | 1.4.11 Non-text contrast | AA | Meets | Measured: field edges, button states and focus rings are at 3:1 or more |
