@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 import type { Page, Route } from "@playwright/test";
 
 import type { MailQuilt } from "../src/index.js";
@@ -16,6 +16,7 @@ import {
   previewEmail,
   setValue,
   stopClock,
+  test,
   textBlock,
   undoByKey,
 } from "./helpers.js";

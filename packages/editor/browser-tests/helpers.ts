@@ -1,11 +1,27 @@
 import { AxeBuilder } from "@axe-core/playwright";
 import type { Block, BlockType } from "@mailquilt/core";
 import type { BlockProps } from "@mailquilt/core/internal";
-import { expect } from "@playwright/test";
+import { expect, test as base } from "@playwright/test";
 import type { BrowserContext, Locator, Page } from "@playwright/test";
 
 import type { MailQuilt } from "../src/index.js";
 import { emailWith, emailWithInline } from "./host/email.js";
+
+/**
+ * Playwright's `test`, where an error any page of the test doesn't catch fails
+ * the test, once it has run.
+ */
+export const test = base.extend<{ uncaughtErrors: undefined }>({
+  uncaughtErrors: [
+    async ({ context }, use) => {
+      const errors: string[] = [];
+      context.on("weberror", (error) => errors.push(error.error().message));
+      await use(undefined);
+      expect(errors, "errors a page didn't catch").toStrictEqual([]);
+    },
+    { auto: true },
+  ],
+});
 
 export const canvas = (page: Page) => page.locator("mail-quilt");
 
@@ -30,6 +46,9 @@ export const previewEmail = (page: Page) =>
 
 export const undoButton = (page: Page) =>
   canvas(page).getByRole("button", { exact: true, name: "Undo" });
+
+export const redoButton = (page: Page) =>
+  canvas(page).getByRole("button", { exact: true, name: "Redo" });
 
 export const tooltip = (page: Page) => canvas(page).getByRole("tooltip");
 
@@ -201,10 +220,12 @@ export const watchPrevented = async (page: Page, key: string) => {
   return () => page.evaluate(() => Reflect.get(window, "lastPrevented"));
 };
 
-/** Everything the page reports as going wrong, from here on. */
-export const collectErrors = (page: Page) => {
+/**
+ * The errors the page logs, from here on. One it doesn't catch fails any test
+ * already.
+ */
+export const consoleErrors = (page: Page) => {
   const errors: string[] = [];
-  page.on("pageerror", (error) => errors.push(error.message));
   page.on("console", (message) => {
     if (message.type() === "error") {
       errors.push(message.text());
@@ -381,10 +402,8 @@ export const change = async (control: Locator, text: string) => {
   await control.press("Enter");
 };
 
-export const undo = (page: Page) =>
-  page.getByRole("button", { name: "Undo" }).click();
-export const redo = (page: Page) =>
-  page.getByRole("button", { name: "Redo" }).click();
+export const undo = (page: Page) => undoButton(page).click();
+export const redo = (page: Page) => redoButton(page).click();
 
 export const undoByKey = (page: Page) => page.keyboard.press("ControlOrMeta+z");
 export const redoByKey = (page: Page) =>

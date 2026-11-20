@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
 import {
@@ -12,7 +12,7 @@ import {
   centerOf,
   changeCount,
   chooseLayout,
-  collectErrors,
+  consoleErrors,
   currentValue,
   deleteRow,
   drag,
@@ -35,6 +35,7 @@ import {
   setValue,
   structure,
   TALL_VIEWPORT,
+  test,
   textBlock,
   textOf,
   topOf,
@@ -384,7 +385,7 @@ test.describe("the text cursor during a drag", () => {
   test("stays put when the drop changes nothing, which reports no change", async ({
     page,
   }) => {
-    const errors = collectErrors(page);
+    const errors = consoleErrors(page);
     await open(page, [[["One", "Two"]]]);
     await putCursorAfterTwo(page);
     // The one change so far is the typing.
@@ -1191,7 +1192,7 @@ test.describe("auto-scrolling", () => {
 
 test.describe("a Block that's removed or replaced", () => {
   test("clearing the email during a drag ends it safely", async ({ page }) => {
-    const errors = collectErrors(page);
+    const errors = consoleErrors(page);
     await open(page, [[["One", "Two"]]]);
 
     await pickUp(page, handleOf(page, "One"));
@@ -1211,7 +1212,7 @@ test.describe("a Block that's removed or replaced", () => {
   });
 
   test("removing the editor during a drag ends it safely", async ({ page }) => {
-    const errors = collectErrors(page);
+    const errors = consoleErrors(page);
     await open(page, [[["One", "Two"]]]);
 
     await pickUp(page, handleOf(page, "One"));
@@ -1253,7 +1254,7 @@ test.describe("a Block that's removed or replaced", () => {
   test("undoing during a drag ends it where undo left things", async ({
     page,
   }) => {
-    const errors = collectErrors(page);
+    const errors = consoleErrors(page);
     await open(page, [[["One"], ["Two"]]]);
     await drag(
       page,

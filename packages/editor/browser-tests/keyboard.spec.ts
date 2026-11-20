@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
 import {
@@ -27,6 +27,7 @@ import {
   setValue,
   stopClock,
   structure,
+  test,
   textOf,
   tooltip,
   undo,
@@ -193,6 +194,23 @@ test.describe("selecting a Block", () => {
   });
 });
 
+/**
+ * Opens the narrow notice, as on Windows and Linux, where Alt+← goes back a
+ * page. WebKit is only on Apple devices, so this pretends to be on Windows.
+ */
+const openNarrowNotice = async (page: Page) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(Navigator.prototype, "platform", {
+      get: () => "Win32",
+    });
+  });
+  await page.setViewportSize({ height: 800, width: 390 });
+  await page.goto("/");
+};
+
+const previewEmailButton = (page: Page) =>
+  canvas(page).getByRole("button", { name: "Preview email" });
+
 test.describe("moving a Block with Alt+Arrow keys", () => {
   test("moves within a Column, keeping focus for the next press", async ({
     page,
@@ -344,30 +362,28 @@ test.describe("moving a Block with Alt+Arrow keys", () => {
     // oxlint-enable no-await-in-loop
   });
 
-  test("Alt+← doesn't go back a page from the narrow notice or the email in the Preview", async ({
+  test("Alt+← doesn't go back a page from the narrow notice", async ({
+    page,
+  }) => {
+    await openNarrowNotice(page);
+    const leftPrevented = await watchPrevented(page, "ArrowLeft");
+    await previewEmailButton(page).focus();
+
+    await page.keyboard.press("Alt+ArrowLeft");
+
+    await expect.poll(leftPrevented).toBe(true);
+  });
+
+  test("Alt+← doesn't go back a page from the email in the Preview", async ({
     browserName,
     page,
   }) => {
     test.skip(
       browserName === "webkit",
-      "WebKit runs no listener in the email, and is only on Apple devices, where Alt+← doesn't go back a page"
+      "WebKit runs no listener in a document whose scripts are off"
     );
-    await page.addInitScript(() => {
-      Object.defineProperty(Navigator.prototype, "platform", {
-        get: () => "Win32",
-      });
-    });
-    await page.setViewportSize({ height: 800, width: 390 });
-    await page.goto("/");
-    const leftPrevented = await watchPrevented(page, "ArrowLeft");
-    const previewEmail = canvas(page).getByRole("button", {
-      name: "Preview email",
-    });
-    await previewEmail.focus();
-
-    await page.keyboard.press("Alt+ArrowLeft");
-    await expect.poll(leftPrevented).toBe(true);
-
+    await openNarrowNotice(page);
+    await previewEmailButton(page).focus();
     await page.keyboard.press("Enter");
     const email = page.getByTitle("Email preview");
     await expect(email.contentFrame().locator("body")).toContainText("Hello");

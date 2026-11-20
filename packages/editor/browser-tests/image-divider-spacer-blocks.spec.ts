@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 
 import type { MailQuilt } from "../src/index.js";
@@ -20,6 +20,7 @@ import {
   selectRowButton,
   serveImages,
   TALL_VIEWPORT,
+  test,
   undo,
   violations,
 } from "./helpers.js";

@@ -1,9 +1,11 @@
-import { expect, test } from "@playwright/test";
+import { BLOCK_TYPES } from "@mailquilt/core";
+import { expect } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 
 import {
   blockGroup,
   blockTools,
+  blockTypes,
   blockWith,
   boxOf,
   canvas,
@@ -23,8 +25,10 @@ import {
   settle,
   setValue,
   TALL_VIEWPORT,
+  test,
   textBlock,
   textOf,
+  undoButton,
   undoByKey,
 } from "./helpers.js";
 
@@ -131,24 +135,31 @@ test.describe("an empty Column", () => {
   test("every add button takes the pointer's click", async ({ page }) => {
     await openBlocks(page, ["button"], []);
     const column = canvas(page).getByTestId("column").nth(1);
-    await column.hover();
-    // Once the buttons have faded in, over the label that has faded out.
-    await expect(column.getByTestId("add-blocks")).toHaveCSS("opacity", "1");
-    await expect(column.getByTestId("placeholder-label")).toHaveCSS(
-      "opacity",
-      "0"
-    );
+    await expect(
+      column.getByRole("button", { name: / Block here, /u })
+    ).toHaveCount(BLOCK_TYPES.length);
 
-    // A plain press where the button shows, as a person's pointer makes.
-    const { x, y } = await centerOf(
-      column.getByRole("button", { name: /^Add Image Block here/u })
-    );
-    await page.mouse.click(x, y);
+    // oxlint-disable no-await-in-loop -- One button at a time, each in an empty Column.
+    for (const { label, type } of BLOCK_TYPES) {
+      await column.hover();
+      // Once the buttons have faded in, over the label that has faded out.
+      await expect(column.getByTestId("add-blocks")).toHaveCSS("opacity", "1");
+      await expect(column.getByTestId("placeholder-label")).toHaveCSS(
+        "opacity",
+        "0"
+      );
 
-    const { rows } = await currentValue(page);
-    expect(rows[0]?.columns[1]?.blocks.map(({ type }) => type)).toEqual([
-      "image",
-    ]);
+      // A plain press where the button shows, as a person's pointer makes.
+      const { x, y } = await centerOf(
+        column.getByRole("button", { name: `Add ${label} Block here, ` })
+      );
+      await page.mouse.click(x, y);
+
+      expect(await blockTypes(page, 0, 1)).toEqual([type]);
+      await undoButton(page).click();
+      expect(await blockTypes(page, 0, 1)).toEqual([]);
+    }
+    // oxlint-enable no-await-in-loop
   });
 });
 
@@ -256,7 +267,7 @@ test.describe("the format bar", () => {
   test("shows only while a Text or Heading Block's text is edited", async ({
     page,
   }) => {
-    await openBlocks(page, ["text", "button"]);
+    await openBlocks(page, ["text", "heading", "button"]);
     await expect(formatBar(page)).toHaveCount(0);
 
     await blockGroup(page, "Text").focus();
@@ -267,6 +278,9 @@ test.describe("the format bar", () => {
 
     await blockGroup(page, "Button").focus();
     await expect(formatBar(page)).toHaveCount(0);
+
+    await canvas(page).getByRole("textbox", { name: "Heading Block" }).click();
+    await expect(formatBar(page)).toBeVisible();
   });
 
   test("Alt+F10 reaches it from the text, and Escape goes back", async ({
@@ -301,9 +315,14 @@ test.describe("the format bar", () => {
 /**
  * What a pointer can't press of the selected Block's text and controls, by
  * name, once each is scrolled to: its middle and the middle of each edge must
- * be on top. The editor clips what reaches past it.
+ * be on top. The editor clips what reaches past it. The format bar and the
+ * Block's toolbar show a moment after the text takes focus, and are fitted
+ * into the canvas after that, so this waits for both before it reads.
  */
 const unpressable = async (page: Page) => {
+  await expect(formatBar(page)).toBeVisible();
+  await expect(blockTools(page)).toBeVisible();
+  await settle(page);
   const controls = [
     selectedBlock(page).getByRole("textbox", {
       exact: true,
@@ -333,12 +352,19 @@ const unpressable = async (page: Page) => {
       const reached = points.every(([px, py]) =>
         element.contains(root.elementFromPoint(px, py))
       );
+      // The link field is named by the label around it, and the drag handle
+      // by its test id.
+      const named =
+        element instanceof HTMLInputElement ? element.labels?.[0] : element;
       return reached
         ? undefined
-        : (element.getAttribute("aria-label") ?? element.textContent?.trim());
+        : element.getAttribute("aria-label") ||
+            named?.textContent?.trim() ||
+            element.dataset.testid ||
+            element.localName;
     });
     if (name !== undefined) {
-      missed.push(name || "drag handle");
+      missed.push(name);
     }
   }
   return missed;
@@ -408,6 +434,7 @@ test.describe("the selected Block's tools", () => {
     });
     await textOf(page, "W").click();
     await page.keyboard.press("ControlOrMeta+k");
+    await expect(linkUrlField(page)).toBeFocused();
 
     expect(await unpressable(page)).toEqual([]);
     expect(
@@ -443,6 +470,7 @@ test.describe("the selected Block's tools", () => {
     await openEmail(page, [FOUR_COLUMNS]);
     await textOf(page, "Z").click();
     await page.keyboard.press("ControlOrMeta+k");
+    await expect(linkUrlField(page)).toBeFocused();
 
     // The Side panel goes below, so the canvas ends where the editor does.
     await page.setViewportSize({ height: 720, width: 1100 });
@@ -482,6 +510,7 @@ test.describe("the selected Block's tools", () => {
     await openEmail(page, [FOUR_COLUMNS]);
     await textOf(page, "W").click();
     await page.keyboard.press("ControlOrMeta+k");
+    await expect(linkUrlField(page)).toBeFocused();
     // At the window's bottom, where the floating toolbar stays.
     await formatBar(page).evaluate((bar) => {
       bar.scrollIntoView({ block: "end" });
@@ -705,7 +734,8 @@ test.describe("on a screen too narrow to edit in", () => {
     page,
   }) => {
     await page.goto("/");
-    // Not a page error or a console message, so collectErrors can't see it.
+    // Reported only to the page's error listeners, not as an uncaught error or
+    // a console message.
     await page.evaluate(() => {
       const reported: string[] = [];
       Object.assign(window, { reported });

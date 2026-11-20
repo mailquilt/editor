@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
 import {
@@ -16,6 +16,7 @@ import {
   previewButton,
   settle,
   TALL_VIEWPORT,
+  test,
   textBlock,
   tooltip,
   topOf,
@@ -232,20 +233,28 @@ test.describe("theme tokens", () => {
     page,
   }) => {
     await openBlocks(page, ["text"]);
+    const card = canvas(page).getByTestId("email");
+    const textSize = await card.evaluate(
+      (element) => getComputedStyle(element).fontSize
+    );
 
     await canvas(page).evaluate((element) => {
       element.style.setProperty("--mq-font-family", "Georgia, serif");
+      element.style.setProperty("--mq-font-size", "31px");
       element.style.setProperty("--mq-color-surface", "rgb(1, 2, 3)");
+      element.style.setProperty("--mq-color-text", "rgb(4, 5, 6)");
     });
 
-    await expect(canvas(page).getByTestId("email")).toHaveCSS(
-      "font-family",
-      "Arial, Helvetica, sans-serif"
-    );
-    await expect(canvas(page).getByTestId("email")).toHaveCSS(
-      "background-color",
-      "rgb(255, 255, 255)"
-    );
+    // The surface around the card takes them, so they're set.
+    const panel = canvas(page).getByTestId("side-panel");
+    await expect(panel).toHaveCSS("background-color", "rgb(1, 2, 3)");
+    await expect(panel).toHaveCSS("color", "rgb(4, 5, 6)");
+    await expect(panel).toHaveCSS("font-size", "31px");
+    await expect(card).toHaveCSS("font-family", "Arial, Helvetica, sans-serif");
+    await expect(card).toHaveCSS("background-color", "rgb(255, 255, 255)");
+    // Inherited, so only the card's own reset stops them.
+    await expect(card).toHaveCSS("color", "rgb(0, 0, 0)");
+    await expect(card).toHaveCSS("font-size", textSize);
   });
 });
 

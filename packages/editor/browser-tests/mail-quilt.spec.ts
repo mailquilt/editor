@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
 import type { MailQuilt } from "../src/index.js";
@@ -22,6 +22,7 @@ import {
   settle,
   setValue,
   stopClock,
+  test,
   textBlock,
   undo,
   undoByKey,

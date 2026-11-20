@@ -1,7 +1,7 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
-import { blockGroup, canvas, openBlocks, textBlock } from "./helpers.js";
+import { blockGroup, canvas, openBlocks, test, textBlock } from "./helpers.js";
 
 const tab = (page: Page, name: string) =>
   canvas(page).getByRole("tab", { exact: true, name });
