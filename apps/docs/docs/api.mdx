@@ -103,7 +103,7 @@ An image it blocks doesn't show on the canvas or in Preview, and the exported HT
 A page using the [CDN build](./html) also needs `script-src` to allow the folder the build is in, because the build is several files. The path must end in `/`:
 
 ```text
-Content-Security-Policy: script-src 'self' https://cdn.jsdelivr.net/npm/@mailquilt/editor@0.1.0/dist/cdn/
+Content-Security-Policy: script-src 'self' https://cdn.jsdelivr.net/npm/@mailquilt/editor@0.2.0/dist/cdn/
 ```
 
 If it allows only `dist/cdn/index.js`, the editor doesn't load. An inline script like the one in the [HTML example](./html) also needs a nonce or hash, or you can move it into a file of your own.
