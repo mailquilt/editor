@@ -8,10 +8,13 @@ test, search for one that already covers the same code, and extend it instead.
 - Rules about documents, Commands, validation and undo belong in `core` unit
   tests. Rendering belongs in `renderer` tests. What a key does in each place
   belongs in the editor's key map tests.
+- The editor's code that needs no page, such as positions, the text commands
+  and field values, has unit tests in `packages/editor/test`. Code that needs
+  the DOM is tested in the browser.
 - A browser test proves the UI is wired up: the control, focus, keyboard,
-  layout, what the screen shows. For a rule that `core` already tests, use one
-  case to show the UI handles the refusal or result. Don't repeat the list of
-  values.
+  layout, what the screen shows. For a rule that `core` or an editor unit test
+  already tests, use one case to show the UI handles the refusal or result.
+  Don't repeat the list of values.
 - A wrapper or page test (React, the Shell, the Playground) proves only what
   that layer adds: its props, events and layout. Don't re-test the editor
   through it.

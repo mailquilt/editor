@@ -2,7 +2,16 @@
   "$schema": "https://turborepo.dev/schema.json",
   "extends": ["//"],
   "tasks": {
+    "test": {
+      // A browser test checks the dark theme on the docs' theming page.
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/apps/docs/docs/theme-the-editor.mdx"
+      ]
+    },
     "test:unit": {
+      // The unit tests import core, by its dist, as the editor does.
+      "dependsOn": ["^build"],
       // A unit test checks the keyboard page against the key map.
       "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/apps/docs/docs/keyboard.mdx"]
     }

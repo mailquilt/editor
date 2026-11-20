@@ -65,7 +65,7 @@ jobs:
       - run: pnpm turbo run test --filter=@mailquilt/core --filter=@mailquilt/renderer --filter=@repo/install-checks
         env:
           CI: true
-      # The editor's key map. Its other tests run in the browsers below.
+      # The editor's code that needs no page. Its other tests run in the browsers below.
       - run: pnpm turbo run test:unit --filter=@mailquilt/editor
       # core and renderer support Node 22 too, so what runs in Node runs there
       # again. Turbo's cache doesn't know the Node version, hence --force.

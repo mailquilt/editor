@@ -89,7 +89,7 @@ A PR that changes one of these says so, gives the reason and updates this page.
 
 ## Tests
 
-- The editor's tests run in the browser, apart from the key map's, which are unit tests. (#36, #145)
+- The editor's modules that need no page have unit tests: the key map, positions and the Commands that move and drop, the text commands, field values, scaling and pasted HTML. The rest of the editor is tested in the browser, where a rule a unit test covers gets one case, to show the UI is wired to it. (#36, #145, #222)
 - Browser tests find an element by role and name, or by a documented part. An element with neither, such as a drag handle, a Column or the Side panel, has a `data-testid`, and no selector uses a class. (#147) The rule is for the editor's own elements and the test pages. These are found otherwise: (#171)
   - The email's own markup, which has no roles or test ids: the text's paragraphs and marks and an Image's picture on the canvas, and the exported HTML, by its tags and MJML's classes.
   - A state, by the attribute that holds it, such as `aria-current`, `aria-pressed` or `data-drag-ghost`.
