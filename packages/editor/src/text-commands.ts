@@ -24,11 +24,22 @@ export type TextFormats = Record<ToggleableMark, boolean> & {
 };
 
 /**
- * At a cursor, whether typing would get the mark. Over a selection, whether all
- * of its text has it, so that formatting part of a selection formats all of it.
+ * Whether the selection holds text to format or link. A line break alone isn't
+ * text, as a mark on it shows nothing.
+ */
+const holdsText = ({
+  doc,
+  selection,
+}: Pick<EditorState | Transaction, "doc" | "selection">) =>
+  doc.textBetween(selection.from, selection.to, undefined, () => "") !== "";
+
+/**
+ * With no text selected, such as at a cursor or in an empty text, whether typing
+ * would get the mark. Over text, whether all of it has it, so that formatting
+ * part of a selection formats all of it.
  */
 const isMarkActive = (state: EditorState, type: MarkType) => {
-  if (state.selection.empty) {
+  if (!holdsText(state)) {
     return Boolean(
       type.isInSet(state.storedMarks ?? state.selection.$from.marks())
     );
@@ -100,17 +111,29 @@ const linkRangeAt = ($pos: ResolvedPos, link: MarkType, href?: string) => {
   return { from, to };
 };
 
+/**
+ * A selection with no text, such as all of an empty text, as a cursor where it
+ * starts, since what's typed next takes a mark only at a cursor.
+ */
+const toCursorWithoutText = (tr: Transaction) => {
+  if (!(tr.selection.empty || holdsText(tr))) {
+    tr.setSelection(Selection.near(tr.selection.$from));
+  }
+};
+
 /** Takes a mark off the selection, and off what's typed next. */
 const unmarkSelection = (tr: Transaction, type: MarkType) => {
   for (const { $from, $to } of tr.selection.ranges) {
     tr.removeMark($from.pos, $to.pos, type);
   }
+  toCursorWithoutText(tr);
   return tr.removeStoredMark(type);
 };
 
-/** Puts a mark on the selection, or on what's typed next at a cursor. */
+/** Puts a mark on the selected text, or else on what's typed next. */
 const markSelection = (tr: Transaction, mark: Mark) => {
-  if (tr.selection.empty) {
+  if (!holdsText(tr)) {
+    toCursorWithoutText(tr);
     return tr.addStoredMark(mark);
   }
   for (const { $from, $to } of tr.selection.ranges) {
@@ -271,11 +294,10 @@ export const createTextCommands = (
       return true;
     },
     setLink: (href) => (state, dispatch) => {
-      const { doc, selection } = state;
-      const { $from, empty, from, to } = selection;
+      const { $from, empty, from, to } = state.selection;
       const mark = link.create({ href });
       const { tr } = state;
-      if (doc.textBetween(from, to)) {
+      if (holdsText(state)) {
         markSelection(tr, mark);
       } else if (empty && isMarkActive(state, link)) {
         const range = linkRangeAt($from, link);

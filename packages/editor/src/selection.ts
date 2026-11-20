@@ -144,6 +144,10 @@ export const createSelection = (host: SelectionHost) => {
   let focusedBeforeUpdate: FocusTarget | undefined;
   /** Set while focus goes back after an update, which selects nothing new. */
   let restoring = false;
+  /** Where the update that's due is to put focus, as a change named it. */
+  let focusAfterUpdate:
+    | { options?: FocusOptions; target: FocusTarget }
+    | undefined;
 
   const active = () => host.root().activeElement;
 
@@ -257,13 +261,23 @@ export const createSelection = (host: SelectionHost) => {
     find(target)?.focus(options);
   };
 
-  /** For a target that the update that's due will render. */
+  /**
+   * For a target that the update that's due will render. The update moves focus
+   * there itself, so focus doesn't stop on the way, such as on the floating
+   * toolbar when the element with focus is removed.
+   */
   const focusWhenRendered = async (
     target: FocusTarget,
     options?: FocusOptions
   ) => {
+    const named = { options, target };
+    focusAfterUpdate = named;
     await host.updateComplete();
-    focus(target, options);
+    // No update was due, so none has moved it.
+    if (focusAfterUpdate === named) {
+      focusAfterUpdate = undefined;
+      focus(target, options);
+    }
   };
 
   /**
@@ -354,15 +368,23 @@ export const createSelection = (host: SelectionHost) => {
 
   return {
     /**
-     * After an update: a change can remove the element with focus, or disable it.
-     * Focus stays on what it was on, such as a Block that moved, or the same tool
-     * of a Row that moved. Otherwise the floating toolbar takes it, so it stays in
-     * the editor, where undo still works, and a key that activated a button does
-     * nothing when it's pressed again or held down.
+     * After an update: focus goes where a change named, if it's there. Otherwise a
+     * change can remove the element with focus, or disable it. Focus stays on
+     * what it was on, such as a Block that moved, or the same tool of a Row that
+     * moved. Otherwise the floating toolbar takes it, so it stays in the editor,
+     * where undo still works, and a key that activated a button does nothing
+     * when it's pressed again or held down.
      */
     afterUpdate() {
       const target = focusedBeforeUpdate;
       focusedBeforeUpdate = undefined;
+      const named = focusAfterUpdate;
+      focusAfterUpdate = undefined;
+      const found = named && find(named.target);
+      if (found) {
+        found.focus(named.options);
+        return;
+      }
       const element = active() as HTMLButtonElement | null;
       if (!target || (element && !element.disabled)) {
         return;

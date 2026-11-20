@@ -126,9 +126,15 @@ test.describe("moving a selected Row from the keyboard", () => {
     // oxlint-enable no-await-in-loop
   });
 
-  test("says when it can't go further or that way, and Alt+← doesn't go back a page", async ({
+  test("says when it can't go further, and Alt+← and Alt+→ only keep the page", async ({
     page,
   }) => {
+    // As on Windows and Linux, where Alt+← goes back a page.
+    await page.addInitScript(() => {
+      Object.defineProperty(Navigator.prototype, "platform", {
+        get: () => "Win32",
+      });
+    });
     await open(page, [[["One"]], [["Two"]]]);
     await selectRow(page, 1);
     // Listening before the key is pressed, so the press can't come first.
@@ -139,12 +145,12 @@ test.describe("moving a selected Row from the keyboard", () => {
     await expect(structure(page)).resolves.toEqual([[["One"]], [["Two"]]]);
     await expect(selectRowButton(page, 1)).toBeFocused();
 
+    // A Row moves only up and down, so these say nothing.
     await page.keyboard.press("Alt+ArrowLeft");
     await expect.poll(leftPrevented).toBe(true);
-    await expect(announcement(page)).toHaveText("The Row can't move left.");
-
     await page.keyboard.press("Alt+ArrowRight");
-    await expect(announcement(page)).toHaveText("The Row can't move right.");
+    await expect(announcement(page)).toHaveText("The Row can't move up.");
+    await expect(structure(page)).resolves.toEqual([[["One"]], [["Two"]]]);
   });
 });
 

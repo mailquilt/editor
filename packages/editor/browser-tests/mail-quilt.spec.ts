@@ -312,14 +312,34 @@ test.describe("undo and redo while typing", () => {
     await expect.poll(() => latestDocumentText(page)).toBe("abcHello");
   });
 
-  test("undo with nothing to undo changes nothing", async ({ page }) => {
+  test("undo with nothing to undo changes nothing, and the keys reach the host page", async ({
+    page,
+  }) => {
     await focusStartOfTextBlock(page);
+    await stopClock(page);
+    // Typed, so the browser has an undo of its own, which mustn't run.
+    await page.keyboard.type("a");
+    await undoByKey(page);
+    await expect(textBlock(page)).toHaveText("Hello");
+    await expect(changeCount(page)).toHaveText("2");
+    await page.evaluate(() => {
+      const keys: string[] = [];
+      Object.assign(window, { keys });
+      document.addEventListener("keydown", ({ key }) => keys.push(key));
+    });
 
     await undoByKey(page);
-    await redoByKey(page);
+    await undoByKey(page);
 
     await expect(textBlock(page)).toHaveText("Hello");
-    await expect(changeCount(page)).toHaveText("0");
+    await expect(changeCount(page)).toHaveText("2");
+    await expect(
+      page.evaluate(() =>
+        (Reflect.get(window, "keys") as string[]).filter(
+          (key) => key.toLowerCase() === "z"
+        )
+      )
+    ).resolves.toHaveLength(2);
   });
 
   test("a pause in typing starts a new undo step", async ({ page }) => {
@@ -599,7 +619,7 @@ test.describe("setting value", () => {
     await expect(textBlock(page)).toHaveText("Hello");
   });
 
-  test("a different document loads and clears undo history", async ({
+  test("a different document loads and clears undo history, and focus stays in the editor", async ({
     page,
   }) => {
     await focusStartOfTextBlock(page);
@@ -608,6 +628,10 @@ test.describe("setting value", () => {
 
     await setValue(page, withText(await currentValue(page), "Another email"));
     await expect(textBlock(page)).toHaveText("Another email");
+    // The text it was in is gone, so the floating toolbar takes it.
+    await expect(
+      canvas(page).getByRole("group", { name: "Email tools" })
+    ).toBeFocused();
 
     await focusStartOfTextBlock(page);
     await undoByKey(page);

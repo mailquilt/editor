@@ -24,6 +24,8 @@ import type { Selection } from "./selection.js";
  */
 
 interface KeyDispatchHost {
+  /** Whether there's a step to take that way. */
+  canStep: (step: "redo" | "undo") => boolean;
   drafts: {
     discard: (event: KeyboardEvent) => void;
     /** The settings field the key was pressed in, while it holds a draft. */
@@ -43,6 +45,7 @@ const doNothing = () => {
 };
 
 export const createKeyDispatch = ({
+  canStep,
   drafts,
   editing,
   isDragging,
@@ -138,6 +141,8 @@ export const createKeyDispatch = ({
       const binding =
         place &&
         keyFor(place, keydown, {
+          canRedo: canStep("redo"),
+          canUndo: canStep("undo"),
           dragging: isDragging(),
           selectedText: selection.selectedText !== undefined,
         });

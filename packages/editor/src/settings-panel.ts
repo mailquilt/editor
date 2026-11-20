@@ -475,7 +475,7 @@ export const renderSettingsPanel = (
 interface DraftsHost {
   /** Applies what a person typed, which can be refused. */
   apply: (command: Command) => ApplyResult | undefined;
-  /** Each value a person enters, before it's applied. */
+  /** Each value a person enters, before it's applied, or types in again. */
   onEnter: (value: unknown) => void;
   requestUpdate: () => void;
 }
@@ -539,6 +539,8 @@ export const createSettingsDrafts = (host: DraftsHost) => {
         !typed.badInput
       ) {
         drafts.delete(key);
+        // Typed again, which the browser doesn't report as a change.
+        host.onEnter(fieldValue(field, typed));
       } else {
         drafts.set(key, { ...typed, refusals });
       }

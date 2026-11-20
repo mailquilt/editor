@@ -582,6 +582,30 @@ test.describe("while dragging", () => {
     );
   });
 
+  test("on a page that scales the editor, the indicator is where the drop lands, as wide as its Column", async ({
+    page,
+  }) => {
+    await open(page, [[["One", "Two"], ["Three"]]]);
+    await canvas(page).evaluate((element) => {
+      element.style.transform = "scale(0.5)";
+      element.style.transformOrigin = "0 0";
+    });
+    await pickUp(page, handleOf(page, "Three"));
+    const two = await boxOf(blockWith(page, "Two"));
+    const left = await boxOf(column(page, 0, 0));
+
+    await moveTo(page, await topOf(blockWith(page, "Two")));
+
+    const box = await indicatorBox(page);
+    expect(box.y + box.height / 2).toBeCloseTo(two.y, 0);
+    expect(box.x).toBeCloseTo(left.x, 0);
+    expect(box.width).toBeCloseTo(left.width, 0);
+    await letGo(page);
+    expect(await structure(page)).toStrictEqual([
+      [["One", "Three", "Two"], []],
+    ]);
+  });
+
   test("the indicator spans the email outside any Row", async ({ page }) => {
     await open(page, [[["One"], ["Two"]]]);
     await pickUp(page, handleOf(page, "One"));
@@ -1313,6 +1337,31 @@ test.describe("on a touch screen", () => {
       .toStrictEqual([[["Four", "One", "Two", "Three"]]]);
     expect(await scrollTop(page)).toBe(before);
     await expect(dragMarks(page)).toHaveCount(0);
+  });
+
+  test("a palette item swiped up scrolls the Side panel, and adds nothing", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ height: 300, width: 1280 });
+    await open(page, [[["One"]]]);
+    const tile = palette(page, "Image");
+    await tile.scrollIntoViewIfNeeded();
+    /** How far the nearest container that can scroll is scrolled. */
+    const scrolled = () =>
+      tile.evaluate((element) => {
+        let container = element.parentElement;
+        while (container && container.scrollHeight <= container.clientHeight) {
+          container = container.parentElement;
+        }
+        return container?.scrollTop;
+      });
+    const before = await scrolled();
+
+    const from = await centerOf(tile);
+    await touchDrag(page, from, { x: from.x, y: from.y - 120 });
+
+    await expect.poll(scrolled).toBeGreaterThan(before ?? 0);
+    expect(await structure(page)).toStrictEqual([[["One"]]]);
   });
 
   test("a palette item drags a new Block in", async ({ page }) => {

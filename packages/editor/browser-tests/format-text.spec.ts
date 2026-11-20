@@ -151,6 +151,52 @@ test.describe("bold, italic and underline", () => {
     );
   });
 
+  test("bold with all of an empty text selected goes on what's typed next", async ({
+    page,
+  }) => {
+    await selectAllInBlock(page);
+    await page.keyboard.press("Backspace");
+    await expect(firstTextBlock(page)).toHaveText("");
+    await selectAll(page);
+
+    await page.keyboard.press("ControlOrMeta+b");
+    await expect(toolbarButton(page, "Bold")).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+    await page.keyboard.type("x");
+
+    await expect
+      .poll(() => savedInline(page))
+      .toStrictEqual([{ marks: [{ type: "bold" }], text: "x", type: "text" }]);
+  });
+
+  test("bold off with only a line break after bold text selected comes off what's typed next", async ({
+    page,
+  }) => {
+    await cursorAtEndOfBlock(page);
+    await extendSelection(page, "ArrowLeft");
+    await page.keyboard.press("ControlOrMeta+b");
+    await pressArrow(page, "ArrowRight");
+    await page.keyboard.press("Shift+Enter");
+    await extendSelection(page, "ArrowLeft");
+    const bold = toolbarButton(page, "Bold");
+    await expect(bold).toHaveAttribute("aria-pressed", "true");
+
+    await page.keyboard.press("ControlOrMeta+b");
+    await expect(bold).toHaveAttribute("aria-pressed", "false");
+    await page.keyboard.type("x");
+
+    await expect
+      .poll(() => savedInline(page))
+      .toStrictEqual([
+        { text: "Hell", type: "text" },
+        { marks: [{ type: "bold" }], text: "o", type: "text" },
+        { text: "x", type: "text" },
+        { type: "hardBreak" },
+      ]);
+  });
+
   test("bold on text that's partly bold makes all of it bold", async ({
     page,
   }) => {
@@ -593,6 +639,28 @@ test.describe("links", () => {
           type: "text",
         },
         { text: "!", type: "text" },
+      ]);
+  });
+
+  test("on a selection of only a line break, the URL becomes the linked text", async ({
+    page,
+  }) => {
+    await cursorAtEndOfBlock(page);
+    await page.keyboard.press("Shift+Enter");
+    await extendSelection(page, "ArrowLeft");
+
+    await addLink(page, "https://example.com");
+
+    await expect(firstTextBlock(page)).toHaveText("Hellohttps://example.com");
+    await expect
+      .poll(() => savedInline(page))
+      .toStrictEqual([
+        { text: "Hello", type: "text" },
+        {
+          marks: [{ attrs: { href: "https://example.com" }, type: "link" }],
+          text: "https://example.com",
+          type: "text",
+        },
       ]);
   });
 

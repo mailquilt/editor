@@ -81,15 +81,18 @@ test("a slow MJML shows a loading message, then the email", async ({
   page,
 }) => {
   const release = await holdMjml(page);
+  await stopClock(page);
+  const status = previewDialog(page).getByRole("status");
 
   await previewButton(page).click();
-  await expect(previewDialog(page).getByRole("status")).toHaveText(
-    "Loading preview…"
-  );
+  // Already there, and empty, so a screen reader hears the message arrive.
+  await expect(status).toBeEmpty();
+  await page.clock.runFor(200);
+  await expect(status).toHaveText("Loading preview…");
 
   await release();
   await expect(previewEmail(page)).toContainText("Hello");
-  await expect(previewDialog(page).getByRole("status")).toHaveCount(0);
+  await expect(status).toBeEmpty();
 });
 
 test("MJML failing to load shows the reason, the editor keeps working, and opening again retries", async ({
@@ -155,7 +158,9 @@ test.describe("reflecting the latest edits", () => {
   }) => {
     const release = await holdMjml(page);
     await previewButton(page).click();
-    await expect(previewDialog(page).getByRole("status")).toBeVisible();
+    await expect(previewDialog(page).getByRole("status")).toHaveText(
+      "Loading preview…"
+    );
     await closeButton(page).click();
 
     await focusStartOfTextBlock(page);

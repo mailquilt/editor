@@ -36,14 +36,21 @@ const press = (
 };
 
 /**
- * With a Block that has text selected, on Windows and Linux, unless a test says
- * otherwise.
+ * With a Block that has text selected, and a step to undo and to redo, on
+ * Windows and Linux, unless a test says otherwise.
  */
 const keyIn = (
   place: Place,
   each: KeyPress,
-  context: { apple?: boolean; dragging?: boolean; selectedText?: boolean } = {}
-) => keyFor(place, each, { apple: false, selectedText: true, ...context });
+  context: Parameters<typeof keyFor>[2] = {}
+) =>
+  keyFor(place, each, {
+    apple: false,
+    canRedo: true,
+    canUndo: true,
+    selectedText: true,
+    ...context,
+  });
 
 /** The press acts, and the browser does nothing else with it. */
 const acts = (action: string, extra: object = {}) => ({
@@ -240,6 +247,12 @@ describe("in a Row's toolbar", () => {
     );
   });
 
+  it("Alt+← and Alt+→ don't move it, as a Row moves only up and down", () => {
+    expect(keyIn("rowToolbar", press("Alt-ArrowLeft"))).toStrictEqual(
+      acts("keepPage")
+    );
+  });
+
   it("an arrow key goes along its buttons", () => {
     expect(keyIn("rowToolbar", press("ArrowLeft"))).toStrictEqual(
       acts("previousButton")
@@ -347,6 +360,13 @@ describe("anywhere in the editor but a field or the Preview", () => {
     expect(keyIn(place, press("Mod-z"))).toStrictEqual(
       acts("undo", { stops: true })
     );
+  });
+
+  it("with nothing to undo or redo, Ctrl/⌘+Z and Shift+Ctrl/⌘+Z reach the host page", () => {
+    expect(keyIn("text", press("Mod-z"), { canUndo: false })).toBeUndefined();
+    expect(
+      keyIn("text", press("Shift-Mod-z"), { canRedo: false })
+    ).toBeUndefined();
   });
 
   it("on Apple devices, ⌘+Z undoes", () => {
@@ -483,6 +503,13 @@ describe("how a key is named, for a tooltip and for aria-keyshortcuts", () => {
     ).toStrictEqual({ keys: "Alt+↑", shortcuts: "Alt+ArrowUp" });
   });
 
+  it("with no direction for an arrow key's action, names each way, in the order up, down, left, right", () => {
+    expect(keyLabel("block", "moveBlock", { apple: false })).toStrictEqual({
+      keys: "Alt+↑",
+      shortcuts: "Alt+ArrowUp Alt+ArrowDown Alt+ArrowLeft Alt+ArrowRight",
+    });
+  });
+
   it("shows the first of several keys, and gives all of them to aria-keyshortcuts", () => {
     expect(keyLabel("editor", "redo", { apple: false })).toStrictEqual({
       keys: "Ctrl+Y",
@@ -495,6 +522,12 @@ describe("how a key is named, for a tooltip and for aria-keyshortcuts", () => {
       keys: "⇧⌘Z",
       shortcuts: "Meta+Shift+Z",
     });
+  });
+
+  it("on Apple devices, names Alt with its symbol too", () => {
+    expect(
+      keyLabel("blockToolbar", "moveBlock", { apple: true, direction: "up" })
+    ).toStrictEqual({ keys: "⌥↑", shortcuts: "Alt+ArrowUp" });
   });
 
   it("names Enter with Apple's symbol for it too", () => {

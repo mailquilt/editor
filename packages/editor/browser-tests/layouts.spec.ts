@@ -135,16 +135,27 @@ test.describe("deleting a Block", () => {
     await expect(textBlock(page)).toHaveText("Hello");
   });
 
-  test("from the keyboard, focus moves to the next Block, or else the one before, and it's announced", async ({
+  test("from the keyboard, focus moves straight to the next Block, or else the one before, and it's announced", async ({
     page,
   }) => {
     await setValue(page, emailWith([[["A", "B", "C"]]]));
     await blockWith(page, "B").focus();
 
     await deleteBlock(page).focus();
+    // Where focus goes on the way, which a screen reader may say.
+    await canvas(page).evaluate((element) => {
+      const focused: string[] = [];
+      Object.assign(window, { focused });
+      element.shadowRoot?.addEventListener("focusin", ({ target }) => {
+        focused.push((target as HTMLElement).dataset.place ?? "");
+      });
+    });
     await page.keyboard.press("Enter");
     await expect(blockWith(page, "C")).toBeFocused();
     await expect(announcement(page)).toHaveText("Block deleted.");
+    await expect(
+      page.evaluate(() => Reflect.get(window, "focused"))
+    ).resolves.toStrictEqual(["block"]);
 
     await deleteBlock(page).focus();
     await page.keyboard.press("Enter");

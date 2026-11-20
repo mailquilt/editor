@@ -182,6 +182,14 @@ export const editorStyles = css`
     pointer-events: auto;
   }
 
+  /* With no hover to bring it out, it shows, as a Block's handle does. */
+  @media (hover: none) {
+    .row-tag {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  }
+
   .row-frame[data-row-selected] > .row-tag {
     background: var(--mq-color-text);
     color: var(--mq-color-surface);

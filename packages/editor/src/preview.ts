@@ -182,10 +182,18 @@ const previewSkeleton = html`
   </div>
 `;
 
+/**
+ * How long the Preview waits to say it's loading, as long as its outline waits
+ * to show, so a quick render says nothing.
+ */
+const LOADING_SAID_AFTER_MS = 150;
+
 /** One opening of the Preview. */
 interface Preview {
   /** Unset while the email renders. */
   result?: { html: string } | { failure: string };
+  /** Set once it's time to say the email is loading. */
+  saysLoading?: boolean;
 }
 
 /**
@@ -216,12 +224,7 @@ const guardEmail = (event: Event) => {
 
 const renderPreviewContent = ({ result }: Preview) => {
   if (!result) {
-    return html`
-      <div class="preview-loading" role="status">
-        <span class="visually-hidden">Loading preview…</span>
-        ${previewSkeleton}
-      </div>
-    `;
+    return html` <div class="preview-loading">${previewSkeleton}</div> `;
   }
   return "html" in result
     ? html`
@@ -271,6 +274,9 @@ export const renderPreview = (
           Close
         </button>
       </div>
+      <p class="visually-hidden" role="status">
+        ${preview?.saysLoading && !preview.result ? "Loading preview…" : ""}
+      </p>
       ${preview ? renderPreviewContent(preview) : nothing}
     </div>
   </dialog>
@@ -334,6 +340,14 @@ export const createPreview = (host: PreviewHost) => {
       if (cached !== undefined) {
         return;
       }
+      // Said into a status that's there already, as the dialog opened before,
+      // since a screen reader may not say one that arrives with its text.
+      setTimeout(() => {
+        if (shown === preview && !preview.result) {
+          preview.saysLoading = true;
+          host.requestUpdate();
+        }
+      }, LOADING_SAID_AFTER_MS);
 
       try {
         const email = await host.exportHtml();
