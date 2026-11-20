@@ -15,7 +15,8 @@ Before you suggest a change to how something works, read [`docs/adr/`](docs/adr)
 
 The README's [Working on it](README.md#working-on-it) section has the setup and commands. A pull request needs:
 
-- **Tests** for what it changes, written as [`docs/agents/testing.md`](docs/agents/testing.md) says.
+- **One change.** A pull request changes one behaviour, so its diff can be read against what it says it does. A second fix is a second pull request.
+- **Tests** for what it changes, written as [`docs/agents/testing.md`](docs/agents/testing.md) says. Each is seen failing without the change.
 - **Every check passing:** `pnpm lint`, `pnpm check-types` and `pnpm test`. CI runs them too, in Chromium, Firefox and WebKit.
 - **A changeset** if it changes a published package. Run `pnpm changeset` and describe the change for people who use the package. CI fails without one. If the change needs no release, such as a test, run `pnpm changeset add --empty`.
 - **The words in [`GLOSSARY.md`](GLOSSARY.md),** in code and docs, such as Row, Column and Block.

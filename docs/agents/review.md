@@ -10,6 +10,16 @@ A review answers one question. If the request doesn't say which, ask.
 - **How well is it written?** One reviewer reads the whole package as a design. Score each area out of 10, give the reason for every point lost, then the three to five changes that would raise the score most.
 - **What's wrong with this change?** Review the diff and the code it touches, nothing else.
 
+## Review each change before it merges
+
+Four broad audits ran before `0.2.0`. Their scores never rose, because each looked harder than the last, and several of the bugs they found had come in with the fixes for the audit before. The one review that was cheap and found what mattered read only what had merged since the last one. So the review that runs every time is the third question, on each pull request, against the release bar below:
+
+- Read the diff and the code it touches. For a refactor, compare what the old code did with what the new code does.
+- Check each sentence the pull request adds to the docs or a changeset against the code, by running it or by a test.
+- A change to a public type, or to the saved format, is a breaking change, and its changeset says "Breaking".
+
+A broad review of the whole codebase is for before a major version, or when the maintainer asks for one.
+
 ## The release bar
 
 A finding blocks a release only if it:
