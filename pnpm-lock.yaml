@@ -123,7 +123,7 @@ importers:
         specifier: ^1.12.5
         version: 1.12.5
       prosemirror-view:
-        specifier: ^1.42.9
+        specifier: ~1.42.9
         version: 1.42.9
     devDependencies:
       '@axe-core/playwright':

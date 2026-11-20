@@ -63,7 +63,6 @@ type ElementAttributes = AriaAttributes &
     | "style"
     | "suppressHydrationWarning"
     | "title"
-    | "translate"
   >;
 
 export type MailQuiltProps = EditorProps<MailQuiltElement> & ElementAttributes;
