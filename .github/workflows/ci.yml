@@ -22,9 +22,10 @@ concurrency:
 # The check and browser jobs run in Playwright's own image, which has every
 # browser and the system libraries they need, so they install nothing from
 # Ubuntu's package servers. Its version must match @playwright/test in the
-# packages.
+# packages, and the check job fails when it doesn't.
 
 # Each action is pinned to a commit, as a tag can be moved to other code.
+# Dependabot keeps the pins current, as .github/dependabot.yml sets out.
 
 jobs:
   check:
@@ -41,6 +42,15 @@ jobs:
         with:
           # The whole history, so a pull request can be compared with main.
           fetch-depth: 0
+      # The image's browsers are the ones its own version of Playwright runs.
+      - name: Check the Playwright image matches @playwright/test
+        run: |
+          image=$(grep -oE 'mcr\.microsoft\.com/playwright:v[^ -]+' .github/workflows/ci.yml | sed 's/.*:v//' | sort -u)
+          package=$(grep -oE "^  '@playwright/test@[^']+'" pnpm-lock.yaml | sed "s/.*@//; s/'//" | sort -u)
+          if [ "$image" != "$package" ]; then
+            echo "::error::The Playwright image is $image, and @playwright/test is $package."
+            exit 1
+          fi
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
@@ -75,6 +85,14 @@ jobs:
       - run: pnpm turbo run test --force --filter=@mailquilt/core --filter=@mailquilt/renderer --filter=@repo/install-checks
         env:
           CI: true
+      # A failed install check leaves its screenshot, error snapshot and trace.
+      - if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: install-check-results
+          path: packages/install-checks/test-results/
+          if-no-files-found: ignore
+          retention-days: 14
 
   browsers:
     name: Browser tests (${{ matrix.browser }} ${{ matrix.shard }}/2)
@@ -141,7 +159,8 @@ jobs:
         with:
           node-version: 24
       - run: pnpm install --frozen-lockfile
-      - run: pnpm turbo run build --filter=@mailquilt/*
+      # Built here, never taken from a cache.
+      - run: pnpm turbo run build --force --filter=@mailquilt/*
       # Changesets tags each published package with an annotated tag, which
       # records who made it.
       - run: |
@@ -152,6 +171,9 @@ jobs:
       - run: pnpm changeset publish
         env:
           PNPM_CONFIG_PROVENANCE: true
-      - run: git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" --tags
+      # Changesets tags each package it published, even when another failed,
+      # and a rerun doesn't tag one already on npm, so the tags go up either way.
+      - if: ${{ !cancelled() }}
+        run: git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" --tags
         env:
           GITHUB_TOKEN: ${{ github.token }}

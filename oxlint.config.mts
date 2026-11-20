@@ -27,4 +27,12 @@ export const playwrightPackage = defineConfig({
   env: root.env,
   extends: [core, playwright, react],
   ignorePatterns: root.ignorePatterns,
+  overrides: [
+    {
+      // A browser test's steps act on one page, each from where the last left
+      // it, so they wait in turn.
+      files: ["browser-tests/**"],
+      rules: { "no-await-in-loop": "off" },
+    },
+  ],
 });

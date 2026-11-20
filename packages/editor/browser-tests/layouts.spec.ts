@@ -195,7 +195,6 @@ test.describe("an empty Column", () => {
     const controls = await column.getByRole("button").all();
     expect(controls.length).toBeGreaterThan(0);
     for (const control of controls) {
-      // oxlint-disable-next-line no-await-in-loop -- One at a time, to name the one that's out.
       const inner = await boxOf(control);
       expect(inner.x).toBeGreaterThanOrEqual(box.x);
       expect(inner.x + inner.width).toBeLessThanOrEqual(box.x + box.width);

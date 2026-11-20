@@ -1,0 +1,15 @@
+# Keeps the actions in .github/workflows current. Each is pinned to a commit,
+# and Dependabot moves the pin and its version comment together.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    # A release has a week to be found bad before it's proposed.
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: ci
+    labels:
+      - dependencies

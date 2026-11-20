@@ -294,13 +294,9 @@ test.describe("moving an email with JSON", () => {
     });
 
     for (const name of ["Export JSON", "Export HTML"]) {
-      // oxlint-disable-next-line no-await-in-loop -- Each starts afresh, so its own reason shows.
       await page.goto("/shell.html?refused-first");
-      // oxlint-disable-next-line no-await-in-loop -- See above.
       await expect(shell(page).getByRole("alert")).toContainText("newer");
-      // oxlint-disable-next-line no-await-in-loop -- See above.
       await shell(page).getByRole("button", { name }).click();
-      // oxlint-disable-next-line no-await-in-loop -- See above.
       await expect(
         shell(page)
           .getByRole("alert")

@@ -218,7 +218,6 @@ test.describe("without JavaScript", () => {
     await page.goto("/");
 
     for (const name of ["editor", "react", "core", "renderer"]) {
-      // oxlint-disable-next-line no-await-in-loop -- One package at a time.
       await expect(
         page.getByRole("heading", { name: `@mailquilt/${name}` })
       ).toBeVisible();
@@ -316,7 +315,6 @@ const fewAtATime = async <Item, Result>(
     while (next < items.length) {
       const index = next;
       next += 1;
-      // oxlint-disable-next-line no-await-in-loop -- One item at a time per tab.
       results[index] = await each(items[index] as Item);
     }
   };
@@ -375,7 +373,6 @@ test("every page's links and assets resolve", async ({
     for (const path of round) {
       pages.add(path);
     }
-    // oxlint-disable-next-line no-await-in-loop -- Each round needs the last one's links.
     const fromRound = await fewAtATime(round, linksFrom);
     const found = fromRound.flat();
     for (const path of found) {
@@ -469,9 +466,7 @@ test("the theme tokens page lists every token, with its default", async ({
     const row = rows.filter({
       has: page.getByRole("cell", { exact: true, name }),
     });
-    // oxlint-disable-next-line no-await-in-loop -- One token at a time.
     await expect(row).toHaveCount(1);
-    // oxlint-disable-next-line no-await-in-loop -- See above.
     expect(collapse((await row.textContent()) ?? "")).toContain(
       collapse(value ?? "")
     );

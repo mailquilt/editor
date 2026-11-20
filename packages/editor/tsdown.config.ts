@@ -50,6 +50,8 @@ export default defineConfig([
     dts: true,
     entry: ["src/index.ts"],
     platform: "browser",
+    // The target @repo/typescript-config states.
+    target: "es2023",
   },
   // For pages with no bundler, which can't resolve a bare import. Everything is
   // bundled, and MJML stays in a chunk of its own beside the entry. Each file
@@ -67,5 +69,6 @@ export default defineConfig([
     platform: "browser",
     plugins: [thirdPartyLicenses],
     sourcemap: false,
+    target: "es2023",
   },
 ]);

@@ -15,7 +15,13 @@ export default defineConfig({
   testDir: "tests",
   // The fresh projects are the quick-start code the docs show, which marks its
   // outputs with ids rather than test-only attributes.
-  use: { testIdAttribute: "id" },
+  use: {
+    // Kept for a check that fails, even when a retry then passes, as CI keeps them.
+    screenshot: "only-on-failure",
+    testIdAttribute: "id",
+    // Of the first run, which is the one that failed when a retry passes.
+    trace: "retain-on-first-failure",
+  },
   // Each runs directly, because Playwright's stop signal doesn't get past `pnpm`.
   webServer: [
     {

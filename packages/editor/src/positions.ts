@@ -93,8 +93,7 @@ export const neighbourBlockId = (
   const columns =
     direction === "right"
       ? row.columns.slice(columnIndex + 1)
-      : // oxlint-disable-next-line unicorn/no-array-reverse -- This package's ES2022 target has no toReversed, and slice made this a copy.
-        row.columns.slice(0, columnIndex).reverse();
+      : row.columns.slice(0, columnIndex).toReversed();
   const blocks = columns.find((column) => column.blocks.length > 0)?.blocks;
   return blocks?.[Math.min(position.index, blocks.length - 1)]?.id;
 };

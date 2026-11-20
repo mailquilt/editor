@@ -653,9 +653,7 @@ test.describe("accessibility", () => {
     });
 
     for (const index of [0, 1, 2, 3]) {
-      // oxlint-disable-next-line no-await-in-loop -- One selection at a time.
       await selectable.nth(index).focus();
-      // oxlint-disable-next-line no-await-in-loop -- Checked with each selected.
       await expect(violations(page)).resolves.toEqual([]);
     }
 

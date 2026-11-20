@@ -976,7 +976,7 @@ test.describe("auto-scrolling", () => {
       // count for a tenth of a second too.
       const scrolled: number[] = [];
       for (const _ of [1, 2, 3]) {
-        // oxlint-disable-next-line promise/avoid-new, no-await-in-loop -- As above, and each frame waits for the last.
+        // oxlint-disable-next-line promise/avoid-new -- As above.
         await new Promise(requestAnimationFrame);
         scrolled.push(last - scroller.scrollTop);
         last = scroller.scrollTop;
@@ -1265,7 +1265,6 @@ const touchDrag = async (page: Page, from: Point, to: Point) => {
   });
   const steps = 12;
   for (let step = 1; step <= steps; step += 1) {
-    // oxlint-disable-next-line no-await-in-loop -- One move at a time.
     await session.send("Input.dispatchTouchEvent", {
       touchPoints: [
         {
@@ -1275,7 +1274,6 @@ const touchDrag = async (page: Page, from: Point, to: Point) => {
       ],
       type: "touchMove",
     });
-    // oxlint-disable-next-line no-await-in-loop -- See above.
     await settle(page);
   }
   await session.send("Input.dispatchTouchEvent", {

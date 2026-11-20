@@ -79,12 +79,9 @@ test("other props such as className and aria-label reach the element", async ({
     ["/", "mail-quilt"],
     ["/?shell", "mail-quilt-shell"],
   ] as const) {
-    // oxlint-disable-next-line no-await-in-loop -- One component, then the other.
     await page.goto(query);
     const element = page.locator(tag);
-    // oxlint-disable-next-line no-await-in-loop -- See above.
     await expect(element).toHaveClass("host-editor");
-    // oxlint-disable-next-line no-await-in-loop -- See above.
     await expect(element).toHaveAttribute("aria-label", "Newsletter");
   }
 });
