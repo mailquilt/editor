@@ -25,4 +25,4 @@ The CDN build registers `<mail-quilt-shell>` too, the [Shell](./shell): the edit
 
 ## Content Security Policy
 
-If your page sets a Content Security Policy, `script-src` has to allow the folder the CDN build is in, and Preview needs `'unsafe-inline'` in `style-src`. [Content Security Policy](./api#content-security-policy) has both lines.
+If your page sets a Content Security Policy, `script-src` has to allow the folder the CDN build is in, Preview needs `'unsafe-inline'` in `style-src`, and `img-src` has to allow the sites your emails' images are on. [Content Security Policy](./api#content-security-policy) has each line.

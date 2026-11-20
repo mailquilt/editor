@@ -5,6 +5,8 @@ import { css, html, nothing } from "lit";
 import { keyed } from "lit/directives/keyed.js";
 import { live } from "lit/directives/live.js";
 
+import { ICONS } from "./icons.js";
+
 /** One group of controls, and what its fields change. */
 export interface SettingsSection {
   /** Unique in the panel. Part of the controls' IDs. */
@@ -173,26 +175,19 @@ export const settingsPanelStyles = css`
     position: relative;
   }
 
-  /* A mask, so the arrow is in the theme's muted text color. */
-  .settings .select-field::after {
-    background-color: var(--mq-color-text-muted);
-    content: "";
+  /*
+   * An icon in the page, not an image, so a Content Security Policy's
+   * img-src can't hide it.
+   */
+  .settings .select-field .icon {
+    color: var(--mq-color-text-muted);
     height: 16px;
     inset-block: 0;
     inset-inline-end: 8px;
     margin-block: auto;
-    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%23000' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.75' viewBox='0 0 24 24'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E")
-      center / 16px no-repeat;
     pointer-events: none;
     position: absolute;
     width: 16px;
-  }
-
-  /* Forced colors replace any background but a system color, which would hide it. */
-  @media (forced-colors: active) {
-    .settings .select-field::after {
-      background-color: FieldText;
-    }
   }
 
   .settings [aria-invalid="true"] {
@@ -417,6 +412,7 @@ const renderField = (
                 `
               )}
             </select>
+            ${ICONS.chevronDown}
           </div>
         `;
       }

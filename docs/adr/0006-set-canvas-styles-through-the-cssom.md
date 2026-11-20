@@ -10,7 +10,9 @@ Such a policy blocks every `style` attribute the browser parses or a script sets
 - The editor's lint config refuses an import of `lit/directives/style-map.js`.
 - What already moved things, such as the drop line, a drag's copy, the tooltips and the toolbars, set `style` properties already. The cursor during a drag is a constructed style sheet.
 - The editor's own CSS is Lit's static styles, which Lit adopts as constructed style sheets, so the policy doesn't apply to them either.
-- A browser test loads the editor under `style-src 'self'`, checks the email's settings on the canvas, drags a Block, shows a tooltip, and fails on any style the policy reports blocking.
+- ProseMirror reads pasted or dropped HTML into a document that has the page's policy, so Chromium and WebKit blocked its `style` attributes, and Chromium its `<style>` elements. Text from Google Docs came in all bold, without its italic and underline (#208). `packages/editor/src/pasted-html.ts` moves both into `data-` attributes before ProseMirror reads the HTML, and gives them back with `style.cssText` and a constructed style sheet before its parse rules run, in the order ProseMirror applies them. No other way to read HTML in WebKit, such as `DOMParser` or a `<template>`, escapes the policy, so the module reads the HTML text once, as the HTML spec's tokenizer does, and leaves comments, values in quotes and the text of elements such as `<textarea>` as they are.
+- A dropdown's arrow is an icon in the page, not a `data:` image, so a policy's `img-src` can't hide it.
+- A browser test loads the editor under `style-src 'self'; img-src 'self'`, checks the email's settings on the canvas, drags a Block, shows a tooltip, pastes text from Google Docs and Word, and fails on anything the policy reports blocking.
 
 ## Alternatives
 

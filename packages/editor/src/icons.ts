@@ -22,6 +22,8 @@ export const ICONS = {
   bold: icon(
     svg`<path d="M7 5h6a3.5 3.5 0 0 1 0 7H7zM7 12h7a3.5 3.5 0 0 1 0 7H7z" stroke-width="2.25" />`
   ),
+  /** A dropdown's arrow. */
+  chevronDown: icon(svg`<path d="m7 10 5 5 5-5" />`),
   content: icon(
     svg`<rect height="7" rx="1.5" width="7" x="3.5" y="3.5" /><rect height="7" rx="1.5" width="7" x="13.5" y="3.5" /><rect height="7" rx="1.5" width="7" x="3.5" y="13.5" /><rect height="7" rx="1.5" width="7" x="13.5" y="13.5" />`
   ),

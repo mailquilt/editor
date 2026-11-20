@@ -11,6 +11,7 @@ import {
   letGo,
   moveTo,
   openTab,
+  pasteHtml,
   pickUp,
   setValue,
   TALL_VIEWPORT,
@@ -78,7 +79,8 @@ const STYLED_EMAIL = {
 
 /**
  * Opens the test page under `style-src 'self'`, with no `'unsafe-inline'`, and
- * records each style the policy blocks, from the page's first script on.
+ * `img-src 'self'`, with no `data:`, and records everything the policy blocks,
+ * from the page's first script on.
  */
 const openUnderStrictPolicy = async (page: Page) => {
   await page.route("/", async (route) => {
@@ -86,14 +88,14 @@ const openUnderStrictPolicy = async (page: Page) => {
     await route.fulfill({
       headers: {
         ...response.headers(),
-        "content-security-policy": "style-src 'self'",
+        "content-security-policy": "style-src 'self'; img-src 'self'",
       },
       response,
     });
   });
   await page.addInitScript(() => {
     const blocked: string[] = [];
-    Object.assign(window, { blockedStyles: blocked });
+    Object.assign(window, { blockedByPolicy: blocked });
     document.addEventListener(
       "securitypolicyviolation",
       ({ effectiveDirective, target }) => {
@@ -115,10 +117,11 @@ const openStyledEmail = async (page: Page) => {
 };
 
 /**
- * Every style the policy has blocked so far. The browser reports each one a
- * task later, in order, so this blocks one more of its own and waits for it.
+ * Everything the policy has blocked so far. The browser reports each one a
+ * task later, in order, so this blocks one more style of its own and waits for
+ * it.
  */
-const blockedStyles = async (page: Page) => {
+const blockedByPolicy = async (page: Page) => {
   const marker = await page.evaluateHandle(() => {
     const element = document.createElement("output");
     document.body.append(element);
@@ -128,17 +131,17 @@ const blockedStyles = async (page: Page) => {
   await expect
     .poll(() =>
       page.evaluate(() =>
-        (Reflect.get(window, "blockedStyles") as string[]).at(-1)
+        (Reflect.get(window, "blockedByPolicy") as string[]).at(-1)
       )
     )
     .toBe("style-src-attr in <output>");
   await marker.evaluate((element) => element.remove());
   return page.evaluate(() =>
-    (Reflect.get(window, "blockedStyles") as string[]).slice(0, -1)
+    (Reflect.get(window, "blockedByPolicy") as string[]).slice(0, -1)
   );
 };
 
-test("under style-src 'self', the canvas shows the email with its settings, and no style is blocked", async ({
+test("under a strict policy, the canvas shows the email with its settings, and nothing is blocked", async ({
   page,
 }) => {
   await openUnderStrictPolicy(page);
@@ -155,7 +158,9 @@ test("under style-src 'self', the canvas shows the email with its settings, and 
     "background-color",
     "rgb(224, 242, 254)"
   );
-  for (const column of await canvas(page).getByTestId("column").all()) {
+  const columns = canvas(page).getByTestId("column");
+  await expect(columns).toHaveCount(2);
+  for (const column of await columns.all()) {
     // oxlint-disable-next-line no-await-in-loop -- Two Columns, in any order.
     await expect(column).toHaveCSS("width", "300px");
   }
@@ -168,11 +173,16 @@ test("under style-src 'self', the canvas shows the email with its settings, and 
   // Its pictures of the layouts set inline styles too, which nothing may block.
   await openTab(page, "Rows");
   await expect(layoutTile(page, "50/50")).toBeVisible();
+  // A dropdown's arrow, which no image source may hide.
+  await openTab(page, "Settings");
+  await expect(
+    canvas(page).getByRole("combobox", { exact: true, name: "Font" })
+  ).toBeVisible();
 
-  expect(await blockedStyles(page)).toStrictEqual([]);
+  expect(await blockedByPolicy(page)).toStrictEqual([]);
 });
 
-test("under style-src 'self', a drag shows its Block and the drop line, a tooltip shows by its button, and no style is blocked", async ({
+test("under a strict policy, a drag shows its Block and the drop line, a tooltip shows by its button, and nothing is blocked", async ({
   page,
 }) => {
   await openUnderStrictPolicy(page);
@@ -203,5 +213,34 @@ test("under style-src 'self', a drag shows its Block and the drop line, a toolti
   const button = await centerOf(undoButton(page));
   expect(Math.abs(tip.x - button.x)).toBeLessThan(2);
 
-  expect(await blockedStyles(page)).toStrictEqual([]);
+  expect(await blockedByPolicy(page)).toStrictEqual([]);
+});
+
+test("under a strict policy, text pasted from Google Docs or Word keeps its bold, italic and underline, and nothing is blocked", async ({
+  page,
+}) => {
+  await openUnderStrictPolicy(page);
+  await textBlock(page).click();
+  await expect(textBlock(page)).toBeFocused();
+  await page.keyboard.press("ControlOrMeta+a");
+
+  // Google Docs wraps what it copies in a <b> that isn't bold, and formats with
+  // inline styles. Word formats with a style sheet too, and quotes in its own way.
+  await pasteHtml(
+    textBlock(page),
+    `<html><head><style><!-- span.Emphasis { font-style: italic } --></style></head><body><b style="font-weight:normal"><p class=MsoNormal><span style='font-weight:700'>bold</span><span class=Emphasis>italic</span><span style="text-decoration:underline">under</span><span>plain</span></p></b></body></html>`
+  );
+
+  await expect(textBlock(page)).toHaveText("bolditalicunderplain");
+  const { rows } = await currentValue(page);
+  const props = rows[0]?.columns[0]?.blocks[0]?.props as {
+    content: { content: { content: unknown[] }[] };
+  };
+  expect(props.content.content[0]?.content).toStrictEqual([
+    { marks: [{ type: "bold" }], text: "bold", type: "text" },
+    { marks: [{ type: "italic" }], text: "italic", type: "text" },
+    { marks: [{ type: "underline" }], text: "under", type: "text" },
+    { text: "plain", type: "text" },
+  ]);
+  expect(await blockedByPolicy(page)).toStrictEqual([]);
 });
