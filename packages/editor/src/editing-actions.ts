@@ -108,8 +108,11 @@ export const createEditingActions = ({
       }
     },
 
-    /** After the selected Block's Row, or else at the end, and selects it. */
-    addRow: (layout: RowLayout) => {
+    /**
+     * After the selected Row or the selected Block's Row, or else at the end, and
+     * selects it.
+     */
+    addRow: (layout: RowLayout, fromKeyboard: boolean) => {
       const email = current();
       if (!email) {
         return;
@@ -122,13 +125,13 @@ export const createEditingActions = ({
         type: "insertRow",
       });
       if (result?.ok && result.createdId !== undefined) {
-        selection.selectRow(result.createdId);
+        selection.selectRow(result.createdId, fromKeyboard);
       }
     },
 
     /**
-     * From the keyboard, focus goes to the next Block, or else the one before, as
-     * it would be lost. A button pressed with a key clicks with a `detail` of 0.
+     * From the keyboard, focus goes to the next Block, or else the one before,
+     * as the deleted Block's toolbar had it.
      */
     deleteBlock: (fromKeyboard: boolean) => {
       const email = current();
@@ -152,7 +155,7 @@ export const createEditingActions = ({
 
     /**
      * From the keyboard, focus goes to the next Row's tools, or else the one
-     * before, as it would be lost.
+     * before, as the deleted Row's toolbar had it.
      */
     deleteRow: (rowId: string, fromKeyboard: boolean) => {
       const email = current();
@@ -184,7 +187,7 @@ export const createEditingActions = ({
       }
       if ("rowLayout" in source) {
         if (result.createdId !== undefined) {
-          selection.selectRow(result.createdId);
+          selection.selectRow(result.createdId, false);
         }
         return;
       }

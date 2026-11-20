@@ -140,7 +140,7 @@ export const settingsPanelStyles = css`
     background-color: var(--mq-color-surface);
     border: 1px solid var(--mq-color-border-strong);
     border-radius: var(--mq-radius-small);
-    box-shadow: 0 1px 2px rgb(22 24 29 / 4%);
+    box-shadow: var(--mq-shadow-small);
     color: var(--mq-color-text);
     height: 32px;
     min-width: 0;
@@ -199,7 +199,7 @@ export const settingsPanelStyles = css`
     border-color: var(--mq-color-danger);
   }
 
-  /* Not :focus-visible, which browsers leave off a select pressed with a mouse. */
+  /* Not :focus-visible, which Firefox leaves off a select pressed with a mouse. */
   .settings input:focus,
   .settings select:focus {
     border-color: transparent;
@@ -243,6 +243,8 @@ export const settingsPanelStyles = css`
   }
 
   .settings input[type="color"] {
+    /* An edge on the swatch, over the color it shows. */
+    --_mq-swatch-edge: inset 0 0 0 1px rgb(0 0 0 / 12%);
     background: none;
     border: 0;
     border-radius: var(--mq-radius-small);
@@ -261,16 +263,17 @@ export const settingsPanelStyles = css`
     padding: 0;
   }
 
+  /* Two rules, as one naming a pseudo-element a browser doesn't know is dropped. */
   .settings input[type="color"]::-webkit-color-swatch {
     border: 0;
     border-radius: var(--mq-radius-small);
-    box-shadow: inset 0 0 0 1px rgb(0 0 0 / 12%);
+    box-shadow: var(--_mq-swatch-edge);
   }
 
   .settings input[type="color"]::-moz-color-swatch {
     border: 0;
     border-radius: var(--mq-radius-small);
-    box-shadow: inset 0 0 0 1px rgb(0 0 0 / 12%);
+    box-shadow: var(--_mq-swatch-edge);
   }
 `;
 
@@ -290,7 +293,7 @@ const fieldText = (
 
 /** What a control holds. */
 const typedIn = (control: HTMLInputElement | HTMLSelectElement): Typed => ({
-  badInput: "validity" in control && control.validity.badInput,
+  badInput: control.validity.badInput,
   text: control.value,
 });
 

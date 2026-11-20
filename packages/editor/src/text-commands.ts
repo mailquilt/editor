@@ -3,8 +3,6 @@ import {
   createParagraphNear,
   deleteSelection,
   joinForward,
-  liftEmptyBlock,
-  newlineInCode,
   selectNodeForward,
   splitBlockKeepMarks,
 } from "prosemirror-commands";
@@ -261,13 +259,11 @@ export const createTextCommands = (
       ),
       italic: toggleMark("italic"),
       lineBreak: insertLineBreak,
-      // ProseMirror's own, but splitting keeps the formatting.
-      newParagraph: chainCommands(
-        newlineInCode,
-        createParagraphNear,
-        liftEmptyBlock,
-        splitBlockKeepMarks
-      ),
+      // ProseMirror's own, but splitting keeps the formatting. Its commands for
+      // code and for lifting out of a list do nothing in this schema. A
+      // paragraph selected whole, by a click with Ctrl, or ⌘ on Apple devices,
+      // gets a new one after it.
+      newParagraph: chainCommands(createParagraphNear, splitBlockKeepMarks),
       toEnd: collapseSelectAll(true),
       toStart: collapseSelectAll(false),
       underline: toggleMark("underline"),

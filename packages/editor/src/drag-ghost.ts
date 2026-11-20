@@ -1,5 +1,8 @@
 import { scaleOf } from "./geometry.js";
 
+/** In front of everything, where the browser has no popovers. */
+const FRONT_Z_INDEX = String(2 ** 31 - 1);
+
 /**
  * A copy of what's dragged, fixed to the window. Where the browser has popovers,
  * it's in the top layer, so that nothing on the host page clips it or covers it.
@@ -28,7 +31,7 @@ export const createDragGhost = (element: HTMLElement) => {
     top: `${top}px`,
     transformOrigin: "0 0",
     width: `${width / scaleX}px`,
-    zIndex: "2147483647",
+    zIndex: FRONT_Z_INDEX,
   });
   element.after(ghost);
   if (typeof ghost.showPopover === "function") {

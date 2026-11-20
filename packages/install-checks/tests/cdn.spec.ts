@@ -71,6 +71,11 @@ test("MJML loads from beside the CDN build, only for export", async ({
 test("the CDN build lists the license of each package it bundles", async ({
   request,
 }) => {
+  const cdnEntry = await request.get(`${cdnBuildUrl}index.js`);
+  expect(cdnEntry.ok()).toBe(true);
+  const code = await cdnEntry.text();
+  const [banner] = code.split("\n", 1);
+  expect(banner).toContain("THIRD-PARTY-LICENSES.txt");
   const response = await request.get(`${cdnBuildUrl}THIRD-PARTY-LICENSES.txt`);
   expect(response.ok()).toBe(true);
   const licenses = await response.text();

@@ -1,4 +1,4 @@
-import { css } from "lit";
+import { css, unsafeCSS } from "lit";
 
 /**
  * The language of the editor's own words, on everything it draws, so that a
@@ -8,9 +8,16 @@ import { css } from "lit";
 export const UI_LANG = "en";
 
 /**
+ * What covers the page behind the Preview, unless a host sets
+ * `--mq-color-backdrop`.
+ */
+export const BACKDROP = "rgb(16 24 40 / 55%)";
+
+/**
  * The editor's theme tokens: one light theme. A host overrides any of them on
  * the element itself, which wins over `:host`. The email card doesn't use them,
- * because it shows the email's own settings.
+ * because it shows the email's own settings. A custom property of the editor's
+ * own that isn't a token is named `--_mq-…`, so it's kept apart from these.
  */
 export const themeTokens = css`
   :host {
@@ -35,7 +42,7 @@ export const themeTokens = css`
     --mq-color-danger: #c42b1c;
     --mq-color-tooltip: #16181d;
     --mq-color-on-tooltip: #f7f7f8;
-    --mq-color-backdrop: rgb(16 24 40 / 55%);
+    --mq-color-backdrop: ${unsafeCSS(BACKDROP)};
     /* For what the browser draws itself, such as a dropdown's open list. */
     --mq-color-scheme: light;
 
@@ -56,6 +63,24 @@ export const themeTokens = css`
 
 /** What every surface of the editor's own shares. */
 export const uiStyles = css`
+  /* Not tokens, so a host doesn't set them: values the styles share. */
+  :host {
+    /* Font sizes the tokens don't cover. */
+    --_mq-font-size-tag: 11px;
+    --_mq-font-size-bar-title: 14px;
+    --_mq-font-size-panel-title: 15px;
+    --_mq-font-size-notice-title: 17px;
+
+    /* What's in front of what on the canvas, from the back. */
+    --_mq-layer-handle: 1;
+    --_mq-layer-shown-handle: 2;
+    --_mq-layer-tags: 4;
+    --_mq-layer-drop-indicator: 6;
+    --_mq-layer-floating-toolbar: 7;
+    --_mq-layer-block-tools: 8;
+    --_mq-layer-tooltip: 20;
+  }
+
   /* Author styles below can set display, which would otherwise show these. */
   [hidden] {
     display: none !important;
@@ -162,9 +187,7 @@ export const uiStyles = css`
   @media (forced-colors: active) {
     .icon-button[aria-pressed="true"],
     .icon-button[aria-expanded="true"],
-    .icon-button[data-active],
-    .tab[aria-selected="true"],
-    .layout-option[aria-pressed="true"] {
+    .icon-button[data-active] {
       outline: 2px solid Highlight;
       outline-offset: -2px;
     }
@@ -207,6 +230,12 @@ export const uiStyles = css`
     outline-offset: 1px;
   }
 
+  /* An area that scrolls, with a scrollbar as quiet as its borders. */
+  .thin-scrollbar {
+    scrollbar-color: var(--mq-color-border) transparent;
+    scrollbar-width: thin;
+  }
+
   /* A raised bar of tools, on the canvas or above it. */
   .bar {
     align-items: center;
@@ -245,6 +274,6 @@ export const uiStyles = css`
     pointer-events: none;
     position: fixed;
     white-space: nowrap;
-    z-index: 20;
+    z-index: var(--_mq-layer-tooltip);
   }
 `;

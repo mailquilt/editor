@@ -17,7 +17,7 @@ export type KeyScope = keyof typeof KEY_SCOPES;
  * The key scopes where a key is heard before it reaches any place in the
  * editor, by the module that's listening then.
  */
-export type HeardFirst =
+type HeardFirst =
   /** Anywhere on the page while a Block or Row is dragged. */
   | "drag"
   /** Anywhere on the page while the focused control's tooltip shows. */
@@ -203,7 +203,11 @@ const KEEP_PAGE: Entry = {
   stops: false,
 };
 
-/** An Escape that does none of these reaches the host page, so its dialog can close. */
+/**
+ * Escape, with any modifiers, closing one thing and stopping there. An Escape
+ * with nothing to close matches no entry, so it reaches the host page, and its
+ * dialog can close.
+ */
 const escape = <Of extends string>(
   action: Of,
   entry: Partial<EntryOptions> = {}
@@ -424,7 +428,8 @@ export const TEXT_KEYS: readonly TextEntry[] = [
     keys: [],
     platform: "apple",
   },
-  // Only from all the text selected, which some browsers leave alone.
+  // Only from all the text selected, which WebKit on Linux leaves alone once a
+  // link is in it.
   { action: "toStart", keys: ["ArrowLeft"] },
   { action: "toEnd", keys: ["ArrowRight"] },
 ];
@@ -499,7 +504,7 @@ const matches = (
   );
 };
 
-/** Keeps the browser from acting on a press, and stops it, as `binding` says. */
+/** Keeps the browser from acting on a press, and stops it, as its effect says. */
 export const claim = (event: Event, { keepsDefault, stops }: Effect) => {
   if (!keepsDefault) {
     event.preventDefault();

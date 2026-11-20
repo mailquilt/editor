@@ -2,6 +2,12 @@ import { textBlock } from "./blocks.js";
 import { createId, DOCUMENT_VERSION } from "./document.js";
 import type { BlocksDocument } from "./document.js";
 
+/**
+ * How wide a new email is, in pixels.
+ * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
+ */
+export const NEW_EMAIL_WIDTH = 600;
+
 /** Creates a new email with one Row, one Column and one empty Text Block. */
 export const createEmail = (): BlocksDocument => ({
   kind: "blocks",
@@ -28,7 +34,7 @@ export const createEmail = (): BlocksDocument => ({
   settings: {
     backgroundColor: "#ffffff",
     fontFamily: "Arial, Helvetica, sans-serif",
-    width: 600,
+    width: NEW_EMAIL_WIDTH,
   },
   version: DOCUMENT_VERSION,
 });

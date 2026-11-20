@@ -24,7 +24,7 @@ export const formatBarStyles = css`
     position: absolute;
     width: max-content;
     /* Over the floating toolbar, as the Block's toolbar is. */
-    z-index: 8;
+    z-index: var(--_mq-layer-block-tools);
   }
 
   .link-form {

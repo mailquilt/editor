@@ -52,8 +52,13 @@ export default defineConfig([
     platform: "browser",
   },
   // For pages with no bundler, which can't resolve a bare import. Everything is
-  // bundled, and MJML stays in a chunk of its own beside the entry.
+  // bundled, and MJML stays in a chunk of its own beside the entry. Each file
+  // says where the licenses of what's bundled in it are, as minifying drops
+  // their own notices.
   {
+    banner: {
+      js: "/*! Part of @mailquilt/editor's CDN build. The licenses of the packages bundled in it are in THIRD-PARTY-LICENSES.txt, beside this file. */",
+    },
     deps: { alwaysBundle: /./u },
     dts: false,
     entry: ["src/index.ts"],

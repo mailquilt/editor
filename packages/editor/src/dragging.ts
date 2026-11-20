@@ -99,7 +99,8 @@ const showGrabbingCursor = (root: ShadowRoot) => {
 
 /**
  * The release that ends a drag clicks the page's body, where the pointer is
- * captured, which isn't something the user pressed.
+ * captured, which isn't something the user pressed. Chromium, Firefox and
+ * WebKit all do.
  */
 const stopReleaseClick = (click: MouseEvent) => {
   if (click.target === document.body && click.detail > 0) {
@@ -110,10 +111,12 @@ const stopReleaseClick = (click: MouseEvent) => {
 
 /** Stops the click of a release that ends a drag, until the next task. */
 const guardReleaseClick = () => {
-  window.addEventListener("click", stopReleaseClick, { capture: true });
-  setTimeout(() => {
-    window.removeEventListener("click", stopReleaseClick, { capture: true });
-  }, 0);
+  const guard = new AbortController();
+  window.addEventListener("click", stopReleaseClick, {
+    capture: true,
+    signal: guard.signal,
+  });
+  setTimeout(() => guard.abort(), 0);
 };
 
 interface Press {
@@ -353,6 +356,7 @@ export const createDragging = ({ onDrop, root }: DraggingHost): Dragging => {
     onFrame(performance.now());
   };
 
+  /** Heard on the root, which types each event as only an `Event`. */
   const onPointerdown = (event: Event) => {
     if (
       press ||
@@ -436,11 +440,14 @@ export const createDragging = ({ onDrop, root }: DraggingHost): Dragging => {
     );
   };
 
-  root.addEventListener("pointerdown", onPointerdown);
+  const presses = new AbortController();
+  root.addEventListener("pointerdown", onPointerdown, {
+    signal: presses.signal,
+  });
 
   return {
     destroy: () => {
-      root.removeEventListener("pointerdown", onPointerdown);
+      presses.abort();
       release(false);
     },
     isDragging: () => drag !== undefined,

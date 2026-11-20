@@ -152,7 +152,7 @@ export class MailQuiltShell extends LitElement {
 
       .heading {
         flex: 1 1 auto;
-        font-size: 14px;
+        font-size: var(--_mq-font-size-bar-title);
         font-weight: 600;
         margin: 0;
         min-width: 0;
@@ -191,8 +191,6 @@ export class MailQuiltShell extends LitElement {
         flex-direction: column;
         min-height: 0;
         overflow: auto;
-        scrollbar-color: var(--mq-color-border) transparent;
-        scrollbar-width: thin;
       }
 
       mail-quilt {
@@ -223,9 +221,8 @@ export class MailQuiltShell extends LitElement {
   /** The email to open is chosen at the first update, or earlier if asked for. */
   #opening: Opening = { state: "waiting", value: undefined };
   /**
-   * Gives the editor the height the email scrolls in, for its side panel. The
-   * underscore keeps it apart from the theme tokens, as it isn't one. Made at
-   * the first render, as that's when there's a body to observe.
+   * Gives the editor the height of the part the email scrolls in, for its side
+   * panel. Made at the first render, as that's when there's a body to observe.
    */
   #bodyObserver: ResizeObserver | undefined;
   /** Set while the browser can't save the email. */
@@ -388,7 +385,7 @@ export class MailQuiltShell extends LitElement {
             ({ text }) => html`<p part="message" role="alert">${text}</p>`
           )}
         </div>
-        <div class="body" data-testid="body" ${ref(this.#body)}>
+        <div class="body thin-scrollbar" data-testid="body" ${ref(this.#body)}>
           ${this.#editor}
         </div>
       </div>
