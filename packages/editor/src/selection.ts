@@ -1,17 +1,11 @@
-import {
-  closestPlace,
-  findBlock,
-  findPlace,
-  findRow,
-  isOfText,
-  pressOn,
-} from "./editor-places.js";
+import { closestPlace, isOfText } from "./editor-places.js";
+import type { EditorFocus } from "./focus.js";
 import type { TextBlockView } from "./text-block-view.js";
 
 /**
- * Which Block or Row is selected, where focus is, and what the Side panel shows.
- * Everything else in the editor asks this module to select something or to move
- * focus, and none of it moves focus itself.
+ * Which Block or Row is selected, whether its text is being edited, and what
+ * the Side panel shows. Everything else in the editor asks this module to
+ * select something. Focus is the focus module's.
  */
 
 /** The Side panel's tabs, one of which it shows while it doesn't show what's selected. */
@@ -20,32 +14,11 @@ export type PanelTab = "content" | "rows" | "settings";
 /** A Block, which the toolbars act on, a Row, or nothing. */
 type Selected = { blockId: string } | { rowId: string } | undefined;
 
-/**
- * Somewhere focus can go, by what it's on rather than by its element, so that
- * it's found again after an update replaces the element. A Block is the
- * selected one unless it's named.
- */
-type FocusTarget =
-  | { on: "block" | "text"; blockId?: string }
-  /** A button on the selected Block's toolbar, by its `data-action`. */
-  | { on: "blockTool"; action: string }
-  /** The selected Block's format bar, at its first button that works. */
-  | { on: "formatBar" }
-  /** The link field, with its URL selected to type over. */
-  | { on: "linkField" }
-  /** A Row's tool, by its `data-action` while it's enabled, or else its first that is. */
-  | { on: "rowTool"; action?: string; rowId: string }
-  | { on: "tab"; tab: PanelTab }
-  /** The floating toolbar, which keeps keyboard undo working. */
-  | { on: "emailTools" };
-
-interface Focusable {
-  focus: (options?: FocusOptions) => void;
-}
-
 interface SelectionHost {
-  /** Made once the element is connected. */
-  root: () => ShadowRoot;
+  focus: Pick<
+    EditorFocus,
+    "focused" | "focusWhenRendered" | "restoring" | "revealBlock"
+  >;
   requestUpdate: () => void;
   /** A Block's text, once its editor has been made. */
   textOf: (blockId: string) => TextBlockView | undefined;
@@ -53,94 +26,12 @@ interface SelectionHost {
   onSelect: () => void;
 }
 
-/**
- * Where focus goes along a toolbar's buttons, or the tabs: to either end, one
- * button either way round, or to the toolbar's one Tab stop, for Tab to leave
- * from.
- */
-export type ToolbarStep = "first" | "last" | "leave" | "next" | "previous";
-
-/**
- * Goes along the buttons of the toolbar, or the tabs, that `from` is in. Tab
- * leaves from its one stop, wherever the arrow keys got to, so Shift+Tab doesn't
- * land back on that stop.
- */
-export const focusToolbarButton = (from: Element, step: ToolbarStep) => {
-  const button = from as HTMLButtonElement;
-  const buttons = [
-    ...(button.parentElement?.querySelectorAll<HTMLButtonElement>(
-      ":scope > button:not(:disabled)"
-    ) ?? []),
-  ];
-  const index = buttons.indexOf(button);
-  if (index === -1) {
-    return;
-  }
-  const last = buttons.length - 1;
-  const next: Record<ToolbarStep, HTMLButtonElement | undefined> = {
-    first: buttons[0],
-    last: buttons[last],
-    // Focus moves on from there once this returns.
-    leave: buttons.find(({ tabIndex }) => tabIndex === 0),
-    next: buttons[index === last ? 0 : index + 1],
-    previous: buttons[index === 0 ? last : index - 1],
-  };
-  next[step]?.focus();
-};
-
-/**
- * What focus on an element in the editor is on, or else the floating toolbar.
- * In a place that belongs to the text being edited, it's on that text, which
- * stays when the place closes.
- */
-const targetOf = (element: Element): FocusTarget => {
-  if (isOfText(element)) {
-    return { on: "text" };
-  }
-  const found = closestPlace(
-    element,
-    "text",
-    "blockToolbar",
-    "block",
-    "rowToolbar"
-  );
-  const place = found?.dataset.place;
-  const { action } = (element as HTMLElement).dataset;
-  switch (place) {
-    case "rowToolbar": {
-      const rowId = closestPlace(element, "row")?.dataset.rowId;
-      return rowId === undefined
-        ? { on: "emailTools" }
-        : { action, on: "rowTool", rowId };
-    }
-    case "blockToolbar": {
-      return action === undefined
-        ? { on: "emailTools" }
-        : { action, on: "blockTool" };
-    }
-    case "text": {
-      return {
-        blockId: closestPlace(element, "block")?.dataset.blockId,
-        on: "text",
-      };
-    }
-    case "block": {
-      return element === found
-        ? { blockId: found.dataset.blockId, on: "block" }
-        : { on: "emailTools" };
-    }
-    default: {
-      return { on: "emailTools" };
-    }
-  }
-};
-
 export type EditorSelection = ReturnType<typeof createSelection>;
 
 export const createSelection = ({
+  focus,
   onSelect,
   requestUpdate,
-  root,
   textOf,
 }: SelectionHost) => {
   let selected: Selected;
@@ -153,157 +44,12 @@ export const createSelection = ({
   let showsSettings = false;
   /** The Side panel's tab, which it shows while it doesn't show what's selected. */
   let tab: PanelTab = "content";
-  /** Where focus was when the current update began. */
-  let focusedBeforeUpdate: FocusTarget | undefined;
-  /** Set while focus goes back after an update, which selects nothing new. */
-  let restoring = false;
-  /** Where the update that's due is to put focus, as a change named it. */
-  let focusAfterUpdate:
-    | { options?: FocusOptions; target: FocusTarget }
-    | undefined;
-  /** What the update that's due is to scroll into view, as a change named it. */
-  let revealAfterUpdate: Selected;
-
-  const active = () => root().activeElement;
 
   const selectedBlockId = () =>
     selected && "blockId" in selected ? selected.blockId : undefined;
 
   const selectedRowId = () =>
     selected && "rowId" in selected ? selected.rowId : undefined;
-
-  const blockElement = (blockId: string) => findBlock(root(), blockId);
-
-  const rowFrame = (rowId: string) => findRow(root(), rowId);
-
-  /** A Row's tools that work, the Select Row button first. */
-  const rowTools = (rowId: string) => {
-    const row = rowFrame(rowId);
-    const toolbar = row && findPlace(row, "rowToolbar");
-    return [
-      ...(toolbar?.querySelectorAll<HTMLButtonElement>(
-        "button:not(:disabled)"
-      ) ?? []),
-    ];
-  };
-
-  /** What takes focus for a target, if it's there. */
-  const focusableFor = (target: FocusTarget): Focusable | null | undefined => {
-    switch (target.on) {
-      case "block":
-      case "text": {
-        const blockId = target.blockId ?? selectedBlockId();
-        if (blockId === undefined) {
-          return;
-        }
-        return target.on === "text" ? textOf(blockId) : blockElement(blockId);
-      }
-      case "blockTool": {
-        const blockId = selectedBlockId();
-        const block = blockId === undefined ? undefined : blockElement(blockId);
-        const toolbar = block && findPlace(block, "blockToolbar");
-        return toolbar?.querySelector<HTMLElement>(
-          `[data-action="${CSS.escape(target.action)}"]`
-        );
-      }
-      case "formatBar": {
-        return findPlace(root(), "formatBar")?.querySelector<HTMLElement>(
-          ":scope > button:not(:disabled)"
-        );
-      }
-      case "linkField": {
-        const field = findPlace(root(), "linkField")?.querySelector("input");
-        return (
-          field && {
-            focus: (options) => {
-              field.focus(options);
-              field.select();
-            },
-          }
-        );
-      }
-      case "rowTool": {
-        const tools = rowTools(target.rowId);
-        return (
-          tools.find((tool) => tool.dataset.action === target.action) ??
-          tools[0]
-        );
-      }
-      case "tab": {
-        return root().querySelector<HTMLElement>(`#tab-${target.tab}`);
-      }
-      case "emailTools": {
-        const toolbar = findPlace(root(), "emailTools");
-        // Without scrolling the page to it: in a Shell whose bottom is below the
-        // window, the toolbar is out of view.
-        return (
-          toolbar && {
-            focus: (options) =>
-              toolbar.focus({ ...options, preventScroll: true }),
-          }
-        );
-      }
-      default: {
-        return undefined;
-      }
-    }
-  };
-
-  /**
-   * What takes focus for a target, or else for the nearest one that's there: a
-   * Block's tool gives way to its text, and its text to the Block itself.
-   */
-  const find = (target: FocusTarget): Focusable | undefined => {
-    const found = focusableFor(target);
-    if (found) {
-      return found;
-    }
-    if (target.on === "blockTool") {
-      return find({ on: "text" });
-    }
-    if (target.on === "text") {
-      return find({ blockId: target.blockId, on: "block" });
-    }
-    return undefined;
-  };
-
-  /** Moves focus to a target, or the nearest one that's there. */
-  const focus = (target: FocusTarget, options?: FocusOptions) => {
-    find(target)?.focus(options);
-  };
-
-  /**
-   * For a target that the next update will render. The update moves focus there
-   * itself, so focus doesn't stop on the way, such as on the floating toolbar
-   * when the element with focus is removed.
-   */
-  const focusWhenRendered = (target: FocusTarget, options?: FocusOptions) => {
-    focusAfterUpdate = { options, target };
-    requestUpdate();
-  };
-
-  /**
-   * Once the next update has rendered a Block's or Row's tools. Focus alone
-   * doesn't scroll to it: a Block keeps focus if its neighbour is what moves in
-   * the DOM, and focusing its text doesn't scroll.
-   */
-  const revealWhenRendered = (target: Selected) => {
-    revealAfterUpdate = target;
-    requestUpdate();
-  };
-
-  const reveal = (target: NonNullable<Selected>) => {
-    if ("rowId" in target) {
-      rowFrame(target.rowId)?.scrollIntoView({ block: "nearest" });
-      return;
-    }
-    const block = blockElement(target.blockId);
-    block?.scrollIntoView({ block: "nearest" });
-    // Its tools can reach past a thin Block, under the floating toolbar, which
-    // would hide the one with focus.
-    const toolbar = block && findPlace(block, "blockToolbar");
-    toolbar?.scrollIntoView({ block: "nearest" });
-  };
 
   const isSelected = (target: Selected) => {
     if (target === undefined) {
@@ -337,7 +83,7 @@ export const createSelection = ({
       requestUpdate();
     }
     // The Block is selected already, and the panel stays as it was left.
-    if (!restoring) {
+    if (!focus.restoring) {
       select({ blockId });
     }
   };
@@ -350,95 +96,12 @@ export const createSelection = ({
     }
   };
 
-  const revealBlock = (blockId: string) => revealWhenRendered({ blockId });
-
-  /**
-   * The presses below keep focus where it is, so a settings field would hold on
-   * to what's typed in it while the press acts on the email. Blurring commits it.
-   */
-  const commitFocusedField = () => {
-    const element = active();
-    if (element && closestPlace(element, "settings")) {
-      (element as HTMLElement).blur();
-    }
-  };
-
-  /**
-   * Pressing a control leaves focus and the selection in the Block. With no
-   * focus in the editor, the control takes it, without a ring as for any other
-   * press with the pointer, because keyboard undo only reaches the editor from
-   * inside it. The Preview returns focus there too, when it closes.
-   */
-  const onControlMousedown = (event: MouseEvent, target: Element) => {
-    if (target instanceof HTMLInputElement) {
-      return;
-    }
-    event.preventDefault();
-    commitFocusedField();
-    const button = target.closest("button");
-    if (button && !active()) {
-      button.focus({ focusVisible: false });
-    }
-  };
-
-  /**
-   * A press on a drag handle leaves focus and the selection where they are.
-   * With no focus in the editor, the floating toolbar takes it, because
-   * keyboard undo only reaches the editor from inside.
-   */
-  const onHandleMousedown = (event: MouseEvent) => {
-    event.preventDefault();
-    commitFocusedField();
-    if (!active()) {
-      focus({ on: "emailTools" });
-    }
-  };
-
   return {
-    /**
-     * After an update: focus goes where a change named, if it's there. Otherwise a
-     * change can remove the element with focus, or disable it. Focus stays on
-     * what it was on, such as a Block that moved, or the same tool of a Row that
-     * moved. Otherwise the floating toolbar takes it, so it stays in the editor,
-     * where undo still works, and a key that activated a button does nothing
-     * when it's pressed again or held down. Then what a change named scrolls
-     * into view. What focus asks for on the way waits for the next update.
-     */
-    afterUpdate() {
-      const target = focusedBeforeUpdate;
-      focusedBeforeUpdate = undefined;
-      const named = focusAfterUpdate;
-      focusAfterUpdate = undefined;
-      const shown = revealAfterUpdate;
-      revealAfterUpdate = undefined;
-      const found = named && find(named.target);
-      const element = active();
-      if (found) {
-        found.focus(named.options);
-      } else if (target && (!element || element.matches(":disabled"))) {
-        restoring = true;
-        (find(target) ?? focusableFor({ on: "emailTools" }))?.focus();
-        restoring = false;
-      }
-      if (shown) {
-        reveal(shown);
-      }
-    },
-
-    /**
-     * Before an update: notes where focus is, and drops a selection that the
-     * update's email no longer has.
-     */
-    beforeUpdate(
-      email:
-        | { blockIds: ReadonlySet<string>; rowIds: ReadonlySet<string> }
-        | undefined
-    ) {
-      const element = active();
-      focusedBeforeUpdate = element ? targetOf(element) : undefined;
-      if (!email) {
-        return;
-      }
+    /** Before an update: drops a selection that the update's email no longer has. */
+    beforeUpdate(email: {
+      blockIds: ReadonlySet<string>;
+      rowIds: ReadonlySet<string>;
+    }) {
       const blockId = selectedBlockId();
       const rowId = selectedRowId();
       if (
@@ -457,19 +120,6 @@ export const createSelection = ({
       return editingText;
     },
 
-    focus,
-
-    /**
-     * Whether focus is in the editor but not in a Block's text, such as on a
-     * control, the link field or a Block itself.
-     */
-    get focusIsOutsideText() {
-      const element = active();
-      return element !== null && !closestPlace(element, "text");
-    },
-
-    focusWhenRendered,
-
     /**
      * Shows the selected Block's settings again after Back, when its text still has
      * focus and so gets no new focus event. Its toolbar, and what belongs to
@@ -487,7 +137,7 @@ export const createSelection = ({
 
     onBlockFocus(blockId: string) {
       focusedOn(blockId, false);
-      revealBlock(blockId);
+      focus.revealBlock(blockId);
     },
 
     /**
@@ -501,7 +151,7 @@ export const createSelection = ({
         return;
       }
       setTimeout(() => {
-        const element = active();
+        const element = focus.focused();
         if (
           editingText &&
           document.hasFocus() &&
@@ -516,46 +166,9 @@ export const createSelection = ({
       }, 0);
     },
 
-    /**
-     * Any press in the editor. One on a drag handle, a Row's tag, or a place
-     * where a press keeps focus, leaves focus and the selection where they are.
-     */
-    onMousedown(event: MouseEvent) {
-      const { target } = event;
-      if (!(target instanceof Element)) {
-        return;
-      }
-      const press = pressOn(target);
-      if (press === "grabs") {
-        onHandleMousedown(event);
-      } else if (press === "keepsFocus") {
-        onControlMousedown(event, target);
-      }
-    },
-
     onTextFocus(blockId: string) {
       focusedOn(blockId, true);
     },
-
-    /**
-     * A focused number field would step with the wheel, though it has no
-     * arrows, while the person only meant to scroll the panel. Focus leaves it
-     * for the floating toolbar, which commits it and keeps keyboard undo working.
-     */
-    onWheel({ target }: WheelEvent) {
-      const element = active();
-      if (
-        element === target &&
-        element instanceof HTMLInputElement &&
-        element.type === "number"
-      ) {
-        focus({ on: "emailTools" }, { focusVisible: false });
-      }
-    },
-
-    revealBlock,
-
-    revealRow: (rowId: string) => revealWhenRendered({ rowId }),
 
     get rowId() {
       return selectedRowId();
@@ -571,8 +184,8 @@ export const createSelection = ({
     selectLanded(blockId: string | undefined) {
       select(blockId === undefined ? undefined : { blockId });
       if (blockId !== undefined) {
-        focusWhenRendered({ blockId, on: "text" });
-        revealBlock(blockId);
+        focus.focusWhenRendered({ blockId, on: "text" });
+        focus.revealBlock(blockId);
       }
     },
 
@@ -582,9 +195,9 @@ export const createSelection = ({
      * keyboard, as from the Rows tab, the focus ring follows.
      */
     selectRow(rowId: string) {
-      const focusVisible = active()?.matches(":focus-visible") ?? false;
+      const focusVisible = focus.focused()?.matches(":focus-visible") ?? false;
       select({ rowId });
-      focusWhenRendered(
+      focus.focusWhenRendered(
         { action: "select-row", on: "rowTool", rowId },
         { focusVisible }
       );
@@ -610,11 +223,11 @@ export const createSelection = ({
      */
     showTabs() {
       const fromKeyboard =
-        (active() as HTMLElement | null)?.dataset.action === "back";
+        (focus.focused() as HTMLElement | null)?.dataset.action === "back";
       showsSettings = false;
       requestUpdate();
       if (fromKeyboard) {
-        focusWhenRendered({ on: "tab", tab });
+        focus.focusWhenRendered({ on: "tab", tab });
       }
     },
 

@@ -4,6 +4,7 @@ import type { RefusalCode } from "./commands.js";
 import type { BlocksDocument } from "./document.js";
 import { isSameDocument } from "./is-same-document.js";
 import { loadDocument } from "./load-document.js";
+import type { LoadResult } from "./load-document.js";
 import { applyOperation, reverseOperation } from "./operations.js";
 import type { Operation, PropsTarget } from "./operations.js";
 
@@ -72,17 +73,14 @@ const isSameTarget = (a: PropsTarget, b: PropsTarget) => {
   return "emailSettings" in b;
 };
 
-/** Throws if `document` isn't an email Mail Quilt accepts, with the reason. */
-export const createEditor = ({
-  document: initialDocument,
-}: {
-  document: BlocksDocument;
-}): Editor => {
-  const loaded = loadDocument(initialDocument);
-  if (!loaded.ok) {
-    throw new Error(loaded.reason);
-  }
-  let current = loaded.document;
+/**
+ * An Editor for a document that `loadDocument` accepted, which it doesn't check
+ * again. It keeps that document as its own, so nothing else may change it.
+ */
+export const editorOfLoaded = ({
+  document: loadedDocument,
+}: Extract<LoadResult, { ok: true }>): Editor => {
+  let current = loadedDocument;
   const undoStack: Operation[][] = [];
   const redoStack: Operation[][] = [];
   let openMergeKey: string | undefined;
@@ -217,4 +215,17 @@ export const createEditor = ({
       return true;
     },
   };
+};
+
+/** Throws if `document` isn't an email Mail Quilt accepts, with the reason. */
+export const createEditor = ({
+  document: initialDocument,
+}: {
+  document: BlocksDocument;
+}): Editor => {
+  const loaded = loadDocument(initialDocument);
+  if (!loaded.ok) {
+    throw new Error(loaded.reason);
+  }
+  return editorOfLoaded(loaded);
 };

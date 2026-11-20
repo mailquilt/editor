@@ -1,5 +1,7 @@
 import type { EditingActions } from "./editing-actions.js";
 import { closestPlace, placeOf } from "./editor-places.js";
+import { focusToolbarButton } from "./focus.js";
+import type { EditorFocus, ToolbarStep } from "./focus.js";
 import {
   claim,
   hasKeys,
@@ -9,8 +11,7 @@ import {
 } from "./key-map.js";
 import type { Action, DirectedAction } from "./key-map.js";
 import type { Direction } from "./positions.js";
-import { focusToolbarButton } from "./selection.js";
-import type { EditorSelection, ToolbarStep } from "./selection.js";
+import type { EditorSelection } from "./selection.js";
 
 /**
  * Hears every key pressed in the editor, and input to a Block's text, and does
@@ -24,13 +25,11 @@ interface KeyDispatchHost {
   canStep: (step: "redo" | "undo") => boolean;
   drafts: { discard: (event: KeyboardEvent) => void };
   editing: Pick<EditingActions, "moveBlock" | "moveRow" | "selectNeighbour">;
+  focus: Pick<EditorFocus, "focus" | "focusIsOutsideText">;
   isDragging: () => boolean;
   linkForm: { cancel: () => void; open: () => void };
   previewIsOpen: () => boolean;
-  selection: Pick<
-    EditorSelection,
-    "focus" | "focusIsOutsideText" | "selectedText"
-  >;
+  selection: Pick<EditorSelection, "selectedText">;
   stepHistory: (step: "redo" | "undo") => void;
 }
 
@@ -49,6 +48,7 @@ export const createKeyDispatch = ({
   canStep,
   drafts,
   editing,
+  focus,
   isDragging,
   linkForm,
   previewIsOpen,
@@ -65,15 +65,15 @@ export const createKeyDispatch = ({
     Exclude<Action, DirectedAction>,
     (event: KeyboardEvent) => void
   > = {
-    backToBlock: () => selection.focus({ on: "block" }),
-    backToText: () => selection.focus({ on: "text" }),
+    backToBlock: () => focus.focus({ on: "block" }),
+    backToText: () => focus.focus({ on: "text" }),
     cancelLink: () => linkForm.cancel(),
     // The browser closes the dialog.
     closePreview: doNothing,
     discardDraft: (event) => drafts.discard(event),
-    editText: () => selection.focus({ on: "text" }),
+    editText: () => focus.focus({ on: "text" }),
     firstButton: toolbarStep("first"),
-    focusFormatBar: () => selection.focus({ on: "formatBar" }),
+    focusFormatBar: () => focus.focus({ on: "formatBar" }),
     keepPage: doNothing,
     lastButton: toolbarStep("last"),
     leaveToolbar: toolbarStep("leave"),
@@ -108,7 +108,7 @@ export const createKeyDispatch = ({
       }
       // WebKit types into a Block's selection, and undoes there too, even with
       // focus on the dialog, a control, the link field or the Block itself.
-      if (previewIsOpen() || selection.focusIsOutsideText) {
+      if (previewIsOpen() || focus.focusIsOutsideText) {
         event.preventDefault();
         return;
       }

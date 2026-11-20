@@ -15,3 +15,4 @@ export { ROW_SETTINGS_FIELDS, rowStyles } from "./row-settings.js";
 export { hexColor } from "./value-schemas.js";
 export type { BlockProps } from "./blocks.js";
 export type { SettingsField } from "./settings-fields.js";
+export { editorOfLoaded } from "./editor.js";
