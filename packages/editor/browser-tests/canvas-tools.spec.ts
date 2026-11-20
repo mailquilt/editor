@@ -135,7 +135,6 @@ test.describe("an empty Column", () => {
       column.getByRole("button", { name: / Block here, /u })
     ).toHaveCount(BLOCK_TYPES.length);
 
-    // oxlint-disable no-await-in-loop -- One button at a time, each in an empty Column.
     for (const { label, type } of BLOCK_TYPES) {
       await column.hover();
       // Once the buttons have faded in, over the label that has faded out.
@@ -155,7 +154,6 @@ test.describe("an empty Column", () => {
       await undoButton(page).click();
       expect(await blockTypes(page, 0, 1)).toEqual([]);
     }
-    // oxlint-enable no-await-in-loop
   });
 });
 
@@ -331,9 +329,7 @@ const unpressable = async (page: Page) => {
   ];
   const missed: string[] = [];
   for (const control of controls) {
-    // oxlint-disable-next-line no-await-in-loop -- Each scroll moves the page for the next.
     await control.scrollIntoViewIfNeeded();
-    // oxlint-disable-next-line no-await-in-loop -- As above.
     const name = await control.evaluate((element) => {
       const root = element.getRootNode() as ShadowRoot;
       const { bottom, left, right, top } = element.getBoundingClientRect();
@@ -454,7 +450,6 @@ test.describe("the selected Block's tools", () => {
 
     // The first Column is taller, so only the Block grows.
     for (const _ of [1, 2, 3]) {
-      // oxlint-disable-next-line no-await-in-loop -- Keys go in order.
       await page.keyboard.press("Enter");
     }
 

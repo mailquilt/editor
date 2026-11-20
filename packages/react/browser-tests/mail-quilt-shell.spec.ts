@@ -24,11 +24,8 @@ test("actions picks the Shell's buttons, and an empty list shows none", async ({
     ["/?shell&only-html", ["Export HTML"]],
     ["/?shell&no-actions", []],
   ] as const) {
-    // oxlint-disable-next-line no-await-in-loop -- One list, then the other.
     await page.goto(query);
-    // oxlint-disable-next-line no-await-in-loop -- See above.
     await expect(textBlock(page)).toHaveText("Hello");
-    // oxlint-disable-next-line no-await-in-loop -- See above.
     await expect(
       shell(page).locator('[part="actions"]').getByRole("button")
     ).toHaveText([...buttons]);

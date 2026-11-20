@@ -146,7 +146,6 @@ test.describe("bold, italic and underline", () => {
     await pressArrow(page, "ArrowLeft");
     await pressArrow(page, "ArrowLeft");
     for (const _ of "first_name") {
-      // oxlint-disable-next-line no-await-in-loop -- Each key moves the selection on.
       await extendSelection(page, "ArrowLeft");
     }
 
@@ -168,7 +167,6 @@ test.describe("bold, italic and underline", () => {
     await pressArrow(page, "ArrowLeft");
     await pressArrow(page, "ArrowLeft");
     for (const _ of "first_name") {
-      // oxlint-disable-next-line no-await-in-loop -- Each key moves the selection on.
       await extendSelection(page, "ArrowLeft");
     }
 
@@ -194,7 +192,6 @@ test.describe("bold, italic and underline", () => {
     await pressArrow(page, "ArrowLeft");
     await pressArrow(page, "ArrowLeft");
     for (const _ of "first_name") {
-      // oxlint-disable-next-line no-await-in-loop -- Each key moves the selection on.
       await extendSelection(page, "ArrowLeft");
     }
 
@@ -218,7 +215,6 @@ test.describe("bold, italic and underline", () => {
     await expect(textBlock(page).first()).toBeFocused();
     await pressArrow(page, "ArrowLeft");
     for (const _ of "{{first") {
-      // oxlint-disable-next-line no-await-in-loop -- Each key moves the selection on.
       await extendSelection(page, "ArrowRight");
     }
 

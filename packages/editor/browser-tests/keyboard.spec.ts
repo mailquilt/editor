@@ -239,7 +239,6 @@ test.describe("moving a Block with Alt+Arrow keys", () => {
       panelTab(page, "Content"),
     ];
 
-    // oxlint-disable no-await-in-loop -- One place at a time, to name the one that fails.
     for (const place of places) {
       await place.focus();
       // Listening before the key is pressed, so the press can't come first,
@@ -249,7 +248,6 @@ test.describe("moving a Block with Alt+Arrow keys", () => {
       await expect.poll(leftPrevented).toBe(true);
       await expect(place).toBeFocused();
     }
-    // oxlint-enable no-await-in-loop
   });
 
   test("Alt+← doesn't go back a page from the narrow notice", async ({
@@ -485,7 +483,6 @@ test.describe("typing inside a Block", () => {
     const session = await page.context().newCDPSession(page);
 
     for (const text of ["に", "にほ"]) {
-      // oxlint-disable-next-line no-await-in-loop -- One step of the composition at a time.
       await session.send("Input.imeSetComposition", {
         selectionEnd: text.length,
         selectionStart: text.length,
@@ -716,7 +713,6 @@ test.describe("labels and focus states", () => {
     await adds.getByRole("button").first().focus();
 
     let stops = 1;
-    // oxlint-disable no-await-in-loop -- Each press goes on from the one before.
     while (stops <= types) {
       await page.keyboard.press("Tab");
       if (!(await adds.evaluate((each) => each.matches(":focus-within")))) {
@@ -724,7 +720,6 @@ test.describe("labels and focus states", () => {
       }
       stops += 1;
     }
-    // oxlint-enable no-await-in-loop
 
     expect(types).toBeGreaterThan(1);
     expect(stops).toBe(types);
@@ -795,7 +790,6 @@ test.describe("labels and focus states", () => {
       await openEmail(page, [[TWELVE]]);
       await blockWith(page, "L").focus();
 
-      // oxlint-disable no-await-in-loop -- Each press depends on the one before.
       for (const text of ["K", "J", "I", "H", "G", "F", "E", "D", "C", "B"]) {
         await page.keyboard.press("ArrowUp");
         await expect(blockWith(page, text)).toBeFocused();
@@ -803,7 +797,6 @@ test.describe("labels and focus states", () => {
           .poll(() => gapBelowTop(page, text))
           .toBeGreaterThanOrEqual(0);
       }
-      // oxlint-enable no-await-in-loop
     });
   }
 
@@ -814,13 +807,11 @@ test.describe("labels and focus states", () => {
     await openEmail(page, [[TWELVE]]);
     await blockWith(page, "L").focus();
 
-    // oxlint-disable no-await-in-loop -- Each press depends on the one before.
     for (const expected of [10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]) {
       await page.keyboard.press("Alt+ArrowUp");
       await expect.poll(() => positionOfL(page)).toBe(expected);
       await expect.poll(() => gapBelowTop(page, "L")).toBeGreaterThanOrEqual(0);
     }
-    // oxlint-enable no-await-in-loop
     await expect(blockWith(page, "L")).toBeFocused();
     await expect(blockWith(page, "L")).toBeInViewport();
 

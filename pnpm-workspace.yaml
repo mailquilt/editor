@@ -2,15 +2,15 @@ packages:
   - "apps/*"
   - "packages/*"
 
-# Fixes for advisories in the docs site's build. The latest @vercel/routing-utils
-# and @tailwindcss/typography pin these exact versions, and nothing else asks for
-# them. Each override stops applying once its dependent moves off that version.
 # `blume check` type-checks the docs site's .astro files only when `astro`
 # resolves from apps/docs. It's Blume's dependency, so it's hoisted rather than
 # added there, which would give Blume's integrations a second copy of astro.
 publicHoistPattern:
   - astro
 
+# Fixes for advisories in the docs site's build. The latest @vercel/routing-utils
+# and @tailwindcss/typography pin these exact versions, and nothing else asks for
+# them. Each override stops applying once its dependent moves off that version.
 overrides:
   path-to-regexp@6.1.0: 6.3.0
   postcss-selector-parser@6.0.10: 6.1.6

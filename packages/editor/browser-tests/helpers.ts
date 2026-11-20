@@ -582,7 +582,6 @@ export const openBlocks = async (page: Page, ...columns: BlockType[][]) => {
   ).toBeVisible();
   // An image that's still loading would go on to move what's below it.
   for (const image of await canvas(page).locator("img").all()) {
-    // oxlint-disable-next-line no-await-in-loop -- Order doesn't matter, and there are few.
     await expect(image).toHaveJSProperty("complete", true);
   }
 };

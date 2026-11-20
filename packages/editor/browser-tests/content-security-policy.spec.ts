@@ -164,7 +164,6 @@ test("under a strict policy, the canvas shows the email with its settings, and n
   const columns = canvas(page).getByTestId("column");
   await expect(columns).toHaveCount(2);
   for (const column of await columns.all()) {
-    // oxlint-disable-next-line no-await-in-loop -- Two Columns, in any order.
     await expect(column).toHaveCSS("width", "300px");
   }
   await expect(blockWith(page, "One")).toHaveCSS("color", "rgb(185, 28, 28)");

@@ -121,13 +121,11 @@ test.describe("moving a selected Row from the keyboard", () => {
       .getByTestId("row-frame")
       .filter({ has: textBlock(page).getByText("J", { exact: true }) });
 
-    // oxlint-disable no-await-in-loop -- Each press depends on the one before.
     for (let position = letters.length - 1; position > 0; position -= 1) {
       await page.keyboard.press("Alt+ArrowUp");
       await expect(selectRowButton(page, position)).toBeFocused();
       await expect(moved).toBeInViewport();
     }
-    // oxlint-enable no-await-in-loop
   });
 
   test("says when it can't go further, and Alt+← and Alt+→ only keep the page", async ({
