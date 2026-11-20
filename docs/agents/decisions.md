@@ -86,6 +86,8 @@ A PR that changes one of these says so, gives the reason and updates this page.
 - `@repo/typescript-config` stays in the published devDependencies, and core's types keep tsdown's bare `import "valibot"`. Neither affects installs. (#36)
 - `withBase` stays: it's Blume's own helper. (#36)
 - `loadDocument` runs before `renderEmail` on the docs pages, for a clearer build error. (#36)
+- The React components take only the props that mean something on their element, as the API page lists. Two lines disable `react/immutability`, which reads an effect's `let` flag for a late result, React's own pattern, and setting the element's `value`, a DOM element in state, as changing state. (#224)
+- The install checks read the published types with the repo's TypeScript and without `skipLibCheck`, and fail if a package of ours was installed from npm and not its tarball. (#224)
 
 ## Tests
 

@@ -14,7 +14,13 @@ import {
   useRef,
   useState,
 } from "react";
-import type { HTMLAttributes, ReactElement, Ref } from "react";
+import type {
+  AriaAttributes,
+  DOMAttributes,
+  HTMLAttributes,
+  ReactElement,
+  Ref,
+} from "react";
 
 export type {
   BlocksDocument,
@@ -35,11 +41,30 @@ interface EditorProps<Host> {
   value?: BlocksDocument;
 }
 
-/** What else the element takes, such as `className`, `style`, `id` and `aria-*`. */
-type ElementAttributes = Omit<
-  HTMLAttributes<HTMLElement>,
-  "children" | "dangerouslySetInnerHTML" | "onChange" | "onError"
->;
+/**
+ * What else the element takes: `aria-*`, React's events, and the attributes
+ * that mean something on it. Not those of form fields, such as `defaultValue`,
+ * or of editable text, or `dir`, as the editor is left to right on any page.
+ */
+type ElementAttributes = AriaAttributes &
+  Omit<
+    DOMAttributes<HTMLElement>,
+    "children" | "dangerouslySetInnerHTML" | "onChange" | "onError"
+  > &
+  Pick<
+    HTMLAttributes<HTMLElement>,
+    | "className"
+    | "hidden"
+    | "id"
+    | "inert"
+    | "lang"
+    | "role"
+    | "slot"
+    | "style"
+    | "suppressHydrationWarning"
+    | "title"
+    | "translate"
+  >;
 
 export type MailQuiltProps = EditorProps<MailQuiltElement> & ElementAttributes;
 
@@ -55,17 +80,6 @@ export interface MailQuiltShellProps
 
 /** Only called from an effect, so a server never runs the editor. */
 const loadEditor = () => import("@mailquilt/editor");
-
-/**
- * Outside the hook, as React Compiler's lint rule, react/immutability, reads
- * setting a property of the element, which is held in state, as changing state.
- */
-const setDocument = (
-  element: MailQuiltElement | MailQuiltShellElement,
-  value: BlocksDocument | undefined
-) => {
-  element.value = value;
-};
 
 /**
  * Connects `<mail-quilt>` or `<mail-quilt-shell>` to the props they share, once
@@ -89,27 +103,29 @@ const useEditorElement = <
   });
 
   useEffect(() => {
-    // Unmounted, or mounted again by StrictMode, which reports it instead. A
-    // controller, as React Compiler's lint rule rejects reassigning a `let` here.
-    const unmounted = new AbortController();
+    let unmounted = false;
     const load = async () => {
       try {
         await loadEditor();
         setLoaded(true);
       } catch (error) {
+        // Unmounted, or mounted again by StrictMode, which reports it instead.
+        if (unmounted) {
+          return;
+        }
         // With nowhere to report it, it stays an unhandled rejection.
         if (!reportError.current) {
           throw error;
-        }
-        if (unmounted.signal.aborted) {
-          return;
         }
         const reason = error instanceof Error ? error.message : String(error);
         reportError.current(`The editor couldn't load: ${reason}`);
       }
     };
     load();
-    return () => unmounted.abort();
+    return () => {
+      // oxlint-disable-next-line react/immutability -- React's own pattern for ignoring an effect's late result.
+      unmounted = true;
+    };
   }, []);
 
   useLayoutEffect(() => {
@@ -137,7 +153,8 @@ const useEditorElement = <
   // would then see an older document, load it and lose that key and undo history.
   useLayoutEffect(() => {
     if (editor) {
-      setDocument(editor, value);
+      // oxlint-disable-next-line react/immutability -- A DOM element in state, not data React renders from.
+      editor.value = value;
     }
   }, [editor, value]);
 

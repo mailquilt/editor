@@ -56,6 +56,11 @@ const firstEmail = () =>
     ? refusedEmail
     : emailWith("Hello");
 
+/** A host that leaves out `onError`. */
+const noOnError = new URLSearchParams(window.location.search).has(
+  "no-on-error"
+);
+
 /** A controlled host: every change goes into state and back into `value`. */
 const Host = () => {
   const [document, setDocument] = useState(firstEmail);
@@ -83,7 +88,11 @@ const Host = () => {
             setDocument(next);
             setChanges((count) => count + 1);
           }}
-          onError={(reason) => setErrors((all) => [...all, reason])}
+          onError={
+            noOnError
+              ? undefined
+              : (reason) => setErrors((all) => [...all, reason])
+          }
           value={document}
         />
       )}

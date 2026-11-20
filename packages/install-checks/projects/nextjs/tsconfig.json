@@ -11,6 +11,8 @@
     "noEmit": true,
     "plugins": [{ "name": "next" }],
     "resolveJsonModule": true,
+    // Or `next build` sets it to true, and skips checking the published types.
+    "skipLibCheck": false,
     "strict": true,
     "target": "ES2022"
   },
