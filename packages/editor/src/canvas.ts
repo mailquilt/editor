@@ -5,6 +5,7 @@ import { html, nothing } from "lit";
 import { repeat } from "lit/directives/repeat.js";
 
 import { BLOCK_VIEWS, hasRichText, renderBlockContent } from "./block-types.js";
+import { place } from "./editor-places.js";
 import { renderFormatBar } from "./format-bar.js";
 import { ICONS } from "./icons.js";
 import { keyLabel } from "./key-map.js";
@@ -57,7 +58,7 @@ const renderDragHandle = (tooltip = "Drag Block") => html`
   <div
     aria-hidden="true"
     class="drag-handle"
-    data-place="dragHandle"
+    data-place=${place("dragHandle")}
     data-testid="drag-handle"
     data-tooltip=${tooltip}
   >
@@ -72,7 +73,7 @@ const renderDragHandle = (tooltip = "Drag Block") => html`
 export const renderNarrowNotice = ({ openPreview }: PanelApi) => html`
   <div
     class="ui frame narrow-notice"
-    data-place="notice"
+    data-place=${place("notice")}
     lang=${UI_LANG}
     part="frame"
   >
@@ -84,7 +85,7 @@ export const renderNarrowNotice = ({ openPreview }: PanelApi) => html`
     </p>
     <button
       class="text-button primary"
-      data-place="controls"
+      data-place=${place("controls")}
       type="button"
       @click=${openPreview}
     >
@@ -109,7 +110,7 @@ const renderRowToolbar = (
     aria-label=${`Row ${index + 1}`}
     aria-orientation="vertical"
     class="ui row-toolbar"
-    data-place="rowToolbar"
+    data-place=${place("rowToolbar")}
     role="toolbar"
   >
     <div class="bar">
@@ -163,7 +164,7 @@ const renderBlockToolbar = (api: PanelApi) => html`
     aria-label="Block tools"
     aria-orientation="vertical"
     class="ui bar block-toolbar"
-    data-place="blockToolbar"
+    data-place=${place("blockToolbar")}
     role="toolbar"
   >
     ${renderDragHandle()}
@@ -217,7 +218,7 @@ const renderBlock = (
       class="block"
       data-block-id=${block.id}
       data-label=${blockLabel(block.type)}
-      data-place="block"
+      data-place=${place("block")}
       role="group"
       style=${styleProperties(rich ? blockStyles(block) : {})}
       tabindex="0"
@@ -251,7 +252,7 @@ const renderColumn = (
   <div
     class=${blocks.length === 0 ? "column empty" : "column"}
     data-column-id=${id}
-    data-place="column"
+    data-place=${place("column")}
     data-testid="column"
     style=${styleProperties({ width: `${width}%` })}
   >
@@ -317,7 +318,7 @@ export const renderRows = (
     (row, rowIndex) => html`
       <div
         class="row-frame"
-        data-place="row"
+        data-place=${place("row")}
         data-row-id=${row.id}
         data-testid="row-frame"
         ?data-row-selected=${row.id === api.selectedRow?.row.id}
@@ -325,7 +326,7 @@ export const renderRows = (
         <div
           aria-hidden="true"
           class="ui row-tag"
-          data-place="rowTag"
+          data-place=${place("rowTag")}
           data-testid="row-tag"
           @click=${() => api.selectRow(row.id)}
         >
@@ -360,7 +361,7 @@ export const renderFloatingToolbar = (api: PanelApi) => html`
   <div
     aria-label="Email tools"
     class="ui bar floating-toolbar"
-    data-place="emailTools"
+    data-place=${place("emailTools")}
     role="group"
     tabindex="-1"
   >

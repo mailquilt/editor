@@ -1,5 +1,6 @@
 import { css, html, nothing } from "lit";
 
+import { place } from "./editor-places.js";
 import { claim, keyFor } from "./key-map.js";
 import { refuseFiles } from "./refuse-files.js";
 import { UI_LANG } from "./theme.js";
@@ -263,7 +264,7 @@ export const renderPreview = (
   <dialog
     aria-labelledby="preview-title"
     class="preview"
-    data-place="preview"
+    data-place=${place("preview")}
     lang=${UI_LANG}
     @close=${onClosed}
   >

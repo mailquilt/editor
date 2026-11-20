@@ -2,6 +2,7 @@ import { INVALID_LINK, isAllowedLinkHref } from "@mailquilt/core/internal";
 import { css, html, nothing } from "lit";
 import { keyed } from "lit/directives/keyed.js";
 
+import { place } from "./editor-places.js";
 import { ICONS } from "./icons.js";
 import type { KeyLabel } from "./key-map.js";
 import { keyLabel, textKeyLabel } from "./key-map.js";
@@ -169,7 +170,7 @@ const renderLinkForm = (
 ) => html`
   <form
     class="link-form"
-    data-place="linkField"
+    data-place=${place("linkField")}
     novalidate
     @submit=${(event: SubmitEvent) => {
       event.preventDefault();
@@ -226,7 +227,7 @@ export const renderFormatBar = (api: PanelApi) => {
     <div
       aria-label="Text formatting"
       class="ui bar format-bar"
-      data-place="formatBar"
+      data-place=${place("formatBar")}
       role="toolbar"
     >
       ${MARK_BUTTONS.map(

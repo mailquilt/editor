@@ -56,7 +56,7 @@ A part of the editor's own interface that focus, keys, a press or a drag finds b
 _Avoid_: Region, area
 
 **Key scope**:
-Where in the editor a key is answered: the innermost Place with keys of its own, or a settings field holding typed text that isn't applied yet.
+Where in the editor a key is answered: the innermost Place with keys of its own. A settings field holding typed text that isn't applied yet is a Place of its own.
 _Avoid_: Place
 
 ### Product
