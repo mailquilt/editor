@@ -17,7 +17,7 @@ This page lists every token. [Theme the editor](./theme-the-editor) says which t
 
 The React component renders the same `<mail-quilt>` element, so the same selector works there. On a [Shell](./shell), set them on `<mail-quilt-shell>` instead. Its header and messages use them, and so does the editor inside it.
 
-The frame around the editor, with its corners and its 1px ring, is the `frame` part. To change it beyond the tokens, style `mail-quilt::part(frame)`, such as `border-radius: 0` for an editor that fills a panel edge to edge.
+The frame around the editor, with its corners and its 1px ring, is the `frame` part. To change it beyond the tokens, style `mail-quilt::part(frame)`, such as `border-radius: 0` for an editor that fills a panel edge to edge. On a Shell, the frame is the Shell's, so style `mail-quilt-shell::part(frame)`.
 
 The editor doesn't take its color, font or background from your page, so it looks the same on a light page and a dark one until you change a token. The defaults below are a light theme. For a dark one, set every color token, as the [dark theme](./theme-the-editor#a-dark-theme) does, and check that text stays readable.
 

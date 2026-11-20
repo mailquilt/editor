@@ -75,7 +75,7 @@ Opening a different email clears undo history. Setting `value` to the email the 
 
 ## CSS parts
 
-The frame around the editor, with its corners and its 1px ring, is the `frame` part. Style it with `mail-quilt::part(frame)`, such as `border-radius: 0` for an editor that fills a panel edge to edge. The Shell's header and message bar are parts too, which [Customizing it](./shell#customizing-it) lists.
+The frame around the editor, with its corners and its 1px ring, is the `frame` part. Style it with `mail-quilt::part(frame)`, such as `border-radius: 0` for an editor that fills a panel edge to edge. In the Shell, the frame is the Shell's own, the `frame` part of `<mail-quilt-shell>`, and the editor inside draws none. Style it with `mail-quilt-shell::part(frame)`. The Shell's header and message bar are parts too, which [Customizing it](./shell#customizing-it) lists.
 
 Colors, spacing, corners and the font are [theme tokens](./theme-tokens), not parts.
 

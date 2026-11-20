@@ -17,7 +17,7 @@ The header has the heading and up to three buttons:
 - **Export JSON** downloads it as `email.json`, the [document format](./document-format) the editor saves.
 - **Import JSON** opens a `.json` file in place of the current email, which undo can't bring back, and with `save-key` it's saved straight away. If the editor refuses it, the message bar says why and the current email stays.
 
-The message bar shows emails the editor refuses, exports that fail and saves that fail. Screen readers announce each message. The [Playground](/playground) is a Shell.
+The message bar shows emails the editor refuses, exports that fail and saves that fail. Screen readers announce each message. A message stays until the person's next change, and one that the browser can't save stays until a change saves. One about an import also goes once an import works, and one about an export once either export works. The [Playground](/playground) is a Shell.
 
 ## With a bundler
 
@@ -58,11 +58,11 @@ The starter email is the one above, in TypeScript with its type:
 With `save-key`, the Shell keeps the email in the browser's `localStorage` under that key:
 
 - When the Shell opens, an email saved under the key opens instead of `value`. `value` is the email to start from when nothing is saved yet.
-- Setting the starting email again doesn't replace the open email, so the person's work stays, on their first visit as on later ones. While a saved email is open and the Shell opened without a starting email, setting nothing doesn't replace it either, and nor does setting an email for the first time, which then becomes the starting email. So a React component that renders again, or gets its starting email late, can't replace the person's work. Any other `value` works as on `<mail-quilt>`: a different email opens, and setting it to nothing empties the editor.
-- If the saved email can't be opened, such as one saved by a newer version of Mail Quilt, the message bar says why and `value` opens instead. The person's next change is saved over it, so its text is first copied to `<save-key>:unopened`, where nothing saves, and your app can still read it. If the browser can't copy it there, such as when storage is full, no change is saved over it, and the message bar says the browser can't save.
+- Setting the starting email again doesn't replace the open email, so the person's work stays, on their first visit as on later ones. While a saved email is open and the Shell opened without a starting email, setting nothing doesn't replace it either, and nor does setting an email for the first time, which then becomes the starting email. So a React component that renders again, or gets its starting email late, can't replace the person's work. Any other `value` works as on `<mail-quilt>`: a different email opens, and setting it to nothing empties the editor. A different email you open over a saved one is saved with the person's next change, so if they reload before changing it, the saved email opens again. An import that changes the email is saved straight away.
+- If the saved email can't be opened, such as one saved by a newer version of Mail Quilt, the message bar says why and `value` opens instead. The person's next change is saved over it, so its text is first copied to `<save-key>:unopened`, where nothing saves, and your app can still read it. If that already holds a different email, it goes to `<save-key>:unopened:2`, then `:3` and on, so no copy is lost. The same email opened again isn't copied twice. If the browser can't copy it there, such as when storage is full, no change is saved over it, and the message bar says the browser can't save.
 - Each change is saved under the key. With the Shell open in two tabs, each saves over the other, so the last change wins. If the browser can't save, because storage is blocked or full, the message bar says so, and suggests Export JSON while that button shows.
 
-Use a key of its own for each email and each person. Two emails under one key open as one, and on a shared browser one person's email opens for the next. Start the key with your app's name, so no other app on the same origin uses it, and add the IDs your app already has, such as `my-app:${userId}:${emailId}`. The examples above have one email and one key. Set the key before the Shell opens, as the examples do. If you change it later, the email saved under the new key opens. With nothing saved there, the current email stays and is saved under the new key from its next change. Removing the key stops the saving, and setting the starting email again still leaves the open email.
+Use a key of its own for each email and each person. Two emails under one key open as one, and on a shared browser one person's email opens for the next. Start the key with your app's name, so no other app on the same origin uses it, and add the IDs your app already has, such as `my-app:${userId}:${emailId}`. The examples above have one email and one key. Set the key before the Shell opens, as the examples do. If you change it later, the email saved under the new key opens. With nothing saved there, the current email stays and is saved under the new key from its next change. A message that the browser can't save, or that the saved email couldn't be opened, goes when the key changes, until the new key fails too. Removing the key stops the saving, and setting the starting email again still leaves the open email.
 
 Opening the saved email doesn't fire `mq-change`, because the person hasn't changed anything. If your app keeps its own copy of the email, read `value` from the element once it has loaded, such as from the `ref` in React, rather than assuming it's the email you passed.
 
@@ -90,10 +90,11 @@ The buttons keep their own order, whatever order you name them in, and `actions=
 
 The Shell draws its header and messages from the same [theme tokens](./theme-tokens) as the editor. Set them on `<mail-quilt-shell>`, and the editor inside uses them too.
 
-To restyle the Shell beyond the tokens, each piece of the header and the message bar is a CSS part. Style it from your own stylesheet with `::part()`:
+To restyle the Shell beyond the tokens, its frame and each piece of the header and the message bar are CSS parts. Style them from your own stylesheet with `::part()`:
 
 | Part          | What it is                                       |
 | ------------- | ------------------------------------------------ |
+| `frame`       | The frame, with its corners and its 1px ring.    |
 | `header`      | The bar above the editor.                        |
 | `heading`     | The heading's text.                              |
 | `actions`     | The group of buttons on the right of the header. |

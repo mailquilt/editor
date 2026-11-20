@@ -166,6 +166,18 @@ test.describe("moving an email with JSON", () => {
     await expect(changeCount(page)).toHaveText(String(changesBefore + 1));
   });
 
+  test("importing the open email isn't a change", async ({ page }) => {
+    await openShell(page);
+    const { text } = await exportFile(page, "Export JSON");
+    await importFile(page, text);
+
+    // One that is a change, so the one before it would be counted too.
+    await importFile(page, JSON.stringify(emailWith([[["Imported"]]])));
+
+    await expect(textBlock(page)).toHaveText("Imported");
+    await expect(changeCount(page)).toHaveText("1");
+  });
+
   test("an import with a link that isn't allowed is refused, and keeps the current email", async ({
     page,
   }) => {
@@ -264,10 +276,17 @@ test.describe("moving an email with JSON", () => {
       // oxlint-disable-next-line no-await-in-loop -- See above.
       await shell(page).getByRole("button", { name }).click();
       // oxlint-disable-next-line no-await-in-loop -- See above.
-      await expect(shell(page).getByRole("alert")).toHaveText(
-        "There's no email to export."
-      );
+      await expect(
+        shell(page)
+          .getByRole("alert")
+          .filter({ hasText: "There's no email to export." })
+      ).toBeVisible();
     }
+    await expect(
+      shell(page).evaluate((element) =>
+        (element as MailQuiltShell).exportHtml()
+      )
+    ).rejects.toThrow("<mail-quilt-shell> has no document to export");
 
     // A download is reported a moment after it starts, so one that does start
     // afterwards shows whether any started before it.
@@ -382,7 +401,7 @@ test.describe("the editor's API", () => {
     await expect(textBlock(page)).toHaveCount(0);
   });
 
-  test("a failed export says so, until email.html downloads", async ({
+  test("a failed export says so until either export downloads, which leaves other reasons", async ({
     page,
   }) => {
     await openShell(page);
@@ -391,16 +410,22 @@ test.describe("the editor's API", () => {
 
     await shell(page).getByRole("button", { name: "Export HTML" }).click();
 
-    await expect(shell(page).getByRole("alert")).toContainText(
-      "couldn't be exported"
-    );
+    const alerts = shell(page).getByRole("alert");
+    const failed = alerts.filter({ hasText: "couldn't be exported" });
+    await expect(failed).toBeVisible();
     // The reason, without the name of the error it came in.
-    await expect(shell(page).getByRole("alert")).not.toContainText("TypeError");
+    await expect(failed).not.toContainText("TypeError");
     await page.unrouteAll();
+    await importFile(page, "{not json");
+    const refused = alerts.filter({ hasText: "valid JSON" });
+    await expect(refused).toBeVisible();
+
+    await exportFile(page, "Export JSON");
+    await expect(failed).toHaveCount(0);
     const { name, text } = await exportFile(page, "Export HTML");
     expect(name).toBe("email.html");
     expect(text).toContain("Hello");
-    await expect(shell(page).getByRole("alert")).toHaveCount(0);
+    await expect(refused).toBeVisible();
   });
 });
 
@@ -478,6 +503,18 @@ test.describe("saving in the browser", () => {
     await expect(textBlock(page)).toHaveText("Imported");
   });
 
+  test("on a first visit, an import stays when the host's first email arrives late", async ({
+    page,
+  }) => {
+    await page.goto(`/shell.html?save-key=${key}&late-value`);
+    await importFile(page, JSON.stringify(emailWith([[["Imported"]]])));
+    await expect(textBlock(page)).toHaveText("Imported");
+
+    await setShellValue(page, emailWith([[["Hello"]]]));
+
+    await expect(textBlock(page)).toHaveText("Imported");
+  });
+
   test("a damaged saved email shows why, and is kept apart from the next save", async ({
     page,
   }) => {
@@ -503,6 +540,50 @@ test.describe("saving in the browser", () => {
         key
       )
     ).toBe("{not json");
+  });
+
+  test("a second damaged saved email is kept beside the first's copy, once", async ({
+    page,
+  }) => {
+    await page.addInitScript((each) => {
+      localStorage.setItem(each, "{second");
+      localStorage.setItem(`${each}:unopened`, "{first");
+    }, key);
+    const copies = () =>
+      page.evaluate(
+        (each) =>
+          ["", ":2", ":3"].map((suffix) =>
+            localStorage.getItem(`${each}:unopened${suffix}`)
+          ),
+        key
+      );
+    await openShell(page, `?save-key=${key}`);
+    expect(await copies()).toStrictEqual(["{first", "{second", null]);
+
+    // The same one, opened again before any change.
+    await page.reload();
+    await expect(textBlock(page)).toHaveText("Hello");
+
+    expect(await copies()).toStrictEqual(["{first", "{second", null]);
+  });
+
+  test("a refused email doesn't hide why the saved email couldn't be opened", async ({
+    page,
+  }) => {
+    await page.addInitScript(
+      (each) => localStorage.setItem(each, "{not json"),
+      key
+    );
+    await openShell(page, `?save-key=${key}`);
+    const alerts = shell(page).getByRole("alert");
+    await expect(alerts).toContainText("saved email couldn't be opened");
+
+    await setShellValue(page, { ...emailWith([[["Refused"]]]), version: 999 });
+
+    await expect(alerts.filter({ hasText: "newer" })).toBeVisible();
+    await expect(
+      alerts.filter({ hasText: "saved email couldn't be opened" })
+    ).toBeVisible();
   });
 
   test("a damaged saved email that can't be copied apart isn't saved over, and says so", async ({
@@ -607,24 +688,31 @@ test.describe("saving in the browser", () => {
     await expect(alerts.filter({ hasText: "can't save" })).toBeVisible();
   });
 
-  test("stops saying it can't save once save-key is removed", async ({
+  test("stops saying it can't save when save-key changes or is removed", async ({
     page,
   }) => {
     await page.addInitScript(() => {
-      Object.defineProperty(window, "localStorage", {
-        get() {
-          throw new DOMException("Blocked", "SecurityError");
-        },
-      });
+      Storage.prototype.setItem = () => {
+        throw new DOMException("Full", "QuotaExceededError");
+      };
     });
     await openShell(page, `?save-key=${key}`);
-    await expect(shell(page).getByRole("alert")).toContainText("can't save");
+    await focusStartOfTextBlock(page);
+    await page.keyboard.type("Unsaved ");
+    const alert = shell(page).getByRole("alert");
+    await expect(alert).toContainText("can't save");
+
+    await shell(page).evaluate((element) =>
+      element.setAttribute("save-key", "test:other")
+    );
+    await expect(alert).toHaveCount(0);
+    await page.keyboard.type("Again ");
+    await expect(alert).toContainText("can't save");
 
     await shell(page).evaluate((element) =>
       element.removeAttribute("save-key")
     );
-
-    await expect(shell(page).getByRole("alert")).toHaveCount(0);
+    await expect(alert).toHaveCount(0);
   });
 
   test("removing save-key stops the saving", async ({ page }) => {
@@ -859,6 +947,11 @@ test("a new save-key opens the email saved under it, or keeps the current one", 
   );
   await expect(textBlock(page)).toHaveText("Third Oh Second");
   expect(await savedUnder("test:damaged:unopened")).toBe("{not json");
+
+  // That message was about the key before.
+  await setSaveKey("test:second");
+  await expect(textBlock(page)).toHaveText("Oh Second");
+  await expect(shell(page).getByRole("alert")).toHaveCount(0);
 });
 
 test.describe("look", () => {
@@ -1066,9 +1159,13 @@ test.describe("too narrow to edit in", () => {
     page,
   }) => {
     await page.goto("/shell.html?narrow");
+    // The editor's frame, inside the Shell's.
     const notice = shell(page)
       .locator('[part="frame"]')
-      .filter({ hasText: "Editing needs more room" });
+      .filter({
+        hasNot: page.locator('[part="header"]'),
+        hasText: "Editing needs more room",
+      });
     await expect(notice).toBeVisible();
 
     const noticeBox = await box(notice);
@@ -1083,7 +1180,9 @@ test.describe("too narrow to edit in", () => {
 });
 
 test.describe("parts", () => {
-  test("name each piece of the header and the messages", async ({ page }) => {
+  test("name the frame and each piece of the header and the messages", async ({
+    page,
+  }) => {
     await page.goto("/shell.html?refused-first");
     await expect(shell(page).getByRole("alert")).toBeVisible();
 
@@ -1094,6 +1193,7 @@ test.describe("parts", () => {
     );
 
     expect(parts).toStrictEqual([
+      "frame",
       "header",
       "heading",
       "actions",
