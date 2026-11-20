@@ -17,7 +17,7 @@ Change `url` to where your server keeps the email, and send it in whatever shape
 
 ## What it does
 
-- **It opens the starter email only when nothing is saved,** which your server says with a 404. If loading fails any other way, such as a 401 or a 500, the page says why and the editor stays empty, so the person's first change can't save the starter email over theirs.
+- **It opens the starter email only when nothing is saved,** which your server says with a 404. If loading fails any other way, such as a 401 or a 500, the page says why and the editor stays empty, so the person's first change can't save the starter email over theirs. Reloading the page tries again.
 - **It waits for a pause.** Each change restarts a one-second timer, and the email is saved when it runs out. Typing a sentence sends one request, with every key in it.
 - **It saves one email at a time.** A save waits for the one before it to finish. Otherwise a slow save of an older email could reach your server after a newer one, and overwrite it.
 - **It keeps a failed save.** If the request fails or your server answers with an error, the status says so, and the email is sent again with the next change, or when the person switches tabs.
