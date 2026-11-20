@@ -3,6 +3,7 @@
 // Next and Later are in the order the roadmap in PROJECT.md gives them, so
 // change the two together. Nothing here names a version, so it can't go stale.
 import SitePage from "../components/site-page.astro";
+import { BLOCK_NAMES, COUNTS } from "../site/package-facts.ts";
 import { ISSUES } from "../site/project.ts";
 
 const stages = [
@@ -11,8 +12,8 @@ const stages = [
       "The Shell, a ready-made editor page",
       "The editor, as a Web Component and a React component",
       "The core and the renderer, to change emails and render their HTML in code",
-      "Text, Heading, Image, Button, Divider and Spacer Blocks",
-      "Rows of one to four Columns",
+      `${BLOCK_NAMES} Blocks`,
+      `Rows of one to ${COUNTS.mostColumns} Columns`,
       "Drag and drop, with a keyboard path for all of it",
       "Undo and redo, and a preview of the exported HTML",
       "HTML checked in Gmail, Apple Mail, Outlook, Yahoo and other email clients",

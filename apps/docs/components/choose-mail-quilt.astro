@@ -1,0 +1,31 @@
+---
+// The reasons to choose Mail Quilt, closing each compare page.
+import { withBase } from "blume/components/islands/base-path.ts";
+
+interface Props {
+  /** The page's other way on, beside "Try the Playground". */
+  next: { href: string; label: string };
+  reasons: string[];
+}
+
+const { next, reasons } = Astro.props;
+---
+
+<section class="site-section">
+  <div class="site-wrap site-split">
+    <div>
+      <h2 class="site-h2">Choose Mail Quilt when</h2>
+      <div class="site-actions">
+        <a class="site-button" data-tone="accent" href={withBase("/playground")}
+          >Try the Playground</a
+        >
+        <a class="site-button" data-tone="quiet" href={withBase(next.href)}
+          >{next.label}</a
+        >
+      </div>
+    </div>
+    <ul class="site-list">
+      {reasons.map((reason) => <li>{reason}</li>)}
+    </ul>
+  </div>
+</section>

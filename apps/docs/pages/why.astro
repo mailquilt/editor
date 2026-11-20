@@ -3,7 +3,8 @@
 import { withBase } from "blume/components/islands/base-path.ts";
 
 import SitePage from "../components/site-page.astro";
-import { AUTHOR, ISSUES } from "../site/project.ts";
+import { capitalized, COUNTS, inWords } from "../site/package-facts.ts";
+import { AUTHOR, COMPARED, ISSUES } from "../site/project.ts";
 
 const principles = [
   {
@@ -15,7 +16,7 @@ const principles = [
     title: "Every change goes one way in",
   },
   {
-    text: "An email is Rows, Rows hold one to four Columns, and Columns hold Blocks. Nothing can be dragged to an arbitrary position, because email clients can't render arbitrary positions.",
+    text: `An email is Rows, Rows hold one to ${COUNTS.mostColumns} Columns, and Columns hold Blocks. Nothing can be dragged to an arbitrary position, because email clients can't render arbitrary positions.`,
     title: "The grid is small on purpose",
   },
   {
@@ -74,7 +75,8 @@ const never = [
           Mail Quilt is MIT licensed, works in any framework, and saves each
           email as a documented JSON format that belongs to your app. The{" "}
           <a class="site-link" href={withBase("/compare")}>comparison</a> sets
-          it beside the alternatives, including where they're the better choice.
+          it beside the alternatives, as each one's own site described it on{" "}
+          {COMPARED}, including where they're the better choice.
         </p>
       </div>
     </div>
@@ -82,7 +84,9 @@ const never = [
 
   <section class="site-section">
     <div class="site-wrap">
-      <h2 class="site-h2">Six ideas it's built on</h2>
+      <h2 class="site-h2">
+        {capitalized(inWords(principles.length))} ideas it's built on
+      </h2>
     </div>
     <div class="site-columns">
       {
@@ -119,8 +123,8 @@ const never = [
           One person builds Mail Quilt, in the open:{" "}
           <a class="site-link" href={AUTHOR.url}>{AUTHOR.name}</a>. That's why the{" "}
           <a class="site-link" href={withBase("/roadmap")}>roadmap</a> has no
-          dates on it, and why the first release is small: six Blocks, components
-          for one framework, React, and no image upload.
+          dates on it, and why the editor is still small: {COUNTS.blocks}{" "}
+          Blocks, components for one framework, React, and no image upload.
         </p>
         <p>
           Everything is free and stays free. If the project ever takes money, it

@@ -5,6 +5,13 @@
     "build": {
       // The site publishes the agent skill from the repo root's skills folder.
       "inputs": ["$TURBO_EXTENDS$", "$TURBO_ROOT$/skills/**"]
+    },
+    "test": {
+      // Only the packages. Playwright builds the site itself before it serves
+      // it, so a run outside Turborepo can't test an old build, and building it
+      // here too would build it twice.
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/skills/**"]
     }
   }
 }

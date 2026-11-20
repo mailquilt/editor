@@ -74,17 +74,49 @@ test("on a phone, the Shell is only as tall as its notice", async ({
     .locator('[part="frame"]', { hasText: "Editing needs more room" });
   await expect(notice).toBeVisible();
 
-  const shellBox = await shell.boundingBox();
-  const noticeBox = await notice.boundingBox();
+  /** How far the notice's bottom is below the Shell's. */
+  const pastShell = async () => {
+    const shellBox = await shell.boundingBox();
+    const noticeBox = await notice.boundingBox();
+    return (
+      (noticeBox?.y ?? 0) +
+      (noticeBox?.height ?? 0) -
+      ((shellBox?.y ?? 0) + (shellBox?.height ?? 0))
+    );
+  };
 
-  expect((noticeBox?.y ?? 0) + (noticeBox?.height ?? 0)).toBe(
-    (shellBox?.y ?? 0) + (shellBox?.height ?? 0)
-  );
+  // The Shell takes the notice's height once the editor has found it's narrow.
+  await expect.poll(pastShell).toBeCloseTo(0, 0);
   // The notice's own height, well short of the window's worth the Shell
   // takes where there's room to edit.
+  const noticeBox = await notice.boundingBox();
   expect(noticeBox?.height).toBeLessThan(
     (page.viewportSize()?.height ?? 0) / 2
   );
+});
+
+test("says so when the editor's code doesn't load", async ({
+  browserName,
+  page,
+}) => {
+  test.skip(
+    browserName !== "chromium",
+    "Checks the page's own code, which is the same in every browser."
+  );
+  // The file that defines the Shell fails, as on a dropped connection.
+  await page.route("**/_astro/*.js", async (route) => {
+    const response = await route.fetch();
+    const body = await response.text();
+    await (/customElements\.define\(.mail-quilt-shell/u.test(body)
+      ? route.abort()
+      : route.fulfill({ body, response }));
+  });
+  await page.goto(PLAYGROUND);
+
+  await expect(page.getByRole("alert")).toContainText(
+    "The Playground couldn't start"
+  );
+  await expect(page.getByText("The Playground is loading.")).toBeHidden();
 });
 
 test.describe("without JavaScript", () => {

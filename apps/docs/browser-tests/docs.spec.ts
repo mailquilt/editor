@@ -2,7 +2,14 @@ import { readFile } from "node:fs/promises";
 
 import { BLOCK_TYPES, loadDocument } from "@mailquilt/core";
 import { expect, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
 
+import {
+  DEFAULT_ACCENT,
+  EDITOR_MIN_HEIGHT,
+  EDITOR_MIN_WIDTH,
+  SHELL_HEADER_MIN_HEIGHT,
+} from "../site/editor-facts";
 import { examples } from "../site/examples";
 
 /** For tests of the site's content, which is the same in every browser. */
@@ -79,9 +86,12 @@ test("the landing page's editor stays inside its frame as the email grows", asyn
     }
   });
 
+  // The editor lays out the new Rows after its update.
+  await expect
+    .poll(() => editor.evaluate((element) => element.clientHeight))
+    .toBeGreaterThan(EDITOR_MIN_HEIGHT);
   const inner = await editor.boundingBox();
   const outer = await frame.boundingBox();
-  expect(inner?.height).toBeGreaterThan(600);
   // Firefox can lay the frame out a fraction of a pixel taller.
   expect(outer?.height).toBeCloseTo(inner?.height ?? 0, 0);
 });
@@ -161,15 +171,16 @@ test("in a narrow window, the landing page shows a picture of the editor", async
   test.skip(browserName !== "chromium", SAME_IN_EVERY_BROWSER);
   await page.setViewportSize({ height: 800, width: 390 });
   await page.goto("/");
+  // An editor the page started would arrive after an import, so the page has
+  // to finish loading before anything can show it didn't start one.
+  await page.waitForLoadState("networkidle");
 
   await expect(
     page.getByRole("img", { name: /Mail Quilt editor/u })
   ).toBeVisible();
   await expect(page.locator("mail-quilt")).toHaveCount(0);
   await expect(
-    page.getByText("This is the editor, one of the four packages", {
-      exact: false,
-    })
+    page.getByText(/^This is the editor, one of the \w+ packages/u)
   ).toBeHidden();
 });
 
@@ -468,5 +479,199 @@ test("the theme tokens page lists every token, with its default", async ({
   // And each table's header row.
   await expect(rows).toHaveCount(
     tokens.length + (await page.getByRole("main").getByRole("table").count())
+  );
+});
+
+test("an address the site doesn't have gets its own not-found page", async ({
+  browserName,
+  page,
+}) => {
+  test.skip(browserName !== "chromium", SAME_IN_EVERY_BROWSER);
+  const response = await page.goto("/no-such-page");
+
+  expect(response?.status()).toBe(404);
+  await expect(
+    page.getByRole("heading", {
+      level: 1,
+      name: "Nothing has been dropped here.",
+    })
+  ).toBeVisible();
+});
+
+test("an example's downloads are its email, as JSON core loads and as HTML", async ({
+  browserName,
+  page,
+}) => {
+  test.skip(browserName !== "chromium", SAME_IN_EVERY_BROWSER);
+  await page.goto("/examples/receipt");
+  const download = async (name: string) => {
+    const [file] = await Promise.all([
+      page.waitForEvent("download"),
+      page.getByRole("link", { name }).click(),
+    ]);
+    const text = await readFile(await file.path(), { encoding: "utf-8" });
+    return { name: file.suggestedFilename(), text };
+  };
+
+  const json = await download("Download the JSON");
+  const html = await download("Download the HTML");
+
+  expect(json.name).toBe("receipt.json");
+  expect(loadDocument(JSON.parse(json.text))).toMatchObject({ ok: true });
+  expect(html.name).toBe("receipt.html");
+  // The export itself, with its Merge Tags still to fill, not the preview.
+  expect(html.text).toMatch(/^<!doctype html>/iu);
+  expect(html.text).toContain("{{order_id}}");
+});
+
+/** Stands in for the system's clipboard, which tests running at once share. */
+const stubClipboard = (page: Page, refuse: boolean) =>
+  page.addInitScript((refusing) => {
+    const copied: string[] = [];
+    Object.defineProperty(navigator, "clipboard", {
+      value: {
+        writeText: (text: string) => {
+          if (refusing) {
+            return Promise.reject(new DOMException("", "NotAllowedError"));
+          }
+          copied.push(text);
+          return Promise.resolve();
+        },
+      },
+    });
+    Object.defineProperty(window, "copied", { value: copied });
+  }, refuse);
+
+const copyButton = (page: Page) =>
+  page
+    .getByRole("tabpanel", { name: "editor" })
+    .getByRole("button", { name: "Copy" });
+
+test("the landing page copies a package's install command", async ({
+  browserName,
+  page,
+}) => {
+  test.skip(browserName !== "chromium", SAME_IN_EVERY_BROWSER);
+  await stubClipboard(page, false);
+  await page.goto("/");
+
+  await copyButton(page).click();
+
+  await expect(
+    page.getByRole("tabpanel", { name: "editor" }).getByRole("button")
+  ).toHaveText("Copied");
+  const copied = await page.evaluate(
+    () => (window as unknown as { copied: string[] }).copied
+  );
+  expect(copied).toStrictEqual(["npm install @mailquilt/editor"]);
+});
+
+test("the landing page says when the browser refuses to copy", async ({
+  browserName,
+  page,
+}) => {
+  test.skip(browserName !== "chromium", SAME_IN_EVERY_BROWSER);
+  await stubClipboard(page, true);
+  await page.goto("/");
+
+  await copyButton(page).click();
+
+  await expect(
+    page.getByRole("tabpanel", { name: "editor" }).getByRole("button")
+  ).toHaveText("Couldn't copy");
+});
+
+test("the landing page's Row takes the layout chosen beside it", async ({
+  browserName,
+  page,
+}) => {
+  test.skip(
+    browserName !== "chromium",
+    "Checks the page's own script, which is the same in every browser."
+  );
+  await page.goto("/");
+  const picker = page.getByRole("group", { name: "Row layout" });
+  const columns = page.getByTestId("row-demo-column");
+
+  await picker.getByRole("button", { name: "25, 25, 25, 25 percent" }).click();
+
+  await expect(
+    picker.getByRole("button", { name: "25, 25, 25, 25 percent" })
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    picker.getByRole("button", { name: "33, 67 percent" })
+  ).toHaveAttribute("aria-pressed", "false");
+  await expect(columns).toHaveText(["25", "25", "25", "25"]);
+
+  await picker
+    .getByRole("button", { exact: true, name: "100 percent" })
+    .click();
+
+  await expect(columns.first()).toHaveText("100");
+  // The others close to nothing.
+  await expect(columns.nth(1)).toBeHidden();
+});
+
+test("in the dark theme, the footer shows the logo drawn for it", async ({
+  browserName,
+  page,
+}) => {
+  test.skip(browserName !== "chromium", SAME_IN_EVERY_BROWSER);
+  await page.emulateMedia({ colorScheme: "dark" });
+  await page.goto("/why");
+  const home = page.getByRole("link", { name: "Mail Quilt home" });
+
+  await expect(home.getByTestId("logo-dark")).toBeVisible();
+  await expect(home.getByTestId("logo-light")).toBeHidden();
+});
+
+test("the sizes and accent the site states are the editor's own", async ({
+  browserName,
+  page,
+}) => {
+  test.skip(browserName !== "chromium", SAME_IN_EVERY_BROWSER);
+  await page.goto("/playground");
+  const shell = page.locator("mail-quilt-shell");
+  await expect(
+    shell.getByRole("textbox", { name: "Text Block" })
+  ).toBeVisible();
+  // An editor of its own, without the Playground's theme, given its email.
+  await page.evaluate(() => {
+    type Editor = HTMLElement & { value: unknown };
+    const bare = document.createElement("mail-quilt") as Editor;
+    bare.dataset.testid = "bare-editor";
+    bare.value = document.querySelector<Editor>("mail-quilt-shell")?.value;
+    document.body.append(bare);
+  });
+  const bare = page.getByTestId("bare-editor");
+  const notice = bare.locator('[part="frame"]', {
+    hasText: "Editing needs more room",
+  });
+  const setWidth = (width: number) =>
+    bare.evaluate((element, px) => {
+      (element as HTMLElement).style.width = `${px}px`;
+    }, width);
+
+  await setWidth(EDITOR_MIN_WIDTH - 1);
+  await expect(notice).toBeVisible();
+  await setWidth(EDITOR_MIN_WIDTH);
+  await expect(notice).toBeHidden();
+
+  // Wide enough for the side panel beside the email, so nothing is below it.
+  await setWidth(1200);
+  await expect
+    .poll(() => bare.evaluate((element) => element.clientHeight))
+    .toBe(EDITOR_MIN_HEIGHT);
+  const accent = await bare.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      accent: style.getPropertyValue("--mq-color-accent").trim(),
+      strong: style.getPropertyValue("--mq-color-accent-strong").trim(),
+    };
+  });
+  expect(accent).toStrictEqual(DEFAULT_ACCENT);
+  await expect(shell.locator('[part="header"]')).toHaveCSS(
+    "min-height",
+    `${SHELL_HEADER_MIN_HEIGHT}px`
   );
 });

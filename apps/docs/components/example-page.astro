@@ -21,12 +21,10 @@ if (!example) {
 }
 const others = renderedExamples.filter((other) => other !== example);
 const kind = example.name.toLowerCase();
-/** What the email is, from the start of its text, such as "an order confirmation". */
-const what = example.text.split(/[.:]/u)[0] ?? "";
 ---
 
 <SitePage
-  description={`A free ${kind} email template, ${what.charAt(0).toLowerCase()}${what.slice(1)}. Download its HTML, or its JSON to change it in the Mail Quilt editor.`}
+  description={`A free ${kind} email template, ${example.summary}. Download its HTML, or its JSON to change it in the Mail Quilt editor.`}
   title={`${example.name} email template: free HTML and JSON - Mail Quilt`}
 >
   <ExampleEmail

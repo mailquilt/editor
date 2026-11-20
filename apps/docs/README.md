@@ -8,15 +8,17 @@ The landing page, the docs and the Playground, built with [Blume](https://github
 | --- | --- |
 | `docs/` | The docs pages, served under `/docs`. Folders starting with `_` hold code the pages include. |
 | `pages/` | The other pages: the landing page, Examples, Compare, Why, Roadmap, the Playground and the 404. |
-| `components/` | The frame those pages share, the footer, and the landing page's sections under `home/`. |
+| `components/` | The frame those pages share, the footer, the Playground, and the landing page's sections under `home/`. |
 | `styles/` | `site.css` has the pieces every page under `pages/` is built from. `home.css` has the landing page's own. |
 | `theme.css` | The colors and type, and the restyling of Blume's header, sidebar and docs pages. |
-| `site/` | Data and code the pages use, such as the example emails. |
+| `site/` | Data and code the pages use, such as the example emails. The counts and sizes the site states are in `package-facts.ts`, taken from the packages, and `editor-facts.ts`, which a test checks against the editor. |
 | `browser-tests/` | Playwright tests, run against a build of the site. |
 
 ## Where the site is served
 
-The site is served from the root of `SITE_URL` in `site/project.ts`. The packages' `homepage` and READMEs link to the same address.
+The site is served from the root of `SITE_URL` in `site/project.ts`. The packages' `homepage` and READMEs link to the same address. Cloudflare builds and serves it, as `wrangler.jsonc` at the repo root sets out.
+
+Each page's date comes from the last commit that changed its file, so the build needs the whole git history. A host that checks out only the last commit leaves every page undated, so `pnpm build` runs `site/full-history.ts` first, which fetches the rest of the history when the checkout is shallow.
 
 ## Before upgrading Blume
 

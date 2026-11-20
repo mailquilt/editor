@@ -5,6 +5,7 @@ import { withBase } from "blume/components/islands/base-path.ts";
 
 import ExampleEmail from "../components/example-email.astro";
 import SitePage from "../components/site-page.astro";
+import { capitalized, COUNTS } from "../site/package-facts.ts";
 import { renderedExamples } from "../site/rendered-examples.ts";
 
 // Each example's page is a file under pages/examples/, as Blume's sitemap
@@ -31,7 +32,8 @@ if (withoutPage.length > 0) {
     <div class="site-wrap">
       <h1 class="site-h1">Example emails</h1>
       <p class="site-lead">
-        Three emails, each made from the same six Blocks. The previews are the
+        {capitalized(COUNTS.examples)} emails, each made from the same{" "}
+        {COUNTS.blocks} Blocks. The previews are the
         real exported HTML, rendered when this site was built. Download a
         document and open it in the{" "}
         <a class="site-link" href={withBase("/playground")}>Playground</a> with

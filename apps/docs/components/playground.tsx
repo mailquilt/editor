@@ -1,6 +1,9 @@
 import { createEditor, createEmail } from "@mailquilt/core";
 import { MailQuiltShell } from "@mailquilt/react";
+import { useState } from "react";
+import type { CSSProperties } from "react";
 
+import { accentTokens } from "../site/editor-facts";
 import { paragraph } from "../site/rich-text";
 
 // Prefixed, because other apps on the same origin, such as other projects on
@@ -43,18 +46,47 @@ const createStarterEmail = () => {
 /** Made once, so a re-render can't hand the Shell a different email. */
 const STARTER_EMAIL = createStarterEmail();
 
-/** The Shell where the editor always was, below the page's title. */
-const Playground = () => (
-  // No side padding, so the editor lines up with the page's title.
-  <div className="playground">
-    <div className="playground-shell">
-      <MailQuiltShell
-        heading="Your email"
-        saveKey={SAVED_EMAIL_KEY}
-        value={STARTER_EMAIL}
-      />
+/**
+ * The site's own editor wears the site's color, set with theme tokens. React's
+ * types name no custom properties, which it sets as they are.
+ */
+const SITE_ACCENT = accentTokens(
+  "var(--site-accent)",
+  "var(--site-accent-hover)"
+) as CSSProperties;
+
+/**
+ * The Shell where the editor always was, below the page's title, or why it
+ * isn't there.
+ */
+const Playground = () => {
+  const [failed, setFailed] = useState<string>();
+  // The Shell shows an email it refused itself. Only the editor's code failing
+  // to load leaves it undefined, and an empty box with nothing to say.
+  const reportFailedLoad = (reason: string) => {
+    if (!customElements.get("mail-quilt-shell")) {
+      setFailed(reason);
+    }
+  };
+  return failed === undefined ? (
+    // No side padding, so the editor lines up with the page's title.
+    <div className="playground">
+      <div className="playground-shell">
+        <MailQuiltShell
+          heading="Your email"
+          onError={reportFailedLoad}
+          saveKey={SAVED_EMAIL_KEY}
+          style={SITE_ACCENT}
+          value={STARTER_EMAIL}
+        />
+      </div>
     </div>
-  </div>
-);
+  ) : (
+    <div className="playground-failed" role="alert">
+      <p>The Playground couldn&apos;t start. Reload the page to try again.</p>
+      <p className="site-small site-muted">{failed}</p>
+    </div>
+  );
+};
 
 export default Playground;

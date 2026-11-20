@@ -3,6 +3,8 @@
   "compilerOptions": {
     // As Astro has it, so the .astro files can import the .ts ones by name.
     "allowImportingTsExtensions": true,
+    // The examples fill their Merge Tags with the sending page's JavaScript.
+    "allowJs": true,
     // Nothing is emitted, and Blume's generated content config has types
     // a declaration file couldn't name.
     "declaration": false,
@@ -19,7 +21,6 @@
     ".blume/.astro/types.d.ts",
     "components",
     "pages",
-    "islands",
     "site",
     "browser-tests",
     "blume.config.ts",

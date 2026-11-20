@@ -5,6 +5,8 @@ import { defineConfig } from "blume";
 import { filesystem } from "blume/sources";
 
 import { codeDark, codeLight } from "./site/code-themes";
+import { EDITOR_MIN_HEIGHT, EDITOR_MIN_WIDTH } from "./site/editor-facts";
+import { BLOCK_NAMES, COUNTS, EMAIL_WIDTH } from "./site/package-facts";
 import { DESCRIPTION, NPM, REPO, SITE_URL, SOCIAL_IMAGE } from "./site/project";
 
 /**
@@ -32,6 +34,18 @@ const securityHeaders: AstroIntegration = {
 
 export default defineConfig({
   agents: {
+    // Blume lists only the docs pages, so the site's own pages are named here.
+    llmsTxt: {
+      details: [
+        "Beyond the docs, the site has these pages:",
+        "",
+        `- [Playground](${SITE_URL}/playground): the Shell, to try the editor with nothing to install.`,
+        `- [Examples](${SITE_URL}/examples): example emails, with their JSON and HTML to download.`,
+        `- [Compare](${SITE_URL}/compare): Mail Quilt beside other email editors, and when to choose them.`,
+        `- [Why Mail Quilt](${SITE_URL}/why): why it exists, and what the editor will never do.`,
+        `- [Roadmap](${SITE_URL}/roadmap): what's built, and what comes next.`,
+      ].join("\n"),
+    },
     // The hand-written skill, at the repo root so `npx skills add` finds it
     // too. Named mail-quilt, it replaces the one Blume would generate.
     skills: "../../skills",
@@ -154,4 +168,14 @@ export default defineConfig({
     radius: "md",
   },
   title: "Mail Quilt",
+  // Counts and sizes the docs pages state, as {{name}}, from the packages.
+  variables: {
+    "block-count": COUNTS.blocks,
+    "block-names": BLOCK_NAMES,
+    "editor-min-height": String(EDITOR_MIN_HEIGHT),
+    "editor-min-width": String(EDITOR_MIN_WIDTH),
+    "email-width": String(EMAIL_WIDTH),
+    "most-columns": COUNTS.mostColumns,
+    "package-count": COUNTS.packages,
+  },
 });

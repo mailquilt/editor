@@ -1,7 +1,32 @@
 ---
 // The Playground: the Shell on a page of its own, with nothing to install.
+import Playground from "../components/playground.tsx";
 import SitePage from "../components/site-page.astro";
-import Playground from "../islands/Playground.tsx";
+import {
+  EDITOR_MIN_HEIGHT,
+  EDITOR_MIN_WIDTH,
+  SHELL_HEADER_MIN_HEIGHT,
+} from "../site/editor-facts.ts";
+
+/*
+ * Where there's room to edit, the Shell's height leaves room for the 4rem docs
+ * header and the space around it, so it fits the window once scrolled to, and
+ * the email scrolls inside it. It's never shorter than the editor and the
+ * Shell's header, or the Shell would scroll by a few pixels. Narrower than the
+ * editor needs, as on a phone, the Shell only shows a notice, so it takes that
+ * notice's height. The note held in its place until it arrives is as tall.
+ *
+ * Written here, as a container query can't read a custom property.
+ */
+const roomToEdit = `
+  @container (width >= ${EDITOR_MIN_WIDTH}px) {
+    .playground-shell,
+    .playground-waiting {
+      height: calc(100dvh - 6rem);
+      min-height: ${EDITOR_MIN_HEIGHT + SHELL_HEADER_MIN_HEIGHT}px;
+    }
+  }
+`;
 ---
 
 <SitePage
@@ -18,33 +43,18 @@ import Playground from "../islands/Playground.tsx";
     </p>
   </div>
   <div class="editor">
-    <p class="waiting site-muted">
+    <p class="playground-waiting site-muted">
       The Playground is loading. If it doesn't appear, it needs JavaScript
       turned on.
     </p>
     <Playground client:only="react" />
   </div>
+  <style is:inline set:html={roomToEdit}></style>
 </SitePage>
 
 <style>
   .intro {
     padding: 1.25rem 1rem 0;
-  }
-
-  /* The site's own editor wears the site's color, set with theme tokens. */
-  .editor :global(mail-quilt-shell) {
-    --mq-color-accent: var(--site-accent);
-    --mq-color-accent-strong: var(--site-accent-hover);
-    --mq-color-accent-soft: color-mix(
-      in srgb,
-      var(--site-accent) 10%,
-      transparent
-    );
-    --mq-color-outline-hover: color-mix(
-      in srgb,
-      var(--site-accent) 45%,
-      transparent
-    );
   }
 
   /* Whole pixels, so the editor below starts on one. Its tests measure it. */
@@ -67,15 +77,18 @@ import Playground from "../islands/Playground.tsx";
   /*
    * The Shell only arrives once its script has run. Until then this note is a
    * slot where it goes, as tall as the Shell and with the same room around
-   * it, so the page doesn't jump. It stays if the script never runs.
-   * Narrower than the editor, the Shell is a notice of no set height.
+   * it, so the page doesn't jump. It stays if the script never runs, and a
+   * note of the same look says so if the editor's code doesn't load.
    */
-  .waiting {
+  .playground-waiting {
     display: none;
   }
 
-  .editor:has(> :global(astro-island:empty)) > .waiting {
+  .editor:has(> :global(astro-island:empty)) > .playground-waiting,
+  .editor :global(.playground-failed) {
     display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
     align-items: center;
     justify-content: center;
     margin-block: 1rem;
@@ -85,35 +98,9 @@ import Playground from "../islands/Playground.tsx";
     text-align: center;
   }
 
-  @container (width >= 640px) {
-    .waiting {
-      height: calc(100dvh - 6rem);
-      min-height: calc(600px + 48px);
-    }
-  }
-
   .editor :global(.playground) {
     container-type: inline-size;
     padding: 1rem 0;
-  }
-
-  /*
-   * The Shell's height leaves room for the 4rem docs header and the space around
-   * it, so it fits the window once scrolled to, and the email scrolls inside it.
-   * Never shorter than the editor's own 600px and the Shell's 48px header, or the
-   * Shell would scroll by a few pixels. Narrower than the 640px the editor needs,
-   * as on a phone, it only shows a notice, so it takes that notice's height.
-   */
-  .editor :global(.playground-shell) {
-    height: calc(100dvh - 6rem);
-    min-height: calc(600px + 48px);
-  }
-
-  @container (width < 640px) {
-    .editor :global(.playground-shell) {
-      height: auto;
-      min-height: 0;
-    }
   }
 
   @media (min-width: 60rem) {

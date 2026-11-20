@@ -167,7 +167,7 @@ kbd {
 
 /*
  * The dot from the logo's "i": on the open page in the sidebar, and on this
- * project's own row on the comparison page, which places it.
+ * project's own row on the comparison page.
  */
 [data-blume-nav-tree] .blume-nav-link[aria-current="page"]::before,
 .ours::before {
@@ -177,6 +177,13 @@ kbd {
   height: 0.375rem;
   border-radius: 0.09375rem;
   background: var(--site-accent);
+}
+
+/* In the table, before the project's name, where the sidebar's is a flex item. */
+.ours::before {
+  display: inline-block;
+  margin-inline-end: 0.5rem;
+  vertical-align: 0.125rem;
 }
 
 [data-blume-nav-tree] .blume-nav-heading {

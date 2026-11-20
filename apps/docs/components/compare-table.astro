@@ -1,0 +1,75 @@
+---
+// A table of editors set side by side, which scrolls where it's too wide, and
+// when and where its lines about other editors were read.
+import { ISSUES } from "../site/project.ts";
+
+interface Props {
+  /** Who the lines were read about, such as "Unlayer" or "another editor". */
+  about: string;
+  /** The day each line about another editor was read from its own pages. */
+  checked: string;
+  /** The heading's id, which also names the scrolling region. */
+  id: string;
+  /** How narrow the table can get before it scrolls, such as "40rem". */
+  minWidth: string;
+  /** The pages each line was read from, when they aren't linked in the table. */
+  sources?: { href: string; label: string }[];
+  title: string;
+}
+
+const { about, checked, id, minWidth, sources = [], title } = Astro.props;
+---
+
+<section class="site-section">
+  <div class="site-wrap">
+    <h2 class="site-h2" id={id}>{title}</h2>
+    <!-- Focusable, so the keyboard can scroll it where it's too wide. -->
+    <div
+      aria-labelledby={id}
+      class="site-scroll compare-table"
+      role="region"
+      style={`--table-min-width: ${minWidth}`}
+      tabindex="0">
+      <slot />
+    </div>
+    <p class="site-small site-muted site-measure checked">
+      Each line about {about} was read from its own site, docs or code on{" "}
+      {checked}{
+        sources.length > 0 ? (
+          <>
+            {": "}
+            {sources.map((source, index) => (
+              <>
+                <a class="site-link" href={source.href}>
+                  {source.label}
+                </a>
+                {index < sources.length - 1 ? ", " : ""}
+              </>
+            ))}
+          </>
+        ) : null
+      }. Prices and features change, so check theirs before you decide. If a
+      line here is wrong, <a class="site-link" href={ISSUES}>open an issue</a> and
+      it will be fixed.
+    </p>
+    <slot name="after" />
+  </div>
+</section>
+
+<style>
+  .compare-table {
+    margin-top: 2rem;
+  }
+
+  .compare-table :global(table) {
+    min-width: var(--table-min-width);
+  }
+
+  .compare-table :global(tbody th) {
+    white-space: nowrap;
+  }
+
+  .checked {
+    margin-top: 1.5rem;
+  }
+</style>

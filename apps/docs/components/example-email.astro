@@ -21,83 +21,83 @@ const Heading = level;
 ---
 
 <section class="site-section example">
-        <div class="example-copy">
-          <Heading class={level === "h1" ? "site-h1" : "site-h2"}>
-            {href ? (
-              <a class="site-link" href={href}>
-                {title ?? name}
-              </a>
-            ) : (
-              (title ?? name)
-            )}
-          </Heading>
-          <p>{text}</p>
+  <div class="example-copy">
+    <Heading class={level === "h1" ? "site-h1" : "site-h2"}>
+      {href ? (
+        <a class="site-link" href={href}>
+          {title ?? name}
+        </a>
+      ) : (
+        (title ?? name)
+      )}
+    </Heading>
+    <p>{text}</p>
 
-          <dl class="site-facts details">
-            <div>
-              <dt>Its shape</dt>
-              <dd>
-                {/* A line for each Row, a block for each Column. */}
-                <span aria-hidden="true" class="shape">
-                  {document.rows.map(({ columns }) => (
-                    <span>
-                      {columns.map(({ width }) => (
-                        <span style={`flex:${width}`} />
-                      ))}
-                    </span>
-                  ))}
-                </span>
-                <span class="site-small site-muted">{emailShape(document)}</span>
-              </dd>
-            </div>
-            <div>
-              <dt>Its HTML</dt>
-              <dd class="site-small site-muted">{htmlSize(html)}</dd>
-            </div>
-            <div>
-              <dt>Merge Tags</dt>
-              <dd class="tags site-code">
-                {tags.map((tag) => (
-                  <span class="t">{tag}</span>
+    <dl class="site-facts details">
+      <div>
+        <dt>Its shape</dt>
+        <dd>
+          {/* A line for each Row, a block for each Column. */}
+          <span aria-hidden="true" class="shape">
+            {document.rows.map(({ columns }) => (
+              <span>
+                {columns.map(({ width }) => (
+                  <span style={`flex:${width}`} />
                 ))}
-              </dd>
-            </div>
-          </dl>
+              </span>
+            ))}
+          </span>
+          <span class="site-small site-muted">{emailShape(document)}</span>
+        </dd>
+      </div>
+      <div>
+        <dt>Its HTML</dt>
+        <dd class="site-small site-muted">{htmlSize(html)}</dd>
+      </div>
+      <div>
+        <dt>Merge Tags</dt>
+        <dd class="tags site-code">
+          {tags.map((tag) => (
+            <span class="t">{tag}</span>
+          ))}
+        </dd>
+      </div>
+    </dl>
 
-          <div class="site-actions">
-            <a
-              class="site-button"
-              data-tone="quiet"
-              download={`${slug}.json`}
-              href={download}
-            >
-              Download the JSON
-            </a>
-            <a
-              class="site-button"
-              data-tone="quiet"
-              download={`${slug}.html`}
-              href={htmlDownload}
-            >
-              Download the HTML
-            </a>
-          </div>
-        </div>
-        <div class="example-preview">
-          {/* Scripts stay off. Same-origin only lets this page measure the email's height. */}
-          <iframe
-            data-example
-            loading="lazy"
-            sandbox="allow-same-origin"
-            srcdoc={preview}
-            title={`The ${name} email`}
-          />
-          <p class="site-small site-muted">
-            Shown as a reader would get it, with sample values in place of the
-            Merge Tags.
-          </p>
-        </div>
-      </section>
+    <div class="site-actions">
+      <a
+        class="site-button"
+        data-tone="quiet"
+        download={`${slug}.json`}
+        href={download}
+      >
+        Download the JSON
+      </a>
+      <a
+        class="site-button"
+        data-tone="quiet"
+        download={`${slug}.html`}
+        href={htmlDownload}
+      >
+        Download the HTML
+      </a>
+    </div>
+  </div>
+  <div class="example-preview">
+    {/* Scripts stay off. Same-origin only lets this page measure the email's height. */}
+    <iframe
+      data-example
+      loading="lazy"
+      sandbox="allow-same-origin"
+      srcdoc={preview}
+      title={`The ${name} email`}
+    />
+    <p class="site-small site-muted">
+      Shown as a reader would get it, with sample values in place of the
+      Merge Tags.
+    </p>
+  </div>
+</section>
 
 <script>
   /**
