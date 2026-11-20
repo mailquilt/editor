@@ -18,6 +18,7 @@ import {
 import { Decoration, DecorationSet, EditorView } from "prosemirror-view";
 
 import { proseMirrorKeys } from "./key-map.js";
+import { pastedHtmlParser, withoutStyles } from "./pasted-html.js";
 import { createTextCommands } from "./text-commands.js";
 import type { TextFormats, ToggleableMark } from "./text-commands.js";
 import type { TextSchema } from "./text-schema.js";
@@ -220,6 +221,7 @@ export const createTextBlockView = ({
       role: "textbox",
       tabindex: "0",
     },
+    clipboardParser: pastedHtmlParser(schema),
     decorations: ({ doc }) => {
       const paragraphs: Decoration[] = [];
       let offset = 0;
@@ -316,6 +318,7 @@ export const createTextBlockView = ({
         slice.openStart,
         slice.openEnd
       ),
+    transformPastedHTML: withoutStyles,
   });
 
   /** Runs a command on the text, then puts focus back in it. */

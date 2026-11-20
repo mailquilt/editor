@@ -366,8 +366,9 @@ test("in forced colors, a dropdown's arrow stands out from its field", async ({
     .getByLabel("Font", { exact: true });
 
   const [arrow, field] = await font.evaluate((select) => [
-    getComputedStyle(select.parentElement as Element, "::after")
-      .backgroundColor,
+    // The arrow's icon draws in its text color.
+    getComputedStyle(select.parentElement?.querySelector("svg") as Element)
+      .color,
     getComputedStyle(select).backgroundColor,
   ]);
 

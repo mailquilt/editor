@@ -57,4 +57,4 @@ MJML, the library that writes the HTML, loads the first time a request renders a
 
 ## Content Security Policy
 
-If your app sets a Content Security Policy, Preview needs `'unsafe-inline'` in `style-src`. [Content Security Policy](./api#content-security-policy) explains why, and what happens without it.
+If your app sets a Content Security Policy, Preview needs `'unsafe-inline'` in `style-src`, and `img-src` has to allow the sites your emails' images are on. [Content Security Policy](./api#content-security-policy) explains why, and what happens without them.

@@ -89,6 +89,14 @@ Content-Security-Policy: style-src 'self' 'unsafe-inline'
 
 Preview shows the email in a sandboxed iframe, which follows your page's policy, and emails rely on inline styles. Without it, Preview shows the email without its styling. The canvas and `exportHtml()` aren't affected, and the exported HTML is unchanged.
 
+The canvas and Preview show each Image Block from its URL, so if your policy has `img-src`, or a `default-src` without one, it has to allow the sites your emails' images are on. To allow any image over HTTPS:
+
+```text
+Content-Security-Policy: img-src 'self' https:
+```
+
+An image it blocks doesn't show on the canvas or in Preview, and the exported HTML is unchanged. The editor's own icons and arrows are part of the page, so it needs no other image source, such as `data:`.
+
 A page using the [CDN build](./html) also needs `script-src` to allow the folder the build is in, because the build is several files. The path must end in `/`:
 
 ```text
