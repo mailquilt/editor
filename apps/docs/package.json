@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "blume build",
+    "build": "node site/full-history.ts && blume build",
     "dev": "blume dev",
     "check-types": "blume check && tsc --noEmit",
     "test": "playwright test"

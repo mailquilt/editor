@@ -3,6 +3,12 @@
 import { ROW_LAYOUTS } from "@mailquilt/core";
 import { withBase } from "blume/components/islands/base-path.ts";
 
+import {
+  BLOCK_NAMES,
+  COUNTS,
+  MOST_COLUMNS,
+} from "../../site/package-facts.ts";
+
 /** The layout the Row starts with. */
 const FIRST_LAYOUT = "33/67";
 
@@ -14,18 +20,17 @@ const widthsOf = (layout: string) => layout.split("/");
     <div class="site-split">
       <h2 class="site-h2">What people do in the editor</h2>
       <p class="site-lead">
-        They build an email from six Blocks: Text, Heading, Image, Button,
-        Divider and Spacer. Every Block and Row has settings, and so does the
-        email as a whole.
+        They build an email from {COUNTS.blocks} Blocks: {BLOCK_NAMES}. Every
+        Block and Row has settings, and so does the email as a whole.
       </p>
     </div>
 
     <div class="site-card home-layouts" data-home-layouts>
       <div class="home-layouts-copy">
-        <h3 class="site-h3">Rows of one to four Columns</h3>
+        <h3 class="site-h3">Rows of one to {COUNTS.mostColumns} Columns</h3>
         <p class="site-small">
-          A Row takes one of six layouts, and that's the whole grid. Each is
-          a layout MJML knows how to build for email clients.
+          A Row takes one of {COUNTS.layouts} layouts, and that's the whole
+          grid. Each is a layout MJML knows how to build for email clients.
         </p>
         <div aria-label="Row layout" class="home-layout-picker" role="group">
           {
@@ -50,10 +55,13 @@ const widthsOf = (layout: string) => layout.split("/");
         <div class="home-row-columns">
           <span class="home-row-tag">Row</span>
           {
-            [0, 1, 2, 3].map((index) => {
+            Array.from({ length: MOST_COLUMNS }, (_, index) => {
               const width = widthsOf(FIRST_LAYOUT)[index];
               return (
-                <span class="home-column" style={`flex:${width ?? 0}`}>
+                <span
+                  class="home-column"
+                  data-testid="row-demo-column"
+                  style={`flex:${width ?? 0}`}>
                   <span>{width ?? ""}</span>
                 </span>
               );

@@ -17,14 +17,14 @@ Put `<mail-quilt>` in a page of your own when the editor sits among other things
 
 `<mail-quilt>` takes the width of the space you give it. Inside, the email sits on a workspace, with the side panel docked on its right.
 
-- **The side panel sits beside the email** while the editor is at least the email's width plus 400px. The email is 600px wide unless someone changes it in Settings, so that's 1000px. Any narrower, and the panel moves below the email rather than squeeze it.
-- **Below 640px, there's no room to edit.** The editor shows a notice in its place, which still opens the Preview. It comes back, with the same email, once there's room again.
+- **The side panel sits beside the email** while the editor is at least the email's width plus 400px. The email is {{email-width}}px wide unless someone changes it in Settings, so that's 1000px. Any narrower, and the panel moves below the email rather than squeeze it.
+- **Below {{editor-min-width}}px, there's no room to edit.** The editor shows a notice in its place, which still opens the Preview. It comes back, with the same email, once there's room again.
 
 So give the editor the full width of your content area. Don't put it in a narrow column beside a sidebar of your own.
 
 ## Height
 
-The editor is at least 600px tall, and grows with the email. It fills any height you give it, but never shrinks below the email, so the page scrolls rather than the editor. As it does, the side panel stays in view at the top of the window, and the toolbar with Undo, Redo and Preview stays at the bottom.
+The editor is at least {{editor-min-height}}px tall, and grows with the email. It fills any height you give it, but never shrinks below the email, so the page scrolls rather than the editor. As it does, the side panel stays in view at the top of the window, and the toolbar with Undo, Redo and Preview stays at the bottom.
 
 That means:
 
@@ -62,7 +62,7 @@ The [quick start](./quick-start) shows how to open an email in it, save it and e
 
 ## Check it before you ship
 
-- **Narrow the window** below 640px and back. The notice should show, then the editor with the same email.
+- **Narrow the window** below {{editor-min-width}}px and back. The notice should show, then the editor with the same email.
 - **Use it from the keyboard.** Tab into the editor, select a Block, move it with Alt and the arrow keys, and edit its text. The [keyboard page](./keyboard) lists every key.
 - **With your own colors, check contrast**: text against the surface and workspace, the selected Block's tag, focus rings and the tooltip.
 - **Open the Preview**, and export the HTML once. If your page has a Content Security Policy, [Content Security Policy](./api#content-security-policy) says what Preview needs.

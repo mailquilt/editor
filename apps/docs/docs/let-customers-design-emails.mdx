@@ -22,7 +22,7 @@ Choose the [Shell](./shell) for a whole editor page, with Export and Import butt
 
 - **Make it look like your app.** The editor's colors, font, spacing and corners are [theme tokens](./theme-the-editor), so customers see your brand around the email. The email itself keeps the colors and font the customer chose for it.
 - **It's white-label as it comes.** The editor shows no Mail Quilt name or logo, and neither does the HTML it exports.
-- **Give it room.** Editing needs the editor to be at least 640 pixels wide. On a phone, customers see a notice and can still preview the email. The [width](./design-your-editor-page#width) section has the details.
+- **Give it room.** Editing needs the editor to be at least {{editor-min-width}} pixels wide. On a phone, customers see a notice and can still preview the email. The [width](./design-your-editor-page#width) section has the details.
 - **It works from the keyboard.** Anything a customer can do by dragging, they can also do from the keyboard. [Keyboard and screen readers](./keyboard) lists the keys and what a screen reader announces.
 
 ## Keep each email with the customer
@@ -57,7 +57,7 @@ Keep the JSON as the email, and make the HTML when you send, with `renderEmail()
 
 ## Before you offer it to customers
 
-- **The editor has six Blocks:** Text, Heading, Image, Button, Divider and Spacer, in Rows of one to four Columns.
+- **The editor has {{block-count}} Blocks:** {{block-names}}, in Rows of one to {{most-columns}} Columns.
 - **Mail Quilt is at version `0.x`,** so its API can still change between releases. Saved emails are brought up to date when they load.
 - **Classic Outlook for Windows shows the HTML with a few limits,** such as black-and-white emoji. [Tested email clients](./email-clients) lists every client it was checked in.
 - **One person builds Mail Quilt,** in the open. [Why it exists](/why) says what that means for the roadmap.

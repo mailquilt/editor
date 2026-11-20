@@ -3,6 +3,7 @@
 import PageLayout from "blume/components/layout/PageLayout.astro";
 import data from "blume:data";
 
+import { pageLastModified } from "../site/last-modified.ts";
 import { SOCIAL_IMAGE } from "../site/project.ts";
 import Footer from "./footer.astro";
 import "../styles/site.css";
@@ -25,6 +26,8 @@ const {
   noindex = false,
   title,
 } = Astro.props;
+// Read by search engines from the page's structured data.
+const lastModified = pageLastModified(Astro.url.pathname);
 const { config, navigation } = data;
 ---
 
@@ -34,6 +37,7 @@ const { config, navigation } = data;
   banner={config.banner}
   favicon={config.favicon}
   fontCssVars={data.fontCssVars}
+  lastModified={lastModified}
   logo={config.logo}
   navigation={hideCta ? { ...navigation, cta: undefined } : navigation}
   noindex={noindex}

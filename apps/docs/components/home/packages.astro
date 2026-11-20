@@ -1,6 +1,8 @@
 ---
-// The four packages, laid out as the logo's grid, and the three ways to use them.
+// The packages, laid out as the logo's grid, and the three ways to use them.
 import { withBase } from "blume/components/islands/base-path.ts";
+
+import { capitalized, COUNTS } from "../../site/package-facts.ts";
 
 /** In the order of the logo's grid: top left, top right, bottom left, bottom right. */
 const packages = [
@@ -64,7 +66,9 @@ const levels = [
 <section class="site-section">
   <div class="site-wrap">
     <div class="site-split">
-      <h2 class="site-h2">Four packages. Take as much as you need.</h2>
+      <h2 class="site-h2">
+        {capitalized(COUNTS.packages)} packages. Take as much as you need.
+      </h2>
       <p class="site-lead">
         The editor above is the top layer. Under it are the document model and
         the renderer, and you can use those without it. Choose a package to
@@ -75,7 +79,7 @@ const levels = [
     <div class="home-packages">
       <!-- The logo's own grid, with a package in each place. -->
       <div
-        aria-label="The four packages"
+        aria-label={`The ${COUNTS.packages} packages`}
         class="home-pieces"
         data-home-packages
         role="tablist"
@@ -104,7 +108,7 @@ const levels = [
         }
       </div>
 
-      <div class="home-panels">
+      <div>
         {
           packages.map(({ href, id, link, needs, when }) => (
             <div

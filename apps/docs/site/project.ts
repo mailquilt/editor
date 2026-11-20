@@ -1,4 +1,5 @@
 // Facts about the project that more than one page states.
+import { capitalized, COUNTS } from "./package-facts";
 
 export const DESCRIPTION =
   "A set of free, MIT-licensed packages for adding a drag-and-drop email editor to any web app, with the document model and renderer it's built on.";
@@ -18,6 +19,9 @@ export const AUTHOR = {
 
 export const NPM = "https://www.npmjs.com/org/mailquilt";
 
+/** The day the compare page's lines about other editors were read from their own pages. */
+export const COMPARED = "16 November 2026";
+
 /** The logo kit's card, for links shared on social sites. */
 export const SOCIAL_IMAGE = {
   alt: "Mail Quilt. Open-source packages for building an email editor into your app.",
@@ -32,10 +36,9 @@ export const SOCIAL_IMAGE = {
  */
 export const MAIL_QUILT = {
   account: "None.",
-  blocks:
-    "Six Blocks, no template library, no image upload and no editing together.",
+  blocks: `${capitalized(COUNTS.blocks)} Blocks, no template library, no image upload and no editing together.`,
   browsers: "Its tests run in Chromium, Firefox and WebKit, Safari's engine.",
-  build: "Nothing: the editor and its panel come ready, with six Blocks.",
+  build: `Nothing: the editor and its panel come ready, with ${COUNTS.blocks} Blocks.`,
   cost: "MIT. Free, with no paid plan.",
   frameworks:
     "Any framework, as a Web Component, and a React component for React 19.",
@@ -57,7 +60,7 @@ export interface CompareRow {
 }
 
 export const REASONS = {
-  fewBlocks: "Six Blocks are enough for the emails you send.",
+  fewBlocks: `${capitalized(COUNTS.blocks)} Blocks are enough for the emails you send.`,
   keyboard:
     "You want everything that can be dragged to work from the keyboard too.",
   noFee:

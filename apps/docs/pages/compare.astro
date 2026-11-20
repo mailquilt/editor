@@ -1,13 +1,14 @@
 ---
 // Mail Quilt beside the other ways to get an email editor into an app.
 // Every line about another project was read from its own site or repository
-// on the date below. Check them again before changing that date.
+// on COMPARED. Check them again before changing that date.
 import { withBase } from "blume/components/islands/base-path.ts";
 
+import ChooseMailQuilt from "../components/choose-mail-quilt.astro";
+import CompareTable from "../components/compare-table.astro";
 import SitePage from "../components/site-page.astro";
-import { ISSUES, MAIL_QUILT, REASONS } from "../site/project.ts";
-
-const CHECKED = "16 November 2026";
+import { COUNTS } from "../site/package-facts.ts";
+import { COMPARED, MAIL_QUILT, REASONS } from "../site/project.ts";
 
 const tools = [
   {
@@ -101,7 +102,7 @@ const elsewhere = [
     title: "Your emails must look exactly right in classic Outlook",
   },
   {
-    text: "Mail Quilt has six Blocks, no template library and no image upload. The commercial editors have many more Blocks and ready-made templates.",
+    text: `Mail Quilt has ${COUNTS.blocks} Blocks, no template library and no image upload. The commercial editors have many more Blocks and ready-made templates.`,
     title: "You want templates and a large set of Blocks",
   },
   {
@@ -141,72 +142,60 @@ const reasons = [
     </div>
   </header>
 
-  <section class="site-section">
-    <div class="site-wrap">
-      <h2 class="site-h2" id="at-a-glance">At a glance</h2>
-      <!-- Focusable, so the keyboard can scroll it where it's too wide. -->
-      <div
-        aria-labelledby="at-a-glance"
-        class="site-scroll glance"
-        role="region"
-        tabindex="0">
-        <table class="site-table">
-          <thead>
+  <CompareTable
+    about="another editor"
+    checked={COMPARED}
+    id="at-a-glance"
+    minWidth="54rem"
+    title="At a glance">
+    <table class="site-table">
+      <thead>
+        <tr>
+          <th scope="col">Editor</th>
+          <th scope="col">What it is</th>
+          <th scope="col">License and cost</th>
+          <th scope="col">Where it runs</th>
+          <th scope="col">Works with</th>
+        </tr>
+      </thead>
+      <tbody>
+        {
+          tools.map(({ cost, href, kind, name, runs, works }) => (
             <tr>
-              <th scope="col">Editor</th>
-              <th scope="col">What it is</th>
-              <th scope="col">License and cost</th>
-              <th scope="col">Where it runs</th>
-              <th scope="col">Works with</th>
+              <th scope="row">
+                {href ? (
+                  <a class="site-link" href={href}>
+                    {name}
+                  </a>
+                ) : (
+                  <span class="ours">{name}</span>
+                )}
+              </th>
+              <td>{kind}</td>
+              <td>{cost}</td>
+              <td>{runs}</td>
+              <td>{works}</td>
             </tr>
-          </thead>
-          <tbody>
-            {
-              tools.map(({ cost, href, kind, name, runs, works }) => (
-                <tr>
-                  <th scope="row">
-                    {href ? (
-                      <a class="site-link" href={href}>
-                        {name}
-                      </a>
-                    ) : (
-                      <span class="ours">{name}</span>
-                    )}
-                  </th>
-                  <td>{kind}</td>
-                  <td>{cost}</td>
-                  <td>{runs}</td>
-                  <td>{works}</td>
-                </tr>
-              ))
-            }
-          </tbody>
-        </table>
-      </div>
-      <p class="site-small site-muted site-measure checked">
-        Each line about another project was read from its own site or repository
-        on {CHECKED}. Prices and features change, so check theirs before you
-        decide. If a line here is wrong,{" "}
-        <a class="site-link" href={ISSUES}>open an issue</a> and it will be
-        fixed.
-      </p>
-      <p class="site-measure checked">
-        Row by row:{" "}
-        <a class="site-link" href={withBase("/compare/unlayer")}
-          >Mail Quilt and Unlayer</a
-        >,{" "}
-        <a class="site-link" href={withBase("/compare/beefree")}
-          >Mail Quilt and Beefree SDK</a
-        >,{" "}
-        <a class="site-link" href={withBase("/compare/grapesjs")}
-          >Mail Quilt and GrapesJS</a
-        >, and{" "}
-        <a class="site-link" href={withBase("/compare/easy-email")}
-          >Mail Quilt and Easy Email</a
-        >.
-      </p>
-    </div>
-  </section>
+          ))
+        }
+      </tbody>
+    </table>
+    <p class="site-measure row-by-row" slot="after">
+      Row by row:{" "}
+      <a class="site-link" href={withBase("/compare/unlayer")}
+        >Mail Quilt and Unlayer</a
+      >,{" "}
+      <a class="site-link" href={withBase("/compare/beefree")}
+        >Mail Quilt and Beefree SDK</a
+      >,{" "}
+      <a class="site-link" href={withBase("/compare/grapesjs")}
+        >Mail Quilt and GrapesJS</a
+      >, and{" "}
+      <a class="site-link" href={withBase("/compare/easy-email")}
+        >Mail Quilt and Easy Email</a
+      >.
+    </p>
+  </CompareTable>
 
   <section class="site-section">
     <div class="site-wrap">
@@ -222,49 +211,23 @@ const reasons = [
         ))
       }
     </div>
-  </section>
-
-  <section class="site-section">
-    <div class="site-wrap site-split">
-      <div>
-        <h2 class="site-h2">Choose Mail Quilt when</h2>
-        <div class="site-actions">
-          <a class="site-button" data-tone="accent" href={withBase("/playground")}
-            >Try the Playground</a
-          >
-          <a class="site-button" data-tone="quiet" href={withBase("/why")}
-            >Read why it exists</a
-          >
-        </div>
-      </div>
-      <ul class="site-list">
-        {reasons.map((reason) => <li>{reason}</li>)}
-      </ul>
+    <div class="site-wrap">
+      <p class="site-small site-muted site-measure checked">
+        What each editor offers was read from its own site, docs or code on{" "}
+        {COMPARED}.
+      </p>
     </div>
   </section>
+
+  <ChooseMailQuilt
+    next={{ href: "/why", label: "Read why it exists" }}
+    reasons={reasons}
+  />
 </SitePage>
 
 <style>
-  .glance {
-    margin-top: 2rem;
-  }
-
-  .glance table {
-    min-width: 54rem;
-  }
-
-  .glance tbody th {
-    white-space: nowrap;
-  }
-
+  .row-by-row,
   .checked {
     margin-top: 1.5rem;
-  }
-
-  /* The dot from the logo's "i", drawn in theme.css, marks this project's row. */
-  .ours::before {
-    display: inline-block;
-    margin-inline-end: 0.5rem;
-    vertical-align: 0.125rem;
   }
 </style>

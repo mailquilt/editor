@@ -5,19 +5,9 @@ import { loadDocument } from "@mailquilt/core";
 import { MERGE_TAG } from "@mailquilt/core/internal";
 import { renderEmail } from "@mailquilt/renderer";
 
+// The one the sending page teaches, which escapes each value as it fills it.
+import { fillMergeTags } from "../docs/_code/fill-merge-tags.js";
 import { examples } from "./examples";
-
-/** What a sending service does: puts a reader's own values where the tags are. */
-const fill = (html: string, values: Record<string, string | undefined>) => {
-  let filled = html;
-  for (const [tag, value] of Object.entries(values)) {
-    if (value !== undefined) {
-      // A function, so a `$` in the value, as in a price, is taken as written.
-      filled = filled.replaceAll(`{{${tag}}}`, () => value);
-    }
-  }
-  return filled;
-};
 
 const dataUrl = (type: string, text: string) =>
   `data:${type};charset=utf-8,${encodeURIComponent(text)}`;
@@ -46,7 +36,7 @@ export const renderedExamples = await Promise.all(
       download: dataUrl("application/json", json),
       html,
       htmlDownload: dataUrl("text/html", html),
-      preview: fill(html, sample),
+      preview: fillMergeTags(html, sample),
       tags,
     };
   })

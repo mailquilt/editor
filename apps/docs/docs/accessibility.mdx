@@ -5,15 +5,15 @@ seo:
   title: "Accessibility statement: WCAG 2.2 AA for the email editor"
 ---
 
-**The editor partly meets WCAG 2.2 at level AA.** It meets every criterion that applies, except one: below 640 pixels wide, such as at 400% zoom, it can't be edited at all.
+**The editor partly meets WCAG 2.2 at level AA.** It meets every criterion that applies, except one: below {{editor-min-width}} pixels wide, such as at 400% zoom, it can't be edited at all.
 
 This page covers `<mail-quilt>` and `<mail-quilt-shell>`, version 0.2. It makes no claim about the emails people design with them. Those are their authors' content. To make an email accessible, give every Image alt text that says what it shows, and give each Button words that make sense on their own.
 
 ## What doesn't meet AA
 
-**1.4.10 Reflow.** When the editor is narrower than 640 pixels, as at 400% zoom on a 1280-pixel screen, it shows a notice in place of the canvas and the side panel. The email can still be previewed, but not changed.
+**1.4.10 Reflow.** When the editor is narrower than {{editor-min-width}} pixels, as at 400% zoom on a 1280-pixel screen, it shows a notice in place of the canvas and the side panel. The email can still be previewed, but not changed.
 
-WCAG allows content that needs a two-dimensional layout to scroll in both directions, and an email that is 600 pixels wide is that kind of content. The side panel isn't, so its settings should still be reachable at that width. They aren't yet.
+WCAG allows content that needs a two-dimensional layout to scroll in both directions, and an email that is {{email-width}} pixels wide is that kind of content. The side panel isn't, so its settings should still be reachable at that width. They aren't yet.
 
 At 200% zoom on a 1280-pixel screen, the editor has 640 pixels and everything works. The side panel moves below the email.
 

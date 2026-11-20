@@ -2,6 +2,8 @@
 // What to know before relying on it. The table of email clients is on its docs
 // page alone, so it's only ever updated there.
 import { withBase } from "blume/components/islands/base-path.ts";
+
+import { EDITOR_MIN_WIDTH } from "../../site/editor-facts.ts";
 ---
 
 <section class="site-section">
@@ -23,8 +25,8 @@ import { withBase } from "blume/components/islands/base-path.ts";
           component in your app.
         </li>
         <li>
-          Editing needs the editor to be at least 640 pixels wide. On a phone,
-          people can still preview an email.
+          Editing needs the editor to be at least {EDITOR_MIN_WIDTH} pixels
+          wide. On a phone, people can still preview an email.
         </li>
         <li>
           Images are added by URL. There's no upload yet, and no library of

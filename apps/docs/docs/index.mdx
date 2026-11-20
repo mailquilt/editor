@@ -5,7 +5,7 @@ seo:
   title: "Mail Quilt docs: an open-source email editor to embed in your app"
 ---
 
-Mail Quilt is four npm packages for adding a drag-and-drop email editor to a web app. They're free and MIT-licensed, and they run in your app, with no service to sign up for.
+Mail Quilt is {{package-count}} npm packages for adding a drag-and-drop email editor to a web app. They're free and MIT-licensed, and they run in your app, with no service to sign up for.
 
 ## What it is
 
@@ -15,14 +15,14 @@ There are three ways in, from the most done for you to the least:
 - **The editor** is the `<mail-quilt>` element, or `MailQuilt` in React: the canvas and the side panel. You build your own page around it.
 - **The core and the renderer** are the email as data, the Commands that change it, and the HTML. The editor is built on them, and you can [build on them too](./change-emails-in-code).
 
-Most of these docs are about the editor, because that's where most apps start. [Packages](./packages) says what each of the four is for.
+Most of these docs are about the editor, because that's where most apps start. [Packages](./packages) says what each one is for.
 
 ## What people can do in the editor
 
 Add `<mail-quilt>` to a page, and the people using your app can design emails without writing HTML:
 
-- Build an email from Text, Heading, Image, Button, Divider and Spacer Blocks.
-- Lay it out in Rows of one to four Columns.
+- Build an email from {{block-names}} Blocks.
+- Lay it out in Rows of one to {{most-columns}} Columns.
 - Drag Blocks in from the side panel, drag them to reorder them or move them to another Column, and drag Rows to reorder them. Everything they can do by dragging, they can also do with the keyboard.
 - Make text bold, italic or underlined, add links, and write Merge Tags such as `{{first_name}}`.
 - Change the settings of each Block and Row, and of the email as a whole.
@@ -50,7 +50,7 @@ The editor doesn't send email, store emails for you, or run a server. Its packag
 
 - Mail Quilt is at version `0.x`, so its API can still change between releases.
 - Classic Outlook for Windows shows the exported HTML with a few limits. The [tested email clients](./email-clients) page lists them, and every client it was checked in.
-- Editing needs the editor to be at least 640 pixels wide. When it's narrower, as on a phone, it shows a notice instead, and the email can still be previewed.
+- Editing needs the editor to be at least {{editor-min-width}} pixels wide. When it's narrower, as on a phone, it shows a notice instead, and the email can still be previewed.
 
 ## Where to go next
 
@@ -71,7 +71,7 @@ The editor doesn't send email, store emails for you, or run a server. Its packag
     The agent skill, and Markdown copies of these docs.
   </Card>
   <Card title="Packages" href="/docs/packages">
-    The four packages, and which one to install.
+    The {{package-count}} packages, and which one to install.
   </Card>
   <Card title="Document format" href="/docs/document-format">
     What a saved email looks like, and what the editor accepts.

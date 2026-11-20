@@ -385,6 +385,8 @@ export const examples = [
       workspace_image_url: art.workspace,
     },
     slug: "welcome",
+    /** What the email is, for its page's description. */
+    summary: "a first email after sign-up",
     text: "A first email after sign-up: a greeting, one button, a picture of what's waiting, and a Row of three Columns that sets out what to do next.",
   },
   {
@@ -404,6 +406,7 @@ export const examples = [
       total: "$58.00",
     },
     slug: "receipt",
+    summary: "an order confirmation",
     text: "An order confirmation. Each thing bought is a Row split 33 / 67, with its picture beside its name and price, and the total is a tinted Row split 67 / 33.",
   },
   {
@@ -418,6 +421,7 @@ export const examples = [
       table_image_url: art.table,
     },
     slug: "product-update",
+    summary: "a monthly newsletter",
     text: "A monthly newsletter. The lead story gets a Row to itself, and two shorter ones share a Row split 50 / 50, each under its own picture.",
   },
 ];

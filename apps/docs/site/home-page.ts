@@ -3,14 +3,13 @@
 
 import type { MailQuilt } from "@mailquilt/editor";
 
+import { accentTokens, EDITOR_MIN_WIDTH } from "./editor-facts";
 import { homeEmail } from "./home-email";
 import { emailShape, htmlSize } from "./measure";
 import { paintHtml, paintJson } from "./paint";
 
 /** Narrower than this, the page shows the picture alone. */
 const WIDE_ENOUGH = "(min-width: 44rem)";
-/** `<mail-quilt>` shows only a notice when it's narrower than this. */
-const EDITOR_MIN_WIDTH_PX = 640;
 
 const find = <Element extends HTMLElement>(selector: string) =>
   document.querySelector<Element>(selector);
@@ -119,12 +118,9 @@ const wireThemes = (editor: MailQuilt) => {
   const buttons = findAll<HTMLButtonElement>("[data-home-themes] button");
   const apply = (button: HTMLButtonElement) => {
     const { accent = "", strong = "" } = button.dataset;
-    const tint = (percent: number) =>
-      `color-mix(in srgb, ${accent} ${percent}%, transparent)`;
-    editor.style.setProperty("--mq-color-accent", accent);
-    editor.style.setProperty("--mq-color-accent-strong", strong);
-    editor.style.setProperty("--mq-color-accent-soft", tint(10));
-    editor.style.setProperty("--mq-color-outline-hover", tint(45));
+    for (const [name, value] of Object.entries(accentTokens(accent, strong))) {
+      editor.style.setProperty(name, value);
+    }
     for (const other of buttons) {
       other.setAttribute("aria-pressed", String(other === button));
     }
@@ -208,7 +204,7 @@ const start = () => {
   // A scrollbar can take the stage under the editor's width at the breakpoint.
   if (
     matchMedia(WIDE_ENOUGH).matches &&
-    stage.clientWidth >= EDITOR_MIN_WIDTH_PX
+    stage.clientWidth >= EDITOR_MIN_WIDTH
   ) {
     // oxlint-disable-next-line promise/prefer-await-to-then -- Nothing here waits on the editor.
     startEditor(stage).catch(() => {

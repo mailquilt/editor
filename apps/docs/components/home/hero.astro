@@ -2,9 +2,15 @@
 // The top of the landing page: what Mail Quilt is, and its editor.
 import { withBase } from "blume/components/islands/base-path.ts";
 
+import { DEFAULT_ACCENT } from "../../site/editor-facts.ts";
+import { capitalized, COUNTS } from "../../site/package-facts.ts";
+
 const facts = [
   { name: "License", value: "MIT, with no paid tier" },
-  { name: "Packages", value: "Four, each built on the last" },
+  {
+    name: "Packages",
+    value: `${capitalized(COUNTS.packages)}, each built on the last`,
+  },
   { name: "Works with", value: "Any framework, with a React component" },
   { name: "You keep", value: "Each email, as JSON" },
   { name: "You send", value: "HTML, written by MJML" },
@@ -12,13 +18,13 @@ const facts = [
 ];
 
 /**
- * The editor's accent tokens, as a host would set them. The first matches this
- * site, and the second is what the editor uses when nobody sets any. Its tints
- * are mixed from the accent, as on the Playground.
+ * The editor's accent and its pressed shade, as a host would set them. The
+ * first matches this site, and the second is what the editor uses when nobody
+ * sets any. The page mixes the tints from the accent, as on the Playground.
  */
 const themes = [
   { accent: "#d4380f", name: "Orange, to match this site", strong: "#b5300c" },
-  { accent: "#3355ff", name: "Blue, the editor's default", strong: "#2340d6" },
+  { ...DEFAULT_ACCENT, name: "Blue, the editor's default" },
   { accent: "#7c3aed", name: "Violet", strong: "#6d28d9" },
   { accent: "#16181d", name: "Graphite", strong: "#000000" },
 ];
@@ -96,8 +102,8 @@ const themes = [
       id="editor-themes"
       tabindex="-1">
       <span id="themes-label"
-        >This is the editor, one of the four packages, recolored with theme
-        tokens. Try another:</span
+        >This is the editor, one of the {COUNTS.packages} packages, recolored
+        with theme tokens. Try another:</span
       >
       <div aria-labelledby="themes-label" class="home-swatches" role="group">
         {
