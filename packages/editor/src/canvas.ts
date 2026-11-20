@@ -4,9 +4,9 @@ import { blockLabel, blockStyles, rowStyles } from "@mailquilt/core/internal";
 import { html, nothing } from "lit";
 import { repeat } from "lit/directives/repeat.js";
 
-import { hasRichText, renderBlockContent } from "./block-content.js";
+import { BLOCK_VIEWS, hasRichText, renderBlockContent } from "./block-types.js";
 import { renderFormatBar } from "./format-bar.js";
-import { blockIcon, ICONS } from "./icons.js";
+import { ICONS } from "./icons.js";
 import { keyLabel } from "./key-map.js";
 import type { PanelApi } from "./panel-api.js";
 import { columnLabel, positionLabel } from "./positions.js";
@@ -286,7 +286,7 @@ const renderColumn = (
                       @click=${() =>
                         api.addBlock(type, { columnId: id, index: 0 })}
                     >
-                      ${blockIcon(type)}
+                      ${BLOCK_VIEWS[type].icon}
                     </button>
                   `
                 )}

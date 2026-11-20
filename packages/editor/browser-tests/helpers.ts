@@ -1,4 +1,6 @@
 import { AxeBuilder } from "@axe-core/playwright";
+import type { Block, BlockType } from "@mailquilt/core";
+import type { BlockProps } from "@mailquilt/core/internal";
 import { expect } from "@playwright/test";
 import type { BrowserContext, Locator, Page } from "@playwright/test";
 
@@ -412,11 +414,11 @@ export const blockTypes = async (page: Page, rowIndex = 0, columnIndex = 0) => {
 };
 
 /** An email whose only Row's Columns hold these Blocks, by type. */
-export const openBlocks = async (page: Page, ...columns: string[][]) => {
+export const openBlocks = async (page: Page, ...columns: BlockType[][]) => {
   const email = emailWith([[[]]]);
   const [row] = email.rows;
   if (row) {
-    const props = {
+    const props: { [Type in BlockType]: BlockProps[Type] } = {
       button: { label: "Buy" },
       divider: {},
       heading: {
@@ -440,11 +442,15 @@ export const openBlocks = async (page: Page, ...columns: string[][]) => {
       },
     };
     row.columns = columns.map((types, columnIndex) => ({
-      blocks: types.map((type, blockIndex) => ({
-        id: `${type}-${columnIndex}-${blockIndex}`,
-        props: props[type as keyof typeof props],
-        type,
-      })),
+      blocks: types.map(
+        (type, blockIndex) =>
+          // Safe, as each type's props are found by that type.
+          ({
+            id: `${type}-${columnIndex}-${blockIndex}`,
+            props: props[type],
+            type,
+          }) as Block
+      ),
       id: `column-${columnIndex}`,
       props: {},
       width: 100 / columns.length,

@@ -1,13 +1,18 @@
 import { describe, expect, it } from "vitest";
 
 import { createEditor, createEmail, loadDocument } from "../src/index.js";
-import type { BlocksDocument } from "../src/index.js";
+import type { BlocksDocument, RichTextDocument } from "../src/index.js";
 import { blockSettingsFields, blockStyles } from "../src/internal.js";
-import type { SettingsField } from "../src/internal.js";
+import type { BlockProps, SettingsField } from "../src/internal.js";
 
-const emptyText = { content: [{ type: "paragraph" }], type: "doc" };
+const emptyText: RichTextDocument = {
+  content: [{ type: "paragraph" }],
+  type: "doc",
+};
 
-const withHeading = (props: Record<string, unknown>): BlocksDocument => {
+type Level = BlockProps["heading"]["level"];
+
+const withHeading = (props: BlockProps["heading"]): BlocksDocument => {
   const document = createEmail();
   const column = document.rows[0]?.columns[0];
   if (column) {
@@ -24,7 +29,7 @@ const setup = () => {
 const propsOf = (document: BlocksDocument) =>
   document.rows[0]?.columns[0]?.blocks[0]?.props;
 
-const fontSizeField = (level: number) =>
+const fontSizeField = (level: Level) =>
   blockSettingsFields({
     props: { content: emptyText, level },
     type: "heading",
@@ -94,13 +99,16 @@ describe("Heading Block", () => {
   });
 
   it("refuses a saved email with no content", () => {
-    expect(loadDocument(withHeading({ level: 1 }))).toStrictEqual({
+    // Cast, as its props are wrong on purpose.
+    const props = { level: 1 } as BlockProps["heading"];
+
+    expect(loadDocument(withHeading(props))).toStrictEqual({
       ok: false,
       reason: expect.stringMatching(/blocks\.0\.props\.content: /u),
     });
   });
 
-  it.each([
+  it.each<[Level, string, string]>([
     [1, "32px", "48px"],
     [2, "24px", "36px"],
     [3, "20px", "30px"],

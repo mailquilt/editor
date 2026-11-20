@@ -94,14 +94,7 @@ const nodes = {
   text: { group: "inline" },
 } satisfies Record<string, NodeSpec>;
 
-/**
- * What each Block type's text can hold. Text and Heading hold the same for now,
- * but each has its own, so one can change without the other, such as Text
- * getting lists.
- */
-export const TEXT_SCHEMAS = {
-  heading: new Schema({ marks, nodes }),
-  text: new Schema({ marks, nodes }),
-};
+/** What a Block's text can hold. Each type of Block with text has its own. */
+export const createTextSchema = () => new Schema({ marks, nodes });
 
-export type TextSchema = (typeof TEXT_SCHEMAS)[keyof typeof TEXT_SCHEMAS];
+export type TextSchema = ReturnType<typeof createTextSchema>;

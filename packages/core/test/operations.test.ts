@@ -4,7 +4,7 @@ import type { Block, BlocksDocument, Column, Row } from "../src/index.js";
 import { applyOperation, reverseOperation } from "../src/operations.js";
 import type { Operation } from "../src/operations.js";
 
-const block = (id: string): Block => ({ id, props: {}, type: "text" });
+const block = (id: string): Block => ({ id, props: {}, type: "spacer" });
 
 const email = (): BlocksDocument => ({
   kind: "blocks",

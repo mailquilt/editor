@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import { createEditor, createEmail } from "../src/index.js";
 import type { BlocksDocument } from "../src/index.js";
+import type { BlockProps } from "../src/internal.js";
 
-const withButton = (props: Record<string, unknown>): BlocksDocument => {
+const withButton = (props: BlockProps["button"]): BlocksDocument => {
   const document = createEmail();
   const column = document.rows[0]?.columns[0];
   if (column) {

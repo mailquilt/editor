@@ -4,19 +4,22 @@ import { describe, expect, it } from "vitest";
 import { createEmail, loadDocument } from "../src/index.js";
 import { isAllowedLinkHref } from "../src/internal.js";
 
-const emailWithInline = (...inline: unknown[]) => {
+/** An email whose Text holds `content`, which may be wrong, as loading checks it. */
+const emailWithContent = (content: unknown) => {
   const email = createEmail();
-  const block = email.rows[0]?.columns[0]?.blocks[0];
+  const block: { props: unknown } | undefined =
+    email.rows[0]?.columns[0]?.blocks[0];
   if (block) {
-    block.props = {
-      content: {
-        content: [{ content: inline, type: "paragraph" }],
-        type: "doc",
-      },
-    };
+    block.props = { content };
   }
   return email;
 };
+
+const emailWithInline = (...inline: unknown[]) =>
+  emailWithContent({
+    content: [{ content: inline, type: "paragraph" }],
+    type: "doc",
+  });
 
 const linkTo = (href: string) => ({
   marks: [{ attrs: { href }, type: "link" }],
@@ -81,16 +84,10 @@ describe("limited rich text", () => {
   });
 
   it("refuses anything but paragraphs at the top level", () => {
-    const email = createEmail();
-    const block = email.rows[0]?.columns[0]?.blocks[0];
-    if (block) {
-      block.props = {
-        content: {
-          content: [{ attrs: { level: 1 }, type: "heading" }],
-          type: "doc",
-        },
-      };
-    }
+    const email = emailWithContent({
+      content: [{ attrs: { level: 1 }, type: "heading" }],
+      type: "doc",
+    });
 
     expect(loadDocument(email)).toStrictEqual({
       ok: false,

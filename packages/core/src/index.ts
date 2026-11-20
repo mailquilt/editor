@@ -1,4 +1,5 @@
 export { BLOCK_TYPES } from "./blocks.js";
+export type { BlockType } from "./blocks.js";
 export { createEmail } from "./create-email.js";
 export type {
   Block,

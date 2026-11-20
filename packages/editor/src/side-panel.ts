@@ -10,7 +10,8 @@ import {
 import { css, html, nothing } from "lit";
 import type { TemplateResult } from "lit";
 
-import { blockIcon, ICONS } from "./icons.js";
+import { BLOCK_VIEWS } from "./block-types.js";
+import { ICONS } from "./icons.js";
 import type { PanelApi } from "./panel-api.js";
 import { columnLabel } from "./positions.js";
 import type { BlockPosition, RowPosition } from "./positions.js";
@@ -452,7 +453,7 @@ const renderProperties = (
   };
   return html`
     ${renderPanelHeader(
-      blockIcon(block.type),
+      BLOCK_VIEWS[block.type].icon,
       blockLabel(block.type),
       columnLabel(rowIndex, columnIndex),
       api
@@ -490,7 +491,7 @@ const renderTabPanel = (api: PanelApi) => {
                 type="button"
                 @click=${() => api.addBlock(type)}
               >
-                ${blockIcon(type)}
+                ${BLOCK_VIEWS[type].icon}
                 <span>${label}</span>
               </button>
             `

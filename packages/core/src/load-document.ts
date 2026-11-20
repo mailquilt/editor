@@ -193,7 +193,12 @@ export const createDocumentLoader =
     const problem = findProblem(parsed.output);
     return problem
       ? { ok: false, reason: problem }
-      : { document: parsed.output, ok: true };
+      : {
+          // Safe: each Block's props were checked by its own type's schema,
+          // which the variant's type doesn't tie to the Block's type.
+          document: parsed.output as BlocksDocument,
+          ok: true,
+        };
   };
 
 /**

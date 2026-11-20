@@ -707,8 +707,8 @@ describe(renderEmail, () => {
     expect(loadedMjml).toBeFalsy();
   });
 
-  // A Block type core accepts but this package can't render would only fail on
-  // export.
+  // A type this package doesn't handle fails to compile, but its defaults still
+  // have to get through MJML's strict validation, or a new Block couldn't export.
   it.each(BLOCK_TYPES.map(({ type }) => type))(
     "renders a %s Block with its defaults",
     async (blockType) => {
