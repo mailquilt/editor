@@ -6,13 +6,18 @@ import type {
   LoadResult,
   RichTextDocument,
 } from "@mailquilt/core";
-import { blockLabel, editorOfLoaded } from "@mailquilt/core/internal";
+import {
+  blockLabel,
+  EMAIL_LOOK,
+  editorOfLoaded,
+} from "@mailquilt/core/internal";
 import { renderEmail } from "@mailquilt/renderer";
-import { html, LitElement, nothing } from "lit";
+import { css, html, LitElement, nothing, unsafeCSS } from "lit";
 
 import { createAnnouncements } from "./announcements.js";
 import { BLOCK_VIEWS, blockTypeStyles, hasRichText } from "./block-types.js";
 import {
+  canvasStyles,
   MIN_EDITOR_WIDTH,
   renderFloatingToolbar,
   renderNarrowNotice,
@@ -28,7 +33,6 @@ import { createLinkForm, formatBarStyles } from "./format-bar.js";
 import { createKeyDispatch } from "./key-dispatch.js";
 import { keyLabel } from "./key-map.js";
 import type { Action, KeyScope } from "./key-map.js";
-import { editorStyles } from "./mail-quilt-styles.js";
 import type { PanelApi } from "./panel-api.js";
 import { blocksIn } from "./positions.js";
 import { createPresses } from "./presses.js";
@@ -38,7 +42,7 @@ import { createSelection } from "./selection.js";
 import { createSettingsDrafts, settingsPanelStyles } from "./settings-panel.js";
 import { renderSidePanel, sidePanelStyles } from "./side-panel.js";
 import { styleProperties } from "./style-properties.js";
-import { createTextBlockView } from "./text-block-view.js";
+import { createTextBlockView, textBlockStyles } from "./text-block-view.js";
 import type { TextBlockView } from "./text-block-view.js";
 import type { TextFormats } from "./text-commands.js";
 import { themeTokens, UI_LANG, uiStyles } from "./theme.js";
@@ -65,6 +69,142 @@ const FORMAT_BAR = keysFor("text", "focusFormatBar");
 const SELECT_BLOCK = keysFor("block", "selectBlock");
 const MOVE_BLOCK = keysFor("block", "moveBlock");
 
+/** The element's own frame, the workspace, the email card and the drop line. */
+const elementStyles = css`
+  /* A column, so the editor fills any height the host gives the element. */
+  :host {
+    display: flex;
+    flex-direction: column;
+  }
+
+  :host([hidden]) {
+    display: none;
+  }
+
+  /*
+   * The canvas, then the side panel docked on its right. In a host too narrow
+   * for both, the panel goes below rather than squeeze the email. Clipped
+   * rather than hidden, which would stop the panel and toolbar sticking.
+   */
+  .editor {
+    /* Beside the email, room for a Block's tools and a Row's. */
+    --_mq-gutter: 40px;
+    --_mq-panel-width: 320px;
+    /* Where the email and the panel stop fitting side by side. */
+    --_mq-side-by-side: calc(
+      var(--_mq-email-width) + 2 * var(--_mq-gutter) + var(--_mq-panel-width)
+    );
+    align-items: stretch;
+    display: flex;
+    overflow: clip;
+    /* Fills any height the host gives, but never shrinks below the email. */
+    flex: 1 0 auto;
+    flex-wrap: wrap;
+    min-height: 600px;
+  }
+
+  /*
+   * Behind the notice for a host too narrow to edit in. Out of sight, but
+   * still in the layout, so a host that takes the width of its content
+   * keeps the width the editor gives it, and grows again with the window.
+   * Every part hides, as the email card and the tools start their styles
+   * again, and so none of them takes focus. Important, as otherwise a host's
+   * size for ::part(frame), which the notice shares, would win here.
+   */
+  .editor[data-collapsed] {
+    flex-grow: 0 !important;
+    height: 0 !important;
+    min-height: 0 !important;
+  }
+
+  .editor[data-collapsed],
+  .editor[data-collapsed] * {
+    visibility: hidden !important;
+  }
+
+  .canvas-area {
+    background-color: var(--mq-color-workspace);
+    display: flex;
+    /* The email's own width, so the panel wraps before the email shrinks. */
+    flex: 999 1 calc(var(--_mq-email-width) + 2 * var(--_mq-gutter));
+    flex-direction: column;
+    gap: var(--mq-space-5);
+    /* Room for a selected Block's tools when the panel has gone below. */
+    min-height: 480px;
+    min-width: 0;
+    /* Room for a Row's toolbar beside the email, and a Block's tag above. */
+    padding: 56px var(--_mq-gutter) var(--mq-space-4);
+  }
+
+  /*
+   * The email card: the email's own settings, and of the editor's tokens only
+   * its shadow, on the workspace. Inherited properties cross the Shadow DOM
+   * boundary, so hostile values on the host element stop here. Direction and
+   * custom properties aren't reset by all, so the email takes the editor's:
+   * left to right, as its export is, and the tokens for its outlines and tools.
+   */
+  .email {
+    all: initial;
+    box-shadow: var(--mq-shadow);
+    box-sizing: border-box;
+    color: #000000;
+    display: block;
+    font-size: ${unsafeCSS(EMAIL_LOOK.fontSize)};
+    line-height: ${unsafeCSS(EMAIL_LOOK.lineHeight)};
+    margin: 0 auto;
+    max-width: 100%;
+    position: relative;
+  }
+
+  .drop-indicator {
+    background: var(--mq-color-accent);
+    border-radius: 2px;
+    box-shadow: 0 0 0 2px rgb(255 255 255 / 80%);
+    height: 3px;
+    margin-block-start: -1.5px;
+    pointer-events: none;
+    position: absolute;
+    z-index: var(--_mq-layer-drop-indicator);
+  }
+
+  .drop-indicator::before,
+  .drop-indicator::after {
+    background: var(--mq-color-surface);
+    border: 2px solid var(--mq-color-accent);
+    border-radius: 50%;
+    content: "";
+    height: 9px;
+    position: absolute;
+    top: -3px;
+    width: 9px;
+  }
+
+  .drop-indicator::before {
+    left: -5px;
+  }
+
+  .drop-indicator::after {
+    right: -5px;
+  }
+
+  /*
+   * Forced colors drop the line's background, which is all it's drawn with.
+   * The text's color stands out from the email in every palette.
+   */
+  @media (forced-colors: active) {
+    .drop-indicator {
+      background: CanvasText;
+      forced-color-adjust: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ui * {
+      transition: none !important;
+    }
+  }
+`;
+
 export class MailQuilt extends LitElement {
   static override styles = [
     themeTokens,
@@ -74,8 +214,13 @@ export class MailQuilt extends LitElement {
     blockTypeStyles,
     formatBarStyles,
     previewStyles,
-    editorStyles,
+    elementStyles,
+    canvasStyles,
+    textBlockStyles,
   ];
+
+  /** Lit's, which is this element's shadow root, as Lit attaches it. */
+  declare readonly renderRoot: ShadowRoot;
 
   #editor: Editor | undefined;
   readonly #views = new Map<string, TextBlockView>();
@@ -85,7 +230,7 @@ export class MailQuilt extends LitElement {
   #formats: TextFormats | undefined;
   readonly #focus = createFocus({
     requestUpdate: () => this.requestUpdate(),
-    root: () => this.renderRoot as ShadowRoot,
+    root: () => this.renderRoot,
     selectedBlockId: () => this.#selection.blockId,
     textOf: (blockId) => this.#views.get(blockId),
   });
@@ -170,7 +315,8 @@ export class MailQuilt extends LitElement {
   readonly #panelActions = {
     addBlock: (blockType, position) =>
       this.#editing.addBlock(blockType, position),
-    addRow: (layout) => this.#editing.addRow(layout),
+    addRow: (layout, fromKeyboard) =>
+      this.#editing.addRow(layout, fromKeyboard),
     cancelLink: () => this.#linkForm.cancel(),
     deleteBlock: (fromKeyboard) => this.#editing.deleteBlock(fromKeyboard),
     deleteRow: (rowId, fromKeyboard) =>
@@ -182,12 +328,13 @@ export class MailQuilt extends LitElement {
     openLinkField: () => this.#linkForm.open(),
     openPreview: () => this.#preview.open(),
     removeLink: () => this.#linkForm.remove(),
-    selectRow: (rowId) => this.#selection.selectRow(rowId),
+    selectRow: (rowId, fromKeyboard) =>
+      this.#selection.selectRow(rowId, fromKeyboard),
     selectTab: (tab) => this.#selection.selectTab(tab),
     setRowLayout: (rowId, layout) => {
       this.#apply({ layout, rowId, type: "setRowLayout" });
     },
-    showTabs: () => this.#selection.showTabs(),
+    showTabs: (fromKeyboard) => this.#selection.showTabs(fromKeyboard),
     stepHistory: (step) => this.#stepHistory(step),
     submitLink: (href) => this.#linkForm.submit(href),
     toggleMark: (mark) => this.#selection.selectedText?.toggleMark(mark),
@@ -284,11 +431,11 @@ export class MailQuilt extends LitElement {
     this.#resizeObserver.observe(this);
     this.#dragging = createDragging({
       onDrop: (source, position) => this.#editing.drop(source, position),
-      root: this.renderRoot as ShadowRoot,
+      root: this.renderRoot,
     });
     this.#toolFitting = createToolFitting({
       onMove: () => this.#tooltips?.tooltips.sync(),
-      root: this.renderRoot as ShadowRoot,
+      root: this.renderRoot,
     });
     this.requestUpdate();
   }
@@ -391,7 +538,7 @@ export class MailQuilt extends LitElement {
         lang=${UI_LANG}
         part="frame"
         ?data-collapsed=${this.#narrow}
-        style=${styleProperties({ "--email-width": `${settings.width}px` })}
+        style=${styleProperties({ "--_mq-email-width": `${settings.width}px` })}
       >
         <div
           class="canvas-area"

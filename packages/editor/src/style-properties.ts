@@ -2,7 +2,7 @@ import { noChange } from "lit";
 import { Directive, directive } from "lit/directive.js";
 import type { AttributePart } from "lit/directive.js";
 
-/** CSS properties by name, such as `background-color` or `--email-width`. */
+/** CSS properties by name, such as `background-color` or `--_mq-email-width`. */
 type StyleProperties = Readonly<Record<string, string | undefined>>;
 
 class StylePropertiesDirective extends Directive {

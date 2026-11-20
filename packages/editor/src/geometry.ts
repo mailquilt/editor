@@ -20,9 +20,12 @@ export const contains = (
   );
 };
 
+/** Lengths this close are the same, as one is rounded and the other isn't. */
+const ROUNDING_PX = 1;
+
 /** How much the host page scales a length, such as with a CSS transform. */
 export const scaleOf = (onScreen: number, laidOut: number) =>
-  Math.abs(onScreen - laidOut) > 1 ? onScreen / laidOut : 1;
+  Math.abs(onScreen - laidOut) > ROUNDING_PX ? onScreen / laidOut : 1;
 
 /**
  * `root` and each shadow root around it, up to the page. What the page has, such

@@ -7,6 +7,7 @@ export {
   blockStyles,
   EMAIL_LOOK,
 } from "./blocks.js";
+export { NEW_EMAIL_WIDTH } from "./create-email.js";
 export { rowLayoutOf } from "./row-layouts.js";
 export { findBlockPosition } from "./operations.js";
 export { INVALID_LINK, isAllowedLinkHref, MERGE_TAG } from "./rich-text.js";

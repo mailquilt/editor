@@ -1,5 +1,6 @@
 import type { RichTextDocument } from "@mailquilt/core";
-import { MERGE_TAG } from "@mailquilt/core/internal";
+import { EMAIL_LOOK, MERGE_TAG } from "@mailquilt/core/internal";
+import { css, unsafeCSS } from "lit";
 import { baseKeymap } from "prosemirror-commands";
 import { keydownHandler } from "prosemirror-keymap";
 import { Fragment, Slice } from "prosemirror-model";
@@ -23,6 +24,32 @@ import { pastedHtmlParser, withoutStyles } from "./pasted-html.js";
 import { createTextCommands } from "./text-commands.js";
 import type { TextFormats, ToggleableMark } from "./text-commands.js";
 import type { TextSchema } from "./text-schema.js";
+
+/** ProseMirror's base styles, for a Block's text (ADR 0002). */
+export const textBlockStyles = css`
+  .ProseMirror {
+    font-variant-ligatures: none;
+    overflow-wrap: break-word;
+    padding: ${unsafeCSS(EMAIL_LOOK.blockPadding)};
+    position: relative;
+    white-space: pre-wrap;
+    white-space: break-spaces;
+  }
+
+  .ProseMirror:focus-visible {
+    outline: 2px solid var(--mq-color-accent);
+    outline-offset: -2px;
+  }
+
+  .ProseMirror p {
+    margin: 0;
+  }
+
+  /* In the Block's color, as the export writes it, and underlined. */
+  .ProseMirror a {
+    color: inherit;
+  }
+`;
 
 export interface TextBlockView {
   element: HTMLElement;
@@ -261,12 +288,8 @@ export const createTextBlockView = ({
         return;
       }
       const before = this.state;
-      // With what plugins add to it, and nothing if a plugin refuses it.
-      const { state: after, transactions } =
-        before.applyTransaction(transaction);
-      if (!transactions.includes(transaction)) {
-        return;
-      }
+      // With what plugins add to it.
+      const { state: after } = before.applyTransaction(transaction);
       this.updateState(after);
       // Turning bold on at the cursor changes the next text but not the email.
       if (transaction.storedMarksSet && !transaction.docChanged) {

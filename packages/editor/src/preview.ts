@@ -1,9 +1,16 @@
-import { css, html, nothing } from "lit";
+import { NEW_EMAIL_WIDTH } from "@mailquilt/core/internal";
+import { css, html, nothing, unsafeCSS } from "lit";
 
 import { place } from "./editor-places.js";
 import { claim, keyFor } from "./key-map.js";
 import { refuseFiles } from "./refuse-files.js";
-import { UI_LANG } from "./theme.js";
+import { BACKDROP, UI_LANG } from "./theme.js";
+
+/**
+ * How long the Preview waits to say it's loading, as long as its outline waits
+ * to show, so a quick render says nothing.
+ */
+const LOADING_SAID_AFTER_MS = 150;
 
 export const previewStyles = css`
   /* A closed dialog relies on the browser's display: none, so no all: initial. */
@@ -29,7 +36,7 @@ export const previewStyles = css`
    * Firefox 120 and Safari 17.4.
    */
   .preview::backdrop {
-    background: var(--mq-color-backdrop, rgb(16 24 40 / 55%));
+    background: var(--mq-color-backdrop, ${unsafeCSS(BACKDROP)});
     backdrop-filter: blur(2px);
   }
 
@@ -50,7 +57,7 @@ export const previewStyles = css`
 
   .preview-header h2 {
     font: inherit;
-    font-size: 14px;
+    font-size: var(--_mq-font-size-bar-title);
     font-weight: 600;
     margin: 0;
   }
@@ -86,7 +93,8 @@ export const previewStyles = css`
    * doesn't flash it.
    */
   .preview-skeleton {
-    animation: preview-skeleton-in 200ms ease-out 150ms both;
+    animation: preview-skeleton-in 200ms ease-out
+      ${unsafeCSS(LOADING_SAID_AFTER_MS)}ms both;
     background: var(--mq-color-surface);
     border-radius: var(--mq-radius-small);
     box-shadow: var(--mq-shadow-small);
@@ -94,7 +102,7 @@ export const previewStyles = css`
     flex-direction: column;
     gap: var(--mq-space-3);
     margin-inline: auto;
-    max-width: 600px;
+    max-width: ${unsafeCSS(NEW_EMAIL_WIDTH)}px;
     padding: 32px;
   }
 
@@ -182,12 +190,6 @@ const previewSkeleton = html`
     <span class="action"></span>
   </div>
 `;
-
-/**
- * How long the Preview waits to say it's loading, as long as its outline waits
- * to show, so a quick render says nothing.
- */
-const LOADING_SAID_AFTER_MS = 150;
 
 /** One opening of the Preview. */
 interface Preview {

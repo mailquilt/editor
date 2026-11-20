@@ -77,7 +77,7 @@ export const createPresses = ({ focus, selection }: PressesHost) => {
     },
 
     /**
-     * A focused number field would step with the wheel, though it has no
+     * In Chromium, a focused number field steps with the wheel, though it has no
      * arrows, while the person only meant to scroll the panel. Focus leaves it
      * for the floating toolbar, which commits it and keeps keyboard undo working.
      */

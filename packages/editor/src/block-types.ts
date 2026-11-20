@@ -21,7 +21,6 @@ export const blockTypeStyles = css`
   /* Like MJML: it fills the Column, and a width it's given stops at the Column. */
   .image-block img,
   .image-placeholder {
-    box-sizing: border-box;
     display: block;
     margin-inline: auto;
     max-width: 100%;

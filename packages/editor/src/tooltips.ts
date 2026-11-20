@@ -4,8 +4,14 @@ import { claim, keyHeardFirst } from "./key-map.js";
 /** What has a tooltip: the attribute holds its words. */
 const TOOLTIP_TRIGGERS = "[data-tooltip]";
 
-/** Space between a control and its tooltip, and the tooltip and the window's edge. */
-const GAP_PX = 6;
+/**
+ * Space between a control and its tooltip, which the pointer can cross to reach
+ * the tooltip and keep it open.
+ */
+const OFFSET_PX = 6;
+
+/** The least space between the tooltip and the window's edge. */
+const EDGE_PX = 6;
 
 export interface Tooltips {
   /** Moves or closes the tooltip after a re-render, which can move or remove its control. */
@@ -65,11 +71,11 @@ export const createTooltips = ({ root, tooltip }: TooltipsHost): Tooltips => {
   const moveBeside = (trigger: HTMLElement) => {
     const box = trigger.getBoundingClientRect();
     const { height, width } = tooltip.getBoundingClientRect();
-    const above = box.top - GAP_PX - height;
-    const top = above >= GAP_PX ? above : box.bottom + GAP_PX;
+    const above = box.top - OFFSET_PX - height;
+    const top = above >= EDGE_PX ? above : box.bottom + OFFSET_PX;
     const left = Math.min(
-      Math.max(GAP_PX, box.left + box.width / 2 - width / 2),
-      document.documentElement.clientWidth - width - GAP_PX
+      Math.max(EDGE_PX, box.left + box.width / 2 - width / 2),
+      document.documentElement.clientWidth - width - EDGE_PX
     );
     tooltip.style.left = `${left}px`;
     tooltip.style.top = `${top}px`;
@@ -95,7 +101,11 @@ export const createTooltips = ({ root, tooltip }: TooltipsHost): Tooltips => {
     moveBeside(trigger);
   };
 
-  const onPointerOver = (event: PointerEvent) => {
+  /** Heard on the root, which types each event as only an `Event`. */
+  const onPointerOver = (event: Event) => {
+    if (!(event instanceof PointerEvent)) {
+      return;
+    }
     const trigger = triggerOf(event.target);
     // Pressed, as in a drag, nothing opens.
     if (trigger && trigger !== hovered && event.buttons === 0) {
@@ -111,7 +121,8 @@ export const createTooltips = ({ root, tooltip }: TooltipsHost): Tooltips => {
       return;
     }
     const pointer = { x: clientX, y: clientY };
-    const overTooltip = !tooltip.hidden && contains(tooltip, pointer, GAP_PX);
+    const overTooltip =
+      !tooltip.hidden && contains(tooltip, pointer, OFFSET_PX);
     if (!(contains(hovered, pointer) || overTooltip)) {
       hovered = undefined;
       update();
@@ -159,37 +170,30 @@ export const createTooltips = ({ root, tooltip }: TooltipsHost): Tooltips => {
     }
   };
 
-  const listeners: [
-    EventTarget,
-    string,
-    EventListener,
-    AddEventListenerOptions,
-  ][] = [
-    [root, "pointerover", onPointerOver as EventListener, {}],
-    [root, "focusin", onFocusIn, {}],
-    [root, "focusout", update, {}],
-    [window, "keydown", onKeydown as EventListener, { capture: true }],
-    [window, "pointermove", onPointerMove as EventListener, { passive: true }],
-    [window, "pointerdown", onPointerDown, { capture: true }],
-  ];
+  const listeners = new AbortController();
+  const { signal } = listeners;
+  root.addEventListener("pointerover", onPointerOver, { signal });
+  root.addEventListener("focusin", onFocusIn, { signal });
+  root.addEventListener("focusout", update, { signal });
+  window.addEventListener("keydown", onKeydown, { capture: true, signal });
+  window.addEventListener("pointermove", onPointerMove, {
+    passive: true,
+    signal,
+  });
+  window.addEventListener("pointerdown", onPointerDown, {
+    capture: true,
+    signal,
+  });
   for (const target of scrollTargetsOf(root)) {
-    listeners.push([
-      target,
-      "scroll",
-      onScroll,
-      { capture: true, passive: true },
-    ]);
-  }
-  for (const [target, type, listener, options] of listeners) {
-    target.addEventListener(type, listener, options);
+    target.addEventListener("scroll", onScroll, {
+      capture: true,
+      passive: true,
+      signal,
+    });
   }
 
   return {
-    destroy: () => {
-      for (const [target, type, listener, options] of listeners) {
-        target.removeEventListener(type, listener, options);
-      }
-    },
+    destroy: () => listeners.abort(),
     sync: update,
   };
 };

@@ -49,6 +49,18 @@ export const sidePanelStyles = css`
     color: var(--mq-color-accent-strong);
   }
 
+  /*
+   * Forced colors drop the backgrounds and shadows that show which is chosen.
+   * An outline stays.
+   */
+  @media (forced-colors: active) {
+    .tab[aria-selected="true"],
+    .layout-option[aria-pressed="true"] {
+      outline: 2px solid Highlight;
+      outline-offset: -2px;
+    }
+  }
+
   /* A layout as its Column widths. */
   .thumbnail {
     display: flex;
@@ -88,14 +100,16 @@ export const sidePanelStyles = css`
         var(--mq-color-border-strong) 40%,
         var(--mq-color-border)
       );
-    box-sizing: border-box;
     display: flex;
-    flex: 1 0 var(--panel-width);
+    flex: 1 0 var(--_mq-panel-width);
     /*
      * Its own width beside the canvas, and the whole width once it has
      * wrapped below it.
      */
-    max-width: max(var(--panel-width), (var(--side-by-side) - 100%) * 9999);
+    max-width: max(
+      var(--_mq-panel-width),
+      (var(--_mq-side-by-side) - 100%) * 9999
+    );
     min-width: 0;
   }
 
@@ -119,8 +133,6 @@ export const sidePanelStyles = css`
     flex: 1;
     min-height: 0;
     overflow-y: auto;
-    scrollbar-color: var(--mq-color-border) transparent;
-    scrollbar-width: thin;
   }
 
   .panel-scroll.padded {
@@ -172,7 +184,7 @@ export const sidePanelStyles = css`
     background: var(--mq-color-surface);
     box-shadow:
       0 0 0 1px var(--mq-color-border),
-      0 1px 3px rgb(22 24 29 / 10%);
+      var(--mq-shadow-small);
     color: var(--mq-color-text);
   }
 
@@ -204,12 +216,16 @@ export const sidePanelStyles = css`
     min-width: 0;
   }
 
-  .panel-title {
-    font-size: 15px;
+  .panel-title,
+  .panel-section-title {
+    font-size: var(--_mq-font-size-panel-title);
     font-weight: 600;
     letter-spacing: -0.01em;
-    line-height: 1.25;
     margin: 0;
+  }
+
+  .panel-title {
+    line-height: 1.25;
   }
 
   .panel-subtitle {
@@ -242,13 +258,6 @@ export const sidePanelStyles = css`
     gap: 2px;
   }
 
-  .panel-section-title {
-    font-size: 15px;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-    margin: 0;
-  }
-
   .panel-hint {
     color: var(--mq-color-text-muted);
     font-size: var(--mq-font-size-small);
@@ -274,9 +283,9 @@ export const sidePanelStyles = css`
     border-radius: var(--mq-radius);
     box-shadow:
       inset 0 0 0 1px var(--mq-color-border),
-      0 1px 2px rgb(22 24 29 / 4%);
+      var(--mq-shadow-small);
     color: var(--mq-color-text);
-    cursor: pointer;
+    cursor: grab;
     display: flex;
     flex-direction: column;
     font-size: var(--mq-font-size-small);
@@ -297,7 +306,6 @@ export const sidePanelStyles = css`
   }
 
   .tile {
-    cursor: grab;
     min-height: 84px;
     -webkit-user-select: none;
     user-select: none;
@@ -329,7 +337,6 @@ export const sidePanelStyles = css`
   .layout-tile {
     align-items: stretch;
     color: var(--mq-color-text-muted);
-    cursor: grab;
     gap: var(--mq-space-2);
     padding: var(--mq-space-3);
   }
@@ -343,7 +350,7 @@ export const sidePanelStyles = css`
   }
 `;
 
-const PANEL_TABS: { icon: unknown; id: PanelTab; label: string }[] = [
+const PANEL_TABS: { icon: TemplateResult; id: PanelTab; label: string }[] = [
   { icon: ICONS.content, id: "content", label: "Content" },
   { icon: ICONS.rows, id: "rows", label: "Rows" },
   { icon: ICONS.settings, id: "settings", label: "Settings" },
@@ -371,11 +378,10 @@ const renderPanelHeader = (
   <div class="panel-header" data-place=${place("controls")}>
     <button
       aria-label="Back"
-      class="icon-button back-button"
-      data-action="back"
+      class="icon-button"
       data-tooltip="Back"
       type="button"
-      @click=${api.showTabs}
+      @click=${({ detail }: MouseEvent) => api.showTabs(detail === 0)}
     >
       ${ICONS.left}
     </button>
@@ -406,7 +412,7 @@ const renderRowProperties = ({ row, rowIndex }: RowPosition, api: PanelApi) => {
       current ? `${current} layout` : "Custom layout",
       api
     )}
-    <div class="panel-scroll">
+    <div class="panel-scroll thin-scrollbar">
       <div class="panel-section">
         <h3 class="panel-section-title" id="row-layout-title">Layout</h3>
         <div
@@ -458,7 +464,9 @@ const renderProperties = (
       columnLabel(rowIndex, columnIndex),
       api
     )}
-    <div class="panel-scroll">${renderSettingsPanel(section, api.drafts)}</div>
+    <div class="panel-scroll thin-scrollbar">
+      ${renderSettingsPanel(section, api.drafts)}
+    </div>
   `;
 };
 
@@ -520,7 +528,8 @@ const renderTabPanel = (api: PanelApi) => {
                 data-place=${place("paletteItem")}
                 data-row-layout=${layout}
                 type="button"
-                @click=${() => api.addRow(layout)}
+                @click=${({ detail }: MouseEvent) =>
+                  api.addRow(layout, detail === 0)}
               >
                 ${renderThumbnail(layout)}<span>${layout}</span>
               </button>
@@ -576,7 +585,11 @@ const renderTabs = (api: PanelApi) => {
     </div>
     <div
       aria-labelledby=${`tab-${current}`}
-      class=${current === "settings" ? "panel-scroll" : "panel-scroll padded"}
+      class=${
+        current === "settings"
+          ? "panel-scroll thin-scrollbar"
+          : "panel-scroll thin-scrollbar padded"
+      }
       id=${`tabpanel-${current}`}
       role="tabpanel"
     >

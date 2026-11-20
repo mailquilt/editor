@@ -9,6 +9,11 @@ import type { TextFormats, ToggleableMark } from "./text-commands.js";
  * How the Side panel, its settings, the format bar and the toolbars reach the
  * editor. They touch nothing else of `<mail-quilt>` or the Canvas. A new copy
  * for each update.
+ *
+ * An action that does more from the keyboard, such as moving focus or showing
+ * its ring, takes `fromKeyboard`, which a button's click gives as
+ * `detail === 0`: a key clicks a button with a `detail` of 0, and a pointer
+ * with the number of clicks.
  */
 export type PanelApi = EmailPanelApi & OwnPanelsApi;
 
@@ -45,7 +50,7 @@ export interface EmailPanelApi {
     position?: { columnId: string; index: number }
   ) => void;
   /** After the selected Row or Block's Row, or else at the end, and selects it. */
-  addRow: (layout: RowLayout) => void;
+  addRow: (layout: RowLayout, fromKeyboard: boolean) => void;
   /** The selected Block. From the keyboard, focus goes to its neighbour. */
   deleteBlock: (fromKeyboard: boolean) => void;
   /** From the keyboard, focus goes to the neighbouring Row's tools. */
@@ -59,7 +64,7 @@ export interface EmailPanelApi {
   toggleMark: (mark: ToggleableMark) => void;
   insertLineBreak: () => void;
   /** Selects a Row instead of any Block, and shows its settings. */
-  selectRow: (rowId: string) => void;
+  selectRow: (rowId: string, fromKeyboard: boolean) => void;
   openPreview: () => void;
 }
 
@@ -81,10 +86,10 @@ export interface OwnPanelsApi {
   drafts: SettingsDrafts;
 
   /**
-   * Back from what's selected to the Side panel's tabs. With focus on Back, it
+   * Back from what's selected to the Side panel's tabs. From the keyboard, focus
    * goes to the current tab.
    */
-  showTabs: () => void;
+  showTabs: (fromKeyboard: boolean) => void;
   selectTab: (tab: PanelTab) => void;
   /** Opens the link field for the selected Block's text. */
   openLinkField: () => void;

@@ -191,15 +191,14 @@ export const createSelection = ({
 
     /**
      * Selects a Row instead of any Block, and shows its settings. Its toolbar's
-     * button takes focus, so typing can't go on in a Block's text. From the
-     * keyboard, as from the Rows tab, the focus ring follows.
+     * button takes focus, so typing can't go on in a Block's text, with its
+     * focus ring when this was from the keyboard.
      */
-    selectRow(rowId: string) {
-      const focusVisible = focus.focused()?.matches(":focus-visible") ?? false;
+    selectRow(rowId: string, fromKeyboard: boolean) {
       select({ rowId });
       focus.focusWhenRendered(
         { action: "select-row", on: "rowTool", rowId },
-        { focusVisible }
+        { focusVisible: fromKeyboard }
       );
     },
 
@@ -218,12 +217,10 @@ export const createSelection = ({
     },
 
     /**
-     * Back to the side panel's tabs, at the current one if Back has focus, as from
-     * the keyboard, with the Block still selected for what's added next.
+     * Back to the side panel's tabs, with the Block still selected for what's
+     * added next. From the keyboard, focus goes to the current tab.
      */
-    showTabs() {
-      const fromKeyboard =
-        (focus.focused() as HTMLElement | null)?.dataset.action === "back";
+    showTabs(fromKeyboard: boolean) {
       showsSettings = false;
       requestUpdate();
       if (fromKeyboard) {
