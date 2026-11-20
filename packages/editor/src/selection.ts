@@ -47,8 +47,6 @@ interface SelectionHost {
   requestUpdate: () => void;
   /** A Block's text, once its editor has been made. */
   textOf: (blockId: string) => TextBlockView | undefined;
-  /** Resolves once the update that's due has rendered. */
-  updateComplete: () => Promise<unknown>;
   /** The selection changed, so what describes it is out of date. */
   onSelect: () => void;
 }
@@ -148,6 +146,8 @@ export const createSelection = (host: SelectionHost) => {
   let focusAfterUpdate:
     | { options?: FocusOptions; target: FocusTarget }
     | undefined;
+  /** What the update that's due is to scroll into view, as a change named it. */
+  let revealAfterUpdate: Selected;
 
   const active = () => host.root().activeElement;
 
@@ -262,22 +262,45 @@ export const createSelection = (host: SelectionHost) => {
   };
 
   /**
-   * For a target that the update that's due will render. The update moves focus
-   * there itself, so focus doesn't stop on the way, such as on the floating
-   * toolbar when the element with focus is removed.
+   * For a target that the next update will render. The update moves focus there
+   * itself, so focus doesn't stop on the way, such as on the floating toolbar
+   * when the element with focus is removed.
    */
-  const focusWhenRendered = async (
-    target: FocusTarget,
-    options?: FocusOptions
-  ) => {
-    const named = { options, target };
-    focusAfterUpdate = named;
-    await host.updateComplete();
-    // No update was due, so none has moved it.
-    if (focusAfterUpdate === named) {
-      focusAfterUpdate = undefined;
-      focus(target, options);
+  const focusWhenRendered = (target: FocusTarget, options?: FocusOptions) => {
+    focusAfterUpdate = { options, target };
+    host.requestUpdate();
+  };
+
+  /**
+   * Once the next update has rendered a Block's or Row's tools. Focus alone
+   * doesn't scroll to it: a Block keeps focus if its neighbour is what moves in
+   * the DOM, and focusing its text doesn't scroll.
+   */
+  const revealWhenRendered = (target: Selected) => {
+    revealAfterUpdate = target;
+    host.requestUpdate();
+  };
+
+  const reveal = (target: NonNullable<Selected>) => {
+    if ("rowId" in target) {
+      rowFrame(target.rowId)?.scrollIntoView({ block: "nearest" });
+      return;
     }
+    const block = blockElement(target.blockId);
+    block?.scrollIntoView({ block: "nearest" });
+    // Its tools can reach past a thin Block, under the floating toolbar, which
+    // would hide the one with focus.
+    const toolbar = block && findPlace(block, "blockToolbar");
+    toolbar?.scrollIntoView({ block: "nearest" });
+  };
+
+  const isSelected = (target: Selected) => {
+    if (target === undefined) {
+      return selected === undefined;
+    }
+    return "blockId" in target
+      ? target.blockId === selectedBlockId()
+      : target.rowId === selectedRowId();
   };
 
   /**
@@ -285,6 +308,9 @@ export const createSelection = (host: SelectionHost) => {
    * panel. Whether a Block's text is being edited is up to where focus is.
    */
   const select = (target: Selected) => {
+    if (isSelected(target) && showsSettings === (target !== undefined)) {
+      return;
+    }
     selected = target;
     showsSettings = target !== undefined;
     if (selectedBlockId() === undefined) {
@@ -295,7 +321,10 @@ export const createSelection = (host: SelectionHost) => {
 
   /** Focus on a Block, or in its text, selects the Block. */
   const focusedOn = (blockId: string, inText: boolean) => {
-    editingText = inText;
+    if (editingText !== inText) {
+      editingText = inText;
+      host.requestUpdate();
+    }
     // The Block is selected already, and the panel stays as it was left.
     if (!restoring) {
       select({ blockId });
@@ -310,19 +339,7 @@ export const createSelection = (host: SelectionHost) => {
     }
   };
 
-  /**
-   * Focus alone doesn't do this. A Block keeps focus if its neighbour is what moves
-   * in the DOM, and focusing its text doesn't scroll.
-   */
-  const revealBlock = async (blockId: string) => {
-    await host.updateComplete();
-    const block = blockElement(blockId);
-    block?.scrollIntoView({ block: "nearest" });
-    // Its tools can reach past a thin Block, under the floating toolbar, which
-    // would hide the one with focus.
-    const toolbar = block && findPlace(block, "blockToolbar");
-    toolbar?.scrollIntoView({ block: "nearest" });
-  };
+  const revealBlock = (blockId: string) => revealWhenRendered({ blockId });
 
   /**
    * The presses below keep focus where it is, so a settings field would hold on
@@ -373,25 +390,28 @@ export const createSelection = (host: SelectionHost) => {
      * what it was on, such as a Block that moved, or the same tool of a Row that
      * moved. Otherwise the floating toolbar takes it, so it stays in the editor,
      * where undo still works, and a key that activated a button does nothing
-     * when it's pressed again or held down.
+     * when it's pressed again or held down. Then what a change named scrolls
+     * into view. What focus asks for on the way waits for the next update.
      */
     afterUpdate() {
       const target = focusedBeforeUpdate;
       focusedBeforeUpdate = undefined;
       const named = focusAfterUpdate;
       focusAfterUpdate = undefined;
+      const shown = revealAfterUpdate;
+      revealAfterUpdate = undefined;
       const found = named && find(named.target);
+      const element = active();
       if (found) {
         found.focus(named.options);
-        return;
+      } else if (target && (!element || element.matches(":disabled"))) {
+        restoring = true;
+        (find(target) ?? focusableFor({ on: "emailTools" }))?.focus();
+        restoring = false;
       }
-      const element = active() as HTMLButtonElement | null;
-      if (!target || (element && !element.disabled)) {
-        return;
+      if (shown) {
+        reveal(shown);
       }
-      restoring = true;
-      (find(target) ?? focusableFor({ on: "emailTools" }))?.focus();
-      restoring = false;
     },
 
     /**
@@ -526,10 +546,7 @@ export const createSelection = (host: SelectionHost) => {
 
     revealBlock,
 
-    async revealRow(rowId: string) {
-      await host.updateComplete();
-      rowFrame(rowId)?.scrollIntoView({ block: "nearest" });
-    },
+    revealRow: (rowId: string) => revealWhenRendered({ rowId }),
 
     get rowId() {
       return selectedRowId();
@@ -541,11 +558,10 @@ export const createSelection = (host: SelectionHost) => {
      * Selects a Block that was just put in place, with focus in its text if it
      * has any. Unlike focus on the Block, focus in its text doesn't scroll.
      */
-    async selectPlaced(blockId: string | undefined) {
+    selectPlaced(blockId: string | undefined) {
       select(blockId === undefined ? undefined : { blockId });
-      await host.updateComplete();
       if (blockId !== undefined) {
-        focus({ blockId, on: "text" });
+        focusWhenRendered({ blockId, on: "text" });
         revealBlock(blockId);
       }
     },
@@ -555,14 +571,13 @@ export const createSelection = (host: SelectionHost) => {
      * button takes focus, so typing can't go on in a Block's text. From the
      * keyboard, as from the Rows tab, the focus ring follows.
      */
-    async selectRow(rowId: string) {
+    selectRow(rowId: string) {
       const focusVisible = active()?.matches(":focus-visible") ?? false;
       select({ rowId });
-      await host.updateComplete();
-      const [button] = rowTools(rowId);
-      if (button && active() !== button) {
-        button.focus({ focusVisible });
-      }
+      focusWhenRendered(
+        { action: "select-row", on: "rowTool", rowId },
+        { focusVisible }
+      );
     },
 
     /** The ARIA tabs pattern: a tab that arrow keys move to shows its panel too. */
@@ -583,13 +598,13 @@ export const createSelection = (host: SelectionHost) => {
      * Back to the side panel's tabs, at the current one if Back has focus, as from
      * the keyboard, with the Block still selected for what's added next.
      */
-    async showTabs() {
+    showTabs() {
       const fromKeyboard =
         (active() as HTMLElement | null)?.dataset.action === "back";
       showsSettings = false;
       host.requestUpdate();
       if (fromKeyboard) {
-        await focusWhenRendered({ on: "tab", tab });
+        focusWhenRendered({ on: "tab", tab });
       }
     },
 

@@ -92,7 +92,6 @@ export class MailQuilt extends LitElement {
     requestUpdate: () => this.requestUpdate(),
     root: () => this.renderRoot as ShadowRoot,
     textOf: (blockId) => this.#views.get(blockId),
-    updateComplete: () => this.updateComplete,
   });
   readonly #drafts = createSettingsDrafts({
     apply: (command) => this.#apply(command, { refusable: true }),
@@ -184,7 +183,10 @@ export class MailQuilt extends LitElement {
   readonly #canvasEvents: CanvasEvents = {
     onBlockClick: (blockId, target) =>
       this.#selection.onBlockClick(blockId, target),
-    onBlockFocus: (blockId) => this.#selection.onBlockFocus(blockId),
+    onBlockFocus: (blockId) => {
+      this.#linkForm.close();
+      this.#selection.onBlockFocus(blockId);
+    },
     onBlockFocusout: () => this.#selection.onBlockFocusout(),
     onImageError: (src) => this.#onImageError(src),
   };
@@ -312,7 +314,11 @@ export class MailQuilt extends LitElement {
             content: block.props.content as RichTextDocument,
             label: `${blockLabel(block.type)} Block`,
             onChange: (next) => this.#commitText(block.id, next),
-            onFocus: () => this.#selection.onTextFocus(block.id),
+            onFocus: () => {
+              // As on the Block: focus back in the text closes the link field.
+              this.#linkForm.close();
+              this.#selection.onTextFocus(block.id);
+            },
             onStateChange: () => this.#syncFormats(),
             onTypingBreak: () => {
               this.#typingSession += 1;

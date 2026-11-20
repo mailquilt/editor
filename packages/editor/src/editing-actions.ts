@@ -88,7 +88,7 @@ export const createEditingActions = ({
      * Adds a Block and selects it, ready to type in if it has text. By default it
      * goes where `defaultBlockPlace` says.
      */
-    addBlock: async (
+    addBlock: (
       blockType: string,
       place?: { columnId: string; index: number }
     ) => {
@@ -103,12 +103,12 @@ export const createEditingActions = ({
           : { blockType, rowIndex: 0, type: "insertBlockInNewRow" }
       );
       if (result?.ok) {
-        await selection.selectPlaced(result.createdId);
+        selection.selectPlaced(result.createdId);
       }
     },
 
     /** After the selected Block's Row, or else at the end, and selects it. */
-    addRow: async (layout: RowLayout) => {
+    addRow: (layout: RowLayout) => {
       const document = current();
       if (!document) {
         return;
@@ -121,7 +121,7 @@ export const createEditingActions = ({
         type: "insertRow",
       });
       if (result?.ok && result.createdId !== undefined) {
-        await selection.selectRow(result.createdId);
+        selection.selectRow(result.createdId);
       }
     },
 
@@ -129,7 +129,7 @@ export const createEditingActions = ({
      * From the keyboard, focus goes to the next Block, or else the one before, as
      * it would be lost. A button pressed with a key clicks with a `detail` of 0.
      */
-    deleteBlock: async (fromKeyboard: boolean) => {
+    deleteBlock: (fromKeyboard: boolean) => {
       const document = current();
       const { blockId } = selection;
       if (!document || blockId === undefined) {
@@ -141,7 +141,7 @@ export const createEditingActions = ({
       if (apply({ blockId, type: "removeBlock" })?.ok) {
         announcements.say("Block deleted.");
         if (fromKeyboard && neighbour !== undefined) {
-          await selection.focusWhenRendered({
+          selection.focusWhenRendered({
             blockId: neighbour,
             on: "block",
           });
@@ -153,7 +153,7 @@ export const createEditingActions = ({
      * From the keyboard, focus goes to the next Row's tools, or else the one
      * before, as it would be lost.
      */
-    deleteRow: async (rowId: string, fromKeyboard: boolean) => {
+    deleteRow: (rowId: string, fromKeyboard: boolean) => {
       const document = current();
       const place = document && locateRow(document, rowId);
       const neighbour =
@@ -163,7 +163,7 @@ export const createEditingActions = ({
       if (apply({ rowId, type: "removeRow" })?.ok) {
         announcements.say("Row deleted.");
         if (fromKeyboard && neighbour) {
-          await selection.focusWhenRendered({
+          selection.focusWhenRendered({
             on: "rowTool",
             rowId: neighbour.id,
           });
@@ -172,7 +172,7 @@ export const createEditingActions = ({
     },
 
     /** What's dropped: a Block or Row moved, or a new one, which is selected. */
-    drop: async (source: DragSource, place: DropPlace) => {
+    drop: (source: DragSource, place: DropPlace) => {
       const result = apply(dropCommand(source, place));
       if (!result?.ok) {
         return;
@@ -183,14 +183,14 @@ export const createEditingActions = ({
       }
       if ("rowLayout" in source) {
         if (result.createdId !== undefined) {
-          await selection.selectRow(result.createdId);
+          selection.selectRow(result.createdId);
         }
         return;
       }
       if ("blockId" in source) {
         announcements.blockMoved(source.blockId);
       }
-      await selection.selectPlaced(
+      selection.selectPlaced(
         "blockId" in source ? source.blockId : result.createdId
       );
     },
