@@ -384,11 +384,14 @@ export type BlockProps = {
   >;
 };
 
+/** Each type of Block, from the one list of them. */
+export type BlockType = keyof BlockProps;
+
 /** The types of Block a person can add, in the order the palette shows them. */
 export const BLOCK_TYPES: readonly {
   readonly label: string;
-  readonly type: string;
-}[] = [...blockDefinitions].map(([type, { label }]) => ({ label, type }));
+  readonly type: BlockType;
+}[] = BLOCKS.map(([type, { label }]) => ({ label, type }));
 
 /**
  * What a person calls a type of Block.

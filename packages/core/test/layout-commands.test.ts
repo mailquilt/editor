@@ -6,10 +6,15 @@ import {
   createEmail,
   loadDocument,
 } from "../src/index.js";
-import type { BlocksDocument, Command, Operation } from "../src/index.js";
+import type {
+  Block,
+  BlocksDocument,
+  Command,
+  Operation,
+} from "../src/index.js";
 import { rowLayoutOf } from "../src/internal.js";
 
-const block = (id: string) => ({
+const block = (id: string): Block => ({
   id,
   props: { content: { content: [{ type: "paragraph" }], type: "doc" } },
   type: "text",

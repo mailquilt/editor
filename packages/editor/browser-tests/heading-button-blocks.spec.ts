@@ -213,7 +213,7 @@ test.describe("Bold in a Heading, which is already bold", () => {
     await open(page, ["heading"]);
     const email = await currentValue(page);
     const block = email.rows[0]?.columns[0]?.blocks[0];
-    if (block) {
+    if (block?.type === "heading") {
       block.props.content = {
         content: [
           {

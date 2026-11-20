@@ -2,7 +2,7 @@ import { html, svg } from "lit";
 import type { SVGTemplateResult } from "lit";
 
 /** A 16px line icon in the current text color, hidden from assistive technology. */
-const icon = (content: SVGTemplateResult) => html`
+export const icon = (content: SVGTemplateResult) => html`
   <svg
     aria-hidden="true"
     class="icon"
@@ -63,23 +63,3 @@ export const ICONS = {
   undo: icon(svg`<path d="M9 14 4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />`),
   up: icon(svg`<path d="M12 19V5M6 11l6-6 6 6" />`),
 };
-
-const BLOCK_ICONS: Record<string, ReturnType<typeof icon>> = {
-  button: icon(
-    svg`<rect height="8" rx="3" width="18" x="3" y="8" /><path d="M8 12h8" />`
-  ),
-  divider: icon(
-    svg`<path d="M7 6h10M7 18h10" stroke-opacity="0.45" /><path d="M3 12h18" />`
-  ),
-  heading: icon(svg`<path d="M6 4v16M18 4v16M6 12h12" />`),
-  image: icon(
-    svg`<rect height="16" rx="2" width="18" x="3" y="4" /><circle cx="9" cy="10" r="2" /><path d="m21 17-5-5-9 8" />`
-  ),
-  spacer: icon(svg`<path d="M12 4v16M8 8l4-4 4 4M8 16l4 4 4-4" />`),
-  text: icon(svg`<path d="M4 7V5h16v2M9 19h6M12 5v14" />`),
-};
-
-/** A type of Block's icon, or a plain square for a type this doesn't know. */
-export const blockIcon = (type: string) =>
-  BLOCK_ICONS[type] ??
-  icon(svg`<rect height="16" rx="2" width="16" x="4" y="4" />`);

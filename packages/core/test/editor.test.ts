@@ -44,7 +44,8 @@ describe("applying a Command", () => {
     });
 
     expect(result).toStrictEqual({ ok: true });
-    expect(firstBlock(editor.getDocument()).props.content).toStrictEqual(
+    expect(firstBlock(editor.getDocument()).props).toHaveProperty(
+      "content",
       paragraph("Hello {{first_name}}")
     );
   });

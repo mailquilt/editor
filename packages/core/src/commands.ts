@@ -3,7 +3,7 @@ import * as v from "valibot";
 import { blockDefinitions, validateProps } from "./blocks.js";
 import { commandSchema } from "./command-schema.js";
 import { createId } from "./document.js";
-import type { BlocksDocument, Column, Row } from "./document.js";
+import type { Block, BlocksDocument, Column, Row } from "./document.js";
 import {
   emailSettingsSchema,
   newLanguageSettingsSchema,
@@ -147,8 +147,13 @@ const planInsertBlock = (
       `Index ${index} is past the end of Column "${columnId}", which has ${column.blocks.length} Blocks`
     );
   }
-  // Not a copy of the defaults, as inserting the Block copies it.
-  const block = { id: createId(), props: definition.defaults, type: blockType };
+  // Not a copy of the defaults, as inserting the Block copies it. The cast is
+  // safe, as the definition was found by this type.
+  const block = {
+    id: createId(),
+    props: definition.defaults,
+    type: blockType,
+  } as Block;
   return {
     createdId: block.id,
     ok: true,

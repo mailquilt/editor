@@ -1,3 +1,5 @@
+import type { BlockProps, BlockType } from "./blocks.js";
+
 /** The version of the saved format that this code writes. */
 export const DOCUMENT_VERSION = 2;
 
@@ -17,11 +19,10 @@ export interface EmailSettings {
   language?: string;
 }
 
-export interface Block {
-  id: string;
-  type: string;
-  props: Record<string, unknown>;
-}
+/** A Block of any type, whose props are its own type's. */
+export type Block = {
+  [Type in BlockType]: { id: string; type: Type; props: BlockProps[Type] };
+}[BlockType];
 
 export interface Column {
   id: string;

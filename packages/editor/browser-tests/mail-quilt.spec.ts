@@ -651,7 +651,7 @@ test.describe("setting value", () => {
         "mq-change",
         ({ detail: { document: email } }) => {
           const block = email.rows[0]?.columns[0]?.blocks[0];
-          if (block) {
+          if (block?.type === "text") {
             block.props.content = {
               content: [
                 {

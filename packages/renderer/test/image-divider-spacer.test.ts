@@ -3,14 +3,17 @@ import { describe, expect, it } from "vitest";
 import { renderEmail } from "../src/index.js";
 import { emailWith, readable } from "./email-with.js";
 
-const image = (props: Record<string, unknown>) => ({ props, type: "image" });
+const image = (props: Record<string, unknown>) => ({
+  props,
+  type: "image" as const,
+});
 const divider = (props: Record<string, unknown>) => ({
   props,
-  type: "divider",
+  type: "divider" as const,
 });
 const spacer = (props: Record<string, unknown>) => ({
   props,
-  type: "spacer",
+  type: "spacer" as const,
 });
 
 /** The opening tag of the image, with its attributes. */

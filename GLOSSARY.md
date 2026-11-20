@@ -20,6 +20,9 @@ A preset of Column widths for a Row, such as 33/67.
 A single piece of email content inside a Column, such as text, an image or a button.
 _Avoid_: Element, widget, component
 
+**Block type**:
+One kind of Block, such as Text or Image, with settings of its own. Core holds the one list of them.
+
 **Merge Tag**:
 A named placeholder in email content, such as `{{first_name}}`, that is replaced with a recipient's value when the email is sent.
 _Avoid_: Variable, placeholder

@@ -1,7 +1,6 @@
 import { loadDocument } from "@mailquilt/core";
 import type { Block, Column, Row } from "@mailquilt/core";
 import { blockStyles, EMAIL_LOOK, rowStyles } from "@mailquilt/core/internal";
-import type { BlockProps } from "@mailquilt/core/internal";
 
 import { escapeAttribute, escapeText } from "./escape.js";
 import { SHARED_COLUMN } from "./finish-html.js";
@@ -28,26 +27,25 @@ const linkAttribute = (href: string | undefined) =>
   href === undefined ? "" : ` href="${escapeAttribute(href)}"`;
 
 /**
- * A Block as MJML. The casts are safe, as `loadDocument` checked each Block's
- * props against its type's schema, and core's styles for a type always set the
- * same properties.
+ * A Block as MJML. The casts are safe, as core's styles for a type always set
+ * the same properties.
  */
 const blockToMjml = (block: Block, fontFamily: string) => {
   const blockCss = blockStyles(block);
   const attributes = mjmlAttributes(blockCss);
   switch (block.type) {
     case "text": {
-      return `<mj-text${attributes}>${richTextToHtml((block.props as BlockProps["text"]).content, blockCss as TextCss)}</mj-text>`;
+      return `<mj-text${attributes}>${richTextToHtml(block.props.content, blockCss as TextCss)}</mj-text>`;
     }
     case "heading": {
-      return `<mj-text${attributes}>${headingToHtml(block.props as BlockProps["heading"], fontFamily, blockCss as TextCss)}</mj-text>`;
+      return `<mj-text${attributes}>${headingToHtml(block.props, fontFamily, blockCss as TextCss)}</mj-text>`;
     }
     case "button": {
-      const { href, label } = block.props as BlockProps["button"];
+      const { href, label } = block.props;
       return `<mj-button${attributes}${linkAttribute(href)}>${plainTextToHtml(label)}</mj-button>`;
     }
     case "image": {
-      const { alt = "", href, src } = block.props as BlockProps["image"];
+      const { alt = "", href, src } = block.props;
       // Until it has a URL, there's no image, and a link would have nothing in it.
       if (src === undefined) {
         return "";
@@ -60,10 +58,11 @@ const blockToMjml = (block: Block, fontFamily: string) => {
     case "spacer": {
       return `<mj-spacer${attributes}></mj-spacer>`;
     }
-    // Only for a type core adds before this package can render it, which the
-    // test that renders each of core's types would catch first.
+    // Never reached, as core checked each Block's type. A type this doesn't
+    // handle fails to compile here.
     default: {
-      throw new Error(`Can't render unknown Block type "${block.type}"`);
+      const unknown: never = block;
+      throw new Error(`Can't render unknown Block ${JSON.stringify(unknown)}`);
     }
   }
 };

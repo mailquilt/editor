@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import { createEditor, createEmail } from "../src/index.js";
-import type { ApplyResult, Operation } from "../src/index.js";
+import type { ApplyResult, Operation, RichTextDocument } from "../src/index.js";
 
-const paragraph = (text: string) => ({
+const paragraph = (text: string): RichTextDocument => ({
   content: [{ content: [{ text, type: "text" }], type: "paragraph" }],
   type: "doc",
 });

@@ -18,10 +18,13 @@ const text = (value: string, marks?: unknown[]) => ({
 
 const heading = (props: Record<string, unknown>) => ({
   props,
-  type: "heading",
+  type: "heading" as const,
 });
 
-const button = (props: Record<string, unknown>) => ({ props, type: "button" });
+const button = (props: Record<string, unknown>) => ({
+  props,
+  type: "button" as const,
+});
 
 /** The opening tag of the Button's link, with its attributes. */
 const buttonLink = (html: string) => html.match(/<a\s[^>]*>/u)?.[0] ?? "";

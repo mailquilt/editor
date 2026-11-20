@@ -10,6 +10,7 @@
 import type {
   Block,
   BlocksDocument,
+  BlockType,
   RichTextDocument,
   RichTextHardBreak,
   RichTextText,
@@ -19,7 +20,12 @@ import type {
 import { art, INK, ORANGE, PAPER, SOFT, WASH } from "./example-art";
 import { paragraph } from "./rich-text";
 
-type Props = Record<string, unknown>;
+/** A Block of any type, before it has an ID. */
+type NewBlock = {
+  [Type in BlockType]: Omit<Extract<Block, { type: Type }>, "id">;
+}[BlockType];
+
+type TextProps = Extract<Block, { type: "text" }>["props"];
 
 const BODY = "#3f3f46";
 const GREY = "#71717a";
@@ -75,28 +81,36 @@ const emailBuilder = (slug: string) => {
     count += 1;
     return `${slug}-${kind}-${count}`;
   };
-  const block = (type: string, props: Props): Block => ({
-    id: nextId(type),
-    props,
-    type,
+  const block = (newBlock: NewBlock): Block => ({
+    id: nextId(newBlock.type),
+    ...newBlock,
   });
-  const text = (content: RichTextDocument | string, props: Props = {}) =>
-    block("text", {
-      color: BODY,
-      content: typeof content === "string" ? paragraph(content) : content,
-      ...props,
+  const text = (
+    content: RichTextDocument | string,
+    props: Omit<TextProps, "content"> = {}
+  ) =>
+    block({
+      props: {
+        color: BODY,
+        content: typeof content === "string" ? paragraph(content) : content,
+        ...props,
+      },
+      type: "text",
     });
   return {
     button: (label: string, href: string) =>
-      block("button", { backgroundColor: ORANGE, color: PAPER, href, label }),
-    divider: () => block("divider", { color: SOFT }),
+      block({
+        props: { backgroundColor: ORANGE, color: PAPER, href, label },
+        type: "button",
+      }),
+    divider: () => block({ props: { color: SOFT }, type: "divider" }),
     /** The sender's name on the left, and a note about this email on the right. */
     header: (sender: string, note: string) => [
       [text(lines(strong(sender)), { color: INK, fontSize: 17 })],
       [text(note, { align: "right", color: GREY, fontSize: 14 })],
     ],
     image: (tag: string, alt: string, width: number) =>
-      block("image", { alt, src: `{{${tag}}}`, width }),
+      block({ props: { alt, src: `{{${tag}}}`, width }, type: "image" }),
     row: (
       widths: number[],
       columns: Block[][],
@@ -111,14 +125,17 @@ const emailBuilder = (slug: string) => {
       id: nextId("row"),
       props: { backgroundColor },
     }),
-    spacer: (height: number) => block("spacer", { height }),
+    spacer: (height: number) => block({ props: { height }, type: "spacer" }),
     text,
     title: (words: string) =>
-      block("heading", {
-        color: INK,
-        content: paragraph(words),
-        fontSize: 34,
-        level: 1,
+      block({
+        props: {
+          color: INK,
+          content: paragraph(words),
+          fontSize: 34,
+          level: 1,
+        },
+        type: "heading",
       }),
   };
 };

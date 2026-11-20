@@ -10,7 +10,7 @@ import { renderEmail } from "@mailquilt/renderer";
 import { html, LitElement, nothing } from "lit";
 
 import { createAnnouncements } from "./announcements.js";
-import { blockContentStyles, hasRichText } from "./block-content.js";
+import { BLOCK_VIEWS, blockTypeStyles, hasRichText } from "./block-types.js";
 import {
   MIN_EDITOR_WIDTH,
   renderFloatingToolbar,
@@ -38,7 +38,6 @@ import { styleProperties } from "./style-properties.js";
 import { createTextBlockView } from "./text-block-view.js";
 import type { TextBlockView } from "./text-block-view.js";
 import type { TextFormats } from "./text-commands.js";
-import { TEXT_SCHEMAS } from "./text-schema.js";
 import { themeTokens, UI_LANG, uiStyles } from "./theme.js";
 import { createToolFitting } from "./tool-fitting.js";
 import type { ToolFitting } from "./tool-fitting.js";
@@ -69,7 +68,7 @@ export class MailQuilt extends LitElement {
     uiStyles,
     settingsPanelStyles,
     sidePanelStyles,
-    blockContentStyles,
+    blockTypeStyles,
     formatBarStyles,
     previewStyles,
     editorStyles,
@@ -307,12 +306,12 @@ export class MailQuilt extends LitElement {
     }
     for (const block of blocks) {
       if (hasRichText(block) && !this.#views.has(block.id)) {
+        const { canBold, schema } = BLOCK_VIEWS[block.type].text;
         this.#views.set(
           block.id,
           createTextBlockView({
-            // A Heading is bold already, so the mark would change nothing.
-            canBold: block.type !== "heading",
-            content: block.props.content as RichTextDocument,
+            canBold,
+            content: block.props.content,
             label: `${blockLabel(block.type)} Block`,
             onChange: (next) => this.#commitText(block.id, next),
             onFocus: () => {
@@ -324,7 +323,7 @@ export class MailQuilt extends LitElement {
             onTypingBreak: () => {
               this.#typingSession += 1;
             },
-            schema: TEXT_SCHEMAS[block.type],
+            schema,
           })
         );
       }
@@ -559,9 +558,9 @@ export class MailQuilt extends LitElement {
     this.#editing.historyStepped(step);
     const email = editor.getDocument();
     for (const block of blocksIn(email)) {
-      this.#views
-        .get(block.id)
-        ?.setContent(block.props.content as RichTextDocument);
+      if (hasRichText(block)) {
+        this.#views.get(block.id)?.setContent(block.props.content);
+      }
     }
     // Undo and redo can add, remove or move Blocks, Columns and Rows.
     this.requestUpdate();

@@ -4,14 +4,11 @@ import { createEditor, createEmail } from "../src/index.js";
 import type { BlocksDocument } from "../src/index.js";
 import { blockStyles } from "../src/internal.js";
 
-const withBlock = (
-  type: string,
-  props: Record<string, unknown> = {}
-): BlocksDocument => {
+const withBlock = (type: "divider" | "spacer"): BlocksDocument => {
   const document = createEmail();
   const column = document.rows[0]?.columns[0];
   if (column) {
-    column.blocks = [{ id: "block-1", props, type }];
+    column.blocks = [{ id: "block-1", props: {}, type }];
   }
   return document;
 };
@@ -19,7 +16,10 @@ const withBlock = (
 const propsOf = (document: BlocksDocument) =>
   document.rows[0]?.columns[0]?.blocks[0]?.props;
 
-const setProps = (type: string, props: Record<string, unknown>) => {
+const setProps = (
+  type: "divider" | "spacer",
+  props: Record<string, unknown>
+) => {
   const editor = createEditor({ document: withBlock(type) });
   const result = editor.apply({
     blockId: "block-1",
