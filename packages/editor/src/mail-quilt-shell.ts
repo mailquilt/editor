@@ -1,12 +1,14 @@
 import { isSameDocument, loadDocument } from "@mailquilt/core";
 import type { BlocksDocument, LoadResult } from "@mailquilt/core";
 import { css, html, LitElement, nothing, unsafeCSS } from "lit";
-import { keyed } from "lit/directives/keyed.js";
+import { createRef, ref } from "lit/directives/ref.js";
+import { repeat } from "lit/directives/repeat.js";
 
 import "./mail-quilt.js";
 import type { MailQuilt } from "./mail-quilt.js";
 import { refuseFiles } from "./refuse-files.js";
 import { themeTokens, UI_LANG, uiStyles } from "./theme.js";
+import { takeValueSetEarly } from "./value-set-early.js";
 
 /** The Shell's own buttons. */
 export type ShellAction = "export-html" | "export-json" | "import-json";
@@ -33,42 +35,64 @@ const parseEmail = (text: string): LoadResult => {
   return loadDocument(parsed);
 };
 
-/**
- * What the host's next `value` does to the open email. Only `#hostSets()` and
- * `#openSaved()` change it. `value` is the host's latest `value`, and `key` is
- * the `save-key` the Shell last read, to tell when it changes.
- */
-type Opening =
-  /** Before the first update. */
-  | { readonly state: "waiting"; readonly value: unknown }
+/** What the host's next `value` does to the open email, once the Shell starts. */
+type Opened =
   /**
    * A saved email opened in place of the host's `value`, or of its first one
-   * if it hasn't set one yet. That first one, or a copy of it, doesn't open.
+   * if it hasn't set one yet, or the person imported one in place of that
+   * first one. That first one, or a copy of it, doesn't open.
    */
-  | {
-      readonly state: "saved";
-      readonly key: string | null | undefined;
-      readonly value: unknown;
-    }
+  | "saved"
   /**
    * With `save-key` and no saved email that opens, the host's first `value`
    * opened, when it was set. A copy of it doesn't open, so the person's work
    * stays.
    */
-  | {
-      readonly state: "first";
-      readonly key: string | null | undefined;
-      readonly value: unknown;
-    }
+  | "first"
   /**
    * Every `value` the host sets opens, as on `<mail-quilt>`: without
    * `save-key` at the first update, or once the host has set a different email.
    */
+  | "open";
+
+/**
+ * Only `#hostSets()`, `#openSaved()` and an import change it. `value` is the
+ * host's latest `value`, and `key` is the `save-key` the Shell last read, to
+ * tell when it changes.
+ */
+type Opening =
+  /** Before the first update. */
+  | { readonly state: "waiting"; readonly value: unknown }
   | {
-      readonly state: "open";
+      readonly state: Opened;
       readonly key: string | null | undefined;
       readonly value: unknown;
     };
+
+/**
+ * What a notice in the message bar reports: an export, an import, an email the
+ * host set that the editor refused, or a saved email that couldn't be opened.
+ * Each has a place of its own, so none hides another.
+ */
+type NoticeOf = "export" | "import" | "refused" | "saved";
+
+/**
+ * Keeps a saved email that couldn't be opened where nothing saves, as it may
+ * only be from a newer version: under `<key>:unopened`, or `:unopened:2` and
+ * on if those keep others. The same one opened again isn't kept twice. Throws
+ * if the browser can't keep it.
+ */
+const keepUnopened = (key: string, text: string) => {
+  let name = `${key}:unopened`;
+  let kept = localStorage.getItem(name);
+  for (let count = 2; kept !== null && kept !== text; count += 1) {
+    name = `${key}:unopened:${count}`;
+    kept = localStorage.getItem(name);
+  }
+  if (kept === null) {
+    localStorage.setItem(name, text);
+  }
+};
 
 const downloadFile = (name: string, type: string, text: string) => {
   const url = URL.createObjectURL(new Blob([text], { type }));
@@ -194,6 +218,8 @@ export class MailQuiltShell extends LitElement {
   declare saveKey: string | null | undefined;
 
   readonly #editor: MailQuilt = document.createElement("mail-quilt");
+  readonly #body = createRef<HTMLElement>();
+  readonly #fileInput = createRef<HTMLInputElement>();
   /** The email to open is chosen at the first update, or earlier if asked for. */
   #opening: Opening = { state: "waiting", value: undefined };
   /**
@@ -205,13 +231,19 @@ export class MailQuiltShell extends LitElement {
   /** Set while the browser can't save the email. */
   #cantSave = false;
   /**
-   * A `save-key` whose saved email couldn't be opened or copied to
-   * `<save-key>:unopened`, so nothing is saved over it.
+   * A `save-key` whose saved email couldn't be opened or copied where nothing
+   * saves, so nothing is saved over it.
    */
   #uncopiedKey: string | undefined;
-  /** The latest refused email or failed export, until the next change. */
-  #notice: string | undefined;
-  /** Counts notices, so the same one again is a new alert and is read out. */
+  /**
+   * What went wrong, until the next change, or until an import or export
+   * works. Each has an ID, so the same notice again is a new alert and is
+   * read out.
+   */
+  readonly #notices = new Map<
+    NoticeOf,
+    { readonly id: number; readonly text: string }
+  >();
   #noticeId = 0;
 
   constructor() {
@@ -219,17 +251,15 @@ export class MailQuiltShell extends LitElement {
     // Its header is outside <mail-quilt>, which refuses the rest.
     this.addEventListener("dragover", refuseFiles);
     this.addEventListener("drop", refuseFiles);
-    // As on <mail-quilt>, for a `value` set before this element is defined.
-    if (Object.hasOwn(this, "value")) {
-      const { value } = this;
-      Reflect.deleteProperty(this, "value");
-      this.value = value;
-    }
+    takeValueSetEarly(this);
     this.#editor.addEventListener("mq-change", ({ detail }) => {
       this.#keep(detail.document);
     });
     this.#editor.addEventListener("mq-error", ({ detail }) => {
-      this.#showNotice(`This email couldn't be opened: ${detail.reason}`);
+      this.#showNotice(
+        "refused",
+        `This email couldn't be opened: ${detail.reason}`
+      );
     });
   }
 
@@ -259,6 +289,9 @@ export class MailQuiltShell extends LitElement {
     if (this.#opening.state === "waiting") {
       this.#openSaved();
     }
+    if (!this.#editor.value) {
+      throw new Error("<mail-quilt-shell> has no document to export");
+    }
     return await this.#editor.exportHtml();
   }
 
@@ -286,9 +319,15 @@ export class MailQuiltShell extends LitElement {
     const cantSave = shows("export-json")
       ? "This browser can't save your email here. Export it as JSON to keep it."
       : "This browser can't save your email here.";
+    const buttons: readonly (readonly [ShellAction, string, () => unknown])[] =
+      [
+        ["import-json", "Import JSON", this.#chooseFile],
+        ["export-json", "Export JSON", this.#exportJson],
+        ["export-html", "Export HTML", this.#exportHtmlFile],
+      ];
 
     return html`
-      <div class="ui frame shell">
+      <div class="ui frame shell" part="frame">
         <div class="header" part="header">
           <!--
             A heading the host sets is in the host page's language, and takes
@@ -303,52 +342,35 @@ export class MailQuiltShell extends LitElement {
             ${this.heading || "Email"}
           </h2>
           <div class="actions" lang=${UI_LANG} part="actions">
+            ${buttons.map(([action, label, onClick]) =>
+              shows(action)
+                ? html`
+                    <button
+                      class=${
+                        action === "export-html"
+                          ? "text-button primary"
+                          : "text-button"
+                      }
+                      part=${action}
+                      type="button"
+                      @click=${onClick}
+                    >
+                      ${label}
+                    </button>
+                  `
+                : nothing
+            )}
             ${
               shows("import-json")
                 ? html`
-                    <button
-                      class="text-button"
-                      part="import-json"
-                      type="button"
-                      @click=${this.#chooseFile}
-                    >
-                      Import JSON
-                    </button>
                     <input
                       accept=".json,application/json"
                       data-testid="file-input"
                       hidden
                       type="file"
+                      ${ref(this.#fileInput)}
                       @change=${this.#importJson}
                     />
-                  `
-                : nothing
-            }
-            ${
-              shows("export-json")
-                ? html`
-                    <button
-                      class="text-button"
-                      part="export-json"
-                      type="button"
-                      @click=${this.#exportJson}
-                    >
-                      Export JSON
-                    </button>
-                  `
-                : nothing
-            }
-            ${
-              shows("export-html")
-                ? html`
-                    <button
-                      class="text-button primary"
-                      part="export-html"
-                      type="button"
-                      @click=${this.#exportHtmlFile}
-                    >
-                      Export HTML
-                    </button>
                   `
                 : nothing
             }
@@ -360,16 +382,15 @@ export class MailQuiltShell extends LitElement {
               ? html`<p part="message" role="alert">${cantSave}</p>`
               : nothing
           }
-          ${
-            this.#notice
-              ? keyed(
-                  this.#noticeId,
-                  html`<p part="message" role="alert">${this.#notice}</p>`
-                )
-              : nothing
-          }
+          ${repeat(
+            this.#notices.values(),
+            ({ id }) => id,
+            ({ text }) => html`<p part="message" role="alert">${text}</p>`
+          )}
         </div>
-        <div class="body" data-testid="body">${this.#editor}</div>
+        <div class="body" data-testid="body" ${ref(this.#body)}>
+          ${this.#editor}
+        </div>
       </div>
     `;
   }
@@ -414,10 +435,10 @@ export class MailQuiltShell extends LitElement {
     if (opening.state !== "waiting" && key === opening.key) {
       return;
     }
-    if (!key) {
-      // Nothing is saved any more, so nothing can fail to be.
-      this.#cantSave = false;
-    }
+    // Both were about the last key. Saving under another key, or none, may
+    // work, which its next change says.
+    this.#cantSave = false;
+    this.#notices.delete("saved");
     const saved = key ? this.#readSavedEmail(key) : undefined;
     if (saved) {
       this.#opening = { key, state: "saved", value: opening.value };
@@ -438,7 +459,7 @@ export class MailQuiltShell extends LitElement {
 
   /** Once rendered, and again whenever the Shell is put back on the page. */
   #observeBody() {
-    const body = this.renderRoot.querySelector(".body");
+    const body = this.#body.value;
     if (body) {
       this.#bodyObserver ??= new ResizeObserver(([entry]) => {
         this.#editor.style.setProperty(
@@ -465,11 +486,13 @@ export class MailQuiltShell extends LitElement {
     }
     const loaded = parseEmail(saved);
     if (!loaded.ok) {
-      this.#showNotice(`Your saved email couldn't be opened: ${loaded.reason}`);
-      // The next change is saved over it, and it may only be from a newer
-      // version, so it's kept where nothing saves.
+      this.#showNotice(
+        "saved",
+        `Your saved email couldn't be opened: ${loaded.reason}`
+      );
+      // The next change is saved over it.
       try {
-        localStorage.setItem(`${key}:unopened`, saved);
+        keepUnopened(key, saved);
       } catch {
         // Then no change is saved over it, and the Shell says it can't save.
         this.#uncopiedKey = key;
@@ -496,52 +519,56 @@ export class MailQuiltShell extends LitElement {
         this.requestUpdate();
       }
     }
-    this.#showNotice(undefined);
+    // Only when there are any, as this runs on every keystroke.
+    if (this.#notices.size > 0) {
+      this.#notices.clear();
+      this.requestUpdate();
+    }
   }
 
-  /**
-   * Clearing renders only when there's a notice, as it runs on every keystroke.
-   * A notice always renders, so the same one again is read out again.
-   */
-  #showNotice(notice: string | undefined) {
-    if (notice !== undefined || this.#notice !== undefined) {
-      this.#notice = notice;
-      this.#noticeId += 1;
+  /** Always renders, so the same notice again is read out again. */
+  #showNotice(of: NoticeOf, text: string) {
+    this.#noticeId += 1;
+    this.#notices.set(of, { id: this.#noticeId, text });
+    this.requestUpdate();
+  }
+
+  #clearNotice(of: NoticeOf) {
+    if (this.#notices.delete(of)) {
       this.requestUpdate();
     }
   }
 
   readonly #exportHtmlFile = async () => {
     if (!this.value) {
-      this.#showNotice("There's no email to export.");
+      this.#showNotice("export", "There's no email to export.");
       return;
     }
     try {
       downloadFile("email.html", "text/html", await this.exportHtml());
-      this.#showNotice(undefined);
+      this.#clearNotice("export");
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
-      this.#showNotice(`The HTML couldn't be exported: ${reason}`);
+      this.#showNotice("export", `The HTML couldn't be exported: ${reason}`);
     }
   };
 
   readonly #exportJson = () => {
     const document = this.value;
-    if (document) {
-      downloadFile(
-        "email.json",
-        "application/json",
-        JSON.stringify(document, null, 2)
-      );
-    } else {
-      this.#showNotice("There's no email to export.");
+    if (!document) {
+      this.#showNotice("export", "There's no email to export.");
+      return;
     }
+    downloadFile(
+      "email.json",
+      "application/json",
+      JSON.stringify(document, null, 2)
+    );
+    this.#clearNotice("export");
   };
 
   readonly #chooseFile = () => {
-    this.renderRoot
-      .querySelector<HTMLInputElement>("input[type=file]")
-      ?.click();
+    this.#fileInput.value?.click();
   };
 
   readonly #importJson = async ({ currentTarget }: Event) => {
@@ -559,12 +586,25 @@ export class MailQuiltShell extends LitElement {
       loaded = { ok: false, reason: "The file couldn't be read" };
     }
     if (!loaded.ok) {
-      this.#showNotice(`That file couldn't be imported: ${loaded.reason}`);
+      this.#showNotice(
+        "import",
+        `That file couldn't be imported: ${loaded.reason}`
+      );
+      return;
+    }
+    // The email that's open, so nothing changes.
+    if (isSameDocument(loaded.document, this.#editor.value)) {
+      this.#clearNotice("import");
       return;
     }
     this.#editor.value = loaded.document;
     const document = this.#editor.value;
     if (document) {
+      const opening = this.#opening;
+      // The person's work, which the host's first email set late can't replace.
+      if (opening.state === "first") {
+        this.#opening = { ...opening, state: "saved" };
+      }
       this.#keep(document);
       this.dispatchEvent(
         new CustomEvent("mq-change", {

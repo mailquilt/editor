@@ -44,6 +44,7 @@ import { createToolPlacement } from "./tool-placement.js";
 import type { ToolPlacement } from "./tool-placement.js";
 import { createTooltips } from "./tooltips.js";
 import type { Tooltips } from "./tooltips.js";
+import { takeValueSetEarly } from "./value-set-early.js";
 
 /** Typing after a gap this long starts a new undo step. */
 const TYPING_PAUSE_MS = 1000;
@@ -210,13 +211,7 @@ export class MailQuilt extends LitElement {
     });
     this.addEventListener("dragover", refuseFiles);
     this.addEventListener("drop", refuseFiles);
-    // A host may set `value` before this element is defined, which leaves an
-    // own property in front of the setter.
-    if (Object.hasOwn(this, "value")) {
-      const { value } = this;
-      Reflect.deleteProperty(this, "value");
-      this.value = value;
-    }
+    takeValueSetEarly(this);
   }
 
   get value(): BlocksDocument | undefined {

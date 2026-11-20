@@ -53,7 +53,7 @@ Work in this order, and stop as soon as it matches the app:
    - `--mq-color-on-tooltip` on `--mq-color-tooltip`
 
    Set `--mq-color-scheme: dark` too, or the browser's own dropdown lists and color picker stay light. The page's own `color-scheme` doesn't reach the editor.
-4. **The frame.** Only if tokens aren't enough, style `mail-quilt::part(frame)`, such as `border-radius: 0` for an editor that fills a panel.
+4. **The frame.** Only if tokens aren't enough, style `mail-quilt::part(frame)`, such as `border-radius: 0` for an editor that fills a panel. On a Shell, style `mail-quilt-shell::part(frame)`, as the Shell's frame is the one that shows.
 5. **The Shell's header and messages.** Choose its buttons with `actions`, name it with `heading`, and style its CSS parts, such as `mail-quilt-shell::part(header)`: [Shell](https://editor.mailquilt.com/docs/shell.md).
 
 Don't:
