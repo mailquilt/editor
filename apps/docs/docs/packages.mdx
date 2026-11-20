@@ -25,7 +25,17 @@ Most apps install one package, and `@mailquilt/core` too if they create emails i
 | `@mailquilt/renderer` | The core.                                     |
 | `@mailquilt/core`     | Nothing else from Mail Quilt.                 |
 
-`core` and `renderer` need no DOM, so they run in Node 22 or later as well as in a browser. Installing `renderer` on a server doesn't bring the editor with it.
+`core` and `renderer` need no DOM, so they run in Node as well as in a browser. Installing `renderer` on a server doesn't bring the editor with it.
+
+## Browsers and Node
+
+| Package | Runs in |
+| --- | --- |
+| `@mailquilt/editor` and `@mailquilt/react` | Chrome and Edge 111, Firefox 121 and Safari 16.4, or later. |
+| `@mailquilt/renderer` | Node 22 or later, and Chrome and Edge 110, Firefox 115 and Safari 16.4, or later. |
+| `@mailquilt/core` | Node 22 or later, and Chrome and Edge 110, Firefox 115 and Safari 16, or later. |
+
+The packages are built for ES2023, which sets the lowest versions for `core`. The renderer's text patterns need Safari 16.4, and the editor's styles need Chrome 111 and Firefox 121. The editor's tests run in the current Chromium, Firefox and WebKit, so the lowest versions come from what the code uses, not from a test. On any browser, the editor needs to be at least {{editor-min-width}} pixels wide to edit an email, so a phone shows a notice instead.
 
 ## The editor in your app
 

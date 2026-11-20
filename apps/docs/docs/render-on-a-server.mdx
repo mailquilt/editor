@@ -21,6 +21,8 @@ The HTML is ready to send. Merge Tags such as `{{first_name}}` are in it as they
 
 [MJML](https://mjml.io), the library that writes the HTML, loads the first time you call `renderEmail()`. A server that never renders an email never loads it.
 
+In Node 26, and any version with Web Storage on by default, that first call prints a warning once: `ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.` MJML looks for a setting in `localStorage` as it loads, and stores nothing, so the warning is harmless. If your server doesn't use `localStorage` itself, you can hide it by starting Node with `--no-webstorage`, such as with `NODE_OPTIONS=--no-webstorage`.
+
 ## When the renderer refuses an email
 
 The renderer accepts what the editor accepts. If the document is malformed, has a Block type this version doesn't know, or was saved by a newer version, the promise rejects, and the error's message says what was wrong:

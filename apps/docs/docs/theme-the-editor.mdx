@@ -63,13 +63,13 @@ mail-quilt {
 }
 ```
 
-In this theme, text meets WCAG AA's 4.5:1 against what it sits on, and focus rings and `--mq-color-border-strong` meet 3:1 against the surfaces. The quieter borders don't: `--mq-color-border`, which separates areas such as toolbars and tiles, is 1.3:1 against `--mq-color-surface`, and a settings field's border, a mix of the two until the pointer is over it, is about 2.3:1. The light theme's are quieter still.
+In this theme, text meets WCAG AA's 4.5:1 against what it sits on, and focus rings and a field's edge meet 3:1. A field's edge is `--mq-color-border-strong`, 4.4:1 against `--mq-color-surface`, and `--mq-color-text-muted` under the pointer. If you change these, keep a field's edge at 3:1 or more, so an empty field still reads as one. `--mq-color-border` is quieter, at 1.3:1, as it only separates areas such as toolbars and tiles, which don't need to stand out to be used.
 
 A few tokens pair with each other, so change them together:
 
 - `--mq-color-surface` is also the icons and tag text on `--mq-color-text`, such as the selected Block's toolbar and tag. Keep the two far apart, one dark and one light.
 - `--mq-color-on-accent` is the text on `--mq-color-accent`. With a light accent, as here, it's dark.
-- `--mq-color-accent-strong` is the text and icons of pressed buttons, such as Bold, on `--mq-color-accent-soft`. On a dark theme, make it lighter than the accent, not darker.
+- `--mq-color-accent-strong` is the text, icons and edge of pressed buttons, such as Bold, on `--mq-color-accent-soft`. On a dark theme, make it lighter than the accent, not darker.
 - `--mq-color-on-tooltip` is the text on `--mq-color-tooltip`.
 
 `--mq-color-scheme: dark` turns what the browser draws itself dark too: the open list of a dropdown in the side panel, and the color picker. The editor doesn't take it from your page's own `color-scheme`.

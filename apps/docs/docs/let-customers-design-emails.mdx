@@ -1,6 +1,6 @@
 ---
 title: Let customers design emails
-description: How the Mail Quilt packages fit an app whose customers design its emails, from where the editor goes to Merge Tags, starting emails and rendering at send time.
+description: How the Mail Quilt packages fit an app whose customers design its emails, from where the editor goes to Merge Tags, starter emails and rendering at send time.
 seo:
   title: "Let your customers design emails in your SaaS app"
 ---
@@ -34,16 +34,16 @@ Save the JSON from the editor's change event, keyed however your app keys a cust
 
 ## Give customers somewhere to start
 
-Mail Quilt has no template library, so the starting emails are yours to make, which also means they can match your app. Design each one in the [Playground](/playground), or in a [Shell](./shell) in your app, and keep what its Export JSON button gives you. When a customer creates an email, pass a starting email to the editor as its `value`.
+Mail Quilt has no template library, so the starter emails are yours to make, which also means they can match your app. Design each one in the [Playground](/playground), or in a [Shell](./shell) in your app, and keep what its Export JSON button gives you. When a customer creates an email, pass a starter email to the editor as its `value`.
 
-To make starting emails in code instead, such as one per customer with their name already in it, use [Commands](./change-emails-in-code) from the core package.
+To make starter emails in code instead, such as one per customer with their name already in it, use [Commands](./change-emails-in-code) from the core package.
 
 ## Merge Tags
 
-Customers type Merge Tags such as `{{first_name}}` anywhere in text, and at the start of a link or image URL, such as `{{unsubscribe_url}}`. Mail Quilt keeps them in the HTML exactly as typed, so the service that sends your email can fill them in.
+Customers type Merge Tags such as `{{first_name}}` anywhere in text, and in a link or image URL, such as `{{unsubscribe_url}}`. Mail Quilt keeps them in the HTML, so the service that sends your email can fill them in.
 
 - **Tell customers which tags work.** Mail Quilt doesn't check a tag's name, so it can't warn a customer about a tag your sending service doesn't know.
-- **Keep tags to names.** An `&`, `<` or `>` inside a tag is escaped, as [Merge Tags](./document-format#merge-tags) explains, so your sending service would see the escaped text.
+- **Keep tags to names.** An `&`, `<` or `>` inside a tag is escaped, and a `"` too in a link or image URL or alt text, as [Merge Tags](./document-format#merge-tags) explains, so your sending service would see the escaped text.
 
 [Send with your email service](./send-email) shows how to fill tags on your server instead, and which services escape the values they fill.
 
