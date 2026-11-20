@@ -194,7 +194,7 @@ With a bundler, import `@mailquilt/editor`. Without one, such as in Rails, Larav
 ```html
 <mail-quilt id="builder"></mail-quilt>
 <script type="module">
-  import "https://cdn.jsdelivr.net/npm/@mailquilt/editor@0.1.0/dist/cdn/index.js";
+  import "https://cdn.jsdelivr.net/npm/@mailquilt/editor@0.2.0/dist/cdn/index.js";
 
   const builder = document.querySelector("#builder");
   builder.addEventListener("mq-change", (event) => save(event.detail.document));
@@ -292,6 +292,8 @@ Effect isn't used in the published packages, and may be reconsidered for the CLI
 - Preview of the real exported HTML, in a sandboxed iframe
 - HTML export, tested in Gmail, Apple Mail, Outlook and other major email clients
 - Theme tokens to match the editor to the host app
+- An editor that works on a page with a strict Content Security Policy
+- In `core`: `canUndo()`, `canRedo()`, and a code for each Command it refuses
 - The Shell: a ready-made editor page with Import, Export and messages
 - The docs and the Playground
 
@@ -306,8 +308,6 @@ It doesn't include a Merge Tag picker, image uploads, or anything in [Planned fe
 There are no dates, and items can move. Each item is tracked in GitHub Issues.
 
 **Next**
-
-`0.2` comes first. It restructures the editor ([ADR 0004](docs/adr/0004-restructure-the-editor-for-0-2.md)), fixes what the reviews before it found, and adds a few small things: `canUndo()`, `canRedo()` and a code for each refused Command in `core`, the `--mq-color-scheme` theme token, and a canvas that works under a strict Content Security Policy. Next starts in `0.3`.
 
 What a team needs before its customers can use the editor. The first six are specified together and ship first. These come before the MCP server and the AI builder because a team that can't upload an image or pick a Merge Tag stops there, whatever else the editor does. The line under a feature is what its spec has to settle first, because the code doesn't allow for it yet.
 
