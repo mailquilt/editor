@@ -31,6 +31,32 @@ export const textBlock = (page: Page) =>
 /** The test host's unfriendly CSS pushes the canvas far down the page. */
 export const TALL_VIEWPORT = { height: 1600, width: 1280 };
 
+/** A phone's width, below the 640px the editor needs, so it shows the narrow notice. */
+export const NARROW_VIEWPORT = { height: 800, width: 390 };
+
+/** What the editor shows in place of itself when it's too narrow to edit in. */
+export const narrowNotice = (page: Page) =>
+  canvas(page).getByText("Editing needs more room");
+
+/** The narrow notice's way to the Preview. */
+export const previewEmailButton = (page: Page) =>
+  canvas(page).getByRole("button", { name: "Preview email" });
+
+/** The test host's page, with its first email showing. */
+export const openTestPage = async (page: Page) => {
+  await page.goto("/");
+  await expect(textBlock(page)).toHaveText("Hello");
+};
+
+/**
+ * Has the pages of the test say they're on this platform, as Windows and Linux
+ * or as a Mac, from before the editor loads and reads it.
+ */
+export const pretendPlatform = (page: Page, platform: "MacIntel" | "Win32") =>
+  page.addInitScript((name) => {
+    Object.defineProperty(Navigator.prototype, "platform", { get: () => name });
+  }, platform);
+
 export const linkUrlField = (page: Page) =>
   page.getByRole("textbox", { name: "Link URL" });
 
@@ -97,7 +123,12 @@ export const setValue = (page: Page, email: unknown) =>
     (element as MailQuilt).value = value as MailQuilt["value"];
   }, email);
 
-/** On macOS, End scrolls the page and leaves the cursor where it is. */
+/** On macOS, Home and End scroll the page and leave the cursor where it is. */
+export const moveCursorToLineStart = (page: Page) =>
+  page.keyboard.press(
+    process.platform === "darwin" ? "Meta+ArrowLeft" : "Home"
+  );
+
 export const moveCursorToLineEnd = (page: Page) =>
   page.keyboard.press(
     process.platform === "darwin" ? "Meta+ArrowRight" : "End"
@@ -124,9 +155,7 @@ export const settle = (page: Page) =>
 export const focusStartOfTextBlock = async (page: Page) => {
   await textBlock(page).click();
   await expect(textBlock(page)).toBeFocused();
-  await page.keyboard.press(
-    process.platform === "darwin" ? "Meta+ArrowLeft" : "Home"
-  );
+  await moveCursorToLineStart(page);
   // ProseMirror learns of the moved cursor a moment later. A key it handles
   // itself, such as Enter, would act on the old position before then.
   await settle(page);
@@ -143,16 +172,22 @@ export const layoutTile = (page: Page, layout: string) =>
     .getByRole("group", { name: "Add a Row" })
     .getByRole("button", { exact: true, name: `Add ${layout} Row` });
 
+export const panelTab = (page: Page, name: string) =>
+  canvas(page).getByRole("tab", { exact: true, name });
+
+/** The side panel's way from a selected Block's settings back to its tabs. */
+export const backButton = (page: Page) =>
+  canvas(page).getByRole("button", { exact: true, name: "Back" });
+
 /**
  * Shows a side panel tab. A selected Block's settings show instead of the tabs, so
  * this goes back to them first, and the Block stays selected.
  */
 export const openTab = async (page: Page, name: string) => {
-  const back = canvas(page).getByRole("button", { exact: true, name: "Back" });
-  if (await back.isVisible()) {
-    await back.click();
+  if (await backButton(page).isVisible()) {
+    await backButton(page).click();
   }
-  const tab = canvas(page).getByRole("tab", { exact: true, name });
+  const tab = panelTab(page, name);
   if ((await tab.getAttribute("aria-selected")) !== "true") {
     await tab.click();
   }
@@ -182,27 +217,69 @@ export const announcement = (page: Page) => canvas(page).getByRole("status");
 /** The test host's count of `mq-change` events. */
 export const changeCount = (page: Page) => page.getByTestId("change-count");
 
+/**
+ * Checks how many `mq-change` events the test host has had since this was
+ * called, as the count it shows.
+ */
+export const changesSince = async (page: Page) => {
+  const before = Number(await changeCount(page).textContent());
+  return (count: number) =>
+    expect(changeCount(page)).toHaveText(String(before + count));
+};
+
 /** The document the test host last received in an `mq-change`. */
 export const latestDocument = async (page: Page) =>
   JSON.parse(
     (await page.getByTestId("latest-document").textContent()) ?? ""
   ) as Document;
 
-/** Counts the Escape presses that reach the host page, from here on. */
-export const countHostEscapes = async (page: Page) => {
-  await page.evaluate(() => {
-    const counter = window as unknown as { hostEscapes: number };
-    counter.hostEscapes = 0;
-    document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") {
-        counter.hostEscapes += 1;
-      }
-    });
-  });
+let hostListeners = 0;
+
+/**
+ * Reads the events of `type` that reach the host page's window from here on,
+ * each as the fields named, as they were when it got there. With `capture`,
+ * each is heard on its way in, before the editor.
+ */
+export const hostEvents = async (
+  page: Page,
+  type: string,
+  fields: readonly string[],
+  { capture = false } = {}
+) => {
+  hostListeners += 1;
+  const store = `hostEvents${hostListeners}`;
+  await page.evaluate(
+    (listener) => {
+      const heard: Record<string, unknown>[] = [];
+      Reflect.set(window, listener.store, heard);
+      window.addEventListener(
+        listener.type,
+        (event) => {
+          heard.push(
+            Object.fromEntries(
+              listener.fields.map((name) => [name, Reflect.get(event, name)])
+            )
+          );
+        },
+        { capture: listener.capture }
+      );
+    },
+    { capture, fields, store, type }
+  );
   return () =>
     page.evaluate(
-      () => (window as unknown as { hostEscapes: number }).hostEscapes
+      (name) => Reflect.get(window, name) as Record<string, unknown>[],
+      store
     );
+};
+
+/** Counts the Escape presses that reach the host page, from here on. */
+export const countHostEscapes = async (page: Page) => {
+  const presses = await hostEvents(page, "keydown", ["key"]);
+  return async () => {
+    const heard = await presses();
+    return heard.filter(({ key }) => key === "Escape").length;
+  };
 };
 
 /**
@@ -210,14 +287,14 @@ export const countHostEscapes = async (page: Page) => {
  * key, from here on, as the host page sees it. Undefined until one reaches it.
  */
 export const watchPrevented = async (page: Page, key: string) => {
-  await page.evaluate((watched) => {
-    document.addEventListener("keydown", (event) => {
-      if (event.key === watched) {
-        Object.assign(window, { lastPrevented: event.defaultPrevented });
-      }
-    });
-  }, key);
-  return () => page.evaluate(() => Reflect.get(window, "lastPrevented"));
+  const presses = await hostEvents(page, "keydown", [
+    "defaultPrevented",
+    "key",
+  ]);
+  return async () => {
+    const heard = await presses();
+    return heard.findLast((press) => press.key === key)?.defaultPrevented;
+  };
 };
 
 /**
@@ -309,6 +386,13 @@ export const deleteRow = async (page: Page, position: number) => {
 export const blockTools = (page: Page) =>
   canvas(page).getByRole("toolbar", { name: "Block tools" });
 
+/** The format bar, which shows while a Block's text is being edited. */
+export const formatBar = (page: Page) =>
+  canvas(page).getByRole("toolbar", { name: "Text formatting" });
+
+export const formatButton = (page: Page, name: string) =>
+  formatBar(page).getByRole("button", { exact: true, name });
+
 export const addText = async (page: Page) => {
   const text = await showPalette(page, "Text");
   await text.click();
@@ -379,6 +463,14 @@ export const blockWith = (page: Page, text: string) =>
     has: textBlock(page).getByText(text, { exact: true }),
   });
 
+/** The drag handle of the Text Block with this exact text. */
+export const handleOf = (page: Page, text: string) =>
+  blockWith(page, text).getByTestId("drag-handle");
+
+/** Where a drag would drop what it carries. */
+export const dropIndicator = (page: Page) =>
+  canvas(page).getByTestId("drop-indicator");
+
 /** The text of the Text Block with this exact text. */
 export const textOf = (page: Page, text: string) =>
   blockWith(page, text).getByRole("textbox", { name: "Text Block" });
@@ -425,6 +517,12 @@ export const addSecondTextBlock = (page: Page) =>
 export const blocks = async (page: Page, rowIndex = 0, columnIndex = 0) => {
   const { rows } = await currentValue(page);
   return rows[rowIndex]?.columns[columnIndex]?.blocks ?? [];
+};
+
+/** The props of a Block in that Column, counted from its end when `index` is negative. */
+export const blockProps = async (page: Page, index = 0) => {
+  const found = await blocks(page);
+  return found.at(index)?.props;
 };
 
 export const blockTypes = async (page: Page, rowIndex = 0, columnIndex = 0) => {
@@ -489,9 +587,22 @@ export const openBlocks = async (page: Page, ...columns: BlockType[][]) => {
   }
 };
 
-export const openExport = async (page: Page) => {
+/**
+ * A page for an opened export to fill: wider than the email, so it shows whole
+ * and centered, and the same size each time, so a test knows where.
+ */
+export const EXPORT_VIEWPORT = { height: 800, width: 800 };
+
+/** The exported HTML, and a new page showing it, at this size if one is given. */
+export const openExport = async (
+  page: Page,
+  viewport?: { height: number; width: number }
+) => {
   const html = await exportHtml(page);
   const opened = await page.context().newPage();
+  if (viewport) {
+    await opened.setViewportSize(viewport);
+  }
   await opened.setContent(html);
   return { html, opened };
 };

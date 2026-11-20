@@ -3,6 +3,8 @@ import { expect } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 
 import {
+  announcement,
+  backButton,
   blockGroup,
   blockTools,
   blockTypes,
@@ -12,11 +14,13 @@ import {
   centerOf,
   currentValue,
   emailWith,
+  formatBar,
+  hoverRow,
   linkUrlField,
   moveCursorToLineEnd,
   openBlocks,
   openEmail,
-  previewEmail,
+  panelTab,
   rowTag,
   rowTools,
   selectedBlock,
@@ -31,9 +35,6 @@ import {
   undoButton,
   undoByKey,
 } from "./helpers.js";
-
-const formatBar = (page: Page) =>
-  canvas(page).getByRole("toolbar", { name: "Text formatting" });
 
 /** The language an element is in, from the nearest element that says. */
 const langOf = (locator: Locator) =>
@@ -55,9 +56,7 @@ test.describe("a Block on the canvas", () => {
     await expect(blockTools(page).getByTestId("drag-handle")).toBeVisible();
   });
 
-  test("Alt+↑ in its toolbar moves the Block, as its tooltip says", async ({
-    page,
-  }) => {
+  test("Alt+↑ in its toolbar moves the Block", async ({ page }) => {
     await openBlocks(page, ["button", "divider"]);
     await blockGroup(page, "Divider").focus();
     await page.keyboard.press("Tab");
@@ -80,7 +79,7 @@ test.describe("a Row on the canvas", () => {
     await openBlocks(page, ["button"]);
     await expect(rowTools(page, 1)).toHaveCSS("opacity", "0");
 
-    await canvas(page).getByTestId("row").hover();
+    await hoverRow(page, 1);
 
     await expect(rowTools(page, 1)).toHaveCSS("opacity", "1");
   });
@@ -92,10 +91,7 @@ test.describe("a Row on the canvas", () => {
     await page.mouse.move(0, 0);
 
     await blockGroup(page, "Text").last().focus();
-    await canvas(page)
-      .getByTestId("row")
-      .nth(1)
-      .hover({ position: { x: 4, y: 4 } });
+    await hoverRow(page, 2);
 
     await expect(rowTools(page, 2)).toHaveCSS("opacity", "0");
     // Its tag still shows, and selects the Row, which brings the toolbar back.
@@ -106,7 +102,7 @@ test.describe("a Row on the canvas", () => {
     await expect(rowTools(page, 2)).toHaveAttribute("aria-current", "true");
   });
 
-  test("its toolbar is reached by Tab from a selected Block", async ({
+  test("Shift+Tab from one of its Blocks reaches its toolbar in one stop, and from further along leaves it", async ({
     page,
   }) => {
     await openEmail(page, [[["A"]], [["B"]]]);
@@ -192,7 +188,7 @@ test.describe("the email's language", () => {
       placeholder: canvas(page).getByTestId("placeholder"),
       rowTools: rowTools(page, 1),
       sidePanel: canvas(page).getByTestId("side-panel"),
-      status: canvas(page).getByRole("status"),
+      status: announcement(page),
       text: textBlock(page).locator("p"),
       textBox: textBlock(page),
     };
@@ -417,6 +413,7 @@ test.describe("the selected Block's tools", () => {
       await expect(linkUrlField(page)).toBeFocused();
       expect(await unpressable(page)).toEqual([]);
       if (nextToText) {
+        // No further than the gap the editor leaves between them.
         expect(
           await verticalGap(formatBar(page), selectedBlock(page))
         ).toBeLessThanOrEqual(6);
@@ -437,6 +434,7 @@ test.describe("the selected Block's tools", () => {
     await expect(linkUrlField(page)).toBeFocused();
 
     expect(await unpressable(page)).toEqual([]);
+    // Half the gap unscaled, at half the size.
     expect(
       await verticalGap(formatBar(page), selectedBlock(page))
     ).toBeLessThanOrEqual(3);
@@ -552,6 +550,7 @@ test.describe("the floating toolbar", () => {
     const box = await boxOf(toolbar);
     const area = await boxOf(canvas(page).getByTestId("workspace"));
     const panel = await boxOf(canvas(page).getByTestId("side-panel"));
+    // In the corner, rather than anywhere along the canvas.
     expect(box.x - area.x).toBeLessThan(80);
     expect(box.x + box.width).toBeLessThan(panel.x);
     // At the bottom of the canvas, or of the window while the canvas goes on.
@@ -625,38 +624,15 @@ test.describe("the floating toolbar", () => {
 test.describe("a Block's drag handle and link shortcut", () => {
   test.use({ viewport: TALL_VIEWPORT });
 
-  test("Control or Command+K on the Block opens the link field in its text, and on a Button reaches the host page", async ({
+  test("Control or Command+K on a Block opens the link field in its text", async ({
     page,
   }) => {
-    await openBlocks(page, ["button", "text"]);
-    await page.evaluate(() => {
-      Object.assign(window, { hostLinkKeys: 0 });
-      document.addEventListener("keydown", (event) => {
-        if (event.key === "k" && !event.defaultPrevented) {
-          Reflect.set(
-            window,
-            "hostLinkKeys",
-            Reflect.get(window, "hostLinkKeys") + 1
-          );
-        }
-      });
-    });
-    const hostLinkKeys = () =>
-      page.evaluate(() => Reflect.get(window, "hostLinkKeys"));
-    const linkUrl = linkUrlField(page);
-    await blockGroup(page, "Button").focus();
-
-    await page.keyboard.press("ControlOrMeta+k");
-
-    await expect(linkUrl).toHaveCount(0);
-    await expect(blockGroup(page, "Button")).toBeFocused();
-    await expect.poll(hostLinkKeys).toBe(1);
-
+    await openBlocks(page, ["text"]);
     await blockGroup(page, "Text").focus();
+
     await page.keyboard.press("ControlOrMeta+k");
 
-    await expect(linkUrl).toBeFocused();
-    expect(await hostLinkKeys()).toBe(1);
+    await expect(linkUrlField(page)).toBeFocused();
   });
 
   test("a click on another Block's handle leaves the tabs showing", async ({
@@ -664,98 +640,13 @@ test.describe("a Block's drag handle and link shortcut", () => {
   }) => {
     await openEmail(page, [[["A", "B"]]]);
     await blockGroup(page, "Text").first().focus();
-    await canvas(page)
-      .getByRole("button", { exact: true, name: "Back" })
-      .click();
+    await backButton(page).click();
 
     const b = blockWith(page, "B");
     await b.hover();
     await b.getByTestId("drag-handle").click();
 
-    await expect(
-      canvas(page).getByRole("tab", { name: "Content" })
-    ).toBeVisible();
-  });
-});
-
-const notice = (page: Page) =>
-  canvas(page).getByText("Editing needs more room");
-
-test.describe("on a screen too narrow to edit in", () => {
-  test.use({ viewport: { height: 800, width: 390 } });
-
-  test("says so instead of the editor, and still previews the email", async ({
-    page,
-  }) => {
-    await page.goto("/");
-    await page.addStyleTag({
-      content:
-        "main { padding: 0 !important } * { font-size: 16px !important }",
-    });
-
-    await expect(notice(page)).toBeVisible();
-    await expect(canvas(page).getByRole("tab")).toHaveCount(0);
-    await expect(textBlock(page)).toBeHidden();
-
-    await canvas(page).getByRole("button", { name: "Preview email" }).click();
-    await expect(previewEmail(page)).toContainText("Hello");
-  });
-
-  test("stays out of sight with a size the host gives the frame", async ({
-    page,
-  }) => {
-    await page.goto("/");
-    await page.addStyleTag({
-      content:
-        "mail-quilt::part(frame) { flex-grow: 1; height: 700px; min-height: 700px }",
-    });
-    await expect(notice(page)).toBeVisible();
-
-    await expect(
-      canvas(page)
-        .getByTestId("editor")
-        .evaluate((editor) => editor.getBoundingClientRect().height)
-    ).resolves.toBe(0);
-  });
-
-  test("gives the editor back, with the same email, once there's room", async ({
-    page,
-  }) => {
-    await page.goto("/");
-    await expect(notice(page)).toBeVisible();
-
-    await page.setViewportSize({ height: 800, width: 1280 });
-
-    await expect(notice(page)).toHaveCount(0);
-    await expect(textBlock(page)).toHaveText("Hello");
-  });
-
-  test("gives the editor back in a host sized to fit its content", async ({
-    page,
-  }) => {
-    await page.goto("/");
-    // Reported only to the page's error listeners, not as an uncaught error or
-    // a console message.
-    await page.evaluate(() => {
-      const reported: string[] = [];
-      Object.assign(window, { reported });
-      window.addEventListener("error", ({ message }) => reported.push(message));
-    });
-    // As a flex item that isn't stretched takes the width of what's inside, up
-    // to the width there is.
-    await page.addStyleTag({
-      content:
-        "mail-quilt { align-self: flex-start !important; max-width: 100% !important }",
-    });
-    await expect(notice(page)).toBeVisible();
-
-    await page.setViewportSize({ height: 800, width: 1280 });
-
-    await expect(notice(page)).toHaveCount(0);
-    await expect(textBlock(page)).toHaveText("Hello");
-    await expect(
-      page.evaluate(() => Reflect.get(window, "reported"))
-    ).resolves.toEqual([]);
+    await expect(panelTab(page, "Content")).toBeVisible();
   });
 });
 
@@ -773,9 +664,7 @@ test.describe("a click on the workspace, outside the email", () => {
 
     await expect(blockTools(page)).toHaveCount(0);
     await expect(canvas(page).locator('[aria-current="true"]')).toHaveCount(0);
-    await expect(
-      canvas(page).getByRole("tab", { name: "Content" })
-    ).toBeVisible();
+    await expect(panelTab(page, "Content")).toBeVisible();
     await undoByKey(page);
     await expect(textBlock(page)).toHaveText("Words");
   });

@@ -1,16 +1,18 @@
 import { expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
-import { blockGroup, canvas, openBlocks, test, textBlock } from "./helpers.js";
-
-const tab = (page: Page, name: string) =>
-  canvas(page).getByRole("tab", { exact: true, name });
+import {
+  backButton,
+  blockGroup,
+  canvas,
+  openBlocks,
+  panelTab,
+  test,
+  textBlock,
+} from "./helpers.js";
 
 const tabPanel = (page: Page, name: string) =>
   canvas(page).getByRole("tabpanel", { name });
-
-const back = (page: Page) =>
-  canvas(page).getByRole("button", { exact: true, name: "Back" });
 
 const fieldset = (page: Page, name: string) =>
   canvas(page).getByRole("group", { exact: true, name });
@@ -18,11 +20,14 @@ const fieldset = (page: Page, name: string) =>
 test.describe("the side panel's tabs", () => {
   test("follow the ARIA tabs pattern from the keyboard", async ({ page }) => {
     await openBlocks(page, ["text"]);
-    await tab(page, "Content").focus();
+    await panelTab(page, "Content").focus();
 
     await page.keyboard.press("ArrowRight");
-    await expect(tab(page, "Rows")).toBeFocused();
-    await expect(tab(page, "Rows")).toHaveAttribute("aria-selected", "true");
+    await expect(panelTab(page, "Rows")).toBeFocused();
+    await expect(panelTab(page, "Rows")).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
     await expect(tabPanel(page, "Rows")).toBeVisible();
     await expect(tabPanel(page, "Content")).toHaveCount(0);
     // Its title is a heading, for a screen reader's list of them.
@@ -31,16 +36,16 @@ test.describe("the side panel's tabs", () => {
     ).toHaveText("Layouts");
 
     await page.keyboard.press("End");
-    await expect(tab(page, "Settings")).toBeFocused();
+    await expect(panelTab(page, "Settings")).toBeFocused();
     await page.keyboard.press("ArrowRight");
-    await expect(tab(page, "Content")).toBeFocused();
+    await expect(panelTab(page, "Content")).toBeFocused();
     await page.keyboard.press("ArrowLeft");
-    await expect(tab(page, "Settings")).toBeFocused();
+    await expect(panelTab(page, "Settings")).toBeFocused();
     await page.keyboard.press("Home");
-    await expect(tab(page, "Content")).toBeFocused();
+    await expect(panelTab(page, "Content")).toBeFocused();
 
-    await expect(tab(page, "Rows")).toHaveAttribute("tabindex", "-1");
-    await expect(tab(page, "Content")).toHaveAttribute("tabindex", "0");
+    await expect(panelTab(page, "Rows")).toHaveAttribute("tabindex", "-1");
+    await expect(panelTab(page, "Content")).toHaveAttribute("tabindex", "0");
   });
 });
 
@@ -51,9 +56,9 @@ test.describe("a selected Block's properties", () => {
     await openBlocks(page, ["text"]);
     await textBlock(page).click();
 
-    await back(page).click();
+    await backButton(page).click();
 
-    await expect(tab(page, "Content")).toBeVisible();
+    await expect(panelTab(page, "Content")).toBeVisible();
     await expect(fieldset(page, "Block")).toHaveCount(0);
     // The Block stays selected, so what's chosen next goes after it.
     await expect(textBlock(page)).toBeFocused();
@@ -67,13 +72,16 @@ test.describe("a selected Block's properties", () => {
     page,
   }) => {
     await openBlocks(page, ["text"]);
-    await tab(page, "Rows").click();
+    await panelTab(page, "Rows").click();
     await blockGroup(page, "Text").focus();
 
-    await back(page).focus();
+    await backButton(page).focus();
     await page.keyboard.press("Enter");
 
-    await expect(tab(page, "Rows")).toBeFocused();
-    await expect(tab(page, "Rows")).toHaveAttribute("aria-selected", "true");
+    await expect(panelTab(page, "Rows")).toBeFocused();
+    await expect(panelTab(page, "Rows")).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
   });
 });

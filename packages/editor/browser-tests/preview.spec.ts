@@ -9,8 +9,10 @@ import {
   emailWithLink,
   exportHtml,
   focusStartOfTextBlock,
+  hostEvents,
   latestDocument,
   linkUrlField,
+  openTestPage,
   previewButton,
   previewDialog,
   previewEmail,
@@ -75,8 +77,7 @@ const hostileEmail = (name: string) => `<!doctype html>
   </body>`;
 
 test.beforeEach(async ({ page }) => {
-  await page.goto("/");
-  await expect(textBlock(page)).toHaveText("Hello");
+  await openTestPage(page);
 });
 
 test("a slow MJML shows a loading message, then the email", async ({
@@ -181,11 +182,7 @@ test.describe("the sandbox", () => {
   test("scripts in the Preview can't run or reach the host page", async ({
     page,
   }) => {
-    await page.evaluate(() => {
-      const messages: unknown[] = [];
-      Object.assign(window, { messages });
-      window.addEventListener("message", ({ data }) => messages.push(data));
-    });
+    const posted = await hostEvents(page, "message", ["data"]);
     await previewButton(page).click();
     await expect(previewEmail(page)).toContainText("Hello");
 
@@ -206,10 +203,10 @@ test.describe("the sandbox", () => {
     );
     // A message arrives a task after it's sent, and the Preview's would have
     // been sent first, so once the control's is here, any from the Preview is.
-    const messages = () =>
-      page.evaluate(
-        () => (window as unknown as { messages: unknown[] }).messages
-      );
+    const messages = async () => {
+      const heard = await posted();
+      return heard.map(({ data }) => data);
+    };
     await expect.poll(messages).toContain("control");
     expect(await messages()).not.toContain("preview");
     await expect(page.locator("html")).not.toHaveAttribute("data-preview");

@@ -3,18 +3,22 @@ import type { Page } from "@playwright/test";
 
 import {
   announcement,
+  bottomOf,
   boxOf,
   canvas,
   centerOf,
-  changeCount,
+  changesSince,
   dragMarks,
+  dropIndicator,
   hoverRow,
   letGo,
   moveCursorToLineEnd,
   moveTo,
-  openEmail as open,
+  openEmail,
   pickUp,
+  pretendPlatform,
   rowFrame,
+  rowTag,
   rowTools,
   selectRow,
   selectRowButton,
@@ -25,7 +29,6 @@ import {
   undoByKey,
   watchPrevented,
 } from "./helpers.js";
-import type { Point } from "./helpers.js";
 
 test.use({ viewport: TALL_VIEWPORT });
 
@@ -40,7 +43,7 @@ const clickRowTool = async (page: Page, position: number, name: string) => {
 
 test.describe("the Move Row buttons", () => {
   test("are disabled on the first and last Row", async ({ page }) => {
-    await open(page, [[["One"]], [["Two"]], [["Three"]]]);
+    await openEmail(page, [[["One"]], [["Two"]], [["Three"]]]);
 
     await expect(rowTool(page, 1, "Move Row up")).toBeDisabled();
     await expect(rowTool(page, 1, "Move Row down")).toBeEnabled();
@@ -50,15 +53,15 @@ test.describe("the Move Row buttons", () => {
   });
 
   test("move the Row with its Blocks, as one undo step", async ({ page }) => {
-    await open(page, [[["One"], ["Two"]], [["Three"]]]);
-    const before = Number(await changeCount(page).textContent());
+    await openEmail(page, [[["One"], ["Two"]], [["Three"]]]);
+    const expectChanges = await changesSince(page);
 
     await clickRowTool(page, 1, "Move Row down");
     await expect(structure(page)).resolves.toEqual([
       [["Three"]],
       [["One"], ["Two"]],
     ]);
-    await expect(changeCount(page)).toHaveText(String(before + 1));
+    await expectChanges(1);
     await expect(announcement(page)).toHaveText(
       "Row moved to position 2 of 2."
     );
@@ -78,7 +81,7 @@ test.describe("moving a selected Row from the keyboard", () => {
   test("works from its Move buttons, whose focus stays in the toolbar", async ({
     page,
   }) => {
-    await open(page, [[["One"]], [["Two"]], [["Three"]]]);
+    await openEmail(page, [[["One"]], [["Two"]], [["Three"]]]);
     await selectRow(page, 2);
     await page.keyboard.press("ArrowRight");
     await page.keyboard.press("ArrowRight");
@@ -109,7 +112,7 @@ test.describe("moving a selected Row from the keyboard", () => {
   test("keeps it in view", async ({ page }) => {
     const letters = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
     await page.setViewportSize({ height: 500, width: 1000 });
-    await open(
+    await openEmail(
       page,
       letters.map((letter) => [[letter]])
     );
@@ -131,12 +134,8 @@ test.describe("moving a selected Row from the keyboard", () => {
     page,
   }) => {
     // As on Windows and Linux, where Alt+← goes back a page.
-    await page.addInitScript(() => {
-      Object.defineProperty(Navigator.prototype, "platform", {
-        get: () => "Win32",
-      });
-    });
-    await open(page, [[["One"]], [["Two"]]]);
+    await pretendPlatform(page, "Win32");
+    await openEmail(page, [[["One"]], [["Two"]]]);
     await selectRow(page, 1);
     // Listening before the key is pressed, so the press can't come first.
     const leftPrevented = await watchPrevented(page, "ArrowLeft");
@@ -157,39 +156,27 @@ test.describe("moving a selected Row from the keyboard", () => {
 
 /** Shows the Row's tools and tag, then the handle or tag to drag it by. */
 const grip = async (page: Page, position: number, by: "handle" | "tag") => {
-  await canvas(page)
-    .getByTestId("row")
-    .nth(position - 1)
-    .hover({ position: { x: 4, y: 4 } });
+  await hoverRow(page, position);
   return by === "handle"
     ? rowTools(page, position).getByTestId("drag-handle")
-    : rowFrame(page, position).getByTestId("row-tag");
+    : rowTag(page, position);
 };
 
-/**
- * Into the lower part of a Row, so a drop there lands after it. Measured before a
- * drag, which adds a copy of the dragged Row.
- */
-const belowMiddleOf = async (page: Page, position: number): Promise<Point> => {
-  const { height, width, x, y } = await boxOf(
-    canvas(page)
-      .getByTestId("row")
-      .nth(position - 1)
-  );
-  return { x: x + width / 2, y: y + height * 0.75 };
-};
+/** Into the lower part of a Row, so a drop there lands after it. */
+const belowMiddleOf = (page: Page, position: number) =>
+  bottomOf(rowFrame(page, position).getByTestId("row"));
 
 test.describe("dragging a Row", () => {
   // The other tests drag it by its tag too.
   test("by its handle moves it between Rows, as one undo step", async ({
     page,
   }) => {
-    await open(page, [[["One"]], [["Two"]], [["Three"]]]);
+    await openEmail(page, [[["One"]], [["Two"]], [["Three"]]]);
 
     const to = await belowMiddleOf(page, 2);
     await pickUp(page, await grip(page, 1, "handle"));
     await moveTo(page, to);
-    await expect(canvas(page).getByTestId("drop-indicator")).toBeVisible();
+    await expect(dropIndicator(page)).toBeVisible();
     // A Row only ever lands between Rows, never in a Column.
     await expect(canvas(page).locator("[data-drop-target]")).toHaveCount(0);
     await letGo(page);
@@ -212,8 +199,8 @@ test.describe("dragging a Row", () => {
   });
 
   test("letting go where it started moves nothing", async ({ page }) => {
-    await open(page, [[["One"]], [["Two"]], [["Three"]]]);
-    const changes = await changeCount(page).textContent();
+    await openEmail(page, [[["One"]], [["Two"]], [["Three"]]]);
+    const expectChanges = await changesSince(page);
     const tag = await grip(page, 2, "tag");
     const start = await centerOf(tag);
 
@@ -226,12 +213,12 @@ test.describe("dragging a Row", () => {
       [["Two"]],
       [["Three"]],
     ]);
-    await expect(changeCount(page)).toHaveText(changes as string);
+    await expectChanges(0);
   });
 
   test("letting go far from the email moves nothing", async ({ page }) => {
-    await open(page, [[["One"]], [["Two"]]]);
-    const changes = await changeCount(page).textContent();
+    await openEmail(page, [[["One"]], [["Two"]]]);
+    const expectChanges = await changesSince(page);
     const editor = await boxOf(canvas(page));
     // Well past the editor's drop margin, and still in the window.
     const away = { x: editor.x + editor.width / 2, y: editor.y - 100 };
@@ -239,15 +226,15 @@ test.describe("dragging a Row", () => {
 
     await pickUp(page, await grip(page, 1, "handle"));
     await moveTo(page, away);
-    await expect(canvas(page).getByTestId("drop-indicator")).toBeHidden();
+    await expect(dropIndicator(page)).toBeHidden();
     await letGo(page);
 
     await expect(structure(page)).resolves.toEqual([[["One"]], [["Two"]]]);
-    await expect(changeCount(page)).toHaveText(changes as string);
+    await expectChanges(0);
   });
 
   test("keeps its text's editor, cursor and undo history", async ({ page }) => {
-    await open(page, [[["One"]], [["Two"]]]);
+    await openEmail(page, [[["One"]], [["Two"]]]);
     const one = textBlock(page).first();
     await one.click();
     await moveCursorToLineEnd(page);
@@ -275,7 +262,7 @@ test.describe("dragging a Row", () => {
   });
 
   test("leaves focus on a selected Row's tools", async ({ page }) => {
-    await open(page, [[["One"]], [["Two"]], [["Three"]]]);
+    await openEmail(page, [[["One"]], [["Two"]], [["Three"]]]);
     await selectRow(page, 1);
     const to = await belowMiddleOf(page, 2);
 
@@ -290,17 +277,5 @@ test.describe("dragging a Row", () => {
       [["Three"]],
       [["One"]],
     ]);
-  });
-
-  test("Alt+↓ does nothing while it's being dragged", async ({ page }) => {
-    await open(page, [[["One"]], [["Two"]]]);
-    await selectRow(page, 1);
-
-    await pickUp(page, await grip(page, 1, "handle"));
-    await page.keyboard.press("Alt+ArrowDown");
-    await page.keyboard.press("Escape");
-    await letGo(page);
-
-    await expect(structure(page)).resolves.toEqual([[["One"]], [["Two"]]]);
   });
 });

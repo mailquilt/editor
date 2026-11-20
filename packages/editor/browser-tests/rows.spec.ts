@@ -4,9 +4,11 @@ import {
   blockGroup,
   boxOf,
   canvas,
+  dropIndicator,
+  hoverRow,
   layoutOption,
   layoutTile,
-  openEmail as open,
+  openEmail,
   openTab,
   palette,
   panelBlock,
@@ -27,8 +29,8 @@ test.describe("selecting a Row", () => {
   test("its tag selects it, and the panel shows its settings", async ({
     page,
   }) => {
-    await open(page, [[["A"]], [["B"], ["C"]]]);
-    await canvas(page).getByTestId("row").nth(1).hover();
+    await openEmail(page, [[["A"]], [["B"], ["C"]]]);
+    await hoverRow(page, 2);
 
     await rowTag(page, 2).click();
 
@@ -45,7 +47,7 @@ test.describe("selecting a Row", () => {
   });
 
   test("gives way to a selected Block", async ({ page }) => {
-    await open(page, [[["A"]], [["B"]]]);
+    await openEmail(page, [[["A"]], [["B"]]]);
     await selectRowButton(page, 1).focus();
     await page.keyboard.press("Enter");
     await expect(rowTools(page, 1)).toHaveAttribute("aria-current", "true");
@@ -61,7 +63,7 @@ test.describe("selecting a Row", () => {
   test("a Content tile adds into the selected Row's first Column, at its end", async ({
     page,
   }) => {
-    await open(page, [[["A"], ["B"]], [["C"]]]);
+    await openEmail(page, [[["A"], ["B"]], [["C"]]]);
     await selectRowButton(page, 1).focus();
     await page.keyboard.press("Enter");
     await openTab(page, "Content");
@@ -79,7 +81,7 @@ test.describe("dragging a layout from the Rows tab", () => {
   test("adds a Row with it between two Rows, and selects it", async ({
     page,
   }) => {
-    await open(page, [[["A"]], [["B"]]]);
+    await openEmail(page, [[["A"]], [["B"]]]);
     await openTab(page, "Rows");
     const tile = layoutTile(page, "50/50");
     const from = await boxOf(tile);
@@ -90,7 +92,7 @@ test.describe("dragging a layout from the Rows tab", () => {
     await page.mouse.move(from.x + 20, from.y + 20, { steps: 3 });
     await page.mouse.move(second.x + 100, second.y + 4, { steps: 8 });
     await settle(page);
-    await expect(canvas(page).getByTestId("drop-indicator")).toBeVisible();
+    await expect(dropIndicator(page)).toBeVisible();
     // A new Row lands between Rows, never in a Column.
     await expect(canvas(page).locator("[data-drop-target]")).toHaveCount(0);
     await page.mouse.up();
