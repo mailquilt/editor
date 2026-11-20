@@ -70,6 +70,18 @@ test("a Route Handler renders a saved email, and says why it refuses one", async
   expect(reason).toContain("rows");
 });
 
+test("a Route Handler refuses a body that isn't JSON, and says why", async ({
+  request,
+}) => {
+  const refused = await request.post(`${url}email-html`, {
+    data: Buffer.from("{"),
+    headers: { "Content-Type": "application/json" },
+  });
+  expect(refused.status()).toBe(422);
+  const { reason } = await refused.json();
+  expect(reason).toContain("JSON");
+});
+
 test("a Server Component's Shell opens, saves and reopens", async ({
   page,
 }) => {

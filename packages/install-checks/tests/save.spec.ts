@@ -20,8 +20,8 @@ interface Save {
 }
 
 /**
- * Stands in for the app's server: GET answers the starter email, and each PUT
- * is kept and answered with the status `answer` gives.
+ * Stands in for the app's server: GET answers the starter email, as the saved
+ * one, and each PUT is kept and answered with the status `answer` gives.
  */
 const fakeServer = async (
   page: Page,
@@ -78,6 +78,29 @@ const openAndTypeAtStart = async (page: Page, text: string) => {
   await page.clock.pauseAt(opened.getTime() + 60 * 60 * 1000);
   await page.keyboard.type(text);
 };
+
+test("with nothing saved, the starter email opens", async ({ page }) => {
+  await page.route(EMAIL_URL, (route) => route.fulfill({ status: 404 }));
+  await page.goto(url);
+
+  await expect(page.getByRole("textbox", { name: "Text Block" })).toHaveText(
+    "Hello"
+  );
+});
+
+test("a failed load says so, and opens no email to save over the saved one", async ({
+  page,
+}) => {
+  await page.route(EMAIL_URL, (route) => route.fulfill({ status: 500 }));
+  await page.goto(url);
+
+  await expect(page.locator("#load-error")).toHaveText(
+    "Not opened: The server answered 500"
+  );
+  await expect(page.getByRole("textbox", { name: "Text Block" })).toHaveCount(
+    0
+  );
+});
 
 test("typing saves once, after a pause, with every keystroke in it", async ({
   page,
@@ -162,6 +185,22 @@ test("hiding the page saves straight away, without waiting for the pause", async
 test("leaving before a change is saved asks first", async ({ page }) => {
   await fakeServer(page);
   await openAndTypeAtStart(page, "Unsaved ");
+
+  const dialog = page.waitForEvent("dialog");
+  await page.close({ runBeforeUnload: true });
+  const asked = await dialog;
+  expect(asked.type()).toBe("beforeunload");
+});
+
+test("leaving while a save is on its way asks first", async ({ page }) => {
+  // The save is never answered, so it's still on its way when the page closes.
+  const saves = await fakeServer(page, async () => {
+    await once(new EventTarget(), "answer");
+    return 204;
+  });
+  await openAndTypeAtStart(page, "Sending ");
+  await page.clock.runFor(SAVE_AFTER_MS);
+  await expect.poll(() => saves.length).toBe(1);
 
   const dialog = page.waitForEvent("dialog");
   await page.close({ runBeforeUnload: true });

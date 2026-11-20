@@ -17,17 +17,19 @@ Change `url` to where your server keeps the email, and send it in whatever shape
 
 ## What it does
 
+- **It opens the starter email only when nothing is saved,** which your server says with a 404. If loading fails any other way, such as a 401 or a 500, the page says why and the editor stays empty, so the person's first change can't save the starter email over theirs.
 - **It waits for a pause.** Each change restarts a one-second timer, and the email is saved when it runs out. Typing a sentence sends one request, with every key in it.
 - **It saves one email at a time.** A save waits for the one before it to finish. Otherwise a slow save of an older email could reach your server after a newer one, and overwrite it.
 - **It keeps a failed save.** If the request fails or your server answers with an error, the status says so, and the email is sent again with the next change, or when the person switches tabs.
 - **It saves when the page is hidden,** such as when the person switches tabs, rather than waiting for the timer.
-- **It asks before the page closes** while a change isn't saved. A save that starts as the page closes may not finish, so the browser asks whether to leave.
+- **It asks before the page closes** while a change isn't saved, or a save is still on its way. A save that hasn't finished when the page closes may never finish, so the browser asks whether to leave.
 - **It never sets `value` from your server's answer.** The editor already shows the newest email. Setting an older one would open it as a different email, clear undo, and lose what was typed since. [Two things to get right](./quick-start#two-things-to-get-right) explains.
 
 In React, `onChange` gets the same email as `event.detail.document`, so the same saving code can start from there.
 
 ## On your server
 
+- **Answer 404 when there's no email yet,** and only then.
 - **Store the JSON as it's sent.** It's the whole email, in the [document format](./document-format).
 - **Check JSON you didn't get from your own editor.** `loadDocument()` from `@mailquilt/core` says whether an email is one Mail Quilt accepts, as [Change emails in code](./change-emails-in-code#checking-an-email) shows.
 - **Make the HTML when you send,** from the stored JSON, with the [renderer](./render-on-a-server).
