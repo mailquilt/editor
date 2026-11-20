@@ -421,8 +421,7 @@ const renderRowProperties = ({ row, rowIndex }: RowPosition, api: PanelApi) => {
                 aria-pressed=${layout === current ? "true" : "false"}
                 class="layout-option"
                 type="button"
-                @click=${() =>
-                  api.apply({ layout, rowId: row.id, type: "setRowLayout" })}
+                @click=${() => api.setRowLayout(row.id, layout)}
               >
                 ${renderThumbnail(layout)}<span>${layout}</span>
               </button>
@@ -430,7 +429,7 @@ const renderRowProperties = ({ row, rowIndex }: RowPosition, api: PanelApi) => {
           )}
         </div>
       </div>
-      ${renderSettingsPanel(section, api.settings)}
+      ${renderSettingsPanel(section, api.drafts)}
     </div>
   `;
 };
@@ -459,9 +458,7 @@ const renderProperties = (
       columnLabel(rowIndex, columnIndex),
       api
     )}
-    <div class="panel-scroll">
-      ${renderSettingsPanel(section, api.settings)}
-    </div>
+    <div class="panel-scroll">${renderSettingsPanel(section, api.drafts)}</div>
   `;
 };
 
@@ -542,7 +539,7 @@ const renderTabPanel = (api: PanelApi) => {
           targetId: "",
           values: { ...api.email.settings },
         },
-        api.settings
+        api.drafts
       );
     }
   }

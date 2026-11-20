@@ -1,7 +1,13 @@
+/** A point in the window, as a pointer event gives it. */
+export interface Point {
+  x: number;
+  y: number;
+}
+
 /** Whether a point in the window is over an element or a box, or within `margin` of it. */
 export const contains = (
   area: Element | DOMRect,
-  { x, y }: { x: number; y: number },
+  { x, y }: Point,
   margin = 0
 ) => {
   const { bottom, left, right, top } =

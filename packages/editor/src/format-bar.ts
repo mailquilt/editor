@@ -6,7 +6,7 @@ import { place } from "./editor-places.js";
 import { ICONS } from "./icons.js";
 import type { KeyLabel } from "./key-map.js";
 import { keyLabel, textKeyLabel } from "./key-map.js";
-import type { PanelApi, PanelState } from "./panel-api.js";
+import type { OwnPanelsApi, PanelApi } from "./panel-api.js";
 import type { TextBlockView } from "./text-block-view.js";
 import type { ToggleableMark } from "./text-commands.js";
 
@@ -106,7 +106,7 @@ export const createLinkForm = ({
   requestUpdate,
   view,
 }: LinkFormHost) => {
-  let state: PanelState["linkField"];
+  let state: OwnPanelsApi["linkField"];
 
   const close = () => {
     if (state) {

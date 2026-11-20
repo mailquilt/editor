@@ -1,11 +1,12 @@
-import { createEditor, isSameDocument, loadDocument } from "@mailquilt/core";
+import { isSameDocument, loadDocument } from "@mailquilt/core";
 import type {
   BlocksDocument,
   Command,
   Editor,
+  LoadResult,
   RichTextDocument,
 } from "@mailquilt/core";
-import { blockLabel } from "@mailquilt/core/internal";
+import { blockLabel, editorOfLoaded } from "@mailquilt/core/internal";
 import { renderEmail } from "@mailquilt/renderer";
 import { html, LitElement, nothing } from "lit";
 
@@ -22,13 +23,15 @@ import { createDragging } from "./dragging.js";
 import type { Dragging } from "./dragging.js";
 import { createEditingActions } from "./editing-actions.js";
 import { findPlace, place } from "./editor-places.js";
+import { createFocus } from "./focus.js";
 import { createLinkForm, formatBarStyles } from "./format-bar.js";
 import { createKeyDispatch } from "./key-dispatch.js";
 import { keyLabel } from "./key-map.js";
 import type { Action, KeyScope } from "./key-map.js";
 import { editorStyles } from "./mail-quilt-styles.js";
-import type { PanelActions, PanelApi } from "./panel-api.js";
+import type { PanelApi } from "./panel-api.js";
 import { blocksIn } from "./positions.js";
+import { createPresses } from "./presses.js";
 import { createPreview, previewStyles, renderPreview } from "./preview.js";
 import { refuseFiles } from "./refuse-files.js";
 import { createSelection } from "./selection.js";
@@ -75,22 +78,30 @@ export class MailQuilt extends LitElement {
   ];
 
   #editor: Editor | undefined;
-  /** A private copy of the document last received from or sent to the host. */
-  #lastKnownEmail: BlocksDocument | undefined;
   readonly #views = new Map<string, TextBlockView>();
   /** Edits in the same typing session merge into one undo step. */
   #typingSession = 0;
   #lastTypedAt = 0;
   #formats: TextFormats | undefined;
+  readonly #focus = createFocus({
+    requestUpdate: () => this.requestUpdate(),
+    root: () => this.renderRoot as ShadowRoot,
+    selectedBlockId: () => this.#selection.blockId,
+    textOf: (blockId) => this.#views.get(blockId),
+  });
   readonly #selection = createSelection({
+    focus: this.#focus,
     onSelect: () => {
       this.#linkForm.close();
       this.#formats = this.#selection.selectedText?.formats();
       this.requestUpdate();
     },
     requestUpdate: () => this.requestUpdate(),
-    root: () => this.renderRoot as ShadowRoot,
     textOf: (blockId) => this.#views.get(blockId),
+  });
+  readonly #presses = createPresses({
+    focus: this.#focus,
+    selection: this.#selection,
   });
   readonly #drafts = createSettingsDrafts({
     apply: (command) => this.#apply(command, { refusable: true }),
@@ -108,8 +119,8 @@ export class MailQuilt extends LitElement {
   readonly #failedImages = new Set<string>();
   readonly #linkForm = createLinkForm({
     editingText: () => this.#selection.editingText,
-    focusField: () => this.#selection.focusWhenRendered({ on: "linkField" }),
-    focusText: () => this.#selection.focus({ on: "text" }),
+    focusField: () => this.#focus.focusWhenRendered({ on: "linkField" }),
+    focusText: () => this.#focus.focus({ on: "text" }),
     requestUpdate: () => this.requestUpdate(),
     view: () => this.#selection.selectedText,
   });
@@ -124,8 +135,6 @@ export class MailQuilt extends LitElement {
   /** Set while the element is connected, as it observes sizes on the page. */
   #toolFitting: ToolFitting | undefined;
   #tooltips: { element: HTMLElement; tooltips: Tooltips } | undefined;
-  /** The last press began on the workspace itself, not after a drag from a Block. */
-  #pressedOnWorkspace = false;
   /** Too narrow to edit in, as on a phone or in a narrow part of a page. */
   #narrow = false;
   /** Made on the page, as a server rendering the editor has no ResizeObserver. */
@@ -139,6 +148,7 @@ export class MailQuilt extends LitElement {
     announcements: this.#announcements,
     apply: (command) => this.#apply(command),
     email: () => this.#editor?.getDocument(),
+    focus: this.#focus,
     selection: this.#selection,
   });
   readonly #keys = createKeyDispatch({
@@ -148,6 +158,7 @@ export class MailQuilt extends LitElement {
         : (this.#editor?.canRedo() ?? false),
     drafts: this.#drafts,
     editing: this.#editing,
+    focus: this.#focus,
     isDragging: () => this.#dragging?.isDragging() ?? false,
     linkForm: this.#linkForm,
     previewIsOpen: () => this.#preview.isOpen,
@@ -155,16 +166,16 @@ export class MailQuilt extends LitElement {
     stepHistory: (step) => this.#stepHistory(step),
   });
 
-  /** Every change the Side panel, its settings and the toolbars make. */
-  readonly #panelActions: PanelActions = {
+  /** What the Side panel, its settings and the toolbars do, made once. */
+  readonly #panelActions = {
     addBlock: (blockType, position) =>
       this.#editing.addBlock(blockType, position),
     addRow: (layout) => this.#editing.addRow(layout),
-    apply: (command) => this.#apply(command),
     cancelLink: () => this.#linkForm.cancel(),
     deleteBlock: (fromKeyboard) => this.#editing.deleteBlock(fromKeyboard),
     deleteRow: (rowId, fromKeyboard) =>
       this.#editing.deleteRow(rowId, fromKeyboard),
+    drafts: this.#drafts.fields,
     insertLineBreak: () => this.#selection.selectedText?.insertLineBreak(),
     moveBlock: (direction) => this.#editing.moveBlock(direction),
     moveRow: (rowId, direction) => this.#editing.moveRow(rowId, direction),
@@ -173,12 +184,14 @@ export class MailQuilt extends LitElement {
     removeLink: () => this.#linkForm.remove(),
     selectRow: (rowId) => this.#selection.selectRow(rowId),
     selectTab: (tab) => this.#selection.selectTab(tab),
-    settings: this.#drafts.events,
+    setRowLayout: (rowId, layout) => {
+      this.#apply({ layout, rowId, type: "setRowLayout" });
+    },
     showTabs: () => this.#selection.showTabs(),
     stepHistory: (step) => this.#stepHistory(step),
     submitLink: (href) => this.#linkForm.submit(href),
     toggleMark: (mark) => this.#selection.selectedText?.toggleMark(mark),
-  };
+  } satisfies Partial<PanelApi>;
 
   readonly #canvasEvents: CanvasEvents = {
     onBlockClick: (blockId, target) =>
@@ -195,11 +208,11 @@ export class MailQuilt extends LitElement {
     const root = super.createRenderRoot();
     root.addEventListener("keydown", this.#keys.onKeydown);
     root.addEventListener("mousedown", (event) =>
-      this.#selection.onMousedown(event as MouseEvent)
+      this.#presses.onMousedown(event as MouseEvent)
     );
     root.addEventListener(
       "wheel",
-      (event) => this.#selection.onWheel(event as WheelEvent),
+      (event) => this.#presses.onWheel(event as WheelEvent),
       { passive: true }
     );
     return root;
@@ -221,15 +234,16 @@ export class MailQuilt extends LitElement {
   }
 
   /**
-   * A document with the same content as the last one received or sent out
-   * changes nothing, so a controlled host keeps its undo history and cursor. Any
-   * other document loads and clears undo history. A document that can't be
-   * trusted fires `mq-error`, and the current email stays as it was. Any value
-   * is checked, such as a saved email read back from JSON, so any is allowed.
+   * A document with the same content as the current one changes nothing, so a
+   * controlled host keeps its undo history and cursor. Any other document loads
+   * and clears undo history. A document that can't be trusted fires `mq-error`,
+   * and the current email stays as it was. Any value is checked, such as a
+   * saved email read back from JSON, so any is allowed.
    */
   set value(value: unknown) {
+    const current = this.#editor?.getDocument();
     // Checked first, because a controlled host does this after every keystroke.
-    if (isSameDocument(value, this.#lastKnownEmail)) {
+    if (isSameDocument(value, current)) {
       return;
     }
     // Null too, which is what JSON.parse gives for nothing saved.
@@ -243,8 +257,8 @@ export class MailQuilt extends LitElement {
       return;
     }
     // An older document only matches the current one once it has been migrated.
-    if (!isSameDocument(loaded.document, this.#lastKnownEmail)) {
-      this.#show(loaded.document);
+    if (!isSameDocument(loaded.document, current)) {
+      this.#show(loaded);
     }
   }
 
@@ -296,9 +310,13 @@ export class MailQuilt extends LitElement {
     const email = this.isConnected ? this.#rendered : undefined;
     const blocks = email ? blocksIn(email) : [];
     const blockIds = new Set(blocks.map(({ id }) => id));
-    this.#selection.beforeUpdate(
-      email && { blockIds, rowIds: new Set(email.rows.map(({ id }) => id)) }
-    );
+    this.#focus.beforeUpdate();
+    if (email) {
+      this.#selection.beforeUpdate({
+        blockIds,
+        rowIds: new Set(email.rows.map(({ id }) => id)),
+      });
+    }
     // Lit still updates detached elements, and nothing would destroy these
     // views. connectedCallback requests an update that creates them instead.
     if (!this.isConnected) {
@@ -338,7 +356,7 @@ export class MailQuilt extends LitElement {
   protected override updated() {
     // First, so focus that moves scrolls to where the tools end up.
     this.#toolFitting?.sync();
-    this.#selection.afterUpdate();
+    this.#focus.afterUpdate();
     if (this.isConnected && this.shadowRoot) {
       this.#syncTooltips(this.shadowRoot);
     }
@@ -379,8 +397,8 @@ export class MailQuilt extends LitElement {
           class="canvas-area"
           data-place=${place("workspace")}
           data-testid="workspace"
-          @click=${this.#onWorkspaceClick}
-          @pointerdown=${this.#onWorkspacePointerdown}
+          @click=${this.#presses.onWorkspaceClick}
+          @pointerdown=${this.#presses.onWorkspacePointerdown}
         >
           <div
             class="email"
@@ -498,27 +516,6 @@ export class MailQuilt extends LitElement {
     return result;
   }
 
-  #onWorkspacePointerdown({ currentTarget, target }: PointerEvent) {
-    this.#pressedOnWorkspace = target === currentTarget;
-  }
-
-  /**
-   * A click on the workspace around the email clears the selection, as in any
-   * design tool. The floating toolbar takes focus, so keyboard undo still works.
-   */
-  #onWorkspaceClick({ currentTarget, target }: MouseEvent) {
-    if (
-      target !== currentTarget ||
-      !this.#pressedOnWorkspace ||
-      (this.#selection.blockId === undefined &&
-        this.#selection.rowId === undefined)
-    ) {
-      return;
-    }
-    this.#selection.select(undefined);
-    this.#selection.focus({ on: "emailTools" }, { focusVisible: false });
-  }
-
   /** The text schema is no wider than core's, so a rejection is a bug here. */
   #commitText(blockId: string, content: RichTextDocument) {
     const now = performance.now();
@@ -568,9 +565,9 @@ export class MailQuilt extends LitElement {
     this.#emitChange(email);
   }
 
-  #show(email: BlocksDocument | undefined) {
+  /** Opens an email that `loadDocument` accepted, or none. */
+  #show(loaded: Extract<LoadResult, { ok: true }> | undefined) {
     const hadFocus = Boolean(this.shadowRoot?.activeElement);
-    this.#lastKnownEmail = email;
     this.#preview.forget();
     this.#announcements.clear();
     this.#drafts.clear();
@@ -578,19 +575,19 @@ export class MailQuilt extends LitElement {
     // uploading, or the connection down.
     this.#failedImages.clear();
     this.#reset();
-    this.#editor = email && createEditor({ document: email });
+    // Checked once, by the value's setter.
+    this.#editor = loaded && editorOfLoaded(loaded);
     this.#editor?.subscribe(this.#editing.onOperations);
     this.requestUpdate();
     // Taking down the text views took focus out of the editor if it was in
     // one, before the update could see where it was.
     if (hadFocus && !this.shadowRoot?.activeElement) {
-      this.#selection.focusWhenRendered({ on: "emailTools" });
+      this.#focus.focusWhenRendered({ on: "emailTools" });
     }
   }
 
+  /** With a copy of the email, which the host owns and may change. */
   #emitChange(email: BlocksDocument) {
-    // A copy, because the host owns what it receives and may change it.
-    this.#lastKnownEmail = structuredClone(email);
     this.#preview.forget();
     this.dispatchEvent(
       new CustomEvent("mq-change", {

@@ -7,6 +7,7 @@ import type {
 } from "@mailquilt/core";
 
 import type { Announcements } from "./announcements.js";
+import type { EditorFocus } from "./focus.js";
 import {
   dropCommand,
   locate,
@@ -37,16 +38,13 @@ interface EditingHost {
   /** The email as it is now. */
   email: () => BlocksDocument | undefined;
   announcements: Pick<Announcements, "blockMoved" | "rowMoved" | "say">;
+  focus: Pick<
+    EditorFocus,
+    "focus" | "focusWhenRendered" | "revealBlock" | "revealRow"
+  >;
   selection: Pick<
     EditorSelection,
-    | "blockId"
-    | "focus"
-    | "focusWhenRendered"
-    | "revealBlock"
-    | "revealRow"
-    | "rowId"
-    | "selectLanded"
-    | "selectRow"
+    "blockId" | "rowId" | "selectLanded" | "selectRow"
   >;
 }
 
@@ -56,6 +54,7 @@ export const createEditingActions = ({
   announcements,
   apply,
   email: current,
+  focus,
   selection,
 }: EditingHost) => {
   /** What the latest change moved, for undo and redo to announce. */
@@ -143,7 +142,7 @@ export const createEditingActions = ({
       if (apply({ blockId, type: "removeBlock" })?.ok) {
         announcements.say("Block deleted.");
         if (fromKeyboard && neighbour !== undefined) {
-          selection.focusWhenRendered({
+          focus.focusWhenRendered({
             blockId: neighbour,
             on: "block",
           });
@@ -165,7 +164,7 @@ export const createEditingActions = ({
       if (apply({ rowId, type: "removeRow" })?.ok) {
         announcements.say("Row deleted.");
         if (fromKeyboard && neighbour) {
-          selection.focusWhenRendered({
+          focus.focusWhenRendered({
             on: "rowTool",
             rowId: neighbour.id,
           });
@@ -215,7 +214,7 @@ export const createEditingActions = ({
       const { blockId } = operation;
       announcements.blockMoved(blockId, `${prefix} a Block to`);
       if (blockId === selection.blockId) {
-        selection.revealBlock(blockId);
+        focus.revealBlock(blockId);
       }
     },
 
@@ -229,7 +228,7 @@ export const createEditingActions = ({
       const command = moveCommand(email, blockId, direction);
       if (command && apply(command)?.ok) {
         announcements.blockMoved(blockId);
-        selection.revealBlock(blockId);
+        focus.revealBlock(blockId);
       } else {
         announcements.say(`The Block can't move ${direction}.`);
       }
@@ -251,7 +250,7 @@ export const createEditingActions = ({
       }
       if (apply(command)?.ok) {
         announcements.rowMoved(rowId);
-        selection.revealRow(rowId);
+        focus.revealRow(rowId);
       }
     },
 
@@ -271,7 +270,7 @@ export const createEditingActions = ({
         blockId !== undefined &&
         neighbourBlockId(email, blockId, direction);
       if (next) {
-        selection.focus({ blockId: next, on: "block" });
+        focus.focus({ blockId: next, on: "block" });
       }
     },
 

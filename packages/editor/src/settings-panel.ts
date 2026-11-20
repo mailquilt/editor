@@ -40,7 +40,11 @@ interface FieldDraft extends Typed {
   refusals: number;
 }
 
-export interface SettingsPanelEvents {
+/**
+ * What's typed in the settings fields and isn't the email's value, and what the
+ * fields report as it's typed and committed.
+ */
+export interface SettingsDrafts {
   draftOf: (key: string) => FieldDraft | undefined;
   /** Each change to what's typed, before it's committed. */
   onInput: (
@@ -312,13 +316,13 @@ const fieldValue = (field: SettingsField, typed: Typed) => {
 const renderField = (
   section: SettingsSection,
   field: SettingsField,
-  events: SettingsPanelEvents
+  drafts: SettingsDrafts
 ) => {
   const id = `settings-${section.id}-${field.key}`;
   const descriptionId = `${id}-description`;
   const errorId = `${id}-error`;
   const key = draftKey(section, field);
-  const draft = events.draftOf(key);
+  const draft = drafts.draftOf(key);
   const refusals = draft?.refusals ?? 0;
   const refused = refusals > 0;
   const text = fieldText(field, section.values);
@@ -329,9 +333,9 @@ const renderField = (
     .filter(Boolean)
     .join(" ");
   const onInput = ({ currentTarget }: Event) =>
-    events.onInput(section, field, typedIn(currentTarget as HTMLInputElement));
+    drafts.onInput(section, field, typedIn(currentTarget as HTMLInputElement));
   const onCommit = ({ currentTarget }: Event) =>
-    events.onCommit(
+    drafts.onCommit(
       section,
       field,
       typedIn(currentTarget as HTMLInputElement | HTMLSelectElement)
@@ -462,13 +466,13 @@ const renderField = (
 /** The one settings panel: every control in it comes from fields that are data. */
 export const renderSettingsPanel = (
   section: SettingsSection,
-  events: SettingsPanelEvents
+  drafts: SettingsDrafts
 ) => html`
   <div class="settings" data-place=${place("settings")}>
     <div class="section">
       <fieldset>
         <legend>${section.legend}</legend>
-        ${section.fields.map((field) => renderField(section, field, events))}
+        ${section.fields.map((field) => renderField(section, field, drafts))}
       </fieldset>
     </div>
   </div>
@@ -532,7 +536,7 @@ export const createSettingsDrafts = ({
     }
   };
 
-  const events: SettingsPanelEvents = {
+  const fields: SettingsDrafts = {
     draftOf: (key) => drafts.get(key),
     onCommit: (section, field, typed) => commit(section, field, typed, false),
     onInput: (section, field, typed) => {
@@ -573,5 +577,5 @@ export const createSettingsDrafts = ({
     requestUpdate();
   };
 
-  return { clear: () => drafts.clear(), discard, events };
+  return { clear: () => drafts.clear(), discard, fields };
 };

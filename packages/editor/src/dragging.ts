@@ -1,5 +1,9 @@
+import { createAutoScroll } from "./auto-scroll.js";
+import type { AutoScroll } from "./auto-scroll.js";
+import { createDragGhost } from "./drag-ghost.js";
 import { closestPlace, findPlace, findPlaces } from "./editor-places.js";
 import { contains, scaleOf, shadowRootsUpFrom } from "./geometry.js";
+import type { Point } from "./geometry.js";
 import { claim, keyHeardFirst } from "./key-map.js";
 import { isRowSource } from "./positions.js";
 import type { DragSource, DropPosition } from "./positions.js";
@@ -9,35 +13,11 @@ export interface Dragging {
   destroy: () => void;
 }
 
-interface Point {
-  x: number;
-  y: number;
-}
-
 /** A press alone stays a click, however long it lasts. */
 const START_DISTANCE_PX = 5;
 
 /** How far outside the editor a drop still counts, as space below the email. */
 const DROP_MARGIN_PX = 40;
-
-/**
- * Near an edge, within this share of a scroll container and no further than
- * SCROLL_EDGE_PX, a drag scrolls it. A tall window's share would scroll as soon
- * as a Block near its top or bottom is picked up.
- */
-const SCROLL_EDGE = 0.2;
-const SCROLL_EDGE_PX = 60;
-/** How far a second scrolls with the pointer at the edge or past it. */
-const SCROLL_SPEED_PX = 1500;
-/** The time a first frame takes, before there's one before it to go by. */
-const FRAME_SECONDS = 1 / 60;
-/**
- * The longest a frame counts for, so the first one after the tab was in the
- * background, or the page was busy, doesn't jump.
- */
-const MAX_FRAME_SECONDS = 0.1;
-/** How far beside a scroll container the pointer can be and still scroll it. */
-const SCROLL_TOLERANCE_PX = 10;
 
 /** A Block or Row already in the email, rather than a new one. */
 const isOnCanvas = (source: DragSource) =>
@@ -95,138 +75,6 @@ const grabAt = (target: Element): Grab | undefined => {
 };
 
 /**
- * A copy of what's dragged, fixed to the window. Where the browser has popovers,
- * it's in the top layer, so that nothing on the host page clips it or covers it.
- * It sits beside the original, so the same styles apply, and it's the same size
- * on screen, even on a page that scales the editor, which the top layer leaves out.
- */
-const createGhost = (element: HTMLElement) => {
-  const { height, left, top, width } = element.getBoundingClientRect();
-  const scaleX = scaleOf(width, element.offsetWidth);
-  const scaleY = scaleOf(height, element.offsetHeight);
-  const ghost = element.cloneNode(true) as HTMLElement;
-  ghost.dataset.dragGhost = "";
-  ghost.inert = true;
-  ghost.setAttribute("aria-hidden", "true");
-  // Inline, because the editor's own styles lay out Blocks and Rows.
-  Object.assign(ghost.style, {
-    bottom: "auto",
-    boxSizing: "border-box",
-    height: `${height / scaleY}px`,
-    left: `${left}px`,
-    margin: "0",
-    pointerEvents: "none",
-    position: "fixed",
-    right: "auto",
-    scale: `${scaleX} ${scaleY}`,
-    top: `${top}px`,
-    transformOrigin: "0 0",
-    width: `${width / scaleX}px`,
-    zIndex: "2147483647",
-  });
-  element.after(ghost);
-  if (typeof ghost.showPopover === "function") {
-    ghost.popover = "manual";
-    ghost.showPopover();
-  }
-  return ghost;
-};
-
-interface ScrollContainer {
-  element: Element;
-  /** The ways its styles let it scroll, as script can scroll hidden overflow. */
-  sideways: boolean;
-  upAndDown: boolean;
-}
-
-const SCROLLS = /auto|scroll|overlay/u;
-
-/**
- * The host's scroll containers, innermost first, then the page. They're found
- * from the host, because the canvas has none of its own.
- */
-const scrollContainersOf = (host: Element) => {
-  const containers: ScrollContainer[] = [];
-  let element: Element | null = host;
-  while (element) {
-    // The page's own overflow is the window's, which comes last.
-    if (element !== document.body && element !== document.documentElement) {
-      const { overflowX, overflowY } = getComputedStyle(element);
-      const sideways = SCROLLS.test(overflowX);
-      const upAndDown = SCROLLS.test(overflowY);
-      if (sideways || upAndDown) {
-        containers.push({ element, sideways, upAndDown });
-      }
-    }
-    // Up the tree as it's drawn, so through the slot another component shows
-    // it in, where that component's own scroll container can be.
-    const root = element.getRootNode();
-    element =
-      element.assignedSlot ??
-      element.parentElement ??
-      (root instanceof ShadowRoot ? root.host : null);
-  }
-  // The browser itself won't scroll the window the way the page hides.
-  containers.push({
-    element: document.scrollingElement ?? document.documentElement,
-    sideways: true,
-    upAndDown: true,
-  });
-  return containers;
-};
-
-/** Back near the start edge, on near the end, faster closer to it. */
-const scrollSpeed = (at: number, start: number, end: number) => {
-  const edge = Math.min((end - start) * SCROLL_EDGE, SCROLL_EDGE_PX);
-  if (edge <= 0) {
-    return 0;
-  }
-  if (at <= start + edge) {
-    return -SCROLL_SPEED_PX * Math.min((start + edge - at) / edge, 1);
-  }
-  if (at >= end - edge) {
-    return SCROLL_SPEED_PX * Math.min((at - (end - edge)) / edge, 1);
-  }
-  return 0;
-};
-
-/**
- * Scrolls the innermost container that can still go the way the pointer asks.
- * Past an edge still scrolls, as the pointer may leave the window. Whether it
- * moved is read back, which also holds for right-to-left scrolling.
- */
-const autoScroll = (
-  containers: ScrollContainer[],
-  { x, y }: Point,
-  seconds: number
-) => {
-  for (const { element, sideways, upAndDown } of containers) {
-    const { bottom, left, right, top } =
-      element === document.scrollingElement
-        ? { bottom: innerHeight, left: 0, right: innerWidth, top: 0 }
-        : element.getBoundingClientRect();
-    const { scrollLeft, scrollTop } = element;
-    if (
-      upAndDown &&
-      x >= left - SCROLL_TOLERANCE_PX &&
-      x <= right + SCROLL_TOLERANCE_PX
-    ) {
-      element.scrollTop += scrollSpeed(y, top, bottom) * seconds;
-    }
-    if (
-      sideways &&
-      y >= top - SCROLL_TOLERANCE_PX &&
-      y <= bottom + SCROLL_TOLERANCE_PX
-    ) {
-      element.scrollLeft += scrollSpeed(x, left, right) * seconds;
-    }
-    if (element.scrollTop !== scrollTop || element.scrollLeft !== scrollLeft) {
-      return;
-    }
-  }
-};
-
-/**
  * Shows the dragging cursor over the host page and the editor alike, whatever
  * cursor their own styles ask for, and inside any element the editor is in,
  * such as the Shell. An adopted style sheet, unlike a <style> element, works
@@ -276,11 +124,9 @@ interface Press {
 }
 
 interface Drag {
+  autoScroll: AutoScroll;
   ghost: HTMLElement;
-  /** When the last frame ran, so a screen of any refresh rate scrolls as fast. */
-  lastFrame?: number;
   pointer: Point;
-  scrollContainers: ScrollContainer[];
   restoreCursor: () => void;
 }
 
@@ -319,7 +165,7 @@ export const createDragging = ({ onDrop, root }: DraggingHost): Dragging => {
   const landing = (
     { element, source }: Grab,
     pointer: Point,
-    scrollContainers: ScrollContainer[]
+    autoScroll: AutoScroll
   ) => {
     const email = findPlace(root, "email");
     const controls = [
@@ -331,11 +177,7 @@ export const createDragging = ({ onDrop, root }: DraggingHost): Dragging => {
       (startedOn && contains(startedOn, pointer)) ||
       controls.some((control) => contains(control, pointer)) ||
       !contains(root.host, pointer, DROP_MARGIN_PX) ||
-      scrollContainers.some(
-        (container) =>
-          container.element !== document.scrollingElement &&
-          !contains(container.element, pointer)
-      )
+      !autoScroll.shows(pointer)
     ) {
       return;
     }
@@ -415,7 +257,7 @@ export const createDragging = ({ onDrop, root }: DraggingHost): Dragging => {
     // An undo during the drag can take away the Block being dragged.
     const position =
       drop && grab.element.isConnected
-        ? landing(grab, dragged.pointer, dragged.scrollContainers)?.position
+        ? landing(grab, dragged.pointer, dragged.autoScroll)?.position
         : undefined;
     startedOn = undefined;
     dragged.ghost.remove();
@@ -436,18 +278,8 @@ export const createDragging = ({ onDrop, root }: DraggingHost): Dragging => {
     if (!(press && drag)) {
       return;
     }
-    // The first frame runs as the drag starts, at a time that can be later than
-    // the next frame's.
-    const seconds =
-      drag.lastFrame === undefined
-        ? FRAME_SECONDS
-        : Math.min(
-            Math.max((time - drag.lastFrame) / 1000, 0),
-            MAX_FRAME_SECONDS
-          );
-    drag.lastFrame = time;
     const { from, grab } = press;
-    const { ghost, pointer, scrollContainers } = drag;
+    const { autoScroll, ghost, pointer } = drag;
     // An undo, or a new email, can take away what's being dragged.
     if (!grab.element.isConnected) {
       release(false);
@@ -457,8 +289,8 @@ export const createDragging = ({ onDrop, root }: DraggingHost): Dragging => {
       startedOn = undefined;
     }
     ghost.style.translate = `${pointer.x - from.x}px ${pointer.y - from.y}px`;
-    autoScroll(scrollContainers, pointer, seconds);
-    showIndicator(landing(grab, pointer, scrollContainers));
+    autoScroll.frame(pointer, time);
+    showIndicator(landing(grab, pointer, autoScroll));
     frame = requestAnimationFrame(onFrame);
   };
 
@@ -473,10 +305,10 @@ export const createDragging = ({ onDrop, root }: DraggingHost): Dragging => {
     // Before it's hidden along with its Block or Row.
     startedOn = grab.toolbar?.getBoundingClientRect();
     drag = {
-      ghost: createGhost(grab.element),
+      autoScroll: createAutoScroll(root.host),
+      ghost: createDragGhost(grab.element),
       pointer: { x: event.clientX, y: event.clientY },
       restoreCursor: showGrabbingCursor(root),
-      scrollContainers: scrollContainersOf(root.host),
     };
     // A Block or Row stays where it was, unseen, so that its text keeps its
     // editor, focus and cursor. The palette keeps its item.
