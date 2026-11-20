@@ -1,6 +1,6 @@
 # Build the editor with Lit in Shadow DOM
 
-The editor is a Lit Web Component that renders in Shadow DOM, with `@dnd-kit/dom` for dragging and Tiptap for text, because that isolates the canvas from host-page CSS and adds no framework for non-React hosts. Lit added 5.8 KB gzipped against 69 KB for React and React DOM, which would also have meant a hidden React in Vue, Svelte and plain JS apps and a second copy in React apps. A throwaway test on a React page with Tailwind's reset and unfriendly CSS passed drag and drop, text editing, copy/paste and undo in Chromium, Firefox and WebKit, and the drag, selection, bold and copy/paste checks passed by hand in real Safari. Simulated Japanese input passed in Chromium.
+The editor is a Lit Web Component that renders in Shadow DOM, because that isolates the canvas from host-page CSS and adds no framework for non-React hosts. It drags with its own pointer events, as the amendment below says, and edits text with ProseMirror (ADR 0003). Lit added 5.8 KB gzipped against 69 KB for React and React DOM, which would also have meant a hidden React in Vue, Svelte and plain JS apps and a second copy in React apps. The editor was first built with `@dnd-kit/dom` for dragging and Tiptap for text. With them, a throwaway test on a React page with Tailwind's reset and unfriendly CSS passed drag and drop, text editing, copy/paste and undo in Chromium, Firefox and WebKit, and the drag, selection, bold and copy/paste checks passed by hand in real Safari. Simulated Japanese input passed in Chromium.
 
 ## Consequences
 
