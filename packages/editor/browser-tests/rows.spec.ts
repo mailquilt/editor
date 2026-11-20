@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 
 import {
   blockGroup,
@@ -17,6 +17,7 @@ import {
   settle,
   structure,
   TALL_VIEWPORT,
+  test,
   undoByKey,
 } from "./helpers.js";
 
@@ -47,8 +48,13 @@ test.describe("selecting a Row", () => {
     await open(page, [[["A"]], [["B"]]]);
     await selectRowButton(page, 1).focus();
     await page.keyboard.press("Enter");
+    await expect(rowTools(page, 1)).toHaveAttribute("aria-current", "true");
 
     await blockGroup(page, "Text").last().focus();
+    await expect(blockGroup(page, "Text").last()).toHaveAttribute(
+      "aria-current",
+      "true"
+    );
     await expect(rowTools(page, 1)).not.toHaveAttribute("aria-current");
   });
 

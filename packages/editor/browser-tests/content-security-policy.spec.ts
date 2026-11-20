@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
 import {
@@ -15,6 +15,7 @@ import {
   pickUp,
   setValue,
   TALL_VIEWPORT,
+  test,
   textBlock,
   tooltip,
   undoButton,

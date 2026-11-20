@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
 import {
@@ -14,6 +14,7 @@ import {
   redoByKey,
   settle,
   stopClock,
+  test,
   undo,
   undoByKey,
 } from "./helpers.js";
@@ -1022,10 +1023,10 @@ test.describe("copy and paste", () => {
       `<h1 style="color:red">Title</h1>
        <p style="font-size:40px"><b>bold</b> <i>italic</i> <u>under</u>
          <s>struck</s> <span style="color:red">red</span>
-         <img src="x" onerror="alert(1)"><br><code>code</code></p>
+         <img src="x" onerror="window.pasteRan = true"><br><code>code</code></p>
        <ul><li>item</li></ul>
        <table><tr><td>cell</td></tr></table>
-       <script>alert(1)</script>`
+       <script>window.pasteRan = true</script>`
     );
 
     // The host shows the saved email a render after the canvas has it.
@@ -1047,9 +1048,23 @@ test.describe("copy and paste", () => {
     const text = await firstTextBlock(page).textContent();
     expect(text).toContain("struck");
     expect(text).toContain("cell");
-    expect(text).not.toContain("alert");
+    expect(text).not.toContain("pasteRan");
     await expect(firstTextBlock(page).locator("img")).toHaveCount(0);
     expect(await exportHtml(page)).not.toContain("color:red");
+    // An image the page makes now fails to load after one the paste would have
+    // made, so the pasted one's error would have run by then.
+    await page.evaluate(
+      () =>
+        // oxlint-disable-next-line promise/avoid-new -- An image's error has no promise form.
+        new Promise((resolve) => {
+          const image = new Image();
+          image.addEventListener("error", resolve);
+          image.src = "x";
+        })
+    );
+    expect(await page.evaluate(() => Reflect.get(window, "pasteRan"))).toBe(
+      undefined
+    );
   });
 
   // A tab would show at a tab stop on the canvas, which no email client can

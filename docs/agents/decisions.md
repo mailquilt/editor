@@ -95,8 +95,9 @@ A PR that changes one of these says so, gives the reason and updates this page.
   - A state, by the attribute that holds it, such as `aria-current`, `aria-pressed` or `data-drag-ghost`.
   - A control's icon, by its `svg`, and the host page's `html` and `body`, which hold what a test records.
   - Code run in the page, which has no locators, by tag and role attributes.
-- CI fails on a test that passes only on a retry, so a flake is seen and fixed. The retries stay, to tell a flake from a test that always fails and to keep a trace. (#171)
+- CI fails on a test that passes only on a retry, so a flake is seen and fixed. The retries stay, to tell a flake from a test that always fails. The trace kept is the first run's, the one that failed. (#171, #221)
 - Tests copy and paste through events, not the system's clipboard, which tests running at the same time could share. (#171)
+- A Command applies at once, and the test host's state has the change before a test can read it, so a test reads the editor's value, or the host's, once, right after an action. A poll would let a change that came late pass. Tests poll only for what settles later, such as layout, the Shell's saves and timers. (#221)
 - Core keeps a "stores…" test for each Block type's own settings. (#82)
 - The renderer's plain Node test builds the renderer into a folder of its own, so it never runs an older build of it, and never changes a `dist` that another task is reading. It uses core's `dist`, which Turborepo builds first. The install checks import the packed renderer by name. (#211)
 - "a Row on the canvas › shows its toolbar on hover", in `canvas-tools.spec.ts`, failed once in WebKit CI and passed on retry, with no cause found in 25 local runs. It isn't treated as flaky unless it fails again. (#36)

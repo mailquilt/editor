@@ -1,15 +1,16 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 
 import type { MailQuilt } from "../src/index.js";
 import {
   addRow,
   addText,
+  blockTools,
   boxOf,
   canvas,
   change,
   changeCount,
-  collectErrors,
+  consoleErrors,
   countHostEscapes,
   currentValue,
   emailWith,
@@ -21,6 +22,7 @@ import {
   selectRow,
   setValue,
   structure,
+  test,
   textBlock,
   undoByKey,
   violations,
@@ -356,7 +358,7 @@ test.describe("undo", () => {
 
 test.describe("validation", () => {
   test("refuses a bad value and explains", async ({ page }) => {
-    const errors = collectErrors(page);
+    const errors = consoleErrors(page);
     await textBlock(page).click();
     const before = await currentValue(page);
     const color = field(page, "Color");
@@ -488,7 +490,10 @@ test.describe("text that hasn't been committed", () => {
 
   test("is committed when a drag handle is pressed", async ({ page }) => {
     await typeFontSize(page, "24");
-    const box = await boxOf(canvas(page).getByTestId("drag-handle").first());
+    // The selected Block's, which shows. A press keeps focus where it is.
+    const handle = blockTools(page).getByTestId("drag-handle");
+    await expect(handle).toBeVisible();
+    const box = await boxOf(handle);
 
     await page.mouse.move(box.x + 4, box.y + 4);
     await page.mouse.down();

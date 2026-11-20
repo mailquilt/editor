@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 
 import type { MailQuiltShell } from "../src/index.js";
@@ -13,6 +13,7 @@ import {
   emailWithLink,
   focusStartOfTextBlock,
   selectRowButton,
+  test,
   textBlock,
   violations,
 } from "./helpers.js";
@@ -141,6 +142,14 @@ test.describe("choosing the buttons with actions", () => {
 
     await expect(shell(page).getByRole("alert")).toHaveText(
       "This browser can't save your email here."
+    );
+
+    await shell(page).evaluate((element) =>
+      element.setAttribute("actions", "export-json")
+    );
+
+    await expect(shell(page).getByRole("alert")).toHaveText(
+      "This browser can't save your email here. Export it as JSON to keep it."
     );
   });
 });

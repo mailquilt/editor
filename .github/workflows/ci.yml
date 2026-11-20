@@ -102,8 +102,8 @@ jobs:
           pnpm turbo run test --concurrency=1 --filter=@mailquilt/editor --filter=@mailquilt/react --filter=docs -- --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/2
         env:
           CI: true
-      # A failed try leaves its screenshot, error snapshot and retry trace, even
-      # when the retry passes. A run where nothing failed leaves none.
+      # A failed first try leaves its screenshot, error snapshot and trace, even
+      # when a retry passes. A run where nothing failed leaves none.
       - if: ${{ !cancelled() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:

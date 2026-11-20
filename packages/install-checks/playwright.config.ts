@@ -5,8 +5,7 @@ import { cdnPort, freshProjects } from "./ports.ts";
 
 export default defineConfig({
   // A test that passes only on a retry fails the run, so a flake is seen and
-  // fixed. The retries are kept to tell a flake from a test that always fails,
-  // and to record a trace of the retry.
+  // fixed. The retries are kept to tell a flake from a test that always fails.
   failOnFlakyTests: Boolean(process.env.CI),
   forbidOnly: Boolean(process.env.CI),
   // These check the packages, and the browser tests of each package cover the
