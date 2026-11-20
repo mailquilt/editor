@@ -240,10 +240,15 @@ test.describe("an empty Column on a touch screen", () => {
       "opacity",
       "0"
     );
-    // With no hover to show it, a Block's drag handle always shows.
+    // With no hover to show them, a Block's drag handle always shows, and a
+    // Row's tag, which selects the Row and shows its tools.
     await expect(
       blockGroup(page, "Button").getByTestId("drag-handle")
     ).toHaveCSS("opacity", "1");
+    const tag = canvas(page).getByTestId("row-tag");
+    await expect(tag).toHaveCSS("opacity", "1");
+    await tag.tap();
+    await expect(rowTools(page, 1)).toHaveCSS("opacity", "1");
   });
 });
 

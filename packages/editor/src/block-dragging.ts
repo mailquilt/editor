@@ -428,9 +428,13 @@ export const createBlockDragging = ({
     indicator.hidden = !line;
     if (line) {
       const origin = email.getBoundingClientRect();
-      indicator.style.left = `${line.left - origin.left}px`;
-      indicator.style.top = `${line.y - origin.top}px`;
-      indicator.style.width = `${line.width}px`;
+      // The line is on screen, and its place in the email isn't, where a host
+      // page scales the editor.
+      const scaleX = scaleOf(origin.width, email.offsetWidth);
+      const scaleY = scaleOf(origin.height, email.offsetHeight);
+      indicator.style.left = `${(line.left - origin.left) / scaleX}px`;
+      indicator.style.top = `${(line.y - origin.top) / scaleY}px`;
+      indicator.style.width = `${line.width / scaleX}px`;
     }
   };
 

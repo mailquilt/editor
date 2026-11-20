@@ -802,7 +802,7 @@ test.describe("labels and focus states", () => {
       "Text Block, Row 1, Column 2, position 2 of 2"
     );
     await expect(blockWith(page, "C")).toHaveAccessibleDescription(
-      /Enter to edit.*arrow keys.*Alt/u
+      /Enter to edit.*ArrowUp.*Alt\+ArrowUp/u
     );
 
     await blockWith(page, "C").focus();

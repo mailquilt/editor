@@ -302,7 +302,7 @@ test.describe("a Button", () => {
     await open(page, ["button"]);
 
     await expect(blockGroup(page, "Button")).toHaveAccessibleDescription(
-      "Use arrow keys to select another Block, and Alt with arrow keys to move this one."
+      "Press ArrowUp, ArrowDown, ArrowLeft, or ArrowRight to select another Block, and Alt+ArrowUp, Alt+ArrowDown, Alt+ArrowLeft, or Alt+ArrowRight to move this one."
     );
   });
 

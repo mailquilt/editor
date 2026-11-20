@@ -265,6 +265,27 @@ test.describe("an Image", () => {
     await expect(image(page)).toHaveAttribute("src", missing);
   });
 
+  test("tries a URL that failed again when it's typed in again", async ({
+    context,
+    page,
+  }) => {
+    const missing = "https://cdn.example/missing.png";
+    await context.route(missing, (route) => route.abort());
+    await open(page, ["image"]);
+    await blockGroup(page, "Image").focus();
+    await change(field(page, "Image URL"), missing);
+    await expect(blockGroup(page, "Image")).toContainText(
+      `Couldn't load ${missing}`
+    );
+
+    // As if it had finished uploading.
+    await context.unroute(missing);
+    await field(page, "Image URL").clear();
+    await change(field(page, "Image URL"), missing);
+
+    await expect(image(page)).toHaveAttribute("src", missing);
+  });
+
   test("takes a Merge Tag as its URL and link", async ({ page }) => {
     await open(page, ["image"]);
     await blockGroup(page, "Image").focus();

@@ -109,8 +109,11 @@ interface EntryOptions {
   /** Matches with Shift, Ctrl, Alt or ⌘ held too. */
   anyModifiers?: boolean;
   keepsDefault?: boolean;
-  /** Only with a Block that has text selected, as it acts on that text. */
-  needsText?: boolean;
+  /**
+   * Only when the editor has what it acts on: a Block with text selected, or a
+   * step to undo or redo. Otherwise the press reaches the host page.
+   */
+  needs?: "canRedo" | "canUndo" | "selectedText";
   /** Only on devices other than Apple's. */
   platform?: "other";
   stops: boolean;
@@ -137,11 +140,12 @@ type Entry<Of extends string = Action> = EntryOptions &
       }
   );
 
+// oxlint-disable-next-line sort-keys -- In the order they're named in.
 const ARROW_KEYS = {
+  up: "ArrowUp",
   down: "ArrowDown",
   left: "ArrowLeft",
   right: "ArrowRight",
-  up: "ArrowUp",
 } as const satisfies Record<Direction, string>;
 
 /** One entry for each arrow key, with `prefix` such as "Alt-". */
@@ -157,10 +161,16 @@ const arrows = (
 
 /** Undo and redo for the whole editor, in place of the browser's own. */
 const HISTORY: Entry[] = [
-  { action: "undo", keys: ["Mod-z"], stops: true },
+  { action: "undo", keys: ["Mod-z"], needs: "canUndo", stops: true },
   // Where both redo, Ctrl+Y is the one named first.
-  { action: "redo", keys: ["Mod-y"], platform: "other", stops: true },
-  { action: "redo", keys: ["Shift-Mod-z"], stops: true },
+  {
+    action: "redo",
+    keys: ["Mod-y"],
+    needs: "canRedo",
+    platform: "other",
+    stops: true,
+  },
+  { action: "redo", keys: ["Shift-Mod-z"], needs: "canRedo", stops: true },
 ];
 
 /**
@@ -170,7 +180,7 @@ const HISTORY: Entry[] = [
 const OPEN_LINK: Entry = {
   action: "openLinkField",
   keys: ["Mod-k"],
-  needsText: true,
+  needs: "selectedText",
   stops: true,
 };
 
@@ -282,7 +292,12 @@ const KEY_MAP: Record<Place, readonly Entry[]> = {
     { action: "typeInField", keepsDefault: true, keys: "any", stops: true },
   ],
   rowToolbar: [
-    ...arrows("Alt-", { action: "moveRow", stops: false, waitsForDrag: true }),
+    // A Row moves only up and down, so Alt+← and Alt+→ only keep the page.
+    ...arrows("Alt-", {
+      action: "moveRow",
+      stops: false,
+      waitsForDrag: true,
+    }).filter(({ direction }) => direction === "up" || direction === "down"),
     KEEP_PAGE,
     ...TOOLBAR,
     OPEN_LINK,
@@ -465,6 +480,10 @@ export const claim = (event: Event, { keepsDefault, stops }: Effect) => {
 interface Context {
   /** An Apple device, where Mod is ⌘. */
   apple: boolean;
+  /** There's a step to redo. */
+  canRedo: boolean;
+  /** There's a step to undo. */
+  canUndo: boolean;
   /** A Block or Row is being dragged. */
   dragging: boolean;
   /** The selected Block has text. */
@@ -474,8 +493,9 @@ interface Context {
 const applies = (
   entry: EntryOptions & { keys: readonly string[] | "any" },
   press: KeyPress,
-  { apple, dragging, selectedText }: Context
+  context: Context
 ) => {
+  const { apple, dragging } = context;
   if (entry.keys === "any") {
     return true;
   }
@@ -483,7 +503,7 @@ const applies = (
   if (
     isComposing(press) ||
     (dragging && entry.waitsForDrag) ||
-    (!selectedText && entry.needsText) ||
+    (entry.needs !== undefined && !context[entry.needs]) ||
     !isOnPlatform(entry, apple)
   ) {
     return false;
@@ -499,10 +519,22 @@ export const hasKeys = (place: string): place is Place =>
 const bindingIn = <Of extends string>(
   entries: readonly Entry<Of>[],
   press: KeyPress,
-  { apple = IS_MAC, dragging = false, selectedText = false }: Partial<Context>
+  {
+    apple = IS_MAC,
+    canRedo = false,
+    canUndo = false,
+    dragging = false,
+    selectedText = false,
+  }: Partial<Context>
 ): Binding<Of> | undefined => {
   const entry = entries.find((each) =>
-    applies(each, press, { apple, dragging, selectedText })
+    applies(each, press, {
+      apple,
+      canRedo,
+      canUndo,
+      dragging,
+      selectedText,
+    })
   );
   if (!entry) {
     return undefined;
@@ -550,7 +582,7 @@ const nameOne = (name: string, apple: boolean): KeyLabel => {
   const shown = ARROW_SYMBOLS[key] ?? (apple && key === "Enter" ? "↩" : base);
   return {
     keys: apple
-      ? `${has("Alt") ? "Alt+" : ""}${has("Shift") ? "⇧" : ""}${has("Mod") ? "⌘" : ""}${shown}`
+      ? `${has("Alt") ? "⌥" : ""}${has("Shift") ? "⇧" : ""}${has("Mod") ? "⌘" : ""}${shown}`
       : [
           has("Mod") && "Ctrl",
           has("Alt") && "Alt",
@@ -582,7 +614,10 @@ const nameAll = (names: readonly string[], apple: boolean): KeyLabel => {
   };
 };
 
-/** How the keys for `action` in `place` are named, from the key map. */
+/**
+ * How the keys for `action` in `place` are named, from the key map. For an
+ * arrow key's action, `direction` names one way, or else they're all named.
+ */
 export const keyLabel = (
   place: Place,
   action: Action,
@@ -593,7 +628,7 @@ export const keyLabel = (
       .filter(
         (entry) =>
           entry.action === action &&
-          entry.direction === direction &&
+          (direction === undefined || entry.direction === direction) &&
           isOnPlatform(entry, apple)
       )
       .flatMap(({ keys }) => (keys === "any" ? [] : keys)),

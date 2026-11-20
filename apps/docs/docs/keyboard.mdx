@@ -87,6 +87,23 @@ line, and put it back.
 | <kbd>Shift</kbd> + <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>Z</kbd> | Redoes it. |
 | <kbd>Ctrl</kbd> + <kbd>Y</kbd> | Also redoes it, except on a Mac. |
 
+With nothing to undo or redo, these keys are left to your page.
+
+## Keys and your page
+
+The keys the editor acts on stop in the editor, so your page doesn't act on them too. Every other key goes on to your page, including what's typed in a Block's text or a settings field, as from any field on a page. The link field is the one exception: it keeps every key to itself.
+
+The editor is inside a shadow root, so your page sees a key pressed in it as coming from the `<mail-quilt>` element, or from `<mail-quilt-shell>` in the Shell. A shortcut of your page's own, such as a letter that opens search, can skip those keys:
+
+```js
+document.addEventListener("keydown", (event) => {
+  if (event.target.closest("mail-quilt, mail-quilt-shell")) {
+    return;
+  }
+  // Your page's own shortcuts.
+});
+```
+
 ## Preview
 
 Opening Preview moves focus to its Close button. <kbd>Escape</kbd> closes it, and focus returns to where it was. In Safari, <kbd>Escape</kbd> does nothing once focus is inside the email, so press <kbd>Shift</kbd> + <kbd>Tab</kbd> to get back to Close.

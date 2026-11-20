@@ -283,8 +283,11 @@ export const sidePanelStyles = css`
     outline: 1px solid transparent;
     outline-offset: -1px;
     padding: var(--mq-space-3) var(--mq-space-2);
-    /* Dragged by touch too, which would otherwise scroll the panel. */
-    touch-action: none;
+    /*
+     * A touch that goes up or down scrolls the panel, which the tiles fill, and
+     * one that goes sideways, towards the email, drags the tile.
+     */
+    touch-action: pan-y;
     transition:
       background-color 120ms,
       box-shadow 120ms;

@@ -25,6 +25,7 @@ import { findPlace } from "./editor-places.js";
 import { createLinkForm, formatBarStyles } from "./format-bar.js";
 import { createKeyDispatch } from "./key-dispatch.js";
 import { keyLabel } from "./key-map.js";
+import type { Action, Place } from "./key-map.js";
 import { editorStyles } from "./mail-quilt-styles.js";
 import type { PanelActions, PanelApi } from "./panel-api.js";
 import { blocksIn } from "./places.js";
@@ -48,12 +49,18 @@ import type { Tooltips } from "./tooltips.js";
 const TYPING_PAUSE_MS = 1000;
 
 /**
- * For the Block key help, which a screen reader reads, so each key is named as
- * `aria-keyshortcuts` names it.
+ * The keys for an action, for the Block key help, which a screen reader reads,
+ * so each key is named as `aria-keyshortcuts` names it: "A, B, or C".
  */
-const EDIT_TEXT = keyLabel("block", "editText").shortcuts;
-const BACK_TO_BLOCK = keyLabel("text", "backToBlock").shortcuts;
-const FORMAT_BAR = keyLabel("text", "focusFormatBar").shortcuts;
+const keysFor = (place: Place, action: Action) =>
+  new Intl.ListFormat(UI_LANG, { type: "disjunction" }).format(
+    keyLabel(place, action).shortcuts.split(" ")
+  );
+const EDIT_TEXT = keysFor("block", "editText");
+const BACK_TO_BLOCK = keysFor("text", "backToBlock");
+const FORMAT_BAR = keysFor("text", "focusFormatBar");
+const SELECT_BLOCK = keysFor("block", "selectBlock");
+const MOVE_BLOCK = keysFor("block", "moveBlock");
 
 export class MailQuilt extends LitElement {
   static override styles = [
@@ -90,8 +97,8 @@ export class MailQuilt extends LitElement {
     apply: (command) => this.#apply(command, { refusable: true }),
     onEnter: (value) => {
       // An image URL that failed may load now, so entering it again tries again.
-      if (typeof value === "string") {
-        this.#failedImages.delete(value);
+      if (typeof value === "string" && this.#failedImages.delete(value)) {
+        this.requestUpdate();
       }
     },
     requestUpdate: () => this.requestUpdate(),
@@ -136,6 +143,10 @@ export class MailQuilt extends LitElement {
     selection: this.#selection,
   });
   readonly #keys = createKeyDispatch({
+    canStep: (step) =>
+      step === "undo"
+        ? (this.#editor?.canUndo() ?? false)
+        : (this.#editor?.canRedo() ?? false),
     drafts: this.#drafts,
     editing: this.#editing,
     isDragging: () => this.#dragging?.isDragging() ?? false,
@@ -344,11 +355,12 @@ export class MailQuilt extends LitElement {
       ${this.#announcements.render()}
       <p hidden id="block-keys" lang=${UI_LANG}>
         Press ${EDIT_TEXT} to edit the text, and ${BACK_TO_BLOCK} to come back.
-        In the text, press ${FORMAT_BAR} to reach its formatting. Use arrow keys
-        to select another Block, and Alt with arrow keys to move this one.
+        In the text, press ${FORMAT_BAR} to reach its formatting. Press
+        ${SELECT_BLOCK} to select another Block, and ${MOVE_BLOCK} to move this
+        one.
       </p>
       <p hidden id="block-keys-no-text" lang=${UI_LANG}>
-        Use arrow keys to select another Block, and Alt with arrow keys to move
+        Press ${SELECT_BLOCK} to select another Block, and ${MOVE_BLOCK} to move
         this one.
       </p>
       ${this.#narrow ? renderNarrowNotice(api) : nothing}
@@ -555,6 +567,7 @@ export class MailQuilt extends LitElement {
   }
 
   #show(document: BlocksDocument | undefined) {
+    const hadFocus = Boolean(this.shadowRoot?.activeElement);
     this.#lastKnownDocument = document;
     this.#preview.forget();
     this.#announcements.clear();
@@ -566,6 +579,11 @@ export class MailQuilt extends LitElement {
     this.#editor = document && createEditor({ document });
     this.#editor?.subscribe(this.#editing.onOperations);
     this.requestUpdate();
+    // Taking down the text views took focus out of the editor if it was in
+    // one, before the update could see where it was.
+    if (hadFocus && !this.shadowRoot?.activeElement) {
+      this.#selection.focusWhenRendered({ on: "emailTools" });
+    }
   }
 
   #emitChange(document: BlocksDocument) {
