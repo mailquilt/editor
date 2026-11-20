@@ -7,7 +7,7 @@ This document explains what Mail Quilt is for, how it's designed, and where it's
 - The main design decisions, and why they were made, are in [`docs/adr/`](docs/adr).
 - Plans and progress are tracked in [GitHub Issues](https://github.com/mailquilt/editor/issues).
 
-**Status:** `0.1.0` is the first release. While Mail Quilt is on `0.x`, the API can still change between minor versions. Sections marked _planned_ describe intended designs, not promises, and can change before they're built.
+**Status:** Mail Quilt is on `0.x`, so the API can still change between minor versions. Each package's changelog says what a release changed. Sections marked _planned_ describe intended designs, not promises, and can change before they're built.
 
 ## Contents
 
@@ -18,7 +18,7 @@ This document explains what Mail Quilt is for, how it's designed, and where it's
 5. [Blocks and settings](#5-blocks-and-settings)
 6. [Public API](#6-public-api)
 7. [Packages](#7-packages)
-8. [What `0.1.0` includes](#8-what-010-includes)
+8. [What's released](#8-whats-released)
 9. [Roadmap](#9-roadmap)
 10. [Planned features](#10-planned-features)
 11. [Quality and testing](#11-quality-and-testing)
@@ -37,9 +37,9 @@ Mail Quilt is a set of free, MIT-licensed packages for adding a drag-and-drop em
 | An editor inside a page of your own | The editor, `<mail-quilt>`, or its React component |
 | The email as data, and the HTML for it | `@mailquilt/core` and `@mailquilt/renderer` |
 
-The editor is a Web Component, so it works in any framework or none. A React wrapper ships today, and Vue and Svelte wrappers are planned. The editor is built on `core` and `renderer`, and an app can build on them too, for example to change emails on a server.
+The editor is a Web Component, so it works in any framework or none. A React wrapper ships today, and Vue and Svelte wrappers follow if the element alone isn't enough. The editor is built on `core` and `renderer`, and an app can build on them too, for example to change emails on a server.
 
-In `0.1.0`, people build emails by dragging Blocks into Rows and Columns, or with the keyboard. Planned are editing the HTML directly, an AI builder that uses your own AI provider, and an MCP server so coding tools can create and edit emails.
+Today, people build emails by dragging Blocks into Rows and Columns, or with the keyboard. Planned are editing the HTML directly, an AI builder that uses your own AI provider, and an MCP server so coding tools can create and edit emails.
 
 ### Who it's for
 
@@ -52,7 +52,7 @@ In `0.1.0`, people build emails by dragging Blocks into Rows and Columns, or wit
 ### Goals
 
 1. Embed in any framework through one consistent API.
-2. Produce HTML that works in the major email clients. `0.1.0` is checked in Gmail, Apple Mail, Outlook, Yahoo and others through Email on Acid, and the docs list the limits found.
+2. Produce HTML that works in the major email clients. The export is checked in Gmail, Apple Mail, Outlook, Yahoo and others through Email on Acid, and the docs list the limits found.
 3. Give full visual control, without allowing layouts that email clients can't render.
 4. Make AI edits validated, reviewable and undoable.
 5. Work for developers through packages, a CLI, a local mode and MCP.
@@ -83,7 +83,7 @@ MCP / CLI ─────┘                                    │
 HTML mode ─────────────────────> "html" document ───────────────────────> HTML
 ```
 
-`0.1.0` has drag and drop, the keyboard and the path from Commands to HTML. AI, MCP, the CLI, the email checker, React Email export and HTML mode are planned.
+Drag and drop, the keyboard and the path from Commands to HTML are released. AI, MCP, the CLI, the email checker, React Email export and HTML mode are planned.
 
 ### Design principles
 
@@ -94,7 +94,7 @@ HTML mode ─────────────────────> "html
 - **There's one undo history.** Typing in a Block merges into one undo step until the user pauses or leaves it.
 - **`core` and `renderer` need no browser.** They run on a server without a DOM or a UI framework, and a server can render an email without loading any editor code.
 - **The interface is written once.** The editor is a Web Component, and each framework wrapper stays thin.
-- **MJML stays inside `renderer`.** It uses `mjml-browser` on servers and in browsers alike. In a browser, MJML is about 423 KB gzipped, so the editor loads it only for Preview and export.
+- **MJML stays inside `renderer`.** It uses `mjml-browser` on servers and in browsers alike. In a browser, MJML is several times the size of the rest of the editor, so the editor loads it only for Preview and export.
 - **The canvas doesn't run MJML.** It's a fast Lit view, while Preview shows the real exported HTML in a sandboxed iframe. Both get each Block's styles from one shared function.
 - **Documents are versioned.** Every saved format has a version, and older versions are migrated as they load.
 - **Layouts are constrained.** Rows, Columns and Blocks only allow layouts that email clients can render.
@@ -159,7 +159,7 @@ Later versions add these through migrations, as their features are built: brand 
 
 ## 5. Blocks and settings
 
-| | `0.1.0` | Planned |
+| | Released | Planned |
 |---|---|---|
 | **Layout** | Rows, and Columns from preset layouts | — |
 | **Blocks** | Text, Heading, Image (by URL), Button, Divider, Spacer | Social links, lists and tables, video thumbnails, headers and footers, custom HTML |
@@ -221,7 +221,7 @@ With a bundler, import `@mailquilt/editor`. Without one, such as in Rails, Larav
 <MailQuilt value={document} onChange={setDocument} onError={showError} />
 ```
 
-The custom element is only registered in the browser, so the components are safe in server-rendered apps such as Next.js. Vue and Svelte wrappers are planned, with the same ideas in each framework's conventions. Other frameworks, such as Solid and Angular, can use `<mail-quilt>` directly.
+The custom element is only registered in the browser, so the components are safe in server-rendered apps such as Next.js. Other frameworks, such as Vue, Svelte, Solid and Angular, use `<mail-quilt>` directly. Vue and Svelte wrappers follow if the element alone isn't enough, with the same ideas in each framework's conventions.
 
 ### Without the editor
 
@@ -249,7 +249,7 @@ mailquilt/
     └── typescript-config/   # Shared tsconfig files
 ```
 
-Planned packages are added when their work starts: `vue`, `svelte`, `checker`, `ai`, `react-email`, `mcp` and `cli`.
+Planned packages are added when their work starts: `checker`, `ai`, `react-email`, `mcp` and `cli`, and `vue` and `svelte` if the element alone isn't enough.
 
 ### Dependency rules
 
@@ -279,7 +279,7 @@ Planned packages are added when their work starts: `vue`, `svelte`, `checker`, `
 
 Effect isn't used in the published packages, and may be reconsidered for the CLI and the MCP server. Ultracite's framework rules are set per package, because the rules of different frameworks can conflict.
 
-## 8. What `0.1.0` includes
+## 8. What's released
 
 - The packages `core`, `renderer`, `editor` (with a CDN build) and `react`
 - Text, Heading, Image (by URL), Button, Divider and Spacer Blocks
@@ -307,23 +307,31 @@ There are no dates, and items can move. Each item is tracked in GitHub Issues.
 
 **Next**
 
-`0.2` comes first. It restructures the editor ([ADR 0004](docs/adr/0004-restructure-the-editor-for-0-2.md)), fixes what the review before it found, and adds a few small things: `canUndo()`, `canRedo()` and a code for each refused Command in `core`, the `--mq-color-scheme` theme token, and a canvas that works under a strict Content Security Policy. Next starts in `0.3`.
+`0.2` comes first. It restructures the editor ([ADR 0004](docs/adr/0004-restructure-the-editor-for-0-2.md)), fixes what the reviews before it found, and adds a few small things: `canUndo()`, `canRedo()` and a code for each refused Command in `core`, the `--mq-color-scheme` theme token, and a canvas that works under a strict Content Security Policy. Next starts in `0.3`.
 
-What a team needs before its customers can use the editor. The first six are specified together and ship first. These come before the MCP server and the AI builder because a team that can't upload an image or pick a Merge Tag stops there, whatever else the editor does.
+What a team needs before its customers can use the editor. The first six are specified together and ship first. These come before the MCP server and the AI builder because a team that can't upload an image or pick a Merge Tag stops there, whatever else the editor does. The line under a feature is what its spec has to settle first, because the code doesn't allow for it yet.
 
 1. Image upload, to storage the host app supplies
+   - First: a way in for the host app's service, as the element takes only `value`, and each new property is passed on by hand in three places. A drag that can take a dropped file, as every file is refused on the whole element today.
 2. A Merge Tag picker, filled by the host app
+   - First: Merge Tags as something other than plain text matched by a pattern, as Backspace inside one leaves a broken tag, and `{{ }}` is fixed in core. A Block's text view that follows every change to the email, as it follows one only on undo and redo. The same way in for the host app as image upload.
 3. Lists in text
+   - First: deleting an empty paragraph that isn't top-level, as the text assumes every paragraph is. A new format version for the new node.
 4. Row padding, hiding or stacking on phones, and a mobile preview
+   - First: a Column's inline width that allows for Row padding, as it assumes the Row is as wide as the email. A settings field that holds a yes or no, as each holds one string or number.
 5. Copy, paste and duplicate
+   - First: a Command that inserts a Block or Row with its content, and key dispatch that hears copy and paste events.
 6. A Social Block
+   - First: icons that don't load from Mailjet, as MJML's social element does by default. A settings field that holds a yes or no. A Tab stop in an empty Column that isn't one per Block type, as each new type adds one.
 7. Web fonts
 8. Menu, Video and HTML Blocks
 9. Alt text, or a "decorative" choice, for every image
 10. A plain-text version of each email
 11. Translations of the editor's interface, and right-to-left text
+    - First: the editor's English strings in one place, as about 90 in the editor and 35 in core are written inline and joined together. Left and right as directions, as they're a Column index of −1 and +1.
 12. Starter emails
 13. React 18 in `@mailquilt/react`
+    - First: where the components rely on React 19, such as taking `ref` as a plain prop.
 14. Vue, Angular and Svelte tested in `install-checks`, with types for the element
 15. A JSON Schema for the email format
 
@@ -348,12 +356,13 @@ Wanted. The first five open the editor up to the host app, so they come first, i
 - Sending integrations
 - Translated emails
 - Collaboration support, with an example
+  - First: a Block's text view that follows every change to the email, as for the Merge Tag picker.
 
 **Before `1.0.0`**
 
 - Measure the editor's speed on a large email, and set a limit to keep to
 - Confirm that dragging works by touch on a tablet
-- Say which browsers and Node versions are supported, and how soon an issue gets a first reply
+- Say how soon an issue gets a first reply
 - Freeze the document format and the API, with a written promise of what won't change
 
 ## 10. Planned features
@@ -488,9 +497,9 @@ Custom Blocks and settings fields, custom checker rules, image upload and media 
 - **Unit tests (Vitest):** Commands, undo and redo, migrations, the renderer and the editor's key map.
 - **Browser tests (Playwright):** drag and drop, the keyboard, undo, settings, export and the React wrapper, in Chromium, Firefox and WebKit, with automated accessibility checks.
 - **Install checks:** the packed packages are installed in fresh plain JavaScript, CDN, React with Vite, and Next.js projects, and tested there.
-- **Email clients:** `0.1.0` is checked in Email on Acid, in Gmail, Apple Mail, iOS Mail, every version of Outlook, Yahoo, AOL and European webmail, in light and dark mode. The docs list the clients and the known limits.
+- **Email clients:** the export is checked in Email on Acid, in Gmail, Apple Mail, iOS Mail, every version of Outlook, Yahoo, AOL and European webmail, in light and dark mode. The docs list the clients, when they were checked, and the known limits.
 - **By hand, before each release that adds a Block or changes what the renderer writes:** the same check in Email on Acid, with a fixed set of test emails that use every Block and layout. The docs' page of tested clients then gets the new date.
-- **By hand, for `0.1.0`:** typing Japanese in Safari, Firefox and Chrome (automated tests can only simulate it in Chromium), and touch.
+- **By hand, before `0.1.0`:** typing Japanese in Safari, Firefox and Chrome (automated tests can only simulate it in Chromium), and touch.
 
 [`docs/agents/testing.md`](docs/agents/testing.md) says how tests are written here.
 
@@ -542,14 +551,14 @@ To release, version on a branch. CI publishes the commit it checked:
 
 ```bash
 pnpm changeset version   # bumps the versions in package.json and writes the changelogs
-# The version is written in three more places, set by hand:
-# 1. The CDN links. The install checks fail until each one in the docs pages,
-#    the READMEs and the skill matches. These are the files:
+# Then, by hand, what names the version or says what's in a release:
+# 1. The CDN links. The install checks fail until each one in this file, the
+#    docs pages, the READMEs and the skill matches. These are the files:
 git grep -l "/@mailquilt/editor@[0-9]" -- PROJECT.md README.md apps/docs/docs "packages/*/README.md" skills
-# 2. The status line at the top of this file.
-# 3. The version placeholder in the bug report form, .github/ISSUE_TEMPLATE/bug.yml.
-# Then move what shipped from "Next" to "Now" on the roadmap page,
-# apps/docs/pages/roadmap.astro.
+# 2. The version placeholder in the bug report form, .github/ISSUE_TEMPLATE/bug.yml.
+# 3. The roadmap in this file: take out what shipped, and add it to "What's released".
+# 4. The roadmap page, apps/docs/pages/roadmap.astro: move what shipped from
+#    "Next" to "Now".
 git add -A && git commit -m "chore: release"
 # Push, open a pull request, and merge it once CI passes.
 ```
@@ -557,6 +566,11 @@ git add -A && git commit -m "chore: release"
 On `main`, CI's release job runs once every check has passed. It publishes each package whose version isn't on npm yet, with provenance, and pushes a tag for each. Any other commit on `main` publishes nothing, as its versions are already on npm. If a publish fails, rerun the job.
 
 npm lets the job publish without a token because each package has this repository's `ci.yml` as its trusted publisher, with publishing that skips 2FA turned off.
+
+Once the packages are on npm, two steps are by hand:
+
+- **The docs site.** The live site is built from the `docs-live` branch, so its docs match the packages on npm. Move the branch to the release commit: `git push origin <release commit>:docs-live`.
+- **The GitHub release.** Make one named `Mail Quilt <version>`, on the tag `@mailquilt/editor@<version>`, with a line on what the release brings, the install command, links to the docs and the Playground, and each package's changelog entry.
 
 ## 15. Open source model
 

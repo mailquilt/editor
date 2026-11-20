@@ -19,6 +19,8 @@ A finding blocks a release only if it:
 - stops keyboard or screen reader users from doing something
 - makes the code do something other than what the docs promise
 
+A red `main` blocks a release too, whatever made it red, a flaky test or a broken workflow included. CI publishes only a commit that passed every check, so the release waits until `main` is green again.
+
 Anything else goes in the backlog issue, unless the maintainer asks for it.
 
 ## Briefing reviewers
