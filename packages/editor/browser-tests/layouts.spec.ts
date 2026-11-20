@@ -13,9 +13,11 @@ import {
   deleteBlock,
   deleteRow,
   emailWith,
-  exportHtml,
+  EXPORT_VIEWPORT,
   layoutOption,
   openBlocks,
+  openExport,
+  openTestPage,
   rowTools,
   selectedBlock,
   selectedText,
@@ -52,10 +54,7 @@ const widths = async (page: Page, rowIndex = 0) => {
 
 /** Column positions as a person sees them, from the exported HTML. */
 const exportedColumnBoxes = async (page: Page) => {
-  const html = await exportHtml(page);
-  const email = await page.context().newPage();
-  await email.setViewportSize({ height: 800, width: 1000 });
-  await email.setContent(html);
+  const { opened: email } = await openExport(page, EXPORT_VIEWPORT);
   const boxes = await email.evaluate(() =>
     Array.from(
       document.querySelectorAll('[class*="mj-column-per-"]'),
@@ -78,8 +77,7 @@ const canvasColumnWidths = (page: Page) =>
   );
 
 test.beforeEach(async ({ page }) => {
-  await page.goto("/");
-  await expect(textBlock(page)).toHaveText("Hello");
+  await openTestPage(page);
 });
 
 test.describe("the palette", () => {

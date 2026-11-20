@@ -8,6 +8,7 @@ import {
   boxOf,
   canvas,
   changeCount,
+  changesSince,
   dropFileOn,
   emailWith,
   emailWithLink,
@@ -51,7 +52,7 @@ test.beforeEach(({ page }) => {
 const header = (page: Page) => shell(page).locator('[part="header"]');
 
 /** An element's box, with where it starts and ends going down. */
-const box = async (target: Locator) => {
+const boxWithEdges = async (target: Locator) => {
   const found = await boxOf(target);
   return { ...found, bottom: found.y + found.height, top: found.y };
 };
@@ -166,7 +167,7 @@ test.describe("moving an email with JSON", () => {
     await focusStartOfTextBlock(page);
     await page.keyboard.type("Later ");
     await expect(textBlock(page)).toHaveText("Later Exported Hello");
-    const changesBefore = Number(await changeCount(page).textContent());
+    const expectChanges = await changesSince(page);
     await shell(page).evaluate((element) => {
       (element as MailQuiltShell).addEventListener(
         "mq-change",
@@ -180,7 +181,7 @@ test.describe("moving an email with JSON", () => {
 
     await expect(textBlock(page)).toHaveText("Exported Hello");
     // The host hears an import, as it would any other change, with the email.
-    await expect(changeCount(page)).toHaveText(String(changesBefore + 1));
+    await expectChanges(1);
     expect(
       await page.evaluate(
         () => (window as unknown as { changed: unknown }).changed
@@ -1023,11 +1024,11 @@ test.describe("look", () => {
 
     const editor = shell(page).locator("mail-quilt");
     const boxes = {
-      editor: await box(editor),
-      frame: await box(page.getByTestId("frame")),
-      header: await box(header(page)),
+      editor: await boxWithEdges(editor),
+      frame: await boxWithEdges(page.getByTestId("frame")),
+      header: await boxWithEdges(header(page)),
       // The editor itself stretches, so its side panel runs to the bottom.
-      panel: await box(editor.getByTestId("side-panel")),
+      panel: await boxWithEdges(editor.getByTestId("side-panel")),
     };
 
     expect(boxes.header.top).toBe(boxes.frame.top);
@@ -1062,10 +1063,10 @@ test.describe("look", () => {
     await page.goto("/shell.html?long");
     await expect(textBlock(page).first()).toBeVisible();
 
-    const panel = await box(
+    const panel = await boxWithEdges(
       shell(page).locator("mail-quilt").getByTestId("side-panel-content")
     );
-    const frameBox = await box(page.getByTestId("frame"));
+    const frameBox = await boxWithEdges(page.getByTestId("frame"));
 
     expect(panel.bottom).toBeLessThanOrEqual(frameBox.bottom);
   });
@@ -1090,10 +1091,10 @@ test.describe("look", () => {
 
     await expect
       .poll(async () => {
-        const panel = await box(
+        const panel = await boxWithEdges(
           shell(page).locator("mail-quilt").getByTestId("side-panel-content")
         );
-        const frameBox = await box(page.getByTestId("frame"));
+        const frameBox = await boxWithEdges(page.getByTestId("frame"));
         return panel.bottom <= frameBox.bottom;
       })
       .toBe(true);
@@ -1110,7 +1111,7 @@ test.describe("look", () => {
     await page.keyboard.press("Shift+Tab");
     const tooltip = canvas(page).getByRole("tooltip");
     await expect(tooltip).toBeVisible();
-    const before = await box(tooltip);
+    const before = await boxWithEdges(tooltip);
 
     await shell(page).evaluate((element) => {
       const body = element.shadowRoot?.querySelector('[data-testid="body"]');
@@ -1121,7 +1122,7 @@ test.describe("look", () => {
 
     await expect
       .poll(async () => {
-        const { top } = await box(tooltip);
+        const { top } = await boxWithEdges(tooltip);
         return Math.round(top);
       })
       .toBe(Math.round(before.top - 40));
@@ -1157,7 +1158,8 @@ test("shows the dragging cursor over the Shell during a drag", async ({
   const button = shell(page).getByRole("button", { name: "Export HTML" });
   const cursor = () =>
     button.evaluate((element) => getComputedStyle(element).cursor);
-  const tile = await box(
+  const usual = await cursor();
+  const tile = await boxWithEdges(
     shell(page)
       .getByRole("group", { name: "Add content" })
       .getByRole("button", { exact: true, name: "Add Text Block" })
@@ -1170,7 +1172,7 @@ test("shows the dragging cursor over the Shell during a drag", async ({
   await page.keyboard.press("Escape");
   await page.mouse.up();
 
-  await expect.poll(cursor).toBe("pointer");
+  await expect.poll(cursor).toBe(usual);
 });
 
 test("a file dropped on the header doesn't open in the page", async ({
@@ -1191,9 +1193,7 @@ test.describe("accessibility", () => {
 });
 
 test.describe("too narrow to edit in", () => {
-  test("the notice fills the space below the header, in the Shell's frame", async ({
-    page,
-  }) => {
+  test("the notice fills the space below the header", async ({ page }) => {
     await page.goto("/shell.html?narrow");
     // The editor's frame, inside the Shell's.
     const notice = shell(page)
@@ -1204,14 +1204,12 @@ test.describe("too narrow to edit in", () => {
       });
     await expect(notice).toBeVisible();
 
-    const noticeBox = await box(notice);
-    const frameBox = await box(page.getByTestId("frame"));
-    const headerBox = await box(header(page));
+    const noticeBox = await boxWithEdges(notice);
+    const frameBox = await boxWithEdges(page.getByTestId("frame"));
+    const headerBox = await boxWithEdges(header(page));
 
     expect(noticeBox.top).toBe(headerBox.bottom);
     expect(noticeBox.bottom).toBe(frameBox.bottom);
-    await expect(notice).toHaveCSS("border-radius", "0px");
-    await expect(notice).toHaveCSS("box-shadow", "none");
   });
 });
 

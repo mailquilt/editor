@@ -5,15 +5,17 @@ import type { MailQuilt } from "../src/index.js";
 import {
   addRow,
   blockGroup,
-  blocks,
+  blockProps,
   blockTypes,
   bottomOf,
   boxOf,
   canvas,
   change,
   drag,
+  EXPORT_VIEWPORT,
   field,
-  openBlocks as open,
+  hostEvents,
+  openBlocks,
   openExport,
   openTab,
   palette,
@@ -31,13 +33,8 @@ test.beforeEach(({ context }) => serveImages(context));
 
 test.use({ viewport: TALL_VIEWPORT });
 
-const firstBlockProps = async (page: Page) => {
-  const found = await blocks(page);
-  return found[0]?.props;
-};
-
 /** An element's size to the nearest pixel. */
-const box = async (locator: Locator) => {
+const sizeOf = async (locator: Locator) => {
   const { height, width } = await boxOf(locator);
   return { height: Math.round(height), width: Math.round(width) };
 };
@@ -99,7 +96,7 @@ const makeThin = async (page: Page) => {
 
 test.describe("selecting an Image", () => {
   test("is reached with arrow keys, and ignores Enter", async ({ page }) => {
-    await open(page, ["text", "image"]);
+    await openBlocks(page, ["text", "image"]);
     await blockGroup(page, "Text").focus();
 
     await page.keyboard.press("ArrowDown");
@@ -112,7 +109,7 @@ test.describe("selecting an Image", () => {
 
 test.describe("an Image", () => {
   test("asks for a URL until it has one", async ({ page }) => {
-    await open(page, ["text"]);
+    await openBlocks(page, ["text"]);
     await palette(page, "Image").click();
 
     await expect(image(page)).toHaveCount(0);
@@ -120,7 +117,7 @@ test.describe("an Image", () => {
   });
 
   test("shows and exports its URL and alt text", async ({ page }) => {
-    await open(page, ["text"]);
+    await openBlocks(page, ["text"]);
     await palette(page, "Image").click();
 
     await change(field(page, "Image URL"), PHOTO);
@@ -135,7 +132,7 @@ test.describe("an Image", () => {
   });
 
   test("refuses the URL javascript:alert(1), and says so", async ({ page }) => {
-    await open(page, ["image"]);
+    await openBlocks(page, ["image"]);
     await blockGroup(page, "Image").focus();
 
     // oxlint-disable-next-line no-script-url -- What's being refused.
@@ -148,11 +145,11 @@ test.describe("an Image", () => {
     await expect(page.getByRole("alert")).toHaveText(
       /a Merge Tag such as \{\{logo_url\}\}/u
     );
-    await expect(firstBlockProps(page)).resolves.toEqual({ src: PHOTO });
+    await expect(blockProps(page)).resolves.toEqual({ src: PHOTO });
   });
 
   test("offers a link once it has alt text", async ({ page }) => {
-    await open(page, ["image"]);
+    await openBlocks(page, ["image"]);
     await blockGroup(page, "Image").focus();
 
     await expect(field(page, "Link")).toBeDisabled();
@@ -161,7 +158,7 @@ test.describe("an Image", () => {
 
     await expect(field(page, "Link")).toBeEnabled();
     await change(field(page, "Link"), "https://shop.example");
-    await expect(firstBlockProps(page)).resolves.toEqual({
+    await expect(blockProps(page)).resolves.toEqual({
       alt: "A red bicycle",
       href: "https://shop.example",
       src: PHOTO,
@@ -171,7 +168,7 @@ test.describe("an Image", () => {
   test("keeps its alt text while it has a link, and says why", async ({
     page,
   }) => {
-    await open(page, ["image"]);
+    await openBlocks(page, ["image"]);
     await blockGroup(page, "Image").focus();
     await change(field(page, "Alt text"), "A red bicycle");
     await change(field(page, "Link"), "https://shop.example");
@@ -183,14 +180,14 @@ test.describe("an Image", () => {
       "true"
     );
     await expect(page.getByRole("alert")).toContainText("remove the link");
-    await expect(firstBlockProps(page)).resolves.toMatchObject({
+    await expect(blockProps(page)).resolves.toMatchObject({
       alt: "A red bicycle",
     });
 
     // What was refused is fine now, with nothing more to do in its field.
     await change(field(page, "Link"), "");
 
-    await expect(firstBlockProps(page)).resolves.toEqual({ src: PHOTO });
+    await expect(blockProps(page)).resolves.toEqual({ src: PHOTO });
     await expect(field(page, "Alt text")).toHaveAttribute(
       "aria-invalid",
       "false"
@@ -199,7 +196,7 @@ test.describe("an Image", () => {
 
     await undo(page);
 
-    await expect(firstBlockProps(page)).resolves.toEqual({
+    await expect(blockProps(page)).resolves.toEqual({
       alt: "A red bicycle",
       src: PHOTO,
     });
@@ -211,7 +208,7 @@ test.describe("an Image", () => {
   }) => {
     const missing = "https://cdn.example/missing.png";
     await context.route(missing, (route) => route.abort());
-    await open(page, ["image"]);
+    await openBlocks(page, ["image"]);
     await blockGroup(page, "Image").focus();
 
     await change(field(page, "Image URL"), missing);
@@ -220,7 +217,8 @@ test.describe("an Image", () => {
       `Couldn't load ${missing}`
     );
     await expect(image(page)).toHaveCount(0);
-    await expect(box(blockGroup(page, "Image"))).resolves.toMatchObject({
+    // The stand-in's least height, 120px, and the Block's 16px padding above and below.
+    await expect(sizeOf(blockGroup(page, "Image"))).resolves.toMatchObject({
       height: 152,
     });
 
@@ -249,7 +247,7 @@ test.describe("an Image", () => {
   }) => {
     const missing = "https://cdn.example/missing.png";
     await context.route(missing, (route) => route.abort());
-    await open(page, ["image"]);
+    await openBlocks(page, ["image"]);
     await blockGroup(page, "Image").focus();
     await change(field(page, "Image URL"), missing);
     await expect(blockGroup(page, "Image")).toContainText(
@@ -272,7 +270,7 @@ test.describe("an Image", () => {
   }) => {
     const missing = "https://cdn.example/missing.png";
     await context.route(missing, (route) => route.abort());
-    await open(page, ["image"]);
+    await openBlocks(page, ["image"]);
     await blockGroup(page, "Image").focus();
     await change(field(page, "Image URL"), missing);
     await expect(blockGroup(page, "Image")).toContainText(
@@ -288,7 +286,7 @@ test.describe("an Image", () => {
   });
 
   test("takes a Merge Tag as its URL and link", async ({ page }) => {
-    await open(page, ["image"]);
+    await openBlocks(page, ["image"]);
     await blockGroup(page, "Image").focus();
 
     await change(field(page, "Image URL"), "{{logo_url}}");
@@ -298,7 +296,7 @@ test.describe("an Image", () => {
     // There's nothing to load yet, and a request for it would only fail.
     await expect(image(page)).toHaveCount(0);
     await expect(blockGroup(page, "Image")).toContainText("{{logo_url}}");
-    await expect(firstBlockProps(page)).resolves.toEqual({
+    await expect(blockProps(page)).resolves.toEqual({
       alt: "{{company}} logo",
       href: "{{site_url}}",
       src: "{{logo_url}}",
@@ -308,7 +306,7 @@ test.describe("an Image", () => {
   test("links only in the export, as a click on the canvas selects it", async ({
     page,
   }) => {
-    await open(page, ["text", "image"]);
+    await openBlocks(page, ["text", "image"]);
     await blockGroup(page, "Image").focus();
     await change(field(page, "Alt text"), "A red bicycle");
     await change(field(page, "Link"), "https://shop.example");
@@ -331,12 +329,8 @@ test.describe("an Image", () => {
   test("isn't picked up by the browser when dragged across", async ({
     page,
   }) => {
-    await open(page, ["image"]);
-    await page.evaluate(() => {
-      window.addEventListener("dragstart", () => {
-        document.body.dataset.dragged = "true";
-      });
-    });
+    await openBlocks(page, ["image"]);
+    const drags = await hostEvents(page, "dragstart", []);
     const { x, y } = await boxOf(image(page));
 
     await page.mouse.move(x + 200, y + 200);
@@ -344,57 +338,56 @@ test.describe("an Image", () => {
     await page.mouse.move(x + 260, y + 260, { steps: 5 });
     await page.mouse.up();
 
-    await expect(page.locator("body")).not.toHaveAttribute("data-dragged");
+    expect(await drags()).toStrictEqual([]);
   });
 
   test("fills its Column, on the canvas and in the export", async ({
     page,
   }) => {
-    await open(page, ["image"]);
+    await openBlocks(page, ["image"]);
 
-    const onCanvas = await box(image(page));
-    const { opened } = await openExport(page);
-    await opened.setViewportSize({ height: 800, width: 800 });
+    const onCanvas = await sizeOf(image(page));
+    const { opened } = await openExport(page, EXPORT_VIEWPORT);
 
+    // A 600px email, less the Block's 16px padding on each side.
     expect(onCanvas).toEqual({ height: 568, width: 568 });
-    await expect(box(opened.locator("img"))).resolves.toEqual(onCanvas);
+    await expect(sizeOf(opened.locator("img"))).resolves.toEqual(onCanvas);
   });
 
   test("has its width set, centered, on the canvas and in the export", async ({
     page,
   }) => {
-    await open(page, ["image"]);
+    await openBlocks(page, ["image"]);
     await blockGroup(page, "Image").focus();
 
     await change(field(page, "Width (px)"), "120");
 
-    const onCanvas = await box(image(page));
+    const onCanvas = await sizeOf(image(page));
     expect(onCanvas).toEqual({ height: 120, width: 120 });
     await expect(offCenter(image(page), '[data-testid="email"]')).resolves.toBe(
       0
     );
 
-    const { opened } = await openExport(page);
-    await opened.setViewportSize({ height: 800, width: 800 });
+    const { opened } = await openExport(page, EXPORT_VIEWPORT);
     const exported = opened.locator("img");
-    await expect(box(exported)).resolves.toEqual(onCanvas);
+    await expect(sizeOf(exported)).resolves.toEqual(onCanvas);
     await expect(offCenter(exported, "body")).resolves.toBe(0);
   });
 
   test("stops at a narrow Column's width, on the canvas and in the export", async ({
     page,
   }) => {
-    await open(page, ["image"], ["text"]);
+    await openBlocks(page, ["image"], ["text"]);
     await blockGroup(page, "Image").focus();
 
     await change(field(page, "Width (px)"), "5000");
 
-    const onCanvas = await box(image(page));
-    const { opened } = await openExport(page);
-    await opened.setViewportSize({ height: 800, width: 800 });
+    const onCanvas = await sizeOf(image(page));
+    const { opened } = await openExport(page, EXPORT_VIEWPORT);
 
+    // Half a 600px email, less the Block's 16px padding on each side.
     expect(onCanvas).toEqual({ height: 268, width: 268 });
-    await expect(box(opened.locator("img"))).resolves.toEqual(onCanvas);
+    await expect(sizeOf(opened.locator("img"))).resolves.toEqual(onCanvas);
   });
 
   // Its Width is a number field with nothing saved, where what isn't a number
@@ -402,7 +395,7 @@ test.describe("an Image", () => {
   test("Escape clears what isn't a number from an empty Width", async ({
     page,
   }) => {
-    await open(page, ["image"]);
+    await openBlocks(page, ["image"]);
     await blockGroup(page, "Image").focus();
     const width = field(page, "Width (px)");
     const isBadInput = () =>
@@ -419,7 +412,7 @@ test.describe("an Image", () => {
   test("scrolling over the focused Width leaves it as it is, with focus still in the editor", async ({
     page,
   }) => {
-    await open(page, ["image"]);
+    await openBlocks(page, ["image"]);
     await blockGroup(page, "Image").focus();
     const width = field(page, "Width (px)");
     await change(width, "100");
@@ -437,7 +430,7 @@ test.describe("an Image", () => {
   test("takes up the same space on the canvas as in the export", async ({
     page,
   }) => {
-    await open(page, ["image", "text"]);
+    await openBlocks(page, ["image", "text"]);
     await blockGroup(page, "Image").focus();
     await change(field(page, "Width (px)"), "100");
 
@@ -460,15 +453,14 @@ test.describe("a Divider", () => {
   test("changes color and thickness, on the canvas and in the export", async ({
     page,
   }) => {
-    await open(page, ["divider"]);
+    await openBlocks(page, ["divider"]);
     await blockGroup(page, "Divider").focus();
 
     await change(field(page, "Color"), "#ff0000");
     await change(field(page, "Thickness (px)"), "6");
 
     const onCanvas = await look(line(page));
-    const { opened } = await openExport(page);
-    await opened.setViewportSize({ height: 800, width: 800 });
+    const { opened } = await openExport(page, EXPORT_VIEWPORT);
 
     expect(onCanvas).toMatchObject({
       borderTopColor: "rgb(255, 0, 0)",
@@ -481,22 +473,22 @@ test.describe("a Divider", () => {
 
 test.describe("a Spacer", () => {
   test("changes height, on the canvas and in the export", async ({ page }) => {
-    await open(page, ["spacer"]);
+    await openBlocks(page, ["spacer"]);
     await blockGroup(page, "Spacer").focus();
 
     await change(field(page, "Height (px)"), "70");
 
-    await expect(box(blockGroup(page, "Spacer"))).resolves.toMatchObject({
+    await expect(sizeOf(blockGroup(page, "Spacer"))).resolves.toMatchObject({
       height: 70,
     });
     const { opened } = await openExport(page);
-    await expect(box(exportedSpace(opened))).resolves.toMatchObject({
+    await expect(sizeOf(exportedSpace(opened))).resolves.toMatchObject({
       height: 70,
     });
   });
 
   test("can be clicked on when it's as thin as it gets", async ({ page }) => {
-    await open(page, ["text", "spacer"]);
+    await openBlocks(page, ["text", "spacer"]);
     await makeThin(page);
     await blockGroup(page, "Text").focus();
     const { x, y, width } = await blockGroup(page, "Spacer").evaluate(
@@ -515,8 +507,8 @@ test.describe("a Spacer", () => {
   test("leaves the Block next to it its clicks, once it's tall enough", async ({
     page,
   }) => {
-    await open(page, ["text", "spacer"]);
-    const { height, width } = await box(blockGroup(page, "Text"));
+    await openBlocks(page, ["text", "spacer"]);
+    const { height, width } = await sizeOf(blockGroup(page, "Text"));
 
     await expect(
       takesClickAt(blockGroup(page, "Text"), width / 2, height - 3)
@@ -526,12 +518,12 @@ test.describe("a Spacer", () => {
   test("leaves its Row's toolbar its clicks, as thin as it gets", async ({
     page,
   }) => {
-    await open(page, ["spacer"]);
+    await openBlocks(page, ["spacer"]);
     await makeThin(page);
     await addRow(page);
     await blockGroup(page, "Spacer").focus();
     const takesClicks = async (position: number) => {
-      const { height, width } = await box(selectRowButton(page, position));
+      const { height, width } = await sizeOf(selectRowButton(page, position));
       return takesClickAt(
         selectRowButton(page, position),
         width / 2,
@@ -559,7 +551,7 @@ test.describe("a Spacer", () => {
     test("moves by its handle when selected, not what comes next", async ({
       page,
     }) => {
-      await open(page, ["spacer", "text", "heading"]);
+      await openBlocks(page, ["spacer", "text", "heading"]);
       await makeThin(page);
 
       await drag(
@@ -578,7 +570,7 @@ test.describe("a Spacer", () => {
     test("moves by its handle when selected, with a Row right below", async ({
       page,
     }) => {
-      await open(page, ["spacer"]);
+      await openBlocks(page, ["spacer"]);
       await makeThin(page);
       await addRow(page);
       await blockGroup(page, "Spacer").focus();
@@ -598,7 +590,7 @@ test.describe("a Spacer", () => {
     });
 
     test("moves by its handle when only hovered", async ({ page }) => {
-      await open(page, ["text", "spacer", "heading"]);
+      await openBlocks(page, ["text", "spacer", "heading"]);
       await makeThin(page);
       await blockGroup(page, "Text").focus();
       const { x, y, width } = await blockGroup(page, "Spacer").evaluate(
@@ -628,7 +620,7 @@ test.describe("a Spacer", () => {
     test("leaves the next Block its own handle, while selected", async ({
       page,
     }) => {
-      await open(page, ["spacer", "text", "heading"]);
+      await openBlocks(page, ["spacer", "text", "heading"]);
       await makeThin(page);
       const text = blockGroup(page, "Text");
       await text.hover();
@@ -655,7 +647,7 @@ test.describe("accessibility", () => {
   test("finds no violations with each type of Block selected, and an Image with no URL", async ({
     page,
   }) => {
-    await open(page, ["image", "divider", "spacer", "button", "text"]);
+    await openBlocks(page, ["image", "divider", "spacer", "button", "text"]);
     const selectable = canvas(page).getByRole("group", {
       name: / Block, Row /u,
     });
@@ -678,7 +670,7 @@ test.describe("accessibility", () => {
   test("finds no problem with an exported email of each type of Block", async ({
     page,
   }) => {
-    await open(page, [
+    await openBlocks(page, [
       "heading",
       "text",
       "button",

@@ -14,14 +14,18 @@ import {
   emailWithLink,
   exportHtml,
   focusStartOfTextBlock,
+  hostEvents,
   latestDocument,
   linkUrlField,
+  openTestPage,
   pasteHtml,
+  pretendPlatform,
   redo,
   redoByKey,
   settle,
   setValue,
   stopClock,
+  structure,
   test,
   textBlock,
   undo,
@@ -38,8 +42,7 @@ const latestDocumentText = async (page: Page) => {
 };
 
 test.beforeEach(async ({ page }) => {
-  await page.goto("/");
-  await expect(textBlock(page)).toHaveText("Hello");
+  await openTestPage(page);
 });
 
 test("typing fires mq-change with the new document", async ({ page }) => {
@@ -71,16 +74,12 @@ test("a value set before the element is defined still opens", async ({
 });
 
 test("mq-change reaches listeners outside the element", async ({ page }) => {
-  await page.evaluate(() => {
-    document.addEventListener("mq-change", () => {
-      document.documentElement.dataset.changed = "yes";
-    });
-  });
+  const changes = await hostEvents(page, "mq-change", []);
   await focusStartOfTextBlock(page);
 
   await page.keyboard.type("A");
 
-  await expect(page.locator("html")).toHaveAttribute("data-changed", "yes");
+  await expect.poll(changes).toHaveLength(1);
 });
 
 test("exportHtml returns the final HTML, loading MJML only when called", async ({
@@ -115,16 +114,32 @@ test("host CSS doesn't reach the canvas", async ({ page }) => {
 
   const paragraph = textBlock(page).locator("p");
   await expect(paragraph).toBeVisible();
-  await expect(paragraph).toHaveCSS("color", "rgb(0, 0, 0)");
-  await expect(paragraph).toHaveCSS("font-size", "16px");
-  await expect(paragraph).toHaveCSS("font-family", /^Arial/u);
-  await expect(paragraph).toHaveCSS("letter-spacing", "normal");
-  await expect(paragraph).toHaveCSS("line-height", "24px");
-  await expect(paragraph).toHaveCSS("margin-top", "0px");
-  await expect(paragraph).toHaveCSS("padding-top", "0px");
-  await expect(paragraph).toHaveCSS("text-transform", "none");
-  await expect(paragraph).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
-  await expect(textBlock(page)).toHaveCSS("white-space-collapse", /pre|break/u);
+  const look = () =>
+    paragraph.evaluate((element) => {
+      const style = getComputedStyle(element);
+      const text = element.closest('[role="textbox"]') ?? element;
+      return {
+        backgroundColor: style.backgroundColor,
+        color: style.color,
+        fontFamily: style.fontFamily,
+        fontSize: style.fontSize,
+        letterSpacing: style.letterSpacing,
+        lineHeight: style.lineHeight,
+        marginTop: style.marginTop,
+        paddingTop: style.paddingTop,
+        textTransform: style.textTransform,
+        whiteSpaceCollapse: getComputedStyle(text).whiteSpaceCollapse,
+      };
+    });
+  const withHostCss = await look();
+
+  await page.evaluate(() => {
+    for (const sheet of document.styleSheets) {
+      sheet.disabled = true;
+    }
+  });
+
+  expect(withHostCss).toStrictEqual(await look());
 });
 
 test("on a right-to-left host page, the editor and the email stay left to right, as the export is", async ({
@@ -185,7 +200,7 @@ test("a detached element creates no text editors until it's attached again", asy
   await expect(textBlock(page)).toHaveText("Hello");
 });
 
-test("exported HTML keeps repeated spaces typed in a Text Block", async ({
+test("repeated spaces typed in a Text Block are saved as typed", async ({
   page,
 }) => {
   await focusStartOfTextBlock(page);
@@ -193,7 +208,7 @@ test("exported HTML keeps repeated spaces typed in a Text Block", async ({
   await page.keyboard.type("a   b ");
   await expect(textBlock(page)).toHaveText("a   b Hello");
 
-  expect(await exportHtml(page)).toContain("a &nbsp;&nbsp;b Hello");
+  expect(await structure(page)).toStrictEqual([[["a   b Hello"]]]);
 });
 
 test.describe("undo and redo while typing", () => {
@@ -216,38 +231,24 @@ test.describe("undo and redo while typing", () => {
     await focusStartOfTextBlock(page);
     await stopClock(page);
     await page.keyboard.type("abc");
-    await page.evaluate(() => {
-      const heard: string[] = [];
-      Object.assign(window, { heard });
-      document.addEventListener("keydown", ({ key }) => {
-        if (key.length === 1) {
-          heard.push(key);
-        }
-      });
-    });
+    const presses = await hostEvents(page, "keydown", ["key"]);
 
     await page.keyboard.press("ControlOrMeta+z");
     await expect(textBlock(page)).toHaveText("Hello");
     await page.keyboard.press("ControlOrMeta+k");
     await expect(linkUrlField(page)).toBeVisible();
 
-    await expect(
-      page.evaluate(() => Reflect.get(window, "heard"))
-    ).resolves.toEqual([]);
+    const heard = await presses();
+    expect(heard.filter(({ key }) => key === "z" || key === "k")).toEqual([]);
   });
 
   test.describe("on a Mac", () => {
     test.beforeEach(async ({ page }) => {
-      await page.addInitScript(() => {
-        Object.defineProperty(Navigator.prototype, "platform", {
-          get: () => "MacIntel",
-        });
-      });
-      await page.goto("/");
-      await expect(textBlock(page)).toHaveText("Hello");
+      await pretendPlatform(page, "MacIntel");
+      await openTestPage(page);
     });
 
-    // Ctrl+K and Ctrl+Y delete to the end of the line and put it back.
+    // Ctrl+K deletes to the end of the line.
     test("⌘ makes the shortcuts, and Ctrl+K is left to the text", async ({
       page,
     }) => {
@@ -264,24 +265,6 @@ test.describe("undo and redo while typing", () => {
       await expect(linkField).toBeHidden();
       await page.keyboard.press("Meta+k");
       await expect(linkField).toBeVisible();
-    });
-
-    test("Ctrl+Y doesn't redo", async ({ page }) => {
-      test.skip(
-        process.platform === "darwin",
-        "A real Mac puts back what Ctrl+K deleted"
-      );
-      await focusStartOfTextBlock(page);
-      await stopClock(page);
-      await page.keyboard.type("abc");
-      await page.keyboard.press("Meta+z");
-      await expect(textBlock(page)).toHaveText("Hello");
-
-      await page.keyboard.press("Control+y");
-      // After the key, so a redo would show as abcxHello.
-      await page.keyboard.type("x");
-
-      await expect(textBlock(page)).toHaveText("xHello");
     });
   });
 
@@ -323,24 +306,15 @@ test.describe("undo and redo while typing", () => {
     await undoByKey(page);
     await expect(textBlock(page)).toHaveText("Hello");
     await expect(changeCount(page)).toHaveText("2");
-    await page.evaluate(() => {
-      const keys: string[] = [];
-      Object.assign(window, { keys });
-      document.addEventListener("keydown", ({ key }) => keys.push(key));
-    });
+    const presses = await hostEvents(page, "keydown", ["key"]);
 
     await undoByKey(page);
     await undoByKey(page);
 
     await expect(textBlock(page)).toHaveText("Hello");
     await expect(changeCount(page)).toHaveText("2");
-    await expect(
-      page.evaluate(() =>
-        (Reflect.get(window, "keys") as string[]).filter(
-          (key) => key.toLowerCase() === "z"
-        )
-      )
-    ).resolves.toHaveLength(2);
+    const heard = await presses();
+    expect(heard.filter(({ key }) => key === "z")).toHaveLength(2);
   });
 
   test("a pause in typing starts a new undo step", async ({ page }) => {

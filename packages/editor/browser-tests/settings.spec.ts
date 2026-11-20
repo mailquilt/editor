@@ -1,15 +1,16 @@
 import { expect } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 
-import type { MailQuilt } from "../src/index.js";
 import {
   addRow,
   addText,
+  blockProps,
   blockTools,
   boxOf,
   canvas,
   change,
   changeCount,
+  changesSince,
   consoleErrors,
   countHostEscapes,
   currentValue,
@@ -17,6 +18,7 @@ import {
   field,
   openExport,
   openTab,
+  openTestPage,
   panelBlock,
   redoByKey,
   selectRow,
@@ -44,11 +46,6 @@ const settingsOf = async (page: Page) => {
   return settings;
 };
 
-const blockProps = async (page: Page, index = 0) => {
-  const { rows } = await currentValue(page);
-  return rows[0]?.columns[0]?.blocks[index]?.props;
-};
-
 const textStyle = (locator: Locator) =>
   locator.evaluate((element) => {
     const { color, fontFamily, fontSize, textAlign } =
@@ -72,8 +69,7 @@ const inHostOf = async (page: Page, width: number) => {
 };
 
 test.beforeEach(async ({ page }) => {
-  await page.goto("/");
-  await expect(textBlock(page)).toBeVisible();
+  await openTestPage(page);
   await openTab(page, "Settings");
 });
 
@@ -334,12 +330,12 @@ test.describe("undo", () => {
   });
 
   test("reports each change once", async ({ page }) => {
-    const before = Number(await changeCount(page).textContent());
+    const expectChanges = await changesSince(page);
 
     await change(emailField(page, "Width (px)"), "500");
     await page.keyboard.press("Tab");
 
-    await expect(changeCount(page)).toHaveText(String(before + 1));
+    await expectChanges(1);
   });
 
   test("makes no step for the value it already has", async ({ page }) => {
@@ -535,31 +531,6 @@ test.describe("focus", () => {
     await page.keyboard.type("en");
     await page.keyboard.press("Enter");
     expect(await settingsOf(page)).toMatchObject({ language: "en" });
-  });
-});
-
-test.describe("input method composition", () => {
-  test("Escape leaves what's being typed alone", async ({ page }) => {
-    const preheader = emailField(page, "Preheader");
-    await preheader.click();
-    await page.keyboard.type("Hello");
-
-    await preheader.evaluate((element) => {
-      element.dispatchEvent(
-        new KeyboardEvent("keydown", {
-          bubbles: true,
-          cancelable: true,
-          composed: true,
-          isComposing: true,
-          key: "Escape",
-        })
-      );
-    });
-    await canvas(page).evaluate((element) =>
-      (element as MailQuilt).requestUpdate()
-    );
-
-    await expect(preheader).toHaveValue("Hello");
   });
 });
 

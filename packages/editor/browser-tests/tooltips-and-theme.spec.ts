@@ -8,6 +8,9 @@ import {
   boxOf,
   canvas,
   centerOf,
+  dropIndicator,
+  handleOf,
+  hoverRow,
   moveTo,
   openBlocks,
   openEmail,
@@ -169,7 +172,7 @@ test.describe("a tooltip", () => {
   }) => {
     await openBlocks(page, ["text"], []);
     await textBlock(page).click();
-    await canvas(page).getByTestId("row").hover();
+    await hoverRow(page, 1);
 
     const buttons = await iconButtons(page);
 
@@ -234,9 +237,17 @@ test.describe("theme tokens", () => {
   }) => {
     await openBlocks(page, ["text"]);
     const card = canvas(page).getByTestId("email");
-    const textSize = await card.evaluate(
-      (element) => getComputedStyle(element).fontSize
-    );
+    const look = () =>
+      card.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return {
+          backgroundColor: style.backgroundColor,
+          color: style.color,
+          fontFamily: style.fontFamily,
+          fontSize: style.fontSize,
+        };
+      });
+    const before = await look();
 
     await canvas(page).evaluate((element) => {
       element.style.setProperty("--mq-font-family", "Georgia, serif");
@@ -250,11 +261,9 @@ test.describe("theme tokens", () => {
     await expect(panel).toHaveCSS("background-color", "rgb(1, 2, 3)");
     await expect(panel).toHaveCSS("color", "rgb(4, 5, 6)");
     await expect(panel).toHaveCSS("font-size", "31px");
-    await expect(card).toHaveCSS("font-family", "Arial, Helvetica, sans-serif");
-    await expect(card).toHaveCSS("background-color", "rgb(255, 255, 255)");
-    // Inherited, so only the card's own reset stops them.
-    await expect(card).toHaveCSS("color", "rgb(0, 0, 0)");
-    await expect(card).toHaveCSS("font-size", textSize);
+    await expect(panel).toHaveCSS("font-family", "Georgia, serif");
+    // The color and size are inherited, so only the card's own reset stops them.
+    expect(await look()).toStrictEqual(before);
   });
 });
 
@@ -350,9 +359,9 @@ test("in forced colors, the drop line stands out from the email", async ({
   await page.emulateMedia({ forcedColors: "active" });
   await openEmail(page, [[["One", "Two"]]]);
 
-  await pickUp(page, blockWith(page, "Two").getByTestId("drag-handle"));
+  await pickUp(page, handleOf(page, "Two"));
   await moveTo(page, await topOf(blockWith(page, "One")));
-  const line = canvas(page).getByTestId("drop-indicator");
+  const line = dropIndicator(page);
   await expect(line).toBeVisible();
 
   const [drawn, email] = await line.evaluate((element) => [

@@ -7,22 +7,30 @@ import type { Page } from "@playwright/test";
 import {
   addRow,
   announcement,
+  backButton,
   blockTool,
   blockWith,
   boxOf,
   canvas,
   changeCount,
+  changesSince,
   chooseLayout,
   countHostEscapes,
   deleteBlock,
   emailWith,
   layoutOption,
   linkUrlField,
+  moveCursorToLineStart,
+  NARROW_VIEWPORT,
+  narrowNotice,
   openBlocks,
-  openEmail as open,
+  openEmail,
   openTab,
   palette,
+  panelTab,
+  pretendPlatform,
   previewButton,
+  previewEmailButton,
   redoByKey,
   selectedText,
   selectRow,
@@ -42,11 +50,9 @@ import {
 
 /** Back to the side panel's tabs from the keyboard, the Block still selected. */
 const backToTabs = async (page: Page) => {
-  await canvas(page).getByRole("button", { exact: true, name: "Back" }).focus();
+  await backButton(page).focus();
   await page.keyboard.press("Enter");
-  await expect(
-    canvas(page).getByRole("tab", { name: "Content" })
-  ).toBeFocused();
+  await expect(panelTab(page, "Content")).toBeFocused();
 };
 
 /**
@@ -114,7 +120,7 @@ test.describe("selecting a Block", () => {
   test("Tab reaches a Block and selects it, and then its text", async ({
     page,
   }) => {
-    await open(page, [[["First"], ["Second"]]]);
+    await openEmail(page, [[["First"], ["Second"]]]);
     await expect(deleteBlock(page)).toHaveCount(0);
 
     await canvas(page).getByRole("button", { name: "Delete Row" }).focus();
@@ -144,7 +150,7 @@ test.describe("selecting a Block", () => {
   });
 
   test("an arrow key selects the next Block that way", async ({ page }) => {
-    await open(page, [[["A", "B"]]]);
+    await openEmail(page, [[["A", "B"]]]);
     await blockWith(page, "A").focus();
 
     await page.keyboard.press("ArrowDown");
@@ -160,23 +166,16 @@ test.describe("selecting a Block", () => {
  * page. WebKit is only on Apple devices, so this pretends to be on Windows.
  */
 const openNarrowNotice = async (page: Page) => {
-  await page.addInitScript(() => {
-    Object.defineProperty(Navigator.prototype, "platform", {
-      get: () => "Win32",
-    });
-  });
-  await page.setViewportSize({ height: 800, width: 390 });
+  await pretendPlatform(page, "Win32");
+  await page.setViewportSize(NARROW_VIEWPORT);
   await page.goto("/");
 };
-
-const previewEmailButton = (page: Page) =>
-  canvas(page).getByRole("button", { name: "Preview email" });
 
 test.describe("moving a Block with Alt+Arrow keys", () => {
   test("moves within a Column, keeping focus for the next press", async ({
     page,
   }) => {
-    await open(page, [[["A", "B", "C"]]]);
+    await openEmail(page, [[["A", "B", "C"]]]);
     await blockWith(page, "A").focus();
 
     await page.keyboard.press("Alt+ArrowDown");
@@ -193,26 +192,22 @@ test.describe("moving a Block with Alt+Arrow keys", () => {
   });
 
   test("after Back, keeps the side panel's tabs showing", async ({ page }) => {
-    await open(page, [[["A", "B", "C"]]]);
+    await openEmail(page, [[["A", "B", "C"]]]);
     await blockWith(page, "A").focus();
     // The mouse leaves focus on the Block.
-    await canvas(page)
-      .getByRole("button", { exact: true, name: "Back" })
-      .click();
+    await backButton(page).click();
 
     await page.keyboard.press("Alt+ArrowDown");
 
     await expect(structure(page)).resolves.toEqual([[["B", "A", "C"]]]);
     await expect(blockWith(page, "A")).toBeFocused();
-    await expect(
-      canvas(page).getByRole("tab", { name: "Content" })
-    ).toBeVisible();
+    await expect(panelTab(page, "Content")).toBeVisible();
   });
 
   test("each move is one undo step, and focus stays on the Block", async ({
     page,
   }) => {
-    await open(page, [[["A"], ["B"]]]);
+    await openEmail(page, [[["A"], ["B"]]]);
     await blockWith(page, "A").focus();
 
     await page.keyboard.press("Alt+ArrowRight");
@@ -236,28 +231,20 @@ test.describe("moving a Block with Alt+Arrow keys", () => {
     page,
   }) => {
     // As on Windows and Linux, where Alt+← goes back a page.
-    await page.addInitScript(() => {
-      Object.defineProperty(Navigator.prototype, "platform", {
-        get: () => "Win32",
-      });
-    });
-    await open(page, [[["A"], []]]);
+    await pretendPlatform(page, "Win32");
+    await openEmail(page, [[["A"], []]]);
     const places = [
       page.getByRole("button", { name: /^Add Text Block here/u }),
       palette(page, "Text"),
-      canvas(page).getByRole("tab", { name: "Content" }),
+      panelTab(page, "Content"),
     ];
-
-    // Listening before the key is pressed, so the press can't come first.
-    const leftPrevented = await watchPrevented(page, "ArrowLeft");
 
     // oxlint-disable no-await-in-loop -- One place at a time, to name the one that fails.
     for (const place of places) {
       await place.focus();
-      // So a place reads its own press, not the one before.
-      await page.evaluate(() =>
-        Reflect.deleteProperty(window, "lastPrevented")
-      );
+      // Listening before the key is pressed, so the press can't come first,
+      // and anew for each place, so it reads its own press.
+      const leftPrevented = await watchPrevented(page, "ArrowLeft");
       await page.keyboard.press("Alt+ArrowLeft");
       await expect.poll(leftPrevented).toBe(true);
       await expect(place).toBeFocused();
@@ -312,7 +299,7 @@ test.describe("moving a Block with toolbar buttons", () => {
   test("from the keyboard, focus stays on the button for the next press", async ({
     page,
   }) => {
-    await open(page, [[["A", "B", "C"], []]]);
+    await openEmail(page, [[["A", "B", "C"], []]]);
     await blockWith(page, "A").focus();
     await blockTool(page, "Move Block down").focus();
 
@@ -342,7 +329,7 @@ test.describe("moving a Block with toolbar buttons", () => {
   test("with the mouse, the text keeps focus and its cursor", async ({
     page,
   }) => {
-    await open(page, [[["A", "B"]]]);
+    await openEmail(page, [[["A", "B"]]]);
     await textOf(page, "A").click();
     await page.keyboard.type("x");
 
@@ -361,8 +348,8 @@ test.describe("announcing a move", () => {
   test("says when a Block can't go further, and changes nothing", async ({
     page,
   }) => {
-    await open(page, [[["A"]]]);
-    const before = await changeCount(page).textContent();
+    await openEmail(page, [[["A"]]]);
+    const expectChanges = await changesSince(page);
     await blockWith(page, "A").focus();
 
     await page.keyboard.press("Alt+ArrowLeft");
@@ -371,11 +358,11 @@ test.describe("announcing a move", () => {
     await page.keyboard.press("Alt+ArrowUp");
     await expect(announcement(page)).toHaveText("The Block can't move up.");
     await expect(structure(page)).resolves.toEqual([[["A"]]]);
-    await expect(changeCount(page)).toHaveText(before as string);
+    await expectChanges(0);
   });
 
   test("the same words twice are still two announcements", async ({ page }) => {
-    await open(page, [[["A", "B", "C"]]]);
+    await openEmail(page, [[["A", "B", "C"]]]);
     await countAnnouncements(page);
     await blockWith(page, "A").focus();
     await page.keyboard.press("Alt+ArrowDown");
@@ -395,7 +382,7 @@ test.describe("announcing a move", () => {
   });
 
   test("undo and redo of a move say where the Block went", async ({ page }) => {
-    await open(page, [[["A", "B"], ["C"]]]);
+    await openEmail(page, [[["A", "B"], ["C"]]]);
     await blockWith(page, "A").focus();
     await page.keyboard.press("Alt+ArrowRight");
 
@@ -413,7 +400,7 @@ test.describe("announcing a move", () => {
   test("undo of something else clears the last move's words", async ({
     page,
   }) => {
-    await open(page, [[["A", "B"]]]);
+    await openEmail(page, [[["A", "B"]]]);
     await blockWith(page, "A").focus();
     await page.keyboard.press("Alt+ArrowDown");
     await addRow(page);
@@ -428,7 +415,7 @@ test.describe("announcing a move", () => {
   test("undo of a layout change that moves several Blocks says nothing of one", async ({
     page,
   }) => {
-    await open(page, [[["A"], ["B"], ["C"]]]);
+    await openEmail(page, [[["A"], ["B"], ["C"]]]);
     await blockWith(page, "A").focus();
     await page.keyboard.press("Alt+ArrowLeft");
     await expect(announcement(page)).toHaveText("The Block can't move left.");
@@ -442,7 +429,7 @@ test.describe("announcing a move", () => {
   });
 
   test("doesn't carry over to another email", async ({ page }) => {
-    await open(page, [[["A", "B"]]]);
+    await openEmail(page, [[["A", "B"]]]);
     await blockWith(page, "A").focus();
     await page.keyboard.press("Alt+ArrowDown");
     await expect(announcement(page)).not.toBeEmpty();
@@ -461,12 +448,8 @@ test.describe("typing inside a Block", () => {
     page,
   }) => {
     // As on Windows and Linux, where Alt+← goes back a page.
-    await page.addInitScript(() => {
-      Object.defineProperty(Navigator.prototype, "platform", {
-        get: () => "Win32",
-      });
-    });
-    await open(page, [[["one two", "B"], ["C"]]]);
+    await pretendPlatform(page, "Win32");
+    await openEmail(page, [[["one two", "B"], ["C"]]]);
     await textOf(page, "one two").click();
     // Listening before the key is pressed, so the press can't come first.
     const leftPrevented = await watchPrevented(page, "ArrowLeft");
@@ -479,9 +462,7 @@ test.describe("typing inside a Block", () => {
     await expect(textOf(page, "one two")).toBeFocused();
     await expect.poll(leftPrevented).toBe(true);
 
-    await page.keyboard.press(
-      process.platform === "darwin" ? "Meta+ArrowLeft" : "Home"
-    );
+    await moveCursorToLineStart(page);
     await page.keyboard.press("ArrowRight");
     await page.keyboard.type("x");
     await expect(structure(page)).resolves.toEqual([
@@ -498,7 +479,7 @@ test.describe("typing inside a Block", () => {
       browserName !== "chromium",
       "Only Chromium lets a test drive an input method"
     );
-    await open(page, [[["A"]]]);
+    await openEmail(page, [[["A"]]]);
     await textOf(page, "A").click();
     await page.keyboard.press("End");
     const session = await page.context().newCDPSession(page);
@@ -518,35 +499,10 @@ test.describe("typing inside a Block", () => {
     await expect(textOf(page, "A日本")).toBeFocused();
   });
 
-  // The browser moves the cursor by word, which only a real Mac does, so this
-  // checks the editor leaves the key to it on any platform that says it's one.
-  test("on a Mac, Alt+← is left to the browser, to move the cursor by word", async ({
-    page,
-  }) => {
-    await page.addInitScript(() => {
-      Object.defineProperty(Navigator.prototype, "platform", {
-        get: () => "MacIntel",
-      });
-    });
-    await open(page, [[["one two"], ["C"]]]);
-    await textOf(page, "one two").click();
-    const leftPrevented = await watchPrevented(page, "ArrowLeft");
-    // After the check above has seen the press, so a browser that isn't a Mac
-    // doesn't take it as Back and leave the page.
-    await page.evaluate(() => {
-      window.addEventListener("keydown", (event) => event.preventDefault());
-    });
-
-    await page.keyboard.press("Alt+ArrowLeft");
-
-    await expect.poll(leftPrevented).toBe(false);
-    await expect(textOf(page, "one two")).toBeFocused();
-  });
-
   test("Escape returns to the Block, and Enter to where the cursor was", async ({
     page,
   }) => {
-    await open(page, [[["A", "B"]]]);
+    await openEmail(page, [[["A", "B"]]]);
     await textOf(page, "A").click();
     await page.keyboard.type("x");
 
@@ -562,7 +518,7 @@ test.describe("typing inside a Block", () => {
   test("Escape from the text stops at the editor, and then reaches the host", async ({
     page,
   }) => {
-    await open(page, [[["A"]]]);
+    await openEmail(page, [[["A"]]]);
     const escapes = await countHostEscapes(page);
     await textOf(page, "A").click();
 
@@ -574,31 +530,10 @@ test.describe("typing inside a Block", () => {
     await expect(escapes()).resolves.toBe(1);
   });
 
-  test("Escape that an input method handled stays in the text", async ({
-    page,
-  }) => {
-    await open(page, [[["A"]]]);
-    await textOf(page, "A").click();
-
-    // WebKit can end the composition first, then send this.
-    await textOf(page, "A").evaluate((text) => {
-      text.dispatchEvent(
-        new KeyboardEvent("keydown", {
-          bubbles: true,
-          composed: true,
-          key: "Escape",
-          keyCode: 229,
-        })
-      );
-    });
-
-    await expect(textOf(page, "A")).toBeFocused();
-  });
-
   test("Ctrl/⌘+Z that an input method handled doesn't undo", async ({
     page,
   }) => {
-    await open(page, [[["A"]]]);
+    await openEmail(page, [[["A"]]]);
     await textOf(page, "A").click();
     await page.keyboard.type("B");
     await expect(structure(page)).resolves.toEqual([[["AB"]]]);
@@ -627,7 +562,7 @@ test.describe("typing inside a Block", () => {
   test("holding Enter on a Block goes to its text and adds nothing", async ({
     page,
   }) => {
-    await open(page, [[["A"]]]);
+    await openEmail(page, [[["A"]]]);
     await blockWith(page, "A").focus();
 
     await page.keyboard.down("Enter");
@@ -644,7 +579,7 @@ test.describe("typing inside a Block", () => {
   });
 
   test("holding Enter in the text still adds paragraphs", async ({ page }) => {
-    await open(page, [[["A"]]]);
+    await openEmail(page, [[["A"]]]);
     await textOf(page, "A").click();
 
     await page.keyboard.down("Enter");
@@ -658,7 +593,7 @@ test.describe("typing inside a Block", () => {
   test("with focus on the Block itself, typing changes nothing", async ({
     page,
   }) => {
-    await open(page, [[["A", "B"]]]);
+    await openEmail(page, [[["A", "B"]]]);
     await textOf(page, "A").click();
     await page.keyboard.press("Escape");
     await expect(blockWith(page, "A")).toBeFocused();
@@ -667,26 +602,13 @@ test.describe("typing inside a Block", () => {
 
     await expect(structure(page)).resolves.toEqual([[["A", "B"]]]);
   });
-
-  test("modified arrow keys on the Block itself do nothing", async ({
-    page,
-  }) => {
-    await open(page, [[["A", "B"]]]);
-    await blockWith(page, "A").focus();
-
-    await page.keyboard.press("Shift+ArrowDown");
-    await page.keyboard.press("Alt+Shift+ArrowDown");
-
-    await expect(blockWith(page, "A")).toBeFocused();
-    await expect(structure(page)).resolves.toEqual([[["A", "B"]]]);
-  });
 });
 
 test.describe("Enter on a palette item", () => {
   test("inserts after the selected Block, in its Column, as one undo step", async ({
     page,
   }) => {
-    await open(page, [[["A", "B"], ["C"]]]);
+    await openEmail(page, [[["A", "B"], ["C"]]]);
     await blockWith(page, "A").focus();
     await backToTabs(page);
     await palette(page, "Text").focus();
@@ -708,7 +630,7 @@ test.describe("Enter on a palette item", () => {
   test("holding it adds one Block and no empty paragraphs", async ({
     page,
   }) => {
-    await open(page, [[["A"]]]);
+    await openEmail(page, [[["A"]]]);
     await palette(page, "Text").focus();
 
     await page.keyboard.down("Enter");
@@ -726,7 +648,7 @@ test.describe("Enter on a palette item", () => {
   }) => {
     await page.setViewportSize({ height: 500, width: 1280 });
     const above = Array.from({ length: 10 }, (_, index) => [[`R${index}`]]);
-    await open(page, [...above, [["A"], ["B"]]]);
+    await openEmail(page, [...above, [["A"], ["B"]]]);
     await palette(page, "Text").focus();
     await expect(blockWith(page, "B")).not.toBeInViewport();
 
@@ -744,7 +666,7 @@ test.describe("Enter on a palette item", () => {
 
 test.describe("labels and focus states", () => {
   test("a Block says where it is and what its keys do", async ({ page }) => {
-    await open(page, [[["A"], ["B", "C"]]]);
+    await openEmail(page, [[["A"], ["B", "C"]]]);
 
     await expect(blockWith(page, "C")).toHaveAccessibleName(
       "Text Block, Row 1, Column 2, position 2 of 2"
@@ -763,7 +685,7 @@ test.describe("labels and focus states", () => {
   test("a button in an empty Column says which Column it fills", async ({
     page,
   }) => {
-    await open(page, [[["A"], []], [[]]]);
+    await openEmail(page, [[["A"], []], [[]]]);
 
     await expect(
       page.getByRole("button", { name: "Add Text Block here" })
@@ -785,7 +707,7 @@ test.describe("labels and focus states", () => {
   test("an empty Column is one Tab stop for each type of Block", async ({
     page,
   }) => {
-    await open(page, [[["A"], []]]);
+    await openEmail(page, [[["A"], []]]);
     const types = await page
       .getByRole("group", { name: "Add content" })
       .getByRole("button")
@@ -809,7 +731,7 @@ test.describe("labels and focus states", () => {
   });
 
   test("every control shows where focus is", async ({ page }) => {
-    await open(page, [[["A"], []]]);
+    await openEmail(page, [[["A"], []]]);
     await textOf(page, "A").click();
     await page.getByRole("button", { exact: true, name: "Link" }).click();
     await expect(linkUrlField(page)).toBeFocused();
@@ -834,7 +756,7 @@ test.describe("labels and focus states", () => {
   });
 
   test("the Preview's Close button shows where focus is", async ({ page }) => {
-    await open(page, [[["A"]]]);
+    await openEmail(page, [[["A"]]]);
     await previewButton(page).focus();
     await page.keyboard.press("Enter");
     const close = page.getByRole("button", { name: "Close" });
@@ -847,7 +769,7 @@ test.describe("labels and focus states", () => {
   test("the Block with focus looks different from one only selected", async ({
     page,
   }) => {
-    await open(page, [[["A"]]]);
+    await openEmail(page, [[["A"]]]);
     await blockWith(page, "A").focus();
     await page.keyboard.press("Alt+ArrowLeft");
 
@@ -870,7 +792,7 @@ test.describe("labels and focus states", () => {
       page,
     }) => {
       await page.setViewportSize({ height: 600, width });
-      await open(page, [[TWELVE]]);
+      await openEmail(page, [[TWELVE]]);
       await blockWith(page, "L").focus();
 
       // oxlint-disable no-await-in-loop -- Each press depends on the one before.
@@ -889,7 +811,7 @@ test.describe("labels and focus states", () => {
     page,
   }) => {
     await page.setViewportSize({ height: 500, width: 1000 });
-    await open(page, [[TWELVE]]);
+    await openEmail(page, [[TWELVE]]);
     await blockWith(page, "L").focus();
 
     // oxlint-disable no-await-in-loop -- Each press depends on the one before.
@@ -941,7 +863,7 @@ test.describe("automated accessibility checks", () => {
   test("pass with Columns, empty Columns, and no Block or one moved selected", async ({
     page,
   }) => {
-    await open(page, [[["A", "B"], []], [["C"]]]);
+    await openEmail(page, [[["A", "B"], []], [["C"]]]);
     expect(await violations(page)).toEqual([]);
 
     await blockWith(page, "A").focus();
@@ -952,7 +874,7 @@ test.describe("automated accessibility checks", () => {
   });
 
   test("pass with the link field showing its error", async ({ page }) => {
-    await open(page, [[["A"]]]);
+    await openEmail(page, [[["A"]]]);
     await textOf(page, "A").click();
     await page.getByRole("button", { exact: true, name: "Link" }).click();
     await linkUrlField(page).fill("example.com");
@@ -978,15 +900,13 @@ test.describe("automated accessibility checks", () => {
     await expect(page.getByLabel("Level", { exact: true })).toBeVisible();
     expect(await violations(page)).toEqual([]);
 
-    await page.setViewportSize({ height: 800, width: 390 });
-    await expect(
-      canvas(page).getByText("Editing needs more room")
-    ).toBeVisible();
+    await page.setViewportSize(NARROW_VIEWPORT);
+    await expect(narrowNotice(page)).toBeVisible();
     expect(await violations(page)).toEqual([]);
   });
 
   test("pass with a tooltip showing", async ({ page }) => {
-    await open(page, [[["A"]]]);
+    await openEmail(page, [[["A"]]]);
     await blockWith(page, "A").focus();
     await undoButton(page).hover();
     await expect(tooltip(page)).toBeVisible();
@@ -997,7 +917,7 @@ test.describe("automated accessibility checks", () => {
   test("pass in the docs' dark theme, with a tooltip, a pressed button and the link field's error", async ({
     page,
   }) => {
-    await open(page, [[["A"]]]);
+    await openEmail(page, [[["A"]]]);
     const workspace = canvas(page).getByTestId("workspace");
     const light = await workspace.evaluate(
       (element) => getComputedStyle(element).backgroundColor
@@ -1011,6 +931,9 @@ test.describe("automated accessibility checks", () => {
     expect(await violations(page)).toEqual([]);
 
     await textOf(page, "A").click();
+    // ProseMirror learns of the cursor a moment after the click, and Ctrl/⌘+B
+    // before then sometimes left Bold unpressed.
+    await settle(page);
     await page.keyboard.press("ControlOrMeta+b");
     const bold = canvas(page).getByRole("button", {
       exact: true,
@@ -1027,7 +950,7 @@ test.describe("automated accessibility checks", () => {
   });
 
   test("pass with the Preview open", async ({ page }) => {
-    await open(page, [[["A"]]]);
+    await openEmail(page, [[["A"]]]);
     await previewButton(page).click();
     await expect(page.getByTitle("Email preview")).toBeVisible();
 

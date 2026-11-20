@@ -7,10 +7,13 @@ import {
   canvas,
   centerOf,
   currentValue,
+  dropIndicator,
+  handleOf,
   layoutTile,
   letGo,
   moveTo,
   openTab,
+  openTestPage,
   pasteHtml,
   pickUp,
   setValue,
@@ -108,8 +111,7 @@ const openUnderStrictPolicy = async (page: Page) => {
       { capture: true }
     );
   });
-  await page.goto("/");
-  await expect(textBlock(page)).toHaveText("Hello");
+  await openTestPage(page);
 };
 
 const openStyledEmail = async (page: Page) => {
@@ -189,13 +191,13 @@ test("under a strict policy, a drag shows its Block and the drop line, a tooltip
   await openUnderStrictPolicy(page);
   await openStyledEmail(page);
 
-  await pickUp(page, blockWith(page, "One").getByTestId("drag-handle"));
+  await pickUp(page, handleOf(page, "One"));
   const lifted = canvas(page).locator('[role="group"][data-drag-ghost]');
   await expect(lifted).toHaveCSS("color", "rgb(185, 28, 28)");
   // Over the top of the Button, to land above it.
   const target = await boxOf(canvas(page).getByTestId("button-face"));
   await moveTo(page, { x: target.x + target.width / 2, y: target.y + 2 });
-  const line = canvas(page).getByTestId("drop-indicator");
+  const line = dropIndicator(page);
   await expect(line).toBeVisible();
   const shown = await boxOf(line);
   expect(Math.abs(shown.y - target.y)).toBeLessThan(24);

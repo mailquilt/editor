@@ -3,15 +3,16 @@ import type { Locator, Page } from "@playwright/test";
 
 import {
   blockGroup,
-  blocks,
+  blockProps,
   blockTypes,
   boxOf,
   canvas,
   change,
   currentValue,
+  EXPORT_VIEWPORT,
   exportHtml,
   field,
-  openBlocks as open,
+  openBlocks,
   openExport,
   palette,
   pasteHtml,
@@ -19,6 +20,7 @@ import {
   setValue,
   TALL_VIEWPORT,
   test,
+  textBlock,
 } from "./helpers.js";
 
 const headingText = (page: Page) =>
@@ -27,11 +29,6 @@ const headingText = (page: Page) =>
 /** The part of a Button that looks like one, on the canvas. */
 const buttonFace = (page: Page) =>
   blockGroup(page, "Button").getByTestId("button-face");
-
-const lastBlockProps = async (page: Page) => {
-  const found = await blocks(page);
-  return found.at(-1)?.props;
-};
 
 const headingLook = (locator: Locator) =>
   locator.evaluate((element) => {
@@ -90,7 +87,7 @@ test.describe("the palette", () => {
   test("adds a Button, selected, with its settings showing", async ({
     page,
   }) => {
-    await open(page, ["text"]);
+    await openBlocks(page, ["text"]);
 
     await palette(page, "Button").click();
 
@@ -105,7 +102,7 @@ test.describe("a Heading", () => {
   test("changes level, and shows its settings the same on the canvas and in the export", async ({
     page,
   }) => {
-    await open(page, ["heading"]);
+    await openBlocks(page, ["heading"]);
     await headingText(page).click();
     await expect(field(page, "Font size (px)")).toHaveValue("24");
     await expect(field(page, "Level")).toHaveValue("2");
@@ -113,7 +110,7 @@ test.describe("a Heading", () => {
 
     await field(page, "Level").selectOption({ label: "Heading 1" });
 
-    await expect(lastBlockProps(page)).resolves.toMatchObject({ level: 1 });
+    await expect(blockProps(page, -1)).resolves.toMatchObject({ level: 1 });
     await expect(field(page, "Font size (px)")).toHaveValue("32");
     await expect(blockGroup(page, "Heading")).toHaveCSS("font-size", "32px");
 
@@ -139,7 +136,7 @@ test.describe("a Heading", () => {
   test("takes up the same space on the canvas as in the export", async ({
     page,
   }) => {
-    await open(page, ["heading"]);
+    await openBlocks(page, ["heading"]);
 
     // The canvas's text box has the Block's padding, and the heading doesn't.
     const onCanvas = await headingText(page).evaluate((element) => {
@@ -159,7 +156,7 @@ test.describe("a Heading", () => {
 
 test.describe("Bold in a Heading, which is already bold", () => {
   test("isn't offered, while the other formats are", async ({ page }) => {
-    await open(page, ["heading"]);
+    await openBlocks(page, ["heading"]);
     await headingText(page).click();
 
     await expect(page.getByRole("button", { name: "Bold" })).toBeDisabled();
@@ -172,23 +169,23 @@ test.describe("Bold in a Heading, which is already bold", () => {
   });
 
   test("is offered again in a Text Block", async ({ page }) => {
-    await open(page, ["heading", "text"]);
+    await openBlocks(page, ["heading", "text"]);
     await headingText(page).click();
-    await page.getByRole("textbox", { name: "Text Block" }).click();
+    await textBlock(page).click();
 
     await expect(page.getByRole("button", { name: "Bold" })).toBeEnabled();
   });
 
   for (const keys of ["ControlOrMeta+b", "ControlOrMeta+Shift+b"]) {
     test(`does nothing with ${keys}`, async ({ page }) => {
-      await open(page, ["heading"]);
+      await openBlocks(page, ["heading"]);
       await headingText(page).click();
       await page.keyboard.press("ControlOrMeta+a");
 
       await page.keyboard.press(keys);
       await settle(page);
 
-      const props = await lastBlockProps(page);
+      const props = await blockProps(page, -1);
       expect(JSON.stringify(props)).not.toContain("bold");
       await expect(headingText(page).locator("strong")).toHaveCount(0);
     });
@@ -197,13 +194,13 @@ test.describe("Bold in a Heading, which is already bold", () => {
   test("is left out of pasted text, which keeps its other formats", async ({
     page,
   }) => {
-    await open(page, ["heading"]);
+    await openBlocks(page, ["heading"]);
     await headingText(page).click();
 
     await pasteHtml(headingText(page), "<strong><em>Big</em></strong>");
 
     await expect(headingText(page).locator("em")).toHaveText("Big");
-    const props = await lastBlockProps(page);
+    const props = await blockProps(page, -1);
     expect(JSON.stringify(props)).toContain("italic");
     expect(JSON.stringify(props)).not.toContain("bold");
   });
@@ -211,7 +208,7 @@ test.describe("Bold in a Heading, which is already bold", () => {
   test("stays on a saved Heading that has it, which still opens", async ({
     page,
   }) => {
-    await open(page, ["heading"]);
+    await openBlocks(page, ["heading"]);
     const email = await currentValue(page);
     const block = email.rows[0]?.columns[0]?.blocks[0];
     if (block?.type === "heading") {
@@ -239,7 +236,7 @@ test.describe("Bold in a Heading, which is already bold", () => {
 
 test.describe("a Button", () => {
   test("doesn't select its label when dragged across", async ({ page }) => {
-    await open(page, ["button"]);
+    await openBlocks(page, ["button"]);
     const box = await boxOf(buttonFace(page));
     const y = box.y + box.height / 2;
 
@@ -259,7 +256,7 @@ test.describe("a Button", () => {
   test("centers a label that wraps, on the canvas as in the export", async ({
     page,
   }) => {
-    await open(page, ["button"], []);
+    await openBlocks(page, ["button"], []);
     await blockGroup(page, "Button").focus();
     await change(
       field(page, "Label"),
@@ -267,8 +264,7 @@ test.describe("a Button", () => {
     );
 
     const onCanvas = await lastLineInset(buttonFace(page));
-    const { opened } = await openExport(page);
-    await opened.setViewportSize({ height: 800, width: 800 });
+    const { opened } = await openExport(page, EXPORT_VIEWPORT);
     const exported = await lastLineInset(opened.locator("td[bgcolor] > p"));
 
     expect(onCanvas).toBeGreaterThan(25);
@@ -278,7 +274,7 @@ test.describe("a Button", () => {
   test("is selected by a click on it, without going anywhere", async ({
     page,
   }) => {
-    await open(page, ["text", "button"]);
+    await openBlocks(page, ["text", "button"]);
     // With a link, which a click could otherwise follow.
     await blockGroup(page, "Button").focus();
     await change(field(page, "Link"), "https://shop.example");
@@ -300,7 +296,7 @@ test.describe("a Button", () => {
   test("describes the keys that work on it, with none for editing text", async ({
     page,
   }) => {
-    await open(page, ["button"]);
+    await openBlocks(page, ["button"]);
 
     await expect(blockGroup(page, "Button")).toHaveAccessibleDescription(
       "Press ArrowUp, ArrowDown, ArrowLeft, or ArrowRight to select another Block, and Alt+ArrowUp, Alt+ArrowDown, Alt+ArrowLeft, or Alt+ArrowRight to move this one."
@@ -308,7 +304,7 @@ test.describe("a Button", () => {
   });
 
   test("shows a label as text, whatever it holds", async ({ page }) => {
-    await open(page, ["button"]);
+    await openBlocks(page, ["button"]);
     await blockGroup(page, "Button").focus();
 
     await change(field(page, "Label"), "<img src=x onerror=alert(1)>");
@@ -318,7 +314,7 @@ test.describe("a Button", () => {
   });
 
   test("looks the same on the canvas and in the export", async ({ page }) => {
-    await open(page, ["button"]);
+    await openBlocks(page, ["button"]);
     await blockGroup(page, "Button").focus();
     await change(field(page, "Link"), "https://shop.example");
     await change(field(page, "Label"), "Buy it all today");
@@ -333,8 +329,7 @@ test.describe("a Button", () => {
         const { width, x } = element.getBoundingClientRect();
         return x + width / 2;
       });
-    const { opened } = await openExport(page);
-    await opened.setViewportSize({ height: 800, width: 800 });
+    const { opened } = await openExport(page, EXPORT_VIEWPORT);
     const exported = await buttonLook(
       opened.getByRole("link", { name: "Buy" })
     );
@@ -346,8 +341,8 @@ test.describe("a Button", () => {
     }).toEqual({
       ...onCanvas,
       width: toTenths(onCanvas.width),
-      // The export is centered on an 800px page.
-      x: toTenths(onCanvas.x - email + 400),
+      // The export is centered on its page.
+      x: toTenths(onCanvas.x - email + EXPORT_VIEWPORT.width / 2),
     });
   });
 });
