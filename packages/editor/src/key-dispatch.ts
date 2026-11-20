@@ -7,15 +7,10 @@ import {
   keyFor,
   keyHeardFirst,
 } from "./key-map.js";
-import type {
-  Action,
-  Binding,
-  DirectedAction,
-  Direction,
-  Place,
-} from "./key-map.js";
+import type { Action, DirectedAction, KeyScope } from "./key-map.js";
+import type { Direction } from "./positions.js";
 import { focusToolbarButton } from "./selection.js";
-import type { Selection } from "./selection.js";
+import type { EditorSelection, ToolbarStep } from "./selection.js";
 
 /**
  * Hears every key pressed in the editor, and input to a Block's text, and does
@@ -31,11 +26,14 @@ interface KeyDispatchHost {
     /** The settings field the key was pressed in, while it holds a draft. */
     draftKeyOf: (event: KeyboardEvent) => string | undefined;
   };
-  editing: EditingActions;
+  editing: Pick<EditingActions, "moveBlock" | "moveRow" | "selectNeighbour">;
   isDragging: () => boolean;
   linkForm: { cancel: () => void; open: () => void };
   previewIsOpen: () => boolean;
-  selection: Pick<Selection, "focus" | "focusIsOutsideText" | "selectedText">;
+  selection: Pick<
+    EditorSelection,
+    "focus" | "focusIsOutsideText" | "selectedText"
+  >;
   stepHistory: (step: "redo" | "undo") => void;
 }
 
@@ -43,6 +41,12 @@ interface KeyDispatchHost {
 const doNothing = () => {
   // Nothing more.
 };
+
+/** Focus along the buttons of the toolbar, or the tabs, that a key was pressed in. */
+const toolbarStep =
+  (step: ToolbarStep) =>
+  ({ target }: KeyboardEvent) =>
+    focusToolbarButton(target as Element, step);
 
 export const createKeyDispatch = ({
   canStep,
@@ -61,17 +65,17 @@ export const createKeyDispatch = ({
    * Where in the editor a key was pressed: the innermost place with keys of its
    * own, or a settings field holding a draft.
    */
-  const placeOfKey = (event: KeyboardEvent): Place | undefined => {
-    const place = placeOf(event.target as Element, hasKeys);
-    return place === "editor" && drafts.draftKeyOf(event) !== undefined
+  const scopeOfKey = (event: KeyboardEvent): KeyScope | undefined => {
+    const scope = placeOf(event.target as Element, hasKeys);
+    return scope === "editor" && drafts.draftKeyOf(event) !== undefined
       ? "settingsDraft"
-      : place;
+      : scope;
   };
 
   /** What each action in the key map does here. */
   const actions: Record<
     Exclude<Action, DirectedAction>,
-    (event: KeyboardEvent, binding: Binding) => void
+    (event: KeyboardEvent) => void
   > = {
     backToBlock: () => selection.focus({ on: "block" }),
     backToText: () => selection.focus({ on: "text" }),
@@ -80,14 +84,14 @@ export const createKeyDispatch = ({
     closePreview: doNothing,
     discardDraft: (event) => drafts.discard(event),
     editText: () => selection.focus({ on: "text" }),
-    firstButton: focusToolbarButton,
+    firstButton: toolbarStep("first"),
     focusFormatBar: () => selection.focus({ on: "formatBar" }),
     keepPage: doNothing,
-    lastButton: focusToolbarButton,
-    leaveToolbar: focusToolbarButton,
-    nextButton: focusToolbarButton,
+    lastButton: toolbarStep("last"),
+    leaveToolbar: toolbarStep("leave"),
+    nextButton: toolbarStep("next"),
     openLinkField: () => linkForm.open(),
-    previousButton: focusToolbarButton,
+    previousButton: toolbarStep("previous"),
     redo: () => stepHistory("redo"),
     typeInField: doNothing,
     undo: () => stepHistory("undo"),
@@ -137,10 +141,10 @@ export const createKeyDispatch = ({
      */
     onKeydown: (event: Event) => {
       const keydown = event as KeyboardEvent;
-      const place = placeOfKey(keydown);
+      const scope = scopeOfKey(keydown);
       const binding =
-        place &&
-        keyFor(place, keydown, {
+        scope &&
+        keyFor(scope, keydown, {
           canRedo: canStep("redo"),
           canUndo: canStep("undo"),
           dragging: isDragging(),
@@ -151,7 +155,7 @@ export const createKeyDispatch = ({
       }
       claim(keydown, binding);
       if (binding.direction === undefined) {
-        actions[binding.action](keydown, binding);
+        actions[binding.action](keydown);
       } else {
         moves[binding.action](keydown, binding.direction);
       }

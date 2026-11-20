@@ -179,9 +179,7 @@ test.describe("selecting a Block", () => {
     await expect(blockWith(page, "A")).toBeFocused();
   });
 
-  test("the same place in the next Column keeps its position", async ({
-    page,
-  }) => {
+  test("Right keeps the position in the next Column", async ({ page }) => {
     await open(page, [
       [
         ["A", "B"],
@@ -598,7 +596,7 @@ test.describe("typing inside a Block", () => {
     await expect(textOf(page, "one two")).toBeFocused();
   });
 
-  test("Escape returns to the Block, and Enter to the same place", async ({
+  test("Escape returns to the Block, and Enter to where the cursor was", async ({
     page,
   }) => {
     await open(page, [[["A", "B"]]]);

@@ -9,7 +9,7 @@ import {
   TEXT_KEYS,
   textKeyLabel,
 } from "../src/key-map.js";
-import type { KeyPress, Place } from "../src/key-map.js";
+import type { KeyPress, KeyScope } from "../src/key-map.js";
 
 /**
  * A press by name, such as "Alt-ArrowUp" or "Shift-Mod-z". Mod is ⌘ on Apple
@@ -40,11 +40,11 @@ const press = (
  * Windows and Linux, unless a test says otherwise.
  */
 const keyIn = (
-  place: Place,
+  scope: KeyScope,
   each: KeyPress,
   context: Parameters<typeof keyFor>[2] = {}
 ) =>
-  keyFor(place, each, {
+  keyFor(scope, each, {
     apple: false,
     canRedo: true,
     canUndo: true,
@@ -145,13 +145,13 @@ describe("in a Block's text", () => {
     ).toBeUndefined();
   });
 
-  it("a shortcut is found by its place on the keyboard, in a layout without Latin letters", () => {
+  it("a shortcut is found by its physical key, in a layout without Latin letters", () => {
     expect(
       keyIn("text", press("Mod-k", { code: "KeyK", key: "л" }))?.action
     ).toBe("openLinkField");
   });
 
-  it("reads the Kelvin sign by its place on the keyboard, not as k", () => {
+  it("reads the Kelvin sign by its physical key, not as k", () => {
     expect(
       keyIn("text", press("Mod-k", { code: "KeyJ", key: "\u212A" }))
     ).toBeUndefined();
@@ -296,8 +296,8 @@ describe("Ctrl/⌘+K", () => {
     "email",
   ] as const)(
     "from %s, opens the link field in the selected Block's text, and stops there",
-    (place) => {
-      expect(keyIn(place, press("Mod-k"))).toStrictEqual(
+    (scope) => {
+      expect(keyIn(scope, press("Mod-k"))).toStrictEqual(
         acts("openLinkField", { stops: true })
       );
     }
@@ -311,7 +311,7 @@ describe("Ctrl/⌘+K", () => {
 });
 
 describe("Alt+← and Alt+→", () => {
-  // Some places move a Block or Row with them, but not during a drag.
+  // Some key scopes move a Block or Row with them, but not during a drag.
   it.each([
     ["block", acts("keepPage")],
     ["blockToolbar", acts("keepPage")],
@@ -327,9 +327,9 @@ describe("Alt+← and Alt+→", () => {
     ["linkField", acts("keepPage", { stops: true })],
   ] as const)(
     "from %s, even during a drag, don't go forward a page",
-    (place, binding) => {
+    (scope, binding) => {
       expect(
-        keyIn(place, press("Alt-ArrowRight"), { dragging: true })
+        keyIn(scope, press("Alt-ArrowRight"), { dragging: true })
       ).toStrictEqual(binding);
     }
   );
@@ -341,8 +341,8 @@ describe("while a Block or Row is dragged, which the key would change", () => {
     ["block", "Alt-ArrowUp"],
     ["block", "Enter"],
     ["rowToolbar", "Alt-ArrowUp"],
-  ] as const)("on %s, %s does nothing", (place, name) => {
-    expect(keyIn(place, press(name), { dragging: true })).toBeUndefined();
+  ] as const)("on %s, %s does nothing", (scope, name) => {
+    expect(keyIn(scope, press(name), { dragging: true })).toBeUndefined();
   });
 });
 
@@ -356,8 +356,8 @@ describe("anywhere in the editor but a field or the Preview", () => {
     "email",
     "panelTabs",
     "editor",
-  ] as const)("from %s, Ctrl/⌘+Z undoes, and stops there", (place) => {
-    expect(keyIn(place, press("Mod-z"))).toStrictEqual(
+  ] as const)("from %s, Ctrl/⌘+Z undoes, and stops there", (scope) => {
+    expect(keyIn(scope, press("Mod-z"))).toStrictEqual(
       acts("undo", { stops: true })
     );
   });
@@ -387,7 +387,7 @@ describe("anywhere in the editor but a field or the Preview", () => {
     expect(keyIn("editor", press("Mod-y"))?.action).toBe("redo");
   });
 
-  it("in a Latin layout such as Dvorak, Ctrl+; on the Z key's place doesn't undo", () => {
+  it("in a Latin layout such as Dvorak, Ctrl+; on the physical Z key doesn't undo", () => {
     expect(keyIn("editor", press("Mod-;", { code: "KeyZ" }))).toBeUndefined();
   });
 

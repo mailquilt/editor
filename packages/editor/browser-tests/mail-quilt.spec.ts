@@ -575,16 +575,16 @@ test.describe("undo and redo while typing", () => {
   });
 });
 
-const withText = (document: unknown, text: string) => {
+const withText = (email: unknown, text: string) => {
   // oxlint-disable-next-line typescript/no-explicit-any -- Saved JSON, reached along a path this test's email is known to have.
-  const copy = structuredClone(document) as any;
+  const copy = structuredClone(email) as any;
   copy.rows[0].columns[0].blocks[0].props.content.content[0].content[0].text =
     text;
   return copy;
 };
 
 /** Sets `value` and returns the reasons from any `mq-error` that follows. */
-const setValueAndCollectErrors = (page: Page, document: unknown) =>
+const setValueAndCollectErrors = (page: Page, email: unknown) =>
   canvas(page).evaluate(async (element, value) => {
     const mailQuilt = element as MailQuilt;
     const reasons: string[] = [];
@@ -596,7 +596,7 @@ const setValueAndCollectErrors = (page: Page, document: unknown) =>
     await mailQuilt.updateComplete;
     mailQuilt.removeEventListener("mq-error", onError);
     return reasons;
-  }, document);
+  }, email);
 
 test.describe("setting value", () => {
   test("a clone of the document just loaded, or of the last one sent out, keeps undo and the cursor", async ({
@@ -647,21 +647,24 @@ test.describe("setting value", () => {
   }) => {
     await canvas(page).evaluate((element) => {
       const mailQuilt = element as MailQuilt;
-      mailQuilt.addEventListener("mq-change", ({ detail: { document } }) => {
-        const block = document.rows[0]?.columns[0]?.blocks[0];
-        if (block) {
-          block.props.content = {
-            content: [
-              {
-                content: [{ text: "Host's own text", type: "text" }],
-                type: "paragraph",
-              },
-            ],
-            type: "doc",
-          };
+      mailQuilt.addEventListener(
+        "mq-change",
+        ({ detail: { document: email } }) => {
+          const block = email.rows[0]?.columns[0]?.blocks[0];
+          if (block) {
+            block.props.content = {
+              content: [
+                {
+                  content: [{ text: "Host's own text", type: "text" }],
+                  type: "paragraph",
+                },
+              ],
+              type: "doc",
+            };
+          }
+          mailQuilt.value = email;
         }
-        mailQuilt.value = document;
-      });
+      );
     });
     await focusStartOfTextBlock(page);
 

@@ -4,8 +4,8 @@ import { scaleOf } from "./geometry.js";
 /** Space kept between a tool and the canvas's edge, its Block or the other tool. */
 const GAP_PX = 6;
 
-export interface ToolPlacement {
-  /** Places the tools again after a re-render, which can add, move or resize them. */
+export interface ToolFitting {
+  /** Fits the tools again after a re-render, which can add, move or resize them. */
   sync: () => void;
   destroy: () => void;
 }
@@ -14,8 +14,13 @@ export interface ToolPlacement {
 const shiftInto = (start: number, end: number, min: number, max: number) =>
   Math.max(min - start, Math.min(0, max - end));
 
+interface ToolFittingHost {
+  onMove: () => void;
+  root: ShadowRoot;
+}
+
 /**
- * The selected Block's toolbar and format bar are placed beside it by CSS,
+ * The selected Block's toolbar and format bar are put beside it by CSS,
  * which can't know how much room is there. The editor clips what reaches past
  * the canvas, such as a format bar under a narrow first Column, or the toolbar
  * beside a short last Block. This moves each back in, and keeps the format bar
@@ -25,13 +30,13 @@ const shiftInto = (start: number, end: number, min: number, max: number) =>
  * when the host resizes or the text gets another line. `onMove` follows that,
  * so a tooltip showing for one of them can move too.
  */
-export const createToolPlacement = (
-  root: ShadowRoot,
-  onMove: () => void
-): ToolPlacement => {
+export const createToolFitting = ({
+  onMove,
+  root,
+}: ToolFittingHost): ToolFitting => {
   let observed: Element[] = [];
 
-  const place = () => {
+  const fit = () => {
     const workspace = findPlace(root, "workspace");
     const toolbar = findPlace(root, "blockToolbar");
     const bar = findPlace(root, "formatBar");
@@ -100,7 +105,7 @@ export const createToolPlacement = (
   };
 
   const observer = new ResizeObserver(() => {
-    place();
+    fit();
     onMove();
   });
 
@@ -124,7 +129,7 @@ export const createToolPlacement = (
         }
         observed = targets;
       }
-      place();
+      fit();
     },
   };
 };

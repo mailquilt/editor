@@ -315,7 +315,7 @@ export const editorStyles = css`
     opacity: 1;
   }
 
-  /* With no hover to bring them out, the buttons show, in the label's place. */
+  /* With no hover to bring them out, the buttons show instead of the label. */
   @media (hover: none) {
     .placeholder .add-blocks {
       opacity: 1;
@@ -411,7 +411,7 @@ export const editorStyles = css`
     padding: 0;
   }
 
-  /* What's dragged keeps its place, unseen, while its copy moves. */
+  /* What's dragged stays where it was, unseen, while its copy moves. */
   [data-drag-source] {
     opacity: 0;
   }
@@ -614,7 +614,7 @@ export const editorStyles = css`
     outline-offset: 1px;
   }
 
-  /* In the editor's place, so it fills any height the host gives too. */
+  /* Standing in for the editor, so it fills any height the host gives too. */
   .narrow-notice {
     align-items: center;
     flex-grow: 1;

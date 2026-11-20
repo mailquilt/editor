@@ -5,8 +5,6 @@ import {
   findRow,
   pressOn,
 } from "./editor-places.js";
-import type { Action, Binding } from "./key-map.js";
-import type { PanelTab } from "./side-panel.js";
 import type { TextBlockView } from "./text-block-view.js";
 
 /**
@@ -14,6 +12,9 @@ import type { TextBlockView } from "./text-block-view.js";
  * Everything else in the editor asks this module to select something or to move
  * focus, and none of it moves focus itself.
  */
+
+/** The Side panel's tabs, one of which it shows while it doesn't show what's selected. */
+export type PanelTab = "content" | "rows" | "settings";
 
 /** A Block, which the toolbars act on, a Row, or nothing. */
 type Selected = { blockId: string } | { rowId: string } | undefined;
@@ -52,15 +53,19 @@ interface SelectionHost {
 }
 
 /**
- * Goes along the buttons of the toolbar, or the tabs, that a key was pressed in,
- * either way round. Tab leaves from its one stop, wherever the arrow keys got
- * to, so Shift+Tab doesn't land back on that stop.
+ * Where focus goes along a toolbar's buttons, or the tabs: to either end, one
+ * button either way round, or to the toolbar's one Tab stop, for Tab to leave
+ * from.
  */
-export const focusToolbarButton = (
-  { target }: KeyboardEvent,
-  { action }: Binding
-) => {
-  const button = target as HTMLButtonElement;
+export type ToolbarStep = "first" | "last" | "leave" | "next" | "previous";
+
+/**
+ * Goes along the buttons of the toolbar, or the tabs, that `from` is in. Tab
+ * leaves from its one stop, wherever the arrow keys got to, so Shift+Tab doesn't
+ * land back on that stop.
+ */
+export const focusToolbarButton = (from: Element, step: ToolbarStep) => {
+  const button = from as HTMLButtonElement;
   const buttons = [
     ...(button.parentElement?.querySelectorAll<HTMLButtonElement>(
       ":scope > button:not(:disabled)"
@@ -71,15 +76,15 @@ export const focusToolbarButton = (
     return;
   }
   const last = buttons.length - 1;
-  const next: Partial<Record<Action, HTMLButtonElement | undefined>> = {
-    firstButton: buttons[0],
-    lastButton: buttons[last],
+  const next: Record<ToolbarStep, HTMLButtonElement | undefined> = {
+    first: buttons[0],
+    last: buttons[last],
     // Focus moves on from there once this returns.
-    leaveToolbar: buttons.find(({ tabIndex }) => tabIndex === 0),
-    nextButton: buttons[index === last ? 0 : index + 1],
-    previousButton: buttons[index === 0 ? last : index - 1],
+    leave: buttons.find(({ tabIndex }) => tabIndex === 0),
+    next: buttons[index === last ? 0 : index + 1],
+    previous: buttons[index === 0 ? last : index - 1],
   };
-  next[action]?.focus();
+  next[step]?.focus();
 };
 
 /** What focus on an element in the editor is on, or else the floating toolbar. */
@@ -128,9 +133,14 @@ const targetOf = (element: Element): FocusTarget => {
   }
 };
 
-export type Selection = ReturnType<typeof createSelection>;
+export type EditorSelection = ReturnType<typeof createSelection>;
 
-export const createSelection = (host: SelectionHost) => {
+export const createSelection = ({
+  onSelect,
+  requestUpdate,
+  root,
+  textOf,
+}: SelectionHost) => {
   let selected: Selected;
   /** Whether focus is in the selected Block's text or its format bar. */
   let editingText = false;
@@ -149,7 +159,7 @@ export const createSelection = (host: SelectionHost) => {
   /** What the update that's due is to scroll into view, as a change named it. */
   let revealAfterUpdate: Selected;
 
-  const active = () => host.root().activeElement;
+  const active = () => root().activeElement;
 
   const selectedBlockId = () =>
     selected && "blockId" in selected ? selected.blockId : undefined;
@@ -157,9 +167,9 @@ export const createSelection = (host: SelectionHost) => {
   const selectedRowId = () =>
     selected && "rowId" in selected ? selected.rowId : undefined;
 
-  const blockElement = (blockId: string) => findBlock(host.root(), blockId);
+  const blockElement = (blockId: string) => findBlock(root(), blockId);
 
-  const rowFrame = (rowId: string) => findRow(host.root(), rowId);
+  const rowFrame = (rowId: string) => findRow(root(), rowId);
 
   /** A Row's tools that work, the Select Row button first. */
   const rowTools = (rowId: string) => {
@@ -181,9 +191,7 @@ export const createSelection = (host: SelectionHost) => {
         if (blockId === undefined) {
           return;
         }
-        return target.on === "text"
-          ? host.textOf(blockId)
-          : blockElement(blockId);
+        return target.on === "text" ? textOf(blockId) : blockElement(blockId);
       }
       case "blockTool": {
         const blockId = selectedBlockId();
@@ -194,14 +202,12 @@ export const createSelection = (host: SelectionHost) => {
         );
       }
       case "formatBar": {
-        return findPlace(host.root(), "formatBar")?.querySelector<HTMLElement>(
+        return findPlace(root(), "formatBar")?.querySelector<HTMLElement>(
           ":scope > button:not(:disabled)"
         );
       }
       case "linkField": {
-        const field = findPlace(host.root(), "linkField")?.querySelector(
-          "input"
-        );
+        const field = findPlace(root(), "linkField")?.querySelector("input");
         return (
           field && {
             focus: (options) => {
@@ -219,10 +225,10 @@ export const createSelection = (host: SelectionHost) => {
         );
       }
       case "tab": {
-        return host.root().querySelector<HTMLElement>(`#tab-${target.tab}`);
+        return root().querySelector<HTMLElement>(`#tab-${target.tab}`);
       }
       case "emailTools": {
-        const toolbar = findPlace(host.root(), "emailTools");
+        const toolbar = findPlace(root(), "emailTools");
         // Without scrolling the page to it: in a Shell whose bottom is below the
         // window, the toolbar is out of view.
         return (
@@ -268,7 +274,7 @@ export const createSelection = (host: SelectionHost) => {
    */
   const focusWhenRendered = (target: FocusTarget, options?: FocusOptions) => {
     focusAfterUpdate = { options, target };
-    host.requestUpdate();
+    requestUpdate();
   };
 
   /**
@@ -278,7 +284,7 @@ export const createSelection = (host: SelectionHost) => {
    */
   const revealWhenRendered = (target: Selected) => {
     revealAfterUpdate = target;
-    host.requestUpdate();
+    requestUpdate();
   };
 
   const reveal = (target: NonNullable<Selected>) => {
@@ -316,14 +322,14 @@ export const createSelection = (host: SelectionHost) => {
     if (selectedBlockId() === undefined) {
       editingText = false;
     }
-    host.onSelect();
+    onSelect();
   };
 
   /** Focus on a Block, or in its text, selects the Block. */
   const focusedOn = (blockId: string, inText: boolean) => {
     if (editingText !== inText) {
       editingText = inText;
-      host.requestUpdate();
+      requestUpdate();
     }
     // The Block is selected already, and the panel stays as it was left.
     if (!restoring) {
@@ -335,7 +341,7 @@ export const createSelection = (host: SelectionHost) => {
   const showSettings = () => {
     if (!showsSettings) {
       showsSettings = true;
-      host.requestUpdate();
+      requestUpdate();
     }
   };
 
@@ -502,7 +508,7 @@ export const createSelection = (host: SelectionHost) => {
           !(element && closestPlace(element, "text", "formatBar", "preview"))
         ) {
           editingText = false;
-          host.requestUpdate();
+          requestUpdate();
         }
       }, 0);
     },
@@ -555,10 +561,11 @@ export const createSelection = (host: SelectionHost) => {
     select,
 
     /**
-     * Selects a Block that was just put in place, with focus in its text if it
-     * has any. Unlike focus on the Block, focus in its text doesn't scroll.
+     * Selects a Block that has just landed, added or dropped, with focus in its
+     * text if it has any. Unlike focus on the Block, focus in its text doesn't
+     * scroll.
      */
-    selectPlaced(blockId: string | undefined) {
+    selectLanded(blockId: string | undefined) {
       select(blockId === undefined ? undefined : { blockId });
       if (blockId !== undefined) {
         focusWhenRendered({ blockId, on: "text" });
@@ -567,7 +574,7 @@ export const createSelection = (host: SelectionHost) => {
     },
 
     /**
-     * Selects a Row in place of any Block, and shows its settings. Its toolbar's
+     * Selects a Row instead of any Block, and shows its settings. Its toolbar's
      * button takes focus, so typing can't go on in a Block's text. From the
      * keyboard, as from the Rows tab, the focus ring follows.
      */
@@ -584,14 +591,14 @@ export const createSelection = (host: SelectionHost) => {
     selectTab(next: PanelTab) {
       if (next !== tab) {
         tab = next;
-        host.requestUpdate();
+        requestUpdate();
       }
     },
 
     /** The selected Block's text, if it has any. */
     get selectedText() {
       const blockId = selectedBlockId();
-      return blockId === undefined ? undefined : host.textOf(blockId);
+      return blockId === undefined ? undefined : textOf(blockId);
     },
 
     /**
@@ -602,7 +609,7 @@ export const createSelection = (host: SelectionHost) => {
       const fromKeyboard =
         (active() as HTMLElement | null)?.dataset.action === "back";
       showsSettings = false;
-      host.requestUpdate();
+      requestUpdate();
       if (fromKeyboard) {
         focusWhenRendered({ on: "tab", tab });
       }

@@ -13,7 +13,7 @@ export const formatBarStyles = css`
   /*
    * Below the text being edited, at its end: clear of where the next Block's
    * text starts, and of its drag handle. Moved from here where there's no room
-   * (tool-placement.ts).
+   * (tool-fitting.ts).
    */
   .format-bar {
     flex-wrap: wrap;
@@ -98,13 +98,19 @@ interface LinkFormHost {
 }
 
 /** The link field: open or closed, and what its buttons do. */
-export const createLinkForm = (host: LinkFormHost) => {
+export const createLinkForm = ({
+  editingText,
+  focusField,
+  focusText,
+  requestUpdate,
+  view,
+}: LinkFormHost) => {
   let state: PanelState["linkField"];
 
   const close = () => {
     if (state) {
       state = undefined;
-      host.requestUpdate();
+      requestUpdate();
     }
   };
 
@@ -113,36 +119,35 @@ export const createLinkForm = (host: LinkFormHost) => {
    * Focus in the text closes the field, so the text takes it first.
    */
   const open = () => {
-    const view = host.view();
-    if (!view) {
+    if (!view()) {
       return;
     }
-    if (!host.editingText()) {
-      host.focusText();
+    if (!editingText()) {
+      focusText();
     }
     state = { refusals: 0 };
-    host.requestUpdate();
-    host.focusField();
+    requestUpdate();
+    focusField();
   };
 
   const cancel = () => {
     close();
-    host.focusText();
+    focusText();
   };
 
   const remove = () => {
     close();
-    host.view()?.removeLink();
+    view()?.removeLink();
   };
 
   const submit = (href: string) => {
     if (!isAllowedLinkHref(href)) {
       state = { refusals: (state?.refusals ?? 0) + 1 };
-      host.requestUpdate();
+      requestUpdate();
       return;
     }
     close();
-    host.view()?.setLink(href);
+    view()?.setLink(href);
   };
 
   return {

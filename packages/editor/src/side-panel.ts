@@ -11,9 +11,10 @@ import { css, html, nothing } from "lit";
 import type { TemplateResult } from "lit";
 
 import { blockIcon, ICONS } from "./icons.js";
-import type { PanelApi, RowPlace } from "./panel-api.js";
-import { columnLabel } from "./places.js";
-import type { BlockPlace } from "./places.js";
+import type { PanelApi } from "./panel-api.js";
+import { columnLabel } from "./positions.js";
+import type { BlockPosition, RowPosition } from "./positions.js";
+import type { PanelTab } from "./selection.js";
 import { renderSettingsPanel } from "./settings-panel.js";
 import type { SettingsSection } from "./settings-panel.js";
 import { styleProperties } from "./style-properties.js";
@@ -340,8 +341,6 @@ export const sidePanelStyles = css`
   }
 `;
 
-export type PanelTab = "content" | "rows" | "settings";
-
 const PANEL_TABS: { icon: unknown; id: PanelTab; label: string }[] = [
   { icon: ICONS.content, id: "content", label: "Content" },
   { icon: ICONS.rows, id: "rows", label: "Rows" },
@@ -387,7 +386,7 @@ const renderPanelHeader = (
 `;
 
 /** A selected Row: its layout, then its settings. Empty Rows too. */
-const renderRowProperties = ({ row, rowIndex }: RowPlace, api: PanelApi) => {
+const renderRowProperties = ({ row, rowIndex }: RowPosition, api: PanelApi) => {
   const current = rowLayoutOf(row);
   const section: SettingsSection = {
     command: (props) => ({ props, rowId: row.id, type: "updateRowProps" }),
@@ -436,7 +435,7 @@ const renderRowProperties = ({ row, rowIndex }: RowPlace, api: PanelApi) => {
 
 /** The selected Block's fields. */
 const renderProperties = (
-  { block, columnIndex, rowIndex }: BlockPlace,
+  { block, columnIndex, rowIndex }: BlockPosition,
   api: PanelApi
 ) => {
   const section: SettingsSection = {

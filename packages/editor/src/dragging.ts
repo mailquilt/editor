@@ -1,50 +1,10 @@
-import type { Command, RowLayout } from "@mailquilt/core";
-
 import { closestPlace, findPlace, findPlaces } from "./editor-places.js";
 import { contains, scaleOf, shadowRootsUpFrom } from "./geometry.js";
 import { claim, keyHeardFirst } from "./key-map.js";
+import { isRowSource } from "./positions.js";
+import type { DragSource, DropPosition } from "./positions.js";
 
-/**
- * What a drag brings: a Block or Row on the canvas, a new Block from the palette,
- * or a new Row from the Rows tab.
- */
-export type DragSource =
-  | { blockId: string }
-  | { blockType: string }
-  | { rowId: string }
-  | { rowLayout: string };
-
-/** Where a drop lands: in a Column, or in a new Row of its own. */
-export type DropPlace =
-  | { columnId: string; index: number }
-  | { rowIndex: number };
-
-/** A Row, new or on the canvas, which only ever lands between Rows. */
-const isRowSource = (
-  source: DragSource
-): source is { rowId: string } | { rowLayout: string } =>
-  "rowLayout" in source || "rowId" in source;
-
-/** The Command for a drop, which adds a Row if it landed outside any. */
-export const dropCommand = (source: DragSource, place: DropPlace): Command => {
-  if (isRowSource(source)) {
-    // A Row only lands between Rows, as `landing` finds no Column for one.
-    const { rowIndex: index } = place as { rowIndex: number };
-    return "rowId" in source
-      ? { index, rowId: source.rowId, type: "moveRow" }
-      : { index, layout: source.rowLayout as RowLayout, type: "insertRow" };
-  }
-  if ("blockId" in source) {
-    return "columnId" in place
-      ? { ...source, ...place, type: "moveBlock" }
-      : { ...source, ...place, type: "moveBlockToNewRow" };
-  }
-  return "columnId" in place
-    ? { ...source, ...place, type: "insertBlock" }
-    : { ...source, ...place, type: "insertBlockInNewRow" };
-};
-
-export interface BlockDragging {
+export interface Dragging {
   isDragging: () => boolean;
   destroy: () => void;
 }
@@ -148,7 +108,7 @@ const createGhost = (element: HTMLElement) => {
   ghost.dataset.dragGhost = "";
   ghost.inert = true;
   ghost.setAttribute("aria-hidden", "true");
-  // Inline, because the editor's own styles position Blocks and Rows.
+  // Inline, because the editor's own styles lay out Blocks and Rows.
   Object.assign(ghost.style, {
     bottom: "auto",
     boxSizing: "border-box",
@@ -324,19 +284,18 @@ interface Drag {
   restoreCursor: () => void;
 }
 
+interface DraggingHost {
+  onDrop: (source: DragSource, position: DropPosition) => void;
+  root: ShadowRoot;
+}
+
 /**
  * Drags Blocks, Rows and palette items with pointer events. The drop position
  * comes from the pointer when the drag ends, so nothing moves until then, and
  * the indicator shows the same answer on the way there. The keyboard has its
  * own way to move each one, through the same Commands.
  */
-export const createBlockDragging = ({
-  onDrop,
-  root,
-}: {
-  onDrop: (source: DragSource, place: DropPlace) => void;
-  root: ShadowRoot;
-}): BlockDragging => {
+export const createDragging = ({ onDrop, root }: DraggingHost): Dragging => {
   /** A press that may still turn into a drag, and the drag once it has. */
   let press: Press | undefined;
   let drag: Drag | undefined;
@@ -400,7 +359,7 @@ export const createBlockDragging = ({
           items.at(-1)?.getBoundingClientRect().bottom ??
           box.top,
       },
-      place: column
+      position: column
         ? { columnId: column.dataset.columnId as string, index }
         : { rowIndex: index },
     };
@@ -428,7 +387,7 @@ export const createBlockDragging = ({
     indicator.hidden = !line;
     if (line) {
       const origin = email.getBoundingClientRect();
-      // The line is on screen, and its place in the email isn't, where a host
+      // The line is on screen, and its offset in the email isn't, where a host
       // page scales the editor.
       const scaleX = scaleOf(origin.width, email.offsetWidth);
       const scaleY = scaleOf(origin.height, email.offsetHeight);
@@ -454,9 +413,9 @@ export const createBlockDragging = ({
     cancelAnimationFrame(frame);
     const { grab } = ended;
     // An undo during the drag can take away the Block being dragged.
-    const place =
+    const position =
       drop && grab.element.isConnected
-        ? landing(grab, dragged.pointer, dragged.scrollContainers)?.place
+        ? landing(grab, dragged.pointer, dragged.scrollContainers)?.position
         : undefined;
     startedOn = undefined;
     dragged.ghost.remove();
@@ -467,8 +426,8 @@ export const createBlockDragging = ({
     if (email) {
       delete email.dataset.dragging;
     }
-    if (place) {
-      onDrop(grab.source, place);
+    if (position) {
+      onDrop(grab.source, position);
     }
   };
 
@@ -519,8 +478,8 @@ export const createBlockDragging = ({
       restoreCursor: showGrabbingCursor(root),
       scrollContainers: scrollContainersOf(root.host),
     };
-    // A Block or Row leaves its place empty, but stays in it, so that its text
-    // keeps its editor, focus and cursor. The palette keeps its item.
+    // A Block or Row stays where it was, unseen, so that its text keeps its
+    // editor, focus and cursor. The palette keeps its item.
     if (isOnCanvas(grab.source)) {
       grab.element.dataset.dragSource = "";
     }

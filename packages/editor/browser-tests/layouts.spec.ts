@@ -163,9 +163,7 @@ test.describe("deleting a Block", () => {
     expect(await structure(page)).toStrictEqual([[["A"]]]);
   });
 
-  test("with the mouse, deleting selects nothing in its place", async ({
-    page,
-  }) => {
+  test("with the mouse, deleting leaves nothing selected", async ({ page }) => {
     await setValue(page, emailWith([[["A", "B"]]]));
     await blockWith(page, "A").click();
 
@@ -283,13 +281,13 @@ test.describe("choosing a layout", () => {
   test("shows no current layout for widths that aren't a preset", async ({
     page,
   }) => {
-    const document = await currentValue(page);
-    const [row] = document.rows;
+    const email = await currentValue(page);
+    const [row] = email.rows;
     if (row?.columns[0]) {
       row.columns[0].width = 40;
       row.columns.push({ blocks: [], id: "other", props: {}, width: 60 });
     }
-    await setValue(page, document);
+    await setValue(page, email);
     await expect(addToColumn(page)).toHaveCount(1);
 
     await selectRow(page, 1);

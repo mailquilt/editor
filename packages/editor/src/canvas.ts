@@ -9,7 +9,7 @@ import { renderFormatBar } from "./format-bar.js";
 import { blockIcon, ICONS } from "./icons.js";
 import { keyLabel } from "./key-map.js";
 import type { PanelApi } from "./panel-api.js";
-import { columnLabel, positionLabel } from "./places.js";
+import { columnLabel, positionLabel } from "./positions.js";
 import { styleProperties } from "./style-properties.js";
 import { UI_LANG } from "./theme.js";
 
@@ -201,7 +201,8 @@ const renderBlockToolbar = (api: PanelApi) => html`
 
 const renderBlock = (
   block: Block,
-  place: string,
+  /** Where the Block is, in words. */
+  label: string,
   api: PanelApi,
   state: CanvasState,
   events: CanvasEvents
@@ -212,7 +213,7 @@ const renderBlock = (
     <div
       aria-current=${selected ? "true" : nothing}
       aria-describedby=${rich ? "block-keys" : "block-keys-no-text"}
-      aria-label=${`${blockLabel(block.type)} Block, ${place}`}
+      aria-label=${`${blockLabel(block.type)} Block, ${label}`}
       class="block"
       data-block-id=${block.id}
       data-label=${blockLabel(block.type)}
@@ -241,7 +242,8 @@ const renderBlock = (
 
 const renderColumn = (
   { blocks, id, width }: Column,
-  place: string,
+  /** Where the Column is, in words. */
+  label: string,
   api: PanelApi,
   state: CanvasState,
   events: CanvasEvents
@@ -259,7 +261,7 @@ const renderColumn = (
       (block, blockIndex) =>
         renderBlock(
           block,
-          `${place}, ${positionLabel(blockIndex, blocks.length)}`,
+          `${label}, ${positionLabel(blockIndex, blocks.length)}`,
           api,
           state,
           events
@@ -275,11 +277,11 @@ const renderColumn = (
               </div>
               <div class="add-blocks" data-testid="add-blocks">
                 ${BLOCK_TYPES.map(
-                  ({ label, type }) => html`
+                  ({ label: typeLabel, type }) => html`
                     <button
-                      aria-label=${`Add ${label} Block here, ${place}`}
+                      aria-label=${`Add ${typeLabel} Block here, ${label}`}
                       class="icon-button"
-                      data-tooltip=${`Add ${label} Block here`}
+                      data-tooltip=${`Add ${typeLabel} Block here`}
                       type="button"
                       @click=${() =>
                         api.addBlock(type, { columnId: id, index: 0 })}

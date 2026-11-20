@@ -7,18 +7,21 @@ import type {
 } from "@mailquilt/core";
 
 import type { Announcements } from "./announcements.js";
-import { dropCommand } from "./block-dragging.js";
-import type { DragSource, DropPlace } from "./block-dragging.js";
-import type { Direction } from "./key-map.js";
-import type { RowPlace } from "./panel-api.js";
 import {
+  dropCommand,
   locate,
   locateRow,
   moveCommand,
   moveRowCommand,
   neighbourBlockId,
-} from "./places.js";
-import type { Selection } from "./selection.js";
+} from "./positions.js";
+import type {
+  Direction,
+  DragSource,
+  DropPosition,
+  RowPosition,
+} from "./positions.js";
+import type { EditorSelection } from "./selection.js";
 
 /**
  * What the editor does to the email's Blocks and Rows: adding, deleting and
@@ -32,17 +35,17 @@ interface EditingHost {
   /** Applies a Command and reports the change. */
   apply: (command: Command) => ApplyResult | undefined;
   /** The email as it is now. */
-  document: () => BlocksDocument | undefined;
-  announcements: Announcements;
+  email: () => BlocksDocument | undefined;
+  announcements: Pick<Announcements, "blockMoved" | "rowMoved" | "say">;
   selection: Pick<
-    Selection,
+    EditorSelection,
     | "blockId"
     | "focus"
     | "focusWhenRendered"
     | "revealBlock"
     | "revealRow"
     | "rowId"
-    | "selectPlaced"
+    | "selectLanded"
     | "selectRow"
   >;
 }
@@ -52,71 +55,70 @@ export type EditingActions = ReturnType<typeof createEditingActions>;
 export const createEditingActions = ({
   announcements,
   apply,
-  document: current,
+  email: current,
   selection,
 }: EditingHost) => {
   /** What the latest change moved, for undo and redo to announce. */
   let lastMoves: MoveOperation[] = [];
 
-  const selectedBlock = (document: BlocksDocument) => {
+  const selectedBlock = (email: BlocksDocument) => {
     const { blockId } = selection;
-    return blockId === undefined ? undefined : locate(document, blockId);
+    return blockId === undefined ? undefined : locate(email, blockId);
   };
 
-  const selectedRow = (document: BlocksDocument): RowPlace | undefined => {
+  const selectedRow = (email: BlocksDocument): RowPosition | undefined => {
     const { rowId } = selection;
-    return rowId === undefined ? undefined : locateRow(document, rowId);
+    return rowId === undefined ? undefined : locateRow(email, rowId);
   };
 
   /**
    * After the selected Block, at the end of the selected Row's first Column, or
    * else at the end of the email.
    */
-  const defaultBlockPlace = (document: BlocksDocument) => {
-    const selected = selectedBlock(document);
+  const defaultBlockPosition = (email: BlocksDocument) => {
+    const selected = selectedBlock(email);
     if (selected) {
       return { columnId: selected.columnId, index: selected.index + 1 };
     }
     const column =
-      selectedRow(document)?.row.columns[0] ??
-      document.rows.at(-1)?.columns.at(-1);
+      selectedRow(email)?.row.columns[0] ?? email.rows.at(-1)?.columns.at(-1);
     return column && { columnId: column.id, index: column.blocks.length };
   };
 
   return {
     /**
      * Adds a Block and selects it, ready to type in if it has text. By default it
-     * goes where `defaultBlockPlace` says.
+     * goes where `defaultBlockPosition` says.
      */
     addBlock: (
       blockType: string,
-      place?: { columnId: string; index: number }
+      position?: { columnId: string; index: number }
     ) => {
-      const document = current();
-      if (!document) {
+      const email = current();
+      if (!email) {
         return;
       }
-      const target = place ?? defaultBlockPlace(document);
+      const target = position ?? defaultBlockPosition(email);
       const result = apply(
         target
           ? { blockType, ...target, type: "insertBlock" }
           : { blockType, rowIndex: 0, type: "insertBlockInNewRow" }
       );
       if (result?.ok) {
-        selection.selectPlaced(result.createdId);
+        selection.selectLanded(result.createdId);
       }
     },
 
     /** After the selected Block's Row, or else at the end, and selects it. */
     addRow: (layout: RowLayout) => {
-      const document = current();
-      if (!document) {
+      const email = current();
+      if (!email) {
         return;
       }
       const rowIndex =
-        selectedRow(document)?.rowIndex ?? selectedBlock(document)?.rowIndex;
+        selectedRow(email)?.rowIndex ?? selectedBlock(email)?.rowIndex;
       const result = apply({
-        index: rowIndex === undefined ? document.rows.length : rowIndex + 1,
+        index: rowIndex === undefined ? email.rows.length : rowIndex + 1,
         layout,
         type: "insertRow",
       });
@@ -130,14 +132,14 @@ export const createEditingActions = ({
      * it would be lost. A button pressed with a key clicks with a `detail` of 0.
      */
     deleteBlock: (fromKeyboard: boolean) => {
-      const document = current();
+      const email = current();
       const { blockId } = selection;
-      if (!document || blockId === undefined) {
+      if (!email || blockId === undefined) {
         return;
       }
       const neighbour =
-        neighbourBlockId(document, blockId, "down") ??
-        neighbourBlockId(document, blockId, "up");
+        neighbourBlockId(email, blockId, "down") ??
+        neighbourBlockId(email, blockId, "up");
       if (apply({ blockId, type: "removeBlock" })?.ok) {
         announcements.say("Block deleted.");
         if (fromKeyboard && neighbour !== undefined) {
@@ -154,12 +156,12 @@ export const createEditingActions = ({
      * before, as it would be lost.
      */
     deleteRow: (rowId: string, fromKeyboard: boolean) => {
-      const document = current();
-      const place = document && locateRow(document, rowId);
+      const email = current();
+      const position = email && locateRow(email, rowId);
       const neighbour =
-        place &&
-        (document.rows[place.rowIndex + 1] ??
-          document.rows[place.rowIndex - 1]);
+        position &&
+        (email.rows[position.rowIndex + 1] ??
+          email.rows[position.rowIndex - 1]);
       if (apply({ rowId, type: "removeRow" })?.ok) {
         announcements.say("Row deleted.");
         if (fromKeyboard && neighbour) {
@@ -172,8 +174,8 @@ export const createEditingActions = ({
     },
 
     /** What's dropped: a Block or Row moved, or a new one, which is selected. */
-    drop: (source: DragSource, place: DropPlace) => {
-      const result = apply(dropCommand(source, place));
+    drop: (source: DragSource, position: DropPosition) => {
+      const result = apply(dropCommand(source, position));
       if (!result?.ok) {
         return;
       }
@@ -190,7 +192,7 @@ export const createEditingActions = ({
       if ("blockId" in source) {
         announcements.blockMoved(source.blockId);
       }
-      selection.selectPlaced(
+      selection.selectLanded(
         "blockId" in source ? source.blockId : result.createdId
       );
     },
@@ -219,12 +221,12 @@ export const createEditingActions = ({
 
     /** The selected Block, one step. */
     moveBlock: (direction: Direction) => {
-      const document = current();
+      const email = current();
       const { blockId } = selection;
-      if (!document || blockId === undefined) {
+      if (!email || blockId === undefined) {
         return;
       }
-      const command = moveCommand(document, blockId, direction);
+      const command = moveCommand(email, blockId, direction);
       if (command && apply(command)?.ok) {
         announcements.blockMoved(blockId);
         selection.revealBlock(blockId);
@@ -238,11 +240,11 @@ export const createEditingActions = ({
      * there. A Row can't move left or right.
      */
     moveRow: (rowId: string, direction: Direction) => {
-      const document = current();
+      const email = current();
       const command =
-        document &&
+        email &&
         (direction === "up" || direction === "down") &&
-        moveRowCommand(document, rowId, direction);
+        moveRowCommand(email, rowId, direction);
       if (!command) {
         announcements.say(`The Row can't move ${direction}.`);
         return;
@@ -262,12 +264,12 @@ export const createEditingActions = ({
 
     /** Focuses the selected Block's neighbour, if it has one that way. */
     selectNeighbour: (direction: Direction) => {
-      const document = current();
+      const email = current();
       const { blockId } = selection;
       const next =
-        document &&
+        email &&
         blockId !== undefined &&
-        neighbourBlockId(document, blockId, direction);
+        neighbourBlockId(email, blockId, direction);
       if (next) {
         selection.focus({ blockId: next, on: "block" });
       }

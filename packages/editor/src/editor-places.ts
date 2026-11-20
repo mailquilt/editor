@@ -31,7 +31,7 @@ const PLACES = {
   formatBar: { press: "keepsFocus" },
   /** The link field, in the format bar. */
   linkField: {},
-  /** The notice shown in place of the editor when there's no room to edit. */
+  /** The notice shown instead of the editor when there's no room to edit. */
   notice: {},
   /**
    * An item in the palette or the Rows tab, which a drag adds. Its
@@ -68,26 +68,26 @@ const PLACES = {
  */
 type Press = "grabs" | "keepsFocus";
 
-type EditorPlace = keyof typeof PLACES;
+type Place = keyof typeof PLACES;
 
 /** The copy that follows the pointer during a drag is no place. */
 const NOT_GHOST = ":not([data-drag-ghost], [data-drag-ghost] *)";
 
-const selectorOf = (places: readonly EditorPlace[]) =>
+const selectorOf = (places: readonly Place[]) =>
   places.map((place) => `[data-place="${place}"]${NOT_GHOST}`).join(", ");
 
 const ANY_PLACE = `[data-place]${NOT_GHOST}`;
 
 /** The innermost of `places` that `element` is in, or is. */
-export const closestPlace = (element: Element, ...places: EditorPlace[]) =>
+export const closestPlace = (element: Element, ...places: Place[]) =>
   element.closest<HTMLElement>(selectorOf(places));
 
 /** The first `place` in `root`, in document order. */
-export const findPlace = (root: ParentNode, place: EditorPlace) =>
+export const findPlace = (root: ParentNode, place: Place) =>
   root.querySelector<HTMLElement>(selectorOf([place]));
 
 /** Every `place` in `root`, in document order. */
-export const findPlaces = (root: ParentNode, place: EditorPlace) => [
+export const findPlaces = (root: ParentNode, place: Place) => [
   ...root.querySelectorAll<HTMLElement>(selectorOf([place])),
 ];
 
@@ -124,8 +124,8 @@ export const placeOf = <Accepted extends string>(
   return undefined;
 };
 
-const hasPress = (place: string): place is EditorPlace =>
-  Object.hasOwn(PLACES, place) && "press" in PLACES[place as EditorPlace];
+const hasPress = (place: string): place is Place =>
+  Object.hasOwn(PLACES, place) && "press" in PLACES[place as Place];
 
 /** What a press on `element` does, from the innermost place around it that says. */
 export const pressOn = (element: Element): Press | undefined => {

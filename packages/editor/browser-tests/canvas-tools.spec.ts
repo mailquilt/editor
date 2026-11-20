@@ -159,9 +159,9 @@ test.describe("the email's language", () => {
     // So the image loads rather than showing its stand-in.
     await serveImages(page.context());
     await page.goto("/");
-    const document = emailWith([[["A"]], [[]], [[]]]);
-    document.settings.language = "de";
-    document.rows[2]?.columns[0]?.blocks.push(
+    const email = emailWith([[["A"]], [[]], [[]]]);
+    email.settings.language = "de";
+    email.rows[2]?.columns[0]?.blocks.push(
       { id: "button", props: { label: "Los" }, type: "button" },
       {
         id: "image",
@@ -169,7 +169,7 @@ test.describe("the email's language", () => {
         type: "image",
       }
     );
-    await setValue(page, document);
+    await setValue(page, email);
     await textBlock(page).click();
 
     const elements = {
@@ -358,7 +358,7 @@ const verticalGap = async (a: Locator, b: Locator) => {
 
 test.describe("the selected Block's tools", () => {
   // In the last Column, the Block's toolbar is in the way of its text's end.
-  for (const [column, text, place, rows, nextToText] of [
+  for (const [column, text, where, rows, nextToText] of [
     ["first", "W", "at the email's start", [FOUR_COLUMNS], true],
     ["last", "Z", "at the email's start", [FOUR_COLUMNS], false],
     // Taller than the canvas's least height, so the email ends with the canvas.
@@ -377,7 +377,7 @@ test.describe("the selected Block's tools", () => {
       false,
     ],
   ] as const) {
-    test(`in the ${column} of four Columns ${place}, the text and every button of the Block's toolbar, the format bar and the link field take the pointer`, async ({
+    test(`in the ${column} of four Columns ${where}, the text and every button of the Block's toolbar, the format bar and the link field take the pointer`, async ({
       page,
     }) => {
       await openEmail(
@@ -655,7 +655,7 @@ const notice = (page: Page) =>
 test.describe("on a screen too narrow to edit in", () => {
   test.use({ viewport: { height: 800, width: 390 } });
 
-  test("says so in place of the editor, and still previews the email", async ({
+  test("says so instead of the editor, and still previews the email", async ({
     page,
   }) => {
     await page.goto("/");

@@ -11,8 +11,6 @@ import { html, LitElement, nothing } from "lit";
 
 import { createAnnouncements } from "./announcements.js";
 import { blockContentStyles, hasRichText } from "./block-content.js";
-import { createBlockDragging } from "./block-dragging.js";
-import type { BlockDragging } from "./block-dragging.js";
 import {
   MIN_EDITOR_WIDTH,
   renderFloatingToolbar,
@@ -20,15 +18,17 @@ import {
   renderRows,
 } from "./canvas.js";
 import type { CanvasEvents, CanvasState } from "./canvas.js";
+import { createDragging } from "./dragging.js";
+import type { Dragging } from "./dragging.js";
 import { createEditingActions } from "./editing-actions.js";
 import { findPlace } from "./editor-places.js";
 import { createLinkForm, formatBarStyles } from "./format-bar.js";
 import { createKeyDispatch } from "./key-dispatch.js";
 import { keyLabel } from "./key-map.js";
-import type { Action, Place } from "./key-map.js";
+import type { Action, KeyScope } from "./key-map.js";
 import { editorStyles } from "./mail-quilt-styles.js";
 import type { PanelActions, PanelApi } from "./panel-api.js";
-import { blocksIn } from "./places.js";
+import { blocksIn } from "./positions.js";
 import { createPreview, previewStyles, renderPreview } from "./preview.js";
 import { refuseFiles } from "./refuse-files.js";
 import { createSelection } from "./selection.js";
@@ -40,8 +40,8 @@ import type { TextBlockView } from "./text-block-view.js";
 import type { TextFormats } from "./text-commands.js";
 import { TEXT_SCHEMAS } from "./text-schema.js";
 import { themeTokens, UI_LANG, uiStyles } from "./theme.js";
-import { createToolPlacement } from "./tool-placement.js";
-import type { ToolPlacement } from "./tool-placement.js";
+import { createToolFitting } from "./tool-fitting.js";
+import type { ToolFitting } from "./tool-fitting.js";
 import { createTooltips } from "./tooltips.js";
 import type { Tooltips } from "./tooltips.js";
 import { takeValueSetEarly } from "./value-set-early.js";
@@ -53,9 +53,9 @@ const TYPING_PAUSE_MS = 1000;
  * The keys for an action, for the Block key help, which a screen reader reads,
  * so each key is named as `aria-keyshortcuts` names it: "A, B, or C".
  */
-const keysFor = (place: Place, action: Action) =>
+const keysFor = (scope: KeyScope, action: Action) =>
   new Intl.ListFormat(UI_LANG, { type: "disjunction" }).format(
-    keyLabel(place, action).shortcuts.split(" ")
+    keyLabel(scope, action).shortcuts.split(" ")
   );
 const EDIT_TEXT = keysFor("block", "editText");
 const BACK_TO_BLOCK = keysFor("text", "backToBlock");
@@ -77,7 +77,7 @@ export class MailQuilt extends LitElement {
 
   #editor: Editor | undefined;
   /** A private copy of the document last received from or sent to the host. */
-  #lastKnownDocument: BlocksDocument | undefined;
+  #lastKnownEmail: BlocksDocument | undefined;
   readonly #views = new Map<string, TextBlockView>();
   /** Edits in the same typing session merge into one undo step. */
   #typingSession = 0;
@@ -121,9 +121,9 @@ export class MailQuilt extends LitElement {
     requestUpdate: () => this.requestUpdate(),
   });
   /** Set while the element is connected. */
-  #dragging: BlockDragging | undefined;
+  #dragging: Dragging | undefined;
   /** Set while the element is connected, as it observes sizes on the page. */
-  #toolPlacement: ToolPlacement | undefined;
+  #toolFitting: ToolFitting | undefined;
   #tooltips: { element: HTMLElement; tooltips: Tooltips } | undefined;
   /** The last press began on the workspace itself, not after a drag from a Block. */
   #pressedOnWorkspace = false;
@@ -133,13 +133,13 @@ export class MailQuilt extends LitElement {
   #resizeObserver: ResizeObserver | undefined;
 
   readonly #announcements = createAnnouncements({
-    document: () => this.#editor?.getDocument(),
+    email: () => this.#editor?.getDocument(),
     requestUpdate: () => this.requestUpdate(),
   });
   readonly #editing = createEditingActions({
     announcements: this.#announcements,
     apply: (command) => this.#apply(command),
-    document: () => this.#editor?.getDocument(),
+    email: () => this.#editor?.getDocument(),
     selection: this.#selection,
   });
   readonly #keys = createKeyDispatch({
@@ -158,7 +158,8 @@ export class MailQuilt extends LitElement {
 
   /** Every change the Side panel, its settings and the toolbars make. */
   readonly #panelActions: PanelActions = {
-    addBlock: (blockType, place) => this.#editing.addBlock(blockType, place),
+    addBlock: (blockType, position) =>
+      this.#editing.addBlock(blockType, position),
     addRow: (layout) => this.#editing.addRow(layout),
     apply: (command) => this.#apply(command),
     cancelLink: () => this.#linkForm.cancel(),
@@ -227,23 +228,23 @@ export class MailQuilt extends LitElement {
    * trusted fires `mq-error`, and the current email stays as it was. Any value
    * is checked, such as a saved email read back from JSON, so any is allowed.
    */
-  set value(document: unknown) {
+  set value(value: unknown) {
     // Checked first, because a controlled host does this after every keystroke.
-    if (isSameDocument(document, this.#lastKnownDocument)) {
+    if (isSameDocument(value, this.#lastKnownEmail)) {
       return;
     }
     // Null too, which is what JSON.parse gives for nothing saved.
-    if (document === undefined || document === null) {
+    if (value === undefined || value === null) {
       this.#show(undefined);
       return;
     }
-    const loaded = loadDocument(document);
+    const loaded = loadDocument(value);
     if (!loaded.ok) {
       this.#emitError(loaded.reason);
       return;
     }
     // An older document only matches the current one once it has been migrated.
-    if (!isSameDocument(loaded.document, this.#lastKnownDocument)) {
+    if (!isSameDocument(loaded.document, this.#lastKnownEmail)) {
       this.#show(loaded.document);
     }
   }
@@ -268,14 +269,14 @@ export class MailQuilt extends LitElement {
       }
     });
     this.#resizeObserver.observe(this);
-    this.#dragging = createBlockDragging({
-      onDrop: (source, place) => this.#editing.drop(source, place),
+    this.#dragging = createDragging({
+      onDrop: (source, position) => this.#editing.drop(source, position),
       root: this.renderRoot as ShadowRoot,
     });
-    this.#toolPlacement = createToolPlacement(
-      this.renderRoot as ShadowRoot,
-      () => this.#tooltips?.tooltips.sync()
-    );
+    this.#toolFitting = createToolFitting({
+      onMove: () => this.#tooltips?.tooltips.sync(),
+      root: this.renderRoot as ShadowRoot,
+    });
     this.requestUpdate();
   }
 
@@ -284,8 +285,8 @@ export class MailQuilt extends LitElement {
     this.#resizeObserver?.disconnect();
     this.#dragging?.destroy();
     this.#dragging = undefined;
-    this.#toolPlacement?.destroy();
-    this.#toolPlacement = undefined;
+    this.#toolFitting?.destroy();
+    this.#toolFitting = undefined;
     this.#tooltips?.tooltips.destroy();
     this.#tooltips = undefined;
     this.#reset();
@@ -336,7 +337,7 @@ export class MailQuilt extends LitElement {
 
   protected override updated() {
     // First, so focus that moves scrolls to where the tools end up.
-    this.#toolPlacement?.sync();
+    this.#toolFitting?.sync();
     this.#selection.afterUpdate();
     if (this.isConnected && this.shadowRoot) {
       this.#syncTooltips(this.shadowRoot);
@@ -344,12 +345,12 @@ export class MailQuilt extends LitElement {
   }
 
   protected override render() {
-    const document = this.#rendered;
-    if (!document) {
+    const email = this.#rendered;
+    if (!email) {
       return nothing;
     }
-    const { settings } = document;
-    const api = this.#panelApi(document);
+    const { settings } = email;
+    const api = this.#panelApi(email);
 
     return html`
       ${renderPreview(this.#preview.shown, this.#preview.events)}
@@ -537,7 +538,7 @@ export class MailQuilt extends LitElement {
     if (element !== this.#tooltips?.element) {
       this.#tooltips?.tooltips.destroy();
       this.#tooltips = element
-        ? { element, tooltips: createTooltips(root, element) }
+        ? { element, tooltips: createTooltips({ root, tooltip: element }) }
         : undefined;
     }
     this.#tooltips?.tooltips.sync();
@@ -556,20 +557,20 @@ export class MailQuilt extends LitElement {
     // What was refused may be fine now, and the fields show what's come back.
     this.#drafts.clear();
     this.#editing.historyStepped(step);
-    const document = editor.getDocument();
-    for (const block of blocksIn(document)) {
+    const email = editor.getDocument();
+    for (const block of blocksIn(email)) {
       this.#views
         .get(block.id)
         ?.setContent(block.props.content as RichTextDocument);
     }
     // Undo and redo can add, remove or move Blocks, Columns and Rows.
     this.requestUpdate();
-    this.#emitChange(document);
+    this.#emitChange(email);
   }
 
-  #show(document: BlocksDocument | undefined) {
+  #show(email: BlocksDocument | undefined) {
     const hadFocus = Boolean(this.shadowRoot?.activeElement);
-    this.#lastKnownDocument = document;
+    this.#lastKnownEmail = email;
     this.#preview.forget();
     this.#announcements.clear();
     this.#drafts.clear();
@@ -577,7 +578,7 @@ export class MailQuilt extends LitElement {
     // uploading, or the connection down.
     this.#failedImages.clear();
     this.#reset();
-    this.#editor = document && createEditor({ document });
+    this.#editor = email && createEditor({ document: email });
     this.#editor?.subscribe(this.#editing.onOperations);
     this.requestUpdate();
     // Taking down the text views took focus out of the editor if it was in
@@ -587,15 +588,15 @@ export class MailQuilt extends LitElement {
     }
   }
 
-  #emitChange(document: BlocksDocument) {
+  #emitChange(email: BlocksDocument) {
     // A copy, because the host owns what it receives and may change it.
-    this.#lastKnownDocument = structuredClone(document);
+    this.#lastKnownEmail = structuredClone(email);
     this.#preview.forget();
     this.dispatchEvent(
       new CustomEvent("mq-change", {
         bubbles: true,
         composed: true,
-        detail: { document },
+        detail: { document: email },
       })
     );
   }

@@ -362,7 +362,7 @@ test.describe("moving a Block by its handle", () => {
   });
 });
 
-const placeCursorAfterTwo = async (page: Page) => {
+const putCursorAfterTwo = async (page: Page) => {
   await textOf(page, "Two").click();
   await moveCursorToLineEnd(page);
   await page.keyboard.type("A");
@@ -371,7 +371,7 @@ const placeCursorAfterTwo = async (page: Page) => {
 test.describe("the text cursor during a drag", () => {
   test("stays put when the drag is cancelled", async ({ page }) => {
     await open(page, [[["One", "Two"]]]);
-    await placeCursorAfterTwo(page);
+    await putCursorAfterTwo(page);
 
     await pickUp(page, handleOf(page, "One"));
     await page.keyboard.press("Escape");
@@ -386,7 +386,7 @@ test.describe("the text cursor during a drag", () => {
   }) => {
     const errors = collectErrors(page);
     await open(page, [[["One", "Two"]]]);
-    await placeCursorAfterTwo(page);
+    await putCursorAfterTwo(page);
     // The one change so far is the typing.
     await expect(changeCount(page)).toHaveText("1");
     const start = await centerOf(blockWith(page, "One"));
@@ -550,7 +550,9 @@ test.describe("while dragging", () => {
     await page.keyboard.press("Escape");
   });
 
-  test("the indicator shows the place between two Blocks", async ({ page }) => {
+  test("the indicator shows the position between two Blocks", async ({
+    page,
+  }) => {
     await open(page, [[["One", "Two", "Three"], ["Four"]]]);
     await pickUp(page, handleOf(page, "Four"));
     const two = await boxOf(blockWith(page, "Two"));
@@ -802,7 +804,7 @@ test.describe("dragging from the palette", () => {
     await expect(textBlock(page).nth(1)).toHaveText("Typed");
     expect(await structure(page)).toStrictEqual([[["One", "Typed"]]]);
 
-    // The new Block's settings show in place of the tabs.
+    // The new Block's settings show instead of the tabs.
     await openTab(page, "Content");
     await palette(page, "Text").click();
     await expect(structure(page)).resolves.toEqual([[["One", "Typed", ""]]]);
@@ -833,7 +835,7 @@ test.describe("dragging from the palette", () => {
     await expect(palette(page, "Text")).toBeVisible();
     await letGo(page);
 
-    // The new Block's settings show in place of the tabs.
+    // The new Block's settings show instead of the tabs.
     await openTab(page, "Content");
     expect(await boxOf(palette(page, "Text"))).toStrictEqual(before);
     await expect(dragMarks(page)).toHaveCount(0);
@@ -843,7 +845,7 @@ test.describe("dragging from the palette", () => {
     page,
   }) => {
     await open(page, [[["One", "Two"]]]);
-    await placeCursorAfterTwo(page);
+    await putCursorAfterTwo(page);
     await openTab(page, "Content");
     const start = await centerOf(palette(page, "Text"));
 
