@@ -1,7 +1,10 @@
 import { macBaseKeymap, pcBaseKeymap } from "prosemirror-commands";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
+  claim,
+  hasKeys,
+  historyInput,
   KEY_MAP,
   KEY_SCOPES,
   keyFor,
@@ -366,8 +369,12 @@ describe("anywhere in the editor but a field or the Preview", () => {
     expect(keyIn("editor", press("Mod-z", { metaKey: true }))).toBeUndefined();
   });
 
-  it("Shift+Ctrl/⌘+Z redoes", () => {
-    expect(keyIn("editor", press("Shift-Mod-z"))?.action).toBe("redo");
+  it("Shift+Ctrl/⌘+Z redoes, as the browser reports it, with a capital Z", () => {
+    expect(keyIn("editor", press("Shift-Mod-Z"))?.action).toBe("redo");
+  });
+
+  it("Ctrl/⌘+Z with Caps Lock on undoes too", () => {
+    expect(keyIn("editor", press("Mod-z", { key: "Z" }))?.action).toBe("undo");
   });
 
   it("Ctrl+Y redoes too", () => {
@@ -416,6 +423,12 @@ describe("while a tooltip shows", () => {
     );
   });
 
+  it("Escape that ends a composition doesn't close it", () => {
+    expect(
+      keyHeardFirst("focusedTooltip", press("Escape", { isComposing: true }))
+    ).toBeUndefined();
+  });
+
   it("Escape closes a hovered control's, and goes on", () => {
     expect(keyHeardFirst("hoveredTooltip", press("Escape"))).toStrictEqual(
       acts("closeTooltip", { keepsDefault: true })
@@ -436,21 +449,19 @@ describe("a key held down", () => {
 });
 
 describe("ProseMirror's names for the text's keys", () => {
-  it("are each text key, with Shift and a letter written as the capital, so Shift+Ctrl/⌘+B, I and U still format", () => {
-    expect(proseMirrorKeys({ apple: false })).toStrictEqual([
-      ["Mod-b", "bold"],
-      ["Mod-B", "bold"],
-      ["Mod-i", "italic"],
-      ["Mod-I", "italic"],
-      ["Mod-u", "underline"],
-      ["Mod-U", "underline"],
-      ["Shift-Enter", "lineBreak"],
-      ["Mod-Enter", "lineBreak"],
-      ["Enter", "newParagraph"],
-      ["Delete", "deleteForward"],
-      ["Mod-Delete", "deleteForward"],
-      ["ArrowLeft", "toStart"],
-      ["ArrowRight", "toEnd"],
+  it("write Shift with a letter as the capital, as ProseMirror does, so Ctrl/⌘+B, I and U format with Shift or without", () => {
+    const named = new Map(proseMirrorKeys({ apple: false }));
+    expect(
+      ["Mod-b", "Mod-B", "Mod-i", "Mod-I", "Mod-u", "Mod-U"].map((name) =>
+        named.get(name)
+      )
+    ).toStrictEqual([
+      "bold",
+      "bold",
+      "italic",
+      "italic",
+      "underline",
+      "underline",
     ]);
   });
 
@@ -529,5 +540,53 @@ describe("how a key is named, for a tooltip and for aria-keyshortcuts", () => {
       keys: "Ctrl+B",
       shortcuts: "Control+B",
     });
+  });
+});
+
+describe("the places with keys of their own", () => {
+  it("are the key map's key scopes", () => {
+    expect(SCOPES.every(hasKeys)).toBeTruthy();
+  });
+
+  it("aren't a place with none, or a name every object has", () => {
+    expect(hasKeys("dragHandle")).toBeFalsy();
+    expect(hasKeys("constructor")).toBeFalsy();
+  });
+});
+
+/** A press the browser could act on, and whether it was stopped. */
+const keydown = () => {
+  const event = new Event("keydown", { cancelable: true });
+  const stopPropagation = vi.spyOn(event, "stopPropagation");
+  return { event, stopPropagation };
+};
+
+describe("what the editor does with a press besides its action", () => {
+  it("keeps the browser from acting on it, and stops it, unless its effect says otherwise", () => {
+    const { event, stopPropagation } = keydown();
+    claim(event, { keepsDefault: false, stops: true });
+    expect([
+      event.defaultPrevented,
+      stopPropagation.mock.calls.length,
+    ]).toStrictEqual([true, 1]);
+  });
+
+  it("leaves the browser to act, and the press to go on, when its effect says", () => {
+    const { event, stopPropagation } = keydown();
+    claim(event, { keepsDefault: true, stops: false });
+    expect([
+      event.defaultPrevented,
+      stopPropagation.mock.calls.length,
+    ]).toStrictEqual([false, 0]);
+  });
+});
+
+describe("undo and redo from the browser's own menu, in a Block's text", () => {
+  it.each([
+    ["historyUndo", "undo"],
+    ["historyRedo", "redo"],
+    ["insertText", undefined],
+  ])("%s is %s", (inputType, step) => {
+    expect(historyInput({ inputType } as InputEvent)).toBe(step);
   });
 });

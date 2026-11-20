@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
 import { expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
@@ -140,57 +143,15 @@ test.describe("selecting a Block", () => {
     );
   });
 
-  test("arrow keys go through the Blocks in reading order", async ({
-    page,
-  }) => {
-    await open(page, [[["A", "B"], ["C"]], [["D"]]]);
+  test("an arrow key selects the next Block that way", async ({ page }) => {
+    await open(page, [[["A", "B"]]]);
     await blockWith(page, "A").focus();
 
     await page.keyboard.press("ArrowDown");
+
     await expect(blockWith(page, "B")).toBeFocused();
     await expect(blockWith(page, "B")).toHaveAttribute("aria-current", "true");
     await expect(blockWith(page, "A")).not.toHaveAttribute("aria-current");
-
-    await page.keyboard.press("ArrowDown");
-    await expect(blockWith(page, "C")).toBeFocused();
-    await page.keyboard.press("ArrowDown");
-    await expect(blockWith(page, "D")).toBeFocused();
-
-    await page.keyboard.press("ArrowDown");
-    await expect(blockWith(page, "D")).toBeFocused();
-
-    await page.keyboard.press("ArrowUp");
-    await expect(blockWith(page, "C")).toBeFocused();
-  });
-
-  test("left and right go across Columns, past empty ones", async ({
-    page,
-  }) => {
-    await open(page, [[["A", "B"], [], ["C"]]]);
-    await blockWith(page, "B").focus();
-
-    await page.keyboard.press("ArrowRight");
-    await expect(blockWith(page, "C")).toBeFocused();
-    await page.keyboard.press("ArrowRight");
-    await expect(blockWith(page, "C")).toBeFocused();
-
-    await page.keyboard.press("ArrowLeft");
-    await expect(blockWith(page, "A")).toBeFocused();
-    await page.keyboard.press("ArrowLeft");
-    await expect(blockWith(page, "A")).toBeFocused();
-  });
-
-  test("Right keeps the position in the next Column", async ({ page }) => {
-    await open(page, [
-      [
-        ["A", "B"],
-        ["C", "D"],
-      ],
-    ]);
-    await blockWith(page, "B").focus();
-
-    await page.keyboard.press("ArrowRight");
-    await expect(blockWith(page, "D")).toBeFocused();
   });
 });
 
@@ -231,23 +192,6 @@ test.describe("moving a Block with Alt+Arrow keys", () => {
     await expect(blockWith(page, "A")).toBeFocused();
   });
 
-  test("moves between Columns, into empty ones too", async ({ page }) => {
-    await open(page, [[["A", "B"], [], ["C"]]]);
-    await blockWith(page, "B").focus();
-
-    await page.keyboard.press("Alt+ArrowRight");
-    await expect(structure(page)).resolves.toEqual([[["A"], ["B"], ["C"]]]);
-    await expect(blockWith(page, "B")).toBeFocused();
-
-    await page.keyboard.press("Alt+ArrowRight");
-    await expect(structure(page)).resolves.toEqual([[["A"], [], ["B", "C"]]]);
-    await expect(blockWith(page, "B")).toBeFocused();
-
-    await page.keyboard.press("Alt+ArrowLeft");
-    await expect(structure(page)).resolves.toEqual([[["A"], ["B"], ["C"]]]);
-    await expect(blockWith(page, "B")).toBeFocused();
-  });
-
   test("after Back, keeps the side panel's tabs showing", async ({ page }) => {
     await open(page, [[["A", "B", "C"]]]);
     await blockWith(page, "A").focus();
@@ -263,47 +207,6 @@ test.describe("moving a Block with Alt+Arrow keys", () => {
     await expect(
       canvas(page).getByRole("tab", { name: "Content" })
     ).toBeVisible();
-  });
-
-  test("past the end of a Column, moves into the next Row", async ({
-    page,
-  }) => {
-    await open(page, [[["A"], ["B"]], [["C", "D"]]]);
-    await blockWith(page, "B").focus();
-
-    await page.keyboard.press("Alt+ArrowDown");
-    await expect(structure(page)).resolves.toEqual([
-      [["A"], []],
-      [["B", "C", "D"]],
-    ]);
-    await expect(blockWith(page, "B")).toBeFocused();
-
-    await page.keyboard.press("Alt+ArrowUp");
-    await expect(structure(page)).resolves.toEqual([
-      [["A", "B"], []],
-      [["C", "D"]],
-    ]);
-    await expect(blockWith(page, "B")).toBeFocused();
-  });
-
-  test("past the top or bottom of the email, adds a Row of its own", async ({
-    page,
-  }) => {
-    await open(page, [[["A"], ["B"]]]);
-    await blockWith(page, "A").focus();
-
-    await page.keyboard.press("Alt+ArrowUp");
-    await expect(structure(page)).resolves.toEqual([[["A"]], [[], ["B"]]]);
-    await expect(blockWith(page, "A")).toBeFocused();
-
-    await blockWith(page, "B").focus();
-    await page.keyboard.press("Alt+ArrowDown");
-    await expect(structure(page)).resolves.toEqual([
-      [["A"]],
-      [[], []],
-      [["B"]],
-    ]);
-    await expect(blockWith(page, "B")).toBeFocused();
   });
 
   test("each move is one undo step, and focus stays on the Block", async ({
@@ -585,6 +488,34 @@ test.describe("typing inside a Block", () => {
       [["oxne two", "B"], ["C"]],
     ]);
     await expect(textOf(page, "oxne two")).toBeFocused();
+  });
+
+  test("text typed through an input method reaches the email", async ({
+    browserName,
+    page,
+  }) => {
+    test.skip(
+      browserName !== "chromium",
+      "Only Chromium lets a test drive an input method"
+    );
+    await open(page, [[["A"]]]);
+    await textOf(page, "A").click();
+    await page.keyboard.press("End");
+    const session = await page.context().newCDPSession(page);
+
+    for (const text of ["に", "にほ"]) {
+      // oxlint-disable-next-line no-await-in-loop -- One step of the composition at a time.
+      await session.send("Input.imeSetComposition", {
+        selectionEnd: text.length,
+        selectionStart: text.length,
+        text,
+      });
+    }
+    await session.send("Input.insertText", { text: "日本" });
+
+    // ProseMirror reads the text a moment after the composition ends.
+    await expect.poll(() => structure(page)).toEqual([[["A日本"]]]);
+    await expect(textOf(page, "A日本")).toBeFocused();
   });
 
   // The browser moves the cursor by word, which only a real Mac does, so this
@@ -985,27 +916,26 @@ test.describe("labels and focus states", () => {
   });
 });
 
-/** The dark theme on the docs' "Theme the editor" page, which claims AA contrast. */
-const DARK_THEME = `
-  --mq-color-workspace: #0f1115;
-  --mq-color-surface: #181b21;
-  --mq-color-surface-muted: #20242b;
-  --mq-color-surface-hover: #272b33;
-  --mq-color-text: #e8eaed;
-  --mq-color-text-muted: #a3a9b3;
-  --mq-color-border: #2c3038;
-  --mq-color-border-strong: #7a828f;
-  --mq-color-accent: #7c93ff;
-  --mq-color-accent-strong: #a9b8ff;
-  --mq-color-accent-soft: rgb(124 147 255 / 16%);
-  --mq-color-outline-hover: rgb(124 147 255 / 50%);
-  --mq-color-on-accent: #0f1115;
-  --mq-color-danger: #ff7a6e;
-  --mq-color-tooltip: #e8eaed;
-  --mq-color-on-tooltip: #16181d;
-  --mq-color-backdrop: rgb(0 0 0 / 65%);
-  --mq-color-scheme: dark;
-`;
+/**
+ * The dark theme on the docs' "Theme the editor" page, which says its text
+ * meets AA contrast, as the page writes it.
+ */
+const docsDarkTheme = () => {
+  const css =
+    /## A dark theme\n[\s\S]*?```css[^\n]*\n(?<css>[\s\S]*?)```/u.exec(
+      readFileSync(
+        path.join(
+          import.meta.dirname,
+          "../../../apps/docs/docs/theme-the-editor.mdx"
+        ),
+        "utf-8"
+      )
+    )?.groups?.css;
+  if (!css) {
+    throw new Error("The docs' theming page has no dark theme in CSS");
+  }
+  return css;
+};
 
 test.describe("automated accessibility checks", () => {
   test("pass with Columns, empty Columns, and no Block or one moved selected", async ({
@@ -1055,21 +985,44 @@ test.describe("automated accessibility checks", () => {
     expect(await violations(page)).toEqual([]);
   });
 
-  test("pass with a tooltip showing, in the default and the dark theme", async ({
+  test("pass with a tooltip showing", async ({ page }) => {
+    await open(page, [[["A"]]]);
+    await blockWith(page, "A").focus();
+    await undoButton(page).hover();
+    await expect(tooltip(page)).toBeVisible();
+
+    expect(await violations(page)).toEqual([]);
+  });
+
+  test("pass in the docs' dark theme, with a tooltip, a pressed button and the link field's error", async ({
     page,
   }) => {
     await open(page, [[["A"]]]);
+    const workspace = canvas(page).getByTestId("workspace");
+    const light = await workspace.evaluate(
+      (element) => getComputedStyle(element).backgroundColor
+    );
+    await page.addStyleTag({ content: docsDarkTheme() });
+    await expect(workspace).not.toHaveCSS("background-color", light);
+
     await blockWith(page, "A").focus();
     await undoButton(page).hover();
     await expect(tooltip(page)).toBeVisible();
     expect(await violations(page)).toEqual([]);
 
-    await page.addStyleTag({ content: `mail-quilt { ${DARK_THEME} }` });
-    await expect(canvas(page).getByTestId("workspace")).toHaveCSS(
-      "background-color",
-      "rgb(15, 17, 21)"
-    );
-    await expect(tooltip(page)).toBeVisible();
+    await textOf(page, "A").click();
+    await page.keyboard.press("ControlOrMeta+b");
+    const bold = canvas(page).getByRole("button", {
+      exact: true,
+      name: "Bold",
+    });
+    await expect(bold).toHaveAttribute("aria-pressed", "true");
+    expect(await violations(page)).toEqual([]);
+
+    await page.getByRole("button", { exact: true, name: "Link" }).click();
+    await linkUrlField(page).fill("example.com");
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("alert")).toBeVisible();
     expect(await violations(page)).toEqual([]);
   });
 

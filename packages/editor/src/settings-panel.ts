@@ -298,7 +298,7 @@ const typedIn = (control: HTMLInputElement | HTMLSelectElement): Typed => ({
 });
 
 /** What typed text means. Empty asks for the property to be removed. */
-const fieldValue = (field: SettingsField, typed: Typed) => {
+export const fieldValue = (field: SettingsField, typed: Typed) => {
   if (typed.badInput) {
     return Number.NaN;
   }

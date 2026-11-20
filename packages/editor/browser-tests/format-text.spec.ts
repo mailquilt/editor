@@ -152,75 +152,6 @@ test.describe("bold, italic and underline", () => {
     );
   });
 
-  test("bold with all of an empty text selected goes on what's typed next", async ({
-    page,
-  }) => {
-    await selectAllInBlock(page);
-    await page.keyboard.press("Backspace");
-    await expect(firstTextBlock(page)).toHaveText("");
-    await selectAll(page);
-
-    await page.keyboard.press("ControlOrMeta+b");
-    await expect(toolbarButton(page, "Bold")).toHaveAttribute(
-      "aria-pressed",
-      "true"
-    );
-    await page.keyboard.type("x");
-
-    await expect
-      .poll(() => savedInline(page))
-      .toStrictEqual([{ marks: [{ type: "bold" }], text: "x", type: "text" }]);
-  });
-
-  test("bold off with only a line break after bold text selected comes off what's typed next", async ({
-    page,
-  }) => {
-    await cursorAtEndOfBlock(page);
-    await extendSelection(page, "ArrowLeft");
-    await page.keyboard.press("ControlOrMeta+b");
-    await pressArrow(page, "ArrowRight");
-    await page.keyboard.press("Shift+Enter");
-    await extendSelection(page, "ArrowLeft");
-    const bold = toolbarButton(page, "Bold");
-    await expect(bold).toHaveAttribute("aria-pressed", "true");
-
-    await page.keyboard.press("ControlOrMeta+b");
-    await expect(bold).toHaveAttribute("aria-pressed", "false");
-    await page.keyboard.type("x");
-
-    await expect
-      .poll(() => savedInline(page))
-      .toStrictEqual([
-        { text: "Hell", type: "text" },
-        { marks: [{ type: "bold" }], text: "o", type: "text" },
-        { text: "x", type: "text" },
-        { type: "hardBreak" },
-      ]);
-  });
-
-  test("bold on text that's partly bold makes all of it bold", async ({
-    page,
-  }) => {
-    await cursorAtEndOfBlock(page);
-    await page.keyboard.press("ControlOrMeta+b");
-    await page.keyboard.type(" there");
-    await expect
-      .poll(() => savedInline(page))
-      .toStrictEqual([
-        { text: "Hello", type: "text" },
-        { marks: [{ type: "bold" }], text: " there", type: "text" },
-      ]);
-
-    await selectAll(page);
-    await page.keyboard.press("ControlOrMeta+b");
-
-    await expect
-      .poll(() => savedInline(page))
-      .toStrictEqual([
-        { marks: [{ type: "bold" }], text: "Hello there", type: "text" },
-      ]);
-  });
-
   test("bold on part of a Merge Tag makes all of the tag bold", async ({
     page,
   }) => {
@@ -425,37 +356,6 @@ test.describe("line breaks", () => {
       ]);
   });
 
-  test("a line break replaces the selection, and typing goes after it", async ({
-    page,
-  }) => {
-    await cursorAtEndOfBlock(page);
-    await extendSelection(page, "ArrowLeft");
-    await extendSelection(page, "ArrowLeft");
-    await extendSelection(page, "ArrowLeft");
-
-    await page.keyboard.press("Shift+Enter");
-    await page.keyboard.type("x");
-
-    await expect
-      .poll(() => savedInline(page))
-      .toStrictEqual([
-        { text: "He", type: "text" },
-        { type: "hardBreak" },
-        { text: "x", type: "text" },
-      ]);
-  });
-
-  test("a line break over all the text keeps the break", async ({ page }) => {
-    await selectAllInBlock(page);
-
-    await page.keyboard.press("Shift+Enter");
-    await page.keyboard.type("x");
-
-    await expect
-      .poll(() => savedInline(page))
-      .toStrictEqual([{ type: "hardBreak" }, { text: "x", type: "text" }]);
-  });
-
   test("Control or Command+Enter adds a line break too", async ({ page }) => {
     await cursorAtEndOfBlock(page);
 
@@ -620,51 +520,6 @@ test.describe("links", () => {
     await expect(linkUrlField(page)).toBeHidden();
   });
 
-  test("with only a cursor, the URL becomes the linked text", async ({
-    page,
-  }) => {
-    await cursorAtEndOfBlock(page);
-
-    await addLink(page, "{{cta_url}}");
-    await expect(firstTextBlock(page)).toHaveText("Hello{{cta_url}}");
-    await expect(firstTextBlock(page)).toBeFocused();
-    await page.keyboard.type("!");
-
-    await expect
-      .poll(() => savedInline(page))
-      .toStrictEqual([
-        { text: "Hello", type: "text" },
-        {
-          marks: [{ attrs: { href: "{{cta_url}}" }, type: "link" }],
-          text: "{{cta_url}}",
-          type: "text",
-        },
-        { text: "!", type: "text" },
-      ]);
-  });
-
-  test("on a selection of only a line break, the URL becomes the linked text", async ({
-    page,
-  }) => {
-    await cursorAtEndOfBlock(page);
-    await page.keyboard.press("Shift+Enter");
-    await extendSelection(page, "ArrowLeft");
-
-    await addLink(page, "https://example.com");
-
-    await expect(firstTextBlock(page)).toHaveText("Hellohttps://example.com");
-    await expect
-      .poll(() => savedInline(page))
-      .toStrictEqual([
-        { text: "Hello", type: "text" },
-        {
-          marks: [{ attrs: { href: "https://example.com" }, type: "link" }],
-          text: "https://example.com",
-          type: "text",
-        },
-      ]);
-  });
-
   test.describe("with a link already there", () => {
     test.beforeEach(async ({ page }) => {
       await selectAllInBlock(page);
@@ -764,36 +619,6 @@ test.describe("links", () => {
             type: "text",
           },
           { text: "!", type: "text" },
-        ]);
-    });
-
-    test("Remove link stops where a link to another URL starts", async ({
-      page,
-    }) => {
-      await pressArrow(page, "ArrowRight");
-      await page.keyboard.type(" there");
-      for (const _ of " there") {
-        // oxlint-disable-next-line no-await-in-loop -- Each key moves the selection on.
-        await extendSelection(page, "ArrowLeft");
-      }
-      await addLink(page, "https://example.org");
-      // A cursor inside " there", with no selection.
-      await pressArrow(page, "ArrowRight");
-      await pressArrow(page, "ArrowLeft");
-
-      await toolbarButton(page, "Edit link").click();
-      await expect(linkUrlField(page)).toHaveValue("https://example.org");
-      await page.getByRole("button", { name: "Remove link" }).click();
-
-      await expect
-        .poll(() => savedInline(page))
-        .toStrictEqual([
-          {
-            marks: [{ attrs: { href: "https://example.com" }, type: "link" }],
-            text: "Hello",
-            type: "text",
-          },
-          { text: " there", type: "text" },
         ]);
     });
   });

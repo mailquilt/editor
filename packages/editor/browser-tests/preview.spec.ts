@@ -16,6 +16,7 @@ import {
   previewEmail,
   setValue,
   stopClock,
+  structure,
   test,
   textBlock,
   undoByKey,
@@ -376,6 +377,17 @@ test.describe("closing", () => {
     await page.keyboard.type("x");
 
     await expect(textBlock(page)).toHaveText("Hello");
+  });
+
+  test("Ctrl/⌘+Z doesn't undo behind it", async ({ page }) => {
+    await focusStartOfTextBlock(page);
+    await page.keyboard.type("a");
+    await previewButton(page).click();
+    await expect(previewEmail(page)).toContainText("aHello");
+
+    await undoByKey(page);
+
+    expect(await structure(page)).toStrictEqual([[["aHello"]]]);
   });
 });
 

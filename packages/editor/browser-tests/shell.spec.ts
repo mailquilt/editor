@@ -167,12 +167,25 @@ test.describe("moving an email with JSON", () => {
     await page.keyboard.type("Later ");
     await expect(textBlock(page)).toHaveText("Later Exported Hello");
     const changesBefore = Number(await changeCount(page).textContent());
+    await shell(page).evaluate((element) => {
+      (element as MailQuiltShell).addEventListener(
+        "mq-change",
+        ({ detail }) => {
+          (window as unknown as { changed: unknown }).changed = detail.document;
+        }
+      );
+    });
 
     await importFile(page, text);
 
     await expect(textBlock(page)).toHaveText("Exported Hello");
-    // The host hears an import, as it would any other change.
+    // The host hears an import, as it would any other change, with the email.
     await expect(changeCount(page)).toHaveText(String(changesBefore + 1));
+    expect(
+      await page.evaluate(
+        () => (window as unknown as { changed: unknown }).changed
+      )
+    ).toStrictEqual(JSON.parse(text));
   });
 
   test("importing the open email isn't a change", async ({ page }) => {
@@ -205,6 +218,8 @@ test.describe("moving an email with JSON", () => {
       "A link must start with http:"
     );
     await expect(textBlock(page)).toHaveText("Hello");
+    // mq-error is for an email the host sets, not one the person imports.
+    expect(await page.getByTestId("errors").textContent()).toBe("");
   });
 
   test("a file that can't be read is refused, and says so", async ({
@@ -898,6 +913,18 @@ test.describe("a saved email standing in for the host's", () => {
     await setShellValue(page, emailWith([[["Hello"]]]));
 
     await expect(textBlock(page)).toHaveText("Saved");
+  });
+
+  test("gives way to nothing from the host, which empties the editor", async ({
+    page,
+  }) => {
+    await saveFirst(page);
+    await page.goto(`/shell.html?save-key=${key}`);
+    await expect(textBlock(page)).toHaveText("Saved");
+
+    await setShellValue(page, undefined);
+
+    await expect(textBlock(page)).toHaveCount(0);
   });
 
   test("gives way to a different email from the host", async ({ page }) => {
