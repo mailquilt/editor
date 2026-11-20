@@ -1,7 +1,7 @@
 import type { RichTextDocument } from "@mailquilt/core";
 import { MERGE_TAG } from "@mailquilt/core/internal";
 import { baseKeymap } from "prosemirror-commands";
-import { keymap } from "prosemirror-keymap";
+import { keydownHandler } from "prosemirror-keymap";
 import { Fragment, Slice } from "prosemirror-model";
 import type {
   Mark,
@@ -17,6 +17,7 @@ import {
 } from "prosemirror-transform";
 import { Decoration, DecorationSet, EditorView } from "prosemirror-view";
 
+import { place } from "./editor-places.js";
 import { proseMirrorKeys } from "./key-map.js";
 import { pastedHtmlParser, withoutStyles } from "./pasted-html.js";
 import { createTextCommands } from "./text-commands.js";
@@ -186,6 +187,11 @@ interface TextBlockViewHost {
   label: string;
   onChange: (content: RichTextDocument) => void;
   onFocus: () => void;
+  /**
+   * Called for each key the text's own keys, or ProseMirror's base keys,
+   * answered, which the key map then leaves alone.
+   */
+  onKeyAnswered: (event: KeyboardEvent) => void;
   /** Called after anything that may change what `formats` returns. */
   onStateChange: () => void;
   /** Called when the next change shouldn't merge with the last as typing. */
@@ -205,6 +211,7 @@ export const createTextBlockView = ({
   label,
   onChange,
   onFocus,
+  onKeyAnswered,
   onStateChange,
   onTypingBreak,
   schema,
@@ -214,12 +221,25 @@ export const createTextBlockView = ({
   let lang = "";
   const commands = createTextCommands(schema, { canBold });
   const textKeys = proseMirrorKeys();
+  const answerTextKey = keydownHandler(
+    Object.fromEntries(
+      textKeys.map(([key, action]) => [key, commands.forKey[action]])
+    )
+  );
+  // The keys the key map leaves to ProseMirror, such as Backspace.
+  const answerBaseKey = keydownHandler(
+    Object.fromEntries(
+      Object.entries(baseKeymap).filter(
+        ([key]) => !textKeys.some(([named]) => named === key)
+      )
+    )
+  );
 
   const view = new EditorView(element, {
     attributes: {
       "aria-label": label,
       "aria-multiline": "true",
-      "data-place": "text",
+      "data-place": place("text"),
       role: "textbox",
       tabindex: "0",
     },
@@ -298,19 +318,18 @@ export const createTextBlockView = ({
     state: EditorState.create({
       doc: schema.nodeFromJSON(content),
       plugins: [
-        keymap(
-          Object.fromEntries(
-            textKeys.map(([key, action]) => [key, commands.forKey[action]])
-          )
-        ),
-        // The keys the key map leaves to ProseMirror, such as Backspace.
-        keymap(
-          Object.fromEntries(
-            Object.entries(baseKeymap).filter(
-              ([key]) => !textKeys.some(([named]) => named === key)
-            )
-          )
-        ),
+        new Plugin({
+          props: {
+            handleKeyDown: (target, event) => {
+              const answered =
+                answerTextKey(target, event) || answerBaseKey(target, event);
+              if (answered) {
+                onKeyAnswered(event);
+              }
+              return answered;
+            },
+          },
+        }),
         keepMergeTagsWhole,
       ],
     }),

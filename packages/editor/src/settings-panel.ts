@@ -5,6 +5,7 @@ import { css, html, nothing } from "lit";
 import { keyed } from "lit/directives/keyed.js";
 import { live } from "lit/directives/live.js";
 
+import { place } from "./editor-places.js";
 import { ICONS } from "./icons.js";
 
 /** One group of controls, and what its fields change. */
@@ -345,6 +346,7 @@ const renderField = (
       aria-invalid=${refused ? "true" : "false"}
       autocomplete="off"
       data-draft-key=${key}
+      data-place=${draft ? place("settingsDraft") : nothing}
       ?disabled=${field.disabled ?? false}
       id=${id}
       max=${limits?.max ?? nothing}
@@ -462,7 +464,7 @@ export const renderSettingsPanel = (
   section: SettingsSection,
   events: SettingsPanelEvents
 ) => html`
-  <div class="settings" data-place="settings">
+  <div class="settings" data-place=${place("settings")}>
     <div class="section">
       <fieldset>
         <legend>${section.legend}</legend>
@@ -535,6 +537,7 @@ export const createSettingsDrafts = ({
     onCommit: (section, field, typed) => commit(section, field, typed, false),
     onInput: (section, field, typed) => {
       const key = draftKey(section, field);
+      const held = drafts.has(key);
       const refusals = drafts.get(key)?.refusals ?? 0;
       // What isn't a number reads as empty, as if an empty field were unchanged.
       if (
@@ -547,6 +550,10 @@ export const createSettingsDrafts = ({
         onEnter(fieldValue(field, typed));
       } else {
         drafts.set(key, { ...typed, refusals });
+      }
+      // The field is a place of its own while it holds a draft.
+      if (drafts.has(key) !== held) {
+        requestUpdate();
       }
     },
   };
@@ -566,5 +573,5 @@ export const createSettingsDrafts = ({
     requestUpdate();
   };
 
-  return { clear: () => drafts.clear(), discard, draftKeyOf, events };
+  return { clear: () => drafts.clear(), discard, events };
 };

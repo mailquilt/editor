@@ -2,6 +2,8 @@ import { macBaseKeymap, pcBaseKeymap } from "prosemirror-commands";
 import { describe, expect, it } from "vitest";
 
 import {
+  KEY_MAP,
+  KEY_SCOPES,
   keyFor,
   keyHeardFirst,
   keyLabel,
@@ -51,6 +53,12 @@ const keyIn = (
     selectedText: true,
     ...context,
   });
+
+const SCOPES = Object.keys(KEY_MAP) as KeyScope[];
+
+/** The key scopes within the email, or within the editor too. */
+const scopesWithin = (...within: string[]) =>
+  SCOPES.filter((scope) => within.includes(KEY_SCOPES[scope].within));
 
 /** The press acts, and the browser does nothing else with it. */
 const acts = (action: string, extra: object = {}) => ({
@@ -161,12 +169,12 @@ describe("in a Block's text", () => {
     ["Windows and Linux", false],
     ["Apple devices", true],
   ])(
-    "isn't the editor's for a key ProseMirror answers first, on %s",
+    "has no key ProseMirror answers first, which would never reach it, on %s",
     (_platform, apple) => {
-      const answered = TEXT_KEYS.flatMap(({ aliases = [], keys }) => [
-        ...keys,
-        ...aliases,
-      ]).filter((name) => keyIn("text", press(name, { apple }), { apple }));
+      const answered = [
+        ...TEXT_KEYS.flatMap(({ aliases = [], keys }) => [...keys, ...aliases]),
+        ...Object.keys(apple ? macBaseKeymap : pcBaseKeymap),
+      ].filter((name) => keyIn("text", press(name, { apple }), { apple }));
       expect(answered).toStrictEqual([]);
     }
   );
@@ -287,14 +295,7 @@ describe("in a settings field with typed text that isn't applied", () => {
 });
 
 describe("Ctrl/⌘+K", () => {
-  it.each([
-    "block",
-    "text",
-    "blockToolbar",
-    "formatBar",
-    "rowToolbar",
-    "email",
-  ] as const)(
+  it.each(scopesWithin("email"))(
     "from %s, opens the link field in the selected Block's text, and stops there",
     (scope) => {
       expect(keyIn(scope, press("Mod-k"))).toStrictEqual(
@@ -311,26 +312,18 @@ describe("Ctrl/⌘+K", () => {
 });
 
 describe("Alt+← and Alt+→", () => {
-  // Some key scopes move a Block or Row with them, but not during a drag.
-  it.each([
-    ["block", acts("keepPage")],
-    ["blockToolbar", acts("keepPage")],
-    ["formatBar", acts("keepPage")],
-    ["rowToolbar", acts("keepPage")],
-    ["email", acts("keepPage")],
-    ["panelTabs", acts("keepPage")],
-    ["settingsDraft", acts("keepPage")],
-    ["editor", acts("keepPage")],
-    ["preview", acts("keepPage")],
-    ["notice", acts("keepPage")],
-    // The field keeps every key to itself.
-    ["linkField", acts("keepPage", { stops: true })],
-  ] as const)(
+  // Some key scopes move a Block or Row with them, but not during a drag. A
+  // field that keeps every key to itself, such as the link field, stops them.
+  it.each(SCOPES)(
     "from %s, even during a drag, don't go forward a page",
-    (scope, binding) => {
+    (scope) => {
       expect(
         keyIn(scope, press("Alt-ArrowRight"), { dragging: true })
-      ).toStrictEqual(binding);
+      ).toStrictEqual(
+        acts("keepPage", {
+          stops: keyIn(scope, press("a"))?.action === "typeInField",
+        })
+      );
     }
   );
 });
@@ -347,20 +340,14 @@ describe("while a Block or Row is dragged, which the key would change", () => {
 });
 
 describe("anywhere in the editor but a field or the Preview", () => {
-  it.each([
-    "block",
-    "text",
-    "blockToolbar",
-    "formatBar",
-    "rowToolbar",
-    "email",
-    "panelTabs",
-    "editor",
-  ] as const)("from %s, Ctrl/⌘+Z undoes, and stops there", (scope) => {
-    expect(keyIn(scope, press("Mod-z"))).toStrictEqual(
-      acts("undo", { stops: true })
-    );
-  });
+  it.each(scopesWithin("email", "editor"))(
+    "from %s, Ctrl/⌘+Z undoes, and stops there",
+    (scope) => {
+      expect(keyIn(scope, press("Mod-z"))).toStrictEqual(
+        acts("undo", { stops: true })
+      );
+    }
+  );
 
   it("with nothing to undo or redo, Ctrl/⌘+Z and Shift+Ctrl/⌘+Z reach the host page", () => {
     expect(keyIn("text", press("Mod-z"), { canUndo: false })).toBeUndefined();

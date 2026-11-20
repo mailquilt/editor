@@ -11,6 +11,7 @@ import { css, html, nothing } from "lit";
 import type { TemplateResult } from "lit";
 
 import { BLOCK_VIEWS } from "./block-types.js";
+import { place } from "./editor-places.js";
 import { ICONS } from "./icons.js";
 import type { PanelApi } from "./panel-api.js";
 import { columnLabel } from "./positions.js";
@@ -367,7 +368,7 @@ const renderPanelHeader = (
   subtitle: string,
   api: PanelApi
 ) => html`
-  <div class="panel-header" data-place="controls">
+  <div class="panel-header" data-place=${place("controls")}>
     <button
       aria-label="Back"
       class="icon-button back-button"
@@ -411,7 +412,7 @@ const renderRowProperties = ({ row, rowIndex }: RowPosition, api: PanelApi) => {
         <div
           aria-labelledby="row-layout-title"
           class="layout-choices"
-          data-place="controls"
+          data-place=${place("controls")}
           role="group"
         >
           ${ROW_LAYOUTS.map(
@@ -478,7 +479,7 @@ const renderTabPanel = (api: PanelApi) => {
         <div
           aria-label="Add content"
           class="tiles"
-          data-place="controls"
+          data-place=${place("controls")}
           role="group"
         >
           ${BLOCK_TYPES.map(
@@ -487,7 +488,7 @@ const renderTabPanel = (api: PanelApi) => {
                 aria-label=${`Add ${label} Block`}
                 class="tile"
                 data-block-type=${type}
-                data-place="paletteItem"
+                data-place=${place("paletteItem")}
                 type="button"
                 @click=${() => api.addBlock(type)}
               >
@@ -511,7 +512,7 @@ const renderTabPanel = (api: PanelApi) => {
         <div
           aria-label="Add a Row"
           class="layout-tiles"
-          data-place="controls"
+          data-place=${place("controls")}
           role="group"
         >
           ${ROW_LAYOUTS.map(
@@ -519,7 +520,7 @@ const renderTabPanel = (api: PanelApi) => {
               <button
                 aria-label=${`Add ${layout} Row`}
                 class="layout-tile"
-                data-place="paletteItem"
+                data-place=${place("paletteItem")}
                 data-row-layout=${layout}
                 type="button"
                 @click=${() => api.addRow(layout)}
@@ -554,7 +555,7 @@ const renderTabs = (api: PanelApi) => {
       <div
         aria-label="Side panel"
         class="tabs"
-        data-place="panelTabs"
+        data-place=${place("panelTabs")}
         role="tablist"
       >
         ${PANEL_TABS.map(
@@ -599,7 +600,11 @@ const renderPanelView = (api: PanelApi) => {
 };
 
 export const renderSidePanel = (api: PanelApi) => html`
-  <div class="side-panel" data-place="sidePanel" data-testid="side-panel">
+  <div
+    class="side-panel"
+    data-place=${place("sidePanel")}
+    data-testid="side-panel"
+  >
     <div class="side-panel-inner" data-testid="side-panel-content">
       ${renderPanelView(api)}
     </div>

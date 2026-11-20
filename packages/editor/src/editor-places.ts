@@ -2,8 +2,9 @@
  * The places in the editor that key handling, focus, presses and drags find,
  * each declared here once. An element is one by its `data-place`, and code finds
  * the editor's own elements only through this module, never by a class, which
- * is for styles. A place with keys of its own has them in the key map under the
- * same name.
+ * is for styles. An element takes its `data-place` from `place`, so every name
+ * is one of these, and a place with keys of its own has them in the key map
+ * under its name, which has to be one of these too.
  */
 const PLACES = {
   /** A Block on the canvas. Its `data-block-id` names it. */
@@ -50,6 +51,8 @@ const PLACES = {
   rowToolbar: { press: "keepsFocus" },
   /** The settings fields the Side panel shows. */
   settings: {},
+  /** A settings field holding typed text that isn't applied yet. */
+  settingsDraft: {},
   /** The Side panel. */
   sidePanel: {},
   /** A Block's text, made by ProseMirror. */
@@ -68,13 +71,16 @@ const PLACES = {
  */
 type Press = "grabs" | "keepsFocus";
 
-type Place = keyof typeof PLACES;
+export type Place = keyof typeof PLACES;
+
+/** The `data-place` of an element that's `name`. */
+export const place = (name: Place) => name;
 
 /** The copy that follows the pointer during a drag is no place. */
 const NOT_GHOST = ":not([data-drag-ghost], [data-drag-ghost] *)";
 
 const selectorOf = (places: readonly Place[]) =>
-  places.map((place) => `[data-place="${place}"]${NOT_GHOST}`).join(", ");
+  places.map((name) => `[data-place="${name}"]${NOT_GHOST}`).join(", ");
 
 const ANY_PLACE = `[data-place]${NOT_GHOST}`;
 
@@ -82,13 +88,13 @@ const ANY_PLACE = `[data-place]${NOT_GHOST}`;
 export const closestPlace = (element: Element, ...places: Place[]) =>
   element.closest<HTMLElement>(selectorOf(places));
 
-/** The first `place` in `root`, in document order. */
-export const findPlace = (root: ParentNode, place: Place) =>
-  root.querySelector<HTMLElement>(selectorOf([place]));
+/** The first place called `name` in `root`, in document order. */
+export const findPlace = (root: ParentNode, name: Place) =>
+  root.querySelector<HTMLElement>(selectorOf([name]));
 
-/** Every `place` in `root`, in document order. */
-export const findPlaces = (root: ParentNode, place: Place) => [
-  ...root.querySelectorAll<HTMLElement>(selectorOf([place])),
+/** Every place called `name` in `root`, in document order. */
+export const findPlaces = (root: ParentNode, name: Place) => [
+  ...root.querySelectorAll<HTMLElement>(selectorOf([name])),
 ];
 
 /** A Block on the canvas by its ID. */
@@ -107,29 +113,29 @@ export const findRow = (root: ParentNode, rowId: string) =>
  * The innermost place `element` is in, or is, that `accepts` takes, such as
  * one with keys of its own.
  */
-export const placeOf = <Accepted extends string>(
+export const placeOf = <Accepted extends Place>(
   element: Element,
-  accepts: (place: string) => place is Accepted
+  accepts: (name: string) => name is Accepted
 ): Accepted | undefined => {
   for (
     let at = element.closest<HTMLElement>(ANY_PLACE);
     at;
     at = at.parentElement?.closest<HTMLElement>(ANY_PLACE) ?? null
   ) {
-    const { place = "" } = at.dataset;
-    if (accepts(place)) {
-      return place;
+    const { place: name = "" } = at.dataset;
+    if (accepts(name)) {
+      return name;
     }
   }
   return undefined;
 };
 
-const hasPress = (place: string): place is Place =>
-  Object.hasOwn(PLACES, place) && "press" in PLACES[place as Place];
+const hasPress = (name: string): name is Place =>
+  Object.hasOwn(PLACES, name) && "press" in PLACES[name as Place];
 
 /** What a press on `element` does, from the innermost place around it that says. */
 export const pressOn = (element: Element): Press | undefined => {
-  const place = placeOf(element, hasPress);
-  const entry: { press?: Press } | undefined = place && PLACES[place];
+  const name = placeOf(element, hasPress);
+  const entry: { press?: Press } | undefined = name && PLACES[name];
   return entry?.press;
 };

@@ -1,3 +1,4 @@
+import type { Place } from "./editor-places.js";
 import type { Direction } from "./positions.js";
 
 /**
@@ -8,34 +9,9 @@ import type { Direction } from "./positions.js";
 
 /**
  * A key scope: where in the editor a key is answered. That's the innermost
- * place in `editor-places.ts` around the key that has keys of its own, or a
- * settings field holding a draft.
+ * place around the key, in `editor-places.ts`, that has keys here.
  */
-export type KeyScope =
-  /** On a Block itself. */
-  | "block"
-  /** In a Block's text, after ProseMirror has passed on the key. */
-  | "text"
-  /** The selected Block's toolbar. */
-  | "blockToolbar"
-  /** The format bar beside the text being edited. */
-  | "formatBar"
-  /** The link field, in the format bar. */
-  | "linkField"
-  /** A Row's toolbar. */
-  | "rowToolbar"
-  /** Elsewhere in the email, such as an empty Column's buttons. */
-  | "email"
-  /** The side panel's tabs. */
-  | "panelTabs"
-  /** A settings field holding typed text that isn't applied yet. */
-  | "settingsDraft"
-  /** Anywhere else in the editor, such as the side panel or floating toolbar. */
-  | "editor"
-  /** The Preview dialog, and the email in it. */
-  | "preview"
-  /** The notice shown instead of the editor when there's no room to edit. */
-  | "notice";
+export type KeyScope = keyof typeof KEY_SCOPES;
 
 /**
  * The key scopes where a key is heard before it reaches any place in the
@@ -249,74 +225,124 @@ const MOVE_BLOCK = arrows("Alt-", {
   waitsForDrag: true,
 });
 
-// oxlint-disable-next-line sort-keys -- In the order of KeyScope.
-const KEY_MAP: Record<KeyScope, readonly Entry[]> = {
-  block: [
-    ...arrows("", { action: "selectBlock", stops: false, waitsForDrag: true }),
-    ...MOVE_BLOCK,
-    KEEP_PAGE,
-    // Otherwise the new paragraph lands in the text that just took focus.
-    {
-      action: "editText",
-      anyModifiers: true,
-      keys: ["Enter"],
-      stops: false,
-      waitsForDrag: true,
-    },
-    OPEN_LINK,
-    ...HISTORY,
-  ],
-  // ProseMirror answers TEXT_KEYS before these.
-  text: [
-    escape("backToBlock"),
-    KEEP_PAGE,
-    { action: "focusFormatBar", keys: ["Alt-F10"], stops: false },
-    OPEN_LINK,
-    ...HISTORY,
-  ],
-  blockToolbar: [
-    escape("backToBlock"),
-    ...MOVE_BLOCK,
-    KEEP_PAGE,
-    ...TOOLBAR,
-    OPEN_LINK,
-    ...HISTORY,
-  ],
-  formatBar: [
-    escape("backToText"),
-    ...TOOLBAR,
-    KEEP_PAGE,
-    OPEN_LINK,
-    ...HISTORY,
-  ],
-  // The field has its own typing and undo.
-  linkField: [
-    escape("cancelLink"),
-    { ...KEEP_PAGE, stops: true },
-    { action: "typeInField", keepsDefault: true, keys: "any", stops: true },
-  ],
-  rowToolbar: [
-    // A Row moves only up and down, so Alt+← and Alt+→ only keep the page.
-    ...arrows("Alt-", {
-      action: "moveRow",
-      stops: false,
-      waitsForDrag: true,
-    }).filter(({ direction }) => direction === "up" || direction === "down"),
-    KEEP_PAGE,
-    ...TOOLBAR,
-    OPEN_LINK,
-    ...HISTORY,
-  ],
-  email: [KEEP_PAGE, OPEN_LINK, ...HISTORY],
-  panelTabs: [...TOOLBAR, KEEP_PAGE, ...HISTORY],
-  // The field has its own undo, as the link field does.
-  settingsDraft: [escape("discardDraft"), KEEP_PAGE],
-  editor: [KEEP_PAGE, ...HISTORY],
+/**
+ * What a key scope is within, which gives it the keys for there after its own.
+ * Alt+← and Alt+→ keep the page from anywhere, as `KEEP_PAGE` says.
+ */
+type Within =
+  /** In the email, where Ctrl/⌘+K, undo and redo work. */
+  | "email"
+  /** Elsewhere in the editor, such as the Side panel, where undo and redo work. */
+  | "editor"
+  /** A field, with its own typing and undo. */
+  | "field"
+  /** Outside the editor, such as the Preview. */
+  | "outside";
+
+// oxlint-disable-next-line sort-keys -- From the email outwards.
+const KEYS_WITHIN: Record<Within, readonly Entry[]> = {
+  email: [OPEN_LINK, ...HISTORY],
+  editor: HISTORY,
+  field: [],
+  outside: [],
+};
+
+/** A key scope's keys. */
+interface ScopeKeys {
+  /** Every key goes no further, and one with no rule here is the field's own. */
+  keepsEveryKey?: true;
+  /** Its own keys, which come before those for what it's within. */
+  keys: readonly Entry[];
+  within: Within;
+}
+
+// oxlint-disable-next-line sort-keys -- From the email outwards.
+const KEY_SCOPES = {
+  block: {
+    keys: [
+      ...arrows("", {
+        action: "selectBlock",
+        stops: false,
+        waitsForDrag: true,
+      }),
+      ...MOVE_BLOCK,
+      // Otherwise the new paragraph lands in the text that just took focus.
+      {
+        action: "editText",
+        anyModifiers: true,
+        keys: ["Enter"],
+        stops: false,
+        waitsForDrag: true,
+      },
+    ],
+    within: "email",
+  },
+  // ProseMirror answers TEXT_KEYS and its base keys first, and these never
+  // act on a key it answered.
+  text: {
+    keys: [
+      escape("backToBlock"),
+      { action: "focusFormatBar", keys: ["Alt-F10"], stops: false },
+    ],
+    within: "email",
+  },
+  blockToolbar: {
+    keys: [escape("backToBlock"), ...MOVE_BLOCK, ...TOOLBAR],
+    within: "email",
+  },
+  formatBar: { keys: [escape("backToText"), ...TOOLBAR], within: "email" },
+  linkField: {
+    keepsEveryKey: true,
+    keys: [escape("cancelLink")],
+    within: "field",
+  },
+  rowToolbar: {
+    keys: [
+      // A Row moves only up and down, so Alt+← and Alt+→ only keep the page.
+      ...arrows("Alt-", {
+        action: "moveRow",
+        stops: false,
+        waitsForDrag: true,
+      }).filter(({ direction }) => direction === "up" || direction === "down"),
+      ...TOOLBAR,
+    ],
+    within: "email",
+  },
+  // Elsewhere in the email, such as an empty Column's buttons.
+  email: { keys: [], within: "email" },
+  panelTabs: { keys: TOOLBAR, within: "editor" },
+  settingsDraft: { keys: [escape("discardDraft")], within: "field" },
+  // Anywhere else in the editor, such as the Side panel or floating toolbar.
+  editor: { keys: [], within: "editor" },
   // The browser closes the dialog. Stopping the press keeps a host's own
   // dialog around the editor open.
-  preview: [escape("closePreview", { keepsDefault: true }), KEEP_PAGE],
-  notice: [KEEP_PAGE],
+  preview: {
+    keys: [escape("closePreview", { keepsDefault: true })],
+    within: "outside",
+  },
+  notice: { keys: [], within: "outside" },
+} satisfies Partial<Record<Place, ScopeKeys>>;
+
+/** In a field that keeps every key, a key with no rule there. */
+const TYPE_IN_FIELD: Entry = {
+  action: "typeInField",
+  keepsDefault: true,
+  keys: "any",
+  stops: true,
 };
+
+/** A key scope's own keys, then those for what it's within. */
+const entriesOf = ({ keepsEveryKey, keys, within }: ScopeKeys) => {
+  const entries = [...keys, ...KEYS_WITHIN[within], KEEP_PAGE];
+  return keepsEveryKey
+    ? [...entries.map((entry) => ({ ...entry, stops: true })), TYPE_IN_FIELD]
+    : entries;
+};
+
+const KEY_MAP = {} as Record<KeyScope, readonly Entry[]>;
+for (const [scope, keys] of Object.entries(KEY_SCOPES)) {
+  KEY_MAP[scope as KeyScope] = entriesOf(keys);
+}
 
 // oxlint-disable-next-line sort-keys -- In the order of HeardFirst.
 const HEARD_FIRST: Record<HeardFirst, readonly Entry<HeardFirstAction>[]> = {
@@ -336,8 +362,11 @@ const HEARD_FIRST: Record<HeardFirst, readonly Entry<HeardFirstAction>[]> = {
   ],
 };
 
-/** Read by the test that checks the keyboard page names every key, and no other. */
-export { HEARD_FIRST, KEY_MAP };
+/**
+ * Read by the tests, which take the key scopes from here, and check the
+ * keyboard page names every key, and no other.
+ */
+export { HEARD_FIRST, KEY_MAP, KEY_SCOPES };
 
 // As ProseMirror decides it for Bold and the other text keys, so they all agree.
 // A server importing the editor may have no navigator.

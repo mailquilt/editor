@@ -21,7 +21,7 @@ import type { CanvasEvents, CanvasState } from "./canvas.js";
 import { createDragging } from "./dragging.js";
 import type { Dragging } from "./dragging.js";
 import { createEditingActions } from "./editing-actions.js";
-import { findPlace } from "./editor-places.js";
+import { findPlace, place } from "./editor-places.js";
 import { createLinkForm, formatBarStyles } from "./format-bar.js";
 import { createKeyDispatch } from "./key-dispatch.js";
 import { keyLabel } from "./key-map.js";
@@ -207,7 +207,7 @@ export class MailQuilt extends LitElement {
 
   constructor() {
     super();
-    // On the way in, because ProseMirror handles the key before it bubbles here.
+    // On the way in, because a Block's text answers a key before it bubbles here.
     this.addEventListener("keydown", this.#keys.onKeydownCapture, {
       capture: true,
     });
@@ -319,6 +319,7 @@ export class MailQuilt extends LitElement {
               this.#linkForm.close();
               this.#selection.onTextFocus(block.id);
             },
+            onKeyAnswered: (event) => this.#keys.onTextKeyAnswered(event),
             onStateChange: () => this.#syncFormats(),
             onTypingBreak: () => {
               this.#typingSession += 1;
@@ -367,7 +368,7 @@ export class MailQuilt extends LitElement {
       ${this.#narrow ? renderNarrowNotice(api) : nothing}
       <div
         class="ui frame editor"
-        data-place="editor"
+        data-place=${place("editor")}
         data-testid="editor"
         lang=${UI_LANG}
         part="frame"
@@ -376,14 +377,14 @@ export class MailQuilt extends LitElement {
       >
         <div
           class="canvas-area"
-          data-place="workspace"
+          data-place=${place("workspace")}
           data-testid="workspace"
           @click=${this.#onWorkspaceClick}
           @pointerdown=${this.#onWorkspacePointerdown}
         >
           <div
             class="email"
-            data-place="email"
+            data-place=${place("email")}
             data-testid="email"
             @beforeinput=${this.#keys.onBeforeInput}
             style=${styleProperties({
@@ -397,7 +398,7 @@ export class MailQuilt extends LitElement {
             ${renderRows(api, this.#canvasState, this.#canvasEvents)}
             <div
               class="drop-indicator"
-              data-place="dropIndicator"
+              data-place=${place("dropIndicator")}
               data-testid="drop-indicator"
               hidden
             ></div>
@@ -407,7 +408,7 @@ export class MailQuilt extends LitElement {
         ${renderSidePanel(api)}
         <div
           class="ui tooltip"
-          data-place="tooltip"
+          data-place=${place("tooltip")}
           hidden
           role="tooltip"
         ></div>

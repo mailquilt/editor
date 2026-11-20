@@ -7,7 +7,7 @@ import {
   keyFor,
   keyHeardFirst,
 } from "./key-map.js";
-import type { Action, DirectedAction, KeyScope } from "./key-map.js";
+import type { Action, DirectedAction } from "./key-map.js";
 import type { Direction } from "./positions.js";
 import { focusToolbarButton } from "./selection.js";
 import type { EditorSelection, ToolbarStep } from "./selection.js";
@@ -15,17 +15,14 @@ import type { EditorSelection, ToolbarStep } from "./selection.js";
 /**
  * Hears every key pressed in the editor, and input to a Block's text, and does
  * what the key map says for where it was pressed. The rules are all in the key
- * map; this says what each of its actions does here.
+ * map; this says what each of its actions does here. A Block's text answers its
+ * own keys first, and says which, and the key map leaves those alone.
  */
 
 interface KeyDispatchHost {
   /** Whether there's a step to take that way. */
   canStep: (step: "redo" | "undo") => boolean;
-  drafts: {
-    discard: (event: KeyboardEvent) => void;
-    /** The settings field the key was pressed in, while it holds a draft. */
-    draftKeyOf: (event: KeyboardEvent) => string | undefined;
-  };
+  drafts: { discard: (event: KeyboardEvent) => void };
   editing: Pick<EditingActions, "moveBlock" | "moveRow" | "selectNeighbour">;
   isDragging: () => boolean;
   linkForm: { cancel: () => void; open: () => void };
@@ -60,17 +57,8 @@ export const createKeyDispatch = ({
 }: KeyDispatchHost) => {
   /** The last key pressed, and where, before it was held down. */
   let lastPress: { key: string; target: EventTarget | undefined } | undefined;
-
-  /**
-   * Where in the editor a key was pressed: the innermost place with keys of its
-   * own, or a settings field holding a draft.
-   */
-  const scopeOfKey = (event: KeyboardEvent): KeyScope | undefined => {
-    const scope = placeOf(event.target as Element, hasKeys);
-    return scope === "editor" && drafts.draftKeyOf(event) !== undefined
-      ? "settingsDraft"
-      : scope;
-  };
+  /** The keys a Block's text answered. */
+  const answeredInText = new WeakSet<KeyboardEvent>();
 
   /** What each action in the key map does here. */
   const actions: Record<
@@ -136,12 +124,15 @@ export const createKeyDispatch = ({
     },
 
     /**
-     * Every key pressed in the editor, once what it was pressed on, such as a
-     * Block's text, has had it. The key map says what it does there.
+     * Every key pressed in the editor but one a Block's text answered, which
+     * acts on a key before it bubbles out. The key map says what it does there.
      */
     onKeydown: (event: Event) => {
       const keydown = event as KeyboardEvent;
-      const scope = scopeOfKey(keydown);
+      if (answeredInText.has(keydown)) {
+        return;
+      }
+      const scope = placeOf(keydown.target as Element, hasKeys);
       const binding =
         scope &&
         keyFor(scope, keydown, {
@@ -178,6 +169,11 @@ export const createKeyDispatch = ({
       if (binding) {
         claim(event, binding);
       }
+    },
+
+    /** A key a Block's text answered, which the key map then leaves alone. */
+    onTextKeyAnswered: (event: KeyboardEvent) => {
+      answeredInText.add(event);
     },
   };
 };
