@@ -2,14 +2,12 @@ import type {
   ApplyResult,
   BlocksDocument,
   Command,
-  Row,
   RowLayout,
 } from "@mailquilt/core";
 
-import type { Direction } from "./key-map.js";
-import type { BlockPlace } from "./places.js";
+import type { BlockPosition, Direction, RowPosition } from "./positions.js";
+import type { PanelTab } from "./selection.js";
 import type { SettingsPanelEvents } from "./settings-panel.js";
-import type { PanelTab } from "./side-panel.js";
 import type { TextFormats, ToggleableMark } from "./text-commands.js";
 
 /**
@@ -24,12 +22,6 @@ import type { TextFormats, ToggleableMark } from "./text-commands.js";
  */
 export type PanelApi = PanelState & PanelActions;
 
-/** A Row, and where it is. */
-export interface RowPlace {
-  row: Row;
-  rowIndex: number;
-}
-
 /** What the panels show. A new copy for each update. */
 export interface PanelState {
   /** The email as the editor shows it. */
@@ -38,9 +30,9 @@ export interface PanelState {
   canUndo: boolean;
   canRedo: boolean;
   /** The selected Block, and where it is. Unset while a Row is selected. */
-  selectedBlock: BlockPlace | undefined;
+  selectedBlock: BlockPosition | undefined;
   /** The selected Row, and where it is. Unset while a Block is selected. */
-  selectedRow: RowPlace | undefined;
+  selectedRow: RowPosition | undefined;
   /** Whether focus is in the selected Block's text or its format bar. */
   editingText: boolean;
   /**
@@ -49,7 +41,7 @@ export interface PanelState {
    */
   formats: TextFormats | undefined;
 
-  /** Whether the Side panel shows what's selected, in place of its tabs. */
+  /** Whether the Side panel shows what's selected, instead of its tabs. */
   showsSettings: boolean;
   tab: PanelTab;
   /**
@@ -69,12 +61,12 @@ export interface PanelActions {
   apply: (command: Command) => ApplyResult | undefined;
   /**
    * Adds a Block and selects it, ready to type in if it has text. Without a
-   * place, it goes after the selected Block, at the end of the selected Row's
+   * position, it goes after the selected Block, at the end of the selected Row's
    * first Column, or else at the end of the email.
    */
   addBlock: (
     blockType: string,
-    place?: { columnId: string; index: number }
+    position?: { columnId: string; index: number }
   ) => void;
   /** After the selected Row or Block's Row, or else at the end, and selects it. */
   addRow: (layout: RowLayout) => void;
@@ -89,7 +81,7 @@ export interface PanelActions {
   /** In the selected Block's text. */
   toggleMark: (mark: ToggleableMark) => void;
   insertLineBreak: () => void;
-  /** Selects a Row in place of any Block, and shows its settings. */
+  /** Selects a Row instead of any Block, and shows its settings. */
   selectRow: (rowId: string) => void;
   openPreview: () => void;
 

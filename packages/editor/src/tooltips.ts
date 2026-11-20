@@ -27,6 +27,12 @@ const scrollTargetsOf = (root: ShadowRoot): EventTarget[] => [
   ...shadowRootsUpFrom(root),
 ];
 
+interface TooltipsHost {
+  root: ShadowRoot;
+  /** The element that shows the tooltip's words. */
+  tooltip: HTMLElement;
+}
+
 /**
  * One tooltip for every control under `root` with `data-tooltip`, meeting WCAG
  * 2.2 SC 1.4.13: it opens on hover and on keyboard focus, stays while the
@@ -40,10 +46,7 @@ const scrollTargetsOf = (root: ShadowRoot): EventTarget[] => [
  * drag shows, so that a host page that transforms the editor can't move it
  * away from its control.
  */
-export const createTooltips = (
-  root: ShadowRoot,
-  tooltip: HTMLElement
-): Tooltips => {
+export const createTooltips = ({ root, tooltip }: TooltipsHost): Tooltips => {
   let hovered: HTMLElement | undefined;
   /** Escape or a press closed it, until hover or focus moves to another control. */
   let dismissed: HTMLElement | undefined;
@@ -59,7 +62,7 @@ export const createTooltips = (
     }
   };
 
-  const place = (trigger: HTMLElement) => {
+  const moveBeside = (trigger: HTMLElement) => {
     const box = trigger.getBoundingClientRect();
     const { height, width } = tooltip.getBoundingClientRect();
     const above = box.top - GAP_PX - height;
@@ -89,7 +92,7 @@ export const createTooltips = (
     }
     tooltip.textContent = trigger.dataset.tooltip ?? "";
     show(true);
-    place(trigger);
+    moveBeside(trigger);
   };
 
   const onPointerOver = (event: PointerEvent) => {

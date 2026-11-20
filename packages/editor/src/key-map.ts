@@ -1,13 +1,17 @@
+import type { Direction } from "./positions.js";
+
 /**
- * Every key the editor answers to, for each place it can be pressed: what the
- * key does there, and whether the press stops there. Handlers ask `keyFor` and
- * hold no rules of their own.
+ * Every key the editor answers to, in each key scope: what the key does there,
+ * and whether the press stops there. Handlers ask `keyFor` and hold no rules of
+ * their own.
  */
 
-export type Direction = "down" | "left" | "right" | "up";
-
-/** Where in the editor a key is pressed, each a place in `editor-places.ts`. */
-export type Place =
+/**
+ * A key scope: where in the editor a key is answered. That's the innermost
+ * place in `editor-places.ts` around the key that has keys of its own, or a
+ * settings field holding a draft.
+ */
+export type KeyScope =
   /** On a Block itself. */
   | "block"
   /** In a Block's text, after ProseMirror has passed on the key. */
@@ -30,12 +34,12 @@ export type Place =
   | "editor"
   /** The Preview dialog, and the email in it. */
   | "preview"
-  /** The notice shown in place of the editor when there's no room to edit. */
+  /** The notice shown instead of the editor when there's no room to edit. */
   | "notice";
 
 /**
- * Where a key is heard before it reaches any place in the editor, by the
- * module that's listening then.
+ * The key scopes where a key is heard before it reaches any place in the
+ * editor, by the module that's listening then.
  */
 export type HeardFirst =
   /** Anywhere on the page while a Block or Row is dragged. */
@@ -159,7 +163,7 @@ const arrows = (
     keys: [`${prefix}${key}`],
   }));
 
-/** Undo and redo for the whole editor, in place of the browser's own. */
+/** Undo and redo for the whole editor, instead of the browser's own. */
 const HISTORY: Entry[] = [
   { action: "undo", keys: ["Mod-z"], needs: "canUndo", stops: true },
   // Where both redo, Ctrl+Y is the one named first.
@@ -245,8 +249,8 @@ const MOVE_BLOCK = arrows("Alt-", {
   waitsForDrag: true,
 });
 
-// oxlint-disable-next-line sort-keys -- In the order of Place.
-const KEY_MAP: Record<Place, readonly Entry[]> = {
+// oxlint-disable-next-line sort-keys -- In the order of KeyScope.
+const KEY_MAP: Record<KeyScope, readonly Entry[]> = {
   block: [
     ...arrows("", { action: "selectBlock", stops: false, waitsForDrag: true }),
     ...MOVE_BLOCK,
@@ -512,7 +516,7 @@ const applies = (
 };
 
 /** Whether a place in the editor has keys of its own here. */
-export const hasKeys = (place: string): place is Place =>
+export const hasKeys = (place: string): place is KeyScope =>
   Object.hasOwn(KEY_MAP, place);
 
 /** What the first of `entries` that matches a press does, if one does. */
@@ -548,16 +552,16 @@ const bindingIn = <Of extends string>(
     : { action: entry.action, direction: entry.direction, ...effect };
 };
 
-/** What a press in `place` does, or undefined if it isn't the editor's. */
+/** What a press in `scope` does, or undefined if it isn't the editor's. */
 export const keyFor = (
-  place: Place,
+  scope: KeyScope,
   press: KeyPress,
   context: Partial<Context> = {}
-) => bindingIn(KEY_MAP[place], press, context);
+) => bindingIn(KEY_MAP[scope], press, context);
 
 /** What a press heard first does, or undefined if it goes on as usual. */
-export const keyHeardFirst = (place: HeardFirst, press: KeyPress) =>
-  bindingIn(HEARD_FIRST[place], press, {});
+export const keyHeardFirst = (scope: HeardFirst, press: KeyPress) =>
+  bindingIn(HEARD_FIRST[scope], press, {});
 
 /** How a key is named for people. */
 export interface KeyLabel {
@@ -615,16 +619,16 @@ const nameAll = (names: readonly string[], apple: boolean): KeyLabel => {
 };
 
 /**
- * How the keys for `action` in `place` are named, from the key map. For an
+ * How the keys for `action` in `scope` are named, from the key map. For an
  * arrow key's action, `direction` names one way, or else they're all named.
  */
 export const keyLabel = (
-  place: Place,
+  scope: KeyScope,
   action: Action,
   { apple = IS_MAC, direction }: { apple?: boolean; direction?: Direction } = {}
 ) =>
   nameAll(
-    KEY_MAP[place]
+    KEY_MAP[scope]
       .filter(
         (entry) =>
           entry.action === action &&

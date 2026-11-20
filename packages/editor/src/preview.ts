@@ -71,7 +71,7 @@ export const previewStyles = css`
     color: var(--mq-color-danger);
   }
 
-  /* Where the email will be, so it takes the same place when it arrives. */
+  /* Where the email will be, so it takes the same room when it arrives. */
   .preview-loading {
     background: var(--mq-color-workspace);
     flex: 1;
@@ -292,19 +292,23 @@ interface PreviewHost {
  * The Preview's state: the opening on screen, if any, and the current
  * document's HTML once it has been rendered.
  */
-export const createPreview = (host: PreviewHost) => {
+export const createPreview = ({
+  dialog,
+  exportHtml,
+  requestUpdate,
+}: PreviewHost) => {
   let shown: Preview | undefined;
   let rendered: string | undefined;
 
   const events: PreviewEvents = {
-    onClose: () => host.dialog()?.close(),
+    onClose: () => dialog()?.close(),
     onClosed: () => {
       // This event is queued, so it can arrive after the next opening.
-      if (host.dialog()?.open) {
+      if (dialog()?.open) {
         return;
       }
       shown = undefined;
-      host.requestUpdate();
+      requestUpdate();
     },
   };
 
@@ -315,7 +319,7 @@ export const createPreview = (host: PreviewHost) => {
      */
     end: () => {
       if (shown) {
-        host.dialog()?.close();
+        dialog()?.close();
         shown = undefined;
       }
     },
@@ -325,7 +329,7 @@ export const createPreview = (host: PreviewHost) => {
       rendered = undefined;
     },
     get isOpen() {
-      return host.dialog()?.open ?? false;
+      return dialog()?.open ?? false;
     },
     /** Shows the document as it is now, compiling it only if it has changed. */
     open: async () => {
@@ -335,8 +339,8 @@ export const createPreview = (host: PreviewHost) => {
         preview.result = { html: cached };
       }
       shown = preview;
-      host.dialog()?.showModal();
-      host.requestUpdate();
+      dialog()?.showModal();
+      requestUpdate();
       if (cached !== undefined) {
         return;
       }
@@ -345,12 +349,12 @@ export const createPreview = (host: PreviewHost) => {
       setTimeout(() => {
         if (shown === preview && !preview.result) {
           preview.saysLoading = true;
-          host.requestUpdate();
+          requestUpdate();
         }
       }, LOADING_SAID_AFTER_MS);
 
       try {
-        const email = await host.exportHtml();
+        const email = await exportHtml();
         preview.result = { html: email };
         // Closed in the meantime, so the document may have changed since.
         if (shown === preview) {
@@ -362,7 +366,7 @@ export const createPreview = (host: PreviewHost) => {
           failure: error instanceof Error ? error.message : String(error),
         };
       }
-      host.requestUpdate();
+      requestUpdate();
     },
     get shown() {
       return shown;

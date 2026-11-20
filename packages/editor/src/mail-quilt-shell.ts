@@ -13,7 +13,7 @@ import { takeValueSetEarly } from "./value-set-early.js";
 /** The Shell's own buttons. */
 export type ShellAction = "export-html" | "export-json" | "import-json";
 
-/** Every theme token's name, from the one place they're defined. */
+/** Every theme token's name, from the one list that defines them. */
 const TOKEN_NAMES = themeTokens.cssText.match(/--mq-[\w-]+(?=\s*:)/gu) ?? [];
 
 /**
@@ -38,8 +38,8 @@ const parseEmail = (text: string): LoadResult => {
 /** What the host's next `value` does to the open email, once the Shell starts. */
 type Opened =
   /**
-   * A saved email opened in place of the host's `value`, or of its first one
-   * if it hasn't set one yet, or the person imported one in place of that
+   * A saved email opened instead of the host's `value`, or of its first one
+   * if it hasn't set one yet, or the person imported one instead of that
    * first one. That first one, or a copy of it, doesn't open.
    */
   | "saved"
@@ -72,7 +72,7 @@ type Opening =
 /**
  * What a notice in the message bar reports: an export, an import, an email the
  * host set that the editor refused, or a saved email that couldn't be opened.
- * Each has a place of its own, so none hides another.
+ * Each is kept apart, so none hides another.
  */
 type NoticeOf = "export" | "import" | "refused" | "saved";
 
@@ -279,8 +279,8 @@ export class MailQuiltShell extends LitElement {
    * host that renders again does. While a saved email stands in, so do
    * setting nothing before the first email and that first email set late.
    */
-  set value(document: unknown) {
-    this.#hostSets(document);
+  set value(value: unknown) {
+    this.#hostSets(value);
   }
 
   /** As on `<mail-quilt>`, and also straight after `value` is set. */
@@ -504,12 +504,12 @@ export class MailQuiltShell extends LitElement {
   }
 
   /** Saves a changed email, which also answers whatever went wrong before it. */
-  #keep(document: BlocksDocument) {
+  #keep(email: BlocksDocument) {
     if (this.saveKey) {
       let cantSave = this.saveKey === this.#uncopiedKey;
       if (!cantSave) {
         try {
-          localStorage.setItem(this.saveKey, JSON.stringify(document));
+          localStorage.setItem(this.saveKey, JSON.stringify(email));
         } catch {
           cantSave = true;
         }
@@ -554,15 +554,15 @@ export class MailQuiltShell extends LitElement {
   };
 
   readonly #exportJson = () => {
-    const document = this.value;
-    if (!document) {
+    const email = this.value;
+    if (!email) {
       this.#showNotice("export", "There's no email to export.");
       return;
     }
     downloadFile(
       "email.json",
       "application/json",
-      JSON.stringify(document, null, 2)
+      JSON.stringify(email, null, 2)
     );
     this.#clearNotice("export");
   };
@@ -598,19 +598,19 @@ export class MailQuiltShell extends LitElement {
       return;
     }
     this.#editor.value = loaded.document;
-    const document = this.#editor.value;
-    if (document) {
+    const email = this.#editor.value;
+    if (email) {
       const opening = this.#opening;
       // The person's work, which the host's first email set late can't replace.
       if (opening.state === "first") {
         this.#opening = { ...opening, state: "saved" };
       }
-      this.#keep(document);
+      this.#keep(email);
       this.dispatchEvent(
         new CustomEvent("mq-change", {
           bubbles: true,
           composed: true,
-          detail: { document },
+          detail: { document: email },
         })
       );
     }

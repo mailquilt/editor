@@ -86,9 +86,9 @@ export const uiStyles = css`
   }
 
   /*
-   * Around the editor, the Shell and the notice in the editor's place, so each
-   * reads as one component on the host's page. A ring rather than a border,
-   * so it takes no room from what's inside.
+   * Around the editor, the Shell and the narrow notice, so each reads as one
+   * component on the host's page. A ring rather than a border, so it takes no
+   * room from what's inside.
    */
   .frame {
     background: var(--mq-color-workspace);

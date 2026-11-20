@@ -31,7 +31,7 @@ export const undoButton = (page: Page) =>
 
 export const tooltip = (page: Page) => canvas(page).getByRole("tooltip");
 
-/** What a drag leaves while it lasts: the copy that moves, and its empty place. */
+/** What a drag leaves while it lasts: the copy that moves, and its empty space. */
 export const dragMarks = (page: Page) =>
   canvas(page).locator("[data-drag-ghost], [data-drag-source]");
 
@@ -71,10 +71,10 @@ export const structure = async (page: Page) => {
 export const exportHtml = (page: Page) =>
   canvas(page).evaluate((element) => (element as MailQuilt).exportHtml());
 
-export const setValue = (page: Page, document: unknown) =>
+export const setValue = (page: Page, email: unknown) =>
   canvas(page).evaluate((element, value) => {
     (element as MailQuilt).value = value as MailQuilt["value"];
-  }, document);
+  }, email);
 
 /** On macOS, End scrolls the page and leaves the cursor where it is. */
 export const moveCursorToLineEnd = (page: Page) =>
@@ -123,7 +123,7 @@ export const layoutTile = (page: Page, layout: string) =>
     .getByRole("button", { exact: true, name: `Add ${layout} Row` });
 
 /**
- * Shows a side panel tab. A selected Block's settings take the tabs' place, so
+ * Shows a side panel tab. A selected Block's settings show instead of the tabs, so
  * this goes back to them first, and the Block stays selected.
  */
 export const openTab = async (page: Page, name: string) => {
@@ -392,13 +392,13 @@ export const redoByKey = (page: Page) =>
 export const addSecondTextBlock = (page: Page) =>
   canvas(page).evaluate((element) => {
     const mailQuilt = element as MailQuilt;
-    const document = mailQuilt.value;
-    const column = document?.rows[0]?.columns[0];
+    const email = mailQuilt.value;
+    const column = email?.rows[0]?.columns[0];
     const block = column?.blocks[0];
     if (block) {
       column?.blocks.push({ ...structuredClone(block), id: "block-2" });
     }
-    mailQuilt.value = document;
+    mailQuilt.value = email;
   });
 
 export const blocks = async (page: Page, rowIndex = 0, columnIndex = 0) => {

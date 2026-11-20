@@ -9,7 +9,7 @@ import type {
   Node as ProseMirrorNode,
 } from "prosemirror-model";
 import { EditorState, Plugin, Selection } from "prosemirror-state";
-import type { Command, Transaction } from "prosemirror-state";
+import type { Command as TextCommand, Transaction } from "prosemirror-state";
 import {
   AddMarkStep,
   RemoveMarkStep,
@@ -137,7 +137,7 @@ const keepMergeTagsWhole = new Plugin({
 /**
  * Where the cursor belongs once `current` has become `next`, or undefined if
  * they match. Removing the "l" typed in "Hell|lo" could be read as a change at
- * several places, so the cursor's own position chooses between them.
+ * several points, so the cursor's own position chooses between them.
  */
 const cursorAfterChange = (
   current: ProseMirrorNode,
@@ -178,21 +178,7 @@ const asPasted = (fragment: Fragment, bold?: MarkType): Fragment =>
     })
   );
 
-/**
- * Owns the DOM and ProseMirror view of one Block's text. Lit only places
- * `element` on the canvas, so the view survives re-renders. The editor keeps
- * the one undo history, so ProseMirror's isn't loaded.
- */
-export const createTextBlockView = ({
-  canBold,
-  content,
-  label,
-  onChange,
-  onFocus,
-  onStateChange,
-  onTypingBreak,
-  schema,
-}: {
+interface TextBlockViewHost {
   /** False for text that's bold already, where the mark would change nothing. */
   canBold: boolean;
   content: RichTextDocument;
@@ -206,7 +192,23 @@ export const createTextBlockView = ({
   onTypingBreak: () => void;
   /** What the Block's type of text can hold. */
   schema: TextSchema;
-}): TextBlockView => {
+}
+
+/**
+ * Owns the DOM and ProseMirror view of one Block's text. Lit only puts
+ * `element` on the canvas, so the view survives re-renders. The editor keeps
+ * the one undo history, so ProseMirror's isn't loaded.
+ */
+export const createTextBlockView = ({
+  canBold,
+  content,
+  label,
+  onChange,
+  onFocus,
+  onStateChange,
+  onTypingBreak,
+  schema,
+}: TextBlockViewHost): TextBlockView => {
   const element = document.createElement("div");
   // Unknown until set, as in the export of an email with no language.
   let lang = "";
@@ -322,7 +324,7 @@ export const createTextBlockView = ({
   });
 
   /** Runs a command on the text, then puts focus back in it. */
-  const run = (command: Command) => {
+  const run = (command: TextCommand) => {
     command(view.state, view.dispatch);
     view.focus();
   };

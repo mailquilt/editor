@@ -10,7 +10,11 @@ import {
 } from "prosemirror-commands";
 import type { Mark, MarkType, ResolvedPos } from "prosemirror-model";
 import { AllSelection, Selection, TextSelection } from "prosemirror-state";
-import type { Command, EditorState, Transaction } from "prosemirror-state";
+import type {
+  Command as TextCommand,
+  EditorState,
+  Transaction,
+} from "prosemirror-state";
 
 import type { TextAction } from "./key-map.js";
 import type { TextSchema } from "./text-schema.js";
@@ -144,7 +148,7 @@ const markSelection = (tr: Transaction, mark: Mark) => {
 
 /** Takes a mark off if all of the selection has it, or puts it on all of it. */
 const toggleMarkCommand =
-  (type: MarkType): Command =>
+  (type: MarkType): TextCommand =>
   (state, dispatch) => {
     dispatch?.(
       isMarkActive(state, type)
@@ -155,7 +159,7 @@ const toggleMarkCommand =
   };
 
 /** Delete in an empty paragraph removes it, even when it's the last one. */
-const deleteEmptyParagraph: Command = (state, dispatch) => {
+const deleteEmptyParagraph: TextCommand = (state, dispatch) => {
   const { $anchor, empty } = state.selection;
   if (!empty || $anchor.parent.content.size > 0) {
     return false;
@@ -173,7 +177,7 @@ const deleteEmptyParagraph: Command = (state, dispatch) => {
  * link is in it.
  */
 const collapseSelectAll =
-  (toEnd: boolean): Command =>
+  (toEnd: boolean): TextCommand =>
   (state, dispatch) => {
     if (!(state.selection instanceof AllSelection)) {
       return false;
@@ -191,16 +195,16 @@ const collapseSelectAll =
 /** What can be done to a Block's text, and what its formatting is. */
 interface TextCommands {
   /** What each of the text's keys in the key map runs. */
-  forKey: Record<TextAction, Command>;
+  forKey: Record<TextAction, TextCommand>;
   formats: (state: EditorState) => TextFormats;
-  insertLineBreak: Command;
-  removeLink: Command;
+  insertLineBreak: TextCommand;
+  removeLink: TextCommand;
   /**
    * Links the selected text. With none, changes the link the cursor is in, or
    * else adds the URL as the linked text.
    */
-  setLink: (href: string) => Command;
-  toggleMark: (mark: ToggleableMark) => Command;
+  setLink: (href: string) => TextCommand;
+  toggleMark: (mark: ToggleableMark) => TextCommand;
 }
 
 /**
@@ -219,10 +223,10 @@ export const createTextCommands = (
   const { bold, italic, link, underline } = schema.marks;
 
   /**
-   * A line break in place of the selection, with the cursor after it. It keeps
+   * A line break instead of the selection, with the cursor after it. It keeps
    * the formatting, so typing after it carries on, but has none of its own.
    */
-  const insertLineBreak: Command = (state, dispatch) => {
+  const insertLineBreak: TextCommand = (state, dispatch) => {
     const { $from, $to } = state.selection;
     const marks =
       state.storedMarks ?? ($to.parentOffset ? $from.marks() : null);

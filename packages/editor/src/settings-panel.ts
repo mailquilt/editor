@@ -481,7 +481,11 @@ interface DraftsHost {
 }
 
 /** Text in the settings panel that isn't the document's value. */
-export const createSettingsDrafts = (host: DraftsHost) => {
+export const createSettingsDrafts = ({
+  apply,
+  onEnter,
+  requestUpdate,
+}: DraftsHost) => {
   const drafts = new Map<string, FieldDraft>();
 
   /** The settings field the key was pressed in, while it holds a draft. */
@@ -502,8 +506,8 @@ export const createSettingsDrafts = (host: DraftsHost) => {
   ) => {
     const key = draftKey(section, field);
     const value = fieldValue(field, typed);
-    host.onEnter(value);
-    const result = host.apply(section.command({ [field.key]: value }));
+    onEnter(value);
+    const result = apply(section.command({ [field.key]: value }));
     if (result?.ok || result?.code === "unchanged") {
       drafts.delete(key);
     } else {
@@ -522,7 +526,7 @@ export const createSettingsDrafts = (host: DraftsHost) => {
         }
       }
     } else {
-      host.requestUpdate();
+      requestUpdate();
     }
   };
 
@@ -540,7 +544,7 @@ export const createSettingsDrafts = (host: DraftsHost) => {
       ) {
         drafts.delete(key);
         // Typed again, which the browser doesn't report as a change.
-        host.onEnter(fieldValue(field, typed));
+        onEnter(fieldValue(field, typed));
       } else {
         drafts.set(key, { ...typed, refusals });
       }
@@ -559,7 +563,7 @@ export const createSettingsDrafts = (host: DraftsHost) => {
     if (control.validity.badInput) {
       control.value = "";
     }
-    host.requestUpdate();
+    requestUpdate();
   };
 
   return { clear: () => drafts.clear(), discard, draftKeyOf, events };

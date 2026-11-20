@@ -111,9 +111,9 @@ test.describe("the panel", () => {
   });
 
   test("keeps a saved font that isn't on the list", async ({ page }) => {
-    const document = emailWith([[["Hi"]]]);
-    document.settings.fontFamily = "Papyrus, fantasy";
-    await setValue(page, document);
+    const value = emailWith([[["Hi"]]]);
+    value.settings.fontFamily = "Papyrus, fantasy";
+    await setValue(page, value);
 
     await expect(emailField(page, "Font")).toHaveValue("Papyrus, fantasy");
     await expect(
@@ -122,15 +122,15 @@ test.describe("the panel", () => {
   });
 
   test("shows a saved email's settings", async ({ page }) => {
-    const document = emailWith([[["Hi"]]]);
-    document.settings = {
+    const value = emailWith([[["Hi"]]]);
+    value.settings = {
       backgroundColor: "rgb(1, 2, 3)",
       fontFamily: "Georgia, 'Times New Roman', serif",
       language: "fr",
       preheader: "Salut",
       width: 500,
     };
-    await setValue(page, document);
+    await setValue(page, value);
 
     await expect(emailField(page, "Width (px)")).toHaveValue("500");
     await expect(emailField(page, "Background color")).toHaveValue(
@@ -563,9 +563,9 @@ test.describe("the color picker", () => {
   test("shows what's behind a Row with no color, and can pick white", async ({
     page,
   }) => {
-    const document = emailWith([[["Hi"]]]);
-    document.settings.backgroundColor = "#000";
-    await setValue(page, document);
+    const value = emailWith([[["Hi"]]]);
+    value.settings.backgroundColor = "#000";
+    await setValue(page, value);
     await selectRow(page, 1);
 
     await expect(rowField(page, "Background color")).toHaveValue("");
