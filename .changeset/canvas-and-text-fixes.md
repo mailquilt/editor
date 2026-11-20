@@ -13,5 +13,6 @@ Small fixes on the canvas and in the text:
 - The drop line shows where a drag will land on a page that scales the editor.
 - Typing a failed image URL in again tries to load it again.
 - On a touch screen, each Row's tag shows, so a Row can be selected, and swiping up or down on the Side panel's tiles scrolls it.
+- A screen reader hears "Loading preview…" while a slow Preview renders, as its status is there before the message.
 - On Apple devices, tooltips write Alt as ⌥, like ⇧ and ⌘.
 - A Block's description for screen readers names each key it answers to from the editor's key map, such as Alt+ArrowUp.

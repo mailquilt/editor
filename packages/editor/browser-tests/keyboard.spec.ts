@@ -90,7 +90,10 @@ const positionOfL = async (page: Page) => {
 /** Counts every change a screen reader could be told about in the live region. */
 const countAnnouncements = (page: Page) =>
   canvas(page).evaluate((host) => {
-    const status = host.shadowRoot?.querySelector('[role="status"]') as Element;
+    // The editor's own, not the Preview's, which is in its dialog.
+    const status = [...(host.shadowRoot?.children ?? [])].find(
+      (element) => element.getAttribute("role") === "status"
+    ) as Element;
     const counter = window as unknown as { announcements: number };
     counter.announcements = 0;
     new MutationObserver(() => {
