@@ -91,7 +91,7 @@ interface LinkFormHost {
   /** Whether focus is in that text, so the format bar already shows. */
   editingText: () => boolean;
   /** Moves focus to the field, once the next update has rendered it. */
-  focusField: () => Promise<void>;
+  focusField: () => void;
   /** Moves focus back to the text. */
   focusText: () => void;
   requestUpdate: () => void;
@@ -108,8 +108,11 @@ export const createLinkForm = (host: LinkFormHost) => {
     }
   };
 
-  /** From the Block itself too: its text takes focus, and shows the format bar. */
-  const open = async () => {
+  /**
+   * From the Block itself too: its text takes focus, and shows the format bar.
+   * Focus in the text closes the field, so the text takes it first.
+   */
+  const open = () => {
     const view = host.view();
     if (!view) {
       return;
@@ -119,7 +122,7 @@ export const createLinkForm = (host: LinkFormHost) => {
     }
     state = { refusals: 0 };
     host.requestUpdate();
-    await host.focusField();
+    host.focusField();
   };
 
   const cancel = () => {
