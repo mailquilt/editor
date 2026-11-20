@@ -29,9 +29,9 @@ const PLACES = {
   /** The floating toolbar. */
   emailTools: { press: "keepsFocus" },
   /** The format bar beside the text being edited. */
-  formatBar: { press: "keepsFocus" },
+  formatBar: { ofText: true, press: "keepsFocus" },
   /** The link field, in the format bar. */
-  linkField: {},
+  linkField: { ofText: true },
   /** The notice shown instead of the editor when there's no room to edit. */
   notice: {},
   /**
@@ -61,7 +61,7 @@ const PLACES = {
   tooltip: {},
   /** The workspace around the email. */
   workspace: {},
-} satisfies Record<string, { press?: Press }>;
+} satisfies Record<string, Traits>;
 
 /**
  * What a press with the pointer does to focus there, beyond what the browser
@@ -71,7 +71,23 @@ const PLACES = {
  */
 type Press = "grabs" | "keepsFocus";
 
+/** What a place is, beyond its name. */
+interface Traits {
+  /**
+   * It belongs to the text being edited, beside it, as the format bar does. The
+   * text goes on being edited while focus is in it, and focus goes back to the
+   * text when it closes. A press in it doesn't show the Block's settings.
+   */
+  ofText?: true;
+  press?: Press;
+}
+
 export type Place = keyof typeof PLACES;
+
+/** The places that belong to the text being edited. */
+const OF_TEXT = (Object.keys(PLACES) as Place[]).filter(
+  (name) => "ofText" in PLACES[name]
+);
 
 /** The `data-place` of an element that's `name`. */
 export const place = (name: Place) => name;
@@ -87,6 +103,10 @@ const ANY_PLACE = `[data-place]${NOT_GHOST}`;
 /** The innermost of `places` that `element` is in, or is. */
 export const closestPlace = (element: Element, ...places: Place[]) =>
   element.closest<HTMLElement>(selectorOf(places));
+
+/** Whether `element` is in a place that belongs to the text being edited. */
+export const isOfText = (element: Element) =>
+  closestPlace(element, ...OF_TEXT) !== null;
 
 /** The first place called `name` in `root`, in document order. */
 export const findPlace = (root: ParentNode, name: Place) =>
@@ -136,6 +156,6 @@ const hasPress = (name: string): name is Place =>
 /** What a press on `element` does, from the innermost place around it that says. */
 export const pressOn = (element: Element): Press | undefined => {
   const name = placeOf(element, hasPress);
-  const entry: { press?: Press } | undefined = name && PLACES[name];
+  const entry: Traits | undefined = name && PLACES[name];
   return entry?.press;
 };

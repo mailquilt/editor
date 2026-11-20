@@ -3,6 +3,7 @@ import {
   findBlock,
   findPlace,
   findRow,
+  isOfText,
   pressOn,
 } from "./editor-places.js";
 import type { TextBlockView } from "./text-block-view.js";
@@ -87,12 +88,17 @@ export const focusToolbarButton = (from: Element, step: ToolbarStep) => {
   next[step]?.focus();
 };
 
-/** What focus on an element in the editor is on, or else the floating toolbar. */
+/**
+ * What focus on an element in the editor is on, or else the floating toolbar.
+ * In a place that belongs to the text being edited, it's on that text, which
+ * stays when the place closes.
+ */
 const targetOf = (element: Element): FocusTarget => {
+  if (isOfText(element)) {
+    return { on: "text" };
+  }
   const found = closestPlace(
     element,
-    "linkField",
-    "formatBar",
     "text",
     "blockToolbar",
     "block",
@@ -101,10 +107,6 @@ const targetOf = (element: Element): FocusTarget => {
   const place = found?.dataset.place;
   const { action } = (element as HTMLElement).dataset;
   switch (place) {
-    case "linkField":
-    case "formatBar": {
-      return { on: place };
-    }
     case "rowToolbar": {
       const rowId = closestPlace(element, "row")?.dataset.rowId;
       return rowId === undefined
@@ -142,7 +144,10 @@ export const createSelection = ({
   textOf,
 }: SelectionHost) => {
   let selected: Selected;
-  /** Whether focus is in the selected Block's text or its format bar. */
+  /**
+   * Whether focus is in the selected Block's text or a place that belongs to
+   * it.
+   */
   let editingText = false;
   /** Whether the side panel shows what's selected, not its tabs. */
   let showsSettings = false;
@@ -431,13 +436,6 @@ export const createSelection = ({
     ) {
       const element = active();
       focusedBeforeUpdate = element ? targetOf(element) : undefined;
-      // The link field and the format bar may close, and their text stays.
-      if (
-        focusedBeforeUpdate?.on === "linkField" ||
-        focusedBeforeUpdate?.on === "formatBar"
-      ) {
-        focusedBeforeUpdate = { on: "text" };
-      }
       if (!email) {
         return;
       }
@@ -467,19 +465,21 @@ export const createSelection = ({
      */
     get focusIsOutsideText() {
       const element = active();
-      return element !== null && targetOf(element).on !== "text";
+      return element !== null && !closestPlace(element, "text");
     },
 
     focusWhenRendered,
 
     /**
      * Shows the selected Block's settings again after Back, when its text still has
-     * focus and so gets no new focus event. Its own toolbars leave the panel be.
+     * focus and so gets no new focus event. Its toolbar, and what belongs to
+     * its text, leave the panel be.
      */
     onBlockClick(blockId: string, target: Element) {
       if (
         blockId === selectedBlockId() &&
-        !closestPlace(target, "blockToolbar", "formatBar")
+        !closestPlace(target, "blockToolbar") &&
+        !isOfText(target)
       ) {
         showSettings();
       }
@@ -491,7 +491,7 @@ export const createSelection = ({
     },
 
     /**
-     * The text stops being edited once focus leaves it and its format bar. State
+     * The text stops being edited once focus leaves it and what belongs to it. State
      * rather than CSS, which would hide the bar while focus is on its way there.
      * Checked once focus has landed: the Preview opening over the text, or the
      * window losing focus while a URL is copied elsewhere, leave the bar as it is.
@@ -505,7 +505,10 @@ export const createSelection = ({
         if (
           editingText &&
           document.hasFocus() &&
-          !(element && closestPlace(element, "text", "formatBar", "preview"))
+          !(
+            element &&
+            (closestPlace(element, "text", "preview") || isOfText(element))
+          )
         ) {
           editingText = false;
           requestUpdate();
