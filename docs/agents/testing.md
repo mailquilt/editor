@@ -57,6 +57,12 @@ test, search for one that already covers the same code, and extend it instead.
   saved with it must keep opening.
 - Accessibility checks, and the only test of an edge case or past bug.
 
+## See it fail first
+
+- A test for a bug is written before the fix, and seen failing for the reason the bug gives. The pull request says so.
+- A test for new behaviour is seen failing with the behaviour taken out. Copy the file aside to try it. Don't stash.
+- A test that passes with its code removed checks nothing. Fix it or delete it.
+
 ## Naming
 
 - Name a test for the behaviour it checks, using `GLOSSARY.md` terms. Not for

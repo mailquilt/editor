@@ -1,7 +1,30 @@
 # Keeps the actions in .github/workflows current. Each is pinned to a commit,
 # and Dependabot moves the pin and its version comment together.
+#
+# Keeps the lockfile current too, so the tests run on a new version of a
+# package before a fresh install gets it. A version outside a package's range,
+# such as the next prosemirror-view, comes as a change to its package.json,
+# which needs a changeset and so is taken on purpose.
 version: 2
 updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    versioning-strategy: increase-if-necessary
+    groups:
+      # What builds and tests the packages, in one pull request.
+      development:
+        dependency-type: development
+        update-types:
+          - minor
+          - patch
+    commit-message:
+      prefix: chore
+    labels:
+      - dependencies
   - package-ecosystem: github-actions
     directory: /
     schedule:
