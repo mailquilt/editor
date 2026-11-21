@@ -55,6 +55,15 @@ describe(mergeTagsFromText, () => {
     expect(inlineOf(state)).toStrictEqual([tag("first_name", bold)]);
   });
 
+  it("makes a tag split across runs a node when formatting touches part of it", () => {
+    // "{{na" is at 1 to 5, and "me}}" at 5 to 9.
+    const state = after(textOf(text("{{na", bold), text("me}}")), (tr) =>
+      tr.addMark(5, 7, italic)
+    );
+
+    expect(inlineOf(state)).toStrictEqual([tag("name", bold, italic)]);
+  });
+
   it("leaves a tag the change didn't touch as text", () => {
     const state = after(textOf(text("{{a}}", bold), text(" and")), (tr) =>
       tr.insertText("!")

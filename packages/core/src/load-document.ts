@@ -236,11 +236,12 @@ const MERGE_TAGS = new RegExp(MERGE_TAG.source, "gu");
 /**
  * A run of text as version 3 has it: each Merge Tag in it a node with the run's
  * marks, and the text around them as runs of their own. Any other field stays
- * on each, for the schema to refuse.
+ * on each, for the schema to refuse. A run with `attrs`, which text can't have,
+ * stays as it is, as a node's own `attrs` would replace them.
  */
 const withMergeTags = (run: Record<string, unknown> & { text: string }) => {
   const { text, type: _type, ...rest } = run;
-  if (!MERGE_TAG.test(text)) {
+  if ("attrs" in run || !MERGE_TAG.test(text)) {
     return [run];
   }
   const nodes: Record<string, unknown>[] = [];

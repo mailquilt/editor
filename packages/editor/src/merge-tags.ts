@@ -2,6 +2,7 @@ import { MERGE_TAG } from "@mailquilt/core/internal";
 import type { Mark } from "prosemirror-model";
 import { Plugin } from "prosemirror-state";
 import type { EditorState, Transaction } from "prosemirror-state";
+import { AddMarkStep, RemoveMarkStep } from "prosemirror-transform";
 import type { EditorView } from "prosemirror-view";
 
 import type { TextSchema } from "./text-schema.js";
@@ -15,7 +16,8 @@ interface Range {
 
 /**
  * Where `transactions` changed the text, as positions in the last one's
- * document, leaving out what `skips` says isn't the person's own change.
+ * document, leaving out what `skips` says isn't the person's own change. A
+ * change of marks moves no position, so its step gives its own range.
  */
 const changedRanges = (
   transactions: readonly Transaction[],
@@ -23,11 +25,15 @@ const changedRanges = (
 ) => {
   let ranges: Range[] = [];
   for (const tr of transactions) {
-    for (const map of tr.mapping.maps) {
+    for (const [index, map] of tr.mapping.maps.entries()) {
       const changed: Range[] = [];
       if (!skips(tr)) {
         // oxlint-disable-next-line unicorn/no-array-for-each -- A StepMap's, not an array's.
         map.forEach((_oldFrom, _oldTo, from, to) => changed.push({ from, to }));
+        const step = tr.steps[index];
+        if (step instanceof AddMarkStep || step instanceof RemoveMarkStep) {
+          changed.push({ from: step.from, to: step.to });
+        }
       }
       ranges = [
         ...ranges.map(({ from, to }) => ({

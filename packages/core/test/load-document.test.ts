@@ -486,6 +486,18 @@ describe("opening an email saved with version 2", () => {
     ]);
   });
 
+  it("refuses a run holding only a tag with a field text can't have, rather than dropping it", () => {
+    const email = readFixture("version-2");
+    firstParagraph(email).content = [
+      { attrs: { unexpected: true }, text: "{{first_name}}", type: "text" },
+    ];
+
+    expect(loadDocument(email)).toStrictEqual({
+      ok: false,
+      reason: expect.stringMatching(/attrs/u),
+    });
+  });
+
   // Only an email written outside the editor can have one, and it still
   // exports the same, as the renderer reads tags across runs.
   it("leaves a tag split across runs with different marks as text", () => {
