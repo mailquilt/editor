@@ -4,6 +4,7 @@ import { blockDefinitions } from "./blocks.js";
 import { DOCUMENT_VERSION } from "./document.js";
 import type { BlocksDocument } from "./document.js";
 import { emailSettingsSchema } from "./email-settings.js";
+import { MERGE_TAG } from "./rich-text.js";
 import { rowPropsSchema } from "./row-settings.js";
 import { describeIssues } from "./validation.js";
 
@@ -230,6 +231,72 @@ const fromVersion1 = (document: Record<string, unknown>) => {
   return document;
 };
 
+const MERGE_TAGS = new RegExp(MERGE_TAG.source, "gu");
+
+/**
+ * A run of text as version 3 has it: each Merge Tag in it a node with the run's
+ * marks, and the text around them as runs of their own. Any other field stays
+ * on each, for the schema to refuse.
+ */
+const withMergeTags = (run: Record<string, unknown> & { text: string }) => {
+  const { text, type: _type, ...rest } = run;
+  if (!MERGE_TAG.test(text)) {
+    return [run];
+  }
+  const nodes: Record<string, unknown>[] = [];
+  const addText = (from: number, to: number) => {
+    if (to > from) {
+      nodes.push({ ...rest, text: text.slice(from, to), type: "text" });
+    }
+  };
+  let from = 0;
+  for (const { 0: tag, index } of text.matchAll(MERGE_TAGS)) {
+    addText(from, index);
+    nodes.push({
+      ...rest,
+      attrs: { name: tag.slice(2, -2) },
+      type: "mergeTag",
+    });
+    from = index + tag.length;
+  }
+  addText(from, text.length);
+  return nodes;
+};
+
+/**
+ * Version 2 kept a Merge Tag in text as the text `{{name}}`. Version 3 makes
+ * each one that sits whole in one run of text a node (ADR 0017). A tag split
+ * across runs with different marks stays text, and still exports the same.
+ * Rich text is found by its `content` key, which holds nothing else in
+ * version 2, and its runs by their type.
+ */
+const fromVersion2 = (document: Record<string, unknown>) => {
+  const upgrade = (value: unknown) => {
+    if (typeof value !== "object" || value === null) {
+      return;
+    }
+    const object = value as Record<string, unknown>;
+    for (const [key, item] of Object.entries(object)) {
+      if (key === "content" && Array.isArray(item)) {
+        object[key] = item.flatMap((node: unknown) => {
+          const run = node as Record<string, unknown> | null;
+          if (run?.type === "text" && typeof run.text === "string") {
+            return withMergeTags(
+              run as Record<string, unknown> & { text: string }
+            );
+          }
+          upgrade(node);
+          return [node];
+        });
+      } else {
+        upgrade(item);
+      }
+    }
+  };
+  upgrade(document);
+  return document;
+};
+
 /**
  * Checks a saved email and migrates it if it's an older version, without
  * changing what was passed in. It never repairs a document, so a host's
@@ -239,4 +306,5 @@ const fromVersion1 = (document: Record<string, unknown>) => {
  */
 export const loadDocument = createDocumentLoader(DOCUMENT_VERSION, {
   1: fromVersion1,
+  2: fromVersion2,
 });

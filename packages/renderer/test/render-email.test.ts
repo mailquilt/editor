@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { BLOCK_TYPES, createEditor } from "@mailquilt/core";
@@ -324,6 +325,20 @@ describe(renderEmail, () => {
     expect(html).toContain(
       '<a href="https://example.com/{{unsubscribe_token.value}}/x" target="_blank" style="color:#000000;text-decoration:underline">https://&#8203;example.&#8203;com/&#8203;{{unsubscribe_token.value}}/&#8203;x</a> and files/&#8203;{{a&amp;b&lt;c&gt;}}/&#8203;welcome_&#8203;v2.&#8203;json</p>'
     );
+  });
+
+  // Saved from the export before version 3, so the migration can't change it.
+  it("exports an email saved with version 2 as it did before Merge Tags became nodes", async () => {
+    const email: unknown = JSON.parse(
+      readFileSync(
+        new URL("fixtures/merge-tags-version-2.json", import.meta.url),
+        "utf-8"
+      )
+    );
+
+    await expect(
+      renderEmail(email).then(readable)
+    ).resolves.toMatchFileSnapshot("expected/merge-tags-version-2.html");
   });
 
   it("keeps a Merge Tag with spaces inside its braces whole, so it's still filled in", async () => {

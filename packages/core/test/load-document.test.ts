@@ -32,14 +32,14 @@ const pretendVersion0 = () => {
 
 describe(loadDocument, () => {
   it("loads a saved email exactly as it was saved", () => {
-    expect(loadDocument(readFixture("version-2"))).toStrictEqual({
-      document: readFixture("version-2"),
+    expect(loadDocument(readFixture("version-3"))).toStrictEqual({
+      document: readFixture("version-3"),
       ok: true,
     });
   });
 
   it("reads Column widths that are rounded to add up to 100", () => {
-    const email = readFixture("version-2");
+    const email = readFixture("version-3");
     email.rows[1].columns = [
       { blocks: [], id: "a", props: {}, width: 33.33 },
       { blocks: [], id: "b", props: {}, width: 33.33 },
@@ -59,14 +59,14 @@ describe(loadDocument, () => {
     "rgba(1,2,3,0.5)",
     "rgb(999, 999, 999)",
   ])("reads the background color %s", (backgroundColor) => {
-    const email = readFixture("version-2");
+    const email = readFixture("version-3");
     email.settings.backgroundColor = backgroundColor;
 
     expect(loadDocument(email)).toMatchObject({ ok: true });
   });
 
   it("keeps an email with no Rows, which deleting every Row leaves behind", () => {
-    const email = readFixture("version-2");
+    const email = readFixture("version-3");
     email.rows = [];
 
     expect(loadDocument(email)).toMatchObject({ ok: true });
@@ -74,16 +74,16 @@ describe(loadDocument, () => {
 
   // structuredClone() would throw on one.
   it("loads one wrapped in a Proxy, as Vue's reactive() makes", () => {
-    const email = readFixture("version-2");
+    const email = readFixture("version-3");
 
     expect(loadDocument(new Proxy(email, {}))).toStrictEqual({
-      document: readFixture("version-2"),
+      document: readFixture("version-3"),
       ok: true,
     });
   });
 
   it("returns a document that shares nothing with the one passed in", () => {
-    const email = readFixture("version-2");
+    const email = readFixture("version-3");
     const loaded = loadDocument(email);
 
     email.settings.width = 500;
@@ -93,7 +93,7 @@ describe(loadDocument, () => {
     email.rows[1].columns[0].blocks.push("changed");
 
     expect(loaded).toStrictEqual({
-      document: readFixture("version-2"),
+      document: readFixture("version-3"),
       ok: true,
     });
   });
@@ -121,8 +121,8 @@ describe("refusing a document", () => {
     ],
     [
       "a newer version",
-      (email) => ({ ...email, version: 3 }),
-      /version 3 is newer.*version 2/iu,
+      (email) => ({ ...email, version: 4 }),
+      /version 4 is newer.*version 3/iu,
     ],
     [
       "missing settings",
@@ -410,7 +410,7 @@ describe("refusing a document", () => {
   ];
 
   it.each(refused)("refuses %s with a reason", (_name, damage, reason) => {
-    expect(loadDocument(damage(readFixture("version-2")))).toStrictEqual({
+    expect(loadDocument(damage(readFixture("version-3")))).toStrictEqual({
       ok: false,
       reason: expect.stringMatching(reason),
     });
@@ -427,7 +427,7 @@ describe("refusing a document", () => {
   }
 
   it.each(untouched)("doesn't change %s", (_name, damage) => {
-    const document = damage(readFixture("version-2"));
+    const document = damage(readFixture("version-3"));
     const before = structuredClone(document);
 
     loadDocument(document);
@@ -438,7 +438,7 @@ describe("refusing a document", () => {
 
 describe("opening an email saved with 0.1.0", () => {
   it("writes each color and URL that 0.1.0 accepted as the current checks take it", () => {
-    const email = readFixture("version-2");
+    const email = readFixture("version-3");
     email.settings.backgroundColor = "rgb(244, 244, 245)";
     email.rows[0].props.backgroundColor = "rgb(255, 255, 255)";
     email.rows[0].columns[0].blocks[0].props.color = "rgba(51, 51, 51, 0.9)";
@@ -449,6 +449,57 @@ describe("opening an email saved with 0.1.0", () => {
       document: email,
       ok: true,
     });
+  });
+});
+
+/** The first paragraph of the first Text Block, in a fixture's email. */
+const firstParagraph = (email: any) =>
+  email.rows[0].columns[0].blocks[0].props.content.content[0];
+
+describe("opening an email saved with version 2", () => {
+  const bold = { type: "bold" };
+  const link = { attrs: { href: "{{cta_url}}" }, type: "link" };
+
+  it("loads it as version 3, with each Merge Tag in its text a node", () => {
+    expect(loadDocument(readFixture("version-2"))).toStrictEqual({
+      document: readFixture("version-3"),
+      ok: true,
+    });
+  });
+
+  it("makes each tag whole in one run of text a node with that run's marks, its name kept byte for byte", () => {
+    const email = readFixture("version-2");
+    firstParagraph(email).content = [
+      { text: "{{ first name }}, {{#if vip}}gold{{/if}}", type: "text" },
+      { marks: [link, bold], text: "Open {{cta_text}}", type: "text" },
+    ];
+    const loaded = loadDocument(email);
+
+    expect(loaded.ok && firstParagraph(loaded.document).content).toStrictEqual([
+      { attrs: { name: " first name " }, type: "mergeTag" },
+      { text: ", ", type: "text" },
+      { attrs: { name: "#if vip" }, type: "mergeTag" },
+      { text: "gold", type: "text" },
+      { attrs: { name: "/if" }, type: "mergeTag" },
+      { marks: [link, bold], text: "Open ", type: "text" },
+      { attrs: { name: "cta_text" }, marks: [link, bold], type: "mergeTag" },
+    ]);
+  });
+
+  // Only an email written outside the editor can have one, and it still
+  // exports the same, as the renderer reads tags across runs.
+  it("leaves a tag split across runs with different marks as text", () => {
+    const email = readFixture("version-2");
+    const split = [
+      { marks: [bold], text: "{{first", type: "text" },
+      { text: "_name}}", type: "text" },
+    ];
+    firstParagraph(email).content = split;
+    const loaded = loadDocument(email);
+
+    expect(loaded.ok && firstParagraph(loaded.document).content).toStrictEqual(
+      split
+    );
   });
 });
 
@@ -586,13 +637,13 @@ describe("migrating an older document", () => {
 
 describe("creating an editor from a saved document", () => {
   it("refuses a bad document with the reason", () => {
-    const document = { ...readFixture("version-2"), version: 3 };
+    const document = { ...readFixture("version-3"), version: 4 };
 
-    expect(() => createEditor({ document })).toThrow(/version 3 is newer/iu);
+    expect(() => createEditor({ document })).toThrow(/version 4 is newer/iu);
   });
 
   it("edits a good document", () => {
-    const document = readFixture("version-2");
+    const document = readFixture("version-3");
 
     expect(createEditor({ document }).getDocument()).toStrictEqual(document);
   });
@@ -613,13 +664,13 @@ describe(isSameDocument, () => {
   };
 
   it("matches a document whose stored keys came back in another order", () => {
-    const email = readFixture("version-2");
+    const email = readFixture("version-3");
 
     expect(isSameDocument(email, reorderKeys(email))).toBeTruthy();
   });
 
   it("matches a field set to undefined, which JSON drops", () => {
-    const email = readFixture("version-2");
+    const email = readFixture("version-3");
     delete email.settings.preheader;
     const clone = structuredClone(email);
     clone.settings.preheader = undefined;
@@ -667,7 +718,7 @@ describe(isSameDocument, () => {
   ];
 
   it.each(different)("tells apart a change to %s", (_name, change) => {
-    const email = readFixture("version-2");
+    const email = readFixture("version-3");
     const changed = structuredClone(email);
     change(changed);
 
@@ -676,7 +727,7 @@ describe(isSameDocument, () => {
   });
 
   it("tells a document apart from something that isn't one", () => {
-    const email = readFixture("version-2");
+    const email = readFixture("version-3");
 
     expect(isSameDocument(email, null)).toBeFalsy();
     expect(isSameDocument(undefined, email)).toBeFalsy();

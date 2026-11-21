@@ -13,6 +13,8 @@ const { bold, link } = schema.marks;
 const linkTo = (href: string) => link.create({ href });
 const text = (words: string, ...marks: Mark[]) => schema.text(words, marks);
 const lineBreak = () => schema.nodes.hardBreak.create();
+const mergeTag = (name: string, ...marks: Mark[]) =>
+  schema.nodes.mergeTag.create({ name }, null, marks);
 const paragraph = (...inline: Node[]) =>
   schema.nodes.paragraph.create(null, inline);
 
@@ -48,17 +50,21 @@ const after = (command: TextCommand, state: EditorState) => {
   return next;
 };
 
-/** Each paragraph's pieces of text, with their marks, such as "exa[link:https://a]". */
+/**
+ * Each paragraph's pieces of text, with their marks, such as
+ * "exa[link:https://a]", and each Merge Tag as `{{name}}`.
+ */
 const shown = ({ doc }: EditorState) =>
   doc.children.map((each) =>
     each.children.map((node) => {
-      if (!node.isText) {
+      if (node.type === schema.nodes.hardBreak) {
         return "<br>";
       }
       const marks = node.marks.map(({ attrs, type }) =>
         type === link ? `link:${attrs.href as string}` : type.name
       );
-      return marks.length > 0 ? `${node.text}[${marks.join(" ")}]` : node.text;
+      const words = node.text ?? `{{${node.attrs.name as string}}}`;
+      return marks.length > 0 ? `${words}[${marks.join(" ")}]` : words;
     })
   );
 
@@ -74,6 +80,22 @@ describe("bold, italic and underline", () => {
     );
     expect(shown(after(commands.toggleMark("bold"), state))).toStrictEqual([
       ["abcd[bold]"],
+    ]);
+  });
+
+  it("over a Merge Tag alone, make it bold", () => {
+    const state = textWith([paragraph(text("Hi "), mergeTag("name"))], 4, 5);
+    expect(shown(after(commands.toggleMark("bold"), state))).toStrictEqual([
+      ["Hi ", "{{name}}[bold]"],
+    ]);
+  });
+
+  it("over bold text and a Merge Tag that isn't, make all of it bold", () => {
+    const state = allOf(
+      paragraph(text("Hi ", bold.create()), mergeTag("name"))
+    );
+    expect(shown(after(commands.toggleMark("bold"), state))).toStrictEqual([
+      ["Hi [bold]", "{{name}}[bold]"],
     ]);
   });
 

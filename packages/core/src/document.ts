@@ -1,7 +1,7 @@
 import type { BlockProps, BlockType } from "./blocks.js";
 
 /** The version of the saved format that this code writes. */
-export const DOCUMENT_VERSION = 2;
+export const DOCUMENT_VERSION = 3;
 
 export const createId = () => {
   // getRandomValues, unlike randomUUID, also works on plain-HTTP host pages.

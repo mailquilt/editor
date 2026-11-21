@@ -72,7 +72,13 @@ const marks = {
   },
 } satisfies Record<string, MarkSpec>;
 
-/** Paragraphs of text and line breaks, the nodes of ADR 0001. */
+/** A Merge Tag's name, as core takes it: any text without braces. */
+const isMergeTagName = (name: string) => /^[^{}]+$/u.test(name);
+
+/**
+ * Paragraphs of text, line breaks and Merge Tags, the nodes of ADR 0001 and
+ * ADR 0017.
+ */
 const nodes = {
   doc: { content: "block+" },
   hardBreak: {
@@ -84,6 +90,37 @@ const nodes = {
     parseDOM: [{ tag: "br" }],
     selectable: false,
     toDOM: () => ["br"],
+  },
+  /**
+   * One unit of text, showing its name. Its braces are there for a screen
+   * reader and a copy, and hidden on the canvas. The tooltip gives `{{name}}`.
+   */
+  mergeTag: {
+    atom: true,
+    attrs: { name: { validate: "string" } },
+    group: "inline",
+    inline: true,
+    leafText: ({ attrs }) => `{{${attrs.name as string}}}`,
+    parseDOM: [
+      {
+        getAttrs: (element) => {
+          const name = element.dataset.mergeTag ?? "";
+          return isMergeTagName(name) ? { name } : false;
+        },
+        tag: "span[data-merge-tag]",
+      },
+    ],
+    selectable: false,
+    toDOM: ({ attrs }) => {
+      const name = attrs.name as string;
+      return [
+        "span",
+        { "data-merge-tag": name, "data-tooltip": `{{${name}}}` },
+        ["span", { class: "merge-tag-brace" }, "{{"],
+        name,
+        ["span", { class: "merge-tag-brace" }, "}}"],
+      ];
+    },
   },
   paragraph: {
     content: "inline*",

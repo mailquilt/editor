@@ -12,6 +12,7 @@ export type {
   RichTextDocument,
   RichTextHardBreak,
   RichTextMark,
+  RichTextMergeTag,
   RichTextParagraph,
   RichTextText,
 } from "./rich-text.js";

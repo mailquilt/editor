@@ -129,6 +129,25 @@ const addressAt = (
 
 type Inline = NonNullable<RichTextParagraph["content"]>[number];
 
+/** Text and line breaks, as the passes below read them. */
+type TextOrBreak = Exclude<Inline, { type: "mergeTag" }>;
+
+/**
+ * Each Merge Tag as the text `{{name}}`, with its marks, so it keeps the spaces,
+ * escaping and break points a tag in text has always had, and an email saved
+ * before tags were nodes exports the same.
+ */
+const tagsAsText = (inline: Inline[] = []): TextOrBreak[] =>
+  inline.map((node) =>
+    node.type === "mergeTag"
+      ? {
+          ...(node.marks ? { marks: node.marks } : {}),
+          text: `{{${node.attrs.name}}}`,
+          type: "text",
+        }
+      : node
+  );
+
 /**
  * A paragraph's text and line breaks, with a link mark on each URL or email
  * address written in its text, as Apple Mail and Gmail would link it, because
@@ -138,7 +157,7 @@ type Inline = NonNullable<RichTextParagraph["content"]>[number];
  * goes somewhere else from a part of it. Each node and address is read once.
  * Each piece comes with where it starts in the text.
  */
-const linkWrittenAddresses = (inline: Inline[]) => {
+const linkWrittenAddresses = (inline: TextOrBreak[]) => {
   let offset = 0;
   const spans = inline.map((node) => {
     const start = offset;
@@ -172,7 +191,7 @@ const linkWrittenAddresses = (inline: Inline[]) => {
   }
   let next = 0;
   const pieces = spans.flatMap(({ end, node, start }) => {
-    const parts: { node: Inline; start: number }[] = [];
+    const parts: { node: TextOrBreak; start: number }[] = [];
     let from = start;
     while (node.type === "text" && from < end) {
       while ((links[next]?.end ?? end) <= from) {
@@ -224,7 +243,7 @@ const inlineToHtml = (
       html += `</${MARK_TAGS[mark.type]}>`;
     }
   };
-  const { pieces, text } = linkWrittenAddresses(inline);
+  const { pieces, text } = linkWrittenAddresses(tagsAsText(inline));
   const breaks = breakPoints(text);
   for (const { node, start } of pieces) {
     const marks = (node.marks ?? []).toSorted(
@@ -255,7 +274,7 @@ const inlineToHtml = (
 
 /** Whether a paragraph's last line needs a <br /> to take up space. */
 const endsWithoutText = (inline: RichTextParagraph["content"] = []) =>
-  inline.at(-1)?.type !== "text";
+  inline.at(-1)?.type === "hardBreak" || inline.length === 0;
 
 /**
  * The styles core gives every Text and Heading, which always set these. The
@@ -283,7 +302,9 @@ export const richTextToHtml = (
 const hasText = ({ content }: RichTextDocument) =>
   content.some((paragraph) =>
     paragraph.content?.some(
-      (node) => node.type === "text" && node.text.trim() !== ""
+      (node) =>
+        node.type === "mergeTag" ||
+        (node.type === "text" && node.text.trim() !== "")
     )
   );
 

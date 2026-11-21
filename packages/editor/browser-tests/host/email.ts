@@ -27,7 +27,7 @@ const emailOf = (rows: RichTextText[][][]): BlocksDocument => ({
     fontFamily: "Arial, Helvetica, sans-serif",
     width: 600,
   },
-  version: 2,
+  version: 3,
 });
 
 /** An email from each Row's Columns, as the text of each Column's Blocks. */
