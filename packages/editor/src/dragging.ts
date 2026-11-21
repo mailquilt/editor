@@ -13,6 +13,9 @@ export interface Dragging {
   destroy: () => void;
 }
 
+/** Where dropped files land: on an Image Block, or where a new Block would. */
+export type FileDropTarget = DropPosition | { blockId: string };
+
 /** A press alone stays a click, however long it lasts. */
 const START_DISTANCE_PX = 5;
 
@@ -134,17 +137,36 @@ interface Drag {
 }
 
 interface DraggingHost {
+  /** Whether files can be dropped, as each needs the Host app to upload it. */
+  acceptsFiles: () => boolean;
   onDrop: (source: DragSource, position: DropPosition) => void;
+  onDropFiles: (files: File[], target: FileDropTarget) => void;
   root: ShadowRoot;
+  /** Whether a Block takes a file dropped on it, as an Image Block does. */
+  takesFiles: (blockId: string) => boolean;
+}
+
+/** What's under a drop, and the line that shows where it lands, if any. */
+interface Shown {
+  line?: { left: number; width: number; y: number };
+  /** The Column it lands in, or the Block that takes it. */
+  over?: HTMLElement;
 }
 
 /**
- * Drags Blocks, Rows and palette items with pointer events. The drop position
- * comes from the pointer when the drag ends, so nothing moves until then, and
- * the indicator shows the same answer on the way there. The keyboard has its
- * own way to move each one, through the same Commands.
+ * Drags Blocks, Rows and palette items with pointer events, and takes files
+ * dragged in from outside. The drop position comes from the pointer when the
+ * drag ends, so nothing moves until then, and the indicator shows the same
+ * answer on the way there. The keyboard has its own way to move each one,
+ * through the same Commands.
  */
-export const createDragging = ({ onDrop, root }: DraggingHost): Dragging => {
+export const createDragging = ({
+  acceptsFiles,
+  onDrop,
+  onDropFiles,
+  root,
+  takesFiles,
+}: DraggingHost): Dragging => {
   /** A press that may still turn into a drag, and the drag once it has. */
   let press: Press | undefined;
   let drag: Drag | undefined;
@@ -158,18 +180,20 @@ export const createDragging = ({ onDrop, root }: DraggingHost): Dragging => {
   let startedOn: DOMRect | undefined;
 
   /**
-   * Where a drop would land now, and the line that shows it. Blocks are counted
-   * without the dragged one, as a move's index is. There's no landing far from the
-   * editor, which is how to abandon a drag, or on the side panel, so that letting
-   * go of a palette item that barely moved adds nothing, or on the floating
-   * toolbar. Nor is there outside a scroll container the editor is in, such as
-   * the Shell's, where what's under the pointer is scrolled out of sight.
+   * Where a drop of `source` would land now, and the line that shows it. Blocks
+   * are counted without the `dragged` one, as a move's index is. There's no
+   * landing far from the editor, which is how to abandon a drag, or on the side
+   * panel, so that letting go of a palette item that barely moved adds nothing,
+   * or on the floating toolbar. Nor is there outside a scroll container the
+   * editor is in, such as the Shell's, where what's under the pointer is
+   * scrolled out of sight.
    */
   const landing = (
-    { element, source }: Grab,
+    source: DragSource,
     pointer: Point,
-    autoScroll: AutoScroll
-  ) => {
+    autoScroll: AutoScroll,
+    dragged?: Element
+  ): (Shown & { position: DropPosition }) | undefined => {
     const email = findPlace(root, "email");
     const controls = [
       ...findPlaces(root, "sidePanel"),
@@ -189,13 +213,12 @@ export const createDragging = ({ onDrop, root }: DraggingHost): Dragging => {
       : findPlaces(email, "column").find((each) => contains(each, pointer));
     const parent = column ?? email;
     const items = findPlaces(parent, column ? "block" : "row").filter(
-      (each) => each !== element
+      (each) => each !== dragged
     );
     const index = items.filter((each) => midpointY(each) < pointer.y).length;
     const next = items[index];
     const box = parent.getBoundingClientRect();
     return {
-      column,
       line: {
         left: box.left,
         width: box.width,
@@ -204,25 +227,26 @@ export const createDragging = ({ onDrop, root }: DraggingHost): Dragging => {
           items.at(-1)?.getBoundingClientRect().bottom ??
           box.top,
       },
+      over: column,
       position: column
         ? { columnId: column.dataset.columnId as string, index }
         : { rowIndex: index },
     };
   };
 
-  /** The line where a drop would land, and the Column it would land in. */
-  const showIndicator = (target?: ReturnType<typeof landing>) => {
+  /** The line where a drop would land, and the Column or Block it lands in. */
+  const showIndicator = (target?: Shown) => {
     const email = findPlace(root, "email");
     const indicator = findPlace(root, "dropIndicator");
     if (!(email && indicator)) {
       return;
     }
-    const landsIn = target?.column;
-    for (const column of email.querySelectorAll<HTMLElement>(
+    const landsIn = target?.over;
+    for (const each of email.querySelectorAll<HTMLElement>(
       "[data-drop-target]"
     )) {
-      if (column !== landsIn) {
-        delete column.dataset.dropTarget;
+      if (each !== landsIn) {
+        delete each.dataset.dropTarget;
       }
     }
     if (landsIn) {
@@ -260,7 +284,12 @@ export const createDragging = ({ onDrop, root }: DraggingHost): Dragging => {
     // An undo during the drag can take away the Block being dragged.
     const position =
       drop && grab.element.isConnected
-        ? landing(grab, dragged.pointer, dragged.autoScroll)?.position
+        ? landing(
+            grab.source,
+            dragged.pointer,
+            dragged.autoScroll,
+            grab.element
+          )?.position
         : undefined;
     startedOn = undefined;
     dragged.ghost.remove();
@@ -293,7 +322,7 @@ export const createDragging = ({ onDrop, root }: DraggingHost): Dragging => {
     }
     ghost.style.translate = `${pointer.x - from.x}px ${pointer.y - from.y}px`;
     autoScroll.frame(pointer, time);
-    showIndicator(landing(grab, pointer, autoScroll));
+    showIndicator(landing(grab.source, pointer, autoScroll, grab.element));
     frame = requestAnimationFrame(onFrame);
   };
 
@@ -440,10 +469,93 @@ export const createDragging = ({ onDrop, root }: DraggingHost): Dragging => {
     );
   };
 
+  /**
+   * Where files dragged in from outside would land: where a new Block from the
+   * palette would, unless it's on a Block that takes them. Only over the canvas,
+   * as the browser says, and not over the Preview or the narrow notice above it.
+   */
+  const fileLanding = (
+    event: DragEvent
+  ): (Shown & { position: FileDropTarget }) | undefined => {
+    const [under] = event.composedPath();
+    const email = findPlace(root, "email");
+    if (
+      drag ||
+      !acceptsFiles() ||
+      !email ||
+      !(under instanceof Element) ||
+      !closestPlace(under, "workspace")
+    ) {
+      return undefined;
+    }
+    const pointer = { x: event.clientX, y: event.clientY };
+    const landed = landing(
+      { blockType: "image" },
+      pointer,
+      createAutoScroll(root.host)
+    );
+    const block =
+      landed &&
+      findPlaces(email, "block").find((each) => contains(each, pointer));
+    const blockId = block?.dataset.blockId;
+    if (block && blockId !== undefined && takesFiles(blockId)) {
+      return { over: block, position: { blockId } };
+    }
+    return landed;
+  };
+
+  /** Shows where files would land, as a Block's drag does, or stops. */
+  const showFileDrag = (target?: Shown) => {
+    const email = findPlace(root, "email");
+    if (email && target) {
+      email.dataset.dragging = "block";
+    } else if (email) {
+      delete email.dataset.dragging;
+    }
+    showIndicator(target);
+  };
+
+  /**
+   * Files dragged in from outside come as the browser's own drag events, which
+   * pointer events don't see. Heard on their way in, before a Block's text, which
+   * would take them itself. Anywhere they can't land, they're refused, so that
+   * the browser doesn't open them in place of the page.
+   */
+  const onFileDrag = (event: DragEvent) => {
+    const { dataTransfer } = event;
+    if (!dataTransfer?.types.includes("Files")) {
+      return;
+    }
+    // Leaving one element for another, the next comes straight after.
+    if (event.type === "dragleave") {
+      if (!drag) {
+        showFileDrag();
+      }
+      return;
+    }
+    const target = fileLanding(event);
+    event.preventDefault();
+    dataTransfer.dropEffect = target ? "copy" : "none";
+    if (event.type !== "drop") {
+      showFileDrag(target);
+      return;
+    }
+    showFileDrag();
+    if (target) {
+      onDropFiles([...dataTransfer.files], target.position);
+    }
+  };
+
   const presses = new AbortController();
   root.addEventListener("pointerdown", onPointerdown, {
     signal: presses.signal,
   });
+  for (const type of ["dragover", "dragleave", "drop"]) {
+    root.host.addEventListener(type, onFileDrag as EventListener, {
+      capture: true,
+      signal: presses.signal,
+    });
+  }
 
   return {
     destroy: () => {

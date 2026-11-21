@@ -254,9 +254,14 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
 
   constructor() {
     super();
-    // Its header is outside <mail-quilt>, which refuses the rest.
-    this.addEventListener("dragover", refuseFiles);
-    this.addEventListener("drop", refuseFiles);
+    // Its header is outside <mail-quilt>, which takes or refuses the rest.
+    const refuseOutsideEditor = (event: DragEvent) => {
+      if (!event.composedPath().includes(this.#editor)) {
+        refuseFiles(event);
+      }
+    };
+    this.addEventListener("dragover", refuseOutsideEditor);
+    this.addEventListener("drop", refuseOutsideEditor);
     takeValueSetEarly(this);
     this.#editor.addEventListener("mq-change", ({ detail }) => {
       this.#keep(detail.document);

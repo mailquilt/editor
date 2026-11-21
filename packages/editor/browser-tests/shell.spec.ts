@@ -1209,12 +1209,19 @@ test("shows the dragging cursor over the Shell during a drag", async ({
   await expect.poll(cursor).toBe(usual);
 });
 
-test("a file dropped on the header doesn't open in the page", async ({
+test("a file dropped on the header doesn't open in the page, and one on the canvas is uploaded", async ({
   page,
 }) => {
   await openShell(page);
+  await shell(page).evaluate((element) => {
+    (element as MailQuiltShell).uploadImage = () =>
+      Promise.resolve({ url: "https://cdn.example/uploaded.png" });
+  });
 
-  await expect(dropFileOn(header(page))).resolves.toEqual([false, false]);
+  await expect(dropFileOn(header(page))).resolves.toBe("refused");
+  await expect(dropFileOn(shell(page).getByTestId("workspace"))).resolves.toBe(
+    "taken"
+  );
 });
 
 test.describe("accessibility", () => {

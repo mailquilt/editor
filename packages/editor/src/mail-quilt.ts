@@ -36,10 +36,9 @@ import { createKeyDispatch } from "./key-dispatch.js";
 import { keyLabel } from "./key-map.js";
 import type { Action, KeyScope } from "./key-map.js";
 import type { PanelApi } from "./panel-api.js";
-import { blocksIn } from "./positions.js";
+import { blocksIn, locate } from "./positions.js";
 import { createPresses } from "./presses.js";
 import { createPreview, previewStyles, renderPreview } from "./preview.js";
-import { refuseFiles } from "./refuse-files.js";
 import { createSelection } from "./selection.js";
 import { createSettingsDrafts, settingsPanelStyles } from "./settings-panel.js";
 import {
@@ -315,8 +314,11 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     selection: this.#selection,
   });
   readonly #uploads = createImageUploads({
+    addImageBlocks: (count, position) =>
+      this.#editing.addBlocksAt("image", count, position),
     announcements: this.#announcements,
     email: () => this.#editor?.getDocument(),
+    select: (blockId) => this.#selection.selectLanded(blockId),
     setImage: (blockId, src) => {
       const result = this.#apply(
         { blockId, props: { src }, type: "updateBlockProps" },
@@ -412,8 +414,6 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     this.addEventListener("keydown", this.#keys.onKeydownCapture, {
       capture: true,
     });
-    this.addEventListener("dragover", refuseFiles);
-    this.addEventListener("drop", refuseFiles);
     takeValueSetEarly(this);
   }
 
@@ -471,8 +471,15 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     });
     this.#resizeObserver.observe(this);
     this.#dragging = createDragging({
+      acceptsFiles: () => Boolean(this.uploadImage),
       onDrop: (source, position) => this.#editing.drop(source, position),
+      onDropFiles: (files, target) => this.#uploads.drop(files, target),
       root: this.renderRoot,
+      // As it's drawn, which a drag goes by.
+      takesFiles: (blockId) => {
+        const email = this.#rendered;
+        return email ? locate(email, blockId)?.block.type === "image" : false;
+      },
     });
     this.#toolFitting = createToolFitting({
       onMove: () => this.#tooltips?.tooltips.sync(),
