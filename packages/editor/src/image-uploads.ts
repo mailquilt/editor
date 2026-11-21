@@ -1,14 +1,18 @@
 import type { ApplyResult, BlocksDocument } from "@mailquilt/core";
 
 import type { Announcements } from "./announcements.js";
+import type { FileDropTarget } from "./dragging.js";
 import type { HostAppProperties } from "./host-app.js";
 import { blocksIn, locate } from "./positions.js";
+import type { DropPosition } from "./positions.js";
+import { UI_LANG } from "./theme.js";
 
 /**
- * Uploads through the Host app's `uploadImage`, each for one Image Block, and
- * why a Block's last one failed. A Block shows "Uploading…" while its upload
- * runs, and takes the URL in one Command when it's done. An upload is aborted
- * only when its Block is gone, so an abort never leaves an empty Block.
+ * Uploads through the Host app's `uploadImage`, each for one Image Block, from
+ * the Image settings or a drop, and why a Block's last one failed. A Block
+ * shows "Uploading…" while its upload runs, and takes the URL in one Command
+ * when it's done. An upload is aborted only when its Block is gone, so an abort
+ * never leaves an empty Block.
  */
 
 /** The types every email client shows, which the file picker offers. */
@@ -18,6 +22,10 @@ const WRONG_TYPE = "Use a PNG, JPEG or GIF image.";
 const FAILED = "The image couldn't be uploaded.";
 
 interface UploadsHost {
+  /** Adds empty Image Blocks where a drop landed, and returns their IDs. */
+  addImageBlocks: (count: number, position: DropPosition) => string[];
+  /** Selects a Block that's taken a dropped file. */
+  select: (blockId: string) => void;
   uploadImage: () => HostAppProperties["uploadImage"];
   /** Sets an Image Block's URL, which the Image URL's check can refuse. */
   setImage: (blockId: string, url: string) => ApplyResult | undefined;
@@ -28,9 +36,13 @@ interface UploadsHost {
 
 export type ImageUploads = ReturnType<typeof createImageUploads>;
 
+const isUploadable = (file: File) => UPLOADABLE_TYPES.includes(file.type);
+
 export const createImageUploads = ({
+  addImageBlocks,
   announcements,
   email: current,
+  select,
   setImage,
   uploadImage: hostUploadImage,
 }: UploadsHost) => {
@@ -46,14 +58,63 @@ export const createImageUploads = ({
     return block?.type === "image" ? block.props.src : undefined;
   };
 
-  const fail = (blockId: string, message: string) => {
+  /** Says why, with the file's name for a Block the drop has just added. */
+  const fail = (blockId: string, message: string, fileName?: string) => {
     failures.set(blockId, { message, src: srcOf(blockId) });
-    announcements.say(message);
+    announcements.say(fileName ? `${fileName}: ${message}` : message);
   };
 
   const abort = (blockId: string) => {
     running.get(blockId)?.abort();
     running.delete(blockId);
+  };
+
+  /**
+   * Uploads a file as the Image Block's image, in place of any upload it
+   * already has running. A file of another type is refused first, and leaves a
+   * running upload as it is. With `named`, a failure is announced with the
+   * file's name, as there may be several.
+   */
+  const upload = async (blockId: string, file: File, named = false) => {
+    const uploadImage = hostUploadImage();
+    if (!uploadImage) {
+      return;
+    }
+    const fileName = named ? file.name : undefined;
+    if (!isUploadable(file)) {
+      fail(blockId, WRONG_TYPE, fileName);
+      return;
+    }
+    abort(blockId);
+    failures.delete(blockId);
+    const controller = new AbortController();
+    running.set(blockId, controller);
+    // The canvas shows it too, where a screen reader isn't.
+    announcements.say("Uploading image.");
+    let url: unknown;
+    let message = FAILED;
+    try {
+      // A JavaScript Host app can resolve with anything.
+      const result: { url?: unknown } | undefined = await uploadImage(file, {
+        signal: controller.signal,
+      });
+      url = result?.url;
+    } catch (error) {
+      if (error instanceof Error && error.message) {
+        ({ message } = error);
+      }
+    }
+    // Aborted, or replaced by another upload.
+    if (running.get(blockId) !== controller) {
+      return;
+    }
+    running.delete(blockId);
+    const result = typeof url === "string" ? setImage(blockId, url) : undefined;
+    if (result?.ok || result?.code === "unchanged") {
+      announcements.say("Image uploaded.");
+    } else {
+      fail(blockId, message, fileName);
+    }
   };
 
   return {
@@ -63,6 +124,49 @@ export const createImageUploads = ({
         abort(blockId);
       }
       failures.clear();
+    },
+
+    /**
+     * Files dropped on an Image Block, which takes the first image, or where
+     * they land on the canvas. Each other image adds an Image Block there, in order,
+     * which uploads on its own. A file of another type adds none, and is
+     * refused by its name. The last Block to take a file is selected.
+     */
+    drop: (files: File[], target: FileDropTarget) => {
+      const email = current();
+      let rest = files;
+      let position: DropPosition;
+      let selected: string | undefined;
+      if ("blockId" in target) {
+        const at = email && locate(email, target.blockId);
+        // With no image, the Block says why the first file is refused.
+        const first = files.find(isUploadable) ?? files[0];
+        if (!(at && first)) {
+          return;
+        }
+        upload(target.blockId, first);
+        selected = target.blockId;
+        rest = files.filter((file) => file !== first);
+        position = { columnId: at.columnId, index: at.index + 1 };
+      } else {
+        position = target;
+      }
+      const images = rest.filter(isUploadable);
+      const blockIds = addImageBlocks(images.length, position);
+      for (const [index, blockId] of blockIds.entries()) {
+        upload(blockId, images[index] as File, true);
+      }
+      selected = blockIds.at(-1) ?? selected;
+      if (selected !== undefined) {
+        select(selected);
+      }
+      const refused = rest.filter((file) => !isUploadable(file));
+      if (refused.length > 0) {
+        const names = new Intl.ListFormat(UI_LANG).format(
+          refused.map(({ name }) => name)
+        );
+        announcements.say(`${names}: ${WRONG_TYPE}`);
+      }
     },
 
     /** Why the Block's last upload failed, until its next one or a new URL. */
@@ -92,51 +196,6 @@ export const createImageUploads = ({
       }
     },
 
-    /**
-     * Uploads a file as the Image Block's image, in place of any upload it
-     * already has running. A file of another type is refused first, and
-     * leaves a running upload as it is.
-     */
-    upload: async (blockId: string, file: File) => {
-      const uploadImage = hostUploadImage();
-      if (!uploadImage) {
-        return;
-      }
-      if (!UPLOADABLE_TYPES.includes(file.type)) {
-        fail(blockId, WRONG_TYPE);
-        return;
-      }
-      abort(blockId);
-      failures.delete(blockId);
-      const controller = new AbortController();
-      running.set(blockId, controller);
-      // The canvas shows it too, where a screen reader isn't.
-      announcements.say("Uploading image.");
-      let url: unknown;
-      let message = FAILED;
-      try {
-        // A JavaScript Host app can resolve with anything.
-        const result: { url?: unknown } | undefined = await uploadImage(file, {
-          signal: controller.signal,
-        });
-        url = result?.url;
-      } catch (error) {
-        if (error instanceof Error && error.message) {
-          ({ message } = error);
-        }
-      }
-      // Aborted, or replaced by another upload.
-      if (running.get(blockId) !== controller) {
-        return;
-      }
-      running.delete(blockId);
-      const result =
-        typeof url === "string" ? setImage(blockId, url) : undefined;
-      if (result?.ok || result?.code === "unchanged") {
-        announcements.say("Image uploaded.");
-      } else {
-        fail(blockId, message);
-      }
-    },
+    upload,
   };
 };

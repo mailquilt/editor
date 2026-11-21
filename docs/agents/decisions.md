@@ -49,7 +49,7 @@ Which module owns what, and why, is in `docs/adr/`:
 - A new Row from the Rows tab is selected, as a dragged one is. (#54)
 - A drag scrolls a container only within 60px of its edge, and passes on to the next container once one can't go further. (#78)
 - The Preview's email has the host page's origin, with scripts still off, so the editor can refuse a file dropped on it and keep Alt+← from going back a page. (#165)
-- A file dropped on the editor is refused, as there's no image upload yet, on the Preview, the narrow notice and the Shell too. Safari runs no listener in the Preview's email, so it still opens a file dropped there, in place of the page. Only a cover over the email during a drag could stop it, which image upload would replace. (#79, #161, #165, #212)
+- A file dropped on the editor is refused without `uploadImage`. With it, only the canvas takes files, and the Preview, the narrow notice and the Shell's header still refuse them. Safari runs no listener in the Preview's email, so it still opens a file dropped there, in place of the page. Only a cover over the email during a drag could stop it, which image upload would replace. (#79, #161, #165, #212, #271)
 - Import JSON has no confirm, and reads a file of any size. The person chose the file, and Export JSON is beside it. (#36, #205)
 - A pasted or dropped tab is a space, as the export shows it, where the canvas would show it at a tab stop no email client can draw. A tab already in a saved email stays until then. (#211)
 - The editor and the Shell are left to right on any page, so the canvas matches the export until right-to-left emails are built. A heading the host gives the Shell takes its direction from its own text. (#166)

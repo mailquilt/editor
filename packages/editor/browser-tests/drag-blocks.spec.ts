@@ -692,10 +692,7 @@ test.describe("a file dropped doesn't open in the page", () => {
   test("on the email", async ({ page }) => {
     await openBlocks(page, ["text"]);
 
-    await expect(dropFileOn(blockGroup(page, "Text"))).resolves.toEqual([
-      false,
-      false,
-    ]);
+    await expect(dropFileOn(blockGroup(page, "Text"))).resolves.toBe("refused");
   });
 
   test("on the email in the open Preview", async ({ browserName, page }) => {
@@ -709,7 +706,7 @@ test.describe("a file dropped doesn't open in the page", () => {
     await expect(email).toContainText("Hello");
 
     // From inside the email's own document, where a real drop over it goes.
-    await expect(dropFileOn(email)).resolves.toEqual([false, false]);
+    await expect(dropFileOn(email)).resolves.toBe("refused");
   });
 });
 

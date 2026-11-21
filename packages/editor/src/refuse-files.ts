@@ -1,7 +1,7 @@
 /**
- * A file dropped anywhere in the editor, the Preview, the narrow notice and the
- * Shell too, would open in the tab, instead of the page and the email.
- * Dragged text still moves.
+ * A file dropped where the editor doesn't take it, such as on the Preview's
+ * email or the Shell's header, would open in the tab, instead of the page and
+ * the email. Dragged text still moves.
  */
 export const refuseFiles = (event: DragEvent) => {
   if (event.dataTransfer?.types.includes("Files")) {

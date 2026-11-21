@@ -124,6 +124,16 @@ export const canvasStyles = css`
     outline-offset: -2px;
   }
 
+  /* An Image Block that files dragged over it would give its image. */
+  .email[data-dragging="block"] .block[data-drop-target] {
+    background-image: linear-gradient(
+      var(--mq-color-accent-soft),
+      var(--mq-color-accent-soft)
+    );
+    outline: 2px solid var(--mq-color-accent);
+    outline-offset: -2px;
+  }
+
   .column.empty {
     display: flex;
     min-height: 112px;

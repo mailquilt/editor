@@ -5,7 +5,7 @@ seo:
   title: "Image upload for an email editor, to your own storage"
 ---
 
-Without an upload, a person adds an image by its URL, so the image has to be online already. Give the editor an `uploadImage` function, and the Image settings get an Upload image button beside the Image URL. Your function sends the file to your own storage and returns the image's URL, which the Image Block takes. Mail Quilt stores nothing itself.
+Without an upload, a person adds an image by its URL, so the image has to be online already. Give the editor an `uploadImage` function, and the Image settings get an Upload image button beside the Image URL, and people can drop image files on the email. Your function sends the file to your own storage and returns the image's URL, which the Image Block takes. Mail Quilt stores nothing itself.
 
 ```ts
 uploadImage?: (
@@ -31,7 +31,7 @@ editor.uploadImage = uploadImage;
 <MailQuilt onChange={setEmail} uploadImage={uploadImage} value={email} />
 ```
 
-Without it, there's no Upload image button, and the editor is as it was.
+Without it, there's no Upload image button, a file dropped on the editor is refused, and the editor is as it was.
 
 ## A pre-signed upload
 
@@ -129,9 +129,17 @@ If your page has a Content Security Policy, its `connect-src` has to allow the u
 
 ## What the editor does
 
-- **The file picker offers PNG, JPEG and GIF,** the types every email client shows. Any other file is refused with "Use a PNG, JPEG or GIF image." before your function is called. The editor has no size limit of its own: reject a file that's too big, and say why.
+- **The file picker offers PNG, JPEG and GIF,** the types every email client shows. Any other file, picked or dropped, is refused with "Use a PNG, JPEG or GIF image." before your function is called. The editor has no size limit of its own: reject a file that's too big, and say why.
 - **While the upload runs,** the Image Block shows "Uploading…" instead of an image. Screen readers hear when it starts and when it's done.
 - **When it's done,** the Image Block takes the URL in one change, which one undo takes back. The Image URL field shows the URL, and can still be edited.
 - **The URL you return is checked as a typed one is:** it starts with `https:` or `http:`, or it's a [Merge Tag](./document-format#merge-tags). An upload that returns any other URL has failed.
 - **When it fails,** the message of the `Error` your function rejects with is shown by the Image URL field, and screen readers read it out. If it rejects with no message, the editor says "The image couldn't be uploaded." There's no `mq-error`, as your function already knows. The message stays on that Block until its next upload or a new Image URL. It's never saved in the email.
 - **An upload is aborted through `signal` when its Block is gone,** deleted, taken away by undo, or replaced along with the whole email by a new `value`, and when a new upload into the same Block takes its place. Whatever your function returns after that is ignored.
+
+## Dropping files
+
+- **A file dropped on an Image Block** uploads as that Block's image, as one from the Upload image button does. With several files, the Block takes the first image, and each other image adds an Image Block after it.
+- **Files dropped anywhere else on the email** each add an Image Block where they land, in order. The same line shows where, as for a Block dragged from the Content tab, and files dropped outside any Column go in a new Row. Each uploads on its own, and the last new Image Block is selected.
+- **A new Image Block whose upload fails stays,** empty, with the reason by its Image URL field when it's selected. Screen readers hear each failure with the file's name, as several files can be uploading at once. Redo after undoing a new Image Block brings it back empty, without uploading the file again.
+- **A dropped file of another type** adds no Image Block, and screen readers hear its name and "Use a PNG, JPEG or GIF image."
+- **The Preview, the notice shown when the editor is too narrow, and the Shell's header** still refuse files, so the browser never opens one in place of your page.

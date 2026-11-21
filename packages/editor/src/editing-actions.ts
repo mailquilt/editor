@@ -109,6 +109,30 @@ export const createEditingActions = ({
     },
 
     /**
+     * New Blocks of one type where a drop landed, one after another, in one new
+     * Row if it landed outside any Column. Returns their IDs.
+     */
+    addBlocksAt: (blockType: string, count: number, position: DropPosition) => {
+      const blockIds: string[] = [];
+      let at = position;
+      while (blockIds.length < count) {
+        const result = apply(dropCommand({ blockType }, at));
+        const email = current();
+        const landed =
+          result?.ok &&
+          result.createdId !== undefined &&
+          email &&
+          locate(email, result.createdId);
+        if (!landed) {
+          break;
+        }
+        blockIds.push(landed.block.id);
+        at = { columnId: landed.columnId, index: landed.index + 1 };
+      }
+      return blockIds;
+    },
+
+    /**
      * After the selected Row or the selected Block's Row, or else at the end, and
      * selects it.
      */

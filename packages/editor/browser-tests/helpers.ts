@@ -622,25 +622,100 @@ export interface Point {
   y: number;
 }
 
+/** A file to drop, by its name and type. */
+export interface DroppedFile {
+  name: string;
+  type: string;
+}
+
+const PHOTO_FILE = { name: "photo.png", type: "image/png" };
+
+interface FileDrag {
+  drop: boolean;
+  files: readonly DroppedFile[];
+  point?: Point;
+}
+
 /**
- * Drags a file over the element and drops it there. Returns whether each event
- * kept the browser's own handling: false once it's prevented.
+ * What the browser does with files dragged over the element, at `point` or its
+ * center, and, with `drop`, dropped there. As the browser does, the drop comes
+ * only if the last `dragover` was prevented and didn't refuse it. The browser
+ * "opens" a file the page doesn't take, in place of the page. It runs in the
+ * page, so it has nothing from outside.
  */
-export const dropFileOn = (target: Locator) =>
-  target.evaluate((element) => {
-    const dataTransfer = new DataTransfer();
-    dataTransfer.items.add(new File(["x"], "photo.png", { type: "image/png" }));
-    return ["dragover", "drop"].map((type) =>
-      element.dispatchEvent(
-        new DragEvent(type, {
-          bubbles: true,
-          cancelable: true,
-          composed: true,
-          dataTransfer,
-        })
-      )
+const fireFileDrag = (element: Element, { drop, files, point }: FileDrag) => {
+  const box = element.getBoundingClientRect();
+  const { x: clientX, y: clientY } = point ?? {
+    x: box.left + box.width / 2,
+    y: box.top + box.height / 2,
+  };
+  const dataTransfer = new DataTransfer();
+  for (const { name, type } of files) {
+    dataTransfer.items.add(new File(["x"], name, { type }));
+  }
+  const fire = (type: string) =>
+    element.dispatchEvent(
+      new DragEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        clientX,
+        clientY,
+        composed: true,
+        dataTransfer,
+      })
     );
+  // What the browser offers for a file from outside. Chromium ignores what the
+  // page sets on a DataTransfer that isn't the browser's own, so it's kept here.
+  let effect = "copy";
+  Object.defineProperty(dataTransfer, "dropEffect", {
+    get: () => effect,
+    set: (value: string) => {
+      effect = value;
+    },
   });
+  fire("dragenter");
+  if (fire("dragover")) {
+    return "opens";
+  }
+  if (effect === "none") {
+    return "refused";
+  }
+  if (!drop) {
+    return "allowed";
+  }
+  return fire("drop") ? "opens" : "taken";
+};
+
+/** Drags a file over the element, at `point` or its center, and drops it there. */
+export const dropFileOn = (target: Locator, point?: Point) =>
+  target.evaluate(fireFileDrag, { drop: true, files: [PHOTO_FILE], point });
+
+/**
+ * Drags files over a point in the window, onto whatever's there, even inside
+ * the editor's shadow root, and drops them there unless `drop` is false.
+ */
+export const dropFilesAt = async (
+  page: Page,
+  point: Point,
+  files: readonly DroppedFile[] = [PHOTO_FILE],
+  { drop = true } = {}
+) => {
+  const target = await page.evaluateHandle(({ x, y }) => {
+    let element = document.elementFromPoint(x, y);
+    while (element?.shadowRoot) {
+      const inner = element.shadowRoot.elementFromPoint(x, y);
+      if (!inner || inner === element) {
+        break;
+      }
+      element = inner;
+    }
+    if (!element) {
+      throw new Error("Nothing is at that point");
+    }
+    return element;
+  }, point);
+  return target.evaluate(fireFileDrag, { drop, files, point });
+};
 
 export const boxOf = async (locator: Locator) => {
   const box = await locator.boundingBox();

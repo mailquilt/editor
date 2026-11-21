@@ -14,7 +14,7 @@ The editor is the `<mail-quilt>` element, and the [Shell](./shell) is `<mail-qui
 | Name | What it does |
 | --- | --- |
 | `value` | The email the editor shows. Set it to open an email, or to `undefined` or `null` to empty the editor. |
-| `uploadImage` | A function that uploads an image to your storage and returns a promise of `{ url }`. With it, the Image settings have an Upload image button. [Upload images](./upload-images) shows one, and what the editor does with it. |
+| `uploadImage` | A function that uploads an image to your storage and returns a promise of `{ url }`. With it, the Image settings have an Upload image button, and image files can be dropped on the email. [Upload images](./upload-images) shows one, and what the editor does with it. |
 | `mq-change` | An event fired after every change. The new email is in `event.detail.document`. |
 | `mq-error` | An event fired when the editor refuses an email, which then keeps the email it had. The reason is in `event.detail.reason`. The [document format](./document-format) page lists what the editor accepts. |
 | `exportHtml()` | Returns a promise of the email's HTML, ready to send. It rejects if the editor has no email. |

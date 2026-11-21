@@ -26,9 +26,21 @@ export const createAnnouncements = ({
   let text = "";
   /** Each announcement gets a new element, so the same words are read again. */
   let id = 0;
+  /** Whether `text` has been shown, and so heard. */
+  let shown = true;
 
+  /**
+   * What's said before the last words are shown is heard after them, as
+   * several uploads can end at once. The same words aren't said twice, and
+   * nothing at all says nothing.
+   */
   const say = (words: string) => {
-    text = words;
+    if (shown || !words || !text) {
+      text = words;
+    } else if (!text.endsWith(words)) {
+      text = `${text} ${words}`;
+    }
+    shown = false;
     id += 1;
     requestUpdate();
   };
@@ -57,11 +69,14 @@ export const createAnnouncements = ({
       text = "";
     },
 
-    render: () => html`
-      <div class="visually-hidden" lang=${UI_LANG} role="status">
-        ${keyed(id, html`<span>${text}</span>`)}
-      </div>
-    `,
+    render: () => {
+      shown = true;
+      return html`
+        <div class="visually-hidden" lang=${UI_LANG} role="status">
+          ${keyed(id, html`<span>${text}</span>`)}
+        </div>
+      `;
+    },
 
     rowMoved,
     say,
