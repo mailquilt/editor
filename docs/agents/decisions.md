@@ -12,7 +12,9 @@ Which module owns what, and why, is in `docs/adr/`:
 - Block types across the packages, ADR 0013.
 - The canvas's styles, ADR 0006.
 - The renderer's modules, and Columns' width, ADR 0005 and 0010.
-- Rich text, ADR 0001 and 0003.
+- Rich text, ADR 0001 and 0003, and Merge Tags in it, ADR 0017.
+- What a copy puts on the clipboard, ADR 0018.
+- Where the Social Block's icons come from, ADR 0019.
 
 ## Keys and focus
 
@@ -71,6 +73,8 @@ Which module owns what, and why, is in `docs/adr/`:
 - A listener's error is thrown once every listener has heard of each change, from the call that started the changes. A Command a listener applies returns before anyone hears of it, so each listener hears of the changes in order. (#210)
 - A saved language that isn't a code still loads, and can be sent back unchanged. Only a new one has to be a code. (#79)
 - A check on saved data that gets stricter comes with a migration, which raises the format version and rewrites what an older version saved as the check now takes it, so every email a release accepted keeps opening. A migration finds what it rewrites by the keys that hold it. (#209)
+- A release that changes the format raises the version once, however many changes it holds. Its release notes say that emails it saves can't be opened by older packages, as a web app and a render worker on different versions would find. (#268)
+- Version 3 is open on `main` until `0.3.0` is published: each pull request that changes the format extends the same version 3 schema and migration, and an email saved from `main` in between isn't supported. The version pull request is made only once all six features of the release are in, so nothing is published with half the format. (#268)
 - An email is at most 1200px wide, and a font family needs at least one name. (#78)
 - Exports from `core` marked "not a promise to hosts" are for Mail Quilt's own packages, and come from `@mailquilt/core/internal`, not the main entry. (#61, #84)
 

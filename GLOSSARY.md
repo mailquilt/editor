@@ -27,6 +27,14 @@ One kind of Block, such as Text or Image, with settings of its own. Core holds t
 A named placeholder in email content, such as `{{first_name}}`, that is replaced with a recipient's value when the email is sent.
 _Avoid_: Variable, placeholder
 
+**List**:
+A run of bulleted or numbered items in a Text Block.
+_Avoid_: Bullets
+
+**Stacking**:
+A Row's Columns placed one under another on a phone, rather than side by side.
+_Avoid_: Wrapping, collapsing
+
 **Position**:
 Where a Block or Row is in an email: its Column and index, or its index among the Rows. A screen reader hears it in words, such as "Row 1, Column 2, position 3 of 4".
 _Avoid_: Place, location
@@ -48,6 +56,14 @@ The part of the editor that shows the email as a card at its own width, on a wor
 The panel docked on the right of the Canvas, with Content, Rows and Settings tabs, which shows the selected Block's or Row's settings instead of its tabs.
 _Avoid_: Sidebar, inspector
 
+**Merge Tag picker**:
+The list of the Host app's Merge Tags that opens when a person types `{{`, from which they pick one.
+_Avoid_: Autocomplete, variable menu
+
+**Preview**:
+The real exported email shown in a dialog, at desktop or phone width.
+_Avoid_: Mobile view
+
 **Theme token**:
 A CSS custom property starting with `--mq-` that sets one of the editor's own colors, spaces, corners or fonts, and that a host can override on the element. It never changes the email.
 
@@ -60,6 +76,10 @@ Where in the editor a key is answered: the innermost Place with keys of its own.
 _Avoid_: Place
 
 ### Product
+
+**Host app**:
+The web app that embeds Mail Quilt and supplies what the editor can't, such as storage for images and the list of Merge Tags.
+_Avoid_: Client, integrator, consumer
 
 **Playground**:
 A public page in the docs site where anyone can try the editor. It is a Shell.
