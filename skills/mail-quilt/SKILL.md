@@ -27,6 +27,7 @@ React needs React 19, and `@mailquilt/react` installs the editor with it. An app
 2. **Use an email to start from.** Use one the app already has, or the example email in the [document format](https://editor.mailquilt.com/docs/document-format.md). `createEmail()` from `@mailquilt/core` makes a new one, with one empty Text Block.
 3. **Save the JSON, not the HTML.** The JSON from `mq-change` (`onChange` in React) is the email. Store it, and make HTML from it with `exportHtml()` in the browser or `renderEmail()` on a server: [Render on a server](https://editor.mailquilt.com/docs/render-on-a-server.md).
 4. **Check JSON from anywhere you don't control** with `loadDocument()` before you store or render it: [Change emails in code](https://editor.mailquilt.com/docs/change-emails-in-code.md).
+5. **For image uploads, set `uploadImage`** on the element, or pass it as a prop in React: a function that sends the file to the app's own storage and returns `{ url }`. Pass its `signal` to `fetch`, and reject with an `Error` whose message the user should see: [Upload images](https://editor.mailquilt.com/docs/upload-images.md).
 
 ### Mistakes to avoid
 

@@ -2,6 +2,7 @@
 
 import type {
   BlocksDocument,
+  HostAppProperties,
   MailQuilt as MailQuiltElement,
   MailQuiltShell as MailQuiltShellElement,
   ShellAction,
@@ -24,12 +25,14 @@ import type {
 
 export type {
   BlocksDocument,
+  HostAppProperties,
   MailQuilt as MailQuiltElement,
   MailQuiltShell as MailQuiltShellElement,
   ShellAction,
 } from "@mailquilt/editor";
 
-interface EditorProps<Host> {
+/** What both components take, the Host app's properties among them. */
+interface EditorProps<Host> extends HostAppProperties {
   onChange?: (document: BlocksDocument) => void;
   /**
    * Why the editor refused a document, as `mq-error` says it, or why the
@@ -87,11 +90,14 @@ const loadEditor = () => import("@mailquilt/editor");
 const useEditorElement = <
   Host extends MailQuiltElement | MailQuiltShellElement,
 >({
+  hostApp,
   onChange,
   onError,
   ref,
   value,
-}: EditorProps<Host>) => {
+}: Omit<EditorProps<Host>, keyof HostAppProperties> & {
+  hostApp: HostAppProperties;
+}) => {
   const [element, setElement] = useState<Host | null>(null);
   const [loaded, setLoaded] = useState(false);
   const editor = loaded ? element : null;
@@ -148,6 +154,13 @@ const useEditorElement = <
     return () => editor.removeEventListener("mq-error", listener);
   }, [editor, onError]);
 
+  // At each commit, as the element ignores what it already has.
+  useLayoutEffect(() => {
+    if (editor) {
+      Object.assign(editor, hostApp);
+    }
+  });
+
   // In the commit, because an effect can run after the next key. The editor
   // would then see an older document, load it and lose that key and undo history.
   useLayoutEffect(() => {
@@ -172,12 +185,19 @@ export const MailQuilt = ({
   onChange,
   onError,
   ref,
+  uploadImage,
   value,
   ...attributes
 }: MailQuiltProps): ReactElement =>
   createElement("mail-quilt", {
     ...attributes,
-    ref: useEditorElement({ onChange, onError, ref, value }),
+    ref: useEditorElement({
+      hostApp: { uploadImage },
+      onChange,
+      onError,
+      ref,
+      value,
+    }),
   });
 
 /**
@@ -192,6 +212,7 @@ export const MailQuiltShell = ({
   onError,
   ref,
   saveKey,
+  uploadImage,
   value,
   ...rest
 }: MailQuiltShellProps): ReactElement => {
@@ -204,6 +225,12 @@ export const MailQuiltShell = ({
   };
   return createElement("mail-quilt-shell", {
     ...attributes,
-    ref: useEditorElement({ onChange, onError, ref, value }),
+    ref: useEditorElement({
+      hostApp: { uploadImage },
+      onChange,
+      onError,
+      ref,
+      value,
+    }),
   });
 };

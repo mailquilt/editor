@@ -107,11 +107,13 @@ export const blockTypeStyles = css`
 `;
 
 /** What a Block without text needs to draw, apart from its props and styles. */
-interface DrawContext {
+export interface DrawContext {
   /** The email's language, which a Block's own words take. */
   lang: string;
   failedImages: ReadonlySet<string>;
   onImageError: (src: string) => void;
+  /** Whether an image is being uploaded for the Block. */
+  uploading: boolean;
 }
 
 /** The editor's part of one type of Block. */
@@ -160,39 +162,55 @@ const IMAGE_ICON = icon(
   svg`<rect height="16" rx="2" width="18" x="3" y="4" /><circle cx="9" cy="10" r="2" /><path d="m21 17-5-5-9 8" />`
 );
 
+/** What an Image without a picture to show says in its place. */
+const imageStandIn = (
+  src: string | undefined,
+  { failedImages, uploading }: DrawContext
+) => {
+  if (uploading) {
+    return "Uploading…";
+  }
+  if (src === undefined) {
+    return "No image URL yet";
+  }
+  if (failedImages.has(src)) {
+    return `Couldn't load ${src}`;
+  }
+  return MERGE_TAG.test(src) ? src : undefined;
+};
+
 /**
  * The picture, and no link, because a click on the canvas selects it. A URL with a
  * Merge Tag has nothing to load until the email is sent, and a URL that failed
- * would otherwise collapse to nothing without alt text. Nor does a browser get to
- * drag the picture itself, which would take over from dragging the Block.
+ * would otherwise collapse to nothing without alt text. While a new one uploads,
+ * the old one would look like the upload's. Nor does a browser get to drag the
+ * picture itself, which would take over from dragging the Block.
  */
 const drawImage = (
   { alt = "", src }: BlockProps["image"],
   styles: Record<string, string>,
-  { failedImages, lang, onImageError }: DrawContext
+  context: DrawContext
 ) => {
   const size = styleProperties(styles);
-  const failed = src !== undefined && failedImages.has(src);
+  const standIn = imageStandIn(src, context);
   return html`
     <div class="padded-block image-block">
       ${
-        src === undefined || MERGE_TAG.test(src) || failed
+        standIn !== undefined || src === undefined
           ? html`
               <div class="image-placeholder" style=${size}>
                 ${IMAGE_ICON}
-                <span>
-                  ${failed ? `Couldn't load ${src}` : (src ?? "No image URL yet")}
-                </span>
+                <span>${standIn}</span>
               </div>
             `
           : html`
               <img
                 alt=${alt}
                 draggable="false"
-                lang=${lang}
+                lang=${context.lang}
                 src=${src}
                 style=${size}
-                @error=${() => onImageError(src)}
+                @error=${() => context.onImageError(src)}
               />
             `
       }
@@ -279,9 +297,5 @@ const drawContent = <Type extends BlockType>(
 };
 
 /** What a Block without text draws on the canvas. */
-export const renderBlockContent = (
-  block: Block,
-  lang: string,
-  failedImages: ReadonlySet<string>,
-  onImageError: (src: string) => void
-) => drawContent(block.type, block.props, { failedImages, lang, onImageError });
+export const renderBlockContent = (block: Block, context: DrawContext) =>
+  drawContent(block.type, block.props, context);

@@ -36,7 +36,7 @@ export const SOCIAL_IMAGE = {
  */
 export const MAIL_QUILT = {
   account: "None.",
-  blocks: `${capitalized(COUNTS.blocks)} Blocks, no template library, no image upload and no editing together.`,
+  blocks: `${capitalized(COUNTS.blocks)} Blocks, no template library and no editing together.`,
   browsers: "Its tests run in Chromium, Firefox and WebKit, Safari's engine.",
   build: `Nothing: the editor and its panel come ready, with ${COUNTS.blocks} Blocks.`,
   cost: "MIT. Free, with no paid plan.",

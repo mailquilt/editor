@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
+import type { MailQuiltElement, MailQuiltShellElement } from "../src/index.js";
 import { afterAFrame, focusStartOfTextBlock, textBlock } from "./helpers.js";
 
 test("onError hears a refused first document", async ({ page }) => {
@@ -83,6 +84,23 @@ test("other props such as className and aria-label reach the element", async ({
     const element = page.locator(tag);
     await expect(element).toHaveClass("host-editor");
     await expect(element).toHaveAttribute("aria-label", "Newsletter");
+  }
+});
+
+test("uploadImage reaches the element", async ({ page }) => {
+  for (const [query, tag] of [
+    ["/", "mail-quilt"],
+    ["/?shell", "mail-quilt-shell"],
+  ] as const) {
+    await page.goto(query);
+    await expect(textBlock(page)).toHaveText("Hello");
+    const uploaded = await page.locator(tag).evaluate(
+      async (element: MailQuiltElement | MailQuiltShellElement) =>
+        await element.uploadImage?.(new File(["x"], "photo.png"), {
+          signal: new AbortController().signal,
+        })
+    );
+    expect(uploaded).toEqual({ url: "https://cdn.example/photo.png" });
   }
 });
 

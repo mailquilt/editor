@@ -37,6 +37,11 @@ const starterEmails = {
   "plain-js": { dirs: [".", "save", "shell"], file: "starter-email.js" },
   "react-vite": { dirs: ["src"], file: "starter-email.ts" },
 } as const;
+/** Read by each project with TypeScript, which its build type-checks. */
+const publishedTypes = {
+  file: path.join(here, "published-types.ts"),
+  into: { nextjs: "app", "react-vite": "src" },
+} as const;
 /** The docs' server-side examples, run in Node against the packed packages. */
 const serverCode = path.join(quickStart, "..", "_code");
 /** The Next.js guide's own files, added to the Next.js project. */
@@ -125,6 +130,16 @@ for (const name of projectNames) {
       path.join(shellExamples, name),
       path.join(dir, shellPages[name as keyof typeof shellPages]),
       { recursive: true }
+    );
+  }
+  if (name in publishedTypes.into) {
+    cpSync(
+      publishedTypes.file,
+      path.join(
+        dir,
+        publishedTypes.into[name as keyof typeof publishedTypes.into],
+        "published-types.ts"
+      )
     );
   }
   const { dirs, file } = starterEmails[name];

@@ -63,6 +63,13 @@ export interface EmailPanelApi {
   /** In the selected Block's text. */
   toggleMark: (mark: ToggleableMark) => void;
   insertLineBreak: () => void;
+  /**
+   * Uploads a file through the Host app's `uploadImage`, as the Image Block's
+   * image. Unset while the Host app gives no `uploadImage`.
+   */
+  uploadImage: ((blockId: string, file: File) => void) | undefined;
+  /** Why an Image Block's last upload failed, until its next one or a new URL. */
+  uploadErrorOf: (blockId: string) => string | undefined;
   /** Selects a Row instead of any Block, and shows its settings. */
   selectRow: (rowId: string, fromKeyboard: boolean) => void;
   openPreview: () => void;
