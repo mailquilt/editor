@@ -21,6 +21,11 @@ updates:
         update-types:
           - minor
           - patch
+    ignore:
+      # Its major version follows the Node that CI runs, which is moved by hand.
+      - dependency-name: "@types/node"
+        update-types:
+          - version-update:semver-major
     commit-message:
       prefix: chore
     labels:
