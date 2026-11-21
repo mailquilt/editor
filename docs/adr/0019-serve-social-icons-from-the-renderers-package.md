@@ -6,7 +6,7 @@ An email can't carry its icons inline: Gmail and Outlook drop SVG and `data:` im
 
 ## How
 
-- **Where they're served.** npm never deletes a published version, so a URL pinned to the renderer's exact version keeps working for as long as a sent email is opened. Neither GitHub's raw links nor the docs site's domain are used.
+- **Where they're served.** A URL pinned to the renderer's exact version always names the same file, so a later release can't change an email that was already sent. Neither npm nor jsDelivr promises to serve a file forever, so a Host app that needs that sets the override. Neither GitHub's raw links nor the docs site's domain are used.
 - **The override.** `socialIconsUrl`, an option of `renderEmail` and a property of `<mail-quilt>`, replaces the base URL. A Host app copies the icon folder to its own storage, so sent emails load nothing from a third party.
 - **The Canvas** uses the same URLs as the export.
 - **Sources:**
@@ -28,5 +28,5 @@ An email can't carry its icons inline: Gmail and Outlook drop SVG and `data:` im
 ## Consequences
 
 - Sent emails load the icons from jsDelivr, a third party, unless the Host app sets `socialIconsUrl`. The docs say so, and that a Host app with an image content security policy has to allow jsDelivr or set the override.
-- The docs and the notices say that the logos are their owners' trademarks, that Mail Quilt isn't affiliated with them, and that a brand's icon is removed on its owner's request. The docs link each network's brand guidelines and say that the person sending the email follows them.
+- The docs and the notices say that the logos are their owners' trademarks, that Mail Quilt isn't affiliated with them, and that a brand's icon is removed from the next release on its owner's request. That changes emails rendered after it. Emails already sent keep loading the icon from their pinned URL. The docs link each network's brand guidelines and say that the person sending the email follows them.
 - A test fails the build if an icon the renderer can name is missing from the package's files.
