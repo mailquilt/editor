@@ -9,6 +9,7 @@ import { place } from "./editor-places.js";
 import { renderFormatBar } from "./format-bar.js";
 import { ICONS } from "./icons.js";
 import { keyLabel } from "./key-map.js";
+import { renderMergeTagPicker } from "./merge-tag-picker.js";
 import type { PanelApi } from "./panel-api.js";
 import { columnLabel, positionLabel } from "./positions.js";
 import { styleProperties } from "./style-properties.js";
@@ -770,6 +771,7 @@ const renderBlock = (
       })}
       ${selected ? renderBlockToolbar(api) : nothing}
       ${selected && rich && api.editingText ? renderFormatBar(api) : nothing}
+      ${selected && rich ? renderMergeTagPicker(api) : nothing}
     </div>
   `;
 };

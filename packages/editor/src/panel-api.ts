@@ -3,6 +3,7 @@ import type { BlocksDocument, RowLayout } from "@mailquilt/core";
 import type { BlockPosition, Direction, RowPosition } from "./positions.js";
 import type { PanelTab } from "./selection.js";
 import type { SettingsDrafts } from "./settings-panel.js";
+import type { ShownMergeTagPicker } from "./text-block-view.js";
 import type { TextFormats, ToggleableMark } from "./text-commands.js";
 
 /**
@@ -64,6 +65,11 @@ export interface EmailPanelApi {
   toggleMark: (mark: ToggleableMark) => void;
   insertLineBreak: () => void;
   /**
+   * Types `{{` in the selected Block's text, which opens the Merge Tag picker.
+   * Unset while the Host app gives no `mergeTags`.
+   */
+  insertMergeTag: (() => void) | undefined;
+  /**
    * Uploads a file through the Host app's `uploadImage`, as the Image Block's
    * image. Unset while the Host app gives no `uploadImage`.
    */
@@ -89,6 +95,8 @@ export interface OwnPanelsApi {
    * is a new alert and is read out.
    */
   linkField: { refusals: number } | undefined;
+  /** Set while the Merge Tag picker is open in the selected Block's text. */
+  mergeTagPicker: ShownMergeTagPicker | undefined;
   /** What's typed in the settings fields and isn't the email's value. */
   drafts: SettingsDrafts;
 
@@ -104,4 +112,6 @@ export interface OwnPanelsApi {
   submitLink: (href: string) => void;
   removeLink: () => void;
   cancelLink: () => void;
+  /** Puts in the open picker's tag at `index`, as a click on it does. */
+  pickMergeTag: (index: number) => void;
 }

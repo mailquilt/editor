@@ -65,5 +65,26 @@ export const bareUrl: MailQuiltProps = {
   uploadImage: () => Promise.resolve("https://cdn.example/photo.png"),
 };
 
+/** A Host app's Merge Tags, with and without a label. */
+const mergeTags = [
+  { label: "First name", name: "first_name" },
+  { name: "company" },
+] as const;
+
+export const giveMergeTags = (editor: MailQuilt, shell: MailQuiltShell) => {
+  editor.mergeTags = mergeTags;
+  shell.mergeTags = mergeTags;
+};
+
+export const mergeTagProps: [MailQuiltProps, MailQuiltShellProps] = [
+  { mergeTags },
+  { mergeTags },
+];
+
+export const unnamedTag: MailQuiltProps = {
+  // @ts-expect-error A tag needs the name that goes between its braces.
+  mergeTags: [{ label: "First name" }],
+};
+
 /** JSON from a database is `unknown` until the renderer has checked it. */
 export const htmlFor = (saved: unknown): Promise<string> => renderEmail(saved);

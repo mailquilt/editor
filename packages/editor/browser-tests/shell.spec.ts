@@ -376,6 +376,27 @@ test.describe("the editor's API", () => {
     ).toHaveCount(0);
   });
 
+  test("mergeTags reaches the editor, and can be taken away", async ({
+    page,
+  }) => {
+    await openShell(page);
+    await shell(page).evaluate((element) => {
+      (element as MailQuiltShell).mergeTags = [{ name: "first_name" }];
+    });
+    await textBlock(page).click();
+    await page.keyboard.press("ControlOrMeta+a");
+    await page.keyboard.type("{{");
+
+    const picker = shell(page).getByRole("listbox", { name: "Merge Tags" });
+    await expect(picker.getByRole("option")).toHaveText(["first_name"]);
+
+    await shell(page).evaluate((element) => {
+      (element as MailQuiltShell).mergeTags = undefined;
+    });
+
+    await expect(picker).toHaveCount(0);
+  });
+
   test("exportHtml() works straight after the Shell is added", async ({
     page,
   }) => {

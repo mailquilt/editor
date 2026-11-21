@@ -4,6 +4,7 @@ import path from "node:path";
 import { expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
+import type { MailQuilt } from "../src/index.js";
 import {
   addRow,
   announcement,
@@ -905,7 +906,7 @@ test.describe("automated accessibility checks", () => {
     expect(await violations(page)).toEqual([]);
   });
 
-  test("pass in the docs' dark theme, with a tooltip, a pressed button and the link field's error", async ({
+  test("pass in the docs' dark theme, with a tooltip, a pressed button, the link field's error and the Merge Tag picker", async ({
     page,
   }) => {
     await openEmail(page, [[["A"]]]);
@@ -937,6 +938,20 @@ test.describe("automated accessibility checks", () => {
     await linkUrlField(page).fill("example.com");
     await page.keyboard.press("Enter");
     await expect(page.getByRole("alert")).toBeVisible();
+    expect(await violations(page)).toEqual([]);
+
+    await canvas(page).evaluate((element) => {
+      (element as MailQuilt).mergeTags = [
+        { label: "First name", name: "first_name" },
+        { name: "company" },
+      ];
+    });
+    await textOf(page, "A").click();
+    await page.keyboard.type("{{");
+    await page.keyboard.press("ArrowDown");
+    await expect(
+      canvas(page).getByRole("option", { name: "company" })
+    ).toHaveAttribute("aria-selected", "true");
     expect(await violations(page)).toEqual([]);
   });
 

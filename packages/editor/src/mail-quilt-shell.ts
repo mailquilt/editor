@@ -222,6 +222,8 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
   /** Where the email is kept in the browser. Without it, nothing is stored. */
   declare saveKey: string | null | undefined;
   /** As on `<mail-quilt>`. */
+  declare mergeTags: HostAppProperties["mergeTags"];
+  /** As on `<mail-quilt>`. */
   declare uploadImage: HostAppProperties["uploadImage"];
 
   readonly #editor: MailQuilt = document.createElement("mail-quilt");

@@ -1,5 +1,6 @@
 import { findPlace, findPlaces } from "./editor-places.js";
 import { scaleOf } from "./geometry.js";
+import { PICKER_GAP_PX } from "./merge-tag-picker.js";
 
 /** Space kept between a tool and the canvas's edge, its Block or the other tool. */
 const GAP_PX = 6;
@@ -20,8 +21,8 @@ interface ToolFittingHost {
 }
 
 /**
- * The selected Block's toolbar and format bar are put beside it by CSS,
- * which can't know how much room is there. The editor clips what reaches past
+ * The selected Block's toolbar, format bar and Merge Tag picker are put
+ * beside it by CSS, which can't know how much room is there. The editor clips what reaches past
  * the canvas, such as a format bar under a narrow first Column, or the toolbar
  * beside a short last Block. This moves each back in, and keeps the format bar
  * next to its text and off the toolbar where it can.
@@ -40,7 +41,8 @@ export const createToolFitting = ({
     const workspace = findPlace(root, "workspace");
     const toolbar = findPlace(root, "blockToolbar");
     const bar = findPlace(root, "formatBar");
-    for (const tool of [toolbar, bar]) {
+    const picker = findPlace(root, "mergeTagPicker");
+    for (const tool of [toolbar, bar, picker]) {
       tool?.style.removeProperty("translate");
     }
     const block = toolbar?.parentElement;
@@ -52,6 +54,7 @@ export const createToolFitting = ({
     const shown = toolbar.getBoundingClientRect();
     const box = block.getBoundingClientRect();
     const from = bar?.getBoundingClientRect();
+    const listed = picker?.getBoundingClientRect();
     // Boxes are on screen, and a translate isn't, where a host page scales
     // the editor.
     const scaleX = scaleOf(canvas.width, workspace.offsetWidth);
@@ -68,6 +71,28 @@ export const createToolFitting = ({
     // height can reach past the canvas.
     const toolsY = shiftInto(shown.top, shown.bottom, area.top, area.bottom);
     toolbar.style.translate = `0 ${toolsY / scaleY}px`;
+
+    // Below its line, as CSS puts it, or else above it, or else as far in as
+    // it goes. It's over the other tools while it's open.
+    if (picker && listed) {
+      const line = Number(picker.dataset.lineHeight) * scaleY;
+      const gapY = PICKER_GAP_PX * scaleY;
+      const above = listed.top - gapY - line - gapY - listed.height;
+      let pickerY = 0;
+      if (listed.bottom > area.bottom) {
+        pickerY =
+          above >= area.top
+            ? above - listed.top
+            : shiftInto(listed.top, listed.bottom, area.top, area.bottom);
+      }
+      const pickerX = shiftInto(
+        listed.left,
+        listed.right,
+        area.left,
+        area.right
+      );
+      picker.style.translate = `${pickerX / scaleX}px ${pickerY / scaleY}px`;
+    }
     if (!(bar && from)) {
       return;
     }

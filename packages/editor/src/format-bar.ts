@@ -274,6 +274,23 @@ export const renderFormatBar = (api: PanelApi) => {
       >
         ${ICONS.lineBreak}
       </button>
+      ${
+        api.insertMergeTag
+          ? html`
+              <button
+                aria-label="Merge Tag"
+                class="icon-button"
+                data-tooltip="Merge Tag (type {{)"
+                ?disabled=${!formats}
+                tabindex="-1"
+                type="button"
+                @click=${api.insertMergeTag}
+              >
+                ${ICONS.mergeTag}
+              </button>
+            `
+          : nothing
+      }
       ${linkField ? renderLinkForm(linkField.refusals, formats?.linkHref, api) : nothing}
     </div>
   `;

@@ -183,6 +183,47 @@ describe("in a Block's text", () => {
   );
 });
 
+describe("in a Block's text with the Merge Tag picker open", () => {
+  it("↑ and ↓ go along its tags, and stop there, as the cursor stays", () => {
+    expect(keyIn("pickerOpen", press("ArrowUp"))).toStrictEqual(
+      acts("previousMergeTag", { stops: true })
+    );
+    expect(keyIn("pickerOpen", press("ArrowDown"))).toStrictEqual(
+      acts("nextMergeTag", { stops: true })
+    );
+  });
+
+  it("Enter and Tab put in the highlighted tag, and stop there", () => {
+    expect(keyIn("pickerOpen", press("Enter"))).toStrictEqual(
+      acts("pickMergeTag", { stops: true })
+    );
+    expect(keyIn("pickerOpen", press("Tab"))?.action).toBe("pickMergeTag");
+  });
+
+  it("Shift+Tab and Shift+Enter are the text's, moving focus and adding a line break", () => {
+    expect(keyIn("pickerOpen", press("Shift-Tab"))).toBeUndefined();
+    expect(keyIn("pickerOpen", press("Shift-Enter"))).toBeUndefined();
+  });
+
+  it("Escape closes it, and stops there, so the next one goes back to the Block", () => {
+    expect(keyIn("pickerOpen", press("Escape"))).toStrictEqual(
+      acts("closeMergeTagPicker", { stops: true })
+    );
+  });
+
+  it("Enter that an input method handled is the input method's", () => {
+    expect(
+      keyIn("pickerOpen", press("Enter", { isComposing: true }))
+    ).toBeUndefined();
+  });
+
+  it("leaves every other key to the text, such as typing and undo", () => {
+    expect(keyIn("pickerOpen", press("a"))).toBeUndefined();
+    expect(keyIn("pickerOpen", press("Mod-z"))).toBeUndefined();
+    expect(keyIn("pickerOpen", press("ArrowLeft"))).toBeUndefined();
+  });
+});
+
 describe("in the format bar", () => {
   it("Escape goes back to the text, and stops there", () => {
     expect(keyIn("formatBar", press("Escape"))).toStrictEqual(

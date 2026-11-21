@@ -5,6 +5,13 @@
  */
 export interface HostAppProperties {
   /**
+   * The Host app's Merge Tags, which typing `{{` in text, or the format bar's
+   * Merge Tag button, offers to pick from. `name` is what goes between the
+   * braces, and `label`, if given, is what the picker and the Canvas show.
+   * Without it, there's no picker, and a typed tag still becomes one unit.
+   */
+  mergeTags?: readonly { name: string; label?: string }[] | undefined;
+  /**
    * Uploads an image to the Host app's own storage and returns its URL, which
    * the Image Block takes. Rejecting with an `Error` shows its message to the
    * person. The upload is aborted through `signal` when its Image Block is
@@ -23,6 +30,7 @@ export interface HostAppProperties {
  * and this leaves out is a type error.
  */
 export const HOST_APP_PROPERTIES = Object.keys({
+  mergeTags: true,
   uploadImage: true,
 } satisfies {
   [Name in keyof HostAppProperties]-?: true;

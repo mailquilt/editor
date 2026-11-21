@@ -73,7 +73,7 @@ const marks = {
 } satisfies Record<string, MarkSpec>;
 
 /** A Merge Tag's name, as core takes it: any text without braces. */
-const isMergeTagName = (name: string) => /^[^{}]+$/u.test(name);
+export const isMergeTagName = (name: string) => /^[^{}]+$/u.test(name);
 
 /**
  * Paragraphs of text, line breaks and Merge Tags, the nodes of ADR 0001 and
@@ -92,8 +92,9 @@ const nodes = {
     toDOM: () => ["br"],
   },
   /**
-   * One unit of text, showing its name. Its braces are there for a screen
-   * reader and a copy, and hidden on the canvas. The tooltip gives `{{name}}`.
+   * One unit of text. On the Canvas, the text view draws it with the Host app's
+   * label. This is what a copy holds: `{{name}}`, with its braces hidden where
+   * the editor's styles apply.
    */
   mergeTag: {
     atom: true,
@@ -116,9 +117,9 @@ const nodes = {
       return [
         "span",
         { "data-merge-tag": name, "data-tooltip": `{{${name}}}` },
-        ["span", { class: "merge-tag-brace" }, "{{"],
+        ["span", { class: "merge-tag-hidden" }, "{{"],
         name,
-        ["span", { class: "merge-tag-brace" }, "}}"],
+        ["span", { class: "merge-tag-hidden" }, "}}"],
       ];
     },
   },
