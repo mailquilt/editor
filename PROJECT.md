@@ -309,7 +309,7 @@ There are no dates, and items can move. Each item is tracked in GitHub Issues.
 
 **Next**
 
-What a team needs before its customers can use the editor. The first six are specified together and ship together, in `0.3.0`, with one change to the saved format. These come before the MCP server and the AI builder because a team that can't upload an image or pick a Merge Tag stops there, whatever else the editor does. The line under a feature is what its spec has to settle first, because the code doesn't allow for it yet.
+What a team needs before its customers can use the editor. The first six are specified together and ship together, in `0.3.0`, with one change to the saved format. These come before the MCP server and the AI builder because a team that can't upload an image or pick a Merge Tag stops there, whatever else the editor does. The rest are specified together after that, and brand styles and settings come first among them, because every Block added later then starts with the full set. The line under a feature is what its spec has to settle first, because the code doesn't allow for it yet.
 
 1. Image upload, to storage the Host app supplies
    - First: a way in for the Host app's service, as the element takes only `value`, and each new property is passed on by hand in three places. A drag that can take a dropped file, as every file is refused on the whole element today.
@@ -323,17 +323,21 @@ What a team needs before its customers can use the editor. The first six are spe
    - First: a Command that inserts a Block or Row with its content, and key dispatch that hears copy and paste events.
 6. A Social Block
    - First: icons that don't load from Mailjet, as MJML's social element does by default. A settings field that holds a list a person can add to, remove from and reorder, as each holds one string or number. A Tab stop in an empty Column that isn't one per Block type, as each new type adds one.
-7. Web fonts
-8. Menu, Video and HTML Blocks
-9. Alt text, or a "decorative" choice, for every image
-10. A plain-text version of each email
-11. Translations of the editor's interface, and right-to-left text
+7. Brand styles, and fuller settings for every Block, Row and Column
+   - Brand styles are the email's own defaults for text, each Heading level, links and Buttons. A Block's settings then change only what differs: spacing, borders, corners, backgrounds, typography, and whether it shows on phones or on desktop. Some settings hold a second value for phones.
+   - First: a value a Block leaves unset and takes from the email's brand styles, as every Block stores each of its values today. Settings for a Column, as it has none. What each setting falls back to in Outlook on Windows, which ignores rounded corners and background images.
+8. Web fonts
+9. Menu, Video, HTML and Table Blocks
+10. Alt text, or a "decorative" choice, for every image
+11. A plain-text version of each email
+12. Sending a test email, through a function the Host app supplies
+13. Translations of the editor's interface, and right-to-left text
     - First: the editor's English strings in one place, as about 90 in the editor and 35 in core are written inline and joined together. Left and right as directions, as they're a Column index of −1 and +1.
-12. Starter emails
-13. React 18 in `@mailquilt/react`
+14. Starter emails
+15. React 18 in `@mailquilt/react`
     - First: where the components rely on React 19, such as taking `ref` as a plain prop.
-14. Vue, Angular and Svelte tested in `install-checks`, with types for the element
-15. A JSON Schema for the email format
+16. Vue, Angular and Svelte tested in `install-checks`, with types for the element
+17. A JSON Schema for the email format
 
 **Later**
 
@@ -342,7 +346,7 @@ Wanted. The first five open the editor up to the Host app, so they come first, i
 - Custom Blocks
 - The editor in parts a Host app arranges itself, with the text editor as its own element, and the selection and Commands reachable from outside
 - Saved Rows, whether a person saved them or the Host app supplied them
-- Display rules and brand styles
+- Display rules
 - Parts of an email that can't be changed
 - Light and dark editor themes
 - The email checker
@@ -355,6 +359,7 @@ Wanted. The first five open the editor up to the Host app, so they come first, i
 - React Email export
 - Sending integrations
 - Translated emails
+- A Countdown Block, with a timer image the Host app serves
 - Collaboration support, with an example
   - First: a Block's text view that follows every change to the email, as it follows one only on undo and redo.
 
