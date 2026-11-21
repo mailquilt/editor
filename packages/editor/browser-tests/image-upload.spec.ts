@@ -115,6 +115,24 @@ test.describe("uploading an image from the Image settings", () => {
     await expect(uploadButton(page)).toBeVisible();
   });
 
+  test("calls the Host app's latest uploadImage, which a re-render may replace", async ({
+    page,
+  }) => {
+    await openImage(page);
+    await canvas(page).evaluate((element) => {
+      (element as MailQuilt).uploadImage = () =>
+        Promise.resolve({ url: "https://cdn.example/old.png" });
+    });
+    await expect(uploadButton(page)).toBeVisible();
+    await giveUploadImage(page);
+
+    await pickFile(page);
+
+    await expect
+      .poll(() => uploadCalls(page))
+      .toEqual([{ name: "photo.png", type: "image/png" }]);
+  });
+
   test("refuses a file that isn't a PNG, JPEG or GIF before the Host app has it", async ({
     page,
   }) => {
@@ -221,6 +239,26 @@ test.describe("uploading an image from the Image settings", () => {
       "aria-invalid",
       "false"
     );
+  });
+
+  test("shows an image that couldn't load before, once it's uploaded to the same URL", async ({
+    context,
+    page,
+  }) => {
+    const missing = "https://cdn.example/missing.png";
+    await context.route(missing, (route) => route.abort());
+    await openImage(page);
+    await giveUploadImage(page);
+    await change(field(page, "Image URL"), missing);
+    await expect(blockGroup(page, "Image")).toContainText(
+      `Couldn't load ${missing}`
+    );
+
+    await context.unroute(missing);
+    await pickFile(page);
+    await page.evaluate((url) => window.uploads[0]?.resolve({ url }), missing);
+
+    await expect(image(page)).toHaveAttribute("src", missing);
   });
 
   test("is aborted when its Block is deleted, and what it gives is dropped", async ({

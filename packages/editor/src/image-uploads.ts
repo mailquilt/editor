@@ -77,6 +77,10 @@ export const createImageUploads = ({
 
     /** After each change, aborts the uploads whose Blocks are gone. */
     onChange: () => {
+      // It runs after every change, and the email is copied to look.
+      if (running.size === 0) {
+        return;
+      }
       const email = current();
       const blockIds = new Set(
         email ? blocksIn(email).map(({ id }) => id) : []

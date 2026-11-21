@@ -83,7 +83,11 @@ import { randomUUID } from "node:crypto";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-const s3 = new S3Client({ region: "eu-west-1" });
+const s3 = new S3Client({
+  region: "eu-west-1",
+  // Otherwise the URL carries a checksum of no file, and S3 refuses the real one.
+  requestChecksumCalculation: "WHEN_REQUIRED",
+});
 const BUCKET = "my-app-email-images";
 /** Where the bucket's images are served from, such as a CDN in front of it. */
 const PUBLIC_URL = "https://images.my-app.example";

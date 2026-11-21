@@ -322,9 +322,13 @@ export class MailQuilt extends LitElement implements HostAppProperties {
         { blockId, props: { src }, type: "updateBlockProps" },
         { refusable: true }
       );
-      // The field shows the new URL, rather than what was typed and refused.
+      // The field shows the new URL, rather than what was typed and refused,
+      // and the canvas tries it again, as it may not have been there before.
       if (result?.ok || result?.code === "unchanged") {
         this.#drafts.forget(blockDraftKey(blockId, "src"));
+        if (this.#failedImages.delete(src)) {
+          this.requestUpdate();
+        }
       }
       return result;
     },
