@@ -21,7 +21,12 @@ import {
 const PHOTO = "https://cdn.example/photo.png";
 const UPLOADED = "https://cdn.example/uploaded.png";
 
-test.beforeEach(({ context }) => serveImages(context));
+test.beforeEach(({ context, page }) => {
+  // Playwright stops intercepting file choosers when its last listener goes,
+  // and Firefox can then miss the chooser of a later pick in the same test.
+  page.on("filechooser", () => null);
+  return serveImages(context);
+});
 
 test.use({ viewport: TALL_VIEWPORT });
 
