@@ -28,6 +28,8 @@ export const createAnnouncements = ({
   let id = 0;
   /** Whether `text` has been shown, and so heard. */
   let shown = true;
+  /** The words said last, so the same words aren't said twice in a row. */
+  let last = "";
 
   /**
    * What's said before the last words are shown is heard after them, as
@@ -37,9 +39,10 @@ export const createAnnouncements = ({
   const say = (words: string) => {
     if (shown || !words || !text) {
       text = words;
-    } else if (!text.endsWith(words)) {
+    } else if (words !== last) {
       text = `${text} ${words}`;
     }
+    last = words;
     shown = false;
     id += 1;
     requestUpdate();

@@ -356,6 +356,18 @@ test.describe("dropping image files", () => {
 
     await expect(image(page)).toHaveAttribute("src", UPLOADED);
     await expect(blockTypes(page)).resolves.toEqual(["text", "image"]);
+
+    // Alone, the file is refused by the Block, and still by its name.
+    await dropFilesAt(page, await centerOf(blockGroup(page, "Image")), [
+      { name: "logo.svg", type: "image/svg+xml" },
+    ]);
+
+    await expect(announcement(page)).toHaveText(
+      "logo.svg: Use a PNG, JPEG or GIF image."
+    );
+    await expect
+      .poll(() => uploadError(page))
+      .toBe("Use a PNG, JPEG or GIF image.");
   });
 
   test("files dropped in a Column each add an Image Block where they land, in order, and the last is selected", async ({
@@ -432,7 +444,8 @@ test.describe("dropping image files", () => {
 
     await dropFilesAt(page, await bottomOf(blockWith(page, "One")), [
       { name: "big.png", type: "image/png" },
-      { name: "huge.gif", type: "image/gif" },
+      // A name that ends another one.
+      { name: "g.png", type: "image/png" },
     ]);
     await expect.poll(() => uploadCalls(page)).toHaveLength(2);
     // At once, as a Host app that checks each file's size itself fails them.
@@ -443,7 +456,7 @@ test.describe("dropping image files", () => {
     });
 
     await expect(announcement(page)).toHaveText(
-      "big.png: Images can be up to 5 MB. huge.gif: Images can be up to 5 MB."
+      "big.png: Images can be up to 5 MB. g.png: Images can be up to 5 MB."
     );
     await expect(blockGroup(page, "Image").nth(1)).toHaveAttribute(
       "aria-current",
@@ -464,15 +477,20 @@ test.describe("dropping image files", () => {
     await dropFilesAt(page, await bottomOf(blockWith(page, "One")), [
       { name: "photo.png", type: "image/png" },
       { name: "logo.svg", type: "image/svg+xml" },
+      { name: "other.png", type: "image/png" },
     ]);
 
+    // Each upload starting is said once.
     await expect(announcement(page)).toHaveText(
       "Uploading image. logo.svg: Use a PNG, JPEG or GIF image."
     );
-    await expect(blockTypes(page)).resolves.toEqual(["text", "image"]);
+    await expect(blockTypes(page)).resolves.toEqual(["text", "image", "image"]);
     await expect
       .poll(() => uploadCalls(page))
-      .toEqual([{ name: "photo.png", type: "image/png" }]);
+      .toEqual([
+        { name: "photo.png", type: "image/png" },
+        { name: "other.png", type: "image/png" },
+      ]);
   });
 
   test("redo after undoing a new Image Block puts it back empty, without uploading again", async ({

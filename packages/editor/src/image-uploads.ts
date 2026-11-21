@@ -144,7 +144,7 @@ export const createImageUploads = ({
         if (!(at && first)) {
           return;
         }
-        upload(target.blockId, first);
+        upload(target.blockId, first, true);
         selected = target.blockId;
         rest = files.filter((file) => file !== first);
         position = { columnId: at.columnId, index: at.index + 1 };
