@@ -85,6 +85,20 @@ const inlineSchema = v.variant("type", [
     marks: v.optional(marksSchema),
     type: v.literal("hardBreak"),
   }),
+  v.strictObject({
+    attrs: v.strictObject({
+      // As typed, so a sending tool's own syntax survives (ADR 0017).
+      name: v.pipe(
+        v.string(),
+        v.regex(
+          /^[^{}]+$/u,
+          "A Merge Tag's name can't be empty or hold a brace"
+        )
+      ),
+    }),
+    marks: v.optional(marksSchema),
+    type: v.literal("mergeTag"),
+  }),
 ]);
 
 const paragraphSchema = v.strictObject({
@@ -109,9 +123,19 @@ export interface RichTextHardBreak {
   marks?: RichTextMark[];
 }
 
+/**
+ * A Merge Tag in text, one unit (ADR 0017). Its name is what goes between the
+ * braces, exactly as written, and the export writes it as `{{name}}`.
+ */
+export interface RichTextMergeTag {
+  type: "mergeTag";
+  attrs: { name: string };
+  marks?: RichTextMark[];
+}
+
 export interface RichTextParagraph {
   type: "paragraph";
-  content?: (RichTextText | RichTextHardBreak)[];
+  content?: (RichTextText | RichTextHardBreak | RichTextMergeTag)[];
 }
 
 /**

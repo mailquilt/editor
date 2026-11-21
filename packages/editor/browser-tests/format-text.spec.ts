@@ -18,6 +18,7 @@ import {
   stopClock,
   test,
   textBlock,
+  tooltip,
   undo,
   undoByKey,
 } from "./helpers.js";
@@ -137,17 +138,98 @@ test.describe("bold, italic and underline", () => {
       "false"
     );
   });
+});
 
-  test("bold on part of a Merge Tag makes all of the tag bold", async ({
+const mergeTag = (name: string, marks?: { type: string }[]) => ({
+  attrs: { name },
+  ...(marks ? { marks } : {}),
+  type: "mergeTag",
+});
+const shownTag = (page: Page) =>
+  textBlock(page).first().locator("[data-merge-tag]");
+
+test.describe("Merge Tags", () => {
+  test("typing }} that closes a tag makes it one unit, which Backspace removes whole", async ({
     page,
   }) => {
     await selectAllInBlock(page);
     await page.keyboard.type("Hi {{first_name}}");
+
+    await expect
+      .poll(() => savedInline(page))
+      .toStrictEqual([{ text: "Hi ", type: "text" }, mergeTag("first_name")]);
+
+    await page.keyboard.press("Backspace");
+
+    await expect
+      .poll(() => savedInline(page))
+      .toStrictEqual([{ text: "Hi ", type: "text" }]);
+  });
+
+  test("the cursor steps over a tag, and Delete removes it whole", async ({
+    page,
+  }) => {
+    await selectAllInBlock(page);
+    await page.keyboard.type("{{a}}b");
     await pressArrow(page, "ArrowLeft");
     await pressArrow(page, "ArrowLeft");
-    for (const _ of "first_name") {
-      await extendSelection(page, "ArrowLeft");
-    }
+    await page.keyboard.type("x");
+
+    await expect
+      .poll(() => savedInline(page))
+      .toStrictEqual([
+        { text: "x", type: "text" },
+        mergeTag("a"),
+        { text: "b", type: "text" },
+      ]);
+
+    await page.keyboard.press("Delete");
+
+    await expect
+      .poll(() => savedInline(page))
+      .toStrictEqual([{ text: "xb", type: "text" }]);
+  });
+
+  test("a tag typed with an input method becomes one unit once it's composed", async ({
+    browserName,
+    page,
+  }) => {
+    test.skip(browserName !== "chromium", "Only Chromium composes from a test");
+    await selectAllInBlock(page);
+    const devTools = await page.context().newCDPSession(page);
+
+    await devTools.send("Input.imeSetComposition", {
+      selectionEnd: 5,
+      selectionStart: 5,
+      text: "{{a}}",
+    });
+    await settle(page);
+    // Changing the text being composed would break the input method.
+    await expect(shownTag(page)).toHaveCount(0);
+
+    await devTools.send("Input.insertText", { text: "{{a}}" });
+
+    await expect.poll(() => savedInline(page)).toStrictEqual([mergeTag("a")]);
+  });
+
+  test("pasted text makes each tag in it one unit", async ({ page }) => {
+    await selectAllInBlock(page);
+
+    await pasteText(textBlock(page).first(), "{{a}} and {{ b }}");
+
+    await expect
+      .poll(() => savedInline(page))
+      .toStrictEqual([
+        mergeTag("a"),
+        { text: " and ", type: "text" },
+        mergeTag(" b "),
+      ]);
+  });
+
+  test("formatting puts the mark on the whole tag", async ({ page }) => {
+    await selectAllInBlock(page);
+    await page.keyboard.type("Hi {{first_name}}");
+    await extendSelection(page, "ArrowLeft");
 
     await page.keyboard.press("ControlOrMeta+b");
 
@@ -155,80 +237,31 @@ test.describe("bold, italic and underline", () => {
       .poll(() => savedInline(page))
       .toStrictEqual([
         { text: "Hi ", type: "text" },
-        { marks: [{ type: "bold" }], text: "{{first_name}}", type: "text" },
+        mergeTag("first_name", [{ type: "bold" }]),
       ]);
   });
 
-  test("a Merge Tag after a line break is kept whole too", async ({ page }) => {
-    await selectAllInBlock(page);
-    await page.keyboard.type("Hi");
-    await page.keyboard.press("Shift+Enter");
-    await page.keyboard.type("{{first_name}}");
-    await pressArrow(page, "ArrowLeft");
-    await pressArrow(page, "ArrowLeft");
-    for (const _ of "first_name") {
-      await extendSelection(page, "ArrowLeft");
-    }
-
-    await page.keyboard.press("ControlOrMeta+b");
-
-    await expect
-      .poll(() => savedInline(page))
-      .toStrictEqual([
-        { text: "Hi", type: "text" },
-        { type: "hardBreak" },
-        { marks: [{ type: "bold" }], text: "{{first_name}}", type: "text" },
-      ]);
-  });
-
-  test("bold off part of a Merge Tag takes it off all of the tag", async ({
+  test("a tag is read, shown in its tooltip and copied as {{name}}", async ({
     page,
   }) => {
     await selectAllInBlock(page);
     await page.keyboard.type("Hi {{first_name}}");
+
+    await expect(shownTag(page)).toHaveText("{{first_name}}");
+    await expect(textBlock(page).first()).toMatchAriaSnapshot(
+      `
+      - textbox "Text Block":
+        - paragraph: "Hi {{first_name}}"
+      `
+    );
+
+    await shownTag(page).hover();
+    await expect(tooltip(page)).toHaveText("{{first_name}}");
+
     await selectAll(page);
-    await page.keyboard.press("ControlOrMeta+b");
-    await pressArrow(page, "ArrowRight");
-    await pressArrow(page, "ArrowLeft");
-    await pressArrow(page, "ArrowLeft");
-    for (const _ of "first_name") {
-      await extendSelection(page, "ArrowLeft");
-    }
-
-    await page.keyboard.press("ControlOrMeta+b");
-
-    await expect
-      .poll(() => savedInline(page))
-      .toStrictEqual([
-        { marks: [{ type: "bold" }], text: "Hi ", type: "text" },
-        { text: "{{first_name}}", type: "text" },
-      ]);
-  });
-
-  test("a new link on part of a linked Merge Tag goes on all of it", async ({
-    page,
-  }) => {
-    await selectAllInBlock(page);
-    await page.keyboard.type("{{first_name}}");
-    await selectAll(page);
-    await addLink(page, "https://example.com");
-    await expect(textBlock(page).first()).toBeFocused();
-    await pressArrow(page, "ArrowLeft");
-    for (const _ of "{{first") {
-      await extendSelection(page, "ArrowRight");
-    }
-
-    await addLink(page, "https://example.org");
-
-    await expect
-      .poll(() => savedInline(page))
-      .toStrictEqual([
-        {
-          marks: [{ attrs: { href: "https://example.org" }, type: "link" }],
-          text: "{{first_name}}",
-          type: "text",
-        },
-      ]);
+    await expect(copySelection(textBlock(page).first())).resolves.toMatchObject(
+      { text: "Hi {{first_name}}" }
+    );
   });
 });
 

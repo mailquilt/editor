@@ -74,6 +74,26 @@ describe("limited rich text", () => {
     ).toStrictEqual({ ok: false, reason: expect.stringMatching(reason) });
   });
 
+  it("keeps a Merge Tag's name byte for byte, and its marks", () => {
+    const email = emailWithInline({
+      attrs: { name: " user.name | upcase " },
+      marks: [{ type: "bold" }],
+      type: "mergeTag",
+    });
+
+    expect(loadDocument(email)).toStrictEqual({ document: email, ok: true });
+  });
+
+  it.each([
+    ["an empty name", { name: "" }, /attrs\.name/u],
+    ["a name with a brace", { name: "a}b" }, /attrs\.name/u],
+    ["attributes it doesn't know", { label: "A", name: "a" }, /attrs\.label/u],
+  ])("refuses a Merge Tag with %s", (_name, attrs, reason) => {
+    expect(
+      loadDocument(emailWithInline({ attrs, type: "mergeTag" }))
+    ).toStrictEqual({ ok: false, reason: expect.stringMatching(reason) });
+  });
+
   it("refuses an inline node it doesn't know", () => {
     const email = emailWithInline({ attrs: { src: "x" }, type: "image" });
 

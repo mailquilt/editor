@@ -26,14 +26,16 @@ export type TextFormats = Record<ToggleableMark, boolean> & {
 };
 
 /**
- * Whether the selection holds text to format or link. A line break alone isn't
- * text, as a mark on it shows nothing.
+ * Whether the selection holds text to format or link, a Merge Tag included. A
+ * line break alone isn't text, as a mark on it shows nothing.
  */
 const holdsText = ({
   doc,
   selection,
 }: Pick<EditorState | Transaction, "doc" | "selection">) =>
-  doc.textBetween(selection.from, selection.to, undefined, () => "") !== "";
+  doc.textBetween(selection.from, selection.to, undefined, (leaf) =>
+    leaf.type.name === "mergeTag" ? "{{}}" : ""
+  ) !== "";
 
 /**
  * With no text selected, such as at a cursor or in an empty text, whether typing
@@ -50,7 +52,7 @@ const isMarkActive = (state: EditorState, type: MarkType) => {
   let selected = 0;
   let marked = 0;
   state.doc.nodesBetween(from, to, (node, pos) => {
-    if (node.isText || node.marks.length > 0) {
+    if (node.isText || node.type.name === "mergeTag" || node.marks.length > 0) {
       const length = Math.min(to, pos + node.nodeSize) - Math.max(from, pos);
       selected += length;
       if (type.isInSet(node.marks)) {

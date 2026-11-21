@@ -38,5 +38,5 @@ export const starterEmail: BlocksDocument = {
     fontFamily: "Arial, Helvetica, sans-serif",
     width: 600,
   },
-  version: 2,
+  version: 3,
 };

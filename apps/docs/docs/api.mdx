@@ -64,7 +64,7 @@ Opening a different email clears undo history. Setting `value` to the email the 
 | `BlocksDocument` | `@mailquilt/core`, `@mailquilt/editor` and `@mailquilt/react` | An email, as the [document format](./document-format) describes it. |
 | `Block`, `Row`, `Column`, `EmailSettings` | `@mailquilt/core` | The parts of an email, as the [document format](./document-format) describes them. A `Block`'s `props` are its type's. |
 | `BlockType` | `@mailquilt/core` | One of the Block types, as in `BLOCK_TYPES`. |
-| `RichTextDocument`, `RichTextParagraph`, `RichTextText`, `RichTextHardBreak`, `RichTextMark` | `@mailquilt/core` | A Text or Heading Block's [rich text](./document-format#rich-text), and its parts. |
+| `RichTextDocument`, `RichTextParagraph`, `RichTextText`, `RichTextHardBreak`, `RichTextMergeTag`, `RichTextMark` | `@mailquilt/core` | A Text or Heading Block's [rich text](./document-format#rich-text), and its parts. |
 | `Command`, `RowLayout` | `@mailquilt/core` | One of the [Commands](./change-emails-in-code#commands), and one of the layouts in `ROW_LAYOUTS`. |
 | `Operation` | `@mailquilt/core` | A record of one change, as [`subscribe()`](./change-emails-in-code#listening-for-changes) gives it to you. |
 | `Editor` | `@mailquilt/core` | What `createEditor()` returns. |

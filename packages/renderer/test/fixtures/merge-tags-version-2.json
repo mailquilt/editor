@@ -1,0 +1,274 @@
+{
+  "kind": "blocks",
+  "rows": [
+    {
+      "columns": [
+        {
+          "blocks": [
+            {
+              "id": "heading-tag-only",
+              "props": {
+                "content": {
+                  "content": [
+                    {
+                      "content": [
+                        {
+                          "text": "{{title}}",
+                          "type": "text"
+                        }
+                      ],
+                      "type": "paragraph"
+                    }
+                  ],
+                  "type": "doc"
+                },
+                "level": 1
+              },
+              "type": "heading"
+            },
+            {
+              "id": "heading-ends-with-tag",
+              "props": {
+                "content": {
+                  "content": [
+                    {
+                      "content": [
+                        {
+                          "text": "Hello, ",
+                          "type": "text"
+                        }
+                      ],
+                      "type": "paragraph"
+                    },
+                    {
+                      "content": [
+                        {
+                          "marks": [
+                            {
+                              "type": "italic"
+                            }
+                          ],
+                          "text": "{{ first name }}",
+                          "type": "text"
+                        }
+                      ],
+                      "type": "paragraph"
+                    }
+                  ],
+                  "type": "doc"
+                },
+                "level": 2
+              },
+              "type": "heading"
+            },
+            {
+              "id": "spaces-hash-slash",
+              "props": {
+                "content": {
+                  "content": [
+                    {
+                      "content": [
+                        {
+                          "text": "Hi {{ first name }},  your {{#if vip}}gold{{/if}} plan {{ user.name | upcase }}",
+                          "type": "text"
+                        }
+                      ],
+                      "type": "paragraph"
+                    },
+                    {
+                      "content": [
+                        {
+                          "text": "  {{x}}  b {{a}}{{b}} {{{c}}} {",
+                          "type": "text"
+                        },
+                        {
+                          "marks": [
+                            {
+                              "type": "bold"
+                            }
+                          ],
+                          "text": "{x}}",
+                          "type": "text"
+                        }
+                      ],
+                      "type": "paragraph"
+                    }
+                  ],
+                  "type": "doc"
+                }
+              },
+              "type": "text"
+            },
+            {
+              "id": "marks-and-links",
+              "props": {
+                "content": {
+                  "content": [
+                    {
+                      "content": [
+                        {
+                          "marks": [
+                            {
+                              "type": "bold"
+                            }
+                          ],
+                          "text": "{{first_name}}",
+                          "type": "text"
+                        },
+                        {
+                          "text": ", ",
+                          "type": "text"
+                        },
+                        {
+                          "marks": [
+                            {
+                              "type": "italic"
+                            },
+                            {
+                              "type": "bold"
+                            }
+                          ],
+                          "text": "Dear {{name}} and",
+                          "type": "text"
+                        }
+                      ],
+                      "type": "paragraph"
+                    },
+                    {
+                      "content": [
+                        {
+                          "marks": [
+                            {
+                              "attrs": {
+                                "href": "{{cta_url}}"
+                              },
+                              "type": "link"
+                            }
+                          ],
+                          "text": "Open {{cta_text}}",
+                          "type": "text"
+                        },
+                        {
+                          "marks": [
+                            {
+                              "attrs": {
+                                "href": "{{cta_url}}"
+                              },
+                              "type": "link"
+                            },
+                            {
+                              "type": "bold"
+                            }
+                          ],
+                          "text": " {{more}}",
+                          "type": "text"
+                        },
+                        {
+                          "type": "hardBreak"
+                        },
+                        {
+                          "marks": [
+                            {
+                              "type": "bold"
+                            }
+                          ],
+                          "text": "{{after_break}}",
+                          "type": "text"
+                        }
+                      ],
+                      "type": "paragraph"
+                    }
+                  ],
+                  "type": "doc"
+                }
+              },
+              "type": "text"
+            },
+            {
+              "id": "split-tag",
+              "props": {
+                "content": {
+                  "content": [
+                    {
+                      "content": [
+                        {
+                          "marks": [
+                            {
+                              "type": "bold"
+                            }
+                          ],
+                          "text": "Split {{fir",
+                          "type": "text"
+                        },
+                        {
+                          "text": "st_name}} after",
+                          "type": "text"
+                        }
+                      ],
+                      "type": "paragraph"
+                    }
+                  ],
+                  "type": "doc"
+                }
+              },
+              "type": "text"
+            },
+            {
+              "id": "long-words",
+              "props": {
+                "content": {
+                  "content": [
+                    {
+                      "content": [
+                        {
+                          "text": "see projects/{{ id }}/welcome_v2.json and https://example.com/{{ user id }}/x or {{ to | default: \"help@x.test\" }}",
+                          "type": "text"
+                        }
+                      ],
+                      "type": "paragraph"
+                    },
+                    {
+                      "content": [
+                        {
+                          "text": "files/{{a&b<c>}}/",
+                          "type": "text"
+                        },
+                        {
+                          "marks": [
+                            {
+                              "type": "bold"
+                            }
+                          ],
+                          "text": "welcome_v2.json",
+                          "type": "text"
+                        },
+                        {
+                          "text": " {{end}}",
+                          "type": "text"
+                        }
+                      ],
+                      "type": "paragraph"
+                    }
+                  ],
+                  "type": "doc"
+                }
+              },
+              "type": "text"
+            }
+          ],
+          "id": "column-1",
+          "props": {},
+          "width": 100
+        }
+      ],
+      "id": "row-1",
+      "props": {}
+    }
+  ],
+  "settings": {
+    "backgroundColor": "#ffffff",
+    "fontFamily": "Arial, Helvetica, sans-serif",
+    "width": 600
+  },
+  "version": 2
+}

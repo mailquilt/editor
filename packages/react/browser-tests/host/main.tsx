@@ -45,7 +45,7 @@ const emailWith = (text: string): Document => ({
     fontFamily: "Arial, Helvetica, sans-serif",
     width: 600,
   },
-  version: 2,
+  version: 3,
 });
 
 /** Gives each file the URL its name says. */

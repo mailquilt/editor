@@ -1,14 +1,10 @@
 import type { RichTextDocument } from "@mailquilt/core";
-import { EMAIL_LOOK, MERGE_TAG } from "@mailquilt/core/internal";
+import { EMAIL_LOOK } from "@mailquilt/core/internal";
 import { css, unsafeCSS } from "lit";
 import { baseKeymap } from "prosemirror-commands";
 import { keydownHandler } from "prosemirror-keymap";
 import { Fragment, Slice } from "prosemirror-model";
-import type {
-  Mark,
-  MarkType,
-  Node as ProseMirrorNode,
-} from "prosemirror-model";
+import type { MarkType, Node as ProseMirrorNode } from "prosemirror-model";
 import { EditorState, Plugin, Selection } from "prosemirror-state";
 import type { Command as TextCommand, Transaction } from "prosemirror-state";
 import {
@@ -20,6 +16,7 @@ import { Decoration, DecorationSet, EditorView } from "prosemirror-view";
 
 import { place } from "./editor-places.js";
 import { proseMirrorKeys } from "./key-map.js";
+import { mergeTagsFromText } from "./merge-tags.js";
 import { pastedHtmlParser, withoutStyles } from "./pasted-html.js";
 import { createTextCommands } from "./text-commands.js";
 import type { TextFormats, ToggleableMark } from "./text-commands.js";
@@ -48,6 +45,22 @@ export const textBlockStyles = css`
   /* In the Block's color, as the export writes it, and underlined. */
   .ProseMirror a {
     color: inherit;
+  }
+
+  /* A Merge Tag, one unit showing its name, in the text's own color. */
+  .ProseMirror [data-merge-tag] {
+    background: var(--mq-color-accent-soft);
+    border-radius: var(--mq-radius-small);
+    box-shadow: inset 0 0 0 1px var(--mq-color-outline-hover);
+    padding: 0 var(--mq-space-1);
+  }
+
+  /*
+   * Hidden, but still inline, so a screen reader reads {{name}} with no space
+   * added inside the braces, as it would around a block.
+   */
+  .ProseMirror .merge-tag-brace {
+    font-size: 0;
   }
 `;
 
@@ -91,76 +104,6 @@ const changesFormatting = ({ steps }: Transaction) =>
 
 /** Marks what `setContent` shows, as on undo, which isn't the user's to report. */
 const FROM_SET_CONTENT = "mailquilt:fromSetContent";
-
-const MERGE_TAGS = new RegExp(MERGE_TAG.source, "gu");
-
-/**
- * Keeps a Merge Tag whole, since a mark over part of one splits it in the HTML.
- * After any change, such as formatting, linking, typing or paste, a mark on
- * part of a tag goes on all of it, or comes off all of it when the change only
- * took marks of that type off. Where parts have different links, the one the
- * change put on wins.
- */
-const keepMergeTagsWhole = new Plugin({
-  appendTransaction: (transactions, _before, state) => {
-    if (
-      !transactions.some(
-        (transaction) =>
-          transaction.docChanged && !transaction.getMeta(FROM_SET_CONTENT)
-      )
-    ) {
-      return null;
-    }
-    const added: Mark[] = [];
-    const removed = new Set<MarkType>();
-    for (const { steps } of transactions) {
-      for (const step of steps) {
-        if (step instanceof AddMarkStep) {
-          added.push(step.mark);
-        } else if (step instanceof RemoveMarkStep) {
-          removed.add(step.mark.type);
-        }
-      }
-    }
-    const { tr } = state;
-    state.doc.descendants((node, pos) => {
-      if (!node.isTextblock) {
-        return true;
-      }
-      for (const { 0: tag, index } of node.textContent.matchAll(MERGE_TAGS)) {
-        const from = pos + 1 + index;
-        const to = from + tag.length;
-        const texts: ProseMirrorNode[] = [];
-        state.doc.nodesBetween(from, to, (child) => {
-          if (child.isText) {
-            texts.push(child);
-          }
-        });
-        const isAdded = (mark: Mark) => added.some((each) => each.eq(mark));
-        const found = [...new Set(texts.flatMap((text) => text.marks))];
-        // A link replaces another, so the one just added goes on last.
-        const marks = [
-          ...found.filter((mark) => !isAdded(mark)),
-          ...found.filter(isAdded),
-        ];
-        for (const mark of marks) {
-          if (!texts.every((text) => mark.isInSet(text.marks))) {
-            if (
-              removed.has(mark.type) &&
-              !added.some((each) => each.type === mark.type)
-            ) {
-              tr.removeMark(from, to, mark);
-            } else {
-              tr.addMark(from, to, mark);
-            }
-          }
-        }
-      }
-      return false;
-    });
-    return tr.docChanged ? tr : null;
-  },
-});
 
 /**
  * Where the cursor belongs once `current` has become `next`, or undefined if
@@ -353,7 +296,10 @@ export const createTextBlockView = ({
             },
           },
         }),
-        keepMergeTagsWhole,
+        mergeTagsFromText(
+          schema,
+          (transaction) => transaction.getMeta(FROM_SET_CONTENT) === true
+        ),
       ],
     }),
     transformPasted: (slice) =>

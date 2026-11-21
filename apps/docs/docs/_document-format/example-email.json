@@ -1,6 +1,6 @@
 {
   "kind": "blocks",
-  "version": 2,
+  "version": 3,
   "settings": {
     "width": 600,
     "backgroundColor": "#f4f4f5",
@@ -40,7 +40,11 @@
                     {
                       "type": "paragraph",
                       "content": [
-                        { "type": "text", "text": "Thanks, {{first_name}}" }
+                        { "type": "text", "text": "Thanks, " },
+                        {
+                          "type": "mergeTag",
+                          "attrs": { "name": "first_name" }
+                        }
                       ]
                     }
                   ]
@@ -75,7 +79,12 @@
                         { "type": "text", "text": "Your order " },
                         {
                           "type": "text",
-                          "text": "#{{order_id}}",
+                          "text": "#",
+                          "marks": [{ "type": "bold" }]
+                        },
+                        {
+                          "type": "mergeTag",
+                          "attrs": { "name": "order_id" },
                           "marks": [{ "type": "bold" }]
                         },
                         { "type": "text", "text": " has shipped." },
