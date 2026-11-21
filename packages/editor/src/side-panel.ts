@@ -13,11 +13,12 @@ import type { TemplateResult } from "lit";
 import { BLOCK_VIEWS } from "./block-types.js";
 import { place } from "./editor-places.js";
 import { ICONS } from "./icons.js";
+import { UPLOADABLE_TYPES } from "./image-uploads.js";
 import type { PanelApi } from "./panel-api.js";
 import { columnLabel } from "./positions.js";
 import type { BlockPosition, RowPosition } from "./positions.js";
 import type { PanelTab } from "./selection.js";
-import { renderSettingsPanel } from "./settings-panel.js";
+import { draftKey, renderSettingsPanel } from "./settings-panel.js";
 import type { SettingsSection } from "./settings-panel.js";
 import { styleProperties } from "./style-properties.js";
 
@@ -440,6 +441,46 @@ const renderRowProperties = ({ row, rowIndex }: RowPosition, api: PanelApi) => {
   `;
 };
 
+const BLOCK_SECTION_ID = "block";
+
+/** Where what's typed in a selected Block's field is kept. */
+export const blockDraftKey = (blockId: string, fieldKey: string) =>
+  draftKey({ id: BLOCK_SECTION_ID, targetId: blockId }, { key: fieldKey });
+
+/**
+ * Opens the file picker, with only the types an upload takes. The picker is
+ * the button's, so it's no Tab stop of its own.
+ */
+const renderUploadButton = (
+  blockId: string,
+  uploadImage: (blockId: string, file: File) => void
+) => html`
+  <button
+    class="text-button"
+    type="button"
+    @click=${({ currentTarget }: MouseEvent) =>
+      (
+        (currentTarget as Element).nextElementSibling as HTMLInputElement
+      ).click()}
+  >
+    Upload image
+  </button>
+  <input
+    accept=${UPLOADABLE_TYPES.join(",")}
+    hidden
+    type="file"
+    @change=${({ currentTarget }: Event) => {
+      const input = currentTarget as HTMLInputElement;
+      const [file] = input.files ?? [];
+      // So the same file can be picked again.
+      input.value = "";
+      if (file) {
+        uploadImage(blockId, file);
+      }
+    }}
+  />
+`;
+
 /** The selected Block's fields. */
 const renderProperties = (
   { block, columnIndex, rowIndex }: BlockPosition,
@@ -451,8 +492,19 @@ const renderProperties = (
       props,
       type: "updateBlockProps",
     }),
+    extras:
+      block.type === "image"
+        ? {
+            src: {
+              control: api.uploadImage
+                ? renderUploadButton(block.id, api.uploadImage)
+                : undefined,
+              error: api.uploadErrorOf(block.id),
+            },
+          }
+        : undefined,
     fields: blockSettingsFields(block),
-    id: "block",
+    id: BLOCK_SECTION_ID,
     legend: "Block",
     targetId: block.id,
     values: block.props,

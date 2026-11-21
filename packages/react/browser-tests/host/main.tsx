@@ -48,6 +48,10 @@ const emailWith = (text: string): Document => ({
   version: 2,
 });
 
+/** Gives each file the URL its name says. */
+const uploadImage = (file: File) =>
+  Promise.resolve({ url: `https://cdn.example/${file.name}` });
+
 /** A newer version than this editor can read, so it's refused. */
 const refusedEmail = { ...emailWith("Refused"), version: 999 };
 
@@ -93,6 +97,7 @@ const Host = () => {
               ? undefined
               : (reason) => setErrors((all) => [...all, reason])
           }
+          uploadImage={uploadImage}
           value={document}
         />
       )}
@@ -164,6 +169,7 @@ const ShellHost = () => {
         onChange={(next) => setDocument(next)}
         ref={attach}
         saveKey={saveKey}
+        uploadImage={uploadImage}
         value={document}
       />
     </main>

@@ -30,6 +30,8 @@ import { createEditingActions } from "./editing-actions.js";
 import { findPlace, place } from "./editor-places.js";
 import { createFocus } from "./focus.js";
 import { createLinkForm, formatBarStyles } from "./format-bar.js";
+import type { HostAppProperties } from "./host-app.js";
+import { createImageUploads } from "./image-uploads.js";
 import { createKeyDispatch } from "./key-dispatch.js";
 import { keyLabel } from "./key-map.js";
 import type { Action, KeyScope } from "./key-map.js";
@@ -40,7 +42,11 @@ import { createPreview, previewStyles, renderPreview } from "./preview.js";
 import { refuseFiles } from "./refuse-files.js";
 import { createSelection } from "./selection.js";
 import { createSettingsDrafts, settingsPanelStyles } from "./settings-panel.js";
-import { renderSidePanel, sidePanelStyles } from "./side-panel.js";
+import {
+  blockDraftKey,
+  renderSidePanel,
+  sidePanelStyles,
+} from "./side-panel.js";
 import { styleProperties } from "./style-properties.js";
 import { createTextBlockView, textBlockStyles } from "./text-block-view.js";
 import type { TextBlockView } from "./text-block-view.js";
@@ -205,7 +211,17 @@ const elementStyles = css`
   }
 `;
 
-export class MailQuilt extends LitElement {
+export class MailQuilt extends LitElement implements HostAppProperties {
+  static override properties = {
+    // Only whether there's one changes what shows, and a React host may give
+    // a new function at each render, such as on each key.
+    uploadImage: {
+      attribute: false,
+      hasChanged: (next: unknown, previous: unknown) =>
+        Boolean(next) !== Boolean(previous),
+    },
+  };
+
   static override styles = [
     themeTokens,
     uiStyles,
@@ -221,6 +237,8 @@ export class MailQuilt extends LitElement {
 
   /** Lit's, which is this element's shadow root, as Lit attaches it. */
   declare readonly renderRoot: ShadowRoot;
+
+  declare uploadImage: HostAppProperties["uploadImage"];
 
   #editor: Editor | undefined;
   readonly #views = new Map<string, TextBlockView>();
@@ -296,6 +314,29 @@ export class MailQuilt extends LitElement {
     focus: this.#focus,
     selection: this.#selection,
   });
+  readonly #uploads = createImageUploads({
+    announcements: this.#announcements,
+    email: () => this.#editor?.getDocument(),
+    setImage: (blockId, src) => {
+      const result = this.#apply(
+        { blockId, props: { src }, type: "updateBlockProps" },
+        { refusable: true }
+      );
+      // The field shows the new URL, rather than what was typed and refused,
+      // and the canvas tries it again, as it may not have been there before.
+      if (result?.ok || result?.code === "unchanged") {
+        this.#drafts.forget(blockDraftKey(blockId, "src"));
+        if (this.#failedImages.delete(src)) {
+          this.requestUpdate();
+        }
+      }
+      return result;
+    },
+    uploadImage: () => this.uploadImage,
+  });
+  readonly #uploadImage = (blockId: string, file: File) => {
+    this.#uploads.upload(blockId, file);
+  };
   readonly #keys = createKeyDispatch({
     canStep: (step) =>
       step === "undo"
@@ -595,6 +636,8 @@ export class MailQuilt extends LitElement {
       selectedRow: this.#editing.selectedRow(email),
       showsSettings: this.#selection.showsSettings,
       tab: this.#selection.tab,
+      uploadErrorOf: this.#uploads.errorOf,
+      uploadImage: this.uploadImage ? this.#uploadImage : undefined,
     };
   }
 
@@ -602,6 +645,7 @@ export class MailQuilt extends LitElement {
     return {
       emailLang: this.#emailLang,
       failedImages: this.#failedImages,
+      isUploading: this.#uploads.isUploading,
       textOf: (blockId) => this.#views.get(blockId)?.element,
     };
   }
@@ -721,10 +765,13 @@ export class MailQuilt extends LitElement {
     // A URL that failed before may load now, as its image may have been
     // uploading, or the connection down.
     this.#failedImages.clear();
+    // Their Blocks are gone with the email they were in.
+    this.#uploads.clear();
     this.#reset();
     // Checked once, by the value's setter.
     this.#editor = loaded && editorOfLoaded(loaded);
     this.#editor?.subscribe(this.#editing.onOperations);
+    this.#editor?.subscribe(this.#uploads.onChange);
     this.requestUpdate();
     // Taking down the text views took focus out of the editor if it was in
     // one, before the update could see where it was.

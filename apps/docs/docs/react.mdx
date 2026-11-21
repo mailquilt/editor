@@ -42,6 +42,14 @@ This example keeps the email in `localStorage` so it runs on its own. In your ap
 
 The Shell fills the space you give it, so give its parent a height.
 
+## Image uploads
+
+Pass `uploadImage` to let people upload images to your storage, from an Upload image button in the Image settings. [Upload images](./upload-images) shows a function that does it:
+
+```tsx
+<MailQuilt onChange={setEmail} uploadImage={uploadImage} value={email} />
+```
+
 ## Props
 
-`MailQuilt` takes `value`, `onChange`, `onError` and `ref`. `MailQuiltShell` takes those, and `heading`, `actions` and `saveKey`. Other props, such as `className`, `style` and `aria-label`, go to the element. The [editor's API](./api#react) lists them all, with their types.
+`MailQuilt` takes `value`, `onChange`, `onError`, `uploadImage` and `ref`. `MailQuiltShell` takes those, and `heading`, `actions` and `saveKey`. Other props, such as `className`, `style` and `aria-label`, go to the element. The [editor's API](./api#react) lists them all, with their types.

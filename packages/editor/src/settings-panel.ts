@@ -2,6 +2,7 @@ import type { ApplyResult, Command } from "@mailquilt/core";
 import { hexColor } from "@mailquilt/core/internal";
 import type { SettingsField } from "@mailquilt/core/internal";
 import { css, html, nothing } from "lit";
+import type { TemplateResult } from "lit";
 import { keyed } from "lit/directives/keyed.js";
 import { live } from "lit/directives/live.js";
 
@@ -20,6 +21,13 @@ export interface SettingsSection {
   /** What a color picker shows with no color set: what's behind it. */
   unsetColor?: string;
   command: (changes: Record<string, unknown>) => Command;
+  /**
+   * More for some fields, by key: a control beside the field, and what went
+   * wrong with it that isn't a refusal of what was typed, such as an upload.
+   */
+  extras?: Readonly<
+    Record<string, { control?: TemplateResult; error?: string | undefined }>
+  >;
 }
 
 /**
@@ -129,6 +137,21 @@ export const settingsPanelStyles = css`
 
   .settings .error {
     color: var(--mq-color-danger);
+  }
+
+  /* A field with a control beside it, which takes what room is left. */
+  .settings .with-control {
+    display: flex;
+    gap: var(--mq-space-2);
+  }
+
+  .settings .with-control > :first-child {
+    flex: 1;
+  }
+
+  .settings .with-control .text-button {
+    height: 32px;
+    white-space: nowrap;
   }
 
   /*
@@ -282,8 +305,11 @@ const NO_COLOR = "#ffffff";
 /** Short controls sit beside their label. Text that runs long gets the row. */
 const INLINE_TYPES = new Set<string>(["color", "number", "select"]);
 
-const draftKey = ({ id, targetId }: SettingsSection, { key }: SettingsField) =>
-  `${id}:${targetId}:${key}`;
+/** Where what's typed in a field is kept: by its section, target and field. */
+export const draftKey = (
+  { id, targetId }: Pick<SettingsSection, "id" | "targetId">,
+  { key }: Pick<SettingsField, "key">
+) => `${id}:${targetId}:${key}`;
 
 /** What a field shows when nothing different has been typed into it. */
 const fieldText = (
@@ -324,6 +350,8 @@ const renderField = (
   const id = `settings-${section.id}-${field.key}`;
   const descriptionId = `${id}-description`;
   const errorId = `${id}-error`;
+  const extra = section.extras?.[field.key];
+  const extraErrorId = `${id}-extra-error`;
   const key = draftKey(section, field);
   const draft = drafts.draftOf(key);
   const refusals = draft?.refusals ?? 0;
@@ -332,6 +360,7 @@ const renderField = (
   const describedBy = [
     field.description ? descriptionId : "",
     refused ? errorId : "",
+    extra?.error ? extraErrorId : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -440,7 +469,11 @@ const renderField = (
             : nothing
         }
       </label>
-      ${control()}
+      ${
+        extra?.control
+          ? html`<div class="with-control">${control()}${extra.control}</div>`
+          : control()
+      }
       ${
         field.description
           ? html`
@@ -460,6 +493,11 @@ const renderField = (
                 </p>
               `
             )
+          : nothing
+      }
+      ${
+        extra?.error
+          ? html`<p class="error" id=${extraErrorId}>${extra.error}</p>`
           : nothing
       }
     </div>
@@ -580,5 +618,13 @@ export const createSettingsDrafts = ({
     requestUpdate();
   };
 
-  return { clear: () => drafts.clear(), discard, fields };
+  return {
+    clear: () => drafts.clear(),
+    discard,
+    fields,
+    /** Takes back what was typed in one field, for a value set another way. */
+    forget: (key: string) => {
+      drafts.delete(key);
+    },
+  };
 };

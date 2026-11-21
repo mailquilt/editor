@@ -1,9 +1,12 @@
 import { isSameDocument, loadDocument } from "@mailquilt/core";
 import type { BlocksDocument, LoadResult } from "@mailquilt/core";
 import { css, html, LitElement, nothing, unsafeCSS } from "lit";
+import type { PropertyValues } from "lit";
 import { createRef, ref } from "lit/directives/ref.js";
 import { repeat } from "lit/directives/repeat.js";
 
+import { HOST_APP_PROPERTIES } from "./host-app.js";
+import type { HostAppProperties } from "./host-app.js";
 import "./mail-quilt.js";
 import type { MailQuilt } from "./mail-quilt.js";
 import { refuseFiles } from "./refuse-files.js";
@@ -109,11 +112,15 @@ const downloadFile = (name: string, type: string, text: string) => {
  * and messages. It offers the same `value`, `mq-change`, `mq-error` and
  * `exportHtml()`, and can keep the email in the browser under `save-key`.
  */
-export class MailQuiltShell extends LitElement {
+export class MailQuiltShell extends LitElement implements HostAppProperties {
   static override properties = {
     actions: {},
     heading: {},
     saveKey: { attribute: "save-key" },
+    // Passed on to the editor, as properties only.
+    ...Object.fromEntries(
+      HOST_APP_PROPERTIES.map((name) => [name, { attribute: false }])
+    ),
   };
 
   static override styles = [
@@ -214,6 +221,8 @@ export class MailQuiltShell extends LitElement {
   declare heading: string | null | undefined;
   /** Where the email is kept in the browser. Without it, nothing is stored. */
   declare saveKey: string | null | undefined;
+  /** As on `<mail-quilt>`. */
+  declare uploadImage: HostAppProperties["uploadImage"];
 
   readonly #editor: MailQuilt = document.createElement("mail-quilt");
   readonly #body = createRef<HTMLElement>();
@@ -302,7 +311,12 @@ export class MailQuiltShell extends LitElement {
     this.#bodyObserver?.disconnect();
   }
 
-  protected override willUpdate() {
+  protected override willUpdate(changed: PropertyValues<this>) {
+    for (const name of HOST_APP_PROPERTIES) {
+      if (changed.has(name)) {
+        Object.assign(this.#editor, { [name]: this[name] });
+      }
+    }
     this.#openSaved();
   }
 

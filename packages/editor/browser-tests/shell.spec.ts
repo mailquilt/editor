@@ -13,6 +13,7 @@ import {
   emailWith,
   emailWithLink,
   focusStartOfTextBlock,
+  palette,
   selectRowButton,
   test,
   textBlock,
@@ -336,6 +337,43 @@ test.describe("the editor's API", () => {
     expect(JSON.stringify(value)).toContain("Oh Hello");
     expect(html).toMatch(/<!doctype html>/iu);
     expect(html).toContain("Oh Hello");
+  });
+
+  test("uploadImage reaches the editor, and can be taken away", async ({
+    page,
+  }) => {
+    const uploaded = "https://cdn.example/uploaded.png";
+    await page
+      .context()
+      .route("https://cdn.example/**", (route) =>
+        route.fulfill({ body: "", contentType: "image/png" })
+      );
+    await openShell(page);
+    await shell(page).evaluate((element, url) => {
+      (element as MailQuiltShell).uploadImage = () => Promise.resolve({ url });
+    }, uploaded);
+    await palette(page, "Image").click();
+
+    const choosing = page.waitForEvent("filechooser");
+    await shell(page).getByRole("button", { name: "Upload image" }).click();
+    const chooser = await choosing;
+    await chooser.setFiles({
+      buffer: Buffer.from("x"),
+      mimeType: "image/png",
+      name: "photo.png",
+    });
+
+    await expect(
+      shell(page).getByRole("textbox", { name: "Image URL" })
+    ).toHaveValue(uploaded);
+
+    await shell(page).evaluate((element) => {
+      (element as MailQuiltShell).uploadImage = undefined;
+    });
+
+    await expect(
+      shell(page).getByRole("button", { name: "Upload image" })
+    ).toHaveCount(0);
   });
 
   test("exportHtml() works straight after the Shell is added", async ({

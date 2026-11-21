@@ -563,6 +563,8 @@ export interface CanvasState {
   emailLang: string;
   /** Image URLs that didn't load, which the canvas stops trying to show. */
   failedImages: ReadonlySet<string>;
+  /** Whether an image is being uploaded for the Block. */
+  isUploading: (blockId: string) => boolean;
   /** A Block's text, once its editor has been made. */
   textOf: (blockId: string) => HTMLElement | undefined;
 }
@@ -750,12 +752,12 @@ const renderBlock = (
     >
       ${selected ? nothing : renderDragHandle()}
       ${rich ? state.textOf(block.id) : nothing}
-      ${renderBlockContent(
-        block,
-        state.emailLang,
-        state.failedImages,
-        events.onImageError
-      )}
+      ${renderBlockContent(block, {
+        failedImages: state.failedImages,
+        lang: state.emailLang,
+        onImageError: events.onImageError,
+        uploading: state.isUploading(block.id),
+      })}
       ${selected ? renderBlockToolbar(api) : nothing}
       ${selected && rich && api.editingText ? renderFormatBar(api) : nothing}
     </div>

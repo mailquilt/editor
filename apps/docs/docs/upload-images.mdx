@@ -1,0 +1,137 @@
+---
+title: Upload images
+description: Let people upload images in the Mail Quilt editor, to storage your app already has, such as an S3 bucket through a pre-signed URL.
+seo:
+  title: "Image upload for an email editor, to your own storage"
+---
+
+Without an upload, a person adds an image by its URL, so the image has to be online already. Give the editor an `uploadImage` function, and the Image settings get an Upload image button beside the Image URL. Your function sends the file to your own storage and returns the image's URL, which the Image Block takes. Mail Quilt stores nothing itself.
+
+```ts
+uploadImage?: (
+  file: File,
+  options: { signal: AbortSignal }
+) => Promise<{ url: string }>;
+```
+
+It returns an object rather than the URL alone, so that later releases can ask for more, such as the image's width, without breaking your function.
+
+## Give the editor your function
+
+Set it as a property of `<mail-quilt>`:
+
+```js
+const editor = document.querySelector("mail-quilt");
+editor.uploadImage = uploadImage;
+```
+
+`<mail-quilt-shell>` takes the same property, and passes it to the editor inside. In React, `MailQuilt` and `MailQuiltShell` take it as a prop:
+
+```tsx
+<MailQuilt onChange={setEmail} uploadImage={uploadImage} value={email} />
+```
+
+Without it, there's no Upload image button, and the editor is as it was.
+
+## A pre-signed upload
+
+With a pre-signed URL, the browser sends the file straight to your storage, and your server only signs the request. The file never passes through your server, and your storage keys never reach the browser. S3, Google Cloud Storage, Azure Blob Storage, Cloudflare R2 and most other storage services offer one.
+
+1. The browser asks your server to sign an upload, with the file's type and size.
+2. Your server checks who's asking and what they're sending, and answers with a URL to upload to and the URL the image will have.
+3. The browser sends the file to the upload URL.
+4. `uploadImage` returns the image's URL.
+
+In the browser:
+
+```js title="upload-image.js"
+export const uploadImage = async (file, { signal }) => {
+  const signing = await fetch("/api/image-uploads", {
+    body: JSON.stringify({ size: file.size, type: file.type }),
+    headers: { "Content-Type": "application/json" },
+    method: "POST",
+    signal,
+  });
+  if (!signing.ok) {
+    // Your server's reason, such as a file that's too big, or none if the
+    // answer isn't your server's JSON, such as a proxy's error page.
+    const { message } = await signing.json().catch(() => ({}));
+    throw new Error(message ?? "The image couldn't be uploaded. Try again.");
+  }
+  const { uploadUrl, url } = await signing.json();
+
+  const upload = await fetch(uploadUrl, {
+    body: file,
+    headers: { "Content-Type": file.type },
+    method: "PUT",
+    signal,
+  });
+  if (!upload.ok) {
+    throw new Error("The image couldn't be stored. Try again.");
+  }
+  return { url };
+};
+```
+
+The editor shows the message of any `Error` your function rejects with, so write each one for the person. A `fetch` that can't reach the server at all, such as when the person is offline, rejects with the browser's own words, such as "Failed to fetch". Catch it and throw your own if those won't do. Passing `signal` to each `fetch` stops the upload when the editor no longer needs it.
+
+On your server, here with S3 and the AWS SDK for JavaScript:
+
+```js title="sign-image-upload.js"
+import { randomUUID } from "node:crypto";
+
+import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+
+const s3 = new S3Client({
+  region: "eu-west-1",
+  // Otherwise the URL carries a checksum of no file, and S3 refuses the real one.
+  requestChecksumCalculation: "WHEN_REQUIRED",
+});
+const BUCKET = "my-app-email-images";
+/** Where the bucket's images are served from, such as a CDN in front of it. */
+const PUBLIC_URL = "https://images.my-app.example";
+const EXTENSIONS = {
+  "image/gif": "gif",
+  "image/jpeg": "jpg",
+  "image/png": "png",
+};
+const MOST_BYTES = 5 * 1024 * 1024;
+
+/**
+ * For POST /api/image-uploads, once your app knows who's signed in. Returns
+ * the status and JSON to answer with.
+ */
+export const signImageUpload = async ({ size, type }) => {
+  const extension = EXTENSIONS[type];
+  if (!extension) {
+    return { body: { message: "Use a PNG, JPEG or GIF image." }, status: 400 };
+  }
+  if (!(size > 0 && size <= MOST_BYTES)) {
+    return { body: { message: "Images can be up to 5 MB." }, status: 400 };
+  }
+  const key = `email-images/${randomUUID()}.${extension}`;
+  const uploadUrl = await getSignedUrl(
+    s3,
+    new PutObjectCommand({ Bucket: BUCKET, ContentType: type, Key: key }),
+    { expiresIn: 300 }
+  );
+  return { body: { uploadUrl, url: `${PUBLIC_URL}/${key}` }, status: 200 };
+};
+```
+
+- **A new key for each upload,** so an image already in a sent email is never replaced.
+- **The size is what the browser says it is.** A pre-signed PUT doesn't hold the upload to it. To hold it, sign a pre-signed POST with a `content-length-range` condition instead, or check each object once it has arrived.
+- **The image's URL has to be public,** because every email client that opens the email loads it from there, long after the person has closed the editor.
+- **Your bucket needs a CORS rule** that allows a `PUT` with a `Content-Type` header from your app's origin.
+
+If your page has a Content Security Policy, its `connect-src` has to allow the upload URL's origin, and its `img-src` the image's, as [the API page](./api#content-security-policy) says.
+
+## What the editor does
+
+- **The file picker offers PNG, JPEG and GIF,** the types every email client shows. Any other file is refused with "Use a PNG, JPEG or GIF image." before your function is called. The editor has no size limit of its own: reject a file that's too big, and say why.
+- **While the upload runs,** the Image Block shows "Uploading…" instead of an image. Screen readers hear when it starts and when it's done.
+- **When it's done,** the Image Block takes the URL in one change, which one undo takes back. The Image URL field shows the URL, and can still be edited.
+- **The URL you return is checked as a typed one is:** it starts with `https:` or `http:`, or it's a [Merge Tag](./document-format#merge-tags). An upload that returns any other URL has failed.
+- **When it fails,** the message of the `Error` your function rejects with is shown by the Image URL field, and screen readers read it out. If it rejects with no message, the editor says "The image couldn't be uploaded." There's no `mq-error`, as your function already knows. The message stays on that Block until its next upload or a new Image URL. It's never saved in the email.
+- **An upload is aborted through `signal` when its Block is gone,** deleted, taken away by undo, or replaced along with the whole email by a new `value`, and when a new upload into the same Block takes its place. Whatever your function returns after that is ignored.

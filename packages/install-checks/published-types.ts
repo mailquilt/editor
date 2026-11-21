@@ -1,12 +1,15 @@
-// No page imports this. `next build` type-checks it, so each package's published
-// types are read here as an app's own TypeScript reads them.
+// No page imports this. It's copied into each project with TypeScript, whose
+// build type-checks it, so each package's published types are read here as an
+// app's own TypeScript reads them.
 import type { Command } from "@mailquilt/core";
 import { isAllowedLinkHref } from "@mailquilt/core/internal";
 import type {
+  MailQuilt,
   MailQuiltChangeEvent,
   MailQuiltErrorEvent,
+  MailQuiltShell,
 } from "@mailquilt/editor";
-import type { MailQuiltProps } from "@mailquilt/react";
+import type { MailQuiltProps, MailQuiltShellProps } from "@mailquilt/react";
 import { renderEmail } from "@mailquilt/renderer";
 
 export const command: Command = {
@@ -36,6 +39,31 @@ export const elementProps: MailQuiltProps = {
 
 // @ts-expect-error A form field's prop means nothing on the editor.
 export const formFieldProps: MailQuiltProps = { defaultValue: "Hello" };
+
+/** A Host app's upload, which both elements and both components take. */
+const uploadImage = async (file: File, { signal }: { signal: AbortSignal }) => {
+  const response = await fetch("/uploads", {
+    body: file,
+    method: "PUT",
+    signal,
+  });
+  return { url: response.url };
+};
+
+export const giveUploadImage = (editor: MailQuilt, shell: MailQuiltShell) => {
+  editor.uploadImage = uploadImage;
+  shell.uploadImage = uploadImage;
+};
+
+export const uploadProps: [MailQuiltProps, MailQuiltShellProps] = [
+  { uploadImage },
+  { uploadImage },
+];
+
+export const bareUrl: MailQuiltProps = {
+  // @ts-expect-error The URL comes in an object, so fields can be added later.
+  uploadImage: () => Promise.resolve("https://cdn.example/photo.png"),
+};
 
 /** JSON from a database is `unknown` until the renderer has checked it. */
 export const htmlFor = (saved: unknown): Promise<string> => renderEmail(saved);

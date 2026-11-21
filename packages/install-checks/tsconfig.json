@@ -12,6 +12,7 @@
     "playwright.config.ts",
     "ports.ts",
     "prepare.ts",
+    "published-types.ts",
     "run.ts"
   ]
 }

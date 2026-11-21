@@ -70,7 +70,7 @@ Without `save-key`, the Shell stores nothing. Save the email yourself from `mq-c
 
 ## The Shell's API
 
-The Shell takes `value`, `heading`, `actions` and `save-key`, fires `mq-change` and `mq-error`, and has `exportHtml()`. In React, these are the `value`, `heading`, `actions`, `saveKey`, `onChange` and `onError` props, with `actions` as an array of names. The [editor's API](./api#the-shell) describes each one.
+The Shell takes `value`, `heading`, `actions` and `save-key`, and the editor's `uploadImage` property, which it passes on, so people can [upload images](./upload-images). It fires `mq-change` and `mq-error`, and has `exportHtml()`. In React, these are the `value`, `heading`, `actions`, `saveKey`, `uploadImage`, `onChange` and `onError` props, with `actions` as an array of names. The [editor's API](./api#the-shell) describes each one.
 
 ## Customizing it
 
