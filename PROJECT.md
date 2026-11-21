@@ -155,7 +155,7 @@ The [document format reference](apps/docs/docs/document-format.mdx) lists every 
 
 ### Planned additions
 
-Later versions add these through migrations, as their features are built: brand styles, display rules, mobile overrides and HTML documents.
+Version 3 adds Merge Tags as units of text, Lists, a Row's padding and phone settings, and the Social Block, in one change to the format. Later versions add these through migrations, as their features are built: brand styles, display rules, more mobile overrides and HTML documents.
 
 ## 5. Blocks and settings
 
@@ -309,20 +309,20 @@ There are no dates, and items can move. Each item is tracked in GitHub Issues.
 
 **Next**
 
-What a team needs before its customers can use the editor. The first six are specified together and ship first. These come before the MCP server and the AI builder because a team that can't upload an image or pick a Merge Tag stops there, whatever else the editor does. The line under a feature is what its spec has to settle first, because the code doesn't allow for it yet.
+What a team needs before its customers can use the editor. The first six are specified together and ship together, in `0.3.0`, with one change to the saved format. These come before the MCP server and the AI builder because a team that can't upload an image or pick a Merge Tag stops there, whatever else the editor does. The line under a feature is what its spec has to settle first, because the code doesn't allow for it yet.
 
-1. Image upload, to storage the host app supplies
-   - First: a way in for the host app's service, as the element takes only `value`, and each new property is passed on by hand in three places. A drag that can take a dropped file, as every file is refused on the whole element today.
-2. A Merge Tag picker, filled by the host app
-   - First: Merge Tags as something other than plain text matched by a pattern, as Backspace inside one leaves a broken tag, and `{{ }}` is fixed in core. A Block's text view that follows every change to the email, as it follows one only on undo and redo. The same way in for the host app as image upload.
+1. Image upload, to storage the Host app supplies
+   - First: a way in for the Host app's service, as the element takes only `value`, and each new property is passed on by hand in three places. A drag that can take a dropped file, as every file is refused on the whole element today.
+2. A Merge Tag picker, filled by the Host app
+   - First: Merge Tags as something other than plain text matched by a pattern, as Backspace inside one leaves a broken tag, and `{{ }}` is fixed in core. The same way in for the Host app as image upload.
 3. Lists in text
    - First: deleting an empty paragraph that isn't top-level, as the text assumes every paragraph is. A new format version for the new node.
 4. Row padding, hiding or stacking on phones, and a mobile preview
-   - First: a Column's inline width that allows for Row padding, as it assumes the Row is as wide as the email. A settings field that holds a yes or no, as each holds one string or number.
+   - First: a Column's inline width that allows for Row padding, as it assumes the Row is as wide as the email. Columns that stay side by side on phones without a media query, through `mj-group`, as every Row stacks today. A settings field that holds a yes or no, as each holds one string or number.
 5. Copy, paste and duplicate
    - First: a Command that inserts a Block or Row with its content, and key dispatch that hears copy and paste events.
 6. A Social Block
-   - First: icons that don't load from Mailjet, as MJML's social element does by default. A settings field that holds a yes or no. A Tab stop in an empty Column that isn't one per Block type, as each new type adds one.
+   - First: icons that don't load from Mailjet, as MJML's social element does by default. A settings field that holds a list a person can add to, remove from and reorder, as each holds one string or number. A Tab stop in an empty Column that isn't one per Block type, as each new type adds one.
 7. Web fonts
 8. Menu, Video and HTML Blocks
 9. Alt text, or a "decorative" choice, for every image
@@ -337,11 +337,11 @@ What a team needs before its customers can use the editor. The first six are spe
 
 **Later**
 
-Wanted. The first five open the editor up to the host app, so they come first, in this order. The rest have no order yet.
+Wanted. The first five open the editor up to the Host app, so they come first, in this order. The rest have no order yet.
 
 - Custom Blocks
-- The editor in parts a host app arranges itself, with the text editor as its own element, and the selection and Commands reachable from outside
-- Saved Rows, whether a person saved them or the host app supplied them
+- The editor in parts a Host app arranges itself, with the text editor as its own element, and the selection and Commands reachable from outside
+- Saved Rows, whether a person saved them or the Host app supplied them
 - Display rules and brand styles
 - Parts of an email that can't be changed
 - Light and dark editor themes
@@ -356,7 +356,7 @@ Wanted. The first five open the editor up to the host app, so they come first, i
 - Sending integrations
 - Translated emails
 - Collaboration support, with an example
-  - First: a Block's text view that follows every change to the email, as for the Merge Tag picker.
+  - First: a Block's text view that follows every change to the email, as it follows one only on undo and redo.
 
 **Before `1.0.0`**
 
@@ -379,7 +379,7 @@ There are three levels of access to HTML:
 
 Switching from Blocks to HTML always works. It warns that the email leaves the visual editor, and keeps the Block version so the user can go back, losing their HTML edits. Switching from HTML to Blocks is best effort: what's recognized becomes Blocks, and the rest becomes HTML Blocks, so nothing is lost. The two are never kept in continuous sync.
 
-The HTML Block comes first, on its own. It's the one Block that lets a person put markup of their own on the canvas, so how its content is sanitized, and how a host app turns the Block off, are settled before it's built. The Block is off unless the host app turns it on.
+The HTML Block comes first, on its own. It's the one Block that lets a person put markup of their own on the canvas, so how its content is sanitized, and how a Host app turns the Block off, are settled before it's built. The Block is off unless the Host app turns it on.
 
 ### Brand styles, Merge Tags and display rules
 
@@ -490,7 +490,7 @@ Conflicts and the transport belong to the developer or their library. The design
 
 ### Extension points
 
-Custom Blocks and settings fields, custom checker rules, image upload and media library adapters, the AI adapter, a Merge Tag provider, sending adapters, translations of the editor's interface, and white-labeling with no required Mail Quilt branding. Theme tokens are already available.
+Custom Blocks and settings fields, custom checker rules, image upload through the Host app's `uploadImage`, a media library adapter, the AI adapter, the Host app's Merge Tags through `mergeTags`, sending adapters, translations of the editor's interface, and white-labeling with no required Mail Quilt branding. Theme tokens are already available.
 
 ## 11. Quality and testing
 
@@ -519,6 +519,8 @@ What's built:
 Planned:
 
 - The HTML Block's content, and any HTML the AI writes, are sanitized.
+- A pasted Block or Row is checked as an imported email is, and gets new IDs, so a crafted clipboard can't put in an email anything a saved email couldn't hold.
+- The URL an image upload returns is checked as any image URL is.
 - Commands from AI, MCP and collaboration are validated exactly like the editor's own.
 - The Playground never stores or logs anyone's AI keys or prompts.
 
@@ -545,6 +547,7 @@ Not yet confirmed:
 - All the published packages share one version, managed with Changesets.
 - On `0.x`, a patch fixes bugs, and a minor version adds features or makes breaking changes. `1.0.0` comes once real users have proven the API.
 - A bad release is fixed by publishing a new version, and deprecating the bad one if needed.
+- A release that changes the saved format raises its version once, however many changes it holds. Until the release is published, that version is open on `main`: each pull request extends it, and an email saved from `main` in between isn't supported. The versioning step waits until the release's features are all in, so nothing is published with half the format.
 - Each change goes through a short-lived branch and a pull request, with a title that says what's true after it, such as `fix: the Shell keeps a first-time visitor's work`. Pull requests are squashed, so the title becomes the commit.
 
 To release, version on a branch. CI publishes the commit it checked:
