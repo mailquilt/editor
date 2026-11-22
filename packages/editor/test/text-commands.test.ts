@@ -529,6 +529,14 @@ describe("turning a List on and off", () => {
     expect(next.selection.toJSON()).toMatchObject({ anchor: 8, head: 9 });
   });
 
+  it("at a cursor, keeps the formatting turned on for what's typed next", () => {
+    const state = textWith([paragraph()], 1);
+    const bolded = after(commands.toggleMark("bold"), state);
+    const next = after(commands.toggleList("bulletList"), bolded);
+    expect(outline(next)).toStrictEqual([{ bulletList: [""] }]);
+    expect(isMarkedNext(next)).toBeTruthy();
+  });
+
   it("of the other type, switches the whole List's type", () => {
     const state = textWith([bullets(item(text("a")), item(text("b")))], 3);
     expect(

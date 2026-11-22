@@ -905,6 +905,10 @@ test.describe("undo and redo", () => {
       .toStrictEqual([{ bulletList: ["Hello!"] }]);
     await undoByKey(page);
     await expect.poll(() => savedOutline(page)).toStrictEqual(["Hello!"]);
+
+    // The cursor is where it was, after the same text.
+    await page.keyboard.type("y");
+    await expect.poll(() => savedOutline(page)).toStrictEqual(["Hello!y"]);
   });
 
   test("text typed after turning bold on doesn't merge with the text before it", async ({

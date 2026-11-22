@@ -5,7 +5,12 @@ import { baseKeymap } from "prosemirror-commands";
 import { keydownHandler } from "prosemirror-keymap";
 import { Fragment, Slice } from "prosemirror-model";
 import type { MarkType, Node as ProseMirrorNode } from "prosemirror-model";
-import { EditorState, Plugin, Selection } from "prosemirror-state";
+import {
+  EditorState,
+  Plugin,
+  Selection,
+  TextSelection,
+} from "prosemirror-state";
 import type { Command as TextCommand, Transaction } from "prosemirror-state";
 import {
   AddMarkStep,
@@ -29,7 +34,12 @@ import {
 } from "./merge-tags.js";
 import type { MergeTag, MergeTagPickerState } from "./merge-tags.js";
 import { pastedHtmlParser, withoutStyles } from "./pasted-html.js";
-import { createTextCommands, LIST_FORMATTING } from "./text-commands.js";
+import {
+  atParagraphOffset,
+  createTextCommands,
+  LIST_FORMATTING,
+  paragraphOffset,
+} from "./text-commands.js";
 import type { ListType, TextFormats, ToggleableMark } from "./text-commands.js";
 import type { TextSchema } from "./text-schema.js";
 
@@ -193,6 +203,13 @@ const cursorAfterChange = (
     Math.min(moved, Math.max(start, end.a))
   );
 };
+
+/**
+ * A text's paragraphs, each as its text, so that a change of structure alone,
+ * such as a List turned on or off, reads as no change.
+ */
+const paragraphsOf = (doc: ProseMirrorNode) =>
+  doc.textBetween(0, doc.content.size, "\u2029");
 
 /** Marks a focus change: true when the text gains focus, false when it loses it. */
 const FOCUSED = "mailquilt:focused";
@@ -440,17 +457,30 @@ export const createTextBlockView = ({
       const keepsSelection =
         doc.content.size === nextDoc.content.size &&
         doc.textContent === nextDoc.textContent;
+      // Undoing a List keeps the selection on the same text, which the List's
+      // structure has moved.
+      const keepsText = paragraphsOf(doc) === paragraphsOf(nextDoc);
       const tr = view.state.tr.replaceWith(
         0,
         doc.content.size,
         nextDoc.content
       );
-      // The position can fall between paragraphs, which can't hold a cursor.
-      tr.setSelection(
-        keepsSelection
-          ? selection.getBookmark().resolve(tr.doc)
-          : Selection.near(tr.doc.resolve(cursor))
-      );
+      const onSameText = (pos: number) =>
+        atParagraphOffset(tr.doc, paragraphOffset(doc, pos));
+      if (keepsSelection) {
+        tr.setSelection(selection.getBookmark().resolve(tr.doc));
+      } else if (keepsText) {
+        tr.setSelection(
+          TextSelection.create(
+            tr.doc,
+            onSameText(selection.anchor),
+            onSameText(selection.head)
+          )
+        );
+      } else {
+        // The position can fall between paragraphs, which can't hold a cursor.
+        tr.setSelection(Selection.near(tr.doc.resolve(cursor)));
+      }
       view.dispatch(tr.setMeta(FROM_SET_CONTENT, true));
     },
     setLang: (next) => {

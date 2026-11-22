@@ -225,7 +225,7 @@ const deleteEmptyParagraph: TextCommand = (state, dispatch) => {
  * Where `pos` is in the text, as the number of the paragraph it's in or after,
  * counted through Lists, and how far into that paragraph it is.
  */
-const paragraphOffset = (doc: Node, pos: number): [number, number] => {
+export const paragraphOffset = (doc: Node, pos: number): [number, number] => {
   let found: [number, number] = [0, 0];
   let count = 0;
   doc.descendants((node, at) => {
@@ -241,8 +241,8 @@ const paragraphOffset = (doc: Node, pos: number): [number, number] => {
   return found;
 };
 
-/** The position `paragraphOffset` gives, in `doc`. */
-const atParagraphOffset = (
+/** The position `paragraphOffset` gives, in `doc`, within that paragraph. */
+export const atParagraphOffset = (
   doc: Node,
   [paragraph, offset]: [number, number]
 ) => {
@@ -253,7 +253,7 @@ const atParagraphOffset = (
       return true;
     }
     if (count === paragraph) {
-      pos = at + 1 + offset;
+      pos = at + 1 + Math.min(offset, node.content.size);
     }
     count += 1;
     return false;
@@ -315,6 +315,34 @@ const touched = (state: EditorState) => {
     lastItem: $to.index(1),
     start,
   };
+};
+
+/**
+ * The selection on the same text after a change that only moved the structure
+ * around it, such as a List, and the formatting turned on or off for what's
+ * typed next, which the change clears.
+ */
+const keepSelection = (tr: Transaction, state: EditorState) => {
+  const { doc, selection, storedMarks } = state;
+  if (selection instanceof AllSelection) {
+    return tr.setSelection(new AllSelection(tr.doc));
+  }
+  const range = textRange(state);
+  const from = paragraphOffset(doc, range.$from.pos);
+  const to = paragraphOffset(doc, range.$to.pos);
+  const [anchor, head] =
+    selection.anchor > selection.head ? [to, from] : [from, to];
+  tr.setSelection(
+    TextSelection.create(
+      tr.doc,
+      atParagraphOffset(tr.doc, anchor),
+      atParagraphOffset(tr.doc, head)
+    )
+  );
+  if (storedMarks && selection.empty) {
+    tr.setStoredMarks(storedMarks);
+  }
+  return tr;
 };
 
 /**
@@ -507,7 +535,7 @@ export const createTextCommands = (
       if (!(listType && listItem)) {
         return false;
       }
-      const { doc, selection } = state;
+      const { doc } = state;
       let { end, start } = touched(state);
       const { firstItem, lastItem } = touched(state);
       const nodes: Node[] = [];
@@ -544,12 +572,6 @@ export const createTextCommands = (
         nodes.push(listType.create(null, items));
       }
       if (dispatch) {
-        // Kept by where it is in the text, which the change doesn't move.
-        const range = textRange(state);
-        const from = paragraphOffset(doc, range.$from.pos);
-        const to = paragraphOffset(doc, range.$to.pos);
-        const [anchor, head] =
-          selection.anchor > selection.head ? [to, from] : [from, to];
         let replaceFrom = 0;
         for (let index = 0; index < start; index += 1) {
           replaceFrom += doc.child(index).nodeSize;
@@ -559,16 +581,11 @@ export const createTextCommands = (
           replaceTo += doc.child(index).nodeSize;
         }
         const tr = state.tr.replaceWith(replaceFrom, replaceTo, nodes);
-        tr.setSelection(
-          selection instanceof AllSelection
-            ? new AllSelection(tr.doc)
-            : TextSelection.create(
-                tr.doc,
-                atParagraphOffset(tr.doc, anchor),
-                atParagraphOffset(tr.doc, head)
-              )
+        dispatch(
+          keepSelection(tr, state)
+            .setMeta(LIST_FORMATTING, true)
+            .scrollIntoView()
         );
-        dispatch(tr.setMeta(LIST_FORMATTING, true).scrollIntoView());
       }
       return true;
     };
