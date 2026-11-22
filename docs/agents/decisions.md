@@ -97,6 +97,7 @@ Which module owns what, and why, is in `docs/adr/`:
 - A space other than HTML's own, such as a no-break space, goes to MJML as a character reference, because MJML trims every kind of space from the ends of a Button's label. A Merge Tag's spaces stay as typed, so it's still filled in. (#206)
 - Any `&`, `<` or `>` in a Merge Tag is escaped, and a `"` too where the tag is in an attribute, such as a link or image URL. The docs say so. Tags should be plain names. (#53, #81)
 - An Image in a Column narrower than its padding gets MJML's own negative width. Only very narrow emails reach it. (#36)
+- A Row whose left and right padding add up to the email's width or more leaves its Columns no room: the canvas squeezes them to a letter a line, and the export gives them negative widths. Only an email 400px wide or narrower reaches it, and the canvas shows it as it's set. Core doesn't refuse it, as the email's width can change after the padding is set. (#279)
 
 ## Packages and the docs site
 
