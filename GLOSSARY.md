@@ -31,6 +31,10 @@ _Avoid_: Variable, placeholder
 A run of bulleted or numbered items in a Text Block.
 _Avoid_: Bullets
 
+**Social Block**:
+A Block of linked icons, one for each network it links, such as Instagram or a website, in the person's order.
+_Avoid_: Social links, social bar
+
 **Stacking**:
 A Row's Columns placed one under another on a phone, rather than side by side.
 _Avoid_: Wrapping, collapsing

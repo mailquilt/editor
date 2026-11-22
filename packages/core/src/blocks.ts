@@ -356,6 +356,114 @@ const spacerBlock = {
   styles: ({ height = DEFAULT_SPACER_HEIGHT }) => ({ height: `${height}px` }),
 } satisfies BlockDefinition<SpacerBlockProps>;
 
+/**
+ * The networks a Social Block has an icon for, in the order a person picks
+ * from, each with its name. Each icon's file is named for its network, and its
+ * name is its alt text.
+ * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
+ */
+export const SOCIAL_NETWORKS = {
+  bluesky: "Bluesky",
+  facebook: "Facebook",
+  instagram: "Instagram",
+  linkedin: "LinkedIn",
+  pinterest: "Pinterest",
+  threads: "Threads",
+  tiktok: "TikTok",
+  website: "Website",
+  x: "X",
+  youtube: "YouTube",
+} as const;
+
+/** What a Social Block looks like until a person changes it. */
+const SOCIAL_LOOK = {
+  align: "left",
+  iconSize: 32,
+  iconStyle: "color",
+} as const;
+
+const ICON_STYLE_OPTIONS = [
+  { label: "Color", value: "color" },
+  { label: "White", value: "white" },
+] as const;
+
+/** At least 29px, Instagram's minimum. */
+const ICON_SIZE_OPTIONS = [
+  { label: "32px", value: 32 },
+  { label: "40px", value: 40 },
+  { label: "48px", value: 48 },
+] as const;
+
+const socialBlockSchema = v.strictObject({
+  align: v.optional(alignSchema),
+  iconSize: v.optional(v.picklist(ICON_SIZE_OPTIONS.map(({ value }) => value))),
+  iconStyle: v.optional(
+    v.picklist(ICON_STYLE_OPTIONS.map(({ value }) => value))
+  ),
+  // In the person's order. A link without a URL is kept, and left out of the email.
+  links: v.pipe(
+    v.array(
+      v.strictObject({
+        network: v.picklist(
+          Object.keys(SOCIAL_NETWORKS) as (keyof typeof SOCIAL_NETWORKS)[]
+        ),
+        url: v.optional(linkHrefSchema),
+      })
+    ),
+    v.check(
+      (links) =>
+        new Set(links.map(({ network }) => network)).size === links.length,
+      "A Social Block can link each network only once"
+    )
+  ),
+});
+
+type SocialBlockProps = v.InferOutput<typeof socialBlockSchema>;
+
+// Its links are edited in a field of their own, which isn't built yet.
+const SOCIAL_FIELDS: readonly SettingsField[] = [
+  {
+    default: SOCIAL_LOOK.iconStyle,
+    description: "White is for a dark background.",
+    invalidMessage: "Choose a style from the list.",
+    key: "iconStyle",
+    label: "Icon style",
+    options: ICON_STYLE_OPTIONS,
+    type: "select",
+  },
+  {
+    default: SOCIAL_LOOK.iconSize,
+    invalidMessage: "Choose a size from the list.",
+    key: "iconSize",
+    label: "Icon size",
+    options: ICON_SIZE_OPTIONS,
+    type: "select",
+  },
+  alignField(SOCIAL_LOOK.align),
+];
+
+const socialBlock = {
+  defaults: { links: [] } satisfies SocialBlockProps,
+  fields: () => SOCIAL_FIELDS,
+  label: "Social",
+  schema: socialBlockSchema,
+  styles: ({ align = SOCIAL_LOOK.align }) => ({ "text-align": align }),
+} satisfies BlockDefinition<SocialBlockProps>;
+
+/**
+ * A Social Block's icons, with each one's size and the gap between them, which
+ * is half that size.
+ * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
+ */
+export const socialIcons = ({
+  iconSize = SOCIAL_LOOK.iconSize,
+  iconStyle = SOCIAL_LOOK.iconStyle,
+}: SocialBlockProps) => ({
+  gap: iconSize / 2,
+  size: iconSize,
+  style: iconStyle,
+});
+
 /** Each type of Block, in the order the palette shows them. */
 const BLOCKS = [
   ["text", textBlock],
@@ -364,6 +472,7 @@ const BLOCKS = [
   ["button", buttonBlock],
   ["divider", dividerBlock],
   ["spacer", spacerBlock],
+  ["social", socialBlock],
 ] as const;
 
 /**

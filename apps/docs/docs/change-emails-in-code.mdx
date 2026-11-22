@@ -53,7 +53,7 @@ A Command is a plain object with a `type`. `apply()` returns `{ ok: true }` when
 | `removeRow` | `rowId` | Removes a Row. |
 | `updateEmailSettings` | `settings` | Changes the email's width, background, font, preheader or language. |
 
-A Block's type is one of `text`, `heading`, `image`, `button`, `divider` and `spacer`. A layout is one of `100`, `50/50`, `33/67`, `67/33`, `33/33/33` and `25/25/25/25`, written as a string. Both lists are exported. `ROW_LAYOUTS` is the layouts as strings, and `BLOCK_TYPES` is an array of `{ type, label }` objects. In TypeScript, a type is a `BlockType`.
+A Block's type is one of `text`, `heading`, `image`, `button`, `divider`, `spacer` and `social`. A layout is one of `100`, `50/50`, `33/67`, `67/33`, `33/33/33` and `25/25/25/25`, written as a string. Both lists are exported. `ROW_LAYOUTS` is the layouts as strings, and `BLOCK_TYPES` is an array of `{ type, label }` objects. In TypeScript, a type is a `BlockType`.
 
 In the Commands that change something, `props` and `settings` hold only what you're changing. The rest stays as it is. To remove an optional property, set it to `null`:
 

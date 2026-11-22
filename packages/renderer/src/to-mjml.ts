@@ -1,10 +1,17 @@
 import { loadDocument } from "@mailquilt/core";
 import type { Block, Column, Row } from "@mailquilt/core";
-import { blockStyles, EMAIL_LOOK, rowStyles } from "@mailquilt/core/internal";
-import type { RowProps } from "@mailquilt/core/internal";
+import {
+  blockStyles,
+  EMAIL_LOOK,
+  rowStyles,
+  SOCIAL_NETWORKS,
+  socialIcons,
+} from "@mailquilt/core/internal";
+import type { BlockProps, RowProps } from "@mailquilt/core/internal";
 
 import { escapeAttribute, escapeText } from "./escape.js";
 import { SHARED_COLUMN } from "./finish-html.js";
+import { socialIconUrl } from "./social-icons.js";
 import {
   headingToHtml,
   plainTextToHtml,
@@ -27,11 +34,53 @@ const mjmlAttributes = (styles: Record<string, string>) =>
 const linkAttribute = (href: string | undefined) =>
   href === undefined ? "" : ` href="${escapeAttribute(href)}"`;
 
+/** How the email is rendered, apart from the email itself. */
+export interface RenderEmailOptions {
+  /**
+   * The URL of a folder holding the Social Block's icons, copied from this
+   * package's `icons`, in place of jsDelivr.
+   */
+  socialIconsUrl?: string | undefined;
+}
+
+/** What every Block is rendered with. */
+interface BlockContext {
+  fontFamily: string;
+  socialIconsUrl: string | undefined;
+}
+
+/**
+ * Each link that has a URL, as an icon with the network's name as its alt text.
+ * Each icon's image is given, so MJML loads none from Mailjet, and only the
+ * gap after it, so the icons line up with the Block's padding.
+ */
+const socialToMjml = (
+  props: BlockProps["social"],
+  attributes: string,
+  { socialIconsUrl }: BlockContext
+) => {
+  const { gap, size, style } = socialIcons(props);
+  const links = props.links.filter(
+    (link): link is typeof link & { url: string } => link.url !== undefined
+  );
+  // As an Image without a URL, until a link has one.
+  if (links.length === 0) {
+    return "";
+  }
+  const icons = links.map(({ network, url }, index) => {
+    const label = SOCIAL_NETWORKS[network];
+    const padding = index === links.length - 1 ? "0" : `0 ${gap}px 0 0`;
+    return `<mj-social-element alt="${escapeAttribute(label)}" href="${escapeAttribute(url)}" padding="${padding}" src="${escapeAttribute(socialIconUrl(network, style, socialIconsUrl))}"></mj-social-element>`;
+  });
+  return `<mj-social${attributes} icon-size="${size}px" mode="horizontal">${icons.join("")}</mj-social>`;
+};
+
 /**
  * A Block as MJML. The casts are safe, as core's styles for a type always set
  * the same properties.
  */
-const blockToMjml = (block: Block, fontFamily: string) => {
+const blockToMjml = (block: Block, context: BlockContext) => {
+  const { fontFamily } = context;
   const blockCss = blockStyles(block);
   const attributes = mjmlAttributes(blockCss);
   switch (block.type) {
@@ -59,6 +108,9 @@ const blockToMjml = (block: Block, fontFamily: string) => {
     case "spacer": {
       return `<mj-spacer${attributes}></mj-spacer>`;
     }
+    case "social": {
+      return socialToMjml(block.props, attributes, context);
+    }
     // Never reached, as core checked each Block's type. A type this doesn't
     // handle fails to compile here.
     default: {
@@ -70,10 +122,10 @@ const blockToMjml = (block: Block, fontFamily: string) => {
 
 const columnToMjml = (
   { blocks, width }: Column,
-  fontFamily: string,
+  context: BlockContext,
   shared: boolean
 ) =>
-  `<mj-column width="${width}%"${shared ? ` css-class="${SHARED_COLUMN}"` : ""}>${blocks.map((block) => blockToMjml(block, fontFamily)).join("")}</mj-column>`;
+  `<mj-column width="${width}%"${shared ? ` css-class="${SHARED_COLUMN}"` : ""}>${blocks.map((block) => blockToMjml(block, context)).join("")}</mj-column>`;
 
 /** Hides a Row below the phone width, where the email keeps its `<style>`. */
 const HIDDEN_ON_PHONES = "mq-hide-phone";
@@ -85,11 +137,11 @@ const HIDDEN_ON_PHONES = "mq-hide-phone";
 const stacksColumns = ({ columns, props }: Row) =>
   columns.length > 1 && (props as RowProps).stackOnPhone !== false;
 
-const rowToMjml = (row: Row, fontFamily: string) => {
+const rowToMjml = (row: Row, context: BlockContext) => {
   const { hideOnPhone, stackOnPhone } = row.props as RowProps;
   const shared = stacksColumns(row);
   const columns = row.columns
-    .map((column) => columnToMjml(column, fontFamily, shared))
+    .map((column) => columnToMjml(column, context, shared))
     .join("");
   return `<mj-section${mjmlAttributes(rowStyles(row))}${hideOnPhone ? ` css-class="${HIDDEN_ON_PHONES}"` : ""}>${stackOnPhone === false ? `<mj-group>${columns}</mj-group>` : columns}</mj-section>`;
 };
@@ -101,7 +153,10 @@ const innerWidth = ({ props }: Row, emailWidth: number) => {
 };
 
 /** Throws if the document can't be trusted, and renders migrated older ones. */
-export const toMjml = (document: unknown) => {
+export const toMjml = (
+  document: unknown,
+  { socialIconsUrl }: RenderEmailOptions = {}
+) => {
   const loaded = loadDocument(document);
   if (!loaded.ok) {
     throw new Error(loaded.reason);
@@ -136,10 +191,12 @@ export const toMjml = (document: unknown) => {
       <mj-button font-size="${EMAIL_LOOK.fontSize}" line-height="${EMAIL_LOOK.lineHeight}" padding="${EMAIL_LOOK.blockPadding}" />
       <mj-image padding="${EMAIL_LOOK.blockPadding}" />
       <mj-divider padding="${EMAIL_LOOK.blockPadding}" />
+      <mj-social padding="${EMAIL_LOOK.blockPadding}" />
+      <mj-social-element border-radius="0" />
     </mj-attributes>
   </mj-head>
   <mj-body background-color="${escapeAttribute(settings.backgroundColor)}" width="${settings.width}px">
-    ${rows.map((row) => rowToMjml(row, settings.fontFamily)).join("")}
+    ${rows.map((row) => rowToMjml(row, { fontFamily: settings.fontFamily, socialIconsUrl })).join("")}
   </mj-body>
 </mjml>`;
   // In the order MJML writes the Columns, for `finishHtml`.

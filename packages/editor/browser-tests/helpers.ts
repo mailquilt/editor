@@ -548,6 +548,7 @@ export const openBlocks = async (page: Page, ...columns: BlockType[][]) => {
         level: 2,
       },
       image: { src: "https://cdn.example/photo.png" },
+      social: { links: [] },
       spacer: {},
       text: {
         content: {

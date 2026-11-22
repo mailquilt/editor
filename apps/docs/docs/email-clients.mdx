@@ -69,6 +69,10 @@ The export leaves out MJML's indentation to stay small: the test email, with 10 
 const bytes = new TextEncoder().encode(html).length;
 ```
 
+## Social icons
+
+A Social Block writes each icon as a PNG, linked, with the network's name as its alt text, because Gmail and Outlook drop SVG and `data:` images. Each icon loads from jsDelivr, or from your own storage with [`socialIconsUrl`](./social-icons), when the email is opened. A client that blocks images shows the alt text, or nothing, as below.
+
 ## Images turned off
 
 Some clients block images until the reader allows them. AOL then shows a broken-image icon without the alt text, and the image takes up no space. Make sure the email still makes sense without its images, and don't put text the reader needs only in an image.

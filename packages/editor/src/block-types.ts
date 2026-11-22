@@ -1,6 +1,13 @@
 import type { Block, BlockType } from "@mailquilt/core";
-import { blockStyles, EMAIL_LOOK, MERGE_TAG } from "@mailquilt/core/internal";
+import {
+  blockStyles,
+  EMAIL_LOOK,
+  MERGE_TAG,
+  SOCIAL_NETWORKS,
+  socialIcons,
+} from "@mailquilt/core/internal";
 import type { BlockProps } from "@mailquilt/core/internal";
+import { socialIconUrl } from "@mailquilt/renderer/internal";
 import { css, html, nothing, svg, unsafeCSS } from "lit";
 import type { TemplateResult } from "lit";
 
@@ -20,7 +27,8 @@ export const blockTypeStyles = css`
 
   /* Like MJML: it fills the Column, and a width it's given stops at the Column. */
   .image-block img,
-  .image-placeholder {
+  .image-placeholder,
+  .social-placeholder {
     display: block;
     margin-inline: auto;
     max-width: 100%;
@@ -33,8 +41,9 @@ export const blockTypeStyles = css`
     user-select: none;
   }
 
-  /* Only on the canvas: a stand-in until the image has a URL that loads. */
-  .image-placeholder {
+  /* Only on the canvas: a stand-in until there's something the email shows. */
+  .image-placeholder,
+  .social-placeholder {
     align-items: center;
     background: repeating-linear-gradient(
       -45deg,
@@ -60,10 +69,35 @@ export const blockTypeStyles = css`
     user-select: none;
   }
 
-  .image-placeholder .icon {
+  /* A row of icons is far shorter than a picture. */
+  .social-placeholder {
+    flex-direction: row;
+    min-height: 56px;
+  }
+
+  .image-placeholder .icon,
+  .social-placeholder .icon {
     color: #71717a;
     height: 28px;
     width: 28px;
+  }
+
+  /* As MJML lines them up: in a row that wraps, with no space but the gap. */
+  .social-icons {
+    font-size: 0;
+    line-height: 0;
+  }
+
+  .social-icons img {
+    display: inline-block;
+    vertical-align: middle;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* Left out of the email until it has a URL. */
+  .social-icons img.unlinked {
+    opacity: 0.35;
   }
 
   /* The color and width come from the Block, for the top border alone. */
@@ -112,6 +146,8 @@ export interface DrawContext {
   lang: string;
   failedImages: ReadonlySet<string>;
   onImageError: (src: string) => void;
+  /** The Host app's folder of Social icons, as the export takes it. */
+  socialIconsUrl: string | undefined;
   /** Whether an image is being uploaded for the Block. */
   uploading: boolean;
 }
@@ -218,6 +254,67 @@ const drawImage = (
   `;
 };
 
+const SOCIAL_ICON = icon(
+  svg`<circle cx="6" cy="12" r="2.5" /><circle cx="17.5" cy="5.5" r="2.5" /><circle cx="17.5" cy="18.5" r="2.5" /><path d="m8.2 10.8 7.1-4M8.2 13.2l7.1 4" />`
+);
+
+/**
+ * Each link's icon, from the same URL as the export, and no link, because a
+ * click on the canvas selects the Block. A link without a URL is faded, as the
+ * email leaves it out. With none that has a URL, the email has nothing, so a
+ * stand-in says so.
+ */
+const drawSocial = (
+  props: BlockProps["social"],
+  { "text-align": align }: Record<string, string>,
+  { socialIconsUrl }: DrawContext
+) => {
+  const { links } = props;
+  if (!links.some(({ url }) => url !== undefined)) {
+    return html`
+      <div class="padded-block">
+        <div class="social-placeholder">
+          ${SOCIAL_ICON}
+          <span
+            >${
+              links.length === 0
+                ? "No social links yet"
+                : "No social link has a URL yet"
+            }</span
+          >
+        </div>
+      </div>
+    `;
+  }
+  const { gap, size, style } = socialIcons(props);
+  return html`
+    <div
+      class="padded-block social-icons"
+      style=${styleProperties({ "text-align": align })}
+    >
+      ${links.map(
+        ({ network, url }, index) =>
+          html`<img
+            alt=${
+              url === undefined
+                ? `${SOCIAL_NETWORKS[network]}, no URL yet`
+                : SOCIAL_NETWORKS[network]
+            }
+            class=${url === undefined ? "unlinked" : ""}
+            draggable="false"
+            src=${socialIconUrl(network, style, socialIconsUrl)}
+            style=${styleProperties({
+              height: `${size}px`,
+              "margin-inline-end":
+                index === links.length - 1 ? "0" : `${gap}px`,
+              width: `${size}px`,
+            })}
+          />`
+      )}
+    </div>
+  `;
+};
+
 const drawDivider = (
   _props: BlockProps["divider"],
   styles: Record<string, string>
@@ -260,6 +357,7 @@ export const BLOCK_VIEWS = {
     text: { canBold: false, schema: createTextSchema({ lists: false }) },
   },
   image: { draw: drawImage, icon: IMAGE_ICON },
+  social: { draw: drawSocial, icon: SOCIAL_ICON },
   spacer: {
     draw: drawSpacer,
     icon: icon(svg`<path d="M12 4v16M8 8l4-4 4 4M8 16l4 4 4-4" />`),

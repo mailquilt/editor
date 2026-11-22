@@ -1,5 +1,10 @@
 import type { Block, NewBlock, Row } from "@mailquilt/core";
-import { copiedJson, loadCopied } from "@mailquilt/core/internal";
+import {
+  copiedJson,
+  loadCopied,
+  SOCIAL_NETWORKS,
+} from "@mailquilt/core/internal";
+import type { BlockProps } from "@mailquilt/core/internal";
 import { DOMSerializer } from "prosemirror-model";
 
 import { BLOCK_VIEWS, hasRichText } from "./block-types.js";
@@ -16,6 +21,12 @@ import { pastedContent } from "./pasted-text.js";
 /** The wrapper's attribute that holds what was copied, as JSON. */
 const COPIED = "data-mail-quilt";
 
+/** A Social Block's links that have a URL, as the export has them, each with its network's name. */
+const linkedNetworks = (links: BlockProps["social"]["links"]) =>
+  links.flatMap(({ network, url }) =>
+    url === undefined ? [] : [{ label: SOCIAL_NETWORKS[network], url }]
+  );
+
 /** A Block's text, with each Merge Tag as `{{name}}` and a blank line between paragraphs. */
 const textOf = (block: Block) => {
   if (hasRichText(block)) {
@@ -25,6 +36,11 @@ const textOf = (block: Block) => {
   }
   if (block.type === "button") {
     return block.props.label;
+  }
+  if (block.type === "social") {
+    return linkedNetworks(block.props.links)
+      .map(({ label, url }) => `${label}: ${url}`)
+      .join("\n");
   }
   return block.type === "image" ? (block.props.alt ?? "") : "";
 };
@@ -80,6 +96,20 @@ const htmlOf = (doc: Document, block: Block): Node[] => {
     }
     case "divider": {
       return [doc.createElement("hr")];
+    }
+    case "social": {
+      const links = linkedNetworks(block.props.links);
+      if (links.length === 0) {
+        return [];
+      }
+      const paragraph = doc.createElement("p");
+      for (const [index, { label, url }] of links.entries()) {
+        paragraph.append(
+          ...(index === 0 ? [] : [" "]),
+          linked(doc, url, doc.createTextNode(label))
+        );
+      }
+      return [paragraph];
     }
     default: {
       return [];

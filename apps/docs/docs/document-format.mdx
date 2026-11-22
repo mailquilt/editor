@@ -36,7 +36,7 @@ Each version of the format, and how a document saved in the one before is upgrad
 | --- | --- | --- |
 | `1` | Mail Quilt 0.1.0 | The first version. |
 | `2` | Mail Quilt 0.2.0 | Stricter colors and URLs. A version 1 email gets a plain space in a color where it has another space after a comma, such as a tab, and `https:` in place of `httpſ:` at the start of a link or image URL. |
-| `3` | Mail Quilt 0.3.0 | The [`mergeTag`](#merge-tags-in-text) node in rich text. Each Merge Tag that sits whole in one piece of text becomes a node, with that text's marks. A tag split across pieces with different marks, such as `{{first` in bold and `_name}}` not, stays text. Bulleted and numbered [Lists](#lists) in a Text Block, and a Row's [padding and phone settings](#row), which no older email has. |
+| `3` | Mail Quilt 0.3.0 | The [`mergeTag`](#merge-tags-in-text) node in rich text. Each Merge Tag that sits whole in one piece of text becomes a node, with that text's marks. A tag split across pieces with different marks, such as `{{first` in bold and `_name}}` not, stays text. Bulleted and numbered [Lists](#lists) in a Text Block, a Row's [padding and phone settings](#row), and the [Social](#social) Block, which no older email has. |
 
 An email saved by a newer version can't be opened by a package that only knows an older one.
 
@@ -141,6 +141,35 @@ Every Block has an `id`, which is an [ID](#ids), a `type` from the list below, a
 | --- | --- |
 | `height` | Optional. A whole number of pixels from 1 to 1000. Defaults to `24`. |
 
+### Social
+
+`"type": "social"`
+
+| Prop | Value |
+| --- | --- |
+| `links` | Required. The links, in the order their icons show, each with its `network` and `url`, below. Each network can be in the list once. A new Social Block has none. |
+| `iconStyle` | Optional. `"color"`, each brand's own color, or `"white"`, for a dark background. Defaults to `"color"`. |
+| `iconSize` | Optional. `32`, `40` or `48`, in pixels. Defaults to `32`. The gap between icons is half that. |
+| `align` | Optional. `"left"`, `"center"` or `"right"`. Defaults to `"left"`. |
+
+| Link field | Value |
+| --- | --- |
+| `network` | Required. `"facebook"`, `"instagram"`, `"linkedin"`, `"x"`, `"youtube"`, `"tiktok"`, `"pinterest"`, `"threads"`, `"bluesky"` or `"website"`. |
+| `url` | Optional. A [link](#links). A link without one stays in the list, faded on the canvas, and is left out of the exported HTML. A Social Block none of whose links has one is left out too, as an Image without a `src` is. |
+
+```json
+{
+  "links": [
+    { "network": "instagram", "url": "https://instagram.com/example" },
+    { "network": "website", "url": "{{site_url}}" }
+  ],
+  "iconStyle": "white",
+  "align": "center"
+}
+```
+
+Each icon is an image, with the network's name as its alt text. [Social icons](./social-icons) says where the images load from.
+
 ## Rich text
 
 Text and Heading Blocks store their text as a limited form of [ProseMirror](https://prosemirror.net) JSON, the format [Tiptap](https://tiptap.dev) uses too:
@@ -234,6 +263,6 @@ A link starts with `https:`, `http:`, `mailto:` or `tel:`, or with a [Merge Tag]
 
 ### Merge Tags
 
-A Merge Tag such as `{{first_name}}` can go anywhere in text, as a [node](#merge-tags-in-text), and in every setting that holds text or a URL, such as a Button's label, an Image's alt text and the email's preheader. In a link or image URL it can go at the start or after it, as in `https://example.com/u/{{user_id}}`, and the language can be one Merge Tag as its whole value. Mail Quilt keeps it as written in the exported HTML, so your sending tool can fill it in. In a URL that starts with a Merge Tag, no colon can come between the tag and the first `/`, `?` or `#`, so `{{base}}/path` is a link but `{{x}}javascript:` isn't. That means a tag followed by a scheme is refused too, so a tag can't wrap a whole URL, as in `{{#if vip}}https://example.com{{/if}}`.
+A Merge Tag such as `{{first_name}}` can go anywhere in text, as a [node](#merge-tags-in-text), and in every setting that holds text or a URL, such as a Button's label, an Image's alt text, a Social link's URL and the email's preheader. In a link or image URL it can go at the start or after it, as in `https://example.com/u/{{user_id}}`, and the language can be one Merge Tag as its whole value. Mail Quilt keeps it as written in the exported HTML, so your sending tool can fill it in. In a URL that starts with a Merge Tag, no colon can come between the tag and the first `/`, `?` or `#`, so `{{base}}/path` is a link but `{{x}}javascript:` isn't. That means a tag followed by a scheme is refused too, so a tag can't wrap a whole URL, as in `{{#if vip}}https://example.com{{/if}}`.
 
 Mail Quilt escapes any `&`, `<` or `>` in a Merge Tag, and any `"` too in a link or image URL or an Image's alt text, such as `&` to `&amp;`. Your sending tool sees the escaped tag, so keep tags to names, such as `{{cta_url}}`.

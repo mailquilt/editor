@@ -55,6 +55,9 @@ const uploadImage = (file: File) =>
 /** The Host app's Merge Tags. Each render gives a new list, as a host's often does. */
 const mergeTags = () => [{ label: "First name", name: "first_name" }];
 
+/** Where the Host app serves the Social Block's icons itself. */
+const SOCIAL_ICONS_URL = "https://cdn.example/mail-icons/";
+
 /** A newer version than this editor can read, so it's refused. */
 const refusedEmail = { ...emailWith("Refused"), version: 999 };
 
@@ -101,6 +104,7 @@ const Host = () => {
               : (reason) => setErrors((all) => [...all, reason])
           }
           mergeTags={mergeTags()}
+          socialIconsUrl={SOCIAL_ICONS_URL}
           uploadImage={uploadImage}
           value={document}
         />
@@ -174,6 +178,7 @@ const ShellHost = () => {
         ref={attach}
         mergeTags={mergeTags()}
         saveKey={saveKey}
+        socialIconsUrl={SOCIAL_ICONS_URL}
         uploadImage={uploadImage}
         value={document}
       />

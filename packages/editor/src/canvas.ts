@@ -597,6 +597,8 @@ export interface CanvasState {
   failedImages: ReadonlySet<string>;
   /** Whether an image is being uploaded for the Block. */
   isUploading: (blockId: string) => boolean;
+  /** The Host app's folder of Social icons, as the export takes it. */
+  socialIconsUrl: string | undefined;
   /** A Block's text, once its editor has been made. */
   textOf: (blockId: string) => HTMLElement | undefined;
 }
@@ -836,6 +838,7 @@ const renderBlock = (
         failedImages: state.failedImages,
         lang: state.emailLang,
         onImageError: events.onImageError,
+        socialIconsUrl: state.socialIconsUrl,
         uploading: state.isUploading(block.id),
       })}
       ${selected ? renderBlockToolbar(api) : nothing}

@@ -23,6 +23,18 @@ The HTML is ready to send. Merge Tags such as `{{first_name}}` are in it as they
 
 In Node 26, and any version with Web Storage on by default, that first call prints a warning once: `ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.` MJML looks for a setting in `localStorage` as it loads, and stores nothing, so the warning is harmless. If your server doesn't use `localStorage` itself, you can hide it by starting Node with `--no-webstorage`, such as with `NODE_OPTIONS=--no-webstorage`.
 
+## Social icons
+
+A Social Block's icons are images, which an email loads from jsDelivr at the renderer's exact version, so sent emails load them from a third party for as long as they're opened. To serve them from your own storage instead, copy the renderer's `icons` folder there and give its URL as `socialIconsUrl`:
+
+```js
+const html = await renderEmail(email, {
+  socialIconsUrl: "https://cdn.example.com/mail-icons/",
+});
+```
+
+[Social icons](./social-icons) says why they load this way, and what to set in the editor so the canvas shows the same icons.
+
 ## When the renderer refuses an email
 
 The renderer accepts what the editor accepts. If the document is malformed, has a Block type this version doesn't know, or was saved by a newer version, the promise rejects, and the error's message says what was wrong:

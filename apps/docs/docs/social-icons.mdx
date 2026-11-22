@@ -1,0 +1,86 @@
+---
+title: Social icons
+description: "Where the Social Block's icons load from, how to serve them from your own storage with socialIconsUrl, and whose trademarks they are."
+seo:
+  title: "Social icons in emails: where they load from, and serving your own"
+---
+
+A Social Block shows a row of linked icons, for Facebook, Instagram, LinkedIn, X, YouTube, TikTok, Pinterest, Threads, Bluesky and a website. Each icon is the brand's own mark, in its own color or in white for a dark background, at 32, 40 or 48 pixels. The Side panel sets the style, the size and the alignment. For now, the links themselves are set in the email's JSON, or with the [`updateBlockProps`](./change-emails-in-code#commands) Command, as the [document format](./document-format#social) describes.
+
+## Where the icons load from
+
+An email can't carry its icons inside it, as Gmail and Outlook drop SVG and `data:` images. So each icon is a PNG at a public URL, and an email client loads it when the email is opened.
+
+The icons are files in `@mailquilt/renderer`, in its `icons` folder, and by default an email loads them from [jsDelivr](https://www.jsdelivr.com), which serves every npm package. The URL names the renderer's exact version:
+
+```text
+https://cdn.jsdelivr.net/npm/@mailquilt/renderer@0.3.0/icons/facebook-color.png
+```
+
+A URL with an exact version always names the same file, so a later release can't change an email you've already sent. The canvas and Preview load the same URLs as the export, so what you see is what's sent.
+
+That means a sent email loads its icons from jsDelivr, a third party, for as long as anyone opens it. Neither npm nor jsDelivr promises to serve a file forever. If your emails need that, or should load nothing from a third party, serve the icons yourself.
+
+## Serve the icons yourself
+
+Copy the renderer's `icons` folder to your own storage, such as a bucket behind your CDN, and give its URL as `socialIconsUrl`. The slash at the end is optional.
+
+```js
+// On your server
+const html = await renderEmail(email, {
+  socialIconsUrl: "https://cdn.example.com/mail-icons/",
+});
+
+// In the browser, for the canvas, Preview and exportHtml()
+editor.socialIconsUrl = "https://cdn.example.com/mail-icons/";
+```
+
+`<mail-quilt-shell>` takes the same property, and passes it to the editor inside. In React, `MailQuilt` and `MailQuiltShell` take it as a prop:
+
+```tsx
+<MailQuilt
+  onChange={setEmail}
+  socialIconsUrl="https://cdn.example.com/mail-icons/"
+  value={email}
+/>
+```
+
+The folder is in `node_modules/@mailquilt/renderer/icons`. Copy it again when you update the renderer, as a release can add an icon or change one, and keep its `NOTICE.md` with the icons.
+
+## Content Security Policy
+
+The canvas and Preview show the icons from their URLs. If your page's policy has `img-src`, or a `default-src` without one, allow jsDelivr, or set `socialIconsUrl` and allow your own storage instead:
+
+```text
+Content-Security-Policy: img-src 'self' https://cdn.jsdelivr.net
+```
+
+An icon the policy blocks doesn't show on the canvas or in Preview. The exported HTML is the same either way.
+
+## Trademarks and brand guidelines
+
+The logos are trademarks of their owners. Mail Quilt isn't affiliated with, endorsed by or sponsored by any of them. When a brand's owner asks, its icon is removed from the next release. That changes the emails rendered after it, and emails already sent keep loading the icon from the version they name.
+
+The person sending the email follows each brand's guidelines for its logo:
+
+- [Facebook](https://www.meta.com/brand/resources/facebook/logo/)
+- [Instagram](https://www.meta.com/brand/resources/instagram/instagram-brand/)
+- [LinkedIn](https://brand.linkedin.com/policies)
+- [X](https://about.x.com/en/who-we-are/brand-toolkit)
+- [YouTube](https://brand.youtube/)
+- [TikTok](https://developers.tiktok.com/doc/getting-started-design-guidelines)
+- [Pinterest](https://business.pinterest.com/en/brand-guidelines)
+- [Threads](https://www.meta.com/brand/resources/instagram/threads/)
+- [Bluesky](https://bsky.social/about/blog/press-faq)
+
+Mail Quilt draws each icon as its brand shapes it, with no circle or other shape of its own around it, as Facebook, LinkedIn and Bluesky ask. The color icons keep the parts a brand draws in white, such as Facebook's "f", white on any background. The gap between icons is half their size, which gives Instagram and Facebook the clear space they ask for. It doesn't give Bluesky its clear space, which is the logo's own size. YouTube asks for a logo at least 100 pixels tall, which may apply to its icon too, and the largest icon is 48.
+
+## Where the icons come from
+
+| Icons | Source | Licence |
+| --- | --- | --- |
+| Facebook, Instagram, X, YouTube, TikTok, Pinterest, Threads and Bluesky | [Simple Icons](https://simpleicons.org) 16.38.0 | CC0 1.0 |
+| Website | [Lucide](https://lucide.dev)'s `globe` | ISC |
+| LinkedIn | [Font Awesome Free](https://fontawesome.com)'s `linkedin` | CC BY 4.0 |
+
+The PNGs are drawn at 96 pixels, twice the largest size, from those sources, and are part of the package. Nothing is fetched from those projects when you install or build. The renderer's `icons/NOTICE.md` credits each source with its licence.

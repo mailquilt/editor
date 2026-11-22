@@ -64,7 +64,7 @@ export const REASONS = {
   keyboard:
     "You want everything that can be dragged to work from the keyboard too.",
   noFee:
-    "You want the editor inside your product, with no fee and no other company's servers involved.",
+    "You want the editor inside your product, with no fee and no other company's servers needed. Even the Social Block's icons can come from your own storage.",
   saved:
     "You want each email saved as a documented JSON format of Rows, Columns and Blocks, which you can check, change and render on your own server.",
 };
