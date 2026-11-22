@@ -62,6 +62,10 @@ export const ICONS = {
   phone: icon(
     svg`<rect height="18" rx="2.5" width="12" x="6" y="3" /><path d="M11 17.5h2" />`
   ),
+  /** A phone, struck through. */
+  phoneOff: icon(
+    svg`<rect height="18" rx="2.5" width="12" x="6" y="3" /><path d="M11 17.5h2M3 3l18 18" />`
+  ),
   plus: icon(svg`<path d="M12 5v14M5 12h14" />`),
   preview: icon(
     svg`<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" />`

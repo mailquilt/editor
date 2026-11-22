@@ -283,7 +283,7 @@ Effect isn't used in the published packages, and may be reconsidered for the CLI
 
 - The packages `core`, `renderer`, `editor` (with a CDN build) and `react`
 - Text, Heading, Image (by URL), Button, Divider and Spacer Blocks
-- Rows of 1 to 4 Columns, from preset layouts
+- Rows of 1 to 4 Columns, from preset layouts, with padding, and settings to hide a Row on phones or keep its Columns side by side there
 - Settings for each Block, Row and the email
 - Drag and drop, with a keyboard path for every drag action
 - Undo and redo

@@ -12,7 +12,7 @@ import {
   blockStyles,
   EMAIL_SETTINGS_FIELDS,
   hexColor,
-  ROW_SETTINGS_FIELDS,
+  rowSettingsFields,
   rowStyles,
 } from "../src/internal.js";
 import type { SettingsField } from "../src/internal.js";
@@ -117,6 +117,9 @@ describe("Text Block settings", () => {
   });
 });
 
+const fieldKeys = (row: BlocksDocument["rows"][0]) =>
+  rowSettingsFields(row).map(({ key }) => key);
+
 describe("Row settings", () => {
   it("sets the background color as one undo step", () => {
     const { editor, rowId } = setup();
@@ -156,6 +159,57 @@ describe("Row settings", () => {
       ok: false,
       reason: expect.stringMatching(/backgroundColor/u),
     });
+  });
+
+  it("stores padding on each side, hiding on phones and stacking on phones", () => {
+    const { editor, rowId } = setup();
+    const props = {
+      hideOnPhone: true,
+      paddingBottom: 200,
+      paddingLeft: 0,
+      paddingRight: 24,
+      paddingTop: 8,
+      stackOnPhone: false,
+    };
+
+    expect(
+      editor.apply({ props, rowId, type: "updateRowProps" })
+    ).toStrictEqual({ ok: true });
+    expect(editor.getDocument().rows[0]?.props).toStrictEqual(props);
+    expect(loadDocument(editor.getDocument())).toMatchObject({ ok: true });
+  });
+
+  it.each([
+    ["padding past 200", { paddingTop: 201 }, /paddingTop/u],
+    ["padding below 0", { paddingLeft: -1 }, /paddingLeft/u],
+    [
+      "padding that isn't a whole number",
+      { paddingRight: 1.5 },
+      /paddingRight/u,
+    ],
+    ["a choice that isn't yes or no", { hideOnPhone: "true" }, /hideOnPhone/u],
+  ])("refuses %s", (_name, props, reason) => {
+    const { editor, rowId } = setup();
+
+    expect(
+      editor.apply({ props, rowId, type: "updateRowProps" })
+    ).toStrictEqual({
+      code: "invalidProps",
+      ok: false,
+      reason: expect.stringMatching(reason),
+    });
+  });
+
+  it("offers stacking on phones only for a Row with more than one Column", () => {
+    const [oneColumn] = createEmail().rows;
+    const twoColumns = {
+      ...oneColumn,
+      columns: [oneColumn?.columns[0], oneColumn?.columns[0]],
+    } as BlocksDocument["rows"][0];
+    expect(fieldKeys(oneColumn as BlocksDocument["rows"][0])).not.toContain(
+      "stackOnPhone"
+    );
+    expect(fieldKeys(twoColumns)).toContain("stackOnPhone");
   });
 
   it("refuses a Row that isn't there", () => {
@@ -500,9 +554,10 @@ describe("a Merge Tag in a text setting", () => {
 
   it("is accepted as the whole value of each of a Row's", () => {
     const { editor, rowId } = setup();
+    const row = editor.getDocument().rows[0] as BlocksDocument["rows"][0];
 
     const results = acceptedTags(
-      () => ROW_SETTINGS_FIELDS,
+      () => rowSettingsFields(row),
       ({ key }) =>
         editor.apply({ props: { [key]: TAG }, rowId, type: "updateRowProps" })
     );

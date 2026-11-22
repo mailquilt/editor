@@ -36,7 +36,7 @@ Each version of the format, and how a document saved in the one before is upgrad
 | --- | --- | --- |
 | `1` | Mail Quilt 0.1.0 | The first version. |
 | `2` | Mail Quilt 0.2.0 | Stricter colors and URLs. A version 1 email gets a plain space in a color where it has another space after a comma, such as a tab, and `https:` in place of `httpſ:` at the start of a link or image URL. |
-| `3` | Mail Quilt 0.3.0 | The [`mergeTag`](#merge-tags-in-text) node in rich text. Each Merge Tag that sits whole in one piece of text becomes a node, with that text's marks. A tag split across pieces with different marks, such as `{{first` in bold and `_name}}` not, stays text. Bulleted and numbered [Lists](#lists) in a Text Block, which no older email has. |
+| `3` | Mail Quilt 0.3.0 | The [`mergeTag`](#merge-tags-in-text) node in rich text. Each Merge Tag that sits whole in one piece of text becomes a node, with that text's marks. A tag split across pieces with different marks, such as `{{first` in bold and `_name}}` not, stays text. Bulleted and numbered [Lists](#lists) in a Text Block, and a Row's [padding and phone settings](#row), which no older email has. |
 
 An email saved by a newer version can't be opened by a package that only knows an older one.
 
@@ -52,11 +52,18 @@ An email saved by a newer version can't be opened by a package that only knows a
 
 ## Row
 
-| Field | Value |
-| --- | --- |
-| `id` | An [ID](#ids). |
-| `props` | An object with one optional field, `backgroundColor`, a [color](#colors). |
+| Field     | Value                                               |
+| --------- | --------------------------------------------------- |
+| `id`      | An [ID](#ids).                                      |
+| `props`   | The Row's settings, below. Each is optional.        |
 | `columns` | A list of 1 to 4 [Columns](#column), left to right. |
+
+| Prop | Value |
+| --- | --- |
+| `backgroundColor` | Optional. A [color](#colors). |
+| `paddingTop`, `paddingRight`, `paddingBottom`, `paddingLeft` | Optional. The space inside the Row on that side, a whole number of pixels from 0 to 200. Defaults to `0`. The Row's Columns share the email's width less its left and right padding. |
+| `hideOnPhone` | Optional. `true` hides the Row on screens under 480px wide. Defaults to `false`. An email client that drops the email's styles on a phone still shows it, as [Tested email clients](./email-clients#rows-on-phones) says. |
+| `stackOnPhone` | Optional. `false` keeps the Row's Columns side by side on phones, each at its share of the width. Defaults to `true`, which puts them one under another on screens under 480px wide. A Row with one Column looks the same either way, and its settings don't show it. |
 
 ## Column
 

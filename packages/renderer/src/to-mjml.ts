@@ -1,6 +1,7 @@
 import { loadDocument } from "@mailquilt/core";
 import type { Block, Column, Row } from "@mailquilt/core";
 import { blockStyles, EMAIL_LOOK, rowStyles } from "@mailquilt/core/internal";
+import type { RowProps } from "@mailquilt/core/internal";
 
 import { escapeAttribute, escapeText } from "./escape.js";
 import { SHARED_COLUMN } from "./finish-html.js";
@@ -74,8 +75,30 @@ const columnToMjml = (
 ) =>
   `<mj-column width="${width}%"${shared ? ` css-class="${SHARED_COLUMN}"` : ""}>${blocks.map((block) => blockToMjml(block, fontFamily)).join("")}</mj-column>`;
 
-const rowToMjml = (row: Row, fontFamily: string) =>
-  `<mj-section${mjmlAttributes(rowStyles(row))}>${row.columns.map((column) => columnToMjml(column, fontFamily, row.columns.length > 1)).join("")}</mj-section>`;
+/** Hides a Row below the phone width, where the email keeps its `<style>`. */
+const HIDDEN_ON_PHONES = "mq-hide-phone";
+
+/**
+ * Columns that share a Row stack on phones unless the Row keeps them side by
+ * side, which puts them in MJML's group, with their widths inline (ADR 0005).
+ */
+const stacksColumns = ({ columns, props }: Row) =>
+  columns.length > 1 && (props as RowProps).stackOnPhone !== false;
+
+const rowToMjml = (row: Row, fontFamily: string) => {
+  const { hideOnPhone, stackOnPhone } = row.props as RowProps;
+  const shared = stacksColumns(row);
+  const columns = row.columns
+    .map((column) => columnToMjml(column, fontFamily, shared))
+    .join("");
+  return `<mj-section${mjmlAttributes(rowStyles(row))}${hideOnPhone ? ` css-class="${HIDDEN_ON_PHONES}"` : ""}>${stackOnPhone === false ? `<mj-group>${columns}</mj-group>` : columns}</mj-section>`;
+};
+
+/** The room a Row leaves its Columns, inside its padding. */
+const innerWidth = ({ props }: Row, emailWidth: number) => {
+  const { paddingLeft = 0, paddingRight = 0 } = props as RowProps;
+  return emailWidth - paddingLeft - paddingRight;
+};
 
 /** Throws if the document can't be trusted, and renders migrated older ones. */
 export const toMjml = (document: unknown) => {
@@ -84,9 +107,18 @@ export const toMjml = (document: unknown) => {
     throw new Error(loaded.reason);
   }
   const { rows, settings } = loaded.document;
-  const sharedColumns = rows.some(({ columns }) => columns.length > 1)
-    ? `<mj-style>@media only screen and (max-width:479px) { .${SHARED_COLUMN} { max-width:100% !important; } }</mj-style>`
-    : "";
+  const phoneRules = [
+    rows.some(stacksColumns)
+      ? `.${SHARED_COLUMN} { max-width:100% !important; }`
+      : "",
+    rows.some(({ props }) => (props as RowProps).hideOnPhone)
+      ? `.${HIDDEN_ON_PHONES} { display:none !important; }`
+      : "",
+  ].filter(Boolean);
+  const phoneStyles =
+    phoneRules.length > 0
+      ? `<mj-style>@media only screen and (max-width:479px) { ${phoneRules.join(" ")} }</mj-style>`
+      : "";
   const language = settings.language
     ? ` lang="${escapeAttribute(settings.language)}"`
     : "";
@@ -96,7 +128,7 @@ export const toMjml = (document: unknown) => {
   const mjml = `<mjml${language}>
   <mj-head>
     ${preheader}
-    ${sharedColumns}
+    ${phoneStyles}
     <mj-attributes>
       <mj-all font-family="${escapeAttribute(settings.fontFamily)}" />
       <mj-section padding="0" />
@@ -110,5 +142,9 @@ export const toMjml = (document: unknown) => {
     ${rows.map((row) => rowToMjml(row, settings.fontFamily)).join("")}
   </mj-body>
 </mjml>`;
-  return { emailWidth: settings.width, mjml };
+  // In the order MJML writes the Columns, for `finishHtml`.
+  const sharedRowWidths = rows
+    .filter(stacksColumns)
+    .flatMap((row) => row.columns.map(() => innerWidth(row, settings.width)));
+  return { mjml, sharedRowWidths };
 };

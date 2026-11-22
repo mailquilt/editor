@@ -55,33 +55,39 @@ const item = (...inline: unknown[]) => ({
   type: "listItem",
 });
 
-const emailWithColumns = (
-  ...columns: { texts: string[]; width: number }[]
-): BlocksDocument => ({
+interface ColumnTexts {
+  texts: string[];
+  width: number;
+}
+
+/** A Row of Text Blocks, whose IDs all start with its own. */
+const rowWith = (
+  id: string,
+  props: Record<string, unknown>,
+  ...columns: ColumnTexts[]
+): BlocksDocument["rows"][0] => ({
+  columns: columns.map(({ texts, width }, columnIndex) => ({
+    blocks: texts.map((text, blockIndex) => ({
+      id: `${id}-block-${columnIndex}-${blockIndex}`,
+      props: {
+        content: {
+          content: [{ content: [{ text, type: "text" }], type: "paragraph" }],
+          type: "doc",
+        },
+      },
+      type: "text",
+    })),
+    id: `${id}-column-${columnIndex}`,
+    props: {},
+    width,
+  })),
+  id,
+  props,
+});
+
+const emailWithColumns = (...columns: ColumnTexts[]): BlocksDocument => ({
   ...emailWithText(""),
-  rows: [
-    {
-      columns: columns.map(({ texts, width }, columnIndex) => ({
-        blocks: texts.map((text, blockIndex) => ({
-          id: `block-${columnIndex}-${blockIndex}`,
-          props: {
-            content: {
-              content: [
-                { content: [{ text, type: "text" }], type: "paragraph" },
-              ],
-              type: "doc",
-            },
-          },
-          type: "text",
-        })),
-        id: `column-${columnIndex}`,
-        props: {},
-        width,
-      })),
-      id: "row-1",
-      props: {},
-    },
-  ],
+  rows: [rowWith("row-1", {}, ...columns)],
 });
 
 describe(renderEmail, () => {
@@ -114,6 +120,33 @@ describe(renderEmail, () => {
 
     expect(widths).toStrictEqual([199.64, 199.64, 199.7]);
     expect(widths.reduce((sum, width) => sum + width)).toBeLessThanOrEqual(599);
+  });
+
+  it("matches the saved HTML for Rows with padding, hidden on phones, and kept side by side on phones", async () => {
+    const email = emailWithText("");
+    email.rows = [
+      rowWith(
+        "padded",
+        { paddingBottom: 8, paddingLeft: 20, paddingRight: 30, paddingTop: 10 },
+        { texts: ["Padded"], width: 33 },
+        { texts: ["Stacks"], width: 67 }
+      ),
+      rowWith(
+        "hidden",
+        { hideOnPhone: true },
+        { texts: ["Hidden on phones"], width: 100 }
+      ),
+      rowWith(
+        "grouped",
+        { paddingLeft: 40, paddingRight: 40, stackOnPhone: false },
+        { texts: ["Side"], width: 50 },
+        { texts: ["By side"], width: 50 }
+      ),
+    ];
+
+    await expect(
+      renderEmail(email).then(readable)
+    ).resolves.toMatchFileSnapshot("expected/row-settings.html");
   });
 
   it("adds no width to a preheader or Button label that reads like MJML's Column markup", async () => {

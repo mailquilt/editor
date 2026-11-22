@@ -233,6 +233,74 @@ export const settingsPanelStyles = css`
     outline-offset: -1px;
   }
 
+  /* A switch: a track, with a knob at its end while it's on. */
+  .settings input[role="switch"] {
+    appearance: none;
+    background-color: var(--mq-color-border-strong);
+    border: 0;
+    border-radius: 10px;
+    box-shadow: none;
+    cursor: pointer;
+    height: 20px;
+    justify-self: end;
+    margin: 0;
+    padding: 0;
+    position: relative;
+    transition: background-color 120ms;
+    width: 36px;
+  }
+
+  .settings input[role="switch"]::before {
+    background-color: var(--mq-color-on-accent);
+    border-radius: 50%;
+    box-shadow: var(--mq-shadow-small);
+    content: "";
+    height: 16px;
+    inset-block-start: 2px;
+    inset-inline-start: 2px;
+    position: absolute;
+    transition: transform 120ms;
+    width: 16px;
+  }
+
+  .settings input[role="switch"]:checked {
+    background-color: var(--mq-color-accent);
+  }
+
+  .settings input[role="switch"]:checked::before {
+    transform: translateX(16px);
+  }
+
+  .settings input[role="switch"]:focus {
+    outline-offset: 2px;
+  }
+
+  /*
+   * Forced colors drop the track's and the knob's backgrounds, so an edge and
+   * the knob are drawn in the system's colors, which stay where it is.
+   */
+  @media (forced-colors: active) {
+    .settings input[role="switch"] {
+      border: 1px solid CanvasText;
+    }
+
+    .settings input[role="switch"]::before {
+      background-color: CanvasText;
+      forced-color-adjust: none;
+      inset-block-start: 1px;
+      inset-inline-start: 1px;
+    }
+
+    .settings input[role="switch"]:checked {
+      background-color: Highlight;
+      forced-color-adjust: none;
+    }
+
+    .settings input[role="switch"]:checked::before {
+      background-color: HighlightText;
+    }
+  }
+
   .settings .unit-field {
     position: relative;
   }
@@ -305,7 +373,7 @@ export const settingsPanelStyles = css`
 const NO_COLOR = "#ffffff";
 
 /** Short controls sit beside their label. Text that runs long gets the row. */
-const INLINE_TYPES = new Set<string>(["color", "number", "select"]);
+const INLINE_TYPES = new Set<string>(["color", "number", "select", "toggle"]);
 
 /** Where what's typed in a field is kept: by its section, target and field. */
 export const draftKey = (
@@ -331,6 +399,9 @@ export const fieldValue = (field: SettingsField, typed: Typed) => {
     return Number.NaN;
   }
   const text = typed.text.trim();
+  if (field.type === "toggle") {
+    return text === "true";
+  }
   if (!text) {
     return null;
   }
@@ -462,6 +533,24 @@ const renderField = (
             </select>
             ${ICONS.chevronDown}
           </div>
+        `;
+      }
+      // Its text is "true" or "false", as `fieldText` gives for a yes or no.
+      case "toggle": {
+        return html`
+          <input
+            aria-describedby=${describedBy || nothing}
+            ?disabled=${field.disabled ?? false}
+            id=${id}
+            role="switch"
+            type="checkbox"
+            .checked=${live(text === "true")}
+            @change=${({ currentTarget }: Event) =>
+              drafts.onCommit(section, field, {
+                badInput: false,
+                text: String((currentTarget as HTMLInputElement).checked),
+              })}
+          />
         `;
       }
       default: {
