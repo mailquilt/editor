@@ -148,6 +148,20 @@
               "props": { "color": "#d4d4d8", "thickness": 1 }
             },
             {
+              "id": "follow",
+              "type": "social",
+              "props": {
+                "align": "center",
+                "links": [
+                  {
+                    "network": "instagram",
+                    "url": "https://instagram.com/acme"
+                  },
+                  { "network": "website", "url": "https://acme.example" }
+                ]
+              }
+            },
+            {
               "id": "footer",
               "type": "text",
               "props": {
