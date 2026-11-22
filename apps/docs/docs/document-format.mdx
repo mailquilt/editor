@@ -36,7 +36,7 @@ Each version of the format, and how a document saved in the one before is upgrad
 | --- | --- | --- |
 | `1` | Mail Quilt 0.1.0 | The first version. |
 | `2` | Mail Quilt 0.2.0 | Stricter colors and URLs. A version 1 email gets a plain space in a color where it has another space after a comma, such as a tab, and `https:` in place of `httpſ:` at the start of a link or image URL. |
-| `3` | Mail Quilt 0.3.0 | The [`mergeTag`](#merge-tags-in-text) node in rich text. Each Merge Tag that sits whole in one piece of text becomes a node, with that text's marks. A tag split across pieces with different marks, such as `{{first` in bold and `_name}}` not, stays text. |
+| `3` | Mail Quilt 0.3.0 | The [`mergeTag`](#merge-tags-in-text) node in rich text. Each Merge Tag that sits whole in one piece of text becomes a node, with that text's marks. A tag split across pieces with different marks, such as `{{first` in bold and `_name}}` not, stays text. Bulleted and numbered [Lists](#lists) in a Text Block, which no older email has. |
 
 An email saved by a newer version can't be opened by a package that only knows an older one.
 
@@ -77,7 +77,7 @@ Every Block has an `id`, which is an [ID](#ids), a `type` from the list below, a
 
 | Prop | Value |
 | --- | --- |
-| `content` | Required. [Rich text](#rich-text). |
+| `content` | Required. [Rich text](#rich-text), which can have [Lists](#lists). |
 | `align` | Optional. `"left"`, `"center"` or `"right"`. Defaults to `"left"`. |
 | `color` | Optional. A [color](#colors). Defaults to `#000000`. |
 | `fontSize` | Optional. A whole number of pixels from 1 to 200. Defaults to `16`. |
@@ -89,7 +89,7 @@ Every Block has an `id`, which is an [ID](#ids), a `type` from the list below, a
 | Prop | Value |
 | --- | --- |
 | `level` | Required. `1`, `2` or `3`. |
-| `content` | Required. [Rich text](#rich-text). A Heading exports as one heading, however many lines it has. |
+| `content` | Required. [Rich text](#rich-text) of paragraphs only, without [Lists](#lists). A Heading exports as one heading, however many lines it has. |
 | `align` | Optional. `"left"`, `"center"` or `"right"`. Defaults to `"left"`. |
 | `color` | Optional. A [color](#colors). Defaults to `#000000`. |
 | `fontSize` | Optional. A whole number of pixels from 1 to 200. Defaults to `32`, `24` or `20` for levels 1, 2 and 3. |
@@ -165,14 +165,38 @@ Text and Heading Blocks store their text as a limited form of [ProseMirror](http
 }
 ```
 
-- `doc` holds one or more paragraphs.
+- `doc` holds one or more paragraphs and, in a Text Block, [Lists](#lists).
 - A `paragraph` has an optional `content` list, which leaves it empty when it's missing.
 - A `text` item has `text`, which can't be empty, and optional `marks`.
 - A `hardBreak` is a line break inside a paragraph. It can have `marks` too.
 - A `mergeTag` is a [Merge Tag](#merge-tags-in-text), with its name in `attrs.name`. It can have `marks` too.
 - The marks are `bold`, `italic`, `underline` and `link`. A link mark has `attrs.href`, which is a [link](#links). A piece of text can't have the same mark twice.
 
-Nothing else is accepted, such as lists, headings inside text, colors or other marks.
+Nothing else is accepted, such as headings inside text, colors or other marks.
+
+### Lists
+
+A Text Block can hold bulleted and numbered Lists between its paragraphs, one level deep, with one paragraph in each item. A Heading can't.
+
+```json
+{
+  "type": "bulletList",
+  "content": [
+    {
+      "type": "listItem",
+      "content": [
+        { "type": "paragraph", "content": [{ "type": "text", "text": "One" }] }
+      ]
+    },
+    { "type": "listItem", "content": [{ "type": "paragraph" }] }
+  ]
+}
+```
+
+- A `bulletList` is bulleted and an `orderedList` is numbered. They have the same shape, and neither has `attrs`, so a numbered List always starts at 1.
+- A List holds one or more `listItem`s.
+- A `listItem` holds exactly one [`paragraph`](#rich-text), which can have line breaks, marks and Merge Tags. A List can't go inside an item.
+- The export writes a List as `<ul>` or `<ol>`, indented by a margin of 1.5 times the Block's font size, and each item with the same line height as a paragraph.
 
 ### Merge Tags in text
 

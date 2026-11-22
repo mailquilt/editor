@@ -407,6 +407,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     showTabs: (fromKeyboard) => this.#selection.showTabs(fromKeyboard),
     stepHistory: (step) => this.#stepHistory(step),
     submitLink: (href) => this.#linkForm.submit(href),
+    toggleList: (type) => this.#selection.selectedText?.toggleList(type),
     toggleMark: (mark) => this.#selection.selectedText?.toggleMark(mark),
   } satisfies Partial<PanelApi>;
 

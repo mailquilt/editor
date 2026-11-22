@@ -77,15 +77,18 @@ line, and put it back.
 
 | Key | What it does |
 | --- | --- |
-| <kbd>Enter</kbd> | Starts a new paragraph. |
-| <kbd>Shift</kbd> + <kbd>Enter</kbd> | Adds a line break in the same paragraph. |
-| <kbd>Delete</kbd> | Deletes forward. In an empty paragraph, it removes the paragraph, even the last one in the Block. <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>Delete</kbd> does the same, and on a Mac so do <kbd>Ctrl</kbd> + <kbd>D</kbd>, <kbd>Alt</kbd> + <kbd>D</kbd>, <kbd>Alt</kbd> + <kbd>Delete</kbd> and <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>Backspace</kbd>. |
+| <kbd>Enter</kbd> | Starts a new paragraph. In a List's item, it starts a new item, and in an empty item it leaves the List, splitting it if the item was in the middle. |
+| <kbd>Shift</kbd> + <kbd>Enter</kbd> | Adds a line break in the same paragraph or item. |
+| <kbd>Backspace</kbd> | Deletes backward. At the start of a List's item, it makes the item a paragraph, above the List if it was the first item and otherwise splitting the List. At the start of the paragraph just after a List, it joins the paragraph to the List's last item. <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>Backspace</kbd> and <kbd>Shift</kbd> + <kbd>Backspace</kbd> do the same, and on a Mac so do <kbd>Ctrl</kbd> + <kbd>H</kbd> and <kbd>Alt</kbd> + <kbd>Backspace</kbd>. |
+| <kbd>Delete</kbd> | Deletes forward. In an empty paragraph, it removes the paragraph, even the last one in the Block, and in an empty item it removes the item. At the end of a List's last item, or of the paragraph before a List, it pulls in the next paragraph's text, or the next List's first item, and that List keeps its type. When a paragraph between two Lists of the same type goes, with either key, they become one List, numbered on. <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>Delete</kbd> does the same, and on a Mac so do <kbd>Ctrl</kbd> + <kbd>D</kbd>, <kbd>Alt</kbd> + <kbd>D</kbd>, <kbd>Alt</kbd> + <kbd>Delete</kbd> and <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>Backspace</kbd>. |
 | <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>Enter</kbd> | Also adds a line break. |
 | <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>B</kbd> | Turns bold on or off for the selected text. A Heading is bold already, so it does nothing there. <kbd>Shift</kbd> + <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>B</kbd> does the same. |
 | <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>I</kbd> | Turns italic on or off. <kbd>Shift</kbd> + <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>I</kbd> does the same. |
 | <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>U</kbd> | Turns underline on or off. <kbd>Shift</kbd> + <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>U</kbd> does the same, so that on Windows and Linux the browser doesn't format the text in its own way. |
+| <kbd>Shift</kbd> + <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>8</kbd> | Makes each selected paragraph an item of a bulleted List, in a Text Block. In a bulleted List already, it makes the selected items paragraphs again, and in a numbered List it makes the whole List bulleted. It's the key with 8 on it, even on a keyboard where Shift with it types something other than `*`. |
+| <kbd>Shift</kbd> + <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>7</kbd> | The same for a numbered List. |
 | <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>K</kbd> | Opens the link field for the selected Block's text, from anywhere in the email or its toolbars, such as the text, the Block or its toolbar. <kbd>Escape</kbd> closes it and leaves the text as it was. With no text to link, such as on a Button, the key is left to your page. |
-| <kbd>Alt</kbd> + <kbd>F10</kbd> | Goes to the formatting toolbar, for bold, italic, underline, links, line breaks and, when your app gives the editor its Merge Tags, the Merge Tag button. The arrow keys go across its buttons, and <kbd>Home</kbd> and <kbd>End</kbd> go to the first and last. <kbd>Escape</kbd> goes back to the text, once it has closed the tooltip of the button with focus. |
+| <kbd>Alt</kbd> + <kbd>F10</kbd> | Goes to the formatting toolbar, for bold, italic, underline, bulleted and numbered Lists, links, line breaks and, when your app gives the editor its Merge Tags, the Merge Tag button. The arrow keys go across its buttons, and <kbd>Home</kbd> and <kbd>End</kbd> go to the first and last. <kbd>Escape</kbd> goes back to the text, once it has closed the tooltip of the button with focus. |
 
 ## Picking a Merge Tag
 

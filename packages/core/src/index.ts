@@ -11,6 +11,9 @@ export type {
 export type {
   RichTextDocument,
   RichTextHardBreak,
+  RichTextHeadingDocument,
+  RichTextList,
+  RichTextListItem,
   RichTextMark,
   RichTextMergeTag,
   RichTextParagraph,

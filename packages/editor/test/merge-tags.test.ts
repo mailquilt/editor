@@ -15,7 +15,7 @@ import {
 import type { MergeTag } from "../src/merge-tags.js";
 import { createTextSchema } from "../src/text-schema.js";
 
-const schema = createTextSchema();
+const schema = createTextSchema({ lists: false });
 const bold = schema.marks.bold.create();
 const italic = schema.marks.italic.create();
 const SHOWN = "test:shown";

@@ -407,10 +407,13 @@ const isOnPlatform = (
 
 export type TextAction =
   | "bold"
+  | "bulletList"
+  | "deleteBackward"
   | "deleteForward"
   | "italic"
   | "lineBreak"
   | "newParagraph"
+  | "orderedList"
   | "toEnd"
   | "toStart"
   | "underline";
@@ -431,8 +434,8 @@ interface TextEntry {
 /**
  * Every key a Block's text has a rule for, which ProseMirror answers first, with
  * the command in `text-commands.ts` that each one runs. Names are ProseMirror's,
- * so Ctrl is Ctrl on every device. The text's other keys, such as Backspace and
- * select all, are ProseMirror's base keys, and do what they do there.
+ * so Ctrl is Ctrl on every device. The text's other keys, such as select all,
+ * are ProseMirror's base keys, and do what they do there.
  */
 export const TEXT_KEYS: readonly TextEntry[] = [
   { action: "bold", aliases: ["Shift-Mod-b"], keys: ["Mod-b"] },
@@ -450,6 +453,24 @@ export const TEXT_KEYS: readonly TextEntry[] = [
     keys: [],
     platform: "apple",
   },
+  // At the start of a List's item, makes it a paragraph, and at the start of
+  // the paragraph after a List, joins it to the last item.
+  {
+    action: "deleteBackward",
+    aliases: ["Mod-Backspace", "Shift-Backspace"],
+    keys: ["Backspace"],
+  },
+  // The keys ProseMirror gives Apple devices that delete backward too.
+  {
+    action: "deleteBackward",
+    aliases: ["Ctrl-h", "Alt-Backspace"],
+    keys: [],
+    platform: "apple",
+  },
+  // ProseMirror falls back to the key's code with Ctrl or ⌘ held, so these
+  // work where Shift+8 or Shift+7 types something else.
+  { action: "bulletList", keys: ["Shift-Mod-8"] },
+  { action: "orderedList", keys: ["Shift-Mod-7"] },
   // Only from all the text selected, which WebKit on Linux leaves alone once a
   // link is in it.
   { action: "toStart", keys: ["ArrowLeft"] },

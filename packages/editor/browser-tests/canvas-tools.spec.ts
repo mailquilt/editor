@@ -167,6 +167,20 @@ test.describe("the email's language", () => {
     await page.goto("/");
     const email = emailWith([[["A"]], [[]], [[]]]);
     email.settings.language = "de";
+    const text = email.rows[0]?.columns[0]?.blocks[0]?.props as {
+      content: { content: unknown[] };
+    };
+    text.content.content.push({
+      content: [
+        {
+          content: [
+            { content: [{ text: "B", type: "text" }], type: "paragraph" },
+          ],
+          type: "listItem",
+        },
+      ],
+      type: "bulletList",
+    });
     email.rows[2]?.columns[0]?.blocks.push(
       { id: "button", props: { label: "Los" }, type: "button" },
       {
@@ -184,11 +198,12 @@ test.describe("the email's language", () => {
       button: canvas(page).getByTestId("button-face"),
       formatBar: formatBar(page),
       imageAlt: blockGroup(page, "Image").getByRole("img"),
+      listItem: textBlock(page).locator("li p"),
       placeholder: canvas(page).getByTestId("placeholder"),
       rowTools: rowTools(page, 1),
       sidePanel: canvas(page).getByTestId("side-panel"),
       status: announcement(page),
-      text: textBlock(page).locator("p"),
+      text: textBlock(page).locator("p").first(),
       textBox: textBlock(page),
     };
     const langs = Object.fromEntries(
@@ -205,6 +220,7 @@ test.describe("the email's language", () => {
       button: "de",
       formatBar: "en",
       imageAlt: "de",
+      listItem: "de",
       placeholder: "en",
       rowTools: "en",
       sidePanel: "en",

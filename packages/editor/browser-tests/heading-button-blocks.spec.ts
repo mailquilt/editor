@@ -155,11 +155,19 @@ test.describe("a Heading", () => {
 });
 
 test.describe("Bold in a Heading, which is already bold", () => {
-  test("isn't offered, while the other formats are", async ({ page }) => {
+  test("isn't offered, nor are Lists, while the other formats are", async ({
+    page,
+  }) => {
     await openBlocks(page, ["heading"]);
     await headingText(page).click();
 
     await expect(page.getByRole("button", { name: "Bold" })).toBeDisabled();
+    await expect(
+      page.getByRole("button", { name: "Bulleted list" })
+    ).toBeDisabled();
+    await expect(
+      page.getByRole("button", { name: "Numbered list" })
+    ).toBeDisabled();
     await expect(page.getByRole("button", { name: "Italic" })).toBeEnabled();
     await expect(page.getByRole("button", { name: "Underline" })).toBeEnabled();
 

@@ -5,7 +5,12 @@ import { baseKeymap } from "prosemirror-commands";
 import { keydownHandler } from "prosemirror-keymap";
 import { Fragment, Slice } from "prosemirror-model";
 import type { MarkType, Node as ProseMirrorNode } from "prosemirror-model";
-import { EditorState, Plugin, Selection } from "prosemirror-state";
+import {
+  EditorState,
+  Plugin,
+  Selection,
+  TextSelection,
+} from "prosemirror-state";
 import type { Command as TextCommand, Transaction } from "prosemirror-state";
 import {
   AddMarkStep,
@@ -29,8 +34,13 @@ import {
 } from "./merge-tags.js";
 import type { MergeTag, MergeTagPickerState } from "./merge-tags.js";
 import { pastedHtmlParser, withoutStyles } from "./pasted-html.js";
-import { createTextCommands } from "./text-commands.js";
-import type { TextFormats, ToggleableMark } from "./text-commands.js";
+import {
+  atParagraphOffset,
+  createTextCommands,
+  LIST_FORMATTING,
+  paragraphOffset,
+} from "./text-commands.js";
+import type { ListType, TextFormats, ToggleableMark } from "./text-commands.js";
 import type { TextSchema } from "./text-schema.js";
 
 /** ProseMirror's base styles, for a Block's text (ADR 0002). */
@@ -51,6 +61,12 @@ export const textBlockStyles = css`
 
   .ProseMirror p {
     margin: 0;
+  }
+
+  /* As the export writes them: indented by a margin, numbered from 1. */
+  .ProseMirror :is(ul, ol) {
+    margin: 0 0 0 1.5em;
+    padding: 0;
   }
 
   /* In the Block's color, as the export writes it, and underlined. */
@@ -127,6 +143,7 @@ export interface TextBlockView {
   focus: () => void;
   formats: () => TextFormats;
   toggleMark: (mark: ToggleableMark) => void;
+  toggleList: (type: ListType) => void;
   insertLineBreak: () => void;
   /**
    * Links the selected text. With none, changes the link the cursor is in, or
@@ -150,10 +167,11 @@ export interface TextBlockView {
 
 /**
  * Formatting is its own undo step, unlike the typing around it. A line break
- * counts as formatting, as it's added from the format bar too.
+ * and a List count as formatting, as they're added from the format bar too.
  */
-const changesFormatting = ({ steps }: Transaction) =>
-  steps.some(
+const changesFormatting = (transaction: Transaction) =>
+  transaction.getMeta(LIST_FORMATTING) === true ||
+  transaction.steps.some(
     (step) =>
       step instanceof AddMarkStep ||
       step instanceof RemoveMarkStep ||
@@ -184,6 +202,25 @@ const cursorAfterChange = (
     Math.min(start, end.a),
     Math.min(moved, Math.max(start, end.a))
   );
+};
+
+/**
+ * A text's paragraphs, each as its text, so that a change of structure alone,
+ * such as a List turned on or off, reads as no change.
+ */
+const paragraphsOf = (doc: ProseMirrorNode) =>
+  doc.textBetween(0, doc.content.size, "\u2029");
+
+/** Where each of a text's paragraphs starts, which a List moves. */
+const paragraphStarts = (doc: ProseMirrorNode) => {
+  const starts: number[] = [];
+  doc.descendants((node, pos) => {
+    if (node.isTextblock) {
+      starts.push(pos);
+    }
+    return !node.isTextblock;
+  });
+  return starts.join(",");
 };
 
 /** Marks a focus change: true when the text gains focus, false when it loses it. */
@@ -264,7 +301,7 @@ export const createTextBlockView = ({
       textKeys.map(([key, action]) => [key, commands.forKey[action]])
     )
   );
-  // The keys the key map leaves to ProseMirror, such as Backspace.
+  // The keys the key map leaves to ProseMirror, such as select all.
   const answerBaseKey = keydownHandler(
     Object.fromEntries(
       Object.entries(baseKeymap).filter(
@@ -282,15 +319,16 @@ export const createTextBlockView = ({
       tabindex: "0",
     },
     clipboardParser: pastedHtmlParser(schema),
+    // On each paragraph, a List's items' too.
     decorations: ({ doc }) => {
       const paragraphs: Decoration[] = [];
-      let offset = 0;
-      for (const paragraph of doc.content.content) {
-        paragraphs.push(
-          Decoration.node(offset, offset + paragraph.nodeSize, { lang })
-        );
-        offset += paragraph.nodeSize;
-      }
+      doc.descendants((node, pos) => {
+        if (!node.isTextblock) {
+          return true;
+        }
+        paragraphs.push(Decoration.node(pos, pos + node.nodeSize, { lang }));
+        return false;
+      });
       return DecorationSet.create(doc, paragraphs);
     },
     dispatchTransaction(this: EditorView, transaction: Transaction) {
@@ -427,21 +465,36 @@ export const createTextBlockView = ({
       if (cursor === undefined) {
         return;
       }
-      // Undoing a format change leaves every position where it was.
+      // Undoing a List keeps the selection on the same text, which the List's
+      // structure has moved.
+      const keepsText = paragraphsOf(doc) === paragraphsOf(nextDoc);
+      // Undoing a format change leaves every position where it was. A Merge
+      // Tag and its name typed as text read the same, but differ in size.
       const keepsSelection =
+        keepsText &&
         doc.content.size === nextDoc.content.size &&
-        doc.textContent === nextDoc.textContent;
+        paragraphStarts(doc) === paragraphStarts(nextDoc);
       const tr = view.state.tr.replaceWith(
         0,
         doc.content.size,
         nextDoc.content
       );
-      // The position can fall between paragraphs, which can't hold a cursor.
-      tr.setSelection(
-        keepsSelection
-          ? selection.getBookmark().resolve(tr.doc)
-          : Selection.near(tr.doc.resolve(cursor))
-      );
+      const onSameText = (pos: number) =>
+        atParagraphOffset(tr.doc, paragraphOffset(doc, pos));
+      if (keepsSelection) {
+        tr.setSelection(selection.getBookmark().resolve(tr.doc));
+      } else if (keepsText) {
+        tr.setSelection(
+          TextSelection.create(
+            tr.doc,
+            onSameText(selection.anchor),
+            onSameText(selection.head)
+          )
+        );
+      } else {
+        // The position can fall between paragraphs, which can't hold a cursor.
+        tr.setSelection(Selection.near(tr.doc.resolve(cursor)));
+      }
       view.dispatch(tr.setMeta(FROM_SET_CONTENT, true));
     },
     setLang: (next) => {
@@ -456,6 +509,7 @@ export const createTextBlockView = ({
     showMergeTags: () =>
       view.setProps({ nodeViews: { mergeTag: mergeTagView(mergeTags) } }),
     startMergeTag: () => run(startMergeTag),
+    toggleList: (type) => run(commands.toggleList(type)),
     toggleMark: (mark) => run(commands.toggleMark(mark)),
   };
 };

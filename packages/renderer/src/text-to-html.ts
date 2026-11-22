@@ -282,22 +282,44 @@ const endsWithoutText = (inline: RichTextParagraph["content"] = []) =>
  */
 export type TextCss = Record<string, string> & {
   color: string;
+  "font-size": string;
   "line-height": string;
 };
 
-/** A Text Block's paragraphs. */
+/** How far a List's items are indented, as a multiple of the font size. */
+const LIST_INDENT = 1.5;
+
+const LIST_TAGS = { bulletList: "ul", orderedList: "ol" } as const;
+
+/** A Text Block's paragraphs and Lists. */
 export const richTextToHtml = (
   { content }: RichTextDocument,
-  { color, "line-height": lineHeight }: TextCss
-) =>
-  content
-    .map(({ content: inline }) => {
-      const html = inlineToHtml(color, inline);
-      // A last empty line takes up space on the canvas, but a <br /> at the end
-      // of a paragraph doesn't make one on its own. Nor does an empty paragraph.
-      return `<p style="${TEXT_STYLE};line-height:${lineHeight};mso-line-height-rule:exactly">${html}${endsWithoutText(inline) ? "<br />" : ""}</p>`;
+  { color, "font-size": fontSize, "line-height": lineHeight }: TextCss
+) => {
+  const textStyle = `${TEXT_STYLE};line-height:${lineHeight};mso-line-height-rule:exactly`;
+  // A last empty line takes up space on the canvas, but a <br /> at the end of
+  // a paragraph doesn't make one on its own. Nor does an empty paragraph.
+  const lineHtml = (inline: RichTextParagraph["content"]) =>
+    `${inlineToHtml(color, inline)}${endsWithoutText(inline) ? "<br />" : ""}`;
+  // The indent is a margin in pixels, which classic Outlook takes, where it
+  // ignores a List's padding. A numbered List starts at 1, its default.
+  const indent = Math.round(Number(fontSize.replace("px", "")) * LIST_INDENT);
+  return content
+    .map((node) => {
+      if (node.type === "paragraph") {
+        return `<p style="${textStyle}">${lineHtml(node.content)}</p>`;
+      }
+      const tag = LIST_TAGS[node.type];
+      const items = node.content
+        .map(
+          ({ content: [paragraph] }) =>
+            `<li style="${textStyle}">${lineHtml(paragraph.content)}</li>`
+        )
+        .join("");
+      return `<${tag} style="margin:0 0 0 ${indent}px;padding:0">${items}</${tag}>`;
     })
     .join("");
+};
 
 const hasText = ({ content }: RichTextDocument) =>
   content.some((paragraph) =>

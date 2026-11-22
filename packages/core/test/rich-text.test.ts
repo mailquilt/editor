@@ -115,6 +115,92 @@ describe("limited rich text", () => {
     });
   });
 
+  it.each(["bulletList", "orderedList"])(
+    "keeps a %s of items, each one paragraph",
+    (type) => {
+      const email = emailWithContent({
+        content: [
+          { type: "paragraph" },
+          {
+            content: [
+              { content: [{ type: "paragraph" }], type: "listItem" },
+              {
+                content: [
+                  {
+                    content: [
+                      { marks: [{ type: "bold" }], text: "Hi ", type: "text" },
+                      { attrs: { name: "name" }, type: "mergeTag" },
+                    ],
+                    type: "paragraph",
+                  },
+                ],
+                type: "listItem",
+              },
+            ],
+            type,
+          },
+        ],
+        type: "doc",
+      });
+
+      expect(loadDocument(email)).toStrictEqual({ document: email, ok: true });
+    }
+  );
+
+  it.each([
+    [
+      "a List with no items",
+      { content: [], type: "bulletList" },
+      /content\.content\.0\.content: /u,
+    ],
+    [
+      "an item of two paragraphs",
+      {
+        content: [
+          {
+            content: [{ type: "paragraph" }, { type: "paragraph" }],
+            type: "listItem",
+          },
+        ],
+        type: "bulletList",
+      },
+      /content\.0\.content\.0\.content\.1: .*exactly one paragraph/u,
+    ],
+    [
+      "a List inside an item",
+      {
+        content: [
+          {
+            content: [
+              {
+                content: [
+                  { content: [{ type: "paragraph" }], type: "listItem" },
+                ],
+                type: "bulletList",
+              },
+            ],
+            type: "listItem",
+          },
+        ],
+        type: "orderedList",
+      },
+      /content\.content\.0\.content\.0\.content\.0\.type: /u,
+    ],
+    [
+      "a List with attributes",
+      {
+        attrs: { start: 3 },
+        content: [{ content: [{ type: "paragraph" }], type: "listItem" }],
+        type: "orderedList",
+      },
+      /attrs/u,
+    ],
+  ])("refuses %s", (_name, list, reason) => {
+    expect(
+      loadDocument(emailWithContent({ content: [list], type: "doc" }))
+    ).toStrictEqual({ ok: false, reason: expect.stringMatching(reason) });
+  });
+
   it("refuses an executable link, naming the problem", () => {
     const result = loadDocument(emailWithInline(linkTo("javascript:alert(1)")));
 

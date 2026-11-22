@@ -257,7 +257,7 @@ export const BLOCK_VIEWS = {
   heading: {
     icon: icon(svg`<path d="M6 4v16M18 4v16M6 12h12" />`),
     // A Heading is bold already, so the mark would change nothing.
-    text: { canBold: false, schema: createTextSchema() },
+    text: { canBold: false, schema: createTextSchema({ lists: false }) },
   },
   image: { draw: drawImage, icon: IMAGE_ICON },
   spacer: {
@@ -266,7 +266,7 @@ export const BLOCK_VIEWS = {
   },
   text: {
     icon: icon(svg`<path d="M4 7V5h16v2M9 19h6M12 5v14" />`),
-    text: { canBold: true, schema: createTextSchema() },
+    text: { canBold: true, schema: createTextSchema({ lists: true }) },
   },
 } satisfies { [Type in BlockType]: BlockTypeView<Type> };
 
