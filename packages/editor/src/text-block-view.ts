@@ -211,6 +211,18 @@ const cursorAfterChange = (
 const paragraphsOf = (doc: ProseMirrorNode) =>
   doc.textBetween(0, doc.content.size, "\u2029");
 
+/** Where each of a text's paragraphs starts, which a List moves. */
+const paragraphStarts = (doc: ProseMirrorNode) => {
+  const starts: number[] = [];
+  doc.descendants((node, pos) => {
+    if (node.isTextblock) {
+      starts.push(pos);
+    }
+    return !node.isTextblock;
+  });
+  return starts.join(",");
+};
+
 /** Marks a focus change: true when the text gains focus, false when it loses it. */
 const FOCUSED = "mailquilt:focused";
 
@@ -453,13 +465,12 @@ export const createTextBlockView = ({
       if (cursor === undefined) {
         return;
       }
-      // Undoing a format change leaves every position where it was.
-      const keepsSelection =
-        doc.content.size === nextDoc.content.size &&
-        doc.textContent === nextDoc.textContent;
       // Undoing a List keeps the selection on the same text, which the List's
       // structure has moved.
       const keepsText = paragraphsOf(doc) === paragraphsOf(nextDoc);
+      // Undoing a format change leaves every position where it was.
+      const keepsSelection =
+        keepsText && paragraphStarts(doc) === paragraphStarts(nextDoc);
       const tr = view.state.tr.replaceWith(
         0,
         doc.content.size,

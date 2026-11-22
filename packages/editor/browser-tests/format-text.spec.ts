@@ -6,6 +6,7 @@ import {
   canvas,
   changeCount,
   copySelection,
+  emailWith,
   formatButton,
   hostEvents,
   latestDocument,
@@ -14,6 +15,7 @@ import {
   pasteHtml,
   pasteText,
   redoByKey,
+  setValue,
   settle,
   stopClock,
   test,
@@ -427,6 +429,19 @@ test.describe("line breaks", () => {
         { content: [{ text: "Hello", type: "text" }], type: "paragraph" },
       ]);
   });
+});
+
+/** A saved List of `type`, with one item of `words`. */
+const savedList = (type: string, words: string) => ({
+  content: [
+    {
+      content: [
+        { content: [{ text: words, type: "text" }], type: "paragraph" },
+      ],
+      type: "listItem",
+    },
+  ],
+  type,
 });
 
 /** Makes "Hello" a bulleted List's one item, with the cursor at its end. */
@@ -909,6 +924,40 @@ test.describe("undo and redo", () => {
     // The cursor is where it was, after the same text.
     await page.keyboard.type("y");
     await expect.poll(() => savedOutline(page)).toStrictEqual(["Hello!y"]);
+  });
+
+  test("undoing a List over Lists of both kinds and a paragraph keeps all the selected text selected", async ({
+    page,
+  }) => {
+    const email = emailWith([[["c"]]]);
+    const text = email.rows[0]?.columns[0]?.blocks[0]?.props as {
+      content: { content: unknown[] };
+    };
+    text.content.content.unshift(
+      savedList("orderedList", "a"),
+      savedList("bulletList", "b")
+    );
+    await setValue(page, email);
+    await textBlock(page).first().click();
+    await selectAll(page);
+    await pressArrow(page, "ArrowLeft");
+    for (let step = 0; step < 5; step += 1) {
+      await extendSelection(page, "ArrowRight");
+    }
+    await page.keyboard.press("ControlOrMeta+Shift+8");
+    await expect
+      .poll(() => savedOutline(page))
+      .toStrictEqual([{ bulletList: ["a", "b", "c"] }]);
+
+    await undoByKey(page);
+    await expect
+      .poll(() => savedOutline(page))
+      .toStrictEqual([{ orderedList: ["a"] }, { bulletList: ["b"] }, "c"]);
+    await page.keyboard.type("x");
+
+    await expect
+      .poll(() => savedOutline(page))
+      .toStrictEqual([{ orderedList: ["x"] }]);
   });
 
   test("text typed after turning bold on doesn't merge with the text before it", async ({
