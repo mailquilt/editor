@@ -147,8 +147,11 @@ export const createFieldMergeTags = ({
       // oxlint-disable-next-line typescript/no-deprecated -- The one way to type into a field as a person does, which every browser has.
       document.execCommand("insertText", false, `{{${tag.name}}}`);
     },
-    /** Shows the Host app's tags again, after its list changed. */
-    showMergeTags: show,
+    /**
+     * Shows the Host app's tags again, after its list changed. The field is
+     * read again too, as without tags it ignored what was typed.
+     */
+    showMergeTags: () => (field ? follow(field) : show()),
     get shown() {
       return shown;
     },

@@ -351,6 +351,23 @@ test.describe("in a field", () => {
     await expect.poll(() => blockProps(page)).toMatchObject({ label: "{{" });
   });
 
+  test("the list under a field reads what was typed while the Host app had no tags, once they're back", async ({
+    page,
+  }) => {
+    await openBlocks(page, ["button"]);
+    await giveMergeTags(page, TAGS);
+    await blockGroup(page, "Button").focus();
+    const label = field(page, "Label");
+    await label.fill("{{fi");
+    await expect(tagOption(page, "First name")).toBeVisible();
+
+    await giveMergeTags(page, undefined);
+    await label.fill("{{co");
+    await giveMergeTags(page, TAGS);
+
+    await expect(picker(page).getByRole("option")).toHaveText(["company"]);
+  });
+
   test("the link field opens the list on {{, and Escape closes the list before the field", async ({
     page,
   }) => {
