@@ -243,7 +243,7 @@ test.describe("the links in the Side panel", () => {
 
     await change(field(page, "Facebook URL"), "");
 
-    expect(await blockProps(page)).toMatchObject({
+    expect(await blockProps(page)).toStrictEqual({
       links: [{ network: "facebook" }, X],
     });
   });
