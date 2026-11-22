@@ -9,7 +9,7 @@ import {
   keyFor,
   keyHeardFirst,
 } from "./key-map.js";
-import type { Action, DirectedAction } from "./key-map.js";
+import type { Action, Binding, DirectedAction } from "./key-map.js";
 import type { Direction } from "./positions.js";
 import type { EditorSelection } from "./selection.js";
 
@@ -68,6 +68,8 @@ export const createKeyDispatch = ({
     backToBlock: () => focus.focus({ on: "block" }),
     backToText: () => focus.focus({ on: "text" }),
     cancelLink: () => linkForm.cancel(),
+    // The key was pressed in the selected Block's text, which has the picker.
+    closeMergeTagPicker: () => selection.selectedText?.closeMergeTagPicker(),
     // The browser closes the dialog.
     closePreview: doNothing,
     discardDraft: (event) => drafts.discard(event),
@@ -78,8 +80,11 @@ export const createKeyDispatch = ({
     lastButton: toolbarStep("last"),
     leaveToolbar: toolbarStep("leave"),
     nextButton: toolbarStep("next"),
+    nextMergeTag: () => selection.selectedText?.moveInMergeTagPicker(1),
     openLinkField: () => linkForm.open(),
+    pickMergeTag: () => selection.selectedText?.pickMergeTag(),
     previousButton: toolbarStep("previous"),
+    previousMergeTag: () => selection.selectedText?.moveInMergeTagPicker(-1),
     redo: () => stepHistory("redo"),
     typeInField: doNothing,
     undo: () => stepHistory("undo"),
@@ -98,6 +103,24 @@ export const createKeyDispatch = ({
       }
     },
     selectBlock: (_event, direction) => editing.selectNeighbour(direction),
+  };
+
+  /** What a key depends on besides where it was pressed. */
+  const context = () => ({
+    canRedo: canStep("redo"),
+    canUndo: canStep("undo"),
+    dragging: isDragging(),
+    selectedText: selection.selectedText !== undefined,
+  });
+
+  /** Does what the key map says a press does. */
+  const act = (event: KeyboardEvent, binding: Binding) => {
+    claim(event, binding);
+    if (binding.direction === undefined) {
+      actions[binding.action](event);
+    } else {
+      moves[binding.action](event, binding.direction);
+    }
   };
 
   return {
@@ -133,22 +156,9 @@ export const createKeyDispatch = ({
         return;
       }
       const scope = placeOf(keydown.target as Element, hasKeys);
-      const binding =
-        scope &&
-        keyFor(scope, keydown, {
-          canRedo: canStep("redo"),
-          canUndo: canStep("undo"),
-          dragging: isDragging(),
-          selectedText: selection.selectedText !== undefined,
-        });
-      if (!binding) {
-        return;
-      }
-      claim(keydown, binding);
-      if (binding.direction === undefined) {
-        actions[binding.action](keydown);
-      } else {
-        moves[binding.action](keydown, binding.direction);
+      const binding = scope && keyFor(scope, keydown, context());
+      if (binding) {
+        act(keydown, binding);
       }
     },
 
@@ -169,6 +179,18 @@ export const createKeyDispatch = ({
       if (binding) {
         claim(event, binding);
       }
+    },
+
+    /**
+     * A key in a Block's text with the Merge Tag picker open, which the text
+     * asks before its own keys. Whether the key map answered it there.
+     */
+    onPickerKey: (event: KeyboardEvent) => {
+      const binding = keyFor("pickerOpen", event, context());
+      if (binding) {
+        act(event, binding);
+      }
+      return binding !== undefined;
     },
 
     /** A key a Block's text answered, which the key map then leaves alone. */

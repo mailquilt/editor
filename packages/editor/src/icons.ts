@@ -40,6 +40,10 @@ export const ICONS = {
   link: icon(
     svg`<path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1" />`
   ),
+  /** A pair of braces, as a Merge Tag is written. */
+  mergeTag: icon(
+    svg`<path d="M9 4H8a2 2 0 0 0-2 2v4l-2 2 2 2v4a2 2 0 0 0 2 2h1M15 4h1a2 2 0 0 1 2 2v4l2 2-2 2v4a2 2 0 0 1-2 2h-1" />`
+  ),
   monitor: icon(
     svg`<rect height="13" rx="2" width="18" x="3" y="4" /><path d="M8 21h8M12 17v4" />`
   ),

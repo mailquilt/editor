@@ -13,10 +13,21 @@ import {
   ReplaceStep,
 } from "prosemirror-transform";
 import { Decoration, DecorationSet, EditorView } from "prosemirror-view";
+import type { NodeViewConstructor } from "prosemirror-view";
 
 import { place } from "./editor-places.js";
+import { scaleOf } from "./geometry.js";
 import { proseMirrorKeys } from "./key-map.js";
-import { mergeTagsFromText } from "./merge-tags.js";
+import {
+  closeMergeTagPicker,
+  mergeTagPicker,
+  mergeTagsFromText,
+  moveInMergeTagPicker,
+  pickerOf,
+  pickMergeTag,
+  startMergeTag,
+} from "./merge-tags.js";
+import type { MergeTag, MergeTagPickerState } from "./merge-tags.js";
 import { pastedHtmlParser, withoutStyles } from "./pasted-html.js";
 import { createTextCommands } from "./text-commands.js";
 import type { TextFormats, ToggleableMark } from "./text-commands.js";
@@ -59,10 +70,47 @@ export const textBlockStyles = css`
    * Hidden, but still inline, so a screen reader reads {{name}} with no space
    * added inside the braces, as it would around a block.
    */
-  .ProseMirror .merge-tag-brace {
+  .ProseMirror .merge-tag-hidden {
     font-size: 0;
   }
 `;
+
+/** The open Merge Tag picker, with where it goes in the Block. */
+export interface ShownMergeTagPicker extends MergeTagPickerState {
+  /** The line the `{{` is on, from the Block's top left, in CSS pixels. */
+  anchor: { bottom: number; left: number; top: number };
+}
+
+const hiddenText = (text: string) => {
+  const span = document.createElement("span");
+  span.className = "merge-tag-hidden";
+  span.textContent = text;
+  return span;
+};
+
+/**
+ * A Merge Tag on the Canvas, showing its label from the Host app's list, or else
+ * its name. A screen reader reads `{{name}}`, which its tooltip shows too. The
+ * schema's own DOM, with the name, is what's copied.
+ */
+const mergeTagView =
+  (tags: () => readonly MergeTag[]): NodeViewConstructor =>
+  (node) => {
+    const name = node.attrs.name as string;
+    const label = tags().find((tag) => tag.name === name)?.label;
+    const dom = document.createElement("span");
+    dom.dataset.mergeTag = name;
+    dom.dataset.tooltip = `{{${name}}}`;
+    if (label) {
+      const shown = document.createElement("span");
+      shown.setAttribute("aria-hidden", "true");
+      shown.textContent = label;
+      dom.append(hiddenText(`{{${name}}}`), shown);
+    } else {
+      dom.append(hiddenText("{{"), name, hiddenText("}}"));
+    }
+    return { dom };
+  };
 
 export interface TextBlockView {
   element: HTMLElement;
@@ -86,6 +134,17 @@ export interface TextBlockView {
    */
   setLink: (href: string) => void;
   removeLink: () => void;
+  /** Types `{{` at the cursor, which opens the Merge Tag picker. */
+  startMergeTag: () => void;
+  /** The open Merge Tag picker, or undefined while it's closed. */
+  mergeTagPicker: () => ShownMergeTagPicker | undefined;
+  /** Highlights the next tag in the open picker, or the one before. */
+  moveInMergeTagPicker: (step: -1 | 1) => void;
+  /** Puts in the highlighted tag, or the one at `index`. */
+  pickMergeTag: (index?: number) => void;
+  closeMergeTagPicker: () => void;
+  /** Shows the tags with the Host app's labels again, after its list changed. */
+  showMergeTags: () => void;
   destroy: () => void;
 }
 
@@ -155,6 +214,8 @@ interface TextBlockViewHost {
   content: RichTextDocument;
   /** What a screen reader calls the text box. */
   label: string;
+  /** The Host app's Merge Tags, for the picker and the labels shown. */
+  mergeTags: () => readonly MergeTag[];
   onChange: (content: RichTextDocument) => void;
   onFocus: () => void;
   /**
@@ -162,6 +223,11 @@ interface TextBlockViewHost {
    * answered, which the key map then leaves alone.
    */
   onKeyAnswered: (event: KeyboardEvent) => void;
+  /**
+   * Asked first of each key while the Merge Tag picker is open, and whether it
+   * answered the key.
+   */
+  onPickerKey: (event: KeyboardEvent) => boolean;
   /** Called after anything that may change what `formats` returns. */
   onStateChange: () => void;
   /** Called when the next change shouldn't merge with the last as typing. */
@@ -179,9 +245,11 @@ export const createTextBlockView = ({
   canBold,
   content,
   label,
+  mergeTags,
   onChange,
   onFocus,
   onKeyAnswered,
+  onPickerKey,
   onStateChange,
   onTypingBreak,
   schema,
@@ -281,6 +349,7 @@ export const createTextBlockView = ({
         return false;
       },
     },
+    nodeViews: { mergeTag: mergeTagView(mergeTags) },
     state: EditorState.create({
       doc: schema.nodeFromJSON(content),
       plugins: [
@@ -288,7 +357,9 @@ export const createTextBlockView = ({
           props: {
             handleKeyDown: (target, event) => {
               const answered =
-                answerTextKey(target, event) || answerBaseKey(target, event);
+                (pickerOf(target.state) !== undefined && onPickerKey(event)) ||
+                answerTextKey(target, event) ||
+                answerBaseKey(target, event);
               if (answered) {
                 onKeyAnswered(event);
               }
@@ -300,6 +371,7 @@ export const createTextBlockView = ({
           schema,
           (transaction) => transaction.getMeta(FROM_SET_CONTENT) === true
         ),
+        mergeTagPicker(mergeTags),
       ],
     }),
     transformPasted: (slice) =>
@@ -318,11 +390,35 @@ export const createTextBlockView = ({
   };
 
   return {
+    closeMergeTagPicker: () => closeMergeTagPicker(view.state, view.dispatch),
     destroy: () => view.destroy(),
     element,
     focus: () => view.focus(),
     formats: () => commands.formats(view.state),
     insertLineBreak: () => run(commands.insertLineBreak),
+    mergeTagPicker: () => {
+      const picker = pickerOf(view.state);
+      if (!picker) {
+        return;
+      }
+      // From the Block, which the element sits in, as a host page may scale
+      // what's on screen.
+      const at = view.coordsAtPos(picker.from);
+      const box = element.getBoundingClientRect();
+      const scaleX = scaleOf(box.width, element.offsetWidth);
+      const scaleY = scaleOf(box.height, element.offsetHeight);
+      return {
+        ...picker,
+        anchor: {
+          bottom: (at.bottom - box.top) / scaleY + element.offsetTop,
+          left: (at.left - box.left) / scaleX + element.offsetLeft,
+          top: (at.top - box.top) / scaleY + element.offsetTop,
+        },
+      };
+    },
+    moveInMergeTagPicker: (step) =>
+      moveInMergeTagPicker(step)(view.state, view.dispatch),
+    pickMergeTag: (index) => run(pickMergeTag(index)),
     removeLink: () => run(commands.removeLink),
     setContent: (next) => {
       const { doc, selection } = view.state;
@@ -356,6 +452,10 @@ export const createTextBlockView = ({
       }
     },
     setLink: (href) => run(commands.setLink(href)),
+    // A new view for each tag redraws them all, and changes nothing else.
+    showMergeTags: () =>
+      view.setProps({ nodeViews: { mergeTag: mergeTagView(mergeTags) } }),
+    startMergeTag: () => run(startMergeTag),
     toggleMark: (mark) => run(commands.toggleMark(mark)),
   };
 };

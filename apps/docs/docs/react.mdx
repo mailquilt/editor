@@ -50,6 +50,21 @@ Pass `uploadImage` to let people upload images to your storage, from an Upload i
 <MailQuilt onChange={setEmail} uploadImage={uploadImage} value={email} />
 ```
 
+## Merge Tags
+
+Pass `mergeTags` with your app's tags, and typing `{{` in text opens a list of them to pick from. The format bar gets a Merge Tag button too. [Merge Tags](./api#merge-tags) says how the list works:
+
+```tsx
+const mergeTags = [
+  { name: "first_name", label: "First name" },
+  { name: "company" },
+];
+
+<MailQuilt mergeTags={mergeTags} onChange={setEmail} value={email} />;
+```
+
+A new array at each render is fine. The editor redraws its labels only when a tag in it changes.
+
 ## Props
 
-`MailQuilt` takes `value`, `onChange`, `onError`, `uploadImage` and `ref`. `MailQuiltShell` takes those, and `heading`, `actions` and `saveKey`. Other props, such as `className`, `style` and `aria-label`, go to the element. The [editor's API](./api#react) lists them all, with their types.
+`MailQuilt` takes `value`, `onChange`, `onError`, `uploadImage`, `mergeTags` and `ref`. `MailQuiltShell` takes those, and `heading`, `actions` and `saveKey`. Other props, such as `className`, `style` and `aria-label`, go to the element. The [editor's API](./api#react) lists them all, with their types.

@@ -2,6 +2,7 @@ import { BLOCK_TYPES } from "@mailquilt/core";
 import { expect } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 
+import type { MailQuilt } from "../src/index.js";
 import {
   announcement,
   backButton,
@@ -494,6 +495,52 @@ test.describe("the selected Block's tools", () => {
         return Math.abs(tip.x + tip.width / 2 - (button.x + button.width / 2));
       })
       .toBeLessThan(2);
+  });
+
+  test("in the last of four Columns at the email's end, the Merge Tag picker goes above its line, and every tag takes the pointer", async ({
+    page,
+  }) => {
+    await openEmail(page, [[[..."ABCDEFGHI"]], FOUR_COLUMNS]);
+    await canvas(page).evaluate((element) => {
+      (element as MailQuilt).mergeTags = [
+        { label: "First name", name: "first_name" },
+        { label: "Last name", name: "last_name" },
+        { label: "Company", name: "company" },
+      ];
+    });
+    await textOf(page, "Z").click();
+    await moveCursorToLineEnd(page);
+    await page.keyboard.type("{{");
+    const picker = canvas(page).getByRole("listbox", { name: "Merge Tags" });
+    await expect(picker.getByRole("option")).toHaveCount(3);
+    await settle(page);
+
+    // No room below the email, so above the line, clear of it.
+    const [list, line] = [
+      await boxOf(picker),
+      await boxOf(textOf(page, "Z{{").locator("p")),
+    ];
+    expect(list.y + list.height).toBeLessThanOrEqual(line.y);
+    const missed = await picker.evaluate((element) => {
+      const root = element.getRootNode() as ShadowRoot;
+      return [...element.querySelectorAll("[role=option]")]
+        .filter((option) => {
+          const { bottom, left, right, top } = option.getBoundingClientRect();
+          const [x, y] = [(left + right) / 2, (top + bottom) / 2];
+          // The middle of each edge, as a rounded corner isn't pressable.
+          const points = [
+            [left + 2, y],
+            [right - 2, y],
+            [x, top + 2],
+            [x, bottom - 2],
+          ] as const;
+          return !points.every(([px, py]) =>
+            option.contains(root.elementFromPoint(px, py))
+          );
+        })
+        .map((option) => option.textContent?.trim());
+    });
+    expect(missed).toEqual([]);
   });
 
   test("the floating toolbar doesn't cover the link field", async ({

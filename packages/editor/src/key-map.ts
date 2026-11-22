@@ -9,7 +9,8 @@ import type { Direction } from "./positions.js";
 
 /**
  * A key scope: where in the editor a key is answered. That's the innermost
- * place around the key, in `editor-places.ts`, that has keys here.
+ * place around the key, in `editor-places.ts`, that has keys here, or a state
+ * inside one, such as a Block's text with the Merge Tag picker open.
  */
 export type KeyScope = keyof typeof KEY_SCOPES;
 
@@ -35,6 +36,7 @@ export type Action =
   | "backToBlock"
   | "backToText"
   | "cancelLink"
+  | "closeMergeTagPicker"
   | "closePreview"
   | "discardDraft"
   | "editText"
@@ -47,8 +49,11 @@ export type Action =
   | "moveBlock"
   | "moveRow"
   | "nextButton"
+  | "nextMergeTag"
   | "openLinkField"
+  | "pickMergeTag"
   | "previousButton"
+  | "previousMergeTag"
   | "redo"
   | "selectBlock"
   | "typeInField"
@@ -240,6 +245,8 @@ type Within =
   | "editor"
   /** A field, with its own typing and undo. */
   | "field"
+  /** A Block's text, whose own keys answer what this doesn't. */
+  | "text"
   /** Outside the editor, such as the Preview. */
   | "outside";
 
@@ -248,6 +255,7 @@ const KEYS_WITHIN: Record<Within, readonly Entry[]> = {
   email: [OPEN_LINK, ...HISTORY],
   editor: HISTORY,
   field: [],
+  text: [],
   outside: [],
 };
 
@@ -280,6 +288,19 @@ const KEY_SCOPES = {
       },
     ],
     within: "email",
+  },
+  /**
+   * A Block's text while the Merge Tag picker is open, which the text asks
+   * before its own keys. Focus stays in the text, so this isn't a place.
+   */
+  pickerOpen: {
+    keys: [
+      { action: "previousMergeTag", keys: ["ArrowUp"], stops: true },
+      { action: "nextMergeTag", keys: ["ArrowDown"], stops: true },
+      { action: "pickMergeTag", keys: ["Enter", "Tab"], stops: true },
+      escape("closeMergeTagPicker"),
+    ],
+    within: "text",
   },
   // ProseMirror answers TEXT_KEYS and its base keys first, and these never
   // act on a key it answered.
@@ -325,7 +346,7 @@ const KEY_SCOPES = {
     within: "outside",
   },
   notice: { keys: [], within: "outside" },
-} satisfies Partial<Record<Place, ScopeKeys>>;
+} satisfies Partial<Record<Place | "pickerOpen", ScopeKeys>>;
 
 /** In a field that keeps every key, a key with no rule there. */
 const TYPE_IN_FIELD: Entry = {
@@ -550,7 +571,7 @@ const applies = (
 };
 
 /** Whether a place in the editor has keys of its own here. */
-export const hasKeys = (place: string): place is KeyScope =>
+export const hasKeys = (place: string): place is Extract<KeyScope, Place> =>
   Object.hasOwn(KEY_MAP, place);
 
 /** What the first of `entries` that matches a press does, if one does. */

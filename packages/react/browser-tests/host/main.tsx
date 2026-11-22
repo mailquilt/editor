@@ -52,6 +52,9 @@ const emailWith = (text: string): Document => ({
 const uploadImage = (file: File) =>
   Promise.resolve({ url: `https://cdn.example/${file.name}` });
 
+/** The Host app's Merge Tags. Each render gives a new list, as a host's often does. */
+const mergeTags = () => [{ label: "First name", name: "first_name" }];
+
 /** A newer version than this editor can read, so it's refused. */
 const refusedEmail = { ...emailWith("Refused"), version: 999 };
 
@@ -97,6 +100,7 @@ const Host = () => {
               ? undefined
               : (reason) => setErrors((all) => [...all, reason])
           }
+          mergeTags={mergeTags()}
           uploadImage={uploadImage}
           value={document}
         />
@@ -168,6 +172,7 @@ const ShellHost = () => {
         heading={changed ? "Renamed" : "Campaign"}
         onChange={(next) => setDocument(next)}
         ref={attach}
+        mergeTags={mergeTags()}
         saveKey={saveKey}
         uploadImage={uploadImage}
         value={document}

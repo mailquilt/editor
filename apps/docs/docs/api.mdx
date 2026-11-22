@@ -9,12 +9,13 @@ The editor is the `<mail-quilt>` element, and the [Shell](./shell) is `<mail-qui
 
 ## The editor
 
-`<mail-quilt>` has two properties, two events and one method:
+`<mail-quilt>` has three properties, two events and one method:
 
 | Name | What it does |
 | --- | --- |
 | `value` | The email the editor shows. Set it to open an email, or to `undefined` or `null` to empty the editor. |
 | `uploadImage` | A function that uploads an image to your storage and returns a promise of `{ url }`. With it, the Image settings have an Upload image button, and image files can be dropped on the email. [Upload images](./upload-images) shows one, and what the editor does with it. |
+| `mergeTags` | Your app's Merge Tags, as an array of `{ name, label }`, such as `[{ name: "first_name", label: "First name" }]`. `name` is what goes between the braces, and `label` is optional. With it, typing `{{` in text opens a list of them to pick from, and the format bar has a Merge Tag button. A tag in text shows its label, or its name without one, but the export and the Preview always have `{{name}}`. [Merge Tags](#merge-tags) says more. |
 | `mq-change` | An event fired after every change. The new email is in `event.detail.document`. |
 | `mq-error` | An event fired when the editor refuses an email, which then keeps the email it had. The reason is in `event.detail.reason`. The [document format](./document-format) page lists what the editor accepts. |
 | `exportHtml()` | Returns a promise of the email's HTML, ready to send. It rejects if the editor has no email. |
@@ -25,6 +26,31 @@ Opening a different email clears undo history. Setting `value` to the email the 
 
 [Two things to get right](./quick-start#two-things-to-get-right) says which email to pass back, and when to start listening for `mq-error`.
 
+### Merge Tags
+
+Give the editor your app's Merge Tags, and people pick one as they type, instead of remembering its name:
+
+```js
+editor.mergeTags = [
+  { name: "first_name", label: "First name" },
+  { name: "company" },
+];
+```
+
+- Typing `{{` in a Text or Heading Block opens a list of the tags at the cursor. What's typed after `{{` narrows it, by name and by label, whatever the case.
+- With an input method, as for Japanese, the list narrows by the characters in the text, so a label in kanji matches once the typed kana are converted to it. While a word is being composed, its keys go to the input method. Once it's committed, <kbd>Enter</kbd> puts in the highlighted tag. Japanese input types `{` as `『`, so people type the braces with English input, or use the Merge Tag button.
+- <kbd>Up</kbd> and <kbd>Down</kbd> move through the list, <kbd>Enter</kbd> or
+  <kbd>Tab</kbd> puts in the highlighted tag in place of what was typed, and
+  <kbd>Escape</kbd> closes the list and leaves the text. A click on a tag puts
+  it in too. Focus stays in the text throughout, which tells a screen reader the
+  highlighted tag.
+- The format bar's Merge Tag button types `{{` at the cursor, which opens the same list.
+- A tag typed by hand still becomes one unit when its `}}` is typed, whether it's in your list or not.
+- A tag whose name is empty or has a brace in it isn't offered, as text can't hold it. Give the name without its braces.
+- Setting `mergeTags` again only redraws the labels. The email doesn't change, so it fires no `mq-change`.
+
+Without `mergeTags`, or with no tag it can offer, typing `{{` opens nothing and there's no Merge Tag button.
+
 ## The Shell
 
 `<mail-quilt-shell>` has the editor's properties, events and method, and three attributes of its own:
@@ -33,6 +59,7 @@ Opening a different email clears undo history. Setting `value` to the email the 
 | --- | --- |
 | `value` | The email the Shell shows, as on `<mail-quilt>`. With `save-key`, a saved email opens instead of the first one you set. With no `value` and nothing saved, the editor is empty and the export buttons say there's no email to export. |
 | `uploadImage` | As on `<mail-quilt>`. The Shell passes it to the editor inside. |
+| `mergeTags` | As on `<mail-quilt>`. The Shell passes it to the editor inside. |
 | `heading` | The text in the header. It's "Email" when unset. |
 | `actions` | The buttons to show, by name and separated by spaces: `import-json`, `export-json` and `export-html`. Leave it out to show all three. |
 | `save-key` | Where the email is kept in the browser, as the `saveKey` property. Use one for each email and each person. Leave it out to store nothing. [Saving](./shell#saving) says how it works. |
@@ -46,11 +73,11 @@ Opening a different email clears undo history. Setting `value` to the email the 
 
 | Component | Props |
 | --- | --- |
-| `MailQuilt` | `value`, `onChange`, `onError`, `uploadImage` and `ref`. |
+| `MailQuilt` | `value`, `onChange`, `onError`, `uploadImage`, `mergeTags` and `ref`. |
 | `MailQuiltShell` | The same, and `heading`, `actions` and `saveKey`. `actions` is an array of names, such as `["export-html"]`. |
 
 - `value` is the email to open. `onChange` gets the new email after every change, and `onError` gets the reason when the editor refuses one, or when the editor's code can't load. `onError` is always listening in time.
-- `uploadImage` is the editor's property, which the component sets on the element once the editor has loaded.
+- `uploadImage` and `mergeTags` are the editor's properties, which the component sets on the element once the editor has loaded. A new `mergeTags` array at each render redraws nothing unless a tag in it changed.
 - `ref` gives you the element once the editor has loaded, so you can call `exportHtml()`.
 - Other props go to the element: `aria-*` attributes, React's events such as `onKeyDown`, and `className`, `hidden`, `id`, `inert`, `lang`, `role`, `slot`, `style`, `suppressHydrationWarning` and `title`.
 - On the server, each component renders its empty element, and the editor loads in the browser.

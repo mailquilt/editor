@@ -13,6 +13,7 @@ import {
 } from "@mailquilt/core/internal";
 import { renderEmail } from "@mailquilt/renderer";
 import { css, html, LitElement, nothing, unsafeCSS } from "lit";
+import type { PropertyValues } from "lit";
 
 import { createAnnouncements } from "./announcements.js";
 import { BLOCK_VIEWS, blockTypeStyles, hasRichText } from "./block-types.js";
@@ -35,6 +36,10 @@ import { createImageUploads } from "./image-uploads.js";
 import { createKeyDispatch } from "./key-dispatch.js";
 import { keyLabel } from "./key-map.js";
 import type { Action, KeyScope } from "./key-map.js";
+import {
+  mergeTagPickerStyles,
+  showHighlightedTag,
+} from "./merge-tag-picker.js";
 import type { PanelApi } from "./panel-api.js";
 import { blocksIn, locate } from "./positions.js";
 import { createPresses } from "./presses.js";
@@ -48,8 +53,9 @@ import {
 } from "./side-panel.js";
 import { styleProperties } from "./style-properties.js";
 import { createTextBlockView, textBlockStyles } from "./text-block-view.js";
-import type { TextBlockView } from "./text-block-view.js";
+import type { ShownMergeTagPicker, TextBlockView } from "./text-block-view.js";
 import type { TextFormats } from "./text-commands.js";
+import { isMergeTagName } from "./text-schema.js";
 import { themeTokens, UI_LANG, uiStyles } from "./theme.js";
 import { createToolFitting } from "./tool-fitting.js";
 import type { ToolFitting } from "./tool-fitting.js";
@@ -212,6 +218,15 @@ const elementStyles = css`
 
 export class MailQuilt extends LitElement implements HostAppProperties {
   static override properties = {
+    // A React host gives a new list at each render, which only a change to
+    // one of its tags redraws.
+    mergeTags: {
+      attribute: false,
+      hasChanged: (
+        next: HostAppProperties["mergeTags"],
+        previous: HostAppProperties["mergeTags"]
+      ) => JSON.stringify(next ?? []) !== JSON.stringify(previous ?? []),
+    },
     // Only whether there's one changes what shows, and a React host may give
     // a new function at each render, such as on each key.
     uploadImage: {
@@ -228,6 +243,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     sidePanelStyles,
     blockTypeStyles,
     formatBarStyles,
+    mergeTagPickerStyles,
     previewStyles,
     elementStyles,
     canvasStyles,
@@ -237,6 +253,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
   /** Lit's, which is this element's shadow root, as Lit attaches it. */
   declare readonly renderRoot: ShadowRoot;
 
+  declare mergeTags: HostAppProperties["mergeTags"];
   declare uploadImage: HostAppProperties["uploadImage"];
 
   #editor: Editor | undefined;
@@ -245,6 +262,8 @@ export class MailQuilt extends LitElement implements HostAppProperties {
   #typingSession = 0;
   #lastTypedAt = 0;
   #formats: TextFormats | undefined;
+  #mergeTagPicker: ShownMergeTagPicker | undefined;
+  readonly #mergeTagsGiven = () => this.mergeTags ?? [];
   readonly #focus = createFocus({
     requestUpdate: () => this.requestUpdate(),
     root: () => this.renderRoot,
@@ -256,6 +275,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     onSelect: () => {
       this.#linkForm.close();
       this.#formats = this.#selection.selectedText?.formats();
+      this.#mergeTagPicker = this.#selection.selectedText?.mergeTagPicker();
       this.requestUpdate();
     },
     requestUpdate: () => this.requestUpdate(),
@@ -370,6 +390,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     moveRow: (rowId, direction) => this.#editing.moveRow(rowId, direction),
     openLinkField: () => this.#linkForm.open(),
     openPreview: () => this.#preview.open(),
+    pickMergeTag: (index) => this.#selection.selectedText?.pickMergeTag(index),
     removeLink: () => this.#linkForm.remove(),
     selectRow: (rowId, fromKeyboard) =>
       this.#selection.selectRow(rowId, fromKeyboard),
@@ -500,7 +521,13 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     this.#reset();
   }
 
-  protected override willUpdate() {
+  protected override willUpdate(changed: PropertyValues<this>) {
+    if (changed.has("mergeTags")) {
+      for (const view of this.#views.values()) {
+        view.showMergeTags();
+      }
+      this.#syncFormats();
+    }
     this.#rendered = this.value;
     const email = this.isConnected ? this.#rendered : undefined;
     const blocks = email ? blocksIn(email) : [];
@@ -526,6 +553,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
             canBold,
             content: block.props.content,
             label: `${blockLabel(block.type)} Block`,
+            mergeTags: this.#mergeTagsGiven,
             onChange: (next) => this.#commitText(block.id, next),
             onFocus: () => {
               // As on the Block: focus back in the text closes the link field.
@@ -533,6 +561,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
               this.#selection.onTextFocus(block.id);
             },
             onKeyAnswered: (event) => this.#keys.onTextKeyAnswered(event),
+            onPickerKey: (event) => this.#keys.onPickerKey(event),
             onStateChange: () => this.#syncFormats(),
             onTypingBreak: () => {
               this.#typingSession += 1;
@@ -554,6 +583,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     this.#focus.afterUpdate();
     if (this.isConnected && this.shadowRoot) {
       this.#syncTooltips(this.shadowRoot);
+      showHighlightedTag(this.shadowRoot);
     }
   }
 
@@ -638,7 +668,12 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       editingText: this.#selection.editingText,
       email,
       formats: this.#formats,
+      // Only with a tag the picker can offer.
+      insertMergeTag: this.mergeTags?.some(({ name }) => isMergeTagName(name))
+        ? this.#insertMergeTag
+        : undefined,
       linkField: this.#linkForm.state,
+      mergeTagPicker: this.#mergeTagPicker,
       selectedBlock: this.#editing.selectedBlock(email),
       selectedRow: this.#editing.selectedRow(email),
       showsSettings: this.#selection.showsSettings,
@@ -662,11 +697,23 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     return this.#rendered?.settings.language ?? "";
   }
 
-  /** Re-renders only on a change, because this runs on every transaction. */
+  readonly #insertMergeTag = () =>
+    this.#selection.selectedText?.startMergeTag();
+
+  /**
+   * The formats and the Merge Tag picker the text shows. Re-renders only on a
+   * change, because this runs on every transaction.
+   */
   #syncFormats() {
-    const formats = this.#selection.selectedText?.formats();
-    if (JSON.stringify(formats) !== JSON.stringify(this.#formats)) {
+    const text = this.#selection.selectedText;
+    const formats = text?.formats();
+    const picker = text?.mergeTagPicker();
+    if (
+      JSON.stringify([formats, picker]) !==
+      JSON.stringify([this.#formats, this.#mergeTagPicker])
+    ) {
       this.#formats = formats;
+      this.#mergeTagPicker = picker;
       this.requestUpdate();
     }
   }

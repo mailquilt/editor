@@ -32,6 +32,11 @@ const PLACES = {
   formatBar: { ofText: true, press: "keepsFocus" },
   /** The link field, in the format bar. */
   linkField: { ofText: true },
+  /**
+   * The Merge Tag picker, at the cursor in the text being edited. Focus stays
+   * in the text, so a press picks a tag without taking it.
+   */
+  mergeTagPicker: { ofText: true, press: "keepsFocus" },
   /** The notice shown instead of the editor when there's no room to edit. */
   notice: {},
   /**
