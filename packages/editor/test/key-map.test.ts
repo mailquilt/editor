@@ -429,6 +429,14 @@ describe("in a Row's toolbar", () => {
   });
 });
 
+describe("in an empty Column's toolbar", () => {
+  it("an arrow key goes along its buttons", () => {
+    expect(keyIn("addBlocks", press("ArrowRight"))).toStrictEqual(
+      acts("nextButton")
+    );
+  });
+});
+
 describe("in the floating toolbar", () => {
   it("only paste is the editor's, as it has nothing of its own to copy", () => {
     expect(keyIn("emailTools", press("Mod-v"))).toStrictEqual(

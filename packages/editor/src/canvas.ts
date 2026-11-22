@@ -845,6 +845,10 @@ const renderBlock = (
   `;
 };
 
+/**
+ * A Column, with its Blocks. An empty one has a toolbar to add a Block: one stop
+ * for Tab, then arrow keys go along.
+ */
 const renderColumn = (
   { blocks, id, width }: Column,
   /** Where the Column is, in words. */
@@ -880,13 +884,20 @@ const renderColumn = (
                 <span class="placeholder-icon">${ICONS.plus}</span>
                 <p>Drop a Block here</p>
               </div>
-              <div class="add-blocks" data-testid="add-blocks">
+              <div
+                aria-label=${`Add a Block to ${label}`}
+                class="add-blocks"
+                data-place=${place("addBlocks")}
+                data-testid="add-blocks"
+                role="toolbar"
+              >
                 ${BLOCK_TYPES.map(
-                  ({ label: typeLabel, type }) => html`
+                  ({ label: typeLabel, type }, index) => html`
                     <button
-                      aria-label=${`Add ${typeLabel} Block here, ${label}`}
+                      aria-label=${`Add ${typeLabel} Block here`}
                       class="icon-button"
                       data-tooltip=${`Add ${typeLabel} Block here`}
+                      tabindex=${index === 0 ? "0" : "-1"}
                       type="button"
                       @click=${() =>
                         api.addBlock(type, { columnId: id, index: 0 })}

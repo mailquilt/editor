@@ -680,50 +680,39 @@ test.describe("labels and focus states", () => {
     );
   });
 
-  test("a button in an empty Column says which Column it fills", async ({
+  test("an empty Column is one Tab stop, a toolbar named for where it is", async ({
     page,
   }) => {
-    await openEmail(page, [[["A"], []], [[]]]);
+    await openEmail(page, [[["A"]], [["B"], []]]);
+    const toolbar = canvas(page).getByRole("toolbar", {
+      exact: true,
+      name: "Add a Block to Row 2, Column 2",
+    });
+    const buttons = toolbar.getByRole("button");
+    const inToolbar = () =>
+      toolbar.evaluate((each) => each.matches(":focus-within"));
+    await buttons.first().focus();
 
-    await expect(
-      page.getByRole("button", { name: "Add Text Block here" })
-    ).toHaveCount(2);
-    await expect(
-      page.getByRole("button", {
-        exact: true,
-        name: "Add Text Block here, Row 1, Column 2",
-      })
-    ).toBeVisible();
-    await expect(
-      page.getByRole("button", {
-        exact: true,
-        name: "Add Text Block here, Row 2, Column 1",
-      })
-    ).toBeVisible();
-  });
+    await page.keyboard.press("ArrowRight");
+    await expect(buttons.nth(1)).toBeFocused();
+    await page.keyboard.press("End");
+    await expect(buttons.last()).toBeFocused();
+    await page.keyboard.press("ArrowRight");
+    await expect(buttons.first()).toBeFocused();
+    await page.keyboard.press("ArrowLeft");
+    await expect(buttons.last()).toBeFocused();
+    await page.keyboard.press("Home");
+    await expect(buttons.first()).toBeFocused();
 
-  test("an empty Column is one Tab stop for each type of Block", async ({
-    page,
-  }) => {
-    await openEmail(page, [[["A"], []]]);
-    const types = await page
-      .getByRole("group", { name: "Add content" })
-      .getByRole("button")
-      .count();
-    const adds = canvas(page).getByTestId("add-blocks");
-    await adds.getByRole("button").first().focus();
-
-    let stops = 1;
-    while (stops <= types) {
-      await page.keyboard.press("Tab");
-      if (!(await adds.evaluate((each) => each.matches(":focus-within")))) {
-        break;
-      }
-      stops += 1;
-    }
-
-    expect(types).toBeGreaterThan(1);
-    expect(stops).toBe(types);
+    // Leaves from wherever the arrow keys got to, either way.
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Tab");
+    await expect.poll(inToolbar).toBe(false);
+    await page.keyboard.press("Shift+Tab");
+    await expect(buttons.first()).toBeFocused();
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Shift+Tab");
+    await expect.poll(inToolbar).toBe(false);
   });
 
   test("every control shows where focus is", async ({ page }) => {

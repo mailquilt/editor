@@ -133,7 +133,7 @@ test.describe("an empty Column", () => {
     await openBlocks(page, ["button"], []);
     const column = canvas(page).getByTestId("column").nth(1);
     await expect(
-      column.getByRole("button", { name: / Block here, /u })
+      column.getByRole("button", { name: / Block here$/u })
     ).toHaveCount(BLOCK_TYPES.length);
 
     for (const { label, type } of BLOCK_TYPES) {
@@ -147,7 +147,10 @@ test.describe("an empty Column", () => {
 
       // A plain press where the button shows, as a person's pointer makes.
       const { x, y } = await centerOf(
-        column.getByRole("button", { name: `Add ${label} Block here, ` })
+        column.getByRole("button", {
+          exact: true,
+          name: `Add ${label} Block here`,
+        })
       );
       await page.mouse.click(x, y);
 

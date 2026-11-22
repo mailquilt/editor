@@ -7,6 +7,8 @@
  * under its name, which has to be one of these too.
  */
 const PLACES = {
+  /** The toolbar in an empty Column, with a button to add each type of Block. */
+  addBlocks: {},
   /** A Block on the canvas. Its `data-block-id` names it. */
   block: {},
   /** The selected Block's toolbar. */

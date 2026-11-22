@@ -417,10 +417,11 @@ const KEY_SCOPES = {
     ],
     within: "email",
   },
+  addBlocks: { keys: TOOLBAR, within: "email" },
   // Where focus goes with nothing selected, such as after the last Block is
   // deleted, so a paste goes at the end.
   emailTools: { keys: [PASTE], within: "editor" },
-  // Elsewhere in the email, such as an empty Column's buttons.
+  // Elsewhere in the email.
   email: { keys: [], within: "email" },
   panelTabs: { keys: TOOLBAR, within: "editor" },
   settingsDraft: { keys: [escape("discardDraft")], within: "field" },
