@@ -22,7 +22,8 @@ export const renderedExamples = await Promise.all(
     }
     const json = JSON.stringify(document, null, 2);
     const html = await renderEmail(document);
-    const tags = [...new Set(json.match(new RegExp(MERGE_TAG.source, "gu")))];
+    // From the export, where every tag is written as {{name}}, and filled.
+    const tags = [...new Set(html.match(new RegExp(MERGE_TAG.source, "gu")))];
     // Left unfilled, a tag would show in the preview as its own name.
     const unfilled = tags.filter((tag) => !(tag.slice(2, -2) in sample));
     if (unfilled.length > 0) {

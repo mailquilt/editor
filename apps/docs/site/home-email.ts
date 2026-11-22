@@ -21,22 +21,9 @@ export const homeEmail: BlocksDocument = {
             {
               id: "home-text",
               props: {
-                content: {
-                  content: [
-                    {
-                      content: [
-                        { text: "Hi ", type: "text" },
-                        { attrs: { name: "first_name" }, type: "mergeTag" },
-                        {
-                          text: ", this editor is live. Type here, drag a Block in from the right, or press Tab and do all of it from the keyboard.",
-                          type: "text",
-                        },
-                      ],
-                      type: "paragraph",
-                    },
-                  ],
-                  type: "doc",
-                },
+                content: paragraph(
+                  "Hi {{first_name}}, this editor is live. Type here, drag a Block in from the right, or press Tab and do all of it from the keyboard."
+                ),
               },
               type: "text",
             },
