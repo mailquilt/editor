@@ -1,7 +1,9 @@
 import { css, html, nothing } from "lit";
+import type { TemplateResult } from "lit";
 
 import { findPlace, place } from "./editor-places.js";
 import { PICKER_ID, pickerOptionId } from "./merge-tags.js";
+import type { MergeTagPickerState } from "./merge-tags.js";
 import type { PanelApi } from "./panel-api.js";
 import { styleProperties } from "./style-properties.js";
 
@@ -25,13 +27,23 @@ export const mergeTagPickerStyles = css`
     z-index: calc(var(--_mq-layer-block-tools) + 1);
   }
 
-  .merge-tag-picker ul {
+  /* Under a field, in the flow, so nothing around it can cut it off. */
+  .field-merge-tag-picker {
+    display: block;
+    max-height: 200px;
+    overflow-y: auto;
+    padding: var(--mq-space-1);
+    /* So the highlighted tag's place is measured from the list. */
+    position: relative;
+  }
+
+  .merge-tag-options {
     list-style: none;
     margin: 0;
     padding: 0;
   }
 
-  .merge-tag-picker li {
+  .merge-tag-options li {
     border-radius: var(--mq-radius-small);
     cursor: pointer;
     display: flex;
@@ -40,27 +52,58 @@ export const mergeTagPickerStyles = css`
     padding: 6px var(--mq-space-2);
   }
 
-  .merge-tag-picker li:hover {
+  .merge-tag-options li:hover {
     background: var(--mq-color-surface-hover);
   }
 
-  .merge-tag-picker li[aria-selected="true"] {
+  .merge-tag-options li[aria-selected="true"] {
     background: var(--mq-color-accent-soft);
     box-shadow: inset 0 0 0 1px var(--mq-color-outline-hover);
   }
 
-  .merge-tag-picker .merge-tag-name {
+  .merge-tag-options .merge-tag-name {
     color: var(--mq-color-text-muted);
     font-size: var(--mq-font-size-small);
     overflow-wrap: anywhere;
   }
 
   @media (forced-colors: active) {
-    .merge-tag-picker li[aria-selected="true"] {
+    .merge-tag-options li[aria-selected="true"] {
       outline: 2px solid Highlight;
       outline-offset: -2px;
     }
   }
+`;
+
+/** The picker's tags, in text or under a field. */
+const renderOptions = (
+  { highlighted, options }: Omit<MergeTagPickerState, "from">,
+  pick: (index: number) => void
+) => html`
+  <ul
+    aria-label="Merge Tags"
+    class="merge-tag-options"
+    id=${PICKER_ID}
+    role="listbox"
+  >
+    ${options.map(
+      ({ label, name }, index) => html`
+        <li
+          aria-selected=${index === highlighted ? "true" : "false"}
+          id=${pickerOptionId(index)}
+          role="option"
+          @click=${() => pick(index)}
+        >
+          <span>${label || name}</span>
+          ${
+            label
+              ? html`<span class="merge-tag-name">{{${name}}}</span>`
+              : nothing
+          }
+        </li>
+      `
+    )}
+  </ul>
 `;
 
 /**
@@ -75,7 +118,7 @@ export const renderMergeTagPicker = ({
   if (!picker) {
     return nothing;
   }
-  const { anchor, highlighted, options } = picker;
+  const { anchor } = picker;
   return html`
     <div
       class="ui bar merge-tag-picker"
@@ -86,35 +129,73 @@ export const renderMergeTagPicker = ({
         "inset-inline-start": `${anchor.left}px`,
       })}
     >
-      <ul aria-label="Merge Tags" id=${PICKER_ID} role="listbox">
-        ${options.map(
-          ({ label, name }, index) => html`
-            <li
-              aria-selected=${index === highlighted ? "true" : "false"}
-              id=${pickerOptionId(index)}
-              role="option"
-              @click=${() => pickMergeTag(index)}
-            >
-              <span>${label || name}</span>
-              ${
-                label
-                  ? html`<span class="merge-tag-name">{{${name}}}</span>`
-                  : nothing
-              }
-            </li>
-          `
-        )}
-      </ul>
+      ${renderOptions(picker, pickMergeTag)}
     </div>
   `;
 };
 
+/** What a field that holds text or a URL has from the Host app's Merge Tags. */
+export interface FieldTags {
+  /** Its attributes that name the open list and its highlighted tag. */
+  activeDescendant: string | typeof nothing;
+  controls: string | typeof nothing;
+  /** What its description adds: that `{{` adds a Merge Tag. */
+  hint: string;
+  /** The open list, under it. */
+  list: TemplateResult | typeof nothing;
+}
+
+/** A field's, while the Host app gives no `mergeTags`, or one that takes none. */
+export const NO_FIELD_TAGS: FieldTags = {
+  activeDescendant: nothing,
+  controls: nothing,
+  hint: "",
+  list: nothing,
+};
+
+/** With no-break spaces, so the braces never end or start a line. */
+const FIELD_HINT = "Type\u00A0{{\u00A0to add a Merge Tag.";
+
+/**
+ * The Merge Tags of a field that holds text or a URL, by its `id`. Focus stays
+ * in the field, so a press on the list keeps it there, and the field names the
+ * list and its highlighted tag.
+ */
+export const fieldTags =
+  ({ fieldMergeTags }: PanelApi) =>
+  (fieldId: string): FieldTags => {
+    if (!fieldMergeTags) {
+      return NO_FIELD_TAGS;
+    }
+    const { pick, shown } = fieldMergeTags;
+    if (shown?.fieldId !== fieldId) {
+      return { ...NO_FIELD_TAGS, hint: FIELD_HINT };
+    }
+    return {
+      activeDescendant: pickerOptionId(shown.highlighted),
+      controls: PICKER_ID,
+      hint: FIELD_HINT,
+      list: html`
+        <div
+          class="ui bar field-merge-tag-picker"
+          data-place=${place("fieldMergeTagPicker")}
+          @mousedown=${(event: MouseEvent) => event.preventDefault()}
+        >
+          ${renderOptions(shown, pick)}
+        </div>
+      `,
+    };
+  };
+
 /**
  * Scrolls the open picker to its highlighted tag, after an update. Only the
- * list scrolls, not the page around it.
+ * list scrolls, not the page around it, except that a list under a field is
+ * scrolled into view, as it can open below what the Side panel shows.
  */
 export const showHighlightedTag = (root: ParentNode) => {
-  const list = findPlace(root, "mergeTagPicker");
+  const underField = findPlace(root, "fieldMergeTagPicker");
+  underField?.scrollIntoView({ block: "nearest" });
+  const list = findPlace(root, "mergeTagPicker") ?? underField;
   const tag = list?.querySelector<HTMLElement>('[aria-selected="true"]');
   if (!(list && tag)) {
     return;

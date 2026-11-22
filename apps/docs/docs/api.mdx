@@ -15,7 +15,7 @@ The editor is the `<mail-quilt>` element, and the [Shell](./shell) is `<mail-qui
 | --- | --- |
 | `value` | The email the editor shows. Set it to open an email, or to `undefined` or `null` to empty the editor. |
 | `uploadImage` | A function that uploads an image to your storage and returns a promise of `{ url }`. With it, the Image settings have an Upload image button, and image files can be dropped on the email. [Upload images](./upload-images) shows one, and what the editor does with it. |
-| `mergeTags` | Your app's Merge Tags, as an array of `{ name, label }`, such as `[{ name: "first_name", label: "First name" }]`. `name` is what goes between the braces, and `label` is optional. With it, typing `{{` in text opens a list of them to pick from, and the format bar has a Merge Tag button. A tag in text shows its label, or its name without one, but the export and the Preview always have `{{name}}`. [Merge Tags](#merge-tags) says more. |
+| `mergeTags` | Your app's Merge Tags, as an array of `{ name, label }`, such as `[{ name: "first_name", label: "First name" }]`. `name` is what goes between the braces, and `label` is optional. With it, typing `{{` in text, or in any setting that holds text or a URL, opens a list of them to pick from, and the format bar has a Merge Tag button. A tag in text shows its label, or its name without one, but the export and the Preview always have `{{name}}`. [Merge Tags](#merge-tags) says more. |
 | `mq-change` | An event fired after every change. The new email is in `event.detail.document`. |
 | `mq-error` | An event fired when the editor refuses an email, which then keeps the email it had. The reason is in `event.detail.reason`. The [document format](./document-format) page lists what the editor accepts. |
 | `exportHtml()` | Returns a promise of the email's HTML, ready to send. It rejects if the editor has no email. |
@@ -45,6 +45,8 @@ editor.mergeTags = [
   it in too. Focus stays in the text throughout, which tells a screen reader the
   highlighted tag.
 - The format bar's Merge Tag button types `{{` at the cursor, which opens the same list.
+- Every setting that holds text or a URL opens the same list on `{{`: a Button's label and link, an Image's URL, alt text and link, the email's preheader and language, and the link field in text. There a tag goes in as the text `{{name}}`, which edits like any other text. <kbd>Enter</kbd> puts in the tag without applying the field, and the first <kbd>Escape</kbd> closes the list. The next one takes back what was typed, or closes the link field. With `mergeTags`, each of these fields says under it that `{{` adds a Merge Tag.
+- A URL can start with a Merge Tag, but no scheme can follow it, so a tag can't wrap a whole URL, as in `{{#if vip}}https://example.com{{/if}}`. [Merge Tags](./document-format#merge-tags) has the rule.
 - A tag typed by hand still becomes one unit when its `}}` is typed, whether it's in your list or not.
 - A tag whose name is empty or has a brace in it isn't offered, as text can't hold it. Give the name without its braces.
 - Setting `mergeTags` again only redraws the labels. The email doesn't change, so it fires no `mq-change`.

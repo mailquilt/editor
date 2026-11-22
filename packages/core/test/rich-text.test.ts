@@ -160,6 +160,8 @@ describe(isAllowedLinkHref, () => {
     "{{x}}script:alert(1)",
     "{{x}}{{y}}javascript:alert(1)",
     "{{x}}\njavascript:alert(1)",
+    // A tag can't wrap a URL, as its scheme follows the tag.
+    "{{#if vip}}https://example.com{{/if}}",
     "//example.com",
     "/relative",
     "",

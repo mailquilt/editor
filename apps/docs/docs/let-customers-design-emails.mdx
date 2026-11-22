@@ -40,9 +40,9 @@ To make starter emails in code instead, such as one per customer with their name
 
 ## Merge Tags
 
-Customers type Merge Tags such as `{{first_name}}` anywhere in text, and in a link or image URL, such as `{{unsubscribe_url}}`. Mail Quilt keeps them in the HTML, so the service that sends your email can fill them in.
+Customers type Merge Tags such as `{{first_name}}` anywhere in text, and in any setting that holds text or a URL, such as a link to `{{unsubscribe_url}}`. Mail Quilt keeps them in the HTML, so the service that sends your email can fill them in.
 
-Give the editor your app's tags with [`mergeTags`](./api#merge-tags), and customers pick one from a list when they type `{{` in text, with the labels you give, such as "First name".
+Give the editor your app's tags with [`mergeTags`](./api#merge-tags), and customers pick one from a list when they type `{{` in text or a setting, with the labels you give, such as "First name".
 
 - **Tell customers which tags work.** Mail Quilt doesn't check a tag's name, so it can't warn a customer about a tag your sending service doesn't know.
 - **Keep tags to names.** An `&`, `<` or `>` inside a tag is escaped, and a `"` too in a link or image URL or alt text, as [Merge Tags](./document-format#merge-tags) explains, so your sending service would see the escaped text.

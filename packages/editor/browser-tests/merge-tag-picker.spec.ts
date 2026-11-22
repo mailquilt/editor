@@ -3,11 +3,16 @@ import type { Page } from "@playwright/test";
 
 import type { MailQuilt } from "../src/index.js";
 import {
+  blockGroup,
+  blockProps,
   blockWith,
   canvas,
   changesSince,
+  field,
   formatButton,
   latestDocument,
+  linkUrlField,
+  openBlocks,
   openTestPage,
   previewButton,
   previewEmail,
@@ -275,5 +280,135 @@ test.describe("a tag on the Canvas", () => {
 
     await previewButton(page).click();
     await expect(previewEmail(page)).toContainText("Hi {{first_name}}");
+  });
+});
+
+test.describe("in a field", () => {
+  test("a text setting opens the list on {{, puts in {{name}} as text, and Escape closes the list before it discards", async ({
+    page,
+  }) => {
+    await openBlocks(page, ["button"]);
+    await giveMergeTags(page, TAGS);
+    await blockGroup(page, "Button").focus();
+    const label = field(page, "Label");
+    await expect(label).toHaveAccessibleDescription(
+      "Type {{ to add a Merge Tag."
+    );
+    await label.click();
+    await page.keyboard.press("ControlOrMeta+a");
+    await page.keyboard.type("Hi {{la");
+
+    await expect(picker(page).getByRole("option")).toHaveText([
+      "Last name {{last_name}}",
+    ]);
+    await expect(label).toBeFocused();
+    await expect(label).toHaveAttribute(
+      "aria-activedescendant",
+      (await tagOption(page, "Last name").getAttribute("id")) ?? ""
+    );
+    expect(await violations(page)).toEqual([]);
+
+    // Enter puts the tag in, and leaves it to be committed.
+    const changed = await changesSince(page);
+    await page.keyboard.press("Enter");
+    await expect(label).toHaveValue("Hi {{last_name}}");
+    await expect(picker(page)).toHaveCount(0);
+    await expect(label).not.toHaveAttribute("aria-activedescendant");
+    await changed(0);
+    await page.keyboard.press("Enter");
+    await expect
+      .poll(() => blockProps(page))
+      .toMatchObject({ label: "Hi {{last_name}}" });
+
+    // A click puts one in too, with focus left in the field.
+    await page.keyboard.type(" {{");
+    await tagOption(page, "company").click();
+    await expect(label).toHaveValue("Hi {{last_name}} {{company}}");
+    await expect(label).toBeFocused();
+
+    await page.keyboard.type(" {{");
+    await page.keyboard.press("Escape");
+    await expect(picker(page)).toHaveCount(0);
+    await expect(label).toHaveValue("Hi {{last_name}} {{company}} {{");
+    await page.keyboard.press("Escape");
+    await expect(label).toHaveValue("Hi {{last_name}}");
+  });
+
+  test("the list under a field closes when the Host app takes its tags away", async ({
+    page,
+  }) => {
+    await openBlocks(page, ["button"]);
+    await giveMergeTags(page, TAGS);
+    await blockGroup(page, "Button").focus();
+    const label = field(page, "Label");
+    await label.fill("{{");
+    await expect(picker(page)).toBeVisible();
+
+    await giveMergeTags(page, undefined);
+
+    await expect(picker(page)).toHaveCount(0);
+    await page.keyboard.press("Enter");
+    await expect.poll(() => blockProps(page)).toMatchObject({ label: "{{" });
+  });
+
+  test("the list under a field reads what was typed while the Host app had no tags, once they're back", async ({
+    page,
+  }) => {
+    await openBlocks(page, ["button"]);
+    await giveMergeTags(page, TAGS);
+    await blockGroup(page, "Button").focus();
+    const label = field(page, "Label");
+    await label.fill("{{fi");
+    await expect(tagOption(page, "First name")).toBeVisible();
+
+    await giveMergeTags(page, undefined);
+    await label.fill("{{co");
+    await giveMergeTags(page, TAGS);
+
+    await expect(picker(page).getByRole("option")).toHaveText(["company"]);
+  });
+
+  test("the link field opens the list on {{, and Escape closes the list before the field", async ({
+    page,
+  }) => {
+    await typeInText(page, "Hi");
+    await page.keyboard.press("ControlOrMeta+a");
+    await page.keyboard.press("ControlOrMeta+k");
+    await expect(linkUrlField(page)).toBeFocused();
+    await expect(linkUrlField(page)).toHaveAccessibleDescription(
+      "Type {{ to add a Merge Tag."
+    );
+    await page.keyboard.type("{{");
+    await expect(picker(page)).toBeVisible();
+
+    await page.keyboard.press("Enter");
+
+    await expect(linkUrlField(page)).toHaveValue("{{first_name}}");
+    await expect(linkUrlField(page)).toBeFocused();
+    await page.keyboard.type("/{{");
+    await page.keyboard.press("Escape");
+    await expect(picker(page)).toHaveCount(0);
+    await expect(linkUrlField(page)).toBeFocused();
+    await page.keyboard.press("Backspace");
+    await page.keyboard.press("Backspace");
+    await page.keyboard.press("Enter");
+    await expect
+      .poll(() => savedInline(page))
+      .toStrictEqual([
+        {
+          marks: [{ attrs: { href: "{{first_name}}/" }, type: "link" }],
+          text: "Hi",
+          type: "text",
+        },
+      ]);
+
+    await page.keyboard.press("ControlOrMeta+k");
+    await page.keyboard.type("{{");
+    await page.keyboard.press("Escape");
+    await expect(picker(page)).toHaveCount(0);
+    await expect(linkUrlField(page)).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(linkUrlField(page)).toHaveCount(0);
+    await expect(textBlock(page)).toBeFocused();
   });
 });

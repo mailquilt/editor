@@ -1,13 +1,21 @@
 import { describe, expect, it } from "vitest";
 
-import { createEditor, createEmail, loadDocument } from "../src/index.js";
+import {
+  BLOCK_TYPES,
+  createEditor,
+  createEmail,
+  loadDocument,
+} from "../src/index.js";
 import type { BlocksDocument, Operation } from "../src/index.js";
 import {
+  blockSettingsFields,
   blockStyles,
   EMAIL_SETTINGS_FIELDS,
   hexColor,
+  ROW_SETTINGS_FIELDS,
   rowStyles,
 } from "../src/internal.js";
+import type { SettingsField } from "../src/internal.js";
 
 const setup = () => {
   const document = createEmail();
@@ -283,6 +291,11 @@ describe("Email settings", () => {
     // Unicode case folding would read them as s and k.
     ["a language with ſ for s", { language: "ſv" }, /language/u],
     ["a language with K for k", { language: "\u212Ao" }, /language/u],
+    [
+      "a language with more than its Merge Tag",
+      { language: "en-{{region}}" },
+      /language/u,
+    ],
     ["a setting it doesn't have", { subject: "Hi" }, /subject/u],
   ])("refuses %s", (_name, settings, reason) => {
     const { editor } = setup();
@@ -432,5 +445,83 @@ describe("settings fields", () => {
     expect(options.map(({ value }) => value)).toContain(
       createEmail().settings.fontFamily
     );
+  });
+});
+
+const isText = ({ type }: SettingsField) => type === "text";
+
+/** What each text field of `fields` gave for a Merge Tag, by its key. */
+const acceptedTags = (
+  fields: () => readonly SettingsField[],
+  apply: (field: SettingsField) => unknown
+) => {
+  const results: Record<string, unknown> = {};
+  // One field at a time, in the panel's order, reading the fields again after
+  // each, as a field such as an Image's link waits for the one before it.
+  for (let index = 0; ; index += 1) {
+    const field = fields().filter(isText)[index];
+    if (!field) {
+      return results;
+    }
+    results[field.key] = field.disabled ? "disabled" : apply(field);
+  }
+};
+
+const allAccepted = (results: Record<string, unknown>) =>
+  Object.fromEntries(Object.keys(results).map((key) => [key, { ok: true }]));
+
+describe("a Merge Tag in a text setting", () => {
+  const TAG = "{{name}}";
+
+  it.each(BLOCK_TYPES.map(({ type }) => type))(
+    "is accepted as the whole value of each of a %s Block's",
+    (blockType) => {
+      const { editor } = setup();
+      const columnId = editor.getDocument().rows[0]?.columns[0]?.id as string;
+      editor.apply({ blockType, columnId, index: 0, type: "insertBlock" });
+      const block = () => {
+        const [first] = editor.getDocument().rows[0]?.columns[0]?.blocks ?? [];
+        return first as NonNullable<typeof first>;
+      };
+
+      const results = acceptedTags(
+        () => blockSettingsFields(block()),
+        ({ key }) =>
+          editor.apply({
+            blockId: block().id,
+            props: { [key]: TAG },
+            type: "updateBlockProps",
+          })
+      );
+
+      expect(results).toStrictEqual(allAccepted(results));
+    }
+  );
+
+  it("is accepted as the whole value of each of a Row's", () => {
+    const { editor, rowId } = setup();
+
+    const results = acceptedTags(
+      () => ROW_SETTINGS_FIELDS,
+      ({ key }) =>
+        editor.apply({ props: { [key]: TAG }, rowId, type: "updateRowProps" })
+    );
+
+    expect(results).toStrictEqual(allAccepted(results));
+  });
+
+  it("is accepted as the whole value of each of the email's", () => {
+    const { editor } = setup();
+
+    const results = acceptedTags(
+      () => EMAIL_SETTINGS_FIELDS,
+      ({ key }) =>
+        editor.apply({
+          settings: { [key]: TAG },
+          type: "updateEmailSettings",
+        })
+    );
+
+    expect(results).toStrictEqual(allAccepted(results));
   });
 });

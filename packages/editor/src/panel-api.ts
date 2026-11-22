@@ -1,5 +1,6 @@
 import type { BlocksDocument, RowLayout } from "@mailquilt/core";
 
+import type { ShownFieldPicker } from "./field-merge-tags.js";
 import type { BlockPosition, Direction, RowPosition } from "./positions.js";
 import type { PanelTab } from "./selection.js";
 import type { SettingsDrafts } from "./settings-panel.js";
@@ -97,6 +98,14 @@ export interface OwnPanelsApi {
   linkField: { refusals: number } | undefined;
   /** Set while the Merge Tag picker is open in the selected Block's text. */
   mergeTagPicker: ShownMergeTagPicker | undefined;
+  /**
+   * The Merge Tag picker for the fields that hold text or a URL: where it's
+   * open, and what a click on a tag does. Unset while the Host app gives no
+   * `mergeTags`.
+   */
+  fieldMergeTags:
+    | { shown: ShownFieldPicker | undefined; pick: (index: number) => void }
+    | undefined;
   /** What's typed in the settings fields and isn't the email's value. */
   drafts: SettingsDrafts;
 

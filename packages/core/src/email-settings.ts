@@ -1,6 +1,7 @@
 import * as v from "valibot";
 
 import type { EmailSettings } from "./document.js";
+import { MERGE_TAG } from "./rich-text.js";
 import { BACKGROUND_COLOR_FIELD, pixelField } from "./settings-fields.js";
 import type { SettingsField } from "./settings-fields.js";
 import { colorSchema, pixelSchema } from "./value-schemas.js";
@@ -27,9 +28,11 @@ export const emailSettingsSchema = v.strictObject({
 
 /**
  * A language a person sets has to be a code, because a screen reader reads the
- * email by it. A saved one isn't held to this: refusing it would keep the email
- * from opening, so nobody could fix it, and the renderer escapes whatever it is.
- * A subtag can be one letter, as in en-x-pirate, where it starts a private one.
+ * email by it, or one Merge Tag, which the sending tool fills with each
+ * recipient's code. A saved one isn't held to this: refusing it would keep the
+ * email from opening, so nobody could fix it, and the renderer escapes whatever
+ * it is. A subtag can be one letter, as in en-x-pirate, where it starts a
+ * private one.
  */
 export const newLanguageSettingsSchema = v.strictObject({
   ...emailSettingsSchema.entries,
@@ -37,8 +40,11 @@ export const newLanguageSettingsSchema = v.strictObject({
     v.pipe(
       v.string(),
       v.regex(
-        /^[A-Za-z]{2,3}(?:-[A-Za-z\d]{1,8})*$/u,
-        "Must be a language code such as en or pt-BR"
+        new RegExp(
+          `^(?:[A-Za-z]{2,3}(?:-[A-Za-z\\d]{1,8})*|${MERGE_TAG.source})$`,
+          "u"
+        ),
+        "Must be a language code such as en or pt-BR, or one Merge Tag"
       )
     )
   ),
@@ -73,8 +79,9 @@ export const EMAIL_SETTINGS_FIELDS: readonly SettingsField[] = [
     type: "text",
   },
   {
-    description: "A language code, such as en or pt-BR.",
-    invalidMessage: "Use a language code such as en or pt-BR.",
+    description: "A language code, such as en or pt-BR, or one Merge Tag.",
+    invalidMessage:
+      "Use a language code such as en or pt-BR, or one Merge Tag such as {{language}}.",
     key: "language",
     label: "Language",
     type: "text",
