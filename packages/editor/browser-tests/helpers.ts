@@ -2,7 +2,7 @@ import { AxeBuilder } from "@axe-core/playwright";
 import type { Block, BlockType } from "@mailquilt/core";
 import type { BlockProps } from "@mailquilt/core/internal";
 import { expect, test as base } from "@playwright/test";
-import type { BrowserContext, Locator, Page } from "@playwright/test";
+import type { BrowserContext, Locator, Page, Route } from "@playwright/test";
 
 import type { MailQuilt } from "../src/index.js";
 import { emailWith, emailWithInline } from "./host/email.js";
@@ -773,6 +773,24 @@ const PIXEL = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAEBgIApD5fRAAAAABJRU5ErkJggg==",
   "base64"
 );
+
+/** Stops MJML loading until the returned function is called. */
+export const holdMjml = async (page: Page) => {
+  const held: Route[] = [];
+  let released = false;
+  await page.route("**/*mjml-browser*", async (route) => {
+    // The request can arrive after the page shows its loading message.
+    if (released) {
+      await route.continue();
+    } else {
+      held.push(route);
+    }
+  });
+  return async () => {
+    released = true;
+    await Promise.all(held.map((route) => route.continue()));
+  };
+};
 
 /**
  * Serves every image from https://cdn.example, to the whole context, so that an

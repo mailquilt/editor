@@ -11,6 +11,7 @@ import {
   canvas,
   exportHtml,
   field,
+  holdMjml,
   palette,
   previewButton,
   previewDialog,
@@ -134,6 +135,31 @@ test("the Preview loads the icons from the folder the Host app gives now, not th
   await canvas(page).evaluate((element) => {
     (element as MailQuilt).socialIconsUrl = "https://icons.example/other/";
   });
+  await previewButton(page).click();
+
+  await expect(previewEmail(page).getByRole("img")).toHaveAttribute(
+    "src",
+    "https://icons.example/other/x-color.png"
+  );
+});
+
+test("a Preview rendered with the old folder isn't kept once the folder changes during it", async ({
+  page,
+}) => {
+  await openSocial(page, [{ network: "x", url: "https://x.com/shop" }]);
+  const release = await holdMjml(page);
+  await previewButton(page).click();
+  await canvas(page).evaluate((element) => {
+    (element as MailQuilt).socialIconsUrl = "https://icons.example/other/";
+  });
+  await release();
+  await expect(previewEmail(page).getByRole("img")).toHaveAttribute(
+    "src",
+    `${ICONS}x-color.png`
+  );
+  await page.keyboard.press("Escape");
+  await expect(previewDialog(page)).toBeHidden();
+
   await previewButton(page).click();
 
   await expect(previewEmail(page).getByRole("img")).toHaveAttribute(

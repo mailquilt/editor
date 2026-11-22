@@ -307,6 +307,8 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
     if (!this.#editor.value) {
       throw new Error("<mail-quilt-shell> has no document to export");
     }
+    // As the first update would pass it on, which can be yet to come too.
+    this.#editor.socialIconsUrl = this.socialIconsUrl;
     return await this.#editor.exportHtml();
   }
 

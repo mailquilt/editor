@@ -1,8 +1,9 @@
 import { expect } from "@playwright/test";
-import type { Page, Route } from "@playwright/test";
+import type { Page } from "@playwright/test";
 
 import type { MailQuilt } from "../src/index.js";
 import {
+  holdMjml,
   canvas,
   countHostEscapes,
   emailWith,
@@ -29,24 +30,6 @@ const previewFrame = (page: Page) => page.getByTitle("Email preview");
 
 const closeButton = (page: Page) =>
   previewDialog(page).getByRole("button", { name: "Close" });
-
-/** Stops MJML loading until the returned function is called. */
-const holdMjml = async (page: Page) => {
-  const held: Route[] = [];
-  let released = false;
-  await page.route("**/*mjml-browser*", async (route) => {
-    // The request can arrive after the page shows its loading message.
-    if (released) {
-      await route.continue();
-    } else {
-      held.push(route);
-    }
-  });
-  return async () => {
-    released = true;
-    await Promise.all(held.map((route) => route.continue()));
-  };
-};
 
 /** Counts the times `exportHtml` runs, which is what the Preview renders with. */
 const countExports = (page: Page) =>

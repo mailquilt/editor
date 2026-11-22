@@ -404,6 +404,8 @@ export const createPreview = ({
 }: PreviewHost) => {
   let shown: Preview | undefined;
   let rendered: string | undefined;
+  /** Counts each `forget`, so a render that was on its way then isn't kept. */
+  let forgotten = 0;
   let width: PreviewWidth = "desktop";
 
   const events: PreviewEvents = {
@@ -437,6 +439,7 @@ export const createPreview = ({
     /** The document changed, so its HTML has to be rendered again. */
     forget: () => {
       rendered = undefined;
+      forgotten += 1;
     },
     get isOpen() {
       return dialog()?.open ?? false;
@@ -463,11 +466,13 @@ export const createPreview = ({
         }
       }, LOADING_SAID_AFTER_MS);
 
+      const rendering = forgotten;
       try {
         const email = await exportHtml();
         preview.result = { html: email };
-        // Closed in the meantime, so the document may have changed since.
-        if (shown === preview) {
+        // Closed in the meantime, so the document may have changed since, or
+        // what it's rendered with changed while it rendered.
+        if (shown === preview && rendering === forgotten) {
           rendered = email;
         }
       } catch (error) {
