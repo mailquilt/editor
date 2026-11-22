@@ -28,6 +28,10 @@ const ROW_MOVE_BUTTONS = (["up", "down"] as const).map((direction) => ({
   ...keyLabel("rowToolbar", "moveRow", { direction }),
 }));
 
+const DUPLICATE_BLOCK = keyLabel("blockToolbar", "duplicateBlock");
+const DUPLICATE_ROW = keyLabel("rowToolbar", "duplicateRow");
+/** Delete and Backspace work in a Row's toolbar, not in a Block's. */
+const DELETE_ROW = keyLabel("rowToolbar", "deleteRow");
 const UNDO = keyLabel("editor", "undo");
 const REDO = keyLabel("editor", "redo");
 
@@ -678,10 +682,24 @@ const renderRowToolbar = (
         `
       )}
       <button
+        aria-keyshortcuts=${DUPLICATE_ROW.shortcuts}
+        aria-label="Duplicate Row"
+        class="icon-button"
+        data-action="duplicate"
+        data-tooltip=${`Duplicate Row (${DUPLICATE_ROW.keys})`}
+        tabindex="-1"
+        type="button"
+        @click=${({ detail }: MouseEvent) =>
+          api.duplicateRow(row.id, detail === 0)}
+      >
+        ${ICONS.duplicate}
+      </button>
+      <button
+        aria-keyshortcuts=${DELETE_ROW.shortcuts}
         aria-label="Delete Row"
         class="icon-button danger"
         data-action="delete"
-        data-tooltip="Delete Row"
+        data-tooltip=${`Delete Row (${DELETE_ROW.keys})`}
         tabindex="-1"
         type="button"
         @click=${({ detail }: MouseEvent) => api.deleteRow(row.id, detail === 0)}
@@ -720,6 +738,18 @@ const renderBlockToolbar = (api: PanelApi) => html`
       `
     )}
     <span class="separator"></span>
+    <button
+      aria-keyshortcuts=${DUPLICATE_BLOCK.shortcuts}
+      aria-label="Duplicate Block"
+      class="icon-button"
+      data-action="duplicate"
+      data-tooltip=${`Duplicate Block (${DUPLICATE_BLOCK.keys})`}
+      tabindex="-1"
+      type="button"
+      @click=${({ detail }: MouseEvent) => api.duplicateBlock(detail === 0)}
+    >
+      ${ICONS.duplicate}
+    </button>
     <button
       aria-label="Delete Block"
       class="icon-button danger"

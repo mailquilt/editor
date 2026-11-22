@@ -1,10 +1,13 @@
+import { ROW_LAYOUTS } from "@mailquilt/core";
 import type {
   ApplyResult,
   BlocksDocument,
   Command,
   Operation,
+  Row,
   RowLayout,
 } from "@mailquilt/core";
+import { rowLayoutOf } from "@mailquilt/core/internal";
 
 import type { Announcements } from "./announcements.js";
 import type { EditorFocus } from "./focus.js";
@@ -44,9 +47,17 @@ interface EditingHost {
   >;
   selection: Pick<
     EditorSelection,
-    "blockId" | "rowId" | "selectLanded" | "selectRow"
+    "blockId" | "rowId" | "select" | "selectLanded" | "selectRow"
   >;
 }
+
+/**
+ * A Row's layout, or for Column widths that aren't one, as a saved email may
+ * have, the layout with as many Columns, all the same width.
+ */
+const layoutOf = (row: Row) =>
+  rowLayoutOf(row) ??
+  ROW_LAYOUTS.find((layout) => layout.split("/").length === row.columns.length);
 
 export type EditingActions = ReturnType<typeof createEditingActions>;
 
@@ -221,6 +232,62 @@ export const createEditingActions = ({
       selection.selectLanded(
         "blockId" in source ? source.blockId : result.createdId
       );
+    },
+
+    /**
+     * A copy of the selected Block right after it, which is selected. From the
+     * keyboard, focus goes to the copy itself, ready for the next key, and
+     * otherwise into its text, as for a new Block.
+     */
+    duplicateBlock: (fromKeyboard: boolean) => {
+      const email = current();
+      const selected = email && selectedBlock(email);
+      if (!selected) {
+        return;
+      }
+      const { block, columnId, index } = selected;
+      const result = apply({
+        blockType: block.type,
+        columnId,
+        index: index + 1,
+        props: block.props,
+        type: "insertBlock",
+      });
+      if (!result?.ok || result.createdId === undefined) {
+        return;
+      }
+      const blockId = result.createdId;
+      if (fromKeyboard) {
+        selection.select({ blockId });
+        focus.focusWhenRendered({ blockId, on: "block" });
+      } else {
+        selection.selectLanded(blockId);
+      }
+      announcements.blockMoved(blockId, "Block duplicated,");
+    },
+
+    /** A copy of a Row, with its Blocks, right after it, which is selected. */
+    duplicateRow: (rowId: string, fromKeyboard: boolean) => {
+      const email = current();
+      const position = email && locateRow(email, rowId);
+      const layout = position && layoutOf(position.row);
+      if (!(position && layout)) {
+        return;
+      }
+      const { row, rowIndex } = position;
+      const result = apply({
+        columns: row.columns.map(({ blocks }) => ({
+          blocks: blocks.map(({ props, type }) => ({ props, type })),
+        })),
+        index: rowIndex + 1,
+        layout,
+        props: row.props,
+        type: "insertRow",
+      });
+      if (result?.ok && result.createdId !== undefined) {
+        selection.selectRow(result.createdId, fromKeyboard);
+        announcements.rowMoved(result.createdId, "Row duplicated,");
+      }
     },
 
     /**

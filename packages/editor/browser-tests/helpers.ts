@@ -340,7 +340,7 @@ export const hoverRow = (page: Page, position: number) =>
  * Shows a Row's toolbar. While one of its Blocks is selected, it only shows
  * once its tag has selected the Row.
  */
-const showRowTools = async (page: Page, position: number) => {
+export const showRowTools = async (page: Page, position: number) => {
   await hoverRow(page, position);
   if (
     (await rowFrame(page, position)

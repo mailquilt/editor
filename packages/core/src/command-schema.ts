@@ -8,9 +8,10 @@ const indexSchema = v.pipe(v.number(), v.safeInteger(), v.minValue(0));
 const layoutSchema = v.picklist(ROW_LAYOUTS);
 
 /**
- * Changes to a Block's, Row's or the email's properties. Not v.record, which
- * accepts an array and silently drops a key such as "constructor". An undefined
- * changes nothing, as the key would be gone once the Command is JSON.
+ * A Block's, Row's or the email's properties, or changes to them. Not
+ * v.record, which accepts an array and silently drops a key such as
+ * "constructor". An undefined is left out, as the key would be gone once the
+ * Command is JSON.
  */
 const changesSchema = v.pipe(
   v.custom<Record<string, unknown>>(
@@ -25,6 +26,18 @@ const changesSchema = v.pipe(
   )
 );
 
+/** A new Block's content, for `insertRow`. Core gives it an ID. */
+export interface NewBlock {
+  type: string;
+  /** Its props, or else its type's defaults. */
+  props?: Record<string, unknown>;
+}
+
+/** A new Column's content, for `insertRow`. Its width comes from the layout. */
+export interface NewColumn {
+  blocks: NewBlock[];
+}
+
 /** A request to change an email. It can be refused. */
 export type Command =
   | {
@@ -34,7 +47,14 @@ export type Command =
     }
   | { type: "updateRowProps"; rowId: string; props: Record<string, unknown> }
   | { type: "updateEmailSettings"; settings: Record<string, unknown> }
-  | { type: "insertBlock"; blockType: string; columnId: string; index: number }
+  | {
+      type: "insertBlock";
+      blockType: string;
+      columnId: string;
+      index: number;
+      /** The new Block's props, or else its type's defaults. */
+      props?: Record<string, unknown>;
+    }
   | { type: "removeBlock"; blockId: string }
   | {
       type: "moveBlock";
@@ -44,8 +64,23 @@ export type Command =
       index: number;
     }
   | { type: "moveBlockToNewRow"; blockId: string; rowIndex: number }
-  | { type: "insertBlockInNewRow"; blockType: string; rowIndex: number }
-  | { type: "insertRow"; index: number; layout: RowLayout }
+  | {
+      type: "insertBlockInNewRow";
+      blockType: string;
+      rowIndex: number;
+      /** The new Block's props, or else its type's defaults. */
+      props?: Record<string, unknown>;
+    }
+  | {
+      type: "insertRow";
+      index: number;
+      /** Its Columns' widths come from it. */
+      layout: RowLayout;
+      /** The new Row's props, or else none. */
+      props?: Record<string, unknown>;
+      /** One for each of the layout's Columns, or else each is empty. */
+      columns?: NewColumn[];
+    }
   | { type: "removeRow"; rowId: string }
   | {
       type: "moveRow";
@@ -75,6 +110,7 @@ export const commandSchema = v.variant("type", [
     blockType: v.string(),
     columnId: v.string(),
     index: indexSchema,
+    props: v.optional(changesSchema),
     type: v.literal("insertBlock"),
   }),
   v.strictObject({
@@ -94,12 +130,26 @@ export const commandSchema = v.variant("type", [
   }),
   v.strictObject({
     blockType: v.string(),
+    props: v.optional(changesSchema),
     rowIndex: indexSchema,
     type: v.literal("insertBlockInNewRow"),
   }),
   v.strictObject({
+    columns: v.optional(
+      v.array(
+        v.strictObject({
+          blocks: v.array(
+            v.strictObject({
+              props: v.optional(changesSchema),
+              type: v.string(),
+            })
+          ),
+        })
+      )
+    ),
     index: indexSchema,
     layout: layoutSchema,
+    props: v.optional(changesSchema),
     type: v.literal("insertRow"),
   }),
   v.strictObject({

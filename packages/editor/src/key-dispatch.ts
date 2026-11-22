@@ -25,7 +25,16 @@ interface KeyDispatchHost {
   /** Whether there's a step to take that way. */
   canStep: (step: "redo" | "undo") => boolean;
   drafts: { discard: (event: KeyboardEvent) => void };
-  editing: Pick<EditingActions, "moveBlock" | "moveRow" | "selectNeighbour">;
+  editing: Pick<
+    EditingActions,
+    | "deleteBlock"
+    | "deleteRow"
+    | "duplicateBlock"
+    | "duplicateRow"
+    | "moveBlock"
+    | "moveRow"
+    | "selectNeighbour"
+  >;
   /** The Merge Tag picker under a field that holds text or a URL. */
   fieldMergeTags: Pick<
     FieldMergeTags,
@@ -49,6 +58,10 @@ const toolbarStep =
   (step: ToolbarStep) =>
   ({ target }: KeyboardEvent) =>
     focusToolbarButton(target as Element, step);
+
+/** The Row whose toolbar a key was pressed in. */
+const rowOf = ({ target }: KeyboardEvent) =>
+  closestPlace(target as Element, "row")?.dataset.rowId;
 
 export const createKeyDispatch = ({
   canStep,
@@ -85,7 +98,21 @@ export const createKeyDispatch = ({
     closeMergeTagPicker: (event) => pickerOf(event)?.closeMergeTagPicker(),
     // The browser closes the dialog.
     closePreview: doNothing,
+    deleteBlock: () => editing.deleteBlock(true),
+    deleteRow: (event) => {
+      const rowId = rowOf(event);
+      if (rowId !== undefined) {
+        editing.deleteRow(rowId, true);
+      }
+    },
     discardDraft: (event) => drafts.discard(event),
+    duplicateBlock: () => editing.duplicateBlock(true),
+    duplicateRow: (event) => {
+      const rowId = rowOf(event);
+      if (rowId !== undefined) {
+        editing.duplicateRow(rowId, true);
+      }
+    },
     editText: () => focus.focus({ on: "text" }),
     firstButton: toolbarStep("first"),
     focusFormatBar: () => focus.focus({ on: "formatBar" }),
@@ -109,8 +136,8 @@ export const createKeyDispatch = ({
     (event: KeyboardEvent, direction: Direction) => void
   > = {
     moveBlock: (_event, direction) => editing.moveBlock(direction),
-    moveRow: ({ target }, direction) => {
-      const rowId = closestPlace(target as Element, "row")?.dataset.rowId;
+    moveRow: (event, direction) => {
+      const rowId = rowOf(event);
       if (rowId !== undefined) {
         editing.moveRow(rowId, direction);
       }

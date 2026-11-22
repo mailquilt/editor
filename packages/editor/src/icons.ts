@@ -35,6 +35,10 @@ export const ICONS = {
     svg`<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />`
   ),
   down: icon(svg`<path d="M12 5v14M6 13l6 6 6-6" />`),
+  /** One square over another, as a copy over what it's a copy of. */
+  duplicate: icon(
+    svg`<rect height="12" rx="2" width="12" x="8" y="8" /><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />`
+  ),
   grip: icon(
     svg`<g fill="currentColor" stroke="none"><circle cx="9" cy="6" r="1.5" /><circle cx="15" cy="6" r="1.5" /><circle cx="9" cy="12" r="1.5" /><circle cx="15" cy="12" r="1.5" /><circle cx="9" cy="18" r="1.5" /><circle cx="15" cy="18" r="1.5" /></g>`
   ),

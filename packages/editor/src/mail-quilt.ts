@@ -391,6 +391,10 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     deleteRow: (rowId, fromKeyboard) =>
       this.#editing.deleteRow(rowId, fromKeyboard),
     drafts: this.#drafts.fields,
+    duplicateBlock: (fromKeyboard) =>
+      this.#editing.duplicateBlock(fromKeyboard),
+    duplicateRow: (rowId, fromKeyboard) =>
+      this.#editing.duplicateRow(rowId, fromKeyboard),
     insertLineBreak: () => this.#selection.selectedText?.insertLineBreak(),
     moveBlock: (direction) => this.#editing.moveBlock(direction),
     moveRow: (rowId, direction) => this.#editing.moveRow(rowId, direction),

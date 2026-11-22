@@ -19,7 +19,7 @@ export type {
   RichTextParagraph,
   RichTextText,
 } from "./rich-text.js";
-export type { Command } from "./command-schema.js";
+export type { Command, NewBlock, NewColumn } from "./command-schema.js";
 export type { RefusalCode } from "./commands.js";
 export type { RowLayout } from "./row-layouts.js";
 export { ROW_LAYOUTS } from "./row-layouts.js";

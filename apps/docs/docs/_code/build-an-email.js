@@ -16,19 +16,13 @@ editor.apply({
   type: "updateBlockProps",
 });
 
-// A Command that adds something returns the ID of what it added.
-const heading = editor.apply({
+// A Command that adds a Block can give it its content too.
+editor.apply({
   blockType: "heading",
+  props: { content: paragraph("On its way"), level: 1 },
   rowIndex: 0,
   type: "insertBlockInNewRow",
 });
-if (heading.ok) {
-  editor.apply({
-    blockId: heading.createdId,
-    props: { content: paragraph("On its way") },
-    type: "updateBlockProps",
-  });
-}
 
 // A Command the email can't take is refused, and the email stays as it was.
 const refused = editor.apply({
