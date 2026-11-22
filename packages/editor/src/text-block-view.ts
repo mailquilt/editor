@@ -468,9 +468,12 @@ export const createTextBlockView = ({
       // Undoing a List keeps the selection on the same text, which the List's
       // structure has moved.
       const keepsText = paragraphsOf(doc) === paragraphsOf(nextDoc);
-      // Undoing a format change leaves every position where it was.
+      // Undoing a format change leaves every position where it was. A Merge
+      // Tag and its name typed as text read the same, but differ in size.
       const keepsSelection =
-        keepsText && paragraphStarts(doc) === paragraphStarts(nextDoc);
+        keepsText &&
+        doc.content.size === nextDoc.content.size &&
+        paragraphStarts(doc) === paragraphStarts(nextDoc);
       const tr = view.state.tr.replaceWith(
         0,
         doc.content.size,

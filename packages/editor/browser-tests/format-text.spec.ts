@@ -926,6 +926,37 @@ test.describe("undo and redo", () => {
     await expect.poll(() => savedOutline(page)).toStrictEqual(["Hello!y"]);
   });
 
+  test("redoing bold that made a typed tag one unit shows it, and keeps the text", async ({
+    page,
+  }) => {
+    await setValue(page, emailWith([[["{{x}}"]]]));
+    await selectAllInBlock(page);
+    await page.keyboard.press("ControlOrMeta+b");
+    await expect
+      .poll(() => savedInline(page))
+      .toStrictEqual([
+        { attrs: { name: "x" }, marks: [{ type: "bold" }], type: "mergeTag" },
+      ]);
+    await undoByKey(page);
+    await expect
+      .poll(() => savedInline(page))
+      .toStrictEqual([{ text: "{{x}}", type: "text" }]);
+    // After the text's last brace, past where the tag ends.
+    await selectAll(page);
+    await pressArrow(page, "ArrowRight");
+
+    await redoByKey(page);
+
+    await expect
+      .poll(() => savedInline(page))
+      .toStrictEqual([
+        { attrs: { name: "x" }, marks: [{ type: "bold" }], type: "mergeTag" },
+      ]);
+    await expect(
+      textBlock(page).first().locator("strong [data-merge-tag]")
+    ).toHaveCount(1);
+  });
+
   test("undoing a List over Lists of both kinds and a paragraph keeps all the selected text selected", async ({
     page,
   }) => {
