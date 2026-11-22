@@ -1,0 +1,18 @@
+diff --git a/src/components/layout/Search.astro b/src/components/layout/Search.astro
+index a95c8951b0a961b6f23750ce7c8ef578298c499d..97c5f5edb4f50e0c02622e6ff0ff143592221852 100644
+--- a/src/components/layout/Search.astro
++++ b/src/components/layout/Search.astro
+@@ -392,7 +392,12 @@ const kbd = "rounded border border-border bg-muted px-1 py-0.5 font-mono";
+           } else {
+             this.open();
+           }
+-        } else if (event.key === "/" && !this.isField(event.target)) {
++        } else if (
++          event.key === "/" &&
++          // The element typed in, even inside a shadow root, where the
++          // event's target is only the host element.
++          !this.isField(event.composedPath()[0] ?? null)
++        ) {
+           // "/" stays open-only; the field guard keeps it inert while
+           // typing (including in the search input itself).
+           event.preventDefault();

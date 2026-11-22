@@ -95,6 +95,30 @@ test("on a phone, the Shell is only as tall as its notice", async ({
   );
 });
 
+test("a slash typed in the editor's fields stays there, and doesn't open search", async ({
+  browserName,
+  page,
+}) => {
+  test.skip(
+    browserName !== "chromium",
+    "Checks the page's own code, which is the same in every browser."
+  );
+  await page.goto(PLAYGROUND);
+  await page.getByRole("group", { name: /^Button Block/u }).click();
+  const link = page.getByRole("textbox", { name: "Link" });
+
+  await link.click();
+  await page.keyboard.type("https://example.com/offer");
+
+  await expect(link).toHaveValue("https://example.com/offer");
+  const search = page.getByRole("combobox", { name: "Search docs" });
+  await expect(search).toBeHidden();
+  // Outside a field, the slash still opens it.
+  await page.locator("h1").click();
+  await page.keyboard.press("/");
+  await expect(search).toBeFocused();
+});
+
 test("says so when the editor's code doesn't load", async ({
   browserName,
   page,

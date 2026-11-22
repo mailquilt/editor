@@ -14,3 +14,6 @@ publicHoistPattern:
 overrides:
   path-to-regexp@6.1.0: 6.3.0
   postcss-selector-parser@6.0.10: 6.1.6
+
+patchedDependencies:
+  blume@2.2.7: patches/blume@2.2.7.patch
