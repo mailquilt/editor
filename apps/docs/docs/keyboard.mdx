@@ -89,15 +89,15 @@ line, and put it back.
 
 ## Picking a Merge Tag
 
-When your app gives the editor its [Merge Tags](./api#merge-tags), typing `{{` in a Block's text opens a list of them at the cursor, and what's typed after `{{` narrows it. The format bar's Merge Tag button types `{{` for you. Focus stays in the text, and a screen reader is told the highlighted tag as it changes.
+When your app gives the editor its [Merge Tags](./api#merge-tags), typing `{{` in a Block's text opens a list of them at the cursor, and what's typed after `{{` narrows it. The format bar's Merge Tag button types `{{` for you. Focus stays in the text, and a screen reader is told the highlighted tag as it changes. Typing `{{` in a settings field that holds text or a URL, or in the link field, opens the same list under the field, with the same keys.
 
 | Key | What it does |
 | --- | --- |
 | <kbd>Up</kbd> <kbd>Down</kbd> | Highlights the tag before or after, going round from either end. |
 | <kbd>Enter</kbd> or <kbd>Tab</kbd> | Puts in the highlighted tag, in place of the `{{` and what was typed after it. |
-| <kbd>Escape</kbd> | Closes the list and leaves the text as typed. The next <kbd>Escape</kbd> comes back out of the text to the Block. |
+| <kbd>Escape</kbd> | Closes the list and leaves the text as typed. The next <kbd>Escape</kbd> comes back out of the text to the Block, takes back what was typed in a settings field, or closes the link field. |
 
-Every other key does what it does in text, so typing goes on, and typing `}}` makes a tag of what was typed, listed or not. Leaving the text closes the list too.
+In a field, <kbd>Enter</kbd> puts in the tag as the text `{{name}}` without applying the field, and the next <kbd>Enter</kbd> applies it. Every other key does what it does in text, or in the field, so typing goes on. In text, typing `}}` makes a tag of what was typed, listed or not. Leaving the text or the field closes the list too.
 
 ## Undo and redo
 
@@ -138,6 +138,6 @@ Opening Preview moves focus to its Close button. <kbd>Escape</kbd> closes it, an
 
 ## How it's tested
 
-The editor's browser tests press these keys in Chromium, Firefox and WebKit. They also run [axe-core](https://github.com/dequelabs/axe-core) with its WCAG 2.2 AA rules against the editor in several states: with Columns and empty Columns, with a Block selected, with the link field showing an error, with the Merge Tag picker open, and with Preview open.
+The editor's browser tests press these keys in Chromium, Firefox and WebKit. They also run [axe-core](https://github.com/dequelabs/axe-core) with its WCAG 2.2 AA rules against the editor in several states: with Columns and empty Columns, with a Block selected, with the link field showing an error, with the Merge Tag picker open in text and under a settings field, and with Preview open.
 
 Automated checks don't find everything. The [accessibility statement](./accessibility) says which WCAG 2.2 criteria the editor meets, what it doesn't, and how each was checked. If a screen reader or another tool has trouble with the editor, please [open an issue](https://github.com/mailquilt/editor/issues).

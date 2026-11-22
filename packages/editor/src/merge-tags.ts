@@ -221,8 +221,11 @@ const queryAt = ({ selection }: EditorState): Query | undefined => {
     : undefined;
 };
 
-/** The tags whose name or label has `text` in it, whatever its case. */
-const matching = (tags: readonly MergeTag[], text: string) => {
+/**
+ * The tags whose name or label has `text` in it, whatever its case, leaving out
+ * any whose name text can't hold.
+ */
+export const matching = (tags: readonly MergeTag[], text: string) => {
   const wanted = text.trim().toLowerCase();
   return tags.filter(
     ({ label, name }) =>

@@ -1,5 +1,6 @@
 import type { EditingActions } from "./editing-actions.js";
 import { closestPlace, placeOf } from "./editor-places.js";
+import type { FieldMergeTags } from "./field-merge-tags.js";
 import { focusToolbarButton } from "./focus.js";
 import type { EditorFocus, ToolbarStep } from "./focus.js";
 import {
@@ -25,6 +26,11 @@ interface KeyDispatchHost {
   canStep: (step: "redo" | "undo") => boolean;
   drafts: { discard: (event: KeyboardEvent) => void };
   editing: Pick<EditingActions, "moveBlock" | "moveRow" | "selectNeighbour">;
+  /** The Merge Tag picker under a field that holds text or a URL. */
+  fieldMergeTags: Pick<
+    FieldMergeTags,
+    "closeMergeTagPicker" | "isOpenIn" | "moveInMergeTagPicker" | "pickMergeTag"
+  >;
   focus: Pick<EditorFocus, "focus" | "focusIsOutsideText">;
   isDragging: () => boolean;
   linkForm: { cancel: () => void; open: () => void };
@@ -48,6 +54,7 @@ export const createKeyDispatch = ({
   canStep,
   drafts,
   editing,
+  fieldMergeTags,
   focus,
   isDragging,
   linkForm,
@@ -60,6 +67,13 @@ export const createKeyDispatch = ({
   /** The keys a Block's text answered. */
   const answeredInText = new WeakSet<KeyboardEvent>();
 
+  /**
+   * The picker a key was pressed with open: under the field the key was
+   * pressed in, or else in the selected Block's text.
+   */
+  const pickerOf = ({ target }: KeyboardEvent) =>
+    fieldMergeTags.isOpenIn(target) ? fieldMergeTags : selection.selectedText;
+
   /** What each action in the key map does here. */
   const actions: Record<
     Exclude<Action, DirectedAction>,
@@ -68,8 +82,7 @@ export const createKeyDispatch = ({
     backToBlock: () => focus.focus({ on: "block" }),
     backToText: () => focus.focus({ on: "text" }),
     cancelLink: () => linkForm.cancel(),
-    // The key was pressed in the selected Block's text, which has the picker.
-    closeMergeTagPicker: () => selection.selectedText?.closeMergeTagPicker(),
+    closeMergeTagPicker: (event) => pickerOf(event)?.closeMergeTagPicker(),
     // The browser closes the dialog.
     closePreview: doNothing,
     discardDraft: (event) => drafts.discard(event),
@@ -80,11 +93,11 @@ export const createKeyDispatch = ({
     lastButton: toolbarStep("last"),
     leaveToolbar: toolbarStep("leave"),
     nextButton: toolbarStep("next"),
-    nextMergeTag: () => selection.selectedText?.moveInMergeTagPicker(1),
+    nextMergeTag: (event) => pickerOf(event)?.moveInMergeTagPicker(1),
     openLinkField: () => linkForm.open(),
-    pickMergeTag: () => selection.selectedText?.pickMergeTag(),
+    pickMergeTag: (event) => pickerOf(event)?.pickMergeTag(),
     previousButton: toolbarStep("previous"),
-    previousMergeTag: () => selection.selectedText?.moveInMergeTagPicker(-1),
+    previousMergeTag: (event) => pickerOf(event)?.moveInMergeTagPicker(-1),
     redo: () => stepHistory("redo"),
     typeInField: doNothing,
     undo: () => stepHistory("undo"),
@@ -148,11 +161,19 @@ export const createKeyDispatch = ({
 
     /**
      * Every key pressed in the editor but one a Block's text answered, which
-     * acts on a key before it bubbles out. The key map says what it does there.
+     * acts on a key before it bubbles out. The key map says what it does there,
+     * and in a field with the Merge Tag picker open, asks the picker first.
      */
     onKeydown: (event: Event) => {
       const keydown = event as KeyboardEvent;
       if (answeredInText.has(keydown)) {
+        return;
+      }
+      const picking =
+        fieldMergeTags.isOpenIn(keydown.target) &&
+        keyFor("pickerOpen", keydown, context());
+      if (picking) {
+        act(keydown, picking);
         return;
       }
       const scope = placeOf(keydown.target as Element, hasKeys);

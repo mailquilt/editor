@@ -8,6 +8,8 @@ import { live } from "lit/directives/live.js";
 
 import { place } from "./editor-places.js";
 import { ICONS } from "./icons.js";
+import { NO_FIELD_TAGS } from "./merge-tag-picker.js";
+import type { FieldTags } from "./merge-tag-picker.js";
 
 /** One group of controls, and what its fields change. */
 export interface SettingsSection {
@@ -345,9 +347,14 @@ export const fieldValue = (field: SettingsField, typed: Typed) => {
 const renderField = (
   section: SettingsSection,
   field: SettingsField,
-  drafts: SettingsDrafts
+  drafts: SettingsDrafts,
+  tagsOf: (fieldId: string) => FieldTags
 ) => {
   const id = `settings-${section.id}-${field.key}`;
+  // Every field that holds text, or a URL, takes Merge Tags.
+  const tags =
+    field.type === "text" && !field.disabled ? tagsOf(id) : NO_FIELD_TAGS;
+  const description = [field.description, tags.hint].filter(Boolean).join(" ");
   const descriptionId = `${id}-description`;
   const errorId = `${id}-error`;
   const extra = section.extras?.[field.key];
@@ -358,7 +365,7 @@ const renderField = (
   const refused = refusals > 0;
   const text = fieldText(field, section.values);
   const describedBy = [
-    field.description ? descriptionId : "",
+    description ? descriptionId : "",
     refused ? errorId : "",
     extra?.error ? extraErrorId : "",
   ]
@@ -378,10 +385,13 @@ const renderField = (
     limits?: { max?: number; min: number }
   ) => html`
     <input
+      aria-activedescendant=${tags.activeDescendant}
+      aria-controls=${tags.controls}
       aria-describedby=${describedBy || nothing}
       aria-invalid=${refused ? "true" : "false"}
       autocomplete="off"
       data-draft-key=${key}
+      ?data-merge-tags=${tags.hint !== ""}
       data-place=${draft ? place("settingsDraft") : nothing}
       ?disabled=${field.disabled ?? false}
       id=${id}
@@ -474,13 +484,10 @@ const renderField = (
           ? html`<div class="with-control">${control()}${extra.control}</div>`
           : control()
       }
+      ${tags.list}
       ${
-        field.description
-          ? html`
-              <p class="description" id=${descriptionId}>
-                ${field.description}
-              </p>
-            `
+        description
+          ? html`<p class="description" id=${descriptionId}>${description}</p>`
           : nothing
       }
       ${
@@ -507,13 +514,16 @@ const renderField = (
 /** The one settings panel: every control in it comes from fields that are data. */
 export const renderSettingsPanel = (
   section: SettingsSection,
-  drafts: SettingsDrafts
+  drafts: SettingsDrafts,
+  tagsOf: (fieldId: string) => FieldTags
 ) => html`
   <div class="settings" data-place=${place("settings")}>
     <div class="section">
       <fieldset>
         <legend>${section.legend}</legend>
-        ${section.fields.map((field) => renderField(section, field, drafts))}
+        ${section.fields.map((field) =>
+          renderField(section, field, drafts, tagsOf)
+        )}
       </fieldset>
     </div>
   </div>

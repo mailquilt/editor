@@ -6,6 +6,7 @@ import { place } from "./editor-places.js";
 import { ICONS } from "./icons.js";
 import type { KeyLabel } from "./key-map.js";
 import { keyLabel, textKeyLabel } from "./key-map.js";
+import { fieldTags } from "./merge-tag-picker.js";
 import type { OwnPanelsApi, PanelApi } from "./panel-api.js";
 import type { TextBlockView } from "./text-block-view.js";
 import type { ToggleableMark } from "./text-commands.js";
@@ -70,6 +71,14 @@ export const formatBarStyles = css`
     flex-basis: 100%;
     font-size: var(--mq-font-size-small);
     margin: 0;
+  }
+
+  .link-form .description {
+    color: var(--mq-color-text-muted);
+  }
+
+  .link-form .field-merge-tag-picker {
+    flex-basis: 100%;
   }
 `;
 
@@ -163,56 +172,81 @@ export const createLinkForm = ({
   };
 };
 
+const LINK_URL_ID = "link-url";
+
 const renderLinkForm = (
   refusals: number,
   href: string | undefined,
   api: PanelApi
-) => html`
-  <form
-    class="link-form"
-    data-place=${place("linkField")}
-    novalidate
-    @submit=${(event: SubmitEvent) => {
-      event.preventDefault();
-      const form = event.target as HTMLFormElement;
-      api.submitLink(String(new FormData(form).get("href")).trim());
-    }}
-  >
-    <label>
-      Link URL
-      <input
-        aria-describedby=${refusals ? "link-error" : nothing}
-        aria-invalid=${refusals ? "true" : "false"}
-        autocomplete="off"
-        name="href"
-        spellcheck="false"
-        type="text"
-        value=${href ?? ""}
-      />
-    </label>
-    <button class="text-button primary" type="submit">Apply</button>
-    ${
-      href === undefined
-        ? nothing
-        : html`
-            <button class="text-button" type="button" @click=${api.removeLink}>
-              Remove link
-            </button>
-          `
-    }
-    <button class="text-button" type="button" @click=${api.cancelLink}>
-      Cancel
-    </button>
-    ${
-      refusals
-        ? keyed(
-            refusals,
-            html`<p id="link-error" role="alert">${INVALID_LINK}</p>`
-          )
-        : nothing
-    }
-  </form>
-`;
+) => {
+  const tags = fieldTags(api)(LINK_URL_ID);
+  const describedBy = [
+    tags.hint ? "link-description" : "",
+    refusals ? "link-error" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  return html`
+    <form
+      class="link-form"
+      data-place=${place("linkField")}
+      novalidate
+      @submit=${(event: SubmitEvent) => {
+        event.preventDefault();
+        const form = event.target as HTMLFormElement;
+        api.submitLink(String(new FormData(form).get("href")).trim());
+      }}
+    >
+      <label>
+        Link URL
+        <input
+          aria-activedescendant=${tags.activeDescendant}
+          aria-controls=${tags.controls}
+          aria-describedby=${describedBy || nothing}
+          aria-invalid=${refusals ? "true" : "false"}
+          autocomplete="off"
+          ?data-merge-tags=${tags.hint !== ""}
+          id=${LINK_URL_ID}
+          name="href"
+          spellcheck="false"
+          type="text"
+          value=${href ?? ""}
+        />
+      </label>
+      ${tags.list}
+      ${
+        tags.hint
+          ? html`<p class="description" id="link-description">${tags.hint}</p>`
+          : nothing
+      }
+      <button class="text-button primary" type="submit">Apply</button>
+      ${
+        href === undefined
+          ? nothing
+          : html`
+              <button
+                class="text-button"
+                type="button"
+                @click=${api.removeLink}
+              >
+                Remove link
+              </button>
+            `
+      }
+      <button class="text-button" type="button" @click=${api.cancelLink}>
+        Cancel
+      </button>
+      ${
+        refusals
+          ? keyed(
+              refusals,
+              html`<p id="link-error" role="alert">${INVALID_LINK}</p>`
+            )
+          : nothing
+      }
+    </form>
+  `;
+};
 
 /**
  * Next to the text being edited. Alt+F10 reaches it from the text and Escape

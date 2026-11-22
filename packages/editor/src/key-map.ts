@@ -290,8 +290,9 @@ const KEY_SCOPES = {
     within: "email",
   },
   /**
-   * A Block's text while the Merge Tag picker is open, which the text asks
-   * before its own keys. Focus stays in the text, so this isn't a place.
+   * A Block's text, or a field that holds text or a URL, while the Merge Tag
+   * picker is open, which is asked before their own keys. Focus stays where it
+   * is, so this isn't a place. Text and fields add no keys of their own here.
    */
   pickerOpen: {
     keys: [

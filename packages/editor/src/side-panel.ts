@@ -14,6 +14,7 @@ import { BLOCK_VIEWS } from "./block-types.js";
 import { place } from "./editor-places.js";
 import { ICONS } from "./icons.js";
 import { UPLOADABLE_TYPES } from "./image-uploads.js";
+import { fieldTags } from "./merge-tag-picker.js";
 import type { PanelApi } from "./panel-api.js";
 import { columnLabel } from "./positions.js";
 import type { BlockPosition, RowPosition } from "./positions.js";
@@ -436,7 +437,7 @@ const renderRowProperties = ({ row, rowIndex }: RowPosition, api: PanelApi) => {
           )}
         </div>
       </div>
-      ${renderSettingsPanel(section, api.drafts)}
+      ${renderSettingsPanel(section, api.drafts, fieldTags(api))}
     </div>
   `;
 };
@@ -517,7 +518,7 @@ const renderProperties = (
       api
     )}
     <div class="panel-scroll thin-scrollbar">
-      ${renderSettingsPanel(section, api.drafts)}
+      ${renderSettingsPanel(section, api.drafts, fieldTags(api))}
     </div>
   `;
 };
@@ -600,7 +601,8 @@ const renderTabPanel = (api: PanelApi) => {
           targetId: "",
           values: { ...api.email.settings },
         },
-        api.drafts
+        api.drafts,
+        fieldTags(api)
       );
     }
   }

@@ -28,6 +28,11 @@ const PLACES = {
   email: {},
   /** The floating toolbar. */
   emailTools: { press: "keepsFocus" },
+  /**
+   * The Merge Tag picker under a field that holds text or a URL. Focus stays
+   * in the field, so a press picks a tag without taking it.
+   */
+  fieldMergeTagPicker: {},
   /** The format bar beside the text being edited. */
   formatBar: { ofText: true, press: "keepsFocus" },
   /** The link field, in the format bar. */

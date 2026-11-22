@@ -29,6 +29,7 @@ import { createDragging } from "./dragging.js";
 import type { Dragging } from "./dragging.js";
 import { createEditingActions } from "./editing-actions.js";
 import { findPlace, place } from "./editor-places.js";
+import { createFieldMergeTags } from "./field-merge-tags.js";
 import { createFocus } from "./focus.js";
 import { createLinkForm, formatBarStyles } from "./format-bar.js";
 import type { HostAppProperties } from "./host-app.js";
@@ -359,6 +360,10 @@ export class MailQuilt extends LitElement implements HostAppProperties {
   readonly #uploadImage = (blockId: string, file: File) => {
     this.#uploads.upload(blockId, file);
   };
+  readonly #fieldMergeTags = createFieldMergeTags({
+    requestUpdate: () => this.requestUpdate(),
+    tags: this.#mergeTagsGiven,
+  });
   readonly #keys = createKeyDispatch({
     canStep: (step) =>
       step === "undo"
@@ -366,6 +371,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
         : (this.#editor?.canRedo() ?? false),
     drafts: this.#drafts,
     editing: this.#editing,
+    fieldMergeTags: this.#fieldMergeTags,
     focus: this.#focus,
     isDragging: () => this.#dragging?.isDragging() ?? false,
     linkForm: this.#linkForm,
@@ -418,6 +424,14 @@ export class MailQuilt extends LitElement implements HostAppProperties {
   protected override createRenderRoot() {
     const root = super.createRenderRoot();
     root.addEventListener("keydown", this.#keys.onKeydown);
+    // What's typed in a field, and where its cursor goes, for the Merge Tag
+    // picker. A key that moves the cursor has moved it by its keyup.
+    for (const type of ["click", "input", "keyup"]) {
+      root.addEventListener(type, this.#fieldMergeTags.onFieldEvent);
+    }
+    root.addEventListener("focusout", (event) =>
+      this.#fieldMergeTags.onFocusout(event as FocusEvent)
+    );
     root.addEventListener("mousedown", (event) =>
       this.#presses.onMousedown(event as MouseEvent)
     );
@@ -526,6 +540,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       for (const view of this.#views.values()) {
         view.showMergeTags();
       }
+      this.#fieldMergeTags.showMergeTags();
       this.#syncFormats();
     }
     this.#rendered = this.value;
@@ -661,17 +676,23 @@ export class MailQuilt extends LitElement implements HostAppProperties {
 
   /** What the Side panel, its settings and the toolbars show, and what they do. */
   #panelApi(email: BlocksDocument): PanelApi {
+    // Only with a tag the picker can offer.
+    const offersTags =
+      this.mergeTags?.some(({ name }) => isMergeTagName(name)) ?? false;
     return {
       ...this.#panelActions,
       canRedo: this.#editor?.canRedo() ?? false,
       canUndo: this.#editor?.canUndo() ?? false,
       editingText: this.#selection.editingText,
       email,
-      formats: this.#formats,
-      // Only with a tag the picker can offer.
-      insertMergeTag: this.mergeTags?.some(({ name }) => isMergeTagName(name))
-        ? this.#insertMergeTag
+      fieldMergeTags: offersTags
+        ? {
+            pick: this.#pickFieldMergeTag,
+            shown: this.#fieldMergeTags.shown,
+          }
         : undefined,
+      formats: this.#formats,
+      insertMergeTag: offersTags ? this.#insertMergeTag : undefined,
       linkField: this.#linkForm.state,
       mergeTagPicker: this.#mergeTagPicker,
       selectedBlock: this.#editing.selectedBlock(email),
@@ -692,13 +713,21 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     };
   }
 
-  /** On each Block's content. With none set, it's unknown, as in the export. */
+  /**
+   * On each Block's content. With none set, it's unknown, as in the export. A
+   * Merge Tag is unknown too until it's filled, and isn't a language a screen
+   * reader could read the Canvas in.
+   */
   get #emailLang() {
-    return this.#rendered?.settings.language ?? "";
+    const language = this.#rendered?.settings.language ?? "";
+    return language.startsWith("{{") ? "" : language;
   }
 
   readonly #insertMergeTag = () =>
     this.#selection.selectedText?.startMergeTag();
+
+  readonly #pickFieldMergeTag = (index: number) =>
+    this.#fieldMergeTags.pickMergeTag(index);
 
   /**
    * The formats and the Merge Tag picker the text shows. Re-renders only on a

@@ -48,7 +48,7 @@ An email saved by a newer version can't be opened by a package that only knows a
 | `backgroundColor` | Required. A [color](#colors). |
 | `fontFamily` | Required. A CSS font list, such as `"Arial, Helvetica, sans-serif"`. It can hold only the letters A to Z, digits, spaces, hyphens, underscores, commas and quotes, and each quote has to close. The settings panel offers Arial, Courier New, Georgia, Tahoma, Times New Roman and Verdana. |
 | `preheader` | Optional. The short text inboxes show after the subject. |
-| `language` | Optional. The email's language. A new language has to be a code such as `en` or `pt-BR`, and `updateEmailSettings` refuses anything else, from the settings panel or your code. A saved document loads with any text here, and sending it back unchanged isn't refused, so an email with a bad value can still be opened and fixed. |
+| `language` | Optional. The email's language. A new language has to be a code such as `en` or `pt-BR`, or one [Merge Tag](#merge-tags) such as `{{language}}` that your sending tool fills with each person's code, and `updateEmailSettings` refuses anything else, from the settings panel or your code. A saved document loads with any text here, and sending it back unchanged isn't refused, so an email with a bad value can still be opened and fixed. |
 
 ## Row
 
@@ -203,6 +203,6 @@ A link starts with `https:`, `http:`, `mailto:` or `tel:`, or with a [Merge Tag]
 
 ### Merge Tags
 
-A Merge Tag such as `{{first_name}}` can go anywhere in text, as a [node](#merge-tags-in-text), and in a link or image URL, at its start or after it, as in `https://example.com/u/{{user_id}}`. Mail Quilt keeps it as written in the exported HTML, so your sending tool can fill it in. In a URL that starts with a Merge Tag, no colon can come between the tag and the first `/`, `?` or `#`, so `{{base}}/path` is a link but `{{x}}javascript:` isn't.
+A Merge Tag such as `{{first_name}}` can go anywhere in text, as a [node](#merge-tags-in-text), and in every setting that holds text or a URL, such as a Button's label, an Image's alt text and the email's preheader. In a link or image URL it can go at the start or after it, as in `https://example.com/u/{{user_id}}`, and the language can be one Merge Tag as its whole value. Mail Quilt keeps it as written in the exported HTML, so your sending tool can fill it in. In a URL that starts with a Merge Tag, no colon can come between the tag and the first `/`, `?` or `#`, so `{{base}}/path` is a link but `{{x}}javascript:` isn't. That means a tag followed by a scheme is refused too, so a tag can't wrap a whole URL, as in `{{#if vip}}https://example.com{{/if}}`.
 
 Mail Quilt escapes any `&`, `<` or `>` in a Merge Tag, and any `"` too in a link or image URL or an Image's alt text, such as `&` to `&amp;`. Your sending tool sees the escaped tag, so keep tags to names, such as `{{cta_url}}`.
