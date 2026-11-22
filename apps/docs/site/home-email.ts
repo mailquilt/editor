@@ -21,9 +21,22 @@ export const homeEmail: BlocksDocument = {
             {
               id: "home-text",
               props: {
-                content: paragraph(
-                  "Hi {{first_name}}, this editor is live. Type here, drag a Block in from the right, or press Tab and do all of it from the keyboard."
-                ),
+                content: {
+                  content: [
+                    {
+                      content: [
+                        { text: "Hi ", type: "text" },
+                        { attrs: { name: "first_name" }, type: "mergeTag" },
+                        {
+                          text: ", this editor is live. Type here, drag a Block in from the right, or press Tab and do all of it from the keyboard.",
+                          type: "text",
+                        },
+                      ],
+                      type: "paragraph",
+                    },
+                  ],
+                  type: "doc",
+                },
               },
               type: "text",
             },
@@ -92,5 +105,5 @@ export const homeEmail: BlocksDocument = {
     preheader: "Confirm your address to get started",
     width: 600,
   },
-  version: 2,
+  version: 3,
 };
