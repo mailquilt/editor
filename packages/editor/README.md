@@ -31,7 +31,7 @@ For a page with no bundler, load the CDN build by its full path, with the versio
 
 ```html
 <script type="module">
-  import "https://cdn.jsdelivr.net/npm/@mailquilt/editor@0.2.0/dist/cdn/index.js";
+  import "https://cdn.jsdelivr.net/npm/@mailquilt/editor@0.3.0/dist/cdn/index.js";
 </script>
 ```
 
