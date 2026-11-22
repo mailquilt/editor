@@ -22,6 +22,7 @@ import {
   openBlocks,
   openEmail,
   panelTab,
+  previewButton,
   rowTag,
   rowTools,
   selectedBlock,
@@ -101,6 +102,47 @@ test.describe("a Row on the canvas", () => {
     await tag.click();
     await expect(rowTools(page, 2)).toHaveCSS("opacity", "1");
     await expect(rowTools(page, 2)).toHaveAttribute("aria-current", "true");
+  });
+
+  test("from a selected Row, Tab passes its Blocks to leave the email for its settings, and Escape goes back to its first Block", async ({
+    page,
+  }) => {
+    await openEmail(page, [[["A"]], [["B"]]]);
+    await selectRowButton(page, 1).focus();
+    await page.keyboard.press("Enter");
+    await expect(rowTools(page, 1)).toHaveAttribute("aria-current", "true");
+
+    await page.keyboard.press("Tab");
+    await expect(selectRowButton(page, 2)).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(previewButton(page)).toBeFocused();
+    await expect(rowTools(page, 1)).toHaveAttribute("aria-current", "true");
+
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Shift+Tab");
+    await expect(selectRowButton(page, 1)).toBeFocused();
+    // The first only closes Select Row's tooltip.
+    await page.keyboard.press("Escape");
+    await expect(rowTools(page, 1)).toHaveAttribute("aria-current", "true");
+    await page.keyboard.press("Escape");
+    await expect(blockWith(page, "A")).toBeFocused();
+    await expect(blockWith(page, "A")).toHaveAttribute("aria-current", "true");
+  });
+
+  test("Escape in a selected Row's toolbar with no Block in the Row leaves nothing selected", async ({
+    page,
+  }) => {
+    await openEmail(page, [[["A"]], [[]]]);
+    await selectRowButton(page, 2).focus();
+    await page.keyboard.press("Enter");
+    await expect(rowTools(page, 2)).toHaveAttribute("aria-current", "true");
+
+    // The first only closes Select Row's tooltip.
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("Escape");
+    await expect(rowTools(page, 2)).not.toHaveAttribute("aria-current");
+    await expect(selectRowButton(page, 2)).toBeFocused();
+    await expect(blockWith(page, "A")).not.toHaveAttribute("aria-current");
   });
 
   test("Shift+Tab from one of its Blocks reaches its toolbar in one stop, and from further along leaves it", async ({
