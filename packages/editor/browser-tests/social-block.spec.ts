@@ -6,9 +6,11 @@ import type { Page } from "@playwright/test";
 
 import type { MailQuilt } from "../src/index.js";
 import {
+  announcement,
   blockGroup,
   blockProps,
   canvas,
+  change,
   exportHtml,
   field,
   holdMjml,
@@ -18,6 +20,7 @@ import {
   previewEmail,
   setValue,
   test,
+  violations,
 } from "./helpers.js";
 import { emailWith } from "./host/email.js";
 
@@ -166,4 +169,150 @@ test("a Preview rendered with the old folder isn't kept once the folder changes 
     "src",
     "https://icons.example/other/x-color.png"
   );
+});
+
+const addChoice = (page: Page) => field(page, "Choose a network");
+
+/** A button on a link's toolbar in the Side panel. */
+const tool = (page: Page, name: string) =>
+  canvas(page).getByRole("button", { exact: true, name });
+
+const selectSocial = (page: Page) => blockGroup(page, "Social").click();
+
+test.describe("the links in the Side panel", () => {
+  const FACEBOOK = {
+    network: "facebook",
+    url: "https://facebook.com/shop",
+  } as const;
+  const X = { network: "x", url: "https://x.com/shop" } as const;
+
+  test("adds a network not yet used, which shows faded at once, and its URL takes focus", async ({
+    page,
+  }) => {
+    await openSocial(page, [FACEBOOK]);
+    await selectSocial(page);
+    await expect(addChoice(page).getByRole("option")).not.toContainText([
+      "Facebook",
+    ]);
+
+    await addChoice(page).selectOption({ label: "Instagram" });
+    await page.getByRole("button", { exact: true, name: "Add" }).click();
+
+    expect(await blockProps(page)).toMatchObject({
+      links: [FACEBOOK, { network: "instagram" }],
+    });
+    await expect(field(page, "Instagram URL")).toBeFocused();
+    await expect(icons(page).nth(1)).toHaveAttribute(
+      "alt",
+      "Instagram, no URL yet"
+    );
+    await expect(announcement(page)).toHaveText(
+      "Instagram added, position 2 of 2."
+    );
+  });
+
+  test("a refused URL shows its message by its link, and stays through a move and a removal of another", async ({
+    page,
+  }) => {
+    await openSocial(page, [FACEBOOK, { network: "instagram" }, X]);
+    await selectSocial(page);
+    const instagram = field(page, "Instagram URL");
+
+    await change(instagram, "instagram.com/shop");
+    await expect(instagram).toHaveAccessibleDescription(
+      /Use a URL that starts with/u
+    );
+    // A pressed button takes focus, which goes with its link as it moves to
+    // the top, where Move up turns off, or after a removal to the next Remove.
+    await tool(page, "Move Instagram up").click();
+    await expect(tool(page, "Move Instagram down")).toBeFocused();
+    await tool(page, "Remove Facebook").click();
+    await expect(tool(page, "Remove X")).toBeFocused();
+
+    expect(await blockProps(page)).toMatchObject({
+      links: [{ network: "instagram" }, X],
+    });
+    await expect(instagram).toHaveValue("instagram.com/shop");
+    await expect(instagram).toHaveAttribute("aria-invalid", "true");
+    expect(await violations(page)).toStrictEqual([]);
+  });
+
+  test("clearing a URL leaves the link without one", async ({ page }) => {
+    await openSocial(page, [FACEBOOK, X]);
+    await selectSocial(page);
+
+    await change(field(page, "Facebook URL"), "");
+
+    expect(await blockProps(page)).toStrictEqual({
+      links: [{ network: "facebook" }, X],
+    });
+  });
+
+  test("from the keyboard, a link's toolbar is one Tab stop, and focus stays with what it moved or goes to the next link's Remove", async ({
+    page,
+  }) => {
+    await openSocial(page, [FACEBOOK, { network: "instagram" }, X]);
+    await selectSocial(page);
+    await field(page, "Facebook URL").focus();
+
+    // Its toolbar comes before its URL. The first link can't move up, so the
+    // toolbar's stop is Move down.
+    await page.keyboard.press("Shift+Tab");
+    await expect(tool(page, "Move Facebook down")).toBeFocused();
+    await page.keyboard.press("Enter");
+
+    await expect(tool(page, "Move Facebook down")).toBeFocused();
+    await expect(announcement(page)).toHaveText(
+      "Facebook moved to position 2 of 3."
+    );
+    await page.keyboard.press("ArrowRight");
+    await expect(tool(page, "Remove Facebook")).toBeFocused();
+    await page.keyboard.press("Space");
+
+    await expect(tool(page, "Remove X")).toBeFocused();
+    await expect(announcement(page)).toHaveText("Facebook removed.");
+    expect(await blockProps(page)).toMatchObject({
+      links: [{ network: "instagram" }, X],
+    });
+    // Tab leaves the toolbar, to its link's URL.
+    await page.keyboard.press("Tab");
+    await expect(field(page, "X URL")).toBeFocused();
+  });
+
+  test("an undo that turns off the focused button leaves focus on its link's toolbar", async ({
+    page,
+  }) => {
+    await openSocial(page, [FACEBOOK, X]);
+    await selectSocial(page);
+    await tool(page, "Move X up").focus();
+    await page.keyboard.press("Enter");
+    await expect(tool(page, "Move X down")).toBeFocused();
+
+    await page.keyboard.press("ControlOrMeta+z");
+
+    expect(await blockProps(page)).toMatchObject({ links: [FACEBOOK, X] });
+    await expect(tool(page, "Move X up")).toBeFocused();
+  });
+
+  test("a URL opens the Merge Tag list on {{", async ({ page }) => {
+    await openSocial(page, [{ network: "x" }]);
+    await canvas(page).evaluate((element) => {
+      (element as MailQuilt).mergeTags = [{ name: "x_url" }];
+    });
+    await selectSocial(page);
+    const url = field(page, "X URL");
+
+    await url.click();
+    await page.keyboard.type("{{");
+    await expect(
+      canvas(page).getByRole("option", { name: "x_url" })
+    ).toBeVisible();
+    expect(await violations(page)).toStrictEqual([]);
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("Enter");
+
+    expect(await blockProps(page)).toMatchObject({
+      links: [{ network: "x", url: "{{x_url}}" }],
+    });
+  });
 });

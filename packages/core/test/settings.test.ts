@@ -502,22 +502,34 @@ describe("settings fields", () => {
   });
 });
 
-const isText = ({ type }: SettingsField) => type === "text";
+const holdsText = ({ type }: SettingsField) =>
+  type === "text" || type === "list";
 
-/** What each text field of `fields` gave for a Merge Tag, by its key. */
+/**
+ * What each field of `fields` that holds text gave for a Merge Tag, by its key.
+ * A list's is its item's text, in a list of one item.
+ */
 const acceptedTags = (
   fields: () => readonly SettingsField[],
-  apply: (field: SettingsField) => unknown
+  apply: (key: string, value: unknown) => unknown,
+  tag: string
 ) => {
   const results: Record<string, unknown> = {};
   // One field at a time, in the panel's order, reading the fields again after
   // each, as a field such as an Image's link waits for the one before it.
   for (let index = 0; ; index += 1) {
-    const field = fields().filter(isText)[index];
+    const field = fields().filter(holdsText)[index];
     if (!field) {
       return results;
     }
-    results[field.key] = field.disabled ? "disabled" : apply(field);
+    if (field.type === "list") {
+      const [option] = field.options;
+      results[`${field.key}.${field.itemField.key}`] = apply(field.key, [
+        { [field.itemKey]: option?.value, [field.itemField.key]: tag },
+      ]);
+    } else {
+      results[field.key] = field.disabled ? "disabled" : apply(field.key, tag);
+    }
   }
 };
 
@@ -540,12 +552,13 @@ describe("a Merge Tag in a text setting", () => {
 
       const results = acceptedTags(
         () => blockSettingsFields(block()),
-        ({ key }) =>
+        (key, value) =>
           editor.apply({
             blockId: block().id,
-            props: { [key]: TAG },
+            props: { [key]: value },
             type: "updateBlockProps",
-          })
+          }),
+        TAG
       );
 
       expect(results).toStrictEqual(allAccepted(results));
@@ -558,8 +571,13 @@ describe("a Merge Tag in a text setting", () => {
 
     const results = acceptedTags(
       () => rowSettingsFields(row),
-      ({ key }) =>
-        editor.apply({ props: { [key]: TAG }, rowId, type: "updateRowProps" })
+      (key, value) =>
+        editor.apply({
+          props: { [key]: value },
+          rowId,
+          type: "updateRowProps",
+        }),
+      TAG
     );
 
     expect(results).toStrictEqual(allAccepted(results));
@@ -570,11 +588,12 @@ describe("a Merge Tag in a text setting", () => {
 
     const results = acceptedTags(
       () => EMAIL_SETTINGS_FIELDS,
-      ({ key }) =>
+      (key, value) =>
         editor.apply({
-          settings: { [key]: TAG },
+          settings: { [key]: value },
           type: "updateEmailSettings",
-        })
+        }),
+      TAG
     );
 
     expect(results).toStrictEqual(allAccepted(results));

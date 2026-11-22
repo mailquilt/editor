@@ -40,6 +40,11 @@ const PLACES = {
   /** The link field, in the format bar. */
   linkField: { ofText: true },
   /**
+   * The toolbar of an item in a list field, in the settings, which moves or
+   * removes it.
+   */
+  listItemTools: { press: "keepsFocus" },
+  /**
    * The Merge Tag picker, at the cursor in the text being edited. Focus stays
    * in the text, so a press picks a tag without taking it.
    */

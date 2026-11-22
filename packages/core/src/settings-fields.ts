@@ -12,6 +12,9 @@ interface FieldBase {
   disabled?: boolean;
 }
 
+/** A field that holds text, such as a URL. */
+type TextField = FieldBase & { type: "text" };
+
 /**
  * One control in the settings panel. Fields are data, so that one panel can show
  * every Block, Row and email setting.
@@ -20,6 +23,20 @@ interface FieldBase {
 export type SettingsField = FieldBase &
   (
     | { type: "color" }
+    | {
+        /**
+         * Items in the person's order, each an object keyed by its `itemKey`
+         * property, whose value no two items share. A person adds an item for
+         * one of `options` not yet used, removes one or moves one, and types
+         * each item's `itemField`. A change sets the whole list.
+         */
+        type: "list";
+        itemKey: string;
+        /** What one item is called, in a sentence, such as "network". */
+        itemName: string;
+        itemField: TextField;
+        options: readonly { label: string; value: string }[];
+      }
     | { type: "number"; max?: number; min: number; unit: string }
     | {
         type: "select";

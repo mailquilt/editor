@@ -1,7 +1,7 @@
 import type { SettingsField } from "@mailquilt/core/internal";
 import { describe, expect, it } from "vitest";
 
-import { fieldValue } from "../src/settings-panel.js";
+import { changeList, fieldValue } from "../src/settings-panel.js";
 
 const field = (type: "number" | "text"): SettingsField =>
   type === "number"
@@ -56,5 +56,67 @@ describe("what's typed in a settings field means", () => {
 
     expect(fieldValue(toggle, typed("true"))).toBeTruthy();
     expect(fieldValue(toggle, typed("false"))).toBeFalsy();
+  });
+});
+
+const links: Extract<SettingsField, { type: "list" }> = {
+  invalidMessage: "",
+  itemField: { invalidMessage: "", key: "url", label: "URL", type: "text" },
+  itemKey: "network",
+  itemName: "network",
+  key: "links",
+  label: "Links",
+  options: [
+    { label: "Facebook", value: "facebook" },
+    { label: "Instagram", value: "instagram" },
+    { label: "X", value: "x" },
+  ],
+  type: "list",
+};
+
+const facebook = { network: "facebook", url: "https://facebook.com/shop" };
+const x = { network: "x" };
+
+describe("a change to a list field's items", () => {
+  it("adds an item without its text at the end, and focus goes to its text", () => {
+    expect(
+      changeList(links, [facebook], { item: "instagram", type: "add" })
+    ).toStrictEqual({
+      focus: { control: "text", item: "instagram" },
+      items: [facebook, { network: "instagram" }],
+      said: "Instagram added, position 2 of 2.",
+    });
+  });
+
+  it("moves an item one step, and focus stays on the button that moved it", () => {
+    expect(
+      changeList(links, [facebook, x], { item: "x", step: -1, type: "move" })
+    ).toStrictEqual({
+      focus: { control: "moveUp", item: "x" },
+      items: [x, facebook],
+      said: "X moved to position 1 of 2.",
+    });
+  });
+
+  it("removes an item, and focus goes to the Remove button of the item after it", () => {
+    expect(
+      changeList(links, [facebook, x], { item: "facebook", type: "remove" })
+    ).toStrictEqual({
+      focus: { control: "remove", item: "x" },
+      items: [x],
+      said: "Facebook removed.",
+    });
+  });
+
+  it("removes the last item, and focus goes to the item before it", () => {
+    expect(
+      changeList(links, [facebook, x], { item: "x", type: "remove" }).focus
+    ).toStrictEqual({ control: "remove", item: "facebook" });
+  });
+
+  it("removes the only item, and focus goes to the way to add one", () => {
+    expect(
+      changeList(links, [x], { item: "x", type: "remove" }).focus
+    ).toStrictEqual({ control: "add" });
   });
 });
