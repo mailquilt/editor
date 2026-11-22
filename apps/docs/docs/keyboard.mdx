@@ -95,6 +95,8 @@ In the side panel's Rows tab, press <kbd>Enter</kbd> on a layout to add a Row wi
 
 A settings field, such as a Button's link or a Row's padding, changes the email when you press <kbd>Enter</kbd> or leave the field. Until then, <kbd>Escape</kbd> takes back what you typed and shows the email's value again. A value the editor refuses stays in the field with the reason, until you fix it or press <kbd>Escape</kbd>.
 
+A Social Block's links are a list in its settings, each with its URL field and a toolbar of Move up, Move down and Remove. The toolbar comes before the URL, and like the Block's toolbar it's one stop for <kbd>Tab</kbd>: the arrow keys go across its buttons, and <kbd>Home</kbd> and <kbd>End</kbd> go to its first and last. After a move, focus stays on the button that moved the link. After a removal, it goes to the Remove button of the next link, or of the one before if it was the last, or to the list of networks if none is left. To add a link, choose a network that isn't in the list yet and press Add, and focus goes to the new link's URL. What's typed in a URL stays with its link when links move or are removed.
+
 ## Cancelling a drag
 
 While a Block or Row is dragged with the pointer, including a new one from the side panel, <kbd>Escape</kbd> cancels the drag. Nothing moves and nothing is added. Until the drag ends, the keys that select or move a Block or Row, or go into a Block's text, do nothing.
@@ -168,11 +170,12 @@ Opening Preview moves focus to its Close button. Before Close, Desktop and Phone
 - **Undo and redo of a move.** These say where the Block went back to.
 - **Duplicating.** After a Block or Row is duplicated, the editor says where the copy went, such as "Block duplicated, Row 1, Column 1, position 2 of 3".
 - **Copying, cutting and pasting.** The editor says what was copied or cut and where it was, or where what was pasted went, such as "Block pasted, Row 2, Column 1, position 3 of 3". A paste it refuses says why.
+- **A Social Block's links.** After a link is added, moved or removed in the settings, the editor says so, such as "Facebook moved to position 2 of 3".
 - **Deleting.** After a Block or Row is deleted, the editor says so. Focus moves to the Block after it, or before it if it was the last. For a Row, focus moves to the next Row's tools, or the previous Row's.
 - **Messages in the Shell.** The [Shell](./shell) announces each message in its bar, such as an email it couldn't open.
 
 ## How it's tested
 
-The editor's browser tests press these keys in Chromium, Firefox and WebKit. They also run [axe-core](https://github.com/dequelabs/axe-core) with its WCAG 2.2 AA rules against the editor in several states: with Columns and empty Columns, with a Block selected, with the link field showing an error, with the Merge Tag picker open in text and under a settings field, and with Preview open at each width.
+The editor's browser tests press these keys in Chromium, Firefox and WebKit. They also run [axe-core](https://github.com/dequelabs/axe-core) with its WCAG 2.2 AA rules against the editor in several states: with Columns and empty Columns, with a Block selected, with the link field showing an error, with the Merge Tag picker open in text and under a settings field, with a Social Block's links showing a refused URL, and with Preview open at each width.
 
 Automated checks don't find everything. The [accessibility statement](./accessibility) says which WCAG 2.2 criteria the editor meets, what it doesn't, and how each was checked. If a screen reader or another tool has trouble with the editor, please [open an issue](https://github.com/mailquilt/editor/issues).

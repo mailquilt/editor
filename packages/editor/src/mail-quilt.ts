@@ -296,6 +296,8 @@ export class MailQuilt extends LitElement implements HostAppProperties {
   });
   readonly #drafts = createSettingsDrafts({
     apply: (command) => this.#apply(command, { refusable: true }),
+    focusInList: (listId, at) =>
+      this.#focus.focusWhenRendered({ at, listId, on: "list" }),
     onEnter: (value) => {
       // An image URL that failed may load now, so entering it again tries again.
       if (typeof value === "string" && this.#failedImages.delete(value)) {
@@ -303,6 +305,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       }
     },
     requestUpdate: () => this.requestUpdate(),
+    say: (words) => this.#announcements.say(words),
   });
   /** One copy of the document for each update, as `value` makes a new one. */
   #rendered: BlocksDocument | undefined;

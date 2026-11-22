@@ -5,11 +5,13 @@ import { css, html, nothing } from "lit";
 import type { TemplateResult } from "lit";
 import { keyed } from "lit/directives/keyed.js";
 import { live } from "lit/directives/live.js";
+import { repeat } from "lit/directives/repeat.js";
 
 import { place } from "./editor-places.js";
 import { ICONS } from "./icons.js";
 import { NO_FIELD_TAGS } from "./merge-tag-picker.js";
 import type { FieldTags } from "./merge-tag-picker.js";
+import { positionLabel } from "./positions.js";
 
 /** One group of controls, and what its fields change. */
 export interface SettingsSection {
@@ -56,18 +58,110 @@ interface FieldDraft extends Typed {
  */
 export interface SettingsDrafts {
   draftOf: (key: string) => FieldDraft | undefined;
-  /** Each change to what's typed, before it's committed. */
+  /**
+   * Each change to what's typed, before it's committed. In a list field, it's
+   * typed in the text of the item whose key is `item`.
+   */
   onInput: (
     section: SettingsSection,
     field: SettingsField,
-    typed: Typed
+    typed: Typed,
+    item?: string
   ) => void;
   onCommit: (
     section: SettingsSection,
     field: SettingsField,
-    typed: Typed
+    typed: Typed,
+    item?: string
+  ) => void;
+  /**
+   * Adds, moves or removes an item of a list field. With `followFocus`, as from
+   * the keyboard or a button that has focus, focus goes with the change, and a
+   * new item's text takes focus either way.
+   */
+  changeList: (
+    section: SettingsSection,
+    field: ListField,
+    change: ListChange,
+    followFocus: boolean
   ) => void;
 }
+
+/** A field whose value is a list of items, each with its own text. */
+export type ListField = Extract<SettingsField, { type: "list" }>;
+
+type ListItem = Readonly<Record<string, unknown>>;
+
+/** What a person does to a list field's items, each found by its key. */
+export type ListChange =
+  | { type: "add"; item: string }
+  | { type: "move"; item: string; step: -1 | 1 }
+  | { type: "remove"; item: string };
+
+/** Where focus goes in a list field: the way to add an item, or a part of one. */
+export type ListFocus =
+  | { control: "add" }
+  | { control: "moveDown" | "moveUp" | "remove" | "text"; item: string };
+
+/** The `id` of a field's control, or of a list field's items. */
+const fieldId = (
+  { id }: Pick<SettingsSection, "id">,
+  { key }: Pick<SettingsField, "key">
+) => `settings-${id}-${key}`;
+
+const itemsOf = (field: ListField, values: Record<string, unknown>) =>
+  (values[field.key] as readonly ListItem[] | undefined) ?? [];
+
+/** What a person calls an item, by its key. */
+const itemLabel = (field: ListField, item: string) =>
+  field.options.find(({ value }) => value === item)?.label ?? item;
+
+/**
+ * A list field's items after a change, what a screen reader is told of it, and
+ * where focus goes: to a new item's text, with the item that moved, or after a
+ * removal to the Remove button that took its place, else the way to add one.
+ */
+export const changeList = (
+  field: ListField,
+  items: readonly ListItem[],
+  change: ListChange
+): { focus: ListFocus; items: readonly ListItem[]; said: string } => {
+  const index = items.findIndex(
+    (entry) => entry[field.itemKey] === change.item
+  );
+  const label = itemLabel(field, change.item);
+  switch (change.type) {
+    case "add": {
+      const next = [...items, { [field.itemKey]: change.item }];
+      return {
+        focus: { control: "text", item: change.item },
+        items: next,
+        said: `${label} added, ${positionLabel(next.length - 1, next.length)}.`,
+      };
+    }
+    case "move": {
+      const to = index + change.step;
+      return {
+        focus: {
+          control: change.step < 0 ? "moveUp" : "moveDown",
+          item: change.item,
+        },
+        items: items.toSpliced(index, 1).toSpliced(to, 0, items[index] ?? {}),
+        said: `${label} moved to ${positionLabel(to, items.length)}.`,
+      };
+    }
+    default: {
+      const neighbour = items[index + 1] ?? items[index - 1];
+      return {
+        focus: neighbour
+          ? { control: "remove", item: String(neighbour[field.itemKey]) }
+          : { control: "add" },
+        items: items.toSpliced(index, 1),
+        said: `${label} removed.`,
+      };
+    }
+  }
+};
 
 export const settingsPanelStyles = css`
   .settings {
@@ -139,6 +233,48 @@ export const settingsPanelStyles = css`
 
   .settings .error {
     color: var(--mq-color-danger);
+  }
+
+  /* A list field's name reads as any field's label. */
+  .settings .list-label {
+    color: var(--mq-color-text-muted);
+    font-size: var(--mq-font-size);
+  }
+
+  .settings .list-items {
+    display: flex;
+    flex-direction: column;
+    gap: var(--mq-space-2);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Each item a card: its name and its tools, then its text. */
+  .settings .list-item {
+    border: 1px solid var(--mq-color-border);
+    border-radius: var(--mq-radius-small);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 6px 10px 10px;
+  }
+
+  .settings .list-item-head {
+    align-items: center;
+    display: flex;
+    gap: var(--mq-space-2);
+    justify-content: space-between;
+  }
+
+  .settings .list-item label {
+    color: var(--mq-color-text);
+    font-weight: 500;
+  }
+
+  .settings .list-item-tools {
+    display: flex;
+    gap: 2px;
   }
 
   /* A field with a control beside it, which takes what room is left. */
@@ -378,14 +514,32 @@ const INLINE_TYPES = new Set<string>(["color", "number", "select", "toggle"]);
 /** Where what's typed in a field is kept: by its section, target and field. */
 export const draftKey = (
   { id, targetId }: Pick<SettingsSection, "id" | "targetId">,
-  { key }: Pick<SettingsField, "key">
-) => `${id}:${targetId}:${key}`;
+  { key }: Pick<SettingsField, "key">,
+  item?: string
+) =>
+  item === undefined
+    ? `${id}:${targetId}:${key}`
+    : `${id}:${targetId}:${key}:${item}`;
 
-/** What a field shows when nothing different has been typed into it. */
+/** A list field's item, by its key. */
+const itemOf = (
+  field: ListField,
+  values: Record<string, unknown>,
+  item: string
+) => itemsOf(field, values).find((entry) => entry[field.itemKey] === item);
+
+/**
+ * What a field shows when nothing different has been typed into it, or in a
+ * list field, an item's text.
+ */
 const fieldText = (
-  { default: fallback, key }: SettingsField,
-  values: Record<string, unknown>
-) => String(values[key] ?? fallback ?? "");
+  field: SettingsField,
+  values: Record<string, unknown>,
+  item?: string
+) =>
+  field.type === "list"
+    ? String(itemOf(field, values, item ?? "")?.[field.itemField.key] ?? "")
+    : String(values[field.key] ?? field.default ?? "");
 
 /** What a control holds. */
 const typedIn = (control: HTMLInputElement | HTMLSelectElement): Typed => ({
@@ -415,13 +569,255 @@ export const fieldValue = (field: SettingsField, typed: Typed) => {
   return field.type === "number" ? Number(text) : text;
 };
 
+/**
+ * The change that typed text makes: the field's value, or in a list field, the
+ * whole list with one item's text set, or taken away when it's empty.
+ */
+const changeOf = (
+  field: SettingsField,
+  values: Record<string, unknown>,
+  typed: Typed,
+  item?: string
+) => {
+  if (field.type !== "list") {
+    return { [field.key]: fieldValue(field, typed) };
+  }
+  const text = fieldValue(field.itemField, typed);
+  const { key } = field.itemField;
+  return {
+    [field.key]: itemsOf(field, values).map((entry) => {
+      if (entry[field.itemKey] !== item) {
+        return entry;
+      }
+      const rest = Object.fromEntries(
+        Object.entries(entry).filter(([name]) => name !== key)
+      );
+      return text === null ? rest : { ...rest, [key]: text };
+    }),
+  };
+};
+
+/** The buttons on a list field's item, with what each does. */
+const ITEM_TOOLS = [
+  {
+    action: "moveUp",
+    icon: ICONS.up,
+    label: (name: string) => `Move ${name} up`,
+    step: -1,
+  },
+  {
+    action: "moveDown",
+    icon: ICONS.down,
+    label: (name: string) => `Move ${name} down`,
+    step: 1,
+  },
+  {
+    action: "remove",
+    icon: ICONS.delete,
+    label: (name: string) => `Remove ${name}`,
+    step: 0,
+  },
+] as const;
+
+/**
+ * A list field: its items in order, each with its text and a toolbar to move or
+ * remove it, then a way to add an item for an option not yet used. Each item's
+ * parts are kept by its key, so what's typed in one stays with it through a
+ * move, or the removal of another.
+ */
+const renderListField = (
+  section: SettingsSection,
+  field: ListField,
+  drafts: SettingsDrafts,
+  tagsOf: (fieldId: string) => FieldTags
+) => {
+  const id = fieldId(section, field);
+  const descriptionId = `${id}-description`;
+  const items = itemsOf(field, section.values);
+  const used = new Set(items.map((entry) => entry[field.itemKey]));
+  const unused = field.options.filter(({ value }) => !used.has(value));
+  const { hint } = tagsOf(id);
+  const description = [field.description, field.itemField.description, hint]
+    .filter(Boolean)
+    .join(" ");
+  // A pressed button has focus when nothing else in the editor did, and then
+  // focus goes with the change, as it does from the keyboard.
+  const change = (listChange: ListChange) => (event: MouseEvent) =>
+    drafts.changeList(
+      section,
+      field,
+      listChange,
+      event.detail === 0 || (event.currentTarget as Element).matches(":focus")
+    );
+
+  const renderItem = (entry: ListItem, index: number) => {
+    const item = String(entry[field.itemKey]);
+    const name = itemLabel(field, item);
+    const inputId = `${id}-${item}`;
+    const errorId = `${inputId}-error`;
+    const tags = tagsOf(inputId);
+    const key = draftKey(section, field, item);
+    const draft = drafts.draftOf(key);
+    const refusals = draft?.refusals ?? 0;
+    const enabled = {
+      moveDown: index < items.length - 1,
+      moveUp: index > 0,
+      remove: true,
+    };
+    // The toolbar's one Tab stop is its first button that works.
+    const stop = ITEM_TOOLS.find(({ action }) => enabled[action])?.action;
+    return html`
+      <li class="list-item" data-item-key=${item}>
+        <div class="list-item-head">
+          <label for=${inputId}>
+            ${name}<span class="visually-hidden">
+              ${field.itemField.label}</span
+            >
+          </label>
+          <div
+            aria-label=${name}
+            class="list-item-tools"
+            data-place=${place("listItemTools")}
+            role="toolbar"
+          >
+            ${ITEM_TOOLS.map(
+              ({ action, icon, label, step }) => html`
+                <button
+                  aria-label=${label(name)}
+                  class=${action === "remove" ? "icon-button danger" : "icon-button"}
+                  data-action=${action}
+                  data-tooltip=${label(name)}
+                  ?disabled=${!enabled[action]}
+                  tabindex=${action === stop ? "0" : "-1"}
+                  type="button"
+                  @click=${change(
+                    step === 0
+                      ? { item, type: "remove" }
+                      : { item, step, type: "move" }
+                  )}
+                >
+                  ${icon}
+                </button>
+              `
+            )}
+          </div>
+        </div>
+        <input
+          aria-activedescendant=${tags.activeDescendant}
+          aria-controls=${tags.controls}
+          aria-describedby=${[description ? descriptionId : "", refusals ? errorId : ""].filter(Boolean).join(" ") || nothing}
+          aria-invalid=${refusals ? "true" : "false"}
+          autocomplete="off"
+          data-draft-key=${key}
+          ?data-merge-tags=${tags.hint !== ""}
+          data-place=${draft ? place("settingsDraft") : nothing}
+          id=${inputId}
+          spellcheck="false"
+          type="text"
+          .value=${live(draft?.text ?? fieldText(field, section.values, item))}
+          @change=${({ currentTarget }: Event) =>
+            drafts.onCommit(
+              section,
+              field,
+              typedIn(currentTarget as HTMLInputElement),
+              item
+            )}
+          @input=${({ currentTarget }: Event) =>
+            drafts.onInput(
+              section,
+              field,
+              typedIn(currentTarget as HTMLInputElement),
+              item
+            )}
+        />
+        ${tags.list}
+        ${
+          refusals
+            ? keyed(
+                refusals,
+                html`
+                  <p class="error" id=${errorId} role="alert">
+                    ${field.itemField.invalidMessage}
+                  </p>
+                `
+              )
+            : nothing
+        }
+      </li>
+    `;
+  };
+
+  // Named with aria-label, as a group named by aria-labelledby here crashed
+  // Firefox's page once a field after it changed. Its visible name is hidden
+  // from screen readers, so it isn't read twice.
+  return html`
+    <div
+      aria-label=${field.label}
+      class="field list-field"
+      id=${id}
+      role="group"
+    >
+      <span aria-hidden="true" class="list-label">${field.label}</span>
+      ${
+        description
+          ? html`<p class="description" id=${descriptionId}>${description}</p>`
+          : nothing
+      }
+      ${
+        items.length > 0
+          ? html`
+              <ul class="list-items">
+                ${repeat(items, (entry) => entry[field.itemKey], renderItem)}
+              </ul>
+            `
+          : nothing
+      }
+      ${
+        unused.length > 0
+          ? html`
+              <div class="with-control">
+                <div class="select-field">
+                  <select aria-label=${`Choose a ${field.itemName}`}>
+                    ${unused.map(
+                      ({ label, value }) =>
+                        html`<option .value=${value}>${label}</option>`
+                    )}
+                  </select>
+                  ${ICONS.chevronDown}
+                </div>
+                <button
+                  class="text-button"
+                  data-place=${place("controls")}
+                  type="button"
+                  @click=${(event: MouseEvent) => {
+                    const select = (
+                      event.currentTarget as Element
+                    ).previousElementSibling?.querySelector("select");
+                    if (select) {
+                      change({ item: select.value, type: "add" })(event);
+                    }
+                  }}
+                >
+                  Add
+                </button>
+              </div>
+            `
+          : html`<p class="description">Every ${field.itemName} is added.</p>`
+      }
+    </div>
+  `;
+};
+
 const renderField = (
   section: SettingsSection,
   field: SettingsField,
   drafts: SettingsDrafts,
   tagsOf: (fieldId: string) => FieldTags
 ) => {
-  const id = `settings-${section.id}-${field.key}`;
+  if (field.type === "list") {
+    return renderListField(section, field, drafts, tagsOf);
+  }
+  const id = fieldId(section, field);
   // Every field that holds text, or a URL, takes Merge Tags.
   const tags =
     field.type === "text" && !field.disabled ? tagsOf(id) : NO_FIELD_TAGS;
@@ -624,13 +1020,19 @@ interface DraftsHost {
   /** Each value a person enters, before it's applied, or types in again. */
   onEnter: (value: unknown) => void;
   requestUpdate: () => void;
+  /** Tells a screen reader of a change to a list field. */
+  say: (words: string) => void;
+  /** Once the next update has rendered it, in the list field with that `id`. */
+  focusInList: (listId: string, at: ListFocus) => void;
 }
 
 /** Text in the settings panel that isn't the document's value. */
 export const createSettingsDrafts = ({
   apply,
+  focusInList,
   onEnter,
   requestUpdate,
+  say,
 }: DraftsHost) => {
   const drafts = new Map<string, FieldDraft>();
 
@@ -648,12 +1050,14 @@ export const createSettingsDrafts = ({
     section: SettingsSection,
     field: SettingsField,
     typed: Typed,
-    retry: boolean
+    retry: boolean,
+    item?: string
   ) => {
-    const key = draftKey(section, field);
-    const value = fieldValue(field, typed);
-    onEnter(value);
-    const result = apply(section.command({ [field.key]: value }));
+    const key = draftKey(section, field, item);
+    onEnter(fieldValue(field.type === "list" ? field.itemField : field, typed));
+    const result = apply(
+      section.command(changeOf(field, section.values, typed, item))
+    );
     if (result?.ok || result?.code === "unchanged") {
       drafts.delete(key);
     } else {
@@ -677,21 +1081,41 @@ export const createSettingsDrafts = ({
   };
 
   const fields: SettingsDrafts = {
+    changeList: (section, field, change, followFocus) => {
+      const { focus, items, said } = changeList(
+        field,
+        itemsOf(field, section.values),
+        change
+      );
+      if (!apply(section.command({ [field.key]: items }))?.ok) {
+        return;
+      }
+      if (change.type === "remove") {
+        drafts.delete(draftKey(section, field, change.item));
+      }
+      if (followFocus || change.type === "add") {
+        focusInList(fieldId(section, field), focus);
+      }
+      say(said);
+    },
     draftOf: (key) => drafts.get(key),
-    onCommit: (section, field, typed) => commit(section, field, typed, false),
-    onInput: (section, field, typed) => {
-      const key = draftKey(section, field);
+    onCommit: (section, field, typed, item) =>
+      commit(section, field, typed, false, item),
+    onInput: (section, field, typed, item) => {
+      const key = draftKey(section, field, item);
       const held = drafts.has(key);
       const refusals = drafts.get(key)?.refusals ?? 0;
       // What isn't a number reads as empty, as if an empty field were unchanged.
       if (
-        typed.text === fieldText(field, section.values) &&
+        typed.text === fieldText(field, section.values, item) &&
         !refusals &&
         !typed.badInput
       ) {
         drafts.delete(key);
         // Typed again, which the browser doesn't report as a change.
-        onEnter(fieldValue(field, typed));
+        onEnter(
+          fieldValue(field.type === "list" ? field.itemField : field, typed)
+        );
       } else {
         drafts.set(key, { ...typed, refusals });
       }

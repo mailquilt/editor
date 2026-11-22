@@ -6,6 +6,7 @@ import {
   isOfText,
 } from "./editor-places.js";
 import type { PanelTab } from "./selection.js";
+import type { ListFocus } from "./settings-panel.js";
 import type { TextBlockView } from "./text-block-view.js";
 
 /**
@@ -30,6 +31,8 @@ export type FocusTarget =
   /** A Row's tool, by its `data-action` while it's enabled, or else its first that is. */
   | { on: "rowTool"; action?: string; rowId: string }
   | { on: "tab"; tab: PanelTab }
+  /** A part of a list field in the settings, by the list's `id`. */
+  | { on: "list"; listId: string; at: ListFocus }
   /** The floating toolbar, which keeps keyboard undo working. */
   | { on: "emailTools" };
 
@@ -93,9 +96,36 @@ export const focusToolbarButton = (from: Element, step: ToolbarStep) => {
  * In a place that belongs to the text being edited, it's on that text, which
  * stays when the place closes.
  */
+/**
+ * A button on a list field item's toolbar, as the same button of that item,
+ * wherever the item goes.
+ */
+const listToolOf = (element: Element): FocusTarget | undefined => {
+  const item =
+    closestPlace(element, "listItemTools") &&
+    element.closest<HTMLElement>("[data-item-key]");
+  const listId = item?.closest('[role="group"]')?.id;
+  const { action } = (element as HTMLElement).dataset;
+  if (!(item?.dataset.itemKey && listId && action)) {
+    return undefined;
+  }
+  return {
+    at: {
+      control: action as Exclude<ListFocus["control"], "add">,
+      item: item.dataset.itemKey,
+    },
+    listId,
+    on: "list",
+  };
+};
+
 const targetOf = (element: Element): FocusTarget => {
   if (isOfText(element)) {
     return { on: "text" };
+  }
+  const listTool = listToolOf(element);
+  if (listTool) {
+    return listTool;
   }
   const found = closestPlace(
     element,
@@ -133,6 +163,27 @@ const targetOf = (element: Element): FocusTarget => {
       return { on: "emailTools" };
     }
   }
+};
+
+/**
+ * In the list field with the `id` `listId`: the way to add an item, an item's
+ * text, or a button on its toolbar while it's enabled, or else its first that
+ * is.
+ */
+const inList = (root: ShadowRoot, listId: string, at: ListFocus) => {
+  const list = root.querySelector(`#${CSS.escape(listId)}`);
+  if (at.control === "add") {
+    return list?.querySelector("select");
+  }
+  const item = list?.querySelector(`[data-item-key="${CSS.escape(at.item)}"]`);
+  if (at.control === "text") {
+    return item?.querySelector("input");
+  }
+  const tools = [
+    ...(item?.querySelectorAll<HTMLButtonElement>("button:not(:disabled)") ??
+      []),
+  ];
+  return tools.find((tool) => tool.dataset.action === at.control) ?? tools[0];
 };
 
 export type EditorFocus = ReturnType<typeof createFocus>;
@@ -238,7 +289,10 @@ export const createFocus = ({
    * Block's tool gives way to its text, and its text to the Block itself.
    */
   const find = (target: FocusTarget): Focusable | undefined => {
-    const found = focusableFor(target);
+    const found =
+      target.on === "list"
+        ? inList(root(), target.listId, target.at)
+        : focusableFor(target);
     if (found) {
       return found;
     }

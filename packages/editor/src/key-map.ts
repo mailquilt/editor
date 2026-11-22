@@ -425,6 +425,7 @@ const KEY_SCOPES = {
   email: { keys: [], within: "email" },
   panelTabs: { keys: TOOLBAR, within: "editor" },
   settingsDraft: { keys: [escape("discardDraft")], within: "field" },
+  listItemTools: { keys: TOOLBAR, within: "editor" },
   // Anywhere else in the editor, such as the Side panel or floating toolbar.
   editor: { keys: [], within: "editor" },
   // The browser closes the dialog. Stopping the press keeps a host's own

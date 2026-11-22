@@ -420,8 +420,27 @@ const socialBlockSchema = v.strictObject({
 
 type SocialBlockProps = v.InferOutput<typeof socialBlockSchema>;
 
-// Its links are edited in a field of their own, which isn't built yet.
 const SOCIAL_FIELDS: readonly SettingsField[] = [
+  {
+    description:
+      "Each URL can be a Merge Tag, such as {{facebook_url}}. A link without a URL shows faded, and isn't sent.",
+    invalidMessage: "Each network can be linked only once.",
+    itemField: {
+      invalidMessage: INVALID_LINK,
+      key: "url",
+      label: "URL",
+      type: "text",
+    },
+    itemKey: "network",
+    itemName: "network",
+    key: "links",
+    label: "Links",
+    options: Object.entries(SOCIAL_NETWORKS).map(([value, label]) => ({
+      label,
+      value,
+    })),
+    type: "list",
+  },
   {
     default: SOCIAL_LOOK.iconStyle,
     description: "White is for a dark background.",
