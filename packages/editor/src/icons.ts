@@ -59,6 +59,9 @@ export const ICONS = {
   orderedList: icon(
     svg`<path d="M11 6h9M11 12h9M11 18h9M4 4.5 5.5 3.5V9M4 9h3M4 13a1.5 1.5 0 0 1 3 .25c0 1.25-3 2-3 3.75h3" />`
   ),
+  phone: icon(
+    svg`<rect height="18" rx="2.5" width="12" x="6" y="3" /><path d="M11 17.5h2" />`
+  ),
   plus: icon(svg`<path d="M12 5v14M5 12h14" />`),
   preview: icon(
     svg`<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" />`

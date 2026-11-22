@@ -159,7 +159,7 @@ document.addEventListener("keydown", (event) => {
 
 ## Preview
 
-Opening Preview moves focus to its Close button. <kbd>Escape</kbd> closes it, and focus returns to where it was. In Safari, <kbd>Escape</kbd> does nothing once focus is inside the email, so press <kbd>Shift</kbd> + <kbd>Tab</kbd> to get back to Close.
+Opening Preview moves focus to its Close button. Before Close, Desktop and Phone choose the width the email is shown at, and the choice stays while the editor is open. <kbd>Escape</kbd> closes it, and focus returns to where it was. In Safari, <kbd>Escape</kbd> does nothing once focus is inside the email, so press <kbd>Shift</kbd> + <kbd>Tab</kbd> to get back to Close.
 
 ## What a screen reader announces
 
@@ -173,6 +173,6 @@ Opening Preview moves focus to its Close button. <kbd>Escape</kbd> closes it, an
 
 ## How it's tested
 
-The editor's browser tests press these keys in Chromium, Firefox and WebKit. They also run [axe-core](https://github.com/dequelabs/axe-core) with its WCAG 2.2 AA rules against the editor in several states: with Columns and empty Columns, with a Block selected, with the link field showing an error, with the Merge Tag picker open in text and under a settings field, and with Preview open.
+The editor's browser tests press these keys in Chromium, Firefox and WebKit. They also run [axe-core](https://github.com/dequelabs/axe-core) with its WCAG 2.2 AA rules against the editor in several states: with Columns and empty Columns, with a Block selected, with the link field showing an error, with the Merge Tag picker open in text and under a settings field, and with Preview open at each width.
 
 Automated checks don't find everything. The [accessibility statement](./accessibility) says which WCAG 2.2 criteria the editor meets, what it doesn't, and how each was checked. If a screen reader or another tool has trouble with the editor, please [open an issue](https://github.com/mailquilt/editor/issues).

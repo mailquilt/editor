@@ -289,7 +289,7 @@ Effect isn't used in the published packages, and may be reconsidered for the CLI
 - Undo and redo
 - Merge Tags typed into text and links, kept through editing and rendering, with any `&`, `<` or `>` in them escaped, and a `"` too in a link or image URL
 - Save and load as JSON
-- Preview of the real exported HTML, in a sandboxed iframe
+- Preview of the real exported HTML, in a sandboxed iframe, at desktop or phone width
 - HTML export, tested in Gmail, Apple Mail, Outlook and other major email clients
 - Theme tokens to match the editor to the host app
 - An editor that works on a page with a strict Content Security Policy
