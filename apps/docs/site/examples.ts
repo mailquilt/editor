@@ -13,12 +13,11 @@ import type {
   BlockType,
   RichTextDocument,
   RichTextHardBreak,
-  RichTextText,
   Row,
 } from "@mailquilt/core";
 
 import { art, INK, ORANGE, PAPER, SOFT, WASH } from "./example-art";
-import { paragraph } from "./rich-text";
+import { paragraph, runs } from "./rich-text";
 
 /** A Block of any type, before it has an ID. */
 type NewBlock = {
@@ -30,20 +29,18 @@ type TextProps = Extract<Block, { type: "text" }>["props"];
 const BODY = "#3f3f46";
 const GREY = "#71717a";
 
-const plain = (text: string): RichTextText => ({ text, type: "text" });
-const strong = (text: string): RichTextText => ({
-  marks: [{ type: "bold" }],
-  text,
-  type: "text",
-});
+type Runs = ReturnType<typeof runs>;
+
+const plain = (text: string): Runs => runs(text);
+const strong = (text: string): Runs => runs(text, [{ type: "bold" }]);
 const BREAK: RichTextHardBreak = { type: "hardBreak" };
 
 /** One paragraph whose lines are parts joined by line breaks. */
-const lines = (...parts: RichTextText[]): RichTextDocument => ({
+const lines = (...parts: Runs[]): RichTextDocument => ({
   content: [
     {
       content: parts.flatMap((part, index) =>
-        index === 0 ? [part] : [BREAK, part]
+        index === 0 ? part : [BREAK, ...part]
       ),
       type: "paragraph",
     },
@@ -60,13 +57,9 @@ const withLink = (
   content: [
     {
       content: [
-        plain(text),
-        {
-          marks: [{ attrs: { href }, type: "link" }],
-          text: linkText,
-          type: "text",
-        },
-        plain("."),
+        ...plain(text),
+        ...runs(linkText, [{ attrs: { href }, type: "link" }]),
+        ...plain("."),
       ],
       type: "paragraph",
     },
@@ -202,7 +195,7 @@ const welcome = (): BlocksDocument => {
       ),
     ],
     settings: settings("Your workspace is ready to set up"),
-    version: 2,
+    version: 3,
   };
 };
 
@@ -292,7 +285,7 @@ const receipt = (): BlocksDocument => {
       ),
     ],
     settings: settings("Your order is packed and leaves tomorrow"),
-    version: 2,
+    version: 3,
   };
 };
 
@@ -370,7 +363,7 @@ const update = (): BlocksDocument => {
       ),
     ],
     settings: settings("Shared folders, faster search and CSV export"),
-    version: 2,
+    version: 3,
   };
 };
 

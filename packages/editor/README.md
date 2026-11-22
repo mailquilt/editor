@@ -2,7 +2,7 @@
 
 The Mail Quilt email editor as Web Components: `<mail-quilt>`, a drag-and-drop editor you put in your own page, and `<mail-quilt-shell>`, a whole editor page with Import, Export and saving in the browser. They work in any framework, or none.
 
-[![Building an email in the Mail Quilt editor: changing the heading, dragging in a two-column Row, typing in each Column and changing the button's color](https://editor.mailquilt.com/editor-demo.gif)](https://editor.mailquilt.com/playground)
+[![Building an email in the Mail Quilt editor: changing the heading, adding a bulleted list, dragging in a Social Block and giving it links, then previewing the email at a phone's width](https://editor.mailquilt.com/editor-demo.gif)](https://editor.mailquilt.com/playground)
 
 ```bash
 npm install @mailquilt/editor

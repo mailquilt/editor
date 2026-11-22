@@ -92,5 +92,5 @@ export const homeEmail: BlocksDocument = {
     preheader: "Confirm your address to get started",
     width: 600,
   },
-  version: 2,
+  version: 3,
 };

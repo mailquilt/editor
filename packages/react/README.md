@@ -2,7 +2,7 @@
 
 The Mail Quilt email editor for React 19: `MailQuilt`, the editor, and `MailQuiltShell`, a whole editor page with Import, Export and saving in the browser.
 
-[![Building an email in the Mail Quilt editor: changing the heading, dragging in a two-column Row, typing in each Column and changing the button's color](https://editor.mailquilt.com/editor-demo.gif)](https://editor.mailquilt.com/playground)
+[![Building an email in the Mail Quilt editor: changing the heading, adding a bulleted list, dragging in a Social Block and giving it links, then previewing the email at a phone's width](https://editor.mailquilt.com/editor-demo.gif)](https://editor.mailquilt.com/playground)
 
 ```bash
 npm install @mailquilt/react
