@@ -57,6 +57,13 @@ export interface EmailPanelApi {
   deleteBlock: (fromKeyboard: boolean) => void;
   /** From the keyboard, focus goes to the neighbouring Row's tools. */
   deleteRow: (rowId: string, fromKeyboard: boolean) => void;
+  /**
+   * A copy of the selected Block right after it, which is selected. From the
+   * keyboard, focus goes to the copy.
+   */
+  duplicateBlock: (fromKeyboard: boolean) => void;
+  /** A copy of a Row right after it, which is selected. */
+  duplicateRow: (rowId: string, fromKeyboard: boolean) => void;
   /** The selected Block, one step. */
   moveBlock: (direction: Direction) => void;
   moveRow: (rowId: string, direction: "down" | "up") => void;

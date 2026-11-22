@@ -39,15 +39,24 @@ On Windows and Linux, <kbd>Alt</kbd> + <kbd>Left</kbd> and <kbd>Alt</kbd> + <kbd
 
 ## The Block's toolbar
 
-A selected Block has a toolbar with a drag handle, four move buttons and a delete button. It's one stop for <kbd>Tab</kbd>, and the arrow keys go across its buttons. <kbd>Home</kbd> and <kbd>End</kbd> go to its first and last button. <kbd>Escape</kbd> goes back to the Block, once it has closed the tooltip of the button with focus. A tooltip that shows because the pointer is over a button closes with any <kbd>Escape</kbd>, which still does what it would have done.
+A selected Block has a toolbar with a drag handle, four move buttons, Duplicate Block and Delete Block. It's one stop for <kbd>Tab</kbd>, and the arrow keys go across its buttons. <kbd>Home</kbd> and <kbd>End</kbd> go to its first and last button. <kbd>Escape</kbd> goes back to the Block, once it has closed the tooltip of the button with focus. A tooltip that shows because the pointer is over a button closes with any <kbd>Escape</kbd>, which still does what it would have done.
 
 ## Rows
 
-A Row's toolbar comes just before the Row's Blocks, so <kbd>Shift</kbd> + <kbd>Tab</kbd> from the Row's first Block reaches it. It has a drag handle, Select Row, the two Move Row buttons and Delete Row. Like the Block's toolbar, it's one stop for <kbd>Tab</kbd>, the arrow keys go across its buttons, and <kbd>Home</kbd> and <kbd>End</kbd> go to its first and last.
+A Row's toolbar comes just before the Row's Blocks, so <kbd>Shift</kbd> + <kbd>Tab</kbd> from the Row's first Block reaches it. It has a drag handle, Select Row, the two Move Row buttons, Duplicate Row and Delete Row. Like the Block's toolbar, it's one stop for <kbd>Tab</kbd>, the arrow keys go across its buttons, and <kbd>Home</kbd> and <kbd>End</kbd> go to its first and last.
 
 | Key | What it does |
 | --- | --- |
 | <kbd>Alt</kbd> + <kbd>Up</kbd> <kbd>Down</kbd> | In the Row's toolbar, moves the Row up or down with its Blocks, as one step for undo. |
+
+## Duplicating and deleting
+
+| Key | What it does |
+| --- | --- |
+| <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>D</kbd> | On a Block or in its toolbar, puts a copy of the Block right after it, in the same Column. In a Row's toolbar, puts a copy of the Row, with its Blocks, right after it. The copy is selected, and focus goes to it, or for a Row, to its toolbar. The browser doesn't bookmark the page. |
+| <kbd>Delete</kbd> or <kbd>Backspace</kbd> | On a Block, deletes it. In a Row's toolbar, deletes the Row. Focus moves to the Block after it, or before it if it was the last, and for a Row to the next Row's toolbar, or the previous one's. |
+
+These do what the Duplicate and Delete buttons in the toolbars do, and each is one step for undo. In a Block's text or a settings field, the keys edit the text as usual, and <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>D</kbd> is left to the browser. A Row whose Columns aren't one of the layouts' widths, as an email made outside the editor can have, is copied with even Columns, as many as it has.
 
 ## Adding a Block
 
@@ -136,6 +145,7 @@ Opening Preview moves focus to its Close button. <kbd>Escape</kbd> closes it, an
 - **A Block's place.** Each Block's name says where it is, such as "Text Block, Row 1, Column 2, position 1 of 3".
 - **Every move.** After a Block or Row moves, the editor says where it went. When one can't go further, it says that instead.
 - **Undo and redo of a move.** These say where the Block went back to.
+- **Duplicating.** After a Block or Row is duplicated, the editor says where the copy went, such as "Block duplicated, Row 1, Column 1, position 2 of 3".
 - **Deleting.** After a Block or Row is deleted, the editor says so. Focus moves to the Block after it, or before it if it was the last. For a Row, focus moves to the next Row's tools, or the previous Row's.
 - **Messages in the Shell.** The [Shell](./shell) announces each message in its bar, such as an email it couldn't open.
 

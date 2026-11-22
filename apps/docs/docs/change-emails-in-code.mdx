@@ -40,13 +40,13 @@ A Command is a plain object with a `type`. `apply()` returns `{ ok: true }` when
 
 | `type` | Other fields | What it does |
 | --- | --- | --- |
-| `insertBlock` | `blockType`, `columnId`, `index` | Adds a Block to a Column. |
-| `insertBlockInNewRow` | `blockType`, `rowIndex` | Adds a Row with one Column, holding a new Block. |
+| `insertBlock` | `blockType`, `columnId`, `index`, and optionally `props` | Adds a Block to a Column. |
+| `insertBlockInNewRow` | `blockType`, `rowIndex`, and optionally `props` | Adds a Row with one Column, holding a new Block. |
 | `updateBlockProps` | `blockId`, `props` | Changes a Block's content or settings. |
 | `moveBlock` | `blockId`, `columnId`, `index` | Moves a Block within its Column or to another. |
 | `moveBlockToNewRow` | `blockId`, `rowIndex` | Moves a Block into a new Row of its own. |
 | `removeBlock` | `blockId` | Removes a Block. |
-| `insertRow` | `index`, `layout` | Adds an empty Row with a layout, such as `"50/50"`. |
+| `insertRow` | `index`, `layout`, and optionally `props` and `columns` | Adds a Row with a layout, such as `"50/50"`, empty unless `columns` gives it Blocks. |
 | `setRowLayout` | `rowId`, `layout` | Changes a Row's layout. |
 | `updateRowProps` | `rowId`, `props` | Changes a Row's settings. |
 | `moveRow` | `rowId`, `index` | Moves a Row, with its Blocks. |
@@ -55,7 +55,7 @@ A Command is a plain object with a `type`. `apply()` returns `{ ok: true }` when
 
 A Block's type is one of `text`, `heading`, `image`, `button`, `divider` and `spacer`. A layout is one of `100`, `50/50`, `33/67`, `67/33`, `33/33/33` and `25/25/25/25`, written as a string. Both lists are exported. `ROW_LAYOUTS` is the layouts as strings, and `BLOCK_TYPES` is an array of `{ type, label }` objects. In TypeScript, a type is a `BlockType`.
 
-`props` and `settings` hold only what you're changing. The rest stays as it is. To remove an optional property, set it to `null`:
+In the Commands that change something, `props` and `settings` hold only what you're changing. The rest stays as it is. To remove an optional property, set it to `null`:
 
 ```js
 editor.apply({
@@ -65,6 +65,41 @@ editor.apply({
 ```
 
 The [document format](./document-format) page lists each Block's properties and what they accept.
+
+## Add content in one step
+
+The Commands that add a Block or Row can add it with its content. In `insertBlock` and `insertBlockInNewRow`, `props` holds all of the new Block's properties, not changes to its type's defaults, and is checked against its type as a saved email's Blocks are. A `null` in it is refused, as it has nothing to remove. Without `props`, the Block gets its type's defaults, such as a Text Block with an empty paragraph.
+
+`insertRow` takes the Row's `props`, and `columns`, one for each of the layout's Columns, in order. Each Column has its `blocks`, each written as a `type` and, optionally, its `props`. The Columns' widths always come from `layout`, so a `columns` with more or fewer Columns than the layout has is refused with `invalidCommand`.
+
+```js
+editor.apply({
+  columns: [
+    {
+      blocks: [
+        {
+          props: { alt: "Red shoe", src: "https://example.com/shoe.png" },
+          type: "image",
+        },
+      ],
+    },
+    {
+      blocks: [
+        {
+          props: { href: "https://example.com/shoe", label: "Shop now" },
+          type: "button",
+        },
+      ],
+    },
+  ],
+  index: 1,
+  layout: "50/50",
+  props: { backgroundColor: "#f4f4f4" },
+  type: "insertRow",
+});
+```
+
+Every Row, Column and Block that's added gets a new ID, which core makes. A Command can't give one, so the same content can be added twice. Adding a Row with its Blocks is still one step for undo.
 
 ## Undo and redo
 

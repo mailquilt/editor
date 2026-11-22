@@ -38,7 +38,11 @@ export type Action =
   | "cancelLink"
   | "closeMergeTagPicker"
   | "closePreview"
+  | "deleteBlock"
+  | "deleteRow"
   | "discardDraft"
+  | "duplicateBlock"
+  | "duplicateRow"
   | "editText"
   | "firstButton"
   | "focusFormatBar"
@@ -235,6 +239,29 @@ const MOVE_BLOCK = arrows("Alt-", {
 });
 
 /**
+ * Ctrl/⌘+D, as the Duplicate buttons. The browser would otherwise bookmark
+ * the page.
+ */
+const duplicate = (action: "duplicateBlock" | "duplicateRow"): Entry => ({
+  action,
+  keys: ["Mod-d"],
+  stops: true,
+  waitsForDrag: true,
+});
+
+/**
+ * Delete and Backspace, as the Delete buttons. Only on a Block or a Row's
+ * toolbar, not on a Block's toolbar, and never in text or a field, where they're
+ * the text's own.
+ */
+const remove = (action: "deleteBlock" | "deleteRow"): Entry => ({
+  action,
+  keys: ["Delete", "Backspace"],
+  stops: true,
+  waitsForDrag: true,
+});
+
+/**
  * What a key scope is within, which gives it the keys for there after its own.
  * Alt+← and Alt+→ keep the page from anywhere, as `KEEP_PAGE` says.
  */
@@ -286,6 +313,8 @@ const KEY_SCOPES = {
         stops: false,
         waitsForDrag: true,
       },
+      duplicate("duplicateBlock"),
+      remove("deleteBlock"),
     ],
     within: "email",
   },
@@ -313,7 +342,12 @@ const KEY_SCOPES = {
     within: "email",
   },
   blockToolbar: {
-    keys: [escape("backToBlock"), ...MOVE_BLOCK, ...TOOLBAR],
+    keys: [
+      escape("backToBlock"),
+      ...MOVE_BLOCK,
+      duplicate("duplicateBlock"),
+      ...TOOLBAR,
+    ],
     within: "email",
   },
   formatBar: { keys: [escape("backToText"), ...TOOLBAR], within: "email" },
@@ -330,6 +364,8 @@ const KEY_SCOPES = {
         stops: false,
         waitsForDrag: true,
       }).filter(({ direction }) => direction === "up" || direction === "down"),
+      duplicate("duplicateRow"),
+      remove("deleteRow"),
       ...TOOLBAR,
     ],
     within: "email",

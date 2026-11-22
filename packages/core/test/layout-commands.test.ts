@@ -113,6 +113,74 @@ describe("the insertBlock Command", () => {
     }
   );
 
+  it("adds a Block with the props it's given", () => {
+    const { editor } = setup();
+    const props = { href: "https://example.com", label: "Shop now" };
+
+    const result = send(editor, {
+      blockType: "button",
+      columnId: "left",
+      index: 0,
+      props,
+      type: "insertBlock",
+    });
+
+    expectAccepted(result);
+    expect(editor.getDocument().rows[0]?.columns[0]?.blocks[0]).toStrictEqual({
+      id: (result as { createdId: string }).createdId,
+      props,
+      type: "button",
+    });
+  });
+
+  it.each([
+    [
+      "props its type can't have",
+      { blockType: "button", props: { label: 5 } },
+      "invalidProps",
+      /label/u,
+    ],
+    [
+      "props without what its type needs",
+      {
+        blockType: "heading",
+        props: { content: { content: [], type: "doc" } },
+      },
+      "invalidProps",
+      /level/u,
+    ],
+    [
+      "an ID among its props",
+      { blockType: "divider", props: { id: "mine" } },
+      "invalidProps",
+      /id/u,
+    ],
+    [
+      "props that aren't an object",
+      { blockType: "divider", props: [] },
+      "invalidCommand",
+      /props/u,
+    ],
+    [
+      "an ID of its own",
+      { blockType: "divider", id: "mine" },
+      "invalidCommand",
+      /id/u,
+    ],
+  ])("refuses a Block with %s", (_name, fields, code, reason) => {
+    const { editor, operations } = setup();
+
+    expect(
+      send(editor, {
+        columnId: "left",
+        index: 0,
+        type: "insertBlock",
+        ...fields,
+      })
+    ).toStrictEqual({ code, ok: false, reason: expect.stringMatching(reason) });
+    expect(operations).toStrictEqual([]);
+  });
+
   it("records one insert Operation", () => {
     const { editor, operations } = setup();
 
@@ -316,6 +384,22 @@ describe("the Commands that add a Row for a Block", () => {
     expectValid(document);
   });
 
+  it("adds a Block in a new Row with the props it's given", () => {
+    const { editor } = setup();
+
+    send(editor, {
+      blockType: "spacer",
+      props: { height: 40 },
+      rowIndex: 1,
+      type: "insertBlockInNewRow",
+    });
+
+    expect(editor.getDocument().rows[1]?.columns[0]?.blocks[0]).toMatchObject({
+      props: { height: 40 },
+      type: "spacer",
+    });
+  });
+
   it("records the new Row's insert, then the Block's", () => {
     const { editor, operations } = setup();
 
@@ -382,6 +466,17 @@ describe("the Commands that add a Row for a Block", () => {
       { blockType: "nope", rowIndex: 5, type: "insertBlockInNewRow" },
       "unknownBlockType",
       /Unknown Block type/u,
+    ],
+    [
+      "props the Block can't have",
+      {
+        blockType: "spacer",
+        props: { height: "tall" },
+        rowIndex: 5,
+        type: "insertBlockInNewRow",
+      },
+      "invalidProps",
+      /height/u,
     ],
     [
       "a Row index past the end",
@@ -545,6 +640,54 @@ describe("the insertRow Command", () => {
     expect(added?.columns.map(({ width }) => width)).toStrictEqual([33, 67]);
     expect(added?.columns.map(({ blocks }) => blocks)).toStrictEqual([[], []]);
     expectValid(editor.getDocument());
+  });
+
+  it("adds a Row with the props and Blocks it's given, each with a new ID", () => {
+    const { editor } = setup();
+    const button = { props: { label: "Go" }, type: "button" };
+
+    const result = send(editor, {
+      columns: [{ blocks: [button, { type: "divider" }] }, { blocks: [] }],
+      index: 1,
+      layout: "33/67",
+      props: { backgroundColor: "#ff0000" },
+      type: "insertRow",
+    });
+
+    const [, added] = editor.getDocument().rows;
+    expect(result).toStrictEqual({ createdId: added?.id, ok: true });
+    expect(added?.props).toStrictEqual({ backgroundColor: "#ff0000" });
+    expect(added?.columns.map(({ width }) => width)).toStrictEqual([33, 67]);
+    expect(
+      added?.columns.map(({ blocks }) =>
+        blocks.map(({ props, type }) => ({ props, type }))
+      )
+    ).toStrictEqual([[button, { props: {}, type: "divider" }], []]);
+    const ids = [
+      added?.id,
+      ...(added?.columns ?? []).flatMap(({ blocks, id }) => [
+        id,
+        ...blocks.map((each) => each.id),
+      ]),
+    ];
+    expect(new Set(ids).size).toBe(5);
+    expectValid(editor.getDocument());
+  });
+
+  it("is one undo step, with its Blocks", () => {
+    const { editor } = setup();
+
+    send(editor, {
+      columns: [{ blocks: [{ type: "divider" }, { type: "spacer" }] }],
+      index: 0,
+      layout: "100",
+      type: "insertRow",
+    });
+
+    const { changed, redone, undone } = undoThenRedo(editor);
+    expect(changed.rows[0]?.columns[0]?.blocks).toHaveLength(2);
+    expect(columnsOf(undone)).toStrictEqual([[["a", "b"], ["c"]]]);
+    expect(redone).toStrictEqual(changed);
   });
 
   it("records one insert Operation, with the Row", () => {
@@ -753,6 +896,67 @@ describe("refusing a Row Command", () => {
       { layout: "60/40", rowId: "row", type: "setRowLayout" },
       "invalidCommand",
       /layout/u,
+    ],
+    [
+      "a new Row with fewer Columns than its layout",
+      {
+        columns: [{ blocks: [] }],
+        index: 0,
+        layout: "50/50",
+        type: "insertRow",
+      },
+      "invalidCommand",
+      /"50\/50" has 2 Columns, not 1/u,
+    ],
+    [
+      "a new Row with props it can't have",
+      { index: 0, layout: "100", props: { color: "red" }, type: "insertRow" },
+      "invalidProps",
+      /new Row/u,
+    ],
+    [
+      "a new Row with a Block of an unknown type",
+      {
+        columns: [{ blocks: [{ type: "video" }] }],
+        index: 0,
+        layout: "100",
+        type: "insertRow",
+      },
+      "unknownBlockType",
+      /video/u,
+    ],
+    [
+      "a new Row with a Block that has props it can't have",
+      {
+        columns: [{ blocks: [] }, { blocks: [{ props: {}, type: "button" }] }],
+        index: 0,
+        layout: "50/50",
+        type: "insertRow",
+      },
+      "invalidProps",
+      /Block 1 of Column 2 in the new Row/u,
+    ],
+    [
+      "a new Row with an ID for a Column",
+      {
+        columns: [{ blocks: [], id: "mine" }],
+        index: 0,
+        layout: "100",
+        type: "insertRow",
+      },
+      "invalidCommand",
+      /id/u,
+    ],
+    [
+      "a new Row with an ID for a Block",
+      {
+        columns: [{ blocks: [{ id: "mine", type: "divider" }] }],
+        index: 0,
+        layout: "100",
+        type: "insertRow",
+      },
+      "invalidCommand",
+      /id/u,
     ],
     [
       "a layout for a Row that doesn't exist",

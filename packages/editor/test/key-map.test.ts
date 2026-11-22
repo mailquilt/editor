@@ -99,6 +99,30 @@ describe("on a Block", () => {
   it("Escape reaches the host page", () => {
     expect(keyIn("block", press("Escape"))).toBeUndefined();
   });
+
+  it("Ctrl/⌘+D duplicates it, and stops there, so the browser doesn't bookmark the page", () => {
+    expect(keyIn("block", press("Mod-d"))).toStrictEqual(
+      acts("duplicateBlock", { stops: true })
+    );
+  });
+
+  it("on Apple devices, ⌘+D duplicates it, and Ctrl+D doesn't", () => {
+    expect(
+      keyIn("block", press("Mod-d", { apple: true }), { apple: true })?.action
+    ).toBe("duplicateBlock");
+    expect(
+      keyIn("block", press("Ctrl-d", { apple: true }), { apple: true })
+    ).toBeUndefined();
+  });
+
+  it("Delete and Backspace delete it, and stop there", () => {
+    expect(
+      [press("Delete"), press("Backspace")].map((each) => keyIn("block", each))
+    ).toStrictEqual([
+      acts("deleteBlock", { stops: true }),
+      acts("deleteBlock", { stops: true }),
+    ]);
+  });
 });
 
 describe("in a Block's text", () => {
@@ -138,6 +162,14 @@ describe("in a Block's text", () => {
   it("Ctrl/⌘+C and Ctrl/⌘+V are left to the browser, to copy and paste", () => {
     expect(keyIn("text", press("Mod-c"))).toBeUndefined();
     expect(keyIn("text", press("Mod-v"))).toBeUndefined();
+  });
+
+  it("Delete, Backspace and Ctrl/⌘+D don't delete or duplicate the Block", () => {
+    expect(
+      [press("Delete"), press("Backspace"), press("Mod-d")].map((each) =>
+        keyIn("text", each)
+      )
+    ).toStrictEqual([undefined, undefined, undefined]);
   });
 
   it("an arrow key moves the cursor", () => {
@@ -290,6 +322,17 @@ describe("in the Block's toolbar", () => {
       acts("leaveToolbar", { keepsDefault: true })
     );
   });
+
+  it("Ctrl/⌘+D duplicates the Block, as on the Block", () => {
+    expect(keyIn("blockToolbar", press("Mod-d"))?.action).toBe(
+      "duplicateBlock"
+    );
+  });
+
+  it("Delete and Backspace don't delete the Block", () => {
+    expect(keyIn("blockToolbar", press("Delete"))).toBeUndefined();
+    expect(keyIn("blockToolbar", press("Backspace"))).toBeUndefined();
+  });
 });
 
 describe("in a Row's toolbar", () => {
@@ -313,6 +356,23 @@ describe("in a Row's toolbar", () => {
 
   it("Escape reaches the host page", () => {
     expect(keyIn("rowToolbar", press("Escape"))).toBeUndefined();
+  });
+
+  it("Ctrl/⌘+D duplicates the Row, and stops there", () => {
+    expect(keyIn("rowToolbar", press("Mod-d"))).toStrictEqual(
+      acts("duplicateRow", { stops: true })
+    );
+  });
+
+  it("Delete and Backspace delete the Row, and stop there", () => {
+    expect(
+      [press("Delete"), press("Backspace")].map((each) =>
+        keyIn("rowToolbar", each)
+      )
+    ).toStrictEqual([
+      acts("deleteRow", { stops: true }),
+      acts("deleteRow", { stops: true }),
+    ]);
   });
 });
 
@@ -377,7 +437,11 @@ describe("while a Block or Row is dragged, which the key would change", () => {
     ["block", "ArrowDown"],
     ["block", "Alt-ArrowUp"],
     ["block", "Enter"],
+    ["block", "Mod-d"],
+    ["block", "Delete"],
     ["rowToolbar", "Alt-ArrowUp"],
+    ["rowToolbar", "Mod-d"],
+    ["rowToolbar", "Backspace"],
   ] as const)("on %s, %s does nothing", (scope, name) => {
     expect(keyIn(scope, press(name), { dragging: true })).toBeUndefined();
   });

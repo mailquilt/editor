@@ -98,7 +98,7 @@ test.describe("moving a selected Row from the keyboard", () => {
     await expect(selectRowButton(page, 3)).toBeFocused();
     await page.keyboard.press("ArrowRight");
     await page.keyboard.press("ArrowRight");
-    await expect(rowTool(page, 3, "Delete Row")).toBeFocused();
+    await expect(rowTool(page, 3, "Duplicate Row")).toBeFocused();
 
     await page.keyboard.press("Alt+ArrowUp");
     await expect(structure(page)).resolves.toEqual([

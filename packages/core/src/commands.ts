@@ -2,6 +2,7 @@ import * as v from "valibot";
 
 import { blockDefinitions, validateProps } from "./blocks.js";
 import { commandSchema } from "./command-schema.js";
+import type { NewColumn } from "./command-schema.js";
 import { createId } from "./document.js";
 import type { Block, BlocksDocument, Column, Row } from "./document.js";
 import {
@@ -127,16 +128,38 @@ const planUpdateEmailSettings = (
     )
   );
 
-const planInsertBlock = (
-  document: BlocksDocument,
+/**
+ * A new Block of a type, with a new ID, and `props` or else the type's
+ * defaults. Not a copy of either, as inserting the Block copies it. `owner`
+ * names it in a refusal, as it has no ID yet that a host would know.
+ */
+const newBlock = (
   blockType: string,
-  columnId: string,
-  index: number
-): CommandPlan => {
+  props: Record<string, unknown> | undefined,
+  owner: string
+) => {
   const definition = blockDefinitions.get(blockType);
   if (!definition) {
     return refused("unknownBlockType", `Unknown Block type "${blockType}"`);
   }
+  const validated =
+    props === undefined
+      ? { ok: true as const, props: definition.defaults }
+      : parseProps(definition.schema, props, owner);
+  if (!validated.ok) {
+    return refused("invalidProps", validated.reason);
+  }
+  // The cast is safe, as the definition was found by this type.
+  const block = { id: createId(), props: validated.props, type: blockType };
+  return { block: block as Block, ok: true as const };
+};
+
+const planInsertBlock = (
+  document: BlocksDocument,
+  block: Block,
+  columnId: string,
+  index: number
+): CommandPlan => {
   const column = findColumn(document, columnId);
   if (!column) {
     return noSuch("Column", columnId);
@@ -147,13 +170,6 @@ const planInsertBlock = (
       `Index ${index} is past the end of Column "${columnId}", which has ${column.blocks.length} Blocks`
     );
   }
-  // Not a copy of the defaults, as inserting the Block copies it. The cast is
-  // safe, as the definition was found by this type.
-  const block = {
-    id: createId(),
-    props: definition.defaults,
-    type: blockType,
-  } as Block;
   return {
     createdId: block.id,
     ok: true,
@@ -223,6 +239,50 @@ const newRow = (columns: Column[]): Row => ({
   id: createId(),
   props: {},
 });
+
+/**
+ * A new Row with a layout's Columns, each holding the Blocks `columns` gives
+ * it, and `props` or else none. Every ID in it is new.
+ */
+const planNewRow = (
+  layout: RowLayout,
+  props: Record<string, unknown> | undefined,
+  columns: NewColumn[] | undefined
+) => {
+  const widths = LAYOUT_WIDTHS[layout];
+  if (columns !== undefined && columns.length !== widths.length) {
+    return refused(
+      "invalidCommand",
+      `Invalid Command: the layout "${layout}" has ${widths.length} Columns, not ${columns.length}`
+    );
+  }
+  const validated =
+    props === undefined
+      ? { ok: true as const, props: {} }
+      : parseProps(rowPropsSchema, props, "the new Row");
+  if (!validated.ok) {
+    return refused("invalidProps", validated.reason);
+  }
+  const row: Row = { ...newRow([]), props: validated.props };
+  for (const [columnIndex, width] of widths.entries()) {
+    const column = newColumn(width);
+    for (const [index, block] of (
+      columns?.[columnIndex]?.blocks ?? []
+    ).entries()) {
+      const made = newBlock(
+        block.type,
+        block.props,
+        `Block ${index + 1} of Column ${columnIndex + 1} in the new Row`
+      );
+      if (!made.ok) {
+        return made;
+      }
+      column.blocks.push(made.block);
+    }
+    row.columns.push(column);
+  }
+  return { ok: true as const, row };
+};
 
 const planInsertRow = (
   document: BlocksDocument,
@@ -423,12 +483,10 @@ export const planCommand = (
       return planUpdateEmailSettings(document, output.settings);
     }
     case "insertBlock": {
-      return planInsertBlock(
-        document,
-        output.blockType,
-        output.columnId,
-        output.index
-      );
+      const made = newBlock(output.blockType, output.props, "the new Block");
+      return made.ok
+        ? planInsertBlock(document, made.block, output.columnId, output.index)
+        : made;
     }
     case "removeBlock": {
       return planRemoveBlock(document, output.blockId);
@@ -446,22 +504,16 @@ export const planCommand = (
     }
     case "insertBlockInNewRow": {
       // Before the new Row's place, as moveBlockToNewRow checks its Block.
-      if (!blockDefinitions.has(output.blockType)) {
-        return refused(
-          "unknownBlockType",
-          `Unknown Block type "${output.blockType}"`
-        );
-      }
-      return planInNewRow(document, output.rowIndex, (withRow, columnId) =>
-        planInsertBlock(withRow, output.blockType, columnId, 0)
-      );
+      const made = newBlock(output.blockType, output.props, "the new Block");
+      return made.ok
+        ? planInNewRow(document, output.rowIndex, (withRow, columnId) =>
+            planInsertBlock(withRow, made.block, columnId, 0)
+          )
+        : made;
     }
     case "insertRow": {
-      return planInsertRow(
-        document,
-        newRow(LAYOUT_WIDTHS[output.layout].map(newColumn)),
-        output.index
-      );
+      const made = planNewRow(output.layout, output.props, output.columns);
+      return made.ok ? planInsertRow(document, made.row, output.index) : made;
     }
     case "removeRow": {
       return planRemoveRow(document, output.rowId);
