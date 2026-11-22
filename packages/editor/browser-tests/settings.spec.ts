@@ -21,6 +21,7 @@ import {
   openTestPage,
   panelBlock,
   redoByKey,
+  rowTools,
   selectRow,
   setValue,
   structure,
@@ -214,6 +215,44 @@ test.describe("Row settings", () => {
     expect(await rowBackground(canvas(page).getByTestId("row").last())).toBe(
       "rgba(0, 0, 0, 0)"
     );
+  });
+
+  test("pad the Row on the canvas as in the export", async ({ page }) => {
+    await setValue(page, emailWith([[["In"]]]));
+    await selectRow(page, 1);
+
+    await expect(rowField(page, "Left padding (px)")).toHaveValue("0");
+    await change(rowField(page, "Left padding (px)"), "40");
+
+    const { rows } = await currentValue(page);
+    expect(rows[0]?.props).toStrictEqual({ paddingLeft: 40 });
+    await expect(canvas(page).getByTestId("row")).toHaveCSS(
+      "padding-left",
+      "40px"
+    );
+  });
+
+  test("hide the Row on phones with a switch, and mark it in its toolbar", async ({
+    page,
+  }) => {
+    await setValue(page, emailWith([[["Left"], ["Right"]]]));
+    await selectRow(page, 1);
+    const hide = row(page).getByRole("switch", { name: "Hide on phones" });
+    const stack = row(page).getByRole("switch", {
+      name: "Stack Columns on phones",
+    });
+    await expect(hide).not.toBeChecked();
+    await expect(stack).toBeChecked();
+
+    await hide.click();
+
+    const { rows } = await currentValue(page);
+    expect(rows[0]?.props).toStrictEqual({ hideOnPhone: true });
+    await expect(hide).toBeChecked();
+    await expect(
+      rowTools(page, 1).getByRole("img", { name: "Hidden on phones" })
+    ).toBeVisible();
+    expect(await violations(page)).toStrictEqual([]);
   });
 });
 

@@ -4,7 +4,7 @@ import {
   blockLabel,
   blockSettingsFields,
   EMAIL_SETTINGS_FIELDS,
-  ROW_SETTINGS_FIELDS,
+  rowSettingsFields,
   rowLayoutOf,
 } from "@mailquilt/core/internal";
 import { css, html, nothing } from "lit";
@@ -353,7 +353,7 @@ const renderRowProperties = ({ row, rowIndex }: RowPosition, api: PanelApi) => {
   const current = rowLayoutOf(row);
   const section: SettingsSection = {
     command: (props) => ({ props, rowId: row.id, type: "updateRowProps" }),
-    fields: ROW_SETTINGS_FIELDS,
+    fields: rowSettingsFields(row),
     id: "row",
     legend: "Row",
     targetId: row.id,

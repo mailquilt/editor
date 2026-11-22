@@ -1,21 +1,79 @@
 import * as v from "valibot";
 
 import type { Row } from "./document.js";
-import { BACKGROUND_COLOR_FIELD } from "./settings-fields.js";
+import { BACKGROUND_COLOR_FIELD, pixelField } from "./settings-fields.js";
 import type { SettingsField } from "./settings-fields.js";
 import { colorSchema } from "./value-schemas.js";
 
+/** As much room as a Row's padding can take on one side. */
+const MAX_ROW_PADDING = 200;
+
+const paddingSchema = v.optional(
+  v.pipe(
+    v.number(),
+    v.safeInteger(),
+    v.minValue(0),
+    v.maxValue(MAX_ROW_PADDING)
+  )
+);
+
 export const rowPropsSchema = v.strictObject({
   backgroundColor: v.optional(colorSchema),
+  hideOnPhone: v.optional(v.boolean()),
+  paddingBottom: paddingSchema,
+  paddingLeft: paddingSchema,
+  paddingRight: paddingSchema,
+  paddingTop: paddingSchema,
+  stackOnPhone: v.optional(v.boolean()),
 });
+
+/**
+ * A Row's props, as its schema checks them.
+ * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
+ */
+export type RowProps = v.InferOutput<typeof rowPropsSchema>;
+
+const paddingField = (key: string, label: string) =>
+  pixelField(key, label, { fallback: 0, max: MAX_ROW_PADDING, min: 0 });
+
+/** Below the width at which the export's phone styles start. */
+const ON_PHONES = "On screens under 480px wide.";
+
+const ROW_FIELDS: readonly SettingsField[] = [
+  BACKGROUND_COLOR_FIELD,
+  paddingField("paddingTop", "Top padding"),
+  paddingField("paddingRight", "Right padding"),
+  paddingField("paddingBottom", "Bottom padding"),
+  paddingField("paddingLeft", "Left padding"),
+  {
+    default: false,
+    description: `${ON_PHONES} A few phone apps still show it.`,
+    invalidMessage: "Turn it on or off.",
+    key: "hideOnPhone",
+    label: "Hide on phones",
+    type: "toggle",
+  },
+];
+
+/** Columns only stack when there's more than one. */
+const ROW_FIELDS_WITH_COLUMNS: readonly SettingsField[] = [
+  ...ROW_FIELDS,
+  {
+    default: true,
+    description: `${ON_PHONES} Off keeps the Columns side by side.`,
+    invalidMessage: "Turn it on or off.",
+    key: "stackOnPhone",
+    label: "Stack Columns on phones",
+    type: "toggle",
+  },
+];
 
 /**
  * The settings panel's fields for a Row.
  * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
  */
-export const ROW_SETTINGS_FIELDS: readonly SettingsField[] = [
-  BACKGROUND_COLOR_FIELD,
-];
+export const rowSettingsFields = ({ columns }: Pick<Row, "columns">) =>
+  columns.length > 1 ? ROW_FIELDS_WITH_COLUMNS : ROW_FIELDS;
 
 /**
  * A Row's CSS, for both the canvas and the email output. Its props must be
@@ -25,8 +83,16 @@ export const ROW_SETTINGS_FIELDS: readonly SettingsField[] = [
 export const rowStyles = ({
   props,
 }: Pick<Row, "props">): Record<string, string> => {
-  const { backgroundColor } = props as v.InferOutput<typeof rowPropsSchema>;
-  return backgroundColor === undefined
-    ? {}
-    : { "background-color": backgroundColor };
+  const { backgroundColor, ...padding } = props as RowProps;
+  const styles: Record<string, string> =
+    backgroundColor === undefined
+      ? {}
+      : { "background-color": backgroundColor };
+  for (const side of ["Top", "Right", "Bottom", "Left"] as const) {
+    const pixels = padding[`padding${side}`];
+    if (pixels !== undefined) {
+      styles[`padding-${side.toLowerCase()}`] = `${pixels}px`;
+    }
+  }
+  return styles;
 };

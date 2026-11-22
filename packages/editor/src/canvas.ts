@@ -1,6 +1,7 @@
 import { BLOCK_TYPES } from "@mailquilt/core";
 import type { Block, Column, Row } from "@mailquilt/core";
 import { blockLabel, blockStyles, rowStyles } from "@mailquilt/core/internal";
+import type { RowProps } from "@mailquilt/core/internal";
 import { css, html, nothing } from "lit";
 import { repeat } from "lit/directives/repeat.js";
 
@@ -494,6 +495,22 @@ export const canvasStyles = css`
     color: var(--mq-color-text);
   }
 
+  .row-toolbar .separator {
+    height: 1px;
+    margin: 2px 4px;
+    width: auto;
+  }
+
+  /* What a Row does that the canvas, at desktop width, doesn't show. */
+  .row-mark {
+    align-items: center;
+    color: var(--mq-color-text-muted);
+    display: inline-flex;
+    height: 28px;
+    justify-content: center;
+    width: 28px;
+  }
+
   /*
    * Undo, Redo and Preview, at the bottom left of the canvas while it shows,
    * as far from the canvas's left edge as from the window's bottom.
@@ -642,73 +659,95 @@ const renderRowToolbar = (
   index: number,
   count: number,
   api: PanelApi
-) => html`
-  <div
-    aria-current=${row.id === api.selectedRow?.row.id ? "true" : nothing}
-    aria-label=${`Row ${index + 1}`}
-    aria-orientation="vertical"
-    class="ui row-toolbar"
-    data-place=${place("rowToolbar")}
-    role="toolbar"
-  >
-    <div class="bar">
-      ${renderDragHandle("Drag Row")}
-      <button
-        aria-label="Select Row"
-        class="icon-button"
-        ?data-active=${row.id === api.selectedRow?.row.id}
-        data-action="select-row"
-        data-tooltip="Select Row"
-        type="button"
-        @click=${({ detail }: MouseEvent) => api.selectRow(row.id, detail === 0)}
-      >
-        ${ICONS.select}
-      </button>
-      ${ROW_MOVE_BUTTONS.map(
-        ({ direction, keys, shortcuts }) => html`
-          <button
-            aria-keyshortcuts=${shortcuts}
-            aria-label=${`Move Row ${direction}`}
-            class="icon-button"
-            data-action=${`move-${direction}`}
-            data-tooltip=${`Move Row ${direction} (${keys})`}
-            ?disabled=${direction === "up" ? index === 0 : index === count - 1}
-            tabindex="-1"
-            type="button"
-            @click=${() => api.moveRow(row.id, direction)}
-          >
-            ${ICONS[direction]}
-          </button>
-        `
-      )}
-      <button
-        aria-keyshortcuts=${DUPLICATE_ROW.shortcuts}
-        aria-label="Duplicate Row"
-        class="icon-button"
-        data-action="duplicate"
-        data-tooltip=${`Duplicate Row (${DUPLICATE_ROW.keys})`}
-        tabindex="-1"
-        type="button"
-        @click=${({ detail }: MouseEvent) =>
-          api.duplicateRow(row.id, detail === 0)}
-      >
-        ${ICONS.duplicate}
-      </button>
-      <button
-        aria-keyshortcuts=${DELETE_ROW.shortcuts}
-        aria-label="Delete Row"
-        class="icon-button danger"
-        data-action="delete"
-        data-tooltip=${`Delete Row (${DELETE_ROW.keys})`}
-        tabindex="-1"
-        type="button"
-        @click=${({ detail }: MouseEvent) => api.deleteRow(row.id, detail === 0)}
-      >
-        ${ICONS.delete}
-      </button>
+) => {
+  const hiddenOnPhones = (row.props as RowProps).hideOnPhone === true;
+  // By position, as an ID a saved email gives can hold a space.
+  const markId = `row-${index}-hidden-on-phones`;
+  return html`
+    <div
+      aria-current=${row.id === api.selectedRow?.row.id ? "true" : nothing}
+      aria-describedby=${hiddenOnPhones ? markId : nothing}
+      aria-label=${`Row ${index + 1}`}
+      aria-orientation="vertical"
+      class="ui row-toolbar"
+      data-place=${place("rowToolbar")}
+      role="toolbar"
+    >
+      <div class="bar">
+        ${renderDragHandle("Drag Row")}
+        <button
+          aria-label="Select Row"
+          class="icon-button"
+          ?data-active=${row.id === api.selectedRow?.row.id}
+          data-action="select-row"
+          data-tooltip="Select Row"
+          type="button"
+          @click=${({ detail }: MouseEvent) => api.selectRow(row.id, detail === 0)}
+        >
+          ${ICONS.select}
+        </button>
+        ${ROW_MOVE_BUTTONS.map(
+          ({ direction, keys, shortcuts }) => html`
+            <button
+              aria-keyshortcuts=${shortcuts}
+              aria-label=${`Move Row ${direction}`}
+              class="icon-button"
+              data-action=${`move-${direction}`}
+              data-tooltip=${`Move Row ${direction} (${keys})`}
+              ?disabled=${direction === "up" ? index === 0 : index === count - 1}
+              tabindex="-1"
+              type="button"
+              @click=${() => api.moveRow(row.id, direction)}
+            >
+              ${ICONS[direction]}
+            </button>
+          `
+        )}
+        <button
+          aria-keyshortcuts=${DUPLICATE_ROW.shortcuts}
+          aria-label="Duplicate Row"
+          class="icon-button"
+          data-action="duplicate"
+          data-tooltip=${`Duplicate Row (${DUPLICATE_ROW.keys})`}
+          tabindex="-1"
+          type="button"
+          @click=${({ detail }: MouseEvent) =>
+            api.duplicateRow(row.id, detail === 0)}
+        >
+          ${ICONS.duplicate}
+        </button>
+        <button
+          aria-keyshortcuts=${DELETE_ROW.shortcuts}
+          aria-label="Delete Row"
+          class="icon-button danger"
+          data-action="delete"
+          data-tooltip=${`Delete Row (${DELETE_ROW.keys})`}
+          tabindex="-1"
+          type="button"
+          @click=${({ detail }: MouseEvent) => api.deleteRow(row.id, detail === 0)}
+        >
+          ${ICONS.delete}
+        </button>
+        ${
+          hiddenOnPhones
+            ? html`
+                <span class="separator"></span>
+                <span
+                  aria-label="Hidden on phones"
+                  class="row-mark"
+                  data-tooltip="Hidden on phones"
+                  id=${markId}
+                  role="img"
+                >
+                  ${ICONS.phoneOff}
+                </span>
+              `
+            : nothing
+        }
+      </div>
     </div>
-  </div>
-`;
+  `;
+};
 
 /** The selected Block's tools. One stop for Tab, then arrow keys go along. */
 const renderBlockToolbar = (api: PanelApi) => html`

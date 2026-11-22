@@ -7,7 +7,7 @@ interface FieldBase {
   /** What to do about a value the schema refuses. */
   invalidMessage: string;
   /** What the control shows while the property isn't set. */
-  default?: number | string;
+  default?: boolean | number | string;
   /** Can't be used yet, with `description` saying why. */
   disabled?: boolean;
 }
@@ -26,22 +26,28 @@ export type SettingsField = FieldBase &
         options: readonly { label: string; value: number | string }[];
       }
     | { type: "text" }
+    /** Yes or no, shown as a switch. */
+    | { type: "toggle" }
   );
 
 export const pixelField = (
   key: string,
   label: string,
-  { fallback, max }: { fallback?: number; max?: number } = {}
+  {
+    fallback,
+    max,
+    min = 1,
+  }: { fallback?: number; max?: number; min?: number } = {}
 ): SettingsField => ({
   default: fallback,
   invalidMessage:
     max === undefined
-      ? "Use a whole number of pixels, 1 or more."
-      : `Use a whole number from 1 to ${max}.`,
+      ? `Use a whole number of pixels, ${min} or more.`
+      : `Use a whole number from ${min} to ${max}.`,
   key,
   label,
   max,
-  min: 1,
+  min,
   type: "number",
   unit: "px",
 });

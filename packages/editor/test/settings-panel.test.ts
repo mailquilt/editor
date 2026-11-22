@@ -45,4 +45,16 @@ describe("what's typed in a settings field means", () => {
   it("the text, in a select, for a saved value that isn't on its list", () => {
     expect(fieldValue(select, typed("500"))).toBe("500");
   });
+
+  it("yes or no, in a switch", () => {
+    const toggle: SettingsField = {
+      invalidMessage: "",
+      key: "hideOnPhone",
+      label: "",
+      type: "toggle",
+    };
+
+    expect(fieldValue(toggle, typed("true"))).toBeTruthy();
+    expect(fieldValue(toggle, typed("false"))).toBeFalsy();
+  });
 });
