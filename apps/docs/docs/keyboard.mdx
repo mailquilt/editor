@@ -58,6 +58,27 @@ A Row's toolbar comes just before the Row's Blocks, so <kbd>Shift</kbd> + <kbd>T
 
 These do what the Duplicate and Delete buttons in the toolbars do, and each is one step for undo. In a Block's text or a settings field, the keys edit the text as usual, and <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>D</kbd> is left to the browser. A Row whose Columns aren't one of the layouts' widths, as an email made outside the editor can have, is copied with even Columns, as many as it has.
 
+## Copying, cutting and pasting
+
+| Key | What it does |
+| --- | --- |
+| <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>C</kbd> | On a Block, copies it. In a Row's toolbar, copies the Row with its Blocks. |
+| <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>X</kbd> | Cuts: copies the Block or Row, then deletes it as <kbd>Delete</kbd> does, and focus moves the same way. |
+| <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>V</kbd> | On a Block, in a Row's toolbar, or in the toolbar below the email, pastes. What's pasted is selected, with focus on it, or for a Row on its toolbar. A pasted Block, Row or text is one step for undo, and image files are added as dropped ones are. |
+
+The browser's Edit menu does the same. A paste goes where this table says. In a Row's toolbar, that Row counts as selected.
+
+| What's pasted | With a Block selected | With a Row selected | With nothing selected |
+| --- | --- | --- | --- |
+| A Block copied in a Mail Quilt editor | After it, in its Column | In a new Row after it | In a new Row at the end |
+| A Row copied in a Mail Quilt editor | After the Block's Row | After it | At the end |
+| Text or HTML from another app | A new Text Block after it | A new Text Block in a new Row after it | A new Text Block in a new Row at the end |
+| An image file | A new Image Block after it | A new Image Block in a new Row after it | A new Image Block in a new Row at the end |
+
+A Block or Row pasted from a Mail Quilt editor, in this email, another one, or another tab, keeps every setting, and gets new IDs. Pasted anywhere else, such as in a document, it's text and simple HTML: text keeps its formatting and Lists, an Image is an image, and a Button is a link. Text or HTML from another app keeps only what a Text Block can hold, as when it's pasted into text, and each `{{name}}` in it becomes a Merge Tag. An image file uploads as a dropped one does, as [Upload images](./upload-images#pasting-an-image) says. Without `uploadImage` it's refused, and screen readers hear that the editor can't upload images. A copy from a newer version of the editor is refused, and screen readers hear why.
+
+In a Block's text or a settings field, these keys copy, cut and paste text as usual. A Block pasted into text gives its text.
+
 ## Adding a Block
 
 The side panel's tabs, Content, Rows and Settings, are one stop for <kbd>Tab</kbd>. The arrow keys open the next or previous tab, and <kbd>Home</kbd> and <kbd>End</kbd> the first or last.
@@ -146,6 +167,7 @@ Opening Preview moves focus to its Close button. <kbd>Escape</kbd> closes it, an
 - **Every move.** After a Block or Row moves, the editor says where it went. When one can't go further, it says that instead.
 - **Undo and redo of a move.** These say where the Block went back to.
 - **Duplicating.** After a Block or Row is duplicated, the editor says where the copy went, such as "Block duplicated, Row 1, Column 1, position 2 of 3".
+- **Copying, cutting and pasting.** The editor says what was copied or cut and where it was, or where what was pasted went, such as "Block pasted, Row 2, Column 1, position 3 of 3". A paste it refuses says why.
 - **Deleting.** After a Block or Row is deleted, the editor says so. Focus moves to the Block after it, or before it if it was the last. For a Row, focus moves to the next Row's tools, or the previous Row's.
 - **Messages in the Shell.** The [Shell](./shell) announces each message in its bar, such as an email it couldn't open.
 

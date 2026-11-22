@@ -130,7 +130,8 @@ export const createImageUploads = ({
      * Files dropped on an Image Block, which takes the first image, or where
      * they land on the canvas. Each other image adds an Image Block there, in order,
      * which uploads on its own. A file of another type adds none, and is
-     * refused by its name. The last Block to take a file is selected.
+     * refused by its name. The last Block to take a file is selected, and
+     * returned.
      */
     drop: (files: File[], target: FileDropTarget) => {
       const email = current();
@@ -167,6 +168,7 @@ export const createImageUploads = ({
         );
         announcements.say(`${names}: ${WRONG_TYPE}`);
       }
+      return selected;
     },
 
     /** Why the Block's last upload failed, until its next one or a new URL. */

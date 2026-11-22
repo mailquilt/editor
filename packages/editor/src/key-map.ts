@@ -38,6 +38,10 @@ export type Action =
   | "cancelLink"
   | "closeMergeTagPicker"
   | "closePreview"
+  | "copyBlock"
+  | "copyRow"
+  | "cutBlock"
+  | "cutRow"
   | "deleteBlock"
   | "deleteRow"
   | "discardDraft"
@@ -55,6 +59,8 @@ export type Action =
   | "nextButton"
   | "nextMergeTag"
   | "openLinkField"
+  | "paste"
+  | "pasteAfterRow"
   | "pickMergeTag"
   | "previousButton"
   | "previousMergeTag"
@@ -62,6 +68,15 @@ export type Action =
   | "selectBlock"
   | "typeInField"
   | "undo";
+
+/** The browser's clipboard events, which its keys and its Edit menu fire. */
+export type ClipboardEventType = "copy" | "cut" | "paste";
+
+/** The actions done on a clipboard event, rather than the key's press. */
+export type ClipboardAction = Extract<
+  Action,
+  "copyBlock" | "copyRow" | "cutBlock" | "cutRow" | "paste" | "pasteAfterRow"
+>;
 
 /** The actions of the arrow keys, which go one way. */
 export type DirectedAction = "moveBlock" | "moveRow" | "selectBlock";
@@ -97,6 +112,11 @@ export type KeyPress = Pick<
 interface EntryOptions {
   /** Matches with Shift, Ctrl, Alt or ⌘ held too. */
   anyModifiers?: boolean;
+  /**
+   * The key's action is done on the browser's clipboard event that the key
+   * fires, as the Edit menu's is, and the key keeps its default to fire it.
+   */
+  clipboard?: ClipboardEventType;
   keepsDefault?: boolean;
   /**
    * Only when the editor has what it acts on: a Block with text selected, or a
@@ -262,6 +282,25 @@ const remove = (action: "deleteBlock" | "deleteRow"): Entry => ({
 });
 
 /**
+ * Ctrl/⌘+C, X and V. The browser fires its clipboard event for them, as it
+ * does from its Edit menu, and that event copies, cuts or pastes, so the press
+ * keeps its default. Cut and paste change the email, so they wait for a drag.
+ */
+const clipboard = (
+  event: ClipboardEventType,
+  action: ClipboardAction
+): Entry => ({
+  action,
+  clipboard: event,
+  keepsDefault: true,
+  keys: [{ copy: "Mod-c", cut: "Mod-x", paste: "Mod-v" }[event]],
+  stops: true,
+  waitsForDrag: event !== "copy",
+});
+
+const PASTE = clipboard("paste", "paste");
+
+/**
  * What a key scope is within, which gives it the keys for there after its own.
  * Alt+← and Alt+→ keep the page from anywhere, as `KEEP_PAGE` says.
  */
@@ -315,6 +354,9 @@ const KEY_SCOPES = {
       },
       duplicate("duplicateBlock"),
       remove("deleteBlock"),
+      clipboard("copy", "copyBlock"),
+      clipboard("cut", "cutBlock"),
+      PASTE,
     ],
     within: "email",
   },
@@ -366,10 +408,18 @@ const KEY_SCOPES = {
       }).filter(({ direction }) => direction === "up" || direction === "down"),
       duplicate("duplicateRow"),
       remove("deleteRow"),
+      clipboard("copy", "copyRow"),
+      clipboard("cut", "cutRow"),
+      // After this Row, which a paste counts as selected, as Delete and
+      // Duplicate act on it too.
+      clipboard("paste", "pasteAfterRow"),
       ...TOOLBAR,
     ],
     within: "email",
   },
+  // Where focus goes with nothing selected, such as after the last Block is
+  // deleted, so a paste goes at the end.
+  emailTools: { keys: [PASTE], within: "editor" },
   // Elsewhere in the email, such as an empty Column's buttons.
   email: { keys: [], within: "email" },
   panelTabs: { keys: TOOLBAR, within: "editor" },
@@ -671,6 +721,19 @@ export const keyFor = (
   press: KeyPress,
   context: Partial<Context> = {}
 ) => bindingIn(KEY_MAP[scope], press, context);
+
+/**
+ * What the browser's clipboard event does in `scope`, from its keys or its Edit
+ * menu, or undefined if it's left to the browser, as in text and fields.
+ */
+export const clipboardFor = (
+  scope: KeyScope,
+  type: ClipboardEventType,
+  { dragging = false }: Partial<Pick<Context, "dragging">> = {}
+) =>
+  KEY_MAP[scope].find(
+    (entry) => entry.clipboard === type && !(dragging && entry.waitsForDrag)
+  )?.action as ClipboardAction | undefined;
 
 /** What a press heard first does, or undefined if it goes on as usual. */
 export const keyHeardFirst = (scope: HeardFirst, press: KeyPress) =>

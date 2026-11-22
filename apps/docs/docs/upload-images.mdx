@@ -31,7 +31,7 @@ editor.uploadImage = uploadImage;
 <MailQuilt onChange={setEmail} uploadImage={uploadImage} value={email} />
 ```
 
-Without it, there's no Upload image button, a file dropped on the editor is refused, and the editor is as it was.
+Without it, there's no Upload image button, a file dropped or pasted on the editor is refused, and the editor is as it was.
 
 ## A pre-signed upload
 
@@ -143,3 +143,7 @@ If your page has a Content Security Policy, its `connect-src` has to allow the u
 - **A new Image Block whose upload fails stays,** empty, with the reason by its Image URL field when it's selected. Screen readers hear each failure with the file's name, as several files can be uploading at once. Redo after undoing a new Image Block brings it back empty, without uploading the file again.
 - **A dropped file of another type** adds no Image Block, and screen readers hear its name and "Use a PNG, JPEG or GIF image."
 - **The Preview, the notice shown when the editor is too narrow, and the Shell's header** still refuse files, so the browser doesn't open one in place of your page. Safari is the exception: it opens a file dropped on the email in the Preview.
+
+## Pasting an image
+
+An image file pasted on a Block, in a Row's toolbar or in the toolbar below the email, such as a screenshot, adds an Image Block where [the keyboard page](./keyboard#copying-cutting-and-pasting) says a paste goes, and uploads as a dropped file does: the same three types, the same "Uploading…", and the same empty Block if the upload fails. When the clipboard also holds text, as an app such as Word puts a picture of the text beside it, the text is pasted instead.

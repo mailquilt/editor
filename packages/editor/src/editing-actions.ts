@@ -10,14 +10,18 @@ import type {
 import { rowLayoutOf } from "@mailquilt/core/internal";
 
 import type { Announcements } from "./announcements.js";
+import { writeCopy } from "./clipboard.js";
+import type { Pasted } from "./clipboard.js";
 import type { EditorFocus } from "./focus.js";
 import {
+  blockPositionLabel,
   dropCommand,
   locate,
   locateRow,
   moveCommand,
   moveRowCommand,
   neighbourBlockId,
+  positionLabel,
 } from "./positions.js";
 import type {
   Direction,
@@ -41,6 +45,12 @@ interface EditingHost {
   /** The email as it is now. */
   email: () => BlocksDocument | undefined;
   announcements: Pick<Announcements, "blockMoved" | "rowMoved" | "say">;
+  /**
+   * Adds an Image Block for each pasted image where a paste lands, and uploads
+   * it, as a drop does, and returns the one selected. Refused without
+   * `uploadImage`.
+   */
+  pasteFiles: (files: File[], position: DropPosition) => string | undefined;
   focus: Pick<
     EditorFocus,
     "focus" | "focusWhenRendered" | "revealBlock" | "revealRow"
@@ -66,6 +76,7 @@ export const createEditingActions = ({
   apply,
   email: current,
   focus,
+  pasteFiles,
   selection,
 }: EditingHost) => {
   /** What the latest change moved, for undo and redo to announce. */
@@ -93,6 +104,77 @@ export const createEditingActions = ({
     const column =
       selectedRow(email)?.row.columns[0] ?? email.rows.at(-1)?.columns.at(-1);
     return column && { columnId: column.id, index: column.blocks.length };
+  };
+
+  /**
+   * From the keyboard, focus goes to the next Block, or else the one before,
+   * as the deleted Block's toolbar had it.
+   */
+  const deleteBlock = (fromKeyboard: boolean, said = "Block deleted.") => {
+    const email = current();
+    const { blockId } = selection;
+    if (!email || blockId === undefined) {
+      return;
+    }
+    const neighbour =
+      neighbourBlockId(email, blockId, "down") ??
+      neighbourBlockId(email, blockId, "up");
+    if (apply({ blockId, type: "removeBlock" })?.ok) {
+      announcements.say(said);
+      if (fromKeyboard && neighbour !== undefined) {
+        focus.focusWhenRendered({
+          blockId: neighbour,
+          on: "block",
+        });
+      }
+    }
+  };
+
+  /**
+   * From the keyboard, focus goes to the next Row's tools, or else the one
+   * before, as the deleted Row's toolbar had it.
+   */
+  const deleteRow = (
+    rowId: string,
+    fromKeyboard: boolean,
+    said = "Row deleted."
+  ) => {
+    const email = current();
+    const position = email && locateRow(email, rowId);
+    const neighbour =
+      position &&
+      (email.rows[position.rowIndex + 1] ?? email.rows[position.rowIndex - 1]);
+    if (apply({ rowId, type: "removeRow" })?.ok) {
+      announcements.say(said);
+      if (fromKeyboard && neighbour) {
+        focus.focusWhenRendered({
+          on: "rowTool",
+          rowId: neighbour.id,
+        });
+      }
+    }
+  };
+
+  /** Puts the selected Block on the clipboard, and returns where it is, in words. */
+  const writeBlock = (data: DataTransfer) => {
+    const email = current();
+    const selected = email && selectedBlock(email);
+    if (!selected) {
+      return;
+    }
+    writeCopy(data, { block: selected.block });
+    return blockPositionLabel(email, selected.block.id);
+  };
+
+  /** Puts a Row on the clipboard, and returns where it is, in words. */
+  const writeRow = (rowId: string, data: DataTransfer) => {
+    const email = current();
+    const position = email && locateRow(email, rowId);
+    if (!position) {
+      return;
+    }
+    writeCopy(data, { row: position.row });
+    return positionLabel(position.rowIndex, email.rows.length);
   };
 
   return {
@@ -164,51 +246,41 @@ export const createEditingActions = ({
       }
     },
 
-    /**
-     * From the keyboard, focus goes to the next Block, or else the one before,
-     * as the deleted Block's toolbar had it.
-     */
-    deleteBlock: (fromKeyboard: boolean) => {
-      const email = current();
-      const { blockId } = selection;
-      if (!email || blockId === undefined) {
-        return;
-      }
-      const neighbour =
-        neighbourBlockId(email, blockId, "down") ??
-        neighbourBlockId(email, blockId, "up");
-      if (apply({ blockId, type: "removeBlock" })?.ok) {
-        announcements.say("Block deleted.");
-        if (fromKeyboard && neighbour !== undefined) {
-          focus.focusWhenRendered({
-            blockId: neighbour,
-            on: "block",
-          });
-        }
+    /** Puts the selected Block on the clipboard, and says where it is. */
+    copyBlock: (data: DataTransfer) => {
+      const where = writeBlock(data);
+      if (where) {
+        announcements.say(`Block copied, ${where}.`);
       }
     },
 
-    /**
-     * From the keyboard, focus goes to the next Row's tools, or else the one
-     * before, as the deleted Row's toolbar had it.
-     */
-    deleteRow: (rowId: string, fromKeyboard: boolean) => {
-      const email = current();
-      const position = email && locateRow(email, rowId);
-      const neighbour =
-        position &&
-        (email.rows[position.rowIndex + 1] ??
-          email.rows[position.rowIndex - 1]);
-      if (apply({ rowId, type: "removeRow" })?.ok) {
-        announcements.say("Row deleted.");
-        if (fromKeyboard && neighbour) {
-          focus.focusWhenRendered({
-            on: "rowTool",
-            rowId: neighbour.id,
-          });
-        }
+    /** Puts a Row on the clipboard, and says where it is. */
+    copyRow: (rowId: string, data: DataTransfer) => {
+      const where = writeRow(rowId, data);
+      if (where) {
+        announcements.say(`Row copied, ${where}.`);
       }
     },
+
+    /** Copies the selected Block, then deletes it, as Delete Block does. */
+    cutBlock: (data: DataTransfer) => {
+      const where = writeBlock(data);
+      if (where) {
+        deleteBlock(true, `Block cut, ${where}.`);
+      }
+    },
+
+    /** Copies a Row, then deletes it, as Delete Row does. */
+    cutRow: (rowId: string, data: DataTransfer) => {
+      const where = writeRow(rowId, data);
+      if (where) {
+        deleteRow(rowId, true, `Row cut, ${where}.`);
+      }
+    },
+
+    deleteBlock,
+
+    deleteRow,
 
     /** What's dropped: a Block or Row moved, or a new one, which is selected. */
     drop: (source: DragSource, position: DropPosition) => {
@@ -353,6 +425,74 @@ export const createEditingActions = ({
       lastMoves = operations.filter(
         (operation): operation is MoveOperation => operation.type === "move"
       );
+    },
+
+    /**
+     * Adds what was pasted in one Command, and selects it with focus on it. A
+     * Row goes after the selected Row, or the selected Block's Row, or else at
+     * the end. Anything else goes after the selected Block, or else in a new
+     * Row where a Row would go. Pasted in a Row's toolbar, `afterRow` is that
+     * Row, which counts as selected.
+     */
+    paste: (pasted: Pasted, afterRow?: string) => {
+      const email = current();
+      if (!email) {
+        return;
+      }
+      if ("refused" in pasted) {
+        announcements.say(`Can't paste. ${pasted.refused}.`);
+        return;
+      }
+      const block = afterRow === undefined ? selectedBlock(email) : undefined;
+      const row =
+        afterRow === undefined
+          ? selectedRow(email)
+          : locateRow(email, afterRow);
+      const rowIndex = (row ?? block)?.rowIndex;
+      const nextRowIndex =
+        rowIndex === undefined ? email.rows.length : rowIndex + 1;
+      const position: DropPosition = block
+        ? { columnId: block.columnId, index: block.index + 1 }
+        : { rowIndex: nextRowIndex };
+      if ("files" in pasted) {
+        const blockId = pasteFiles(pasted.files, position);
+        if (blockId !== undefined) {
+          announcements.blockMoved(blockId, "Block pasted,");
+        }
+        return;
+      }
+      if ("row" in pasted) {
+        const { row: copied } = pasted;
+        const layout = layoutOf(copied);
+        const result =
+          layout &&
+          apply({
+            columns: copied.columns.map(({ blocks }) => ({
+              blocks: blocks.map(({ props, type }) => ({ props, type })),
+            })),
+            index: nextRowIndex,
+            layout,
+            props: copied.props,
+            type: "insertRow",
+          });
+        if (result?.ok && result.createdId !== undefined) {
+          selection.selectRow(result.createdId, true);
+          announcements.rowMoved(result.createdId, "Row pasted,");
+        }
+        return;
+      }
+      const { props, type: blockType } = pasted.block;
+      const result = apply(
+        "columnId" in position
+          ? { blockType, props, ...position, type: "insertBlock" }
+          : { blockType, props, ...position, type: "insertBlockInNewRow" }
+      );
+      if (result?.ok && result.createdId !== undefined) {
+        const blockId = result.createdId;
+        selection.select({ blockId });
+        focus.focusWhenRendered({ blockId, on: "block" });
+        announcements.blockMoved(blockId, "Block pasted,");
+      }
     },
 
     /** Focuses the selected Block's neighbour, if it has one that way. */

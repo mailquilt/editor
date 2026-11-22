@@ -3,8 +3,8 @@ import { EMAIL_LOOK } from "@mailquilt/core/internal";
 import { css, unsafeCSS } from "lit";
 import { baseKeymap } from "prosemirror-commands";
 import { keydownHandler } from "prosemirror-keymap";
-import { Fragment, Slice } from "prosemirror-model";
-import type { MarkType, Node as ProseMirrorNode } from "prosemirror-model";
+import { Slice } from "prosemirror-model";
+import type { Node as ProseMirrorNode } from "prosemirror-model";
 import {
   EditorState,
   Plugin,
@@ -34,6 +34,7 @@ import {
 } from "./merge-tags.js";
 import type { MergeTag, MergeTagPickerState } from "./merge-tags.js";
 import { pastedHtmlParser, withoutStyles } from "./pasted-html.js";
+import { asPasted } from "./pasted-text.js";
 import {
   atParagraphOffset,
   createTextCommands,
@@ -225,25 +226,6 @@ const paragraphStarts = (doc: ProseMirrorNode) => {
 
 /** Marks a focus change: true when the text gains focus, false when it loses it. */
 const FOCUSED = "mailquilt:focused";
-
-/**
- * Pasted or dropped text with each tab as a space, and no bold for a Block that
- * can't have it. The canvas would show a tab at a tab stop, which no email
- * client can draw, and the export as one space.
- */
-const asPasted = (fragment: Fragment, bold?: MarkType): Fragment =>
-  Fragment.from(
-    fragment.content.map((node) => {
-      if (!node.isLeaf) {
-        return node.copy(asPasted(node.content, bold));
-      }
-      const marks = bold ? bold.removeFromSet(node.marks) : node.marks;
-      const text = node.text ?? "";
-      return node.isText && text.includes("\t")
-        ? node.type.schema.text(text.replaceAll("\t", " "), marks)
-        : node.mark(marks);
-    })
-  );
 
 interface TextBlockViewHost {
   /** False for text that's bold already, where the mark would change nothing. */

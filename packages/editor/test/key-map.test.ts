@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   claim,
+  clipboardFor,
   hasKeys,
   historyInput,
   KEY_MAP,
@@ -58,6 +59,16 @@ const keyIn = (
   });
 
 const SCOPES = Object.keys(KEY_MAP) as KeyScope[];
+
+/**
+ * Ctrl/⌘+C, X or V: the browser fires its clipboard event, which acts, as its
+ * Edit menu's does, and the press goes no further.
+ */
+const leftToClipboard = (action: string) => ({
+  action,
+  keepsDefault: true,
+  stops: true,
+});
 
 /** The key scopes within the email, or within the editor too. */
 const scopesWithin = (...within: string[]) =>
@@ -123,6 +134,29 @@ describe("on a Block", () => {
       acts("deleteBlock", { stops: true }),
     ]);
   });
+
+  it("Ctrl/⌘+C, X and V are left to the browser's clipboard events, which copy, cut and paste", () => {
+    expect(
+      ["Mod-c", "Mod-x", "Mod-v"].map((each) => keyIn("block", press(each)))
+    ).toStrictEqual([
+      leftToClipboard("copyBlock"),
+      leftToClipboard("cutBlock"),
+      leftToClipboard("paste"),
+    ]);
+    expect(
+      (["copy", "cut", "paste"] as const).map((type) =>
+        clipboardFor("block", type)
+      )
+    ).toStrictEqual(["copyBlock", "cutBlock", "paste"]);
+  });
+
+  it("cut and paste wait for a drag, which would change, and copy doesn't", () => {
+    expect(
+      (["copy", "cut", "paste"] as const).map((type) =>
+        clipboardFor("block", type, { dragging: true })
+      )
+    ).toStrictEqual(["copyBlock", undefined, undefined]);
+  });
 });
 
 describe("in a Block's text", () => {
@@ -162,6 +196,14 @@ describe("in a Block's text", () => {
   it("Ctrl/⌘+C and Ctrl/⌘+V are left to the browser, to copy and paste", () => {
     expect(keyIn("text", press("Mod-c"))).toBeUndefined();
     expect(keyIn("text", press("Mod-v"))).toBeUndefined();
+  });
+
+  it("the browser's clipboard events are the text's own", () => {
+    expect(
+      (["copy", "cut", "paste"] as const).map((type) =>
+        clipboardFor("text", type)
+      )
+    ).toStrictEqual([undefined, undefined, undefined]);
   });
 
   it("Delete, Backspace and Ctrl/⌘+D don't delete or duplicate the Block", () => {
@@ -373,6 +415,28 @@ describe("in a Row's toolbar", () => {
       acts("deleteRow", { stops: true }),
       acts("deleteRow", { stops: true }),
     ]);
+  });
+
+  it("the browser's clipboard events copy, cut and paste, from Ctrl/⌘+C, X and V", () => {
+    expect(keyIn("rowToolbar", press("Mod-x"))).toStrictEqual(
+      leftToClipboard("cutRow")
+    );
+    expect(
+      (["copy", "cut", "paste"] as const).map((type) =>
+        clipboardFor("rowToolbar", type)
+      )
+    ).toStrictEqual(["copyRow", "cutRow", "pasteAfterRow"]);
+  });
+});
+
+describe("in the floating toolbar", () => {
+  it("only paste is the editor's, as it has nothing of its own to copy", () => {
+    expect(keyIn("emailTools", press("Mod-v"))).toStrictEqual(
+      leftToClipboard("paste")
+    );
+    expect(keyIn("emailTools", press("Mod-c"))).toBeUndefined();
+    expect(clipboardFor("emailTools", "copy")).toBeUndefined();
+    expect(clipboardFor("emailTools", "paste")).toBe("paste");
   });
 });
 

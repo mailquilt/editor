@@ -222,6 +222,11 @@ const restoreStyles = (dom: Node) => {
 
 /** The schema's parser, reading what `withoutStyles` took out as styles again. */
 class PastedHtmlParser extends DOMParser {
+  override parse(dom: Node, options?: ParseOptions) {
+    restoreStyles(dom);
+    return super.parse(dom, options);
+  }
+
   override parseSlice(dom: Node, options?: ParseOptions) {
     restoreStyles(dom);
     return super.parseSlice(dom, options);
