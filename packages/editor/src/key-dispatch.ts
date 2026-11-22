@@ -1,3 +1,4 @@
+import { readPasted } from "./clipboard.js";
 import type { EditingActions } from "./editing-actions.js";
 import { closestPlace, placeOf } from "./editor-places.js";
 import type { FieldMergeTags } from "./field-merge-tags.js";
@@ -5,12 +6,19 @@ import { focusToolbarButton } from "./focus.js";
 import type { EditorFocus, ToolbarStep } from "./focus.js";
 import {
   claim,
+  clipboardFor,
   hasKeys,
   historyInput,
   keyFor,
   keyHeardFirst,
 } from "./key-map.js";
-import type { Action, Binding, DirectedAction } from "./key-map.js";
+import type {
+  Action,
+  Binding,
+  ClipboardAction,
+  ClipboardEventType,
+  DirectedAction,
+} from "./key-map.js";
 import type { Direction } from "./positions.js";
 import type { EditorSelection } from "./selection.js";
 
@@ -27,12 +35,17 @@ interface KeyDispatchHost {
   drafts: { discard: (event: KeyboardEvent) => void };
   editing: Pick<
     EditingActions,
+    | "copyBlock"
+    | "copyRow"
+    | "cutBlock"
+    | "cutRow"
     | "deleteBlock"
     | "deleteRow"
     | "duplicateBlock"
     | "duplicateRow"
     | "moveBlock"
     | "moveRow"
+    | "paste"
     | "selectNeighbour"
   >;
   /** The Merge Tag picker under a field that holds text or a URL. */
@@ -40,7 +53,7 @@ interface KeyDispatchHost {
     FieldMergeTags,
     "closeMergeTagPicker" | "isOpenIn" | "moveInMergeTagPicker" | "pickMergeTag"
   >;
-  focus: Pick<EditorFocus, "focus" | "focusIsOutsideText">;
+  focus: Pick<EditorFocus, "focus" | "focused" | "focusIsOutsideText">;
   isDragging: () => boolean;
   linkForm: { cancel: () => void; open: () => void };
   previewIsOpen: () => boolean;
@@ -59,9 +72,12 @@ const toolbarStep =
   ({ target }: KeyboardEvent) =>
     focusToolbarButton(target as Element, step);
 
-/** The Row whose toolbar a key was pressed in. */
-const rowOf = ({ target }: KeyboardEvent) =>
+/** The Row whose toolbar an element is in. */
+const rowOf = (target: EventTarget | null) =>
   closestPlace(target as Element, "row")?.dataset.rowId;
+
+/** For a key whose action is done on the clipboard event it fires. */
+const onClipboardEvent = doNothing;
 
 export const createKeyDispatch = ({
   canStep,
@@ -98,9 +114,13 @@ export const createKeyDispatch = ({
     closeMergeTagPicker: (event) => pickerOf(event)?.closeMergeTagPicker(),
     // The browser closes the dialog.
     closePreview: doNothing,
+    copyBlock: onClipboardEvent,
+    copyRow: onClipboardEvent,
+    cutBlock: onClipboardEvent,
+    cutRow: onClipboardEvent,
     deleteBlock: () => editing.deleteBlock(true),
     deleteRow: (event) => {
-      const rowId = rowOf(event);
+      const rowId = rowOf(event.target);
       if (rowId !== undefined) {
         editing.deleteRow(rowId, true);
       }
@@ -108,7 +128,7 @@ export const createKeyDispatch = ({
     discardDraft: (event) => drafts.discard(event),
     duplicateBlock: () => editing.duplicateBlock(true),
     duplicateRow: (event) => {
-      const rowId = rowOf(event);
+      const rowId = rowOf(event.target);
       if (rowId !== undefined) {
         editing.duplicateRow(rowId, true);
       }
@@ -122,12 +142,51 @@ export const createKeyDispatch = ({
     nextButton: toolbarStep("next"),
     nextMergeTag: (event) => pickerOf(event)?.moveInMergeTagPicker(1),
     openLinkField: () => linkForm.open(),
+    paste: onClipboardEvent,
+    pasteAfterRow: onClipboardEvent,
     pickMergeTag: (event) => pickerOf(event)?.pickMergeTag(),
     previousButton: toolbarStep("previous"),
     previousMergeTag: (event) => pickerOf(event)?.moveInMergeTagPicker(-1),
     redo: () => stepHistory("redo"),
     typeInField: doNothing,
     undo: () => stepHistory("undo"),
+  };
+
+  /**
+   * What each clipboard event's action does here, with the clipboard's data,
+   * from the element with focus.
+   */
+  const clipboardActions: Record<
+    ClipboardAction,
+    (data: DataTransfer, focused: Element) => void
+  > = {
+    copyBlock: (data) => editing.copyBlock(data),
+    copyRow: (data, focused) => {
+      const rowId = rowOf(focused);
+      if (rowId !== undefined) {
+        editing.copyRow(rowId, data);
+      }
+    },
+    cutBlock: (data) => editing.cutBlock(data),
+    cutRow: (data, focused) => {
+      const rowId = rowOf(focused);
+      if (rowId !== undefined) {
+        editing.cutRow(rowId, data);
+      }
+    },
+    paste: (data) => {
+      const pasted = readPasted(data);
+      if (pasted) {
+        editing.paste(pasted);
+      }
+    },
+    pasteAfterRow: (data, focused) => {
+      const pasted = readPasted(data);
+      const rowId = rowOf(focused);
+      if (pasted && rowId !== undefined) {
+        editing.paste(pasted, rowId);
+      }
+    },
   };
 
   /** What each arrow key's action does here, the way it goes. */
@@ -137,7 +196,7 @@ export const createKeyDispatch = ({
   > = {
     moveBlock: (_event, direction) => editing.moveBlock(direction),
     moveRow: (event, direction) => {
-      const rowId = rowOf(event);
+      const rowId = rowOf(event.target);
       if (rowId !== undefined) {
         editing.moveRow(rowId, direction);
       }
@@ -184,6 +243,32 @@ export const createKeyDispatch = ({
       event.preventDefault();
       event.stopPropagation();
       stepHistory(step);
+    },
+
+    /**
+     * The browser's copy, cut and paste events, from its keys or its Edit
+     * menu, heard on the page, as only Chromium fires them at the element with
+     * focus. The key map says what they do where focus is in the editor, and
+     * leaves them to the browser in text and fields.
+     */
+    onClipboard: (event: Event) => {
+      const focused = focus.focused();
+      // A ClipboardEvent, or in a test an Event with the same data.
+      const data = (event as ClipboardEvent).clipboardData;
+      const scope = focused && placeOf(focused, hasKeys);
+      const action =
+        scope &&
+        clipboardFor(scope, event.type as ClipboardEventType, {
+          dragging: isDragging(),
+        });
+      if (!(action && data && focused)) {
+        return;
+      }
+      // What a copy or cut sets reaches the clipboard only once the browser's
+      // own copy is prevented, and the host page doesn't paste too.
+      event.preventDefault();
+      event.stopPropagation();
+      clipboardActions[action](data, focused);
     },
 
     /**

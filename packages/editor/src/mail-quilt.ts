@@ -64,6 +64,12 @@ import { createTooltips } from "./tooltips.js";
 import type { Tooltips } from "./tooltips.js";
 import { takeValueSetEarly } from "./value-set-early.js";
 
+/**
+ * Heard on the page, on the way in, as Firefox fires them at the body and
+ * WebKit at this element, rather than at the Block or Row with focus.
+ */
+const CLIPBOARD_EVENTS = ["copy", "cut", "paste"] as const;
+
 /** Typing after a gap this long starts a new undo step. */
 const TYPING_PAUSE_MS = 1000;
 
@@ -332,6 +338,13 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     apply: (command) => this.#apply(command),
     email: () => this.#editor?.getDocument(),
     focus: this.#focus,
+    // Refused without uploadImage, as a dropped file is.
+    pasteFiles: (files, position) => {
+      if (this.uploadImage) {
+        return this.#uploads.drop(files, position);
+      }
+      this.#announcements.say("Can't paste. This editor can't upload images.");
+    },
     selection: this.#selection,
   });
   readonly #uploads = createImageUploads({
@@ -510,6 +523,11 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       }
     });
     this.#resizeObserver.observe(this);
+    for (const type of CLIPBOARD_EVENTS) {
+      this.ownerDocument.addEventListener(type, this.#keys.onClipboard, {
+        capture: true,
+      });
+    }
     this.#dragging = createDragging({
       acceptsFiles: () => Boolean(this.uploadImage),
       onDrop: (source, position) => this.#editing.drop(source, position),
@@ -531,6 +549,11 @@ export class MailQuilt extends LitElement implements HostAppProperties {
   override disconnectedCallback() {
     super.disconnectedCallback();
     this.#resizeObserver?.disconnect();
+    for (const type of CLIPBOARD_EVENTS) {
+      this.ownerDocument.removeEventListener(type, this.#keys.onClipboard, {
+        capture: true,
+      });
+    }
     this.#dragging?.destroy();
     this.#dragging = undefined;
     this.#toolFitting?.destroy();

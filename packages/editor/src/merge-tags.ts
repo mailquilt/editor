@@ -67,7 +67,7 @@ const marksBetween = (doc: ProseMirrorNode, from: number, to: number) => {
  * Each Merge Tag in the text that touches one of `ranges` made a node, with the
  * marks of all of its text, or null if there's none.
  */
-const tagsToNodes = (
+export const tagsToNodes = (
   state: EditorState,
   { nodes: { mergeTag } }: TextSchema,
   ranges: readonly Range[]

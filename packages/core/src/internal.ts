@@ -17,3 +17,5 @@ export { hexColor } from "./value-schemas.js";
 export type { BlockProps } from "./blocks.js";
 export type { SettingsField } from "./settings-fields.js";
 export { editorOfLoaded } from "./editor.js";
+export { copiedJson, loadCopied } from "./copied.js";
+export type { PastedResult } from "./copied.js";
