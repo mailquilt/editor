@@ -416,6 +416,29 @@ test.describe("the editor's API", () => {
     expect(html).toContain("Straight away");
   });
 
+  test("exportHtml() straight after socialIconsUrl is set uses its folder", async ({
+    page,
+  }) => {
+    await page.goto("/shell.html");
+    const email = emailWith([[[]]]);
+    email.rows[0]?.columns[0]?.blocks.push({
+      id: "social",
+      props: { links: [{ network: "x", url: "https://x.com/shop" }] },
+      type: "social",
+    });
+    const html = await page.evaluate(async (value) => {
+      const added = document.createElement(
+        "mail-quilt-shell"
+      ) as MailQuiltShell;
+      added.socialIconsUrl = "https://icons.example/mail/";
+      added.value = value;
+      document.body.append(added);
+      return await added.exportHtml();
+    }, email);
+
+    expect(html).toContain('src="https://icons.example/mail/x-color.png"');
+  });
+
   test("before it starts, value is the email the editor opens", async ({
     page,
   }) => {

@@ -6,6 +6,8 @@ export {
   blockSettingsFields,
   blockStyles,
   EMAIL_LOOK,
+  SOCIAL_NETWORKS,
+  socialIcons,
 } from "./blocks.js";
 export { NEW_EMAIL_WIDTH } from "./create-email.js";
 export { rowLayoutOf } from "./row-layouts.js";

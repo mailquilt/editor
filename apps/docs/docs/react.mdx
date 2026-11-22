@@ -65,6 +65,18 @@ const mergeTags = [
 
 A new array at each render is fine. The editor redraws its labels only when a tag in it changes.
 
+## Social icons
+
+A Social Block's icons load from jsDelivr unless you serve them yourself. Pass `socialIconsUrl` with the URL of a folder in your storage that holds a copy of the renderer's icons, and the canvas, Preview and export load them from there. [Social icons](./social-icons) says how:
+
+```tsx
+<MailQuilt
+  onChange={setEmail}
+  socialIconsUrl="https://cdn.example.com/mail-icons/"
+  value={email}
+/>
+```
+
 ## Props
 
-`MailQuilt` takes `value`, `onChange`, `onError`, `uploadImage`, `mergeTags` and `ref`. `MailQuiltShell` takes those, and `heading`, `actions` and `saveKey`. Other props, such as `className`, `style` and `aria-label`, go to the element. The [editor's API](./api#react) lists them all, with their types.
+`MailQuilt` takes `value`, `onChange`, `onError`, `uploadImage`, `mergeTags`, `socialIconsUrl` and `ref`. `MailQuiltShell` takes those, and `heading`, `actions` and `saveKey`. Other props, such as `className`, `style` and `aria-label`, go to the element. The [editor's API](./api#react) lists them all, with their types.

@@ -120,6 +120,23 @@ test("mergeTags reaches the element", async ({ page }) => {
   }
 });
 
+test("socialIconsUrl reaches the element", async ({ page }) => {
+  for (const [query, tag] of [
+    ["/", "mail-quilt"],
+    ["/?shell", "mail-quilt-shell"],
+  ] as const) {
+    await page.goto(query);
+    await expect(textBlock(page)).toHaveText("Hello");
+    const given = await page
+      .locator(tag)
+      .evaluate(
+        (element: MailQuiltElement | MailQuiltShellElement) =>
+          element.socialIconsUrl
+      );
+    expect(given).toBe("https://cdn.example/mail-icons/");
+  }
+});
+
 test("a new onChange each render replaces the last, so each edit calls it once", async ({
   page,
 }) => {

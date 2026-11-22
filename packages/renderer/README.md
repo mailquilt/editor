@@ -15,6 +15,8 @@ const html = await renderEmail(email);
 
 `renderEmail` rejects with the reason if the email isn't one Mail Quilt accepts. MJML loads the first time you call it.
 
+A Social Block's icons are PNGs in this package's `icons` folder, and an email loads them from jsDelivr at this package's exact version. To serve them from your own storage, copy the folder there and pass its URL: `renderEmail(email, { socialIconsUrl: "https://cdn.example.com/mail-icons/" })`. The logos are their owners' trademarks, and `icons/NOTICE.md` credits where each comes from. [Social icons](https://editor.mailquilt.com/docs/social-icons) says more.
+
 MJML needs `cheerio` without listing it, so this package lists it and relies on it being hoisted, as npm and pnpm do by default. With Yarn Plug'n'Play, or pnpm with `hoist=false`, add it for `mjml-browser` with `packageExtensions`, in `.yarnrc.yml` or `pnpm-workspace.yaml`:
 
 ```yaml

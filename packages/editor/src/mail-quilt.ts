@@ -234,6 +234,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
         previous: HostAppProperties["mergeTags"]
       ) => JSON.stringify(next ?? []) !== JSON.stringify(previous ?? []),
     },
+    socialIconsUrl: { attribute: false },
     // Only whether there's one changes what shows, and a React host may give
     // a new function at each render, such as on each key.
     uploadImage: {
@@ -261,6 +262,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
   declare readonly renderRoot: ShadowRoot;
 
   declare mergeTags: HostAppProperties["mergeTags"];
+  declare socialIconsUrl: HostAppProperties["socialIconsUrl"];
   declare uploadImage: HostAppProperties["uploadImage"];
 
   #editor: Editor | undefined;
@@ -508,7 +510,9 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     if (!this.#editor) {
       throw new Error("<mail-quilt> has no document to export");
     }
-    return await renderEmail(this.#editor.getDocument());
+    return await renderEmail(this.#editor.getDocument(), {
+      socialIconsUrl: this.socialIconsUrl,
+    });
   }
 
   override connectedCallback() {
@@ -570,6 +574,10 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       }
       this.#fieldMergeTags.showMergeTags();
       this.#syncFormats();
+    }
+    // The Preview's HTML names the icons' folder, as the export does.
+    if (changed.has("socialIconsUrl")) {
+      this.#preview.forget();
     }
     this.#rendered = this.value;
     const email = this.isConnected ? this.#rendered : undefined;
@@ -741,6 +749,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       emailLang: this.#emailLang,
       failedImages: this.#failedImages,
       isUploading: this.#uploads.isUploading,
+      socialIconsUrl: this.socialIconsUrl,
       textOf: (blockId) => this.#views.get(blockId)?.element,
     };
   }

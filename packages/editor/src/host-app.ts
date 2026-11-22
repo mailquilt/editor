@@ -12,6 +12,13 @@ export interface HostAppProperties {
    */
   mergeTags?: readonly { name: string; label?: string }[] | undefined;
   /**
+   * The URL of a folder of the Host app's own holding the Social Block's
+   * icons, copied from `@mailquilt/renderer`'s `icons`. The Canvas, the Preview
+   * and `exportHtml()` load them from there. Without it, they load from
+   * jsDelivr, at the renderer's exact version.
+   */
+  socialIconsUrl?: string | undefined;
+  /**
    * Uploads an image to the Host app's own storage and returns its URL, which
    * the Image Block takes. Rejecting with an `Error` shows its message to the
    * person. The upload is aborted through `signal` when its Image Block is
@@ -31,6 +38,7 @@ export interface HostAppProperties {
  */
 export const HOST_APP_PROPERTIES = Object.keys({
   mergeTags: true,
+  socialIconsUrl: true,
   uploadImage: true,
 } satisfies {
   [Name in keyof HostAppProperties]-?: true;

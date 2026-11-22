@@ -115,6 +115,7 @@ export default defineConfig({
             items: [
               "/docs/save-emails",
               "/docs/upload-images",
+              "/docs/social-icons",
               "/docs/render-on-a-server",
               "/docs/send-email",
               "/docs/change-emails-in-code",

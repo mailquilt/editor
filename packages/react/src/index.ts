@@ -186,6 +186,7 @@ export const MailQuilt = ({
   onError,
   mergeTags,
   ref,
+  socialIconsUrl,
   uploadImage,
   value,
   ...attributes
@@ -193,7 +194,7 @@ export const MailQuilt = ({
   createElement("mail-quilt", {
     ...attributes,
     ref: useEditorElement({
-      hostApp: { mergeTags, uploadImage },
+      hostApp: { mergeTags, socialIconsUrl, uploadImage },
       onChange,
       onError,
       ref,
@@ -214,6 +215,7 @@ export const MailQuiltShell = ({
   onError,
   ref,
   saveKey,
+  socialIconsUrl,
   uploadImage,
   value,
   ...rest
@@ -228,7 +230,7 @@ export const MailQuiltShell = ({
   return createElement("mail-quilt-shell", {
     ...attributes,
     ref: useEditorElement({
-      hostApp: { mergeTags, uploadImage },
+      hostApp: { mergeTags, socialIconsUrl, uploadImage },
       onChange,
       onError,
       ref,
