@@ -170,6 +170,26 @@ test("leaving the text closes the list", async ({ page }) => {
   await expect(picker(page)).toHaveCount(0);
 });
 
+test("another window taking focus leaves the list open for when it comes back", async ({
+  page,
+}) => {
+  await typeInText(page, "{{");
+  await expect(picker(page)).toBeVisible();
+
+  // A test's page always has focus, so this stands in for the window losing it.
+  await textBlock(page).evaluate((text) => {
+    document.hasFocus = () => false;
+    text.dispatchEvent(new FocusEvent("blur"));
+  });
+  await settle(page);
+
+  await expect(picker(page)).toBeVisible();
+  await page.keyboard.press("Enter");
+  await expect
+    .poll(() => savedInline(page))
+    .toStrictEqual([mergeTag("first_name")]);
+});
+
 test.describe("the format bar's Merge Tag button", () => {
   test("types {{ at the cursor and opens the list, with focus back in the text", async ({
     page,
