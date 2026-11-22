@@ -30,6 +30,8 @@ const ROW_MOVE_BUTTONS = (["up", "down"] as const).map((direction) => ({
 
 const DUPLICATE_BLOCK = keyLabel("blockToolbar", "duplicateBlock");
 const DUPLICATE_ROW = keyLabel("rowToolbar", "duplicateRow");
+/** Delete and Backspace work in a Row's toolbar, not in a Block's. */
+const DELETE_ROW = keyLabel("rowToolbar", "deleteRow");
 const UNDO = keyLabel("editor", "undo");
 const REDO = keyLabel("editor", "redo");
 
@@ -693,10 +695,11 @@ const renderRowToolbar = (
         ${ICONS.duplicate}
       </button>
       <button
+        aria-keyshortcuts=${DELETE_ROW.shortcuts}
         aria-label="Delete Row"
         class="icon-button danger"
         data-action="delete"
-        data-tooltip="Delete Row"
+        data-tooltip=${`Delete Row (${DELETE_ROW.keys})`}
         tabindex="-1"
         type="button"
         @click=${({ detail }: MouseEvent) => api.deleteRow(row.id, detail === 0)}

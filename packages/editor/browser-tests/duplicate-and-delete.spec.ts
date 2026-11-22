@@ -141,6 +141,15 @@ test.describe("Delete and Backspace", () => {
     await page.keyboard.press("Backspace");
     expect(await structure(page)).toStrictEqual([[["A"]]]);
     await expect(blockWith(page, "A")).toBeFocused();
+
+    // With no Block left, focus stays in the editor, where the key does nothing more.
+    await page.keyboard.press("Delete");
+    expect(await structure(page)).toStrictEqual([[[]]]);
+    await expect(
+      canvas(page).getByRole("group", { name: "Email tools" })
+    ).toBeFocused();
+    await page.keyboard.press("Delete");
+    expect(await structure(page)).toStrictEqual([[[]]]);
   });
 
   test("in a Row's toolbar delete the Row, moving focus to the next Row's toolbar", async ({
