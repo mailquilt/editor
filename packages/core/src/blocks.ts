@@ -6,6 +6,7 @@ import {
   INVALID_IMAGE_URL,
   INVALID_LINK,
   linkHrefSchema,
+  headingTextSchema,
   richTextSchema,
 } from "./rich-text.js";
 import {
@@ -130,7 +131,7 @@ const LEVEL_OPTIONS = [
 const headingBlockSchema = v.strictObject({
   align: v.optional(alignSchema),
   color: v.optional(colorSchema),
-  content: richTextSchema,
+  content: headingTextSchema,
   fontSize: v.optional(fontSizeSchema),
   level: v.picklist(LEVEL_OPTIONS.map(({ value }) => value)),
 });

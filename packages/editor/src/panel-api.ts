@@ -5,7 +5,7 @@ import type { BlockPosition, Direction, RowPosition } from "./positions.js";
 import type { PanelTab } from "./selection.js";
 import type { SettingsDrafts } from "./settings-panel.js";
 import type { ShownMergeTagPicker } from "./text-block-view.js";
-import type { TextFormats, ToggleableMark } from "./text-commands.js";
+import type { ListType, TextFormats, ToggleableMark } from "./text-commands.js";
 
 /**
  * How the Side panel, its settings, the format bar and the toolbars reach the
@@ -64,6 +64,8 @@ export interface EmailPanelApi {
   stepHistory: (step: "redo" | "undo") => void;
   /** In the selected Block's text. */
   toggleMark: (mark: ToggleableMark) => void;
+  /** In the selected Block's text, which a Heading's can't be. */
+  toggleList: (type: ListType) => void;
   insertLineBreak: () => void;
   /**
    * Types `{{` in the selected Block's text, which opens the Merge Tag picker.

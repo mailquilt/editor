@@ -106,6 +106,23 @@ const paragraphSchema = v.strictObject({
   type: v.literal("paragraph"),
 });
 
+/** One level deep, with one paragraph in each item. */
+const listSchema = v.strictObject({
+  content: v.pipe(
+    v.array(
+      v.strictObject({
+        content: v.strictTuple(
+          [paragraphSchema],
+          "A List's item holds exactly one paragraph"
+        ),
+        type: v.literal("listItem"),
+      })
+    ),
+    v.nonEmpty()
+  ),
+  type: v.picklist(["bulletList", "orderedList"]),
+});
+
 export type RichTextMark =
   | { type: "bold" }
   | { type: "italic" }
@@ -138,17 +155,52 @@ export interface RichTextParagraph {
   content?: (RichTextText | RichTextHardBreak | RichTextMergeTag)[];
 }
 
+/** An item of a List, which holds exactly one paragraph. */
+export interface RichTextListItem {
+  type: "listItem";
+  content: [RichTextParagraph];
+}
+
+/**
+ * A bulleted or numbered List in a Text Block, one level deep. A numbered List
+ * starts at 1.
+ */
+export interface RichTextList {
+  type: "bulletList" | "orderedList";
+  content: RichTextListItem[];
+}
+
 /**
  * Text is stored as limited ProseMirror JSON (ADR 0001), so it can be validated
- * like any other property without loading ProseMirror.
+ * like any other property without loading ProseMirror. A Heading's holds only
+ * paragraphs.
  */
 export interface RichTextDocument {
+  type: "doc";
+  content: (RichTextParagraph | RichTextList)[];
+}
+
+/** A Heading's text, which holds paragraphs only. */
+export interface RichTextHeadingDocument {
   type: "doc";
   content: RichTextParagraph[];
 }
 
-// The types are written out above, so hosts see them rather than the library's.
-export const richTextSchema = v.strictObject({
+// Typed as the types written out above, so hosts see them rather than the
+// library's, which are also too deep for TypeScript to compare.
+export const richTextSchema: v.GenericSchema<unknown, RichTextDocument> =
+  v.strictObject({
+    content: v.pipe(
+      v.array(v.variant("type", [paragraphSchema, listSchema])),
+      v.nonEmpty()
+    ),
+    type: v.literal("doc"),
+  });
+
+export const headingTextSchema: v.GenericSchema<
+  unknown,
+  RichTextHeadingDocument
+> = v.strictObject({
   content: v.pipe(v.array(paragraphSchema), v.nonEmpty()),
   type: v.literal("doc"),
-}) satisfies v.GenericSchema<unknown, RichTextDocument>;
+});

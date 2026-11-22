@@ -510,11 +510,12 @@ describe("ProseMirror's names for the text's keys", () => {
     ["Windows and Linux", false, pcBaseKeymap],
     ["Apple devices", true, macBaseKeymap],
   ])(
-    "on %s, include every key ProseMirror binds to Enter or Delete, so none of them skips the editor's rules",
+    "on %s, include every key ProseMirror binds to Enter, Backspace or Delete, so none of them skips the editor's rules",
     (_platform, apple, base) => {
       const named = new Map(proseMirrorKeys({ apple }));
       const rules = new Map([
         [pcBaseKeymap.Enter, "newParagraph"],
+        [pcBaseKeymap.Backspace, "deleteBackward"],
         [pcBaseKeymap.Delete, "deleteForward"],
       ]);
       const bound = Object.entries(base).filter(([, command]) =>

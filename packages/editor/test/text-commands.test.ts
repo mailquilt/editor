@@ -1,12 +1,17 @@
 import type { Mark, Node } from "prosemirror-model";
-import { AllSelection, EditorState, TextSelection } from "prosemirror-state";
+import {
+  AllSelection,
+  EditorState,
+  NodeSelection,
+  TextSelection,
+} from "prosemirror-state";
 import type { Command as TextCommand } from "prosemirror-state";
 import { describe, expect, it } from "vitest";
 
 import { createTextCommands } from "../src/text-commands.js";
 import { createTextSchema } from "../src/text-schema.js";
 
-const schema = createTextSchema();
+const schema = createTextSchema({ lists: true });
 const commands = createTextCommands(schema, { canBold: true });
 const { bold, link } = schema.marks;
 
@@ -17,6 +22,20 @@ const mergeTag = (name: string, ...marks: Mark[]) =>
   schema.nodes.mergeTag.create({ name }, null, marks);
 const paragraph = (...inline: Node[]) =>
   schema.nodes.paragraph.create(null, inline);
+/** A node type only a Text Block's schema has. */
+const listNode = (name: "bulletList" | "listItem" | "orderedList") => {
+  const type = schema.nodes[name];
+  if (!type) {
+    throw new Error(`The schema has no ${name}`);
+  }
+  return type;
+};
+const item = (...inline: Node[]) =>
+  listNode("listItem").create(null, paragraph(...inline));
+const bullets = (...items: Node[]) =>
+  listNode("bulletList").create(null, items);
+const numbers = (...items: Node[]) =>
+  listNode("orderedList").create(null, items);
 
 /**
  * Text of `paragraphs`, with the text selected from `from` to `to`, or a cursor
@@ -67,6 +86,23 @@ const shown = ({ doc }: EditorState) =>
       return marks.length > 0 ? `${words}[${marks.join(" ")}]` : words;
     })
   );
+
+/**
+ * The text's paragraphs and Lists, each paragraph as its text and each List as
+ * its type and its items' text.
+ */
+const outline = ({ doc }: EditorState) =>
+  doc.children.map((node) =>
+    node.type === schema.nodes.paragraph
+      ? node.textContent
+      : { [node.type.name]: node.children.map((each) => each.textContent) }
+  );
+
+/** The text of the paragraph the cursor is in, and how far into it it is. */
+const cursorIn = ({ selection }: EditorState) => {
+  expect(selection.empty).toBeTruthy();
+  return [selection.$from.parent.textContent, selection.$from.parentOffset];
+};
 
 const isMarkedNext = (state: EditorState, type = bold) =>
   Boolean(type.isInSet(state.storedMarks ?? state.selection.$from.marks()));
@@ -146,8 +182,10 @@ describe("bold, italic and underline", () => {
     expect(commands.formats(state)).toStrictEqual({
       bold: true,
       canBold: true,
+      canList: true,
       italic: false,
       linkHref: "https://a.example",
+      list: undefined,
       underline: false,
     });
   });
@@ -303,5 +341,224 @@ describe("removing a link", () => {
     expect(shown(after(commands.removeLink, state))).toStrictEqual([
       ["a[link:https://first.example]", "b", "c[link:https://first.example]"],
     ]);
+  });
+});
+
+// Positions in a List: the List opens at 0, its first item at 1, and that
+// item's text starts at 3. Each item is its text's length and 4 more.
+describe("Enter in a List", () => {
+  it("in an item with text, starts a new item, keeping the formatting for what's typed next", () => {
+    const state = textWith([bullets(item(text("ab", bold.create())))], 5);
+    const next = after(commands.forKey.newParagraph, state);
+    expect(outline(next)).toStrictEqual([{ bulletList: ["ab", ""] }]);
+    expect(cursorIn(next)).toStrictEqual(["", 0]);
+    expect(isMarkedNext(next)).toBeTruthy();
+  });
+
+  it("on an empty item in the middle, leaves the List, splitting it", () => {
+    const state = textWith(
+      [bullets(item(text("a")), item(), item(text("c")))],
+      8
+    );
+    const next = after(commands.forKey.newParagraph, state);
+    expect(outline(next)).toStrictEqual([
+      { bulletList: ["a"] },
+      "",
+      { bulletList: ["c"] },
+    ]);
+    expect(cursorIn(next)).toStrictEqual(["", 0]);
+  });
+});
+
+describe("Backspace in a List", () => {
+  it("at the start of the first item, makes it a paragraph above the List", () => {
+    const state = textWith(
+      [paragraph(text("x")), numbers(item(text("a")), item(text("b")))],
+      6
+    );
+    const next = after(commands.forKey.deleteBackward, state);
+    expect(outline(next)).toStrictEqual(["x", "a", { orderedList: ["b"] }]);
+    expect(cursorIn(next)).toStrictEqual(["a", 0]);
+  });
+
+  it("at the start of a later item, makes it a paragraph, splitting the List, and never merges it into the item above", () => {
+    const state = textWith(
+      [bullets(item(text("a")), item(text("b")), item(text("c")))],
+      8
+    );
+    const next = after(commands.forKey.deleteBackward, state);
+    expect(outline(next)).toStrictEqual([
+      { bulletList: ["a"] },
+      "b",
+      { bulletList: ["c"] },
+    ]);
+    expect(cursorIn(next)).toStrictEqual(["b", 0]);
+  });
+
+  it("at the start of the paragraph just after a List, merges the paragraph into the last item", () => {
+    const state = textWith(
+      [bullets(item(text("a")), item(text("b"))), paragraph(text("c"))],
+      13
+    );
+    const next = after(commands.forKey.deleteBackward, state);
+    expect(outline(next)).toStrictEqual([{ bulletList: ["a", "bc"] }]);
+    expect(cursorIn(next)).toStrictEqual(["bc", 1]);
+  });
+
+  it.each([
+    ["Backspace", "deleteBackward"],
+    ["Delete", "deleteForward"],
+  ] as const)(
+    "%s in an empty paragraph between two parts of a List joins them again",
+    (_key, action) => {
+      const state = textWith(
+        [numbers(item(text("a"))), paragraph(), numbers(item(text("c")))],
+        8
+      );
+      expect(outline(after(commands.forKey[action], state))).toStrictEqual([
+        { orderedList: ["a", "c"] },
+      ]);
+    }
+  );
+
+  it("anywhere else, is left to the browser", () => {
+    const state = textWith([bullets(item(text("ab")))], 4);
+    expect(commands.forKey.deleteBackward(state)).toBeFalsy();
+  });
+});
+
+describe("Delete in a List", () => {
+  it("at the end of the last item, pulls the next paragraph into it, and the List after that joins it", () => {
+    const state = textWith(
+      [
+        bullets(item(text("a"))),
+        paragraph(text("b")),
+        bullets(item(text("c"))),
+      ],
+      4
+    );
+    const next = after(commands.forKey.deleteForward, state);
+    expect(outline(next)).toStrictEqual([{ bulletList: ["ab", "c"] }]);
+    expect(cursorIn(next)).toStrictEqual(["ab", 1]);
+  });
+
+  it("at the end of the last item, pulls in the first item of a List of the other type after it, which keeps its type", () => {
+    const state = textWith(
+      [bullets(item(text("a"))), numbers(item(text("b")), item(text("c")))],
+      4
+    );
+    const next = after(commands.forKey.deleteForward, state);
+    expect(outline(next)).toStrictEqual([
+      { bulletList: ["ab"] },
+      { orderedList: ["c"] },
+    ]);
+    expect(cursorIn(next)).toStrictEqual(["ab", 1]);
+  });
+
+  it("at the end of the paragraph before a List, pulls in its first item", () => {
+    const state = textWith(
+      [paragraph(text("x")), bullets(item(text("a")), item(text("b")))],
+      2
+    );
+    const next = after(commands.forKey.deleteForward, state);
+    expect(outline(next)).toStrictEqual(["xa", { bulletList: ["b"] }]);
+    expect(cursorIn(next)).toStrictEqual(["xa", 1]);
+  });
+
+  it("in an empty item, removes the item", () => {
+    const state = textWith(
+      [bullets(item(text("a")), item(), item(text("c")))],
+      8
+    );
+    expect(outline(after(commands.forKey.deleteForward, state))).toStrictEqual([
+      { bulletList: ["a", "c"] },
+    ]);
+  });
+
+  it("in a List's only item, empty, removes the List", () => {
+    const state = textWith([paragraph(text("a")), bullets(item())], 6);
+    expect(outline(after(commands.forKey.deleteForward, state))).toStrictEqual([
+      "a",
+    ]);
+  });
+});
+
+describe("turning a List on and off", () => {
+  it("over several paragraphs, makes each an item of one List, and shows it's on", () => {
+    const state = textWith(
+      [paragraph(text("a")), paragraph(text("b")), paragraph(text("c"))],
+      2,
+      5
+    );
+    const next = after(commands.toggleList("bulletList"), state);
+    expect(outline(next)).toStrictEqual([{ bulletList: ["a", "b"] }, "c"]);
+    expect(next.selection.toJSON()).toMatchObject({ anchor: 4, head: 9 });
+    expect(commands.formats(next).list).toBe("bulletList");
+  });
+
+  it("again, turns the selected items back into paragraphs, splitting the List", () => {
+    const state = textWith(
+      [bullets(item(text("a")), item(text("b")), item(text("c")))],
+      8
+    );
+    const next = after(commands.toggleList("bulletList"), state);
+    expect(outline(next)).toStrictEqual([
+      { bulletList: ["a"] },
+      "b",
+      { bulletList: ["c"] },
+    ]);
+    expect(cursorIn(next)).toStrictEqual(["b", 0]);
+    expect(commands.formats(next).list).toBeUndefined();
+  });
+
+  it("again, with one whole item selected, turns only that item back", () => {
+    const doc = schema.nodes.doc.create(
+      null,
+      bullets(item(text("a")), item(text("b")), item(text("c")))
+    );
+    const state = EditorState.create({
+      doc,
+      selection: NodeSelection.create(doc, 6),
+    });
+    const next = after(commands.toggleList("bulletList"), state);
+    expect(outline(next)).toStrictEqual([
+      { bulletList: ["a"] },
+      "b",
+      { bulletList: ["c"] },
+    ]);
+    expect(next.selection.toJSON()).toMatchObject({ anchor: 8, head: 9 });
+  });
+
+  it("of the other type, switches the whole List's type", () => {
+    const state = textWith([bullets(item(text("a")), item(text("b")))], 3);
+    expect(
+      outline(after(commands.toggleList("orderedList"), state))
+    ).toStrictEqual([{ orderedList: ["a", "b"] }]);
+  });
+
+  it("on a paragraph between Lists of the same type, joins them into one", () => {
+    const state = textWith(
+      [
+        numbers(item(text("a"))),
+        paragraph(text("b")),
+        numbers(item(text("c"))),
+      ],
+      8
+    );
+    expect(
+      outline(after(commands.toggleList("orderedList"), state))
+    ).toStrictEqual([{ orderedList: ["a", "b", "c"] }]);
+  });
+
+  it("isn't offered in text that can't have Lists, such as a Heading's", () => {
+    const headingSchema = createTextSchema({ lists: false });
+    const heading = createTextCommands(headingSchema, { canBold: false });
+    const doc = headingSchema.nodes.doc.create(
+      null,
+      headingSchema.nodes.paragraph.create(null, headingSchema.text("a"))
+    );
+    const state = EditorState.create({ doc });
+    expect(heading.formats(state).canList).toBeFalsy();
+    expect(heading.toggleList("bulletList")(state)).toBeFalsy();
   });
 });

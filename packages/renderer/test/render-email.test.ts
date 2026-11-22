@@ -45,6 +45,16 @@ const bold = (text: string) => ({
 
 const plain = (text: string) => ({ text, type: "text" });
 
+/** A List's item, of one paragraph holding `inline`. */
+const item = (...inline: unknown[]) => ({
+  content: [
+    inline.length > 0
+      ? { content: inline, type: "paragraph" }
+      : { type: "paragraph" },
+  ],
+  type: "listItem",
+});
+
 const emailWithColumns = (
   ...columns: { texts: string[]; width: number }[]
 ): BlocksDocument => ({
@@ -149,6 +159,35 @@ describe(renderEmail, () => {
     await expect(
       renderEmail(email).then(readable)
     ).resolves.toMatchFileSnapshot("expected/every-setting.html");
+  });
+
+  it("matches the saved HTML for bulleted and numbered Lists", async () => {
+    const email = emailWithParagraphs([
+      { content: [plain("Before")], type: "paragraph" },
+      {
+        content: [
+          item(
+            bold("Bold"),
+            plain(" and "),
+            { attrs: { name: "first_name" }, type: "mergeTag" },
+            { type: "hardBreak" },
+            linked("https://example.com", "a second line")
+          ),
+          item(plain("Two")),
+        ],
+        type: "bulletList",
+      },
+      {
+        content: [item(plain("First")), item()],
+        type: "orderedList",
+      },
+      { content: [plain("After")], type: "paragraph" },
+    ]);
+    email.version = 3;
+
+    await expect(
+      renderEmail(email).then(readable)
+    ).resolves.toMatchFileSnapshot("expected/lists.html");
   });
 
   it("keeps a saved language that isn't a code, safely", async () => {

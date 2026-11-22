@@ -29,8 +29,8 @@ import {
 } from "./merge-tags.js";
 import type { MergeTag, MergeTagPickerState } from "./merge-tags.js";
 import { pastedHtmlParser, withoutStyles } from "./pasted-html.js";
-import { createTextCommands } from "./text-commands.js";
-import type { TextFormats, ToggleableMark } from "./text-commands.js";
+import { createTextCommands, LIST_FORMATTING } from "./text-commands.js";
+import type { ListType, TextFormats, ToggleableMark } from "./text-commands.js";
 import type { TextSchema } from "./text-schema.js";
 
 /** ProseMirror's base styles, for a Block's text (ADR 0002). */
@@ -51,6 +51,12 @@ export const textBlockStyles = css`
 
   .ProseMirror p {
     margin: 0;
+  }
+
+  /* As the export writes them: indented by a margin, numbered from 1. */
+  .ProseMirror :is(ul, ol) {
+    margin: 0 0 0 1.5em;
+    padding: 0;
   }
 
   /* In the Block's color, as the export writes it, and underlined. */
@@ -127,6 +133,7 @@ export interface TextBlockView {
   focus: () => void;
   formats: () => TextFormats;
   toggleMark: (mark: ToggleableMark) => void;
+  toggleList: (type: ListType) => void;
   insertLineBreak: () => void;
   /**
    * Links the selected text. With none, changes the link the cursor is in, or
@@ -150,10 +157,11 @@ export interface TextBlockView {
 
 /**
  * Formatting is its own undo step, unlike the typing around it. A line break
- * counts as formatting, as it's added from the format bar too.
+ * and a List count as formatting, as they're added from the format bar too.
  */
-const changesFormatting = ({ steps }: Transaction) =>
-  steps.some(
+const changesFormatting = (transaction: Transaction) =>
+  transaction.getMeta(LIST_FORMATTING) === true ||
+  transaction.steps.some(
     (step) =>
       step instanceof AddMarkStep ||
       step instanceof RemoveMarkStep ||
@@ -264,7 +272,7 @@ export const createTextBlockView = ({
       textKeys.map(([key, action]) => [key, commands.forKey[action]])
     )
   );
-  // The keys the key map leaves to ProseMirror, such as Backspace.
+  // The keys the key map leaves to ProseMirror, such as select all.
   const answerBaseKey = keydownHandler(
     Object.fromEntries(
       Object.entries(baseKeymap).filter(
@@ -282,15 +290,16 @@ export const createTextBlockView = ({
       tabindex: "0",
     },
     clipboardParser: pastedHtmlParser(schema),
+    // On each paragraph, a List's items' too.
     decorations: ({ doc }) => {
       const paragraphs: Decoration[] = [];
-      let offset = 0;
-      for (const paragraph of doc.content.content) {
-        paragraphs.push(
-          Decoration.node(offset, offset + paragraph.nodeSize, { lang })
-        );
-        offset += paragraph.nodeSize;
-      }
+      doc.descendants((node, pos) => {
+        if (!node.isTextblock) {
+          return true;
+        }
+        paragraphs.push(Decoration.node(pos, pos + node.nodeSize, { lang }));
+        return false;
+      });
       return DecorationSet.create(doc, paragraphs);
     },
     dispatchTransaction(this: EditorView, transaction: Transaction) {
@@ -456,6 +465,7 @@ export const createTextBlockView = ({
     showMergeTags: () =>
       view.setProps({ nodeViews: { mergeTag: mergeTagView(mergeTags) } }),
     startMergeTag: () => run(startMergeTag),
+    toggleList: (type) => run(commands.toggleList(type)),
     toggleMark: (mark) => run(commands.toggleMark(mark)),
   };
 };

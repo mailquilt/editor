@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { createEditor, createEmail, loadDocument } from "../src/index.js";
-import type { BlocksDocument, RichTextDocument } from "../src/index.js";
+import type { BlocksDocument, RichTextHeadingDocument } from "../src/index.js";
 import { blockSettingsFields, blockStyles } from "../src/internal.js";
 import type { BlockProps, SettingsField } from "../src/internal.js";
 
-const emptyText: RichTextDocument = {
+const emptyText: RichTextHeadingDocument = {
   content: [{ type: "paragraph" }],
   type: "doc",
 };
@@ -80,6 +80,21 @@ describe("Heading Block", () => {
   it.each([
     ["level 4", { level: 4 }, /level/u],
     ["no level", { level: null }, /level/u],
+    [
+      "a List",
+      {
+        content: {
+          content: [
+            {
+              content: [{ content: [{ type: "paragraph" }], type: "listItem" }],
+              type: "bulletList",
+            },
+          ],
+          type: "doc",
+        },
+      },
+      /content\.content\.0\.type: /u,
+    ],
   ])("refuses %s", (_name, props, reason) => {
     const { editor } = setup();
     const before = editor.getDocument();

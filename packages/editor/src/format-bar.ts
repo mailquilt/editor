@@ -9,7 +9,7 @@ import { keyLabel, textKeyLabel } from "./key-map.js";
 import { fieldTags } from "./merge-tag-picker.js";
 import type { OwnPanelsApi, PanelApi } from "./panel-api.js";
 import type { TextBlockView } from "./text-block-view.js";
-import type { ToggleableMark } from "./text-commands.js";
+import type { ListType, ToggleableMark } from "./text-commands.js";
 
 export const formatBarStyles = css`
   /*
@@ -90,6 +90,23 @@ const MARK_BUTTONS: {
   { keys: textKeyLabel("bold"), label: "Bold", mark: "bold" },
   { keys: textKeyLabel("italic"), label: "Italic", mark: "italic" },
   { keys: textKeyLabel("underline"), label: "Underline", mark: "underline" },
+];
+
+const LIST_BUTTONS: {
+  keys: KeyLabel;
+  label: string;
+  list: ListType;
+}[] = [
+  {
+    keys: textKeyLabel("bulletList"),
+    label: "Bulleted list",
+    list: "bulletList",
+  },
+  {
+    keys: textKeyLabel("orderedList"),
+    label: "Numbered list",
+    list: "orderedList",
+  },
 ];
 
 const LINK_KEYS = keyLabel("text", "openLinkField");
@@ -278,6 +295,24 @@ export const renderFormatBar = (api: PanelApi) => {
             @click=${() => api.toggleMark(mark)}
           >
             ${ICONS[mark]}
+          </button>
+        `
+      )}
+      <span class="separator"></span>
+      ${LIST_BUTTONS.map(
+        ({ keys, label, list }) => html`
+          <button
+            aria-keyshortcuts=${keys.shortcuts}
+            aria-label=${label}
+            aria-pressed=${formats?.list === list ? "true" : "false"}
+            class="icon-button"
+            data-tooltip=${`${label} (${keys.keys})`}
+            ?disabled=${!formats?.canList}
+            tabindex="-1"
+            type="button"
+            @click=${() => api.toggleList(list)}
+          >
+            ${ICONS[list]}
           </button>
         `
       )}

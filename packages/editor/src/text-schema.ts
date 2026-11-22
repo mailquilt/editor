@@ -132,7 +132,40 @@ const nodes = {
   text: { group: "inline" },
 } satisfies Record<string, NodeSpec>;
 
-/** What a Block's text can hold. Each type of Block with text has its own. */
-export const createTextSchema = () => new Schema({ marks, nodes });
+/**
+ * Bulleted and numbered Lists, one level deep, with one paragraph in each item.
+ * A List pasted inside an item is skipped, so its items join the List around
+ * it as items of their own.
+ */
+const lists = {
+  bulletList: {
+    content: "listItem+",
+    group: "block",
+    parseDOM: [
+      { priority: 60, skip: true, tag: "li ul, li ol" },
+      { tag: "ul" },
+    ],
+    toDOM: () => ["ul", 0],
+  },
+  listItem: {
+    content: "paragraph",
+    defining: true,
+    parseDOM: [{ tag: "li" }],
+    toDOM: () => ["li", 0],
+  },
+  orderedList: {
+    content: "listItem+",
+    group: "block",
+    parseDOM: [{ tag: "ol" }],
+    toDOM: () => ["ol", 0],
+  },
+} satisfies Record<string, NodeSpec>;
+
+/**
+ * What a Block's text can hold. Each type of Block with text has its own, and
+ * only a Text Block's has Lists.
+ */
+export const createTextSchema = ({ lists: withLists }: { lists: boolean }) =>
+  new Schema({ marks, nodes: withLists ? { ...nodes, ...lists } : nodes });
 
 export type TextSchema = ReturnType<typeof createTextSchema>;

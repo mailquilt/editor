@@ -40,6 +40,35 @@ const savedParagraphs = async (page: Page, index = 0) => {
   return props?.content.content;
 };
 
+interface SavedNode {
+  content?: SavedNode[];
+  text?: string;
+  type: string;
+}
+
+/** A paragraph's text, with each line break as a new line. */
+const textOf = (paragraph: SavedNode | undefined) =>
+  (paragraph?.content ?? [])
+    .map(({ text, type }) => (type === "hardBreak" ? "\n" : (text ?? "")))
+    .join("");
+
+/**
+ * The saved text of the first Block: each paragraph's text, and each List as
+ * its type and its items' text.
+ */
+const savedOutline = async (page: Page) => {
+  const nodes = (await savedParagraphs(page)) as SavedNode[] | undefined;
+  return nodes?.map((node) =>
+    node.type === "paragraph"
+      ? textOf(node)
+      : {
+          [node.type]: (node.content ?? []).map((item) =>
+            textOf(item.content?.[0])
+          ),
+        }
+  );
+};
+
 const savedInline = async (page: Page, index = 0) => {
   const paragraphs = await savedParagraphs(page, index);
   return paragraphs?.[0]?.content;
@@ -400,6 +429,184 @@ test.describe("line breaks", () => {
   });
 });
 
+/** Makes "Hello" a bulleted List's one item, with the cursor at its end. */
+const helloAsList = async (page: Page) => {
+  await cursorAtEndOfBlock(page);
+  await formatButton(page, "Bulleted list").click();
+  await expect
+    .poll(() => savedOutline(page))
+    .toStrictEqual([{ bulletList: ["Hello"] }]);
+};
+
+test.describe("Lists", () => {
+  test("Enter starts a new item, and on an empty one leaves the List", async ({
+    page,
+  }) => {
+    await helloAsList(page);
+
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("x");
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("y");
+
+    await expect
+      .poll(() => savedOutline(page))
+      .toStrictEqual([{ bulletList: ["Hello", "x"] }, "y"]);
+  });
+
+  test("Shift+Enter in an item adds a line break", async ({ page }) => {
+    await helloAsList(page);
+
+    await page.keyboard.press("Shift+Enter");
+    await page.keyboard.type("x");
+
+    await expect
+      .poll(() => savedOutline(page))
+      .toStrictEqual([{ bulletList: ["Hello\nx"] }]);
+  });
+
+  test("Tab in an item moves focus on, and leaves the List as it is", async ({
+    page,
+  }) => {
+    await helloAsList(page);
+
+    await page.keyboard.press("Tab");
+
+    await expect(textBlock(page).first()).not.toBeFocused();
+    expect(await savedOutline(page)).toStrictEqual([{ bulletList: ["Hello"] }]);
+  });
+
+  test("Backspace at the start of an item makes it a paragraph, and again joins it to the item above", async ({
+    page,
+  }) => {
+    await helloAsList(page);
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("x");
+    await pressArrow(page, "ArrowLeft");
+
+    await page.keyboard.press("Backspace");
+    await expect
+      .poll(() => savedOutline(page))
+      .toStrictEqual([{ bulletList: ["Hello"] }, "x"]);
+
+    await page.keyboard.press("Backspace");
+    await expect
+      .poll(() => savedOutline(page))
+      .toStrictEqual([{ bulletList: ["Hellox"] }]);
+  });
+
+  test("Delete at the end of the last item pulls in the paragraph after the List", async ({
+    page,
+  }) => {
+    await helloAsList(page);
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("x");
+    await expect
+      .poll(() => savedOutline(page))
+      .toStrictEqual([{ bulletList: ["Hello"] }, "x"]);
+    await pressArrow(page, "ArrowLeft");
+    await pressArrow(page, "ArrowLeft");
+
+    await page.keyboard.press("Delete");
+
+    await expect
+      .poll(() => savedOutline(page))
+      .toStrictEqual([{ bulletList: ["Hellox"] }]);
+  });
+
+  test("Shift+Ctrl/⌘+8 and 7 turn each kind on, switch between them and turn them off, on any layout, and typing a List's marker makes none", async ({
+    page,
+  }) => {
+    await cursorAtEndOfBlock(page);
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("- a");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("1. b");
+    await expect
+      .poll(() => savedOutline(page))
+      .toStrictEqual(["Hello", "- a", "1. b"]);
+    await selectAll(page);
+
+    await page.keyboard.press("ControlOrMeta+Shift+8");
+    await expect
+      .poll(() => savedOutline(page))
+      .toStrictEqual([{ bulletList: ["Hello", "- a", "1. b"] }]);
+    await page.keyboard.press("ControlOrMeta+Shift+7");
+    await expect
+      .poll(() => savedOutline(page))
+      .toStrictEqual([{ orderedList: ["Hello", "- a", "1. b"] }]);
+    await page.keyboard.press("ControlOrMeta+Shift+7");
+    await expect
+      .poll(() => savedOutline(page))
+      .toStrictEqual(["Hello", "- a", "1. b"]);
+
+    // As on a German layout, where Shift+8 types "(".
+    await textBlock(page)
+      .first()
+      .evaluate((text) => {
+        const apple = /Mac|iPhone|iPod|iPad/u.test(navigator.platform);
+        const event = new KeyboardEvent("keydown", {
+          bubbles: true,
+          cancelable: true,
+          code: "Digit8",
+          ctrlKey: !apple,
+          key: "(",
+          metaKey: apple,
+          shiftKey: true,
+        });
+        Object.defineProperty(event, "keyCode", { value: 56 });
+        text.dispatchEvent(event);
+      });
+    await expect
+      .poll(() => savedOutline(page))
+      .toStrictEqual([{ bulletList: ["Hello", "- a", "1. b"] }]);
+  });
+
+  test("the format bar's buttons show which List the text is in, and switch it", async ({
+    page,
+  }) => {
+    await helloAsList(page);
+    await expect(formatButton(page, "Bulleted list")).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+    await expect(formatButton(page, "Numbered list")).toHaveAttribute(
+      "aria-pressed",
+      "false"
+    );
+
+    await formatButton(page, "Numbered list").click();
+
+    await expect
+      .poll(() => savedOutline(page))
+      .toStrictEqual([{ orderedList: ["Hello"] }]);
+    await expect(formatButton(page, "Numbered list")).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+    await expect(formatButton(page, "Bulleted list")).toHaveAttribute(
+      "aria-pressed",
+      "false"
+    );
+    await expect(textBlock(page).first()).toBeFocused();
+  });
+
+  test("a pasted List comes in as a List, one level deep", async ({ page }) => {
+    await selectAllInBlock(page);
+
+    await pasteHtml(
+      textBlock(page).first(),
+      "<ol><li>one<ul><li>inner</li></ul></li><li>two</li></ol>"
+    );
+
+    await expect
+      .poll(() => savedOutline(page))
+      .toStrictEqual([{ orderedList: ["one", "inner", "two"] }]);
+  });
+});
+
 test.describe("links", () => {
   test("applying a link returns focus and the selection to the Block", async ({
     page,
@@ -683,6 +890,23 @@ test.describe("undo and redo", () => {
       .toStrictEqual([{ text: "Hello!", type: "text" }]);
   });
 
+  test("turning a List on doesn't merge with the typing before or after it", async ({
+    page,
+  }) => {
+    await cursorAtEndOfBlock(page);
+    await page.keyboard.type("!");
+    await formatButton(page, "Bulleted list").click();
+    await page.keyboard.type("x");
+    await expect(textBlock(page).first()).toContainText("x");
+
+    await undoByKey(page);
+    await expect
+      .poll(() => savedOutline(page))
+      .toStrictEqual([{ bulletList: ["Hello!"] }]);
+    await undoByKey(page);
+    await expect.poll(() => savedOutline(page)).toStrictEqual(["Hello!"]);
+  });
+
   test("text typed after turning bold on doesn't merge with the text before it", async ({
     page,
   }) => {
@@ -834,7 +1058,6 @@ test.describe("copy and paste", () => {
        <p style="font-size:40px"><b>bold</b> <i>italic</i> <u>under</u>
          <s>struck</s> <span style="color:red">red</span>
          <img src="x" onerror="window.pasteRan = true"><br><code>code</code></p>
-       <ul><li>item</li></ul>
        <table><tr><td>cell</td></tr></table>
        <script>window.pasteRan = true</script>`
     );

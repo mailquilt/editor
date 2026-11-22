@@ -22,6 +22,10 @@ export const ICONS = {
   bold: icon(
     svg`<path d="M7 5h6a3.5 3.5 0 0 1 0 7H7zM7 12h7a3.5 3.5 0 0 1 0 7H7z" stroke-width="2.25" />`
   ),
+  /** Three bullets, each before a line. */
+  bulletList: icon(
+    svg`<path d="M10 6h10M10 12h10M10 18h10" /><g fill="currentColor" stroke="none"><circle cx="5" cy="6" r="1.5" /><circle cx="5" cy="12" r="1.5" /><circle cx="5" cy="18" r="1.5" /></g>`
+  ),
   /** A dropdown's arrow. */
   chevronDown: icon(svg`<path d="m7 10 5 5 5-5" />`),
   content: icon(
@@ -46,6 +50,10 @@ export const ICONS = {
   ),
   monitor: icon(
     svg`<rect height="13" rx="2" width="18" x="3" y="4" /><path d="M8 21h8M12 17v4" />`
+  ),
+  /** A 1 and a 2, each before a line, and a third line. */
+  orderedList: icon(
+    svg`<path d="M11 6h9M11 12h9M11 18h9M4 4.5 5.5 3.5V9M4 9h3M4 13a1.5 1.5 0 0 1 3 .25c0 1.25-3 2-3 3.75h3" />`
   ),
   plus: icon(svg`<path d="M12 5v14M5 12h14" />`),
   preview: icon(
