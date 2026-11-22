@@ -5,6 +5,7 @@ import {
   hostEvents,
   NARROW_VIEWPORT,
   narrowNotice,
+  previewDialog,
   previewEmail,
   previewEmailButton,
   test,
@@ -29,6 +30,37 @@ test.describe("on a screen too narrow to edit in", () => {
 
     await previewEmailButton(page).click();
     await expect(previewEmail(page)).toContainText("Hello");
+  });
+
+  test("at 320px, the Preview's Close and email fit inside it at either width", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ height: 640, width: 320 });
+    await page.goto("/");
+    await previewEmailButton(page).click();
+    await expect(previewEmail(page)).toContainText("Hello");
+    const dialog = previewDialog(page);
+    // How far Close and the email reach past the dialog's right edge.
+    const overflow = async () => {
+      const edge = await dialog.boundingBox();
+      const close = await dialog
+        .getByRole("button", { name: "Close" })
+        .boundingBox();
+      const email = await dialog.getByTitle("Email preview").boundingBox();
+      const right = (edge?.x ?? 0) + (edge?.width ?? 0);
+      return [close, email].map((box) =>
+        Math.max(0, (box?.x ?? 0) + (box?.width ?? 0) - right)
+      );
+    };
+    await expect.poll(overflow).toEqual([0, 0]);
+
+    await dialog.getByRole("button", { name: "Phone" }).click();
+
+    await expect(dialog.getByRole("button", { name: "Phone" })).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+    await expect.poll(overflow).toEqual([0, 0]);
   });
 
   test("stays out of sight with a size the host gives the frame", async ({

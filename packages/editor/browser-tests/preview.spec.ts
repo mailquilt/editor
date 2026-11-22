@@ -12,6 +12,7 @@ import {
   hostEvents,
   latestDocument,
   linkUrlField,
+  openEmail,
   openTestPage,
   previewButton,
   previewDialog,
@@ -119,6 +120,48 @@ test("MJML failing to load shows the reason, the editor keeps working, and openi
 
   await expect(previewEmail(page)).toContainText("aHello");
   await expect(previewDialog(page).getByRole("alert")).toHaveCount(0);
+});
+
+test("Phone shows the email 375px wide, where Columns stack, until Desktop is chosen", async ({
+  page,
+}) => {
+  await openEmail(page, [[["Left"], ["Right"]]]);
+  const widthButton = (name: string) =>
+    previewDialog(page).getByRole("button", { exact: true, name });
+  const frameWidth = async () => {
+    const box = await previewFrame(page).boundingBox();
+    return box?.width;
+  };
+  // How far Right is below Left: none side by side, and more once stacked.
+  const rightBelowLeft = async () => {
+    const left = await previewEmail(page).getByText("Left").boundingBox();
+    const right = await previewEmail(page).getByText("Right").boundingBox();
+    return (right?.y ?? 0) - (left?.y ?? 0);
+  };
+  await previewButton(page).click();
+  await expect(previewEmail(page)).toContainText("Right");
+  await expect(widthButton("Desktop")).toHaveAttribute("aria-pressed", "true");
+  await expect.poll(rightBelowLeft).toBe(0);
+
+  await widthButton("Phone").click();
+
+  await expect(widthButton("Phone")).toHaveAttribute("aria-pressed", "true");
+  await expect(widthButton("Desktop")).toHaveAttribute("aria-pressed", "false");
+  await expect.poll(frameWidth).toBe(375);
+  await expect.poll(rightBelowLeft).toBeGreaterThan(0);
+
+  // Focus goes back as it does at Desktop, and the choice stays.
+  await page.keyboard.press("Escape");
+  await expect(previewDialog(page)).toBeHidden();
+  await expect(previewButton(page)).toBeFocused();
+  await previewButton(page).click();
+  await expect(closeButton(page)).toBeFocused();
+  await expect(widthButton("Phone")).toHaveAttribute("aria-pressed", "true");
+  await expect.poll(frameWidth).toBe(375);
+
+  await widthButton("Desktop").click();
+
+  await expect.poll(frameWidth).toBeGreaterThan(375);
 });
 
 test.describe("reflecting the latest edits", () => {

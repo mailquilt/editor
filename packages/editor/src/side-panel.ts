@@ -56,7 +56,6 @@ export const sidePanelStyles = css`
    * An outline stays.
    */
   @media (forced-colors: active) {
-    .tab[aria-selected="true"],
     .layout-option[aria-pressed="true"] {
       outline: 2px solid Highlight;
       outline-offset: -2px;
@@ -146,52 +145,6 @@ export const sidePanelStyles = css`
 
   .panel-top {
     padding: var(--mq-space-3) var(--mq-space-3) 0;
-  }
-
-  /* A segmented control: the selected tab is a raised chip in the track. */
-  .tabs {
-    background: var(--mq-color-surface-hover);
-    border-radius: var(--mq-radius);
-    box-shadow: inset 0 0 0 1px var(--mq-color-border);
-    display: flex;
-    gap: 2px;
-    padding: 3px;
-  }
-
-  .tab {
-    align-items: center;
-    background: transparent;
-    border: 0;
-    /* Inside the track's padding, so the corners stay even. */
-    border-radius: calc(var(--mq-radius) - 2px);
-    color: var(--mq-color-text-muted);
-    cursor: pointer;
-    display: flex;
-    flex: 1;
-    font-weight: 500;
-    gap: 6px;
-    height: 32px;
-    justify-content: center;
-    padding: 0 var(--mq-space-2);
-    transition:
-      background-color 120ms,
-      color 120ms;
-  }
-
-  .tab:hover {
-    color: var(--mq-color-text);
-  }
-
-  .tab[aria-selected="true"] {
-    background: var(--mq-color-surface);
-    box-shadow:
-      0 0 0 1px var(--mq-color-border),
-      var(--mq-shadow-small);
-    color: var(--mq-color-text);
-  }
-
-  .tab[aria-selected="true"] .icon {
-    color: var(--mq-color-accent);
   }
 
   .panel-header {
@@ -614,7 +567,7 @@ const renderTabs = (api: PanelApi) => {
     <div class="panel-top">
       <div
         aria-label="Side panel"
-        class="tabs"
+        class="segments"
         data-place=${place("panelTabs")}
         role="tablist"
       >
@@ -623,7 +576,7 @@ const renderTabs = (api: PanelApi) => {
             <button
               aria-controls=${id === current ? `tabpanel-${id}` : nothing}
               aria-selected=${id === current ? "true" : "false"}
-              class="tab"
+              class="segment"
               id=${`tab-${id}`}
               role="tab"
               tabindex=${id === current ? "0" : "-1"}

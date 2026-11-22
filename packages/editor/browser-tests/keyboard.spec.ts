@@ -955,13 +955,17 @@ test.describe("automated accessibility checks", () => {
     expect(await violations(page)).toEqual([]);
   });
 
-  test("pass with the Preview open", async ({ page }) => {
+  test("pass with the Preview open at each width", async ({ page }) => {
     await openEmail(page, [[["A"]]]);
     await previewButton(page).click();
     await expect(page.getByTitle("Email preview")).toBeVisible();
+    const scan = () => violations(page, "mail-quilt", { excludeIframe: true });
+    expect(await scan()).toEqual([]);
 
-    expect(
-      await violations(page, "mail-quilt", { excludeIframe: true })
-    ).toEqual([]);
+    const phone = page.getByRole("button", { exact: true, name: "Phone" });
+    await phone.click();
+    await expect(phone).toHaveAttribute("aria-pressed", "true");
+
+    expect(await scan()).toEqual([]);
   });
 });

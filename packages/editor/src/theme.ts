@@ -236,6 +236,63 @@ export const uiStyles = css`
     scrollbar-width: thin;
   }
 
+  /*
+   * A segmented control, such as the side panel's tabs or the Preview's width:
+   * the chosen one is a raised chip in the track.
+   */
+  .segments {
+    background: var(--mq-color-surface-hover);
+    border-radius: var(--mq-radius);
+    box-shadow: inset 0 0 0 1px var(--mq-color-border);
+    display: flex;
+    gap: 2px;
+    padding: 3px;
+  }
+
+  .segment {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    /* Inside the track's padding, so the corners stay even. */
+    border-radius: calc(var(--mq-radius) - 2px);
+    color: var(--mq-color-text-muted);
+    cursor: pointer;
+    display: flex;
+    flex: 1;
+    font-weight: 500;
+    gap: 6px;
+    height: 32px;
+    justify-content: center;
+    padding: 0 var(--mq-space-2);
+    transition:
+      background-color 120ms,
+      color 120ms;
+  }
+
+  .segment:hover {
+    color: var(--mq-color-text);
+  }
+
+  .segment:is([aria-selected="true"], [aria-pressed="true"]) {
+    background: var(--mq-color-surface);
+    box-shadow:
+      0 0 0 1px var(--mq-color-border),
+      var(--mq-shadow-small);
+    color: var(--mq-color-text);
+  }
+
+  .segment:is([aria-selected="true"], [aria-pressed="true"]) .icon {
+    color: var(--mq-color-accent);
+  }
+
+  /* Forced colors drop the background and shadow that show which is chosen. */
+  @media (forced-colors: active) {
+    .segment:is([aria-selected="true"], [aria-pressed="true"]) {
+      outline: 2px solid Highlight;
+      outline-offset: -2px;
+    }
+  }
+
   /* A raised bar of tools, on the canvas or above it. */
   .bar {
     align-items: center;

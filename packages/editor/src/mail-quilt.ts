@@ -639,7 +639,11 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     const api = this.#panelApi(email);
 
     return html`
-      ${renderPreview(this.#preview.shown, this.#preview.events)}
+      ${renderPreview(
+        this.#preview.shown,
+        this.#preview.width,
+        this.#preview.events
+      )}
       ${this.#announcements.render()}
       <p hidden id="block-keys" lang=${UI_LANG}>
         Press ${EDIT_TEXT} to edit the text, and ${BACK_TO_BLOCK} to come back.

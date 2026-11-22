@@ -1,7 +1,9 @@
 import { NEW_EMAIL_WIDTH } from "@mailquilt/core/internal";
 import { css, html, nothing, unsafeCSS } from "lit";
+import type { TemplateResult } from "lit";
 
 import { place } from "./editor-places.js";
+import { ICONS } from "./icons.js";
 import { claim, keyFor } from "./key-map.js";
 import { refuseFiles } from "./refuse-files.js";
 import { BACKDROP, UI_LANG } from "./theme.js";
@@ -11,6 +13,17 @@ import { BACKDROP, UI_LANG } from "./theme.js";
  * to show, so a quick render says nothing.
  */
 const LOADING_SAID_AFTER_MS = 150;
+
+/** A common phone's width, below every phone media query of an email's. */
+const PHONE_WIDTH = 375;
+
+/** The width the Preview shows the email at. */
+type PreviewWidth = "desktop" | "phone";
+
+const WIDTHS: { icon: TemplateResult; label: string; width: PreviewWidth }[] = [
+  { icon: ICONS.monitor, label: "Desktop", width: "desktop" },
+  { icon: ICONS.phone, label: "Phone", width: "phone" },
+];
 
 export const previewStyles = css`
   /* A closed dialog relies on the browser's display: none, so no all: initial. */
@@ -46,13 +59,43 @@ export const previewStyles = css`
     height: 100%;
   }
 
+  /* The width switch in the middle, however wide the title and Close are. */
   .preview-header {
     align-items: center;
     border-bottom: 1px solid var(--mq-color-border);
-    display: flex;
-    justify-content: space-between;
+    display: grid;
+    gap: var(--mq-space-3);
+    grid-template-columns: 1fr auto 1fr;
     padding: var(--mq-space-2) var(--mq-space-3) var(--mq-space-2)
       var(--mq-space-4);
+  }
+
+  .preview-header > .text-button {
+    justify-self: end;
+  }
+
+  /* As tall as Close, so the header stays the height it was. */
+  .preview-header .segments {
+    padding: 2px;
+  }
+
+  .preview-header .segment {
+    height: 24px;
+  }
+
+  /*
+   * A dialog too narrow for the labels, as on a 320px phone, shows only the
+   * icons, and the labels stay as the buttons' names.
+   */
+  @media (max-width: 380px) {
+    .preview-header .segment > span {
+      clip-path: inset(50%);
+      height: 1px;
+      overflow: hidden;
+      position: absolute;
+      white-space: nowrap;
+      width: 1px;
+    }
   }
 
   .preview-header h2 {
@@ -62,12 +105,32 @@ export const previewStyles = css`
     margin: 0;
   }
 
-  .preview-panel iframe {
+  /* Where the email is, as wide as the dialog or as a phone. */
+  .preview-stage {
+    background: var(--mq-color-workspace);
+    display: flex;
+    flex: 1;
+    justify-content: center;
+    min-height: 0;
+  }
+
+  /* An iframe is 300px wide by default, so without min-width it overflows. */
+  .preview-stage > iframe {
     background: var(--mq-color-workspace);
     border: 0;
     flex: 1;
-    min-height: 0;
-    width: 100%;
+    min-width: 0;
+  }
+
+  .preview-stage.phone {
+    padding-block: var(--mq-space-4);
+  }
+
+  /* Narrower only in a dialog narrower than a phone. */
+  .preview-stage.phone > iframe {
+    border-radius: var(--mq-radius);
+    box-shadow: var(--mq-shadow);
+    flex: 0 1 ${unsafeCSS(PHONE_WIDTH)}px;
   }
 
   .preview-panel > p {
@@ -104,6 +167,10 @@ export const previewStyles = css`
     margin-inline: auto;
     max-width: ${unsafeCSS(NEW_EMAIL_WIDTH)}px;
     padding: 32px;
+  }
+
+  .preview-loading.phone > .preview-skeleton {
+    max-width: ${unsafeCSS(PHONE_WIDTH)}px;
   }
 
   .preview-skeleton > span {
@@ -225,18 +292,27 @@ const guardEmail = (event: Event) => {
   email?.addEventListener("keydown", claimKey);
 };
 
-const renderPreviewContent = ({ result }: Preview) => {
+/**
+ * The width changes the frame and not what's in it, so the email isn't loaded
+ * again and keeps its scroll.
+ */
+const renderPreviewContent = ({ result }: Preview, width: PreviewWidth) => {
+  const phone = width === "phone" ? "phone" : "";
   if (!result) {
-    return html` <div class="preview-loading">${previewSkeleton}</div> `;
+    return html`
+      <div class="preview-loading ${phone}">${previewSkeleton}</div>
+    `;
   }
   return "html" in result
     ? html`
-        <iframe
-          sandbox="allow-same-origin"
-          srcdoc=${result.html}
-          title="Email preview"
-          @load=${guardEmail}
-        ></iframe>
+        <div class="preview-stage ${phone}">
+          <iframe
+            sandbox="allow-same-origin"
+            srcdoc=${result.html}
+            title="Email preview"
+            @load=${guardEmail}
+          ></iframe>
+        </div>
       `
     : html`
         <p role="alert">The preview couldn't be loaded: ${result.failure}</p>
@@ -248,7 +324,29 @@ interface PreviewEvents {
   onClose: () => void;
   /** The dialog closed, however it was closed. */
   onClosed: () => void;
+  /** Desktop or Phone was pressed. */
+  onWidth: (width: PreviewWidth) => void;
 }
+
+const renderWidthSwitch = (
+  current: PreviewWidth,
+  onWidth: PreviewEvents["onWidth"]
+) => html`
+  <div aria-label="Width" class="segments" role="group">
+    ${WIDTHS.map(
+      ({ icon, label, width }) => html`
+        <button
+          aria-pressed=${width === current ? "true" : "false"}
+          class="segment"
+          type="button"
+          @click=${() => onWidth(width)}
+        >
+          ${icon}<span>${label}</span>
+        </button>
+      `
+    )}
+  </div>
+`;
 
 /**
  * The dialog stays rendered so that closing it, not removing it, returns focus.
@@ -257,11 +355,13 @@ interface PreviewEvents {
  * file dropped on it, and keep Alt+← from going back a page. Never add
  * `allow-scripts` with it: together they let the email remove its own sandbox.
  * Escape closes it and goes no further, so a modal of the host's around the
- * editor stays open.
+ * editor stays open. Close has `autofocus`, so opening still moves focus to it
+ * past the width switch.
  */
 export const renderPreview = (
   preview: Preview | undefined,
-  { onClose, onClosed }: PreviewEvents
+  width: PreviewWidth,
+  { onClose, onClosed, onWidth }: PreviewEvents
 ) => html`
   <dialog
     aria-labelledby="preview-title"
@@ -273,14 +373,15 @@ export const renderPreview = (
     <div class="ui preview-panel">
       <div class="preview-header">
         <h2 id="preview-title">Preview</h2>
-        <button class="text-button" type="button" @click=${onClose}>
+        ${renderWidthSwitch(width, onWidth)}
+        <button autofocus class="text-button" type="button" @click=${onClose}>
           Close
         </button>
       </div>
       <p class="visually-hidden" role="status">
         ${preview?.saysLoading && !preview.result ? "Loading preview…" : ""}
       </p>
-      ${preview ? renderPreviewContent(preview) : nothing}
+      ${preview ? renderPreviewContent(preview, width) : nothing}
     </div>
   </dialog>
 `;
@@ -292,8 +393,9 @@ interface PreviewHost {
 }
 
 /**
- * The Preview's state: the opening on screen, if any, and the current
- * document's HTML once it has been rendered.
+ * The Preview's state: the opening on screen, if any, the current document's
+ * HTML once it has been rendered, and the width, which stays from one opening
+ * to the next.
  */
 export const createPreview = ({
   dialog,
@@ -302,6 +404,7 @@ export const createPreview = ({
 }: PreviewHost) => {
   let shown: Preview | undefined;
   let rendered: string | undefined;
+  let width: PreviewWidth = "desktop";
 
   const events: PreviewEvents = {
     onClose: () => dialog()?.close(),
@@ -311,6 +414,10 @@ export const createPreview = ({
         return;
       }
       shown = undefined;
+      requestUpdate();
+    },
+    onWidth: (chosen) => {
+      width = chosen;
       requestUpdate();
     },
   };
@@ -373,6 +480,9 @@ export const createPreview = ({
     },
     get shown() {
       return shown;
+    },
+    get width() {
+      return width;
     },
   };
 };
