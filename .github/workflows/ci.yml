@@ -21,20 +21,43 @@ concurrency:
 
 # The check and browser jobs run in Playwright's own image, which has every
 # browser and the system libraries they need, so they install nothing from
-# Ubuntu's package servers. Its version must match @playwright/test in the
-# packages, and the check job fails when it doesn't.
+# Ubuntu's package servers. The image's browsers are the ones its own version
+# of Playwright runs, so its tag is read from @playwright/test in the lockfile,
+# and a Dependabot bump of the package moves the image with it.
 
 # Each action is pinned to a commit, as a tag can be moved to other code.
 # Dependabot keeps the pins current, as .github/dependabot.yml sets out.
 
 jobs:
-  check:
-    name: Lint, types, unit tests and install checks
+  playwright:
+    name: Playwright version
     # A draft is still being worked on, so it isn't checked until it's ready.
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: pnpm-lock.yaml
+          sparse-checkout-cone-mode: false
+      # One version for every package, as there is one image.
+      - id: version
+        run: |
+          version=$(grep -oE "^  '@playwright/test@[^']+'" pnpm-lock.yaml | sed "s/.*@//; s/'//" | sort -u)
+          if [ -z "$version" ] || [ "$(echo "$version" | wc -l)" -ne 1 ]; then
+            echo "::error::Expected one version of @playwright/test in pnpm-lock.yaml, found: ${version:-none}"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  check:
+    name: Lint, types, unit tests and install checks
+    needs: playwright
+    runs-on: ubuntu-latest
     container:
-      image: mcr.microsoft.com/playwright:v1.65.1-noble
+      image: mcr.microsoft.com/playwright:v${{ needs.playwright.outputs.version }}-noble
       options: --user 1001
     timeout-minutes: 20
     steps:
@@ -42,15 +65,6 @@ jobs:
         with:
           # The whole history, so a pull request can be compared with main.
           fetch-depth: 0
-      # The image's browsers are the ones its own version of Playwright runs.
-      - name: Check the Playwright image matches @playwright/test
-        run: |
-          image=$(grep -oE 'mcr\.microsoft\.com/playwright:v[^ -]+' .github/workflows/ci.yml | sed 's/.*:v//' | sort -u)
-          package=$(grep -oE "^  '@playwright/test@[^']+'" pnpm-lock.yaml | sed "s/.*@//; s/'//" | sort -u)
-          if [ "$image" != "$package" ]; then
-            echo "::error::The Playwright image is $image, and @playwright/test is $package."
-            exit 1
-          fi
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -96,10 +110,10 @@ jobs:
 
   browsers:
     name: Browser tests (${{ matrix.browser }} ${{ matrix.shard }}/2)
-    if: ${{ !github.event.pull_request.draft }}
+    needs: playwright
     runs-on: ubuntu-latest
     container:
-      image: mcr.microsoft.com/playwright:v1.65.1-noble
+      image: mcr.microsoft.com/playwright:v${{ needs.playwright.outputs.version }}-noble
       options: --user 1001
     timeout-minutes: 20
     strategy:

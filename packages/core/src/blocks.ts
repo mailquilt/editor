@@ -197,10 +197,8 @@ const buttonBlockSchema = v.strictObject({
   color: v.optional(colorSchema),
   href: v.optional(linkHrefSchema),
   // Plain text, because the whole Button is the link.
-  label: v.pipe(
-    v.string(),
-    v.check((label) => label.trim() !== "", "A Button needs a label")
-  ),
+  // Not blank: \s is the white space trim() removes.
+  label: v.pipe(v.string(), v.regex(/\S/u, "A Button needs a label")),
 });
 
 type ButtonBlockProps = v.InferOutput<typeof buttonBlockSchema>;

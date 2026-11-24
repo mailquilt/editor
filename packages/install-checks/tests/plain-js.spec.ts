@@ -1,7 +1,11 @@
 import { execFile } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import path from "node:path";
 import { promisify } from "node:util";
 
 import { expect, test } from "@playwright/test";
+import { Ajv2020 } from "ajv/dist/2020.js";
 
 import { freshProjectDir } from "../fresh-projects.ts";
 import { freshProjects } from "../ports.ts";
@@ -12,6 +16,10 @@ import {
 } from "./load-save-export.ts";
 
 const url = `http://localhost:${freshProjects["plain-js"].port}/`;
+const here = import.meta.dirname;
+
+const readJson = (file: string): object =>
+  JSON.parse(readFileSync(file, "utf-8"));
 
 test("a plain JS project loads, saves and exports an email", async ({
   page,
@@ -27,6 +35,53 @@ test("a plain JS project's Shell opens, saves and reopens", async ({
   page,
 }) => {
   await checkShell(page, `${url}shell/`);
+});
+
+test("the published JSON Schema accepts version 4 emails and refuses a bad one", () => {
+  const dir = freshProjectDir("plain-js");
+  const schema = readJson(
+    createRequire(path.join(dir, "package.json")).resolve(
+      "@mailquilt/core/schema.json"
+    )
+  );
+  const validate = new Ajv2020({ allErrors: true }).compile(schema);
+  const emails = {
+    "core's version 4 fixture": readJson(
+      path.join(here, "../../core/test/fixtures/version-4.json")
+    ),
+    "the docs' example email": readJson(
+      path.join(
+        here,
+        "../../../apps/docs/docs/_document-format/example-email.json"
+      )
+    ),
+  };
+
+  for (const [name, email] of Object.entries(emails)) {
+    expect(validate(email), `${name}: ${JSON.stringify(validate.errors)}`).toBe(
+      true
+    );
+  }
+  const button = {
+    id: "button",
+    // oxlint-disable-next-line no-script-url -- The link the schema must refuse.
+    props: { href: "javascript:alert(1)", label: "Buy" },
+    type: "button",
+  };
+  const bad = {
+    ...emails["the docs' example email"],
+    rows: [
+      {
+        columns: [{ blocks: [button], id: "c", props: {}, width: 100 }],
+        id: "r",
+        props: {},
+      },
+    ],
+  };
+  expect(validate(bad)).toBe(false);
+  expect(validate.errors).toContainEqual(
+    expect.objectContaining({ keyword: "pattern" })
+  );
 });
 
 test("the docs' server code builds, renders and refuses an email in Node", async () => {
