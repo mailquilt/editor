@@ -6,6 +6,7 @@ export const projectNames = [
   "cdn",
   "nextjs",
   "plain-js",
+  "react-18-vite",
   "react-vite",
 ] as const;
 export type ProjectName = (typeof projectNames)[number];

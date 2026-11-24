@@ -9,6 +9,7 @@ import type {
 } from "@mailquilt/editor";
 import {
   createElement,
+  forwardRef,
   useEffect,
   useImperativeHandle,
   useLayoutEffect,
@@ -18,8 +19,8 @@ import {
 import type {
   AriaAttributes,
   DOMAttributes,
+  ForwardedRef,
   HTMLAttributes,
-  ReactElement,
   Ref,
 } from "react";
 
@@ -51,8 +52,10 @@ interface EditorProps<Host> extends HostAppProperties {
  * that mean something on it. Not those of form fields, such as `defaultValue`,
  * or of editable text, or `dir`, as the editor is left to right on any page.
  */
-type ElementAttributes = AriaAttributes &
-  Omit<
+type ElementAttributes = AriaAttributes & {
+  /** Declared here, because React 18's types don't have it. */
+  inert?: boolean;
+} & Omit<
     DOMAttributes<HTMLElement>,
     "children" | "dangerouslySetInnerHTML" | "onChange" | "onError"
   > &
@@ -61,7 +64,6 @@ type ElementAttributes = AriaAttributes &
     | "className"
     | "hidden"
     | "id"
-    | "inert"
     | "lang"
     | "role"
     | "slot"
@@ -183,19 +185,40 @@ const useEditorElement = <
   return setElement;
 };
 
-export const MailQuilt = ({
-  onChange,
-  onError,
-  mergeTags,
-  ref,
-  socialIconsUrl,
-  strings,
-  uploadImage,
-  value,
-  ...attributes
-}: MailQuiltProps): ReactElement =>
+/**
+ * The element's attributes, in a form React 18 and 19 render the same. React 18
+ * writes a custom element's props as they're given, so `className` would be a
+ * `classname` attribute, and `false` the text "false", which still hides the
+ * element or makes it inert.
+ */
+const elementAttributes = ({
+  className,
+  hidden,
+  inert,
+  ...rest
+}: ElementAttributes) => ({
+  ...rest,
+  class: className,
+  hidden: hidden || undefined,
+  inert: inert || undefined,
+});
+
+/** The editor. Its `ref` comes as an argument, as React 18 has no `ref` prop. */
+const Editor = (
+  {
+    onChange,
+    onError,
+    mergeTags,
+    socialIconsUrl,
+    strings,
+    uploadImage,
+    value,
+    ...attributes
+  }: MailQuiltProps,
+  ref: ForwardedRef<MailQuiltElement>
+) =>
   createElement("mail-quilt", {
-    ...attributes,
+    ...elementAttributes(attributes),
     ref: useEditorElement({
       hostApp: { mergeTags, socialIconsUrl, strings, uploadImage },
       onChange,
@@ -205,28 +228,26 @@ export const MailQuilt = ({
     }),
   });
 
-/**
- * A ready-made editor page: the editor with a header, Import and Export, and
- * messages. Its attributes are on the server's HTML, so the Shell has them
- * when it starts in the browser.
- */
-export const MailQuiltShell = ({
-  actions,
-  heading,
-  mergeTags,
-  onChange,
-  onError,
-  ref,
-  saveKey,
-  socialIconsUrl,
-  strings,
-  uploadImage,
-  value,
-  ...rest
-}: MailQuiltShellProps): ReactElement => {
+/** The Shell. Its `ref` comes as an argument, as React 18 has no `ref` prop. */
+const Shell = (
+  {
+    actions,
+    heading,
+    mergeTags,
+    onChange,
+    onError,
+    saveKey,
+    socialIconsUrl,
+    strings,
+    uploadImage,
+    value,
+    ...rest
+  }: MailQuiltShellProps,
+  ref: ForwardedRef<MailQuiltShellElement>
+) => {
   // React's types only know the attributes of built-in elements.
   const attributes: Record<string, unknown> = {
-    ...rest,
+    ...elementAttributes(rest),
     actions: actions?.join(" "),
     heading,
     "save-key": saveKey,
@@ -242,3 +263,14 @@ export const MailQuiltShell = ({
     }),
   });
 };
+
+export const MailQuilt = forwardRef(Editor);
+MailQuilt.displayName = "MailQuilt";
+
+/**
+ * A ready-made editor page: the editor with a header, Import and Export, and
+ * messages. Its attributes are on the server's HTML, so the Shell has them
+ * when it starts in the browser.
+ */
+export const MailQuiltShell = forwardRef(Shell);
+MailQuiltShell.displayName = "MailQuiltShell";
