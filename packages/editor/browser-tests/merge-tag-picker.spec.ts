@@ -1,5 +1,5 @@
 import { expect } from "@playwright/test";
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 
 import type { MailQuilt } from "../src/index.js";
 import {
@@ -8,6 +8,8 @@ import {
   blockWith,
   canvas,
   changesSince,
+  contrast,
+  docsDarkTheme,
   field,
   formatButton,
   latestDocument,
@@ -412,3 +414,77 @@ test.describe("in a field", () => {
     await expect(textBlock(page)).toBeFocused();
   });
 });
+
+/** The numbers in a color that `getComputedStyle` gives, such as `rgba()`. */
+const channels = (color = "") => (color.match(/[\d.]+/gu) ?? []).map(Number);
+
+/**
+ * The color of an inset edge drawn with box-shadow, as it shows over what's
+ * behind it, and that color behind it: the background of the element's parent
+ * nearest it that has one. An edge with alpha is blended over it.
+ */
+const edgeAndBehind = async (element: Locator) => {
+  const [edge, back] = await element.evaluate((node) => {
+    const shadow = getComputedStyle(node).boxShadow;
+    let parent = node.parentElement;
+    while (
+      parent &&
+      getComputedStyle(parent).backgroundColor === "rgba(0, 0, 0, 0)"
+    ) {
+      parent = parent.parentElement;
+    }
+    return [
+      shadow.includes("inset")
+        ? (shadow.match(/rgba?\([^)]*\)/u)?.[0] ?? "")
+        : "",
+      parent ? getComputedStyle(parent).backgroundColor : "",
+    ];
+  });
+  const [red = 0, green = 0, blue = 0, alpha = 1] = channels(edge);
+  const [backRed = 0, backGreen = 0, backBlue = 0] = channels(back);
+  const blend = (top: number, bottom: number) =>
+    Math.round(top * alpha + bottom * (1 - alpha));
+  return [
+    edge
+      ? `rgb(${blend(red, backRed)}, ${blend(green, backGreen)}, ${blend(blue, backBlue)})`
+      : "",
+    back ?? "",
+  ];
+};
+
+test("the highlighted tag in the list has an edge at 3:1, so it isn't told by color alone", async ({
+  page,
+}) => {
+  await openBlocks(page, ["text"]);
+  await giveMergeTags(page, TAGS);
+  await typeInText(page, "{{");
+  const highlighted = picker(page).locator('[aria-selected="true"]');
+  await expect(highlighted).toHaveCount(1);
+
+  const [edge = "", list = ""] = await edgeAndBehind(highlighted);
+
+  expect(edge).not.toBe("");
+  expect(contrast(edge, list)).toBeGreaterThanOrEqual(3);
+});
+
+for (const theme of ["default", "the docs' dark"] as const) {
+  test(`a Merge Tag in text has an edge at 3:1 against the email, in the ${theme} theme, so it's told from typed words`, async ({
+    page,
+  }) => {
+    await openBlocks(page, ["text"]);
+    if (theme !== "default") {
+      await page.addStyleTag({ content: docsDarkTheme() });
+    }
+    await giveMergeTags(page, TAGS);
+    await typeInText(page, "Hi {{first_name}}");
+    const tag = textBlock(page)
+      .getByText("First name", { exact: true })
+      .locator("xpath=ancestor-or-self::*[@data-merge-tag]");
+    await expect(tag).toBeVisible();
+
+    const [edge = "", email = ""] = await edgeAndBehind(tag);
+
+    expect(edge).not.toBe("");
+    expect(contrast(edge, email)).toBeGreaterThanOrEqual(3);
+  });
+}
