@@ -1,6 +1,6 @@
 import * as v from "valibot";
 
-import type { Block } from "./document.js";
+import type { Block, EmailStyle } from "./document.js";
 import {
   imageSrcSchema,
   INVALID_IMAGE_URL,
@@ -18,12 +18,12 @@ import type { SettingsField } from "./settings-fields.js";
 import { parseProps } from "./validation.js";
 import {
   colorSchema,
+  fontSizeSchema,
+  MAX_FONT_SIZE,
   pixelSchema,
   solidColorSchema,
   wholePixelsSchema,
 } from "./value-schemas.js";
-
-const MAX_FONT_SIZE = 200;
 
 /** The alignment dropdown, whose values are all the schema accepts. */
 const ALIGN_OPTIONS = [
@@ -33,8 +33,6 @@ const ALIGN_OPTIONS = [
 ] as const;
 
 const alignSchema = v.picklist(ALIGN_OPTIONS.map(({ value }) => value));
-
-const fontSizeSchema = pixelSchema(MAX_FONT_SIZE);
 
 const alignField = (fallback: string): SettingsField => ({
   default: fallback,
@@ -65,8 +63,11 @@ interface BlockDefinition<
   schema: v.GenericSchema<unknown, Props>;
   /** The settings panel's fields, whose defaults can depend on the properties. */
   fields: (props: Props) => readonly SettingsField[];
-  /** The Block's CSS, for both the canvas and the email output. */
-  styles: (props: Props) => Record<string, string>;
+  /**
+   * The Block's CSS, for both the canvas and the email output, from its own
+   * props, then the Email style, then the built-in look.
+   */
+  styles: (props: Props, style: EmailStyle) => Record<string, string>;
 }
 
 /** Text's line height, as a multiple of its font size. */
@@ -104,16 +105,19 @@ export const textBlock = {
   fields: () => TEXT_FIELDS,
   label: "Text",
   schema: textBlockSchema,
-  styles: ({
-    align = TEXT_LOOK.align,
-    color = TEXT_LOOK.color,
-    fontSize = TEXT_LOOK.fontSize,
-  }) => ({
-    color,
-    "font-size": `${fontSize}px`,
-    "line-height": lineHeightFor(fontSize),
-    "text-align": align,
-  }),
+  styles: (props, { textColor, textFontSize }) => {
+    const {
+      align = TEXT_LOOK.align,
+      color = textColor ?? TEXT_LOOK.color,
+      fontSize = textFontSize ?? TEXT_LOOK.fontSize,
+    } = props;
+    return {
+      color,
+      "font-size": `${fontSize}px`,
+      "line-height": lineHeightFor(fontSize),
+      "text-align": align,
+    };
+  },
 } satisfies BlockDefinition<TextBlockProps>;
 
 /** What a Heading looks like until a person changes it. */
@@ -166,18 +170,24 @@ const headingBlock = {
   fields: ({ level }) => HEADING_FIELDS[level],
   label: "Heading",
   schema: headingBlockSchema,
-  styles: ({
-    align = HEADING_LOOK.align,
-    color = HEADING_LOOK.color,
-    level,
-    fontSize = HEADING_FONT_SIZES[level],
-  }) => ({
-    color,
-    "font-size": `${fontSize}px`,
-    "font-weight": "700",
-    "line-height": lineHeightFor(fontSize),
-    "text-align": align,
-  }),
+  styles: (props, style) => {
+    const {
+      align = HEADING_LOOK.align,
+      color = style.textColor ?? HEADING_LOOK.color,
+      level,
+    } = props;
+    const fontSize =
+      props.fontSize ??
+      style[`heading${level}FontSize`] ??
+      HEADING_FONT_SIZES[level];
+    return {
+      color,
+      "font-size": `${fontSize}px`,
+      "font-weight": "700",
+      "line-height": lineHeightFor(fontSize),
+      "text-align": align,
+    };
+  },
 } satisfies BlockDefinition<HeadingBlockProps>;
 
 /** What a Button looks like until a person changes it. */
@@ -224,15 +234,28 @@ const buttonBlock = {
   fields: () => BUTTON_FIELDS,
   label: "Button",
   schema: buttonBlockSchema,
-  styles: ({
-    align = BUTTON_LOOK.align,
-    backgroundColor = BUTTON_LOOK.backgroundColor,
-    color = BUTTON_LOOK.color,
-  }) => ({
-    "background-color": backgroundColor,
-    color,
-    "text-align": align,
-  }),
+  styles: (props, style) => {
+    const {
+      align = BUTTON_LOOK.align,
+      backgroundColor = style.buttonBackgroundColor ??
+        BUTTON_LOOK.backgroundColor,
+      color = BUTTON_LOOK.color,
+    } = props;
+    const { buttonBorderRadius, textFontSize } = style;
+    return {
+      "background-color": backgroundColor,
+      color,
+      "text-align": align,
+      // Only when set, as without them a Button has MJML's corners and the
+      // size every Block shares.
+      ...(buttonBorderRadius === undefined
+        ? {}
+        : { "border-radius": `${buttonBorderRadius}px` }),
+      ...(textFontSize === undefined
+        ? {}
+        : { "font-size": `${textFontSize}px` }),
+    };
+  },
 } satisfies BlockDefinition<ButtonBlockProps>;
 
 const hasAltText = (alt: unknown) =>
@@ -565,12 +588,28 @@ export const EMAIL_LOOK = {
 } as const;
 
 /**
- * A Block's CSS, for both the canvas and the email output. Its props must be
+ * A Block's CSS, for both the canvas and the email output, from its own props,
+ * then the email's Email style, then the built-in look. Its props must be
  * valid, as in a loaded document, because they're not checked again here.
  * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
  */
-export const blockStyles = ({ props, type }: Pick<Block, "props" | "type">) =>
-  blockDefinitions.get(type)?.styles(props) ?? {};
+export const blockStyles = (
+  { props, type }: Pick<Block, "props" | "type">,
+  style: EmailStyle = {}
+) => blockDefinitions.get(type)?.styles(props, style) ?? {};
+
+/**
+ * The color of the links in a Text Block or Heading whose text is `textColor`.
+ * A Block that sets its own text color keeps its links in it, as that color was
+ * chosen for the Block's own background. Otherwise links are in the Email
+ * style's link color, or else the text's.
+ * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
+ */
+export const linkColor = (
+  { color }: { color?: string | undefined },
+  { linkColor: emailLinkColor }: EmailStyle,
+  textColor: string
+) => (color === undefined ? (emailLinkColor ?? textColor) : textColor);
 
 /**
  * The settings panel's fields for a Block.

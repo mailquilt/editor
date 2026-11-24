@@ -24,7 +24,7 @@ The editor never repairs a document. If one doesn't match this format, the edito
 | Field | Value |
 | --- | --- |
 | `kind` | Always `"blocks"`. |
-| `version` | The format version, a whole number. The current version is `3`, and a newer one is refused. A document saved in an older version is upgraded as it loads, as [versions](#versions) describes. |
+| `version` | The format version, a whole number. The current version is `4`, and a newer one is refused. A document saved in an older version is upgraded as it loads, as [versions](#versions) describes. |
 | `settings` | The [email settings](#email-settings). |
 | `rows` | A list of [Rows](#row), top to bottom. It can be empty. |
 
@@ -37,6 +37,7 @@ Each version of the format, and how a document saved in the one before is upgrad
 | `1` | Mail Quilt 0.1.0 | The first version. |
 | `2` | Mail Quilt 0.2.0 | Stricter colors and URLs. A version 1 email gets a plain space in a color where it has another space after a comma, such as a tab, and `https:` in place of `httpſ:` at the start of a link or image URL. |
 | `3` | Mail Quilt 0.3.0 | The [`mergeTag`](#merge-tags-in-text) node in rich text. Each Merge Tag that sits whole in one piece of text becomes a node, with that text's marks. A tag split across pieces with different marks, such as `{{first` in bold and `_name}}` not, stays text. Bulleted and numbered [Lists](#lists) in a Text Block, a Row's [padding and phone settings](#row), and the [Social](#social) Block, which no older email has. |
+| `4` | Mail Quilt 0.4.0 | The [Email style](#email-style), which no older email has, so a version 3 email loads with nothing changed but its version. |
 
 An email saved by a newer version can't be opened by a package that only knows an older one.
 
@@ -45,10 +46,37 @@ An email saved by a newer version can't be opened by a package that only knows a
 | Field | Value |
 | --- | --- |
 | `width` | Required. The email's width, a whole number of pixels from 1 to 1200. |
-| `backgroundColor` | Required. A [color](#colors). |
-| `fontFamily` | Required. A CSS font list, such as `"Arial, Helvetica, sans-serif"`. It can hold only the letters A to Z, digits, spaces, hyphens, underscores, commas and quotes, and each quote has to close. The settings panel offers Arial, Courier New, Georgia, Tahoma, Times New Roman and Verdana. |
+| `backgroundColor` | Required. The page's [color](#colors), around the email. |
+| `fontFamily` | Required. The body font, for text, Buttons and, unless the [Email style](#email-style) sets one, Headings. A CSS font list, such as `"Arial, Helvetica, sans-serif"`. It can hold only the letters A to Z, digits, spaces, hyphens, underscores, commas and quotes, and each quote has to close. The settings panel offers Arial, Courier New, Georgia, Tahoma, Times New Roman and Verdana. |
 | `preheader` | Optional. The short text inboxes show after the subject. |
 | `language` | Optional. The email's language. A new language has to be a code such as `en` or `pt-BR`, or one [Merge Tag](#merge-tags) such as `{{language}}` that your sending tool fills with each person's code, and `updateEmailSettings` refuses anything else, from the settings panel or your code. A saved document loads with any text here, and sending it back unchanged isn't refused, so an email with a bad value can still be opened and fixed. |
+| `style` | Optional. The [Email style](#email-style). |
+
+## Email style
+
+The look every Block in the email uses unless it sets its own. A Block takes its own value first, then the Email style's, then the built-in look, so changing the Email style never changes a value a person set on a Block. Every field is optional, and one left out gives the built-in look.
+
+| Field | Value |
+| --- | --- |
+| `emailBackgroundColor` | A [color](#colors), behind every Row that doesn't set its own. Without it, the page's color shows through. |
+| `textColor` | A [color](#colors), for Text Blocks and Headings. Defaults to `#000000`. |
+| `linkColor` | A [color](#colors), for links in text. Defaults to the text's color. A Text Block or Heading that sets its own `color` keeps its links in that color, as it was chosen for that Block's background. |
+| `headingFontFamily` | A CSS font list, as `fontFamily` takes, for Headings. Defaults to the body font, `fontFamily`. |
+| `heading1FontSize`, `heading2FontSize`, `heading3FontSize` | A whole number of pixels from 1 to 200, for Headings of that level. Default to `32`, `24` and `20`. |
+| `textFontSize` | A whole number of pixels from 1 to 200, for Text Blocks and Buttons' labels. Defaults to `16`. |
+| `buttonBackgroundColor` | A [color](#colors) that isn't `rgba()`, for Buttons. Defaults to `#2563eb`. |
+| `buttonBorderRadius` | A whole number of pixels from 0 to 100, for Buttons' corners. Defaults to `3`. |
+
+```json
+{
+  "textColor": "#2b1d14",
+  "linkColor": "#b5652b",
+  "headingFontFamily": "Georgia, 'Times New Roman', serif",
+  "buttonBorderRadius": 0
+}
+```
+
+`updateEmailStyle` changes some of its fields and leaves the rest, as [Change emails in code](./change-emails-in-code) shows.
 
 ## Row
 
@@ -86,8 +114,8 @@ Every Block has an `id`, which is an [ID](#ids), a `type` from the list below, a
 | --- | --- |
 | `content` | Required. [Rich text](#rich-text), which can have [Lists](#lists). |
 | `align` | Optional. `"left"`, `"center"` or `"right"`. Defaults to `"left"`. |
-| `color` | Optional. A [color](#colors). Defaults to `#000000`. |
-| `fontSize` | Optional. A whole number of pixels from 1 to 200. Defaults to `16`. |
+| `color` | Optional. A [color](#colors). Defaults to the [Email style](#email-style)'s `textColor`, or else `#000000`. |
+| `fontSize` | Optional. A whole number of pixels from 1 to 200. Defaults to the Email style's `textFontSize`, or else `16`. |
 
 ### Heading
 
@@ -98,8 +126,8 @@ Every Block has an `id`, which is an [ID](#ids), a `type` from the list below, a
 | `level` | Required. `1`, `2` or `3`. |
 | `content` | Required. [Rich text](#rich-text) of paragraphs only, without [Lists](#lists). A Heading exports as one heading, however many lines it has. |
 | `align` | Optional. `"left"`, `"center"` or `"right"`. Defaults to `"left"`. |
-| `color` | Optional. A [color](#colors). Defaults to `#000000`. |
-| `fontSize` | Optional. A whole number of pixels from 1 to 200. Defaults to `32`, `24` or `20` for levels 1, 2 and 3. |
+| `color` | Optional. A [color](#colors). Defaults to the [Email style](#email-style)'s `textColor`, or else `#000000`. |
+| `fontSize` | Optional. A whole number of pixels from 1 to 200. Defaults to the Email style's size for its level, or else `32`, `24` or `20` for levels 1, 2 and 3. |
 
 ### Image
 
@@ -120,7 +148,7 @@ Every Block has an `id`, which is an [ID](#ids), a `type` from the list below, a
 | --- | --- |
 | `label` | Required. The Button's text, as plain text that isn't blank. |
 | `href` | Optional. A [link](#links). |
-| `backgroundColor` | Optional. A [color](#colors) that isn't `rgba()`, because a see-through one would come out darker than it should. Defaults to `#2563eb`. |
+| `backgroundColor` | Optional. A [color](#colors) that isn't `rgba()`, because a see-through one would come out darker than it should. Defaults to the [Email style](#email-style)'s `buttonBackgroundColor`, or else `#2563eb`. |
 | `color` | Optional. The text's [color](#colors). Defaults to `#ffffff`. |
 | `align` | Optional. `"left"`, `"center"` or `"right"`. Defaults to `"left"`. |
 

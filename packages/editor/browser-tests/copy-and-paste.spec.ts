@@ -243,7 +243,7 @@ test.describe("copying", () => {
         fontFamily: "Arial, Helvetica, sans-serif",
         width: 600,
       },
-      version: 3,
+      version: 4,
     });
 
     const copied = await copyFrom(selectRowButton(page, 1));
@@ -261,7 +261,7 @@ test.describe("copying", () => {
     expect(html).toContain(
       '<p><a href="https://facebook.com/shop">Facebook</a></p>'
     );
-    expect(await copiedJson(page, html)).toStrictEqual({ row, version: 3 });
+    expect(await copiedJson(page, html)).toStrictEqual({ row, version: 4 });
     await expect(announcement(page)).toHaveText("Row copied, position 1 of 1.");
   });
 
@@ -451,7 +451,7 @@ test.describe("pasting from outside", () => {
     await openEmail(page, [[["A"]]]);
     const json = JSON.stringify({
       block: { id: "x", props: { label: "Buy" }, type: "button" },
-      version: 4,
+      version: 5,
     }).replaceAll('"', "&quot;");
 
     await pasteAt(blockWith(page, "A"), {
@@ -461,7 +461,7 @@ test.describe("pasting from outside", () => {
 
     expect(await structure(page)).toStrictEqual([[["A"]]]);
     await expect(announcement(page)).toHaveText(
-      "Can't paste. Version 4 is newer than the supported version 3."
+      "Can't paste. Version 5 is newer than the supported version 4."
     );
   });
 });

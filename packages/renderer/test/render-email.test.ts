@@ -413,6 +413,18 @@ describe(renderEmail, () => {
     ).resolves.toMatchFileSnapshot("expected/merge-tags-version-2.html");
   });
 
+  // Saved from the export before version 4, so the migration and Email style
+  // can't change it.
+  it("exports an email saved with version 3 as it did before Email style", async () => {
+    const email: unknown = JSON.parse(
+      readFileSync(new URL("fixtures/version-3.json", import.meta.url), "utf-8")
+    );
+
+    await expect(
+      renderEmail(email).then(readable)
+    ).resolves.toMatchFileSnapshot("expected/version-3.html");
+  });
+
   it("keeps a Merge Tag with spaces inside its braces whole, so it's still filled in", async () => {
     const html = await renderEmail(
       emailWithText(

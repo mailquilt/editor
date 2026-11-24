@@ -1,28 +1,50 @@
 import * as v from "valibot";
 
-import type { EmailSettings } from "./document.js";
+import type { EmailSettings, EmailStyle } from "./document.js";
 import { MERGE_TAG } from "./rich-text.js";
 import { BACKGROUND_COLOR_FIELD, pixelField } from "./settings-fields.js";
 import type { SettingsField } from "./settings-fields.js";
-import { colorSchema, pixelSchema } from "./value-schemas.js";
+import {
+  colorSchema,
+  fontFamilySchema,
+  fontSizeSchema,
+  pixelSchema,
+  plainObject,
+  solidColorSchema,
+} from "./value-schemas.js";
 
 /** Wider than any inbox shows, so a mistyped width is refused. */
 const MAX_EMAIL_WIDTH = 1200;
 
-export const emailSettingsSchema = v.strictObject({
-  backgroundColor: colorSchema,
-  // Font names only, as both outputs put it in CSS, where a ; or : would add
-  // rules of its own. A quote has to close, or the rest of the style would be
-  // read as part of the name. With no name at all, the export has no font.
-  fontFamily: v.pipe(
-    v.string(),
-    v.regex(
-      /^(?=.*\w)(?:[\w ,-]|'[\w ,"-]*'|"[\w ,'-]*")*$/u,
-      "Must be a list of font names"
+/** Rounder than this, a button of any height is already a pill. */
+const MAX_BUTTON_BORDER_RADIUS = 100;
+
+const emailStyleSchema = v.strictObject({
+  buttonBackgroundColor: v.optional(solidColorSchema),
+  buttonBorderRadius: v.optional(
+    v.pipe(
+      v.number(),
+      v.safeInteger(),
+      v.minValue(0),
+      v.maxValue(MAX_BUTTON_BORDER_RADIUS)
     )
   ),
+  emailBackgroundColor: v.optional(colorSchema),
+  heading1FontSize: v.optional(fontSizeSchema),
+  heading2FontSize: v.optional(fontSizeSchema),
+  heading3FontSize: v.optional(fontSizeSchema),
+  headingFontFamily: v.optional(fontFamilySchema),
+  linkColor: v.optional(colorSchema),
+  textColor: v.optional(colorSchema),
+  textFontSize: v.optional(fontSizeSchema),
+}) satisfies v.GenericSchema<unknown, EmailStyle>;
+
+export const emailSettingsSchema = v.strictObject({
+  backgroundColor: colorSchema,
+  fontFamily: fontFamilySchema,
   language: v.optional(v.string()),
   preheader: v.optional(v.string()),
+  style: v.optional(v.pipe(v.unknown(), plainObject, emailStyleSchema)),
   width: pixelSchema(MAX_EMAIL_WIDTH),
 }) satisfies v.GenericSchema<unknown, EmailSettings>;
 

@@ -82,8 +82,8 @@ describe(loadCopied, () => {
     ],
     [
       "a newer version, with the message value gives",
-      JSON.stringify({ block: button, version: 4 }),
-      "Version 4 is newer than the supported version 3",
+      JSON.stringify({ block: button, version: 5 }),
+      "Version 5 is newer than the supported version 4",
     ],
     [
       "an unknown Block type",

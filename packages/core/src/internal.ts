@@ -6,6 +6,7 @@ export {
   blockSettingsFields,
   blockStyles,
   EMAIL_LOOK,
+  linkColor,
   SOCIAL_NETWORKS,
   socialIcons,
 } from "./blocks.js";

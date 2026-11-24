@@ -8,8 +8,8 @@ const indexSchema = v.pipe(v.number(), v.safeInteger(), v.minValue(0));
 const layoutSchema = v.picklist(ROW_LAYOUTS);
 
 /**
- * A Block's, Row's or the email's properties, or changes to them. Not
- * v.record, which accepts an array and silently drops a key such as
+ * A Block's, Row's or the email's properties or Email style, or changes to
+ * them. Not v.record, which accepts an array and silently drops a key such as
  * "constructor". An undefined is left out, as the key would be gone once the
  * Command is JSON.
  */
@@ -47,6 +47,8 @@ export type Command =
     }
   | { type: "updateRowProps"; rowId: string; props: Record<string, unknown> }
   | { type: "updateEmailSettings"; settings: Record<string, unknown> }
+  /** Changes the fields of the email's Email style that `style` names. */
+  | { type: "updateEmailStyle"; style: Record<string, unknown> }
   | {
       type: "insertBlock";
       blockType: string;
@@ -105,6 +107,10 @@ export const commandSchema = v.variant("type", [
   v.strictObject({
     settings: changesSchema,
     type: v.literal("updateEmailSettings"),
+  }),
+  v.strictObject({
+    style: changesSchema,
+    type: v.literal("updateEmailStyle"),
   }),
   v.strictObject({
     blockType: v.string(),
