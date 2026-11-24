@@ -115,8 +115,11 @@ const checkInstalledFromTarballs = (dir: string) => {
   }
 };
 
-for (const name of projectNames) {
-  const dir = freshProjectDir(name);
+for (const project of projectNames) {
+  const dir = freshProjectDir(project);
+  // The React project with React 18. It's built from the same code, and its
+  // own files then replace the React project's.
+  const name = project === "react-18-vite" ? "react-vite" : project;
   cpSync(path.join(here, "projects", name), dir, { recursive: true });
   cpSync(path.join(quickStart, name), dir, { recursive: true });
   if (name === "plain-js") {
@@ -145,6 +148,9 @@ for (const name of projectNames) {
   const { dirs, file } = starterEmails[name];
   for (const each of dirs) {
     cpSync(path.join(quickStart, file), path.join(dir, each, file));
+  }
+  if (project !== name) {
+    cpSync(path.join(here, "projects", project), dir, { recursive: true });
   }
   writeFileSync(
     path.join(dir, "pnpm-workspace.yaml"),

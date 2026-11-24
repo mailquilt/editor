@@ -19,7 +19,7 @@ Ask what the user's app needs, or read it from the code, before installing anyth
 | HTML on a server from a saved email | `renderEmail()` | `@mailquilt/renderer` |
 | Emails created, checked or changed in code | `createEmail()`, `loadDocument()`, `createEditor()` and Commands | `@mailquilt/core` |
 
-React needs React 19, and `@mailquilt/react` installs the editor with it. An app needs only one of the editor packages. Details: [Packages](https://editor.mailquilt.com/docs/packages.md), [Shell or `<mail-quilt>`](https://editor.mailquilt.com/docs/shell.md).
+React needs React 18 or 19, and `@mailquilt/react` installs the editor with it. An app needs only one of the editor packages. Details: [Packages](https://editor.mailquilt.com/docs/packages.md), [Shell or `<mail-quilt>`](https://editor.mailquilt.com/docs/shell.md).
 
 ## Set it up
 
