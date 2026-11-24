@@ -400,8 +400,9 @@ AFTER.push(() => {
 AFTER.push(() => {
   document.querySelectorAll("section.frame").forEach((fr) => {
     const em = fr.querySelector(".stage > .em:not(.m)"); const t = fr.querySelector(".thumbs"); if (!em || !t) return;
-    t.querySelectorAll(".th").forEach((th, i) => {
-      const own = em.querySelector(`[data-r="${((i) % 6) + 1}"]`); const sc = th.querySelector(".sc"); if (!own || !sc || +t.dataset.total) return;
+    // Only thumbnails of the email's own Rows: an inserted new Row has no picture and no source Row.
+    [...t.querySelectorAll(".th")].filter((th) => th.querySelector(".sc")).forEach((th, i) => {
+      const own = em.querySelector(`[data-r="${(i % 6) + 1}"]`); const sc = th.querySelector(".sc"); if (!own || +t.dataset.total) return;
       const c = own.cloneNode(true); c.classList.remove("sel", "hov"); c.querySelectorAll(".tag,.grip,.insl,.pop,.tip,.tipcard").forEach((x) => x.remove()); c.querySelectorAll(".sel,.hov").forEach((x) => x.classList.remove("sel", "hov"));
       sc.replaceChildren(c); th.querySelector(".card").style.height = Math.max(Math.round(own.offsetHeight * 0.3), 18) + "px";
     });

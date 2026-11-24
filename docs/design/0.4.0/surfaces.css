@@ -1,7 +1,8 @@
 /* ============ 0.4.0 surfaces: shared pieces for the new frames ============ */
 .group-h { width: 1440px; padding: 28px 4px 4px; font: 600 22px/1.2 -apple-system, BlinkMacSystemFont, sans-serif; color: #18181b; letter-spacing: -0.01em; }
 .group-h small { display: block; font: 400 14px/1.5 -apple-system, BlinkMacSystemFont, sans-serif; color: #3f3f46; margin-top: 6px; max-width: 900px; }
-.frame-l { font: 500 12px/1 ui-monospace, Menlo, monospace; color: #3f3f46; margin: 0 0 -16px 2px; }
+#frames { display: grid; gap: 8px; justify-content: start; }
+.frame-l { font: 500 12px/1 ui-monospace, Menlo, monospace; color: #3f3f46; margin: 16px 0 0 2px; }
 
 /* anchors inside the bar and the email, so popovers grow from their control */
 .anc { position: relative; display: inline-flex; }
