@@ -9,6 +9,8 @@ The export was checked with [Email on Acid](https://www.emailonacid.com) in Nove
 
 Version 0.2 changed how written addresses become links and where long words break, so one email with every Block, every Column layout and each kind of written address was checked again on 20 November 2026. It came out right in all 17 clients it was sent to: classic Outlook 2016, 2019, 2021 and Microsoft 365, new Outlook for Windows, Outlook for Mac, Outlook.com, Apple Mail, iOS Mail, Gmail on the web, on Android and on iPhone, Yahoo Mail and GMX, with dark mode in five of them.
 
+Version 0.3 added Lists, Row padding, hiding a Row on phones, keeping its Columns side by side on phones, and the Social Block. One email with all of them was checked on 24 November 2026, in 105 screenshots of every client below, in light and dark mode where Email on Acid offers both. The first run found that the Social Block's black and dark grey icons disappeared in dark mode, and that its icons touched when they wrapped onto a second line on a phone. Both were fixed, and a second run checked every client again.
+
 | Client | Checked in | Result |
 | --- | --- | --- |
 | Apple Mail | macOS | Works |
@@ -27,7 +29,7 @@ Every client renders email in its own way, so send yourself a test of your own e
 
 ## Classic Outlook for Windows
 
-Classic Outlook draws email with Microsoft Word, which supports less HTML and CSS than a browser. Columns, buttons, images, text and spacing come out as designed, but emoji are black and white, and a flag shows as its two letters, such as "IN". Its dark mode also inverts colors, as [below](#dark-mode-in-gmail-outlook-and-apple-mail).
+Classic Outlook draws email with Microsoft Word, which supports less HTML and CSS than a browser. Columns, buttons, images, text and spacing come out as designed, but emoji are black and white, and a flag shows as its two letters, such as "IN". A List's bullets and numbers sit at the paragraph's edge in Outlook 2016 and 2019, and further in than in other clients in later versions, and a number of two digits, such as "10.", touches its text. Its dark mode also inverts colors, as [below](#dark-mode-in-gmail-outlook-and-apple-mail).
 
 ## Rows on phones
 
@@ -54,7 +56,7 @@ In dark mode, clients do one of three things to an email:
 Nothing in an email can turn this off in classic Outlook or the Gmail app on iOS. What helps is choosing colors that read either way:
 
 - **Buttons.** A button that's clearly dark, such as navy or black, or clearly light, stays readable when it's inverted. A middle color, such as green or orange, can end up with text in nearly its own color: in the test, Yahoo turned the dark text on an orange button pale, and the Gmail app on iOS turned the white text on a green button dark.
-- **Images.** Clients don't change images. A logo drawn on its own dark background shows as a dark box on a Row that was inverted to light. Use a PNG with a transparent background, in a color that reads on light and dark.
+- **Images.** Most clients don't change images, but in dark mode the Gmail app on Android recolors them: it turned white icons black and made some colored ones lighter. A logo drawn on its own dark background shows as a dark box on a Row that was inverted to light. Use a PNG with a transparent background, in a color that reads on light and dark. [Social icons](./social-icons#dark-mode) says which of its icons show where.
 - **Meaning.** Don't let color alone carry meaning, such as red for a warning, since it may not stay red.
 
 ## Gmail clipping at 102 KB
