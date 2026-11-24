@@ -443,7 +443,8 @@ const SOCIAL_FIELDS: readonly SettingsField[] = [
   },
   {
     default: SOCIAL_LOOK.iconStyle,
-    description: "White is for a dark background.",
+    description:
+      "White is for a dark background. Some email apps' dark modes make a dark background light, which hides white icons. Color icons show on light and dark backgrounds.",
     invalidMessage: "Choose a style from the list.",
     key: "iconStyle",
     label: "Icon style",
@@ -469,19 +470,29 @@ const socialBlock = {
   styles: ({ align = SOCIAL_LOOK.align }) => ({ "text-align": align }),
 } satisfies BlockDefinition<SocialBlockProps>;
 
+/** The space around a Block's content, in px. */
+const BLOCK_PADDING = 16;
+
 /**
  * A Social Block's icons, with each one's size and the gap between them, which
- * is half that size.
+ * is half that size. Half the gap is on every side of each icon, so lines that
+ * wrap have the gap between them and each line ends at the same place, whatever
+ * the alignment. The Block's own padding is that much less on every side, so the
+ * icons are as far from its edges as a Block's content always is.
  * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
  */
 export const socialIcons = ({
   iconSize = SOCIAL_LOOK.iconSize,
   iconStyle = SOCIAL_LOOK.iconStyle,
-}: SocialBlockProps) => ({
-  gap: iconSize / 2,
-  size: iconSize,
-  style: iconStyle,
-});
+}: SocialBlockProps) => {
+  const gap = iconSize / 2;
+  return {
+    blockPadding: BLOCK_PADDING - gap / 2,
+    iconPadding: gap / 2,
+    size: iconSize,
+    style: iconStyle,
+  };
+};
 
 /** Each type of Block, in the order the palette shows them. */
 const BLOCKS = [
@@ -548,7 +559,7 @@ export const validateProps = (
  * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
  */
 export const EMAIL_LOOK = {
-  blockPadding: "16px",
+  blockPadding: `${BLOCK_PADDING}px`,
   fontSize: `${TEXT_LOOK.fontSize}px`,
   lineHeight: String(LINE_HEIGHT),
 } as const;

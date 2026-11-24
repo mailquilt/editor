@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
 import { AxeBuilder } from "@axe-core/playwright";
 import type { Block, BlockType } from "@mailquilt/core";
 import type { BlockProps } from "@mailquilt/core/internal";
@@ -828,4 +831,47 @@ export const violations = async (
     id,
     targets: nodes.map(({ target }) => target),
   }));
+};
+
+/**
+ * The contrast between two colors that `getComputedStyle` gives as `rgb()`, or
+ * as `color(srgb …)` with channels from 0 to 1, as it gives a `color-mix()`.
+ */
+export const contrast = (...colors: string[]) => {
+  const [lighter = 0, darker = 0] = colors
+    .map((color) => {
+      const scale = color.startsWith("color(srgb") ? 1 : 255;
+      const [red = 0, green = 0, blue = 0] = (
+        color.match(/[\d.]+/gu) ?? []
+      ).map((value) => {
+        const channel = Number(value) / scale;
+        return channel <= 0.04045
+          ? channel / 12.92
+          : ((channel + 0.055) / 1.055) ** 2.4;
+      });
+      return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+    })
+    .toSorted((a, b) => b - a);
+  return (lighter + 0.05) / (darker + 0.05);
+};
+
+/**
+ * The dark theme on the docs' "Theme the editor" page, which says its text
+ * meets AA contrast, as the page writes it.
+ */
+export const docsDarkTheme = () => {
+  const css =
+    /## A dark theme\n[\s\S]*?```css[^\n]*\n(?<css>[\s\S]*?)```/u.exec(
+      readFileSync(
+        path.join(
+          import.meta.dirname,
+          "../../../apps/docs/docs/theme-the-editor.mdx"
+        ),
+        "utf-8"
+      )
+    )?.groups?.css;
+  if (!css) {
+    throw new Error("The docs' theming page has no dark theme in CSS");
+  }
+  return css;
 };

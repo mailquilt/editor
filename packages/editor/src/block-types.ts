@@ -82,7 +82,7 @@ export const blockTypeStyles = css`
     width: 28px;
   }
 
-  /* As MJML lines them up: in a row that wraps, with no space but the gap. */
+  /* As MJML lines them up: in a row that wraps, with the gap between icons and between lines. */
   .social-icons {
     font-size: 0;
     line-height: 0;
@@ -286,14 +286,17 @@ const drawSocial = (
       </div>
     `;
   }
-  const { gap, size, style } = socialIcons(props);
+  const { blockPadding, iconPadding, size, style } = socialIcons(props);
   return html`
     <div
       class="padded-block social-icons"
-      style=${styleProperties({ "text-align": align })}
+      style=${styleProperties({
+        padding: `${blockPadding}px`,
+        "text-align": align,
+      })}
     >
       ${links.map(
-        ({ network, url }, index) =>
+        ({ network, url }) =>
           html`<img
             alt=${
               url === undefined
@@ -305,8 +308,7 @@ const drawSocial = (
             src=${socialIconUrl(network, style, socialIconsUrl)}
             style=${styleProperties({
               height: `${size}px`,
-              "margin-inline-end":
-                index === links.length - 1 ? "0" : `${gap}px`,
+              margin: `${iconPadding}px`,
               width: `${size}px`,
             })}
           />`

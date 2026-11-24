@@ -1,8 +1,9 @@
 import { fileURLToPath } from "node:url";
 
+import { SOCIAL_NETWORKS } from "@mailquilt/core/internal";
 import type { BlockProps } from "@mailquilt/core/internal";
 import { expect } from "@playwright/test";
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 
 import type { MailQuilt } from "../src/index.js";
 import {
@@ -121,6 +122,132 @@ test("the icons take the size chosen in the Side panel", async ({ page }) => {
 
   expect(await blockProps(page)).toMatchObject({ iconSize: 48 });
   await expect(icons(page)).toHaveJSProperty("width", 48);
+});
+
+/** The space between the first line of icons and the second, in px. */
+const spaceBetweenLines = async (images: Locator) => {
+  const all = await images.all();
+  const found = await Promise.all(all.map((image) => image.boundingBox()));
+  const boxes = found.filter((box) => box !== null);
+  const firstTop = Math.min(...boxes.map(({ y }) => y));
+  const firstLine = boxes.filter(({ y }) => y === firstTop);
+  const below = boxes.filter(({ y }) => y > firstTop);
+  return (
+    Math.min(...below.map(({ y }) => y)) -
+    Math.max(...firstLine.map(({ height, y }) => y + height))
+  );
+};
+
+/** The space above and below the icon, inside what holds the Block. */
+const around = async (icon: Locator, holder: Locator) => {
+  const [image, box] = await Promise.all([
+    icon.boundingBox(),
+    holder.boundingBox(),
+  ]);
+  const top = (image?.y ?? 0) - (box?.y ?? 0);
+  const bottom =
+    (box?.y ?? 0) + (box?.height ?? 0) - (image?.y ?? 0) - (image?.height ?? 0);
+  return { bottom, top };
+};
+
+test("icons that wrap have the gap between icons between their lines too, on the canvas and in the export", async ({
+  page,
+}) => {
+  await openSocial(
+    page,
+    (Object.keys(SOCIAL_NETWORKS) as (keyof typeof SOCIAL_NETWORKS)[]).map(
+      (network) => ({
+        network,
+        url: `https://${network}.example/shop`,
+      })
+    )
+  );
+  await blockGroup(page, "Social").click();
+  await field(page, "Icon size").selectOption({ label: "48px" });
+  await expect(icons(page).first()).toHaveJSProperty("width", 48);
+
+  // Ten 48px icons and their 24px gaps are wider than the email.
+  expect(await spaceBetweenLines(icons(page))).toBe(24);
+  await previewButton(page).click();
+  const exported = previewEmail(page).getByRole("img");
+  await expect(exported).toHaveCount(10);
+  for (const icon of await exported.all()) {
+    await expect(icon).toHaveJSProperty("complete", true);
+  }
+  expect(await spaceBetweenLines(exported)).toBe(24);
+});
+
+/** Where each line of icons starts and ends, from the top line down, in px. */
+const lineEdges = async (images: Locator) => {
+  const all = await images.all();
+  const found = await Promise.all(all.map((image) => image.boundingBox()));
+  const lines = new Map<number, { end: number; start: number }>();
+  for (const box of found.filter((each) => each !== null)) {
+    const line = lines.get(box.y) ?? { end: -Infinity, start: Infinity };
+    lines.set(box.y, {
+      end: Math.max(line.end, box.x + box.width),
+      start: Math.min(line.start, box.x),
+    });
+  }
+  return [...lines.entries()]
+    .toSorted(([top], [other]) => top - other)
+    .map(([, edges]) => edges);
+};
+
+for (const align of ["right", "center"] as const) {
+  test(`icons that wrap, aligned ${align}, line up the same on every line, on the canvas and in the export`, async ({
+    page,
+  }) => {
+    await openSocial(
+      page,
+      (Object.keys(SOCIAL_NETWORKS) as (keyof typeof SOCIAL_NETWORKS)[]).map(
+        (network) => ({
+          network,
+          url: `https://${network}.example/shop`,
+        })
+      )
+    );
+    await blockGroup(page, "Social").click();
+    await field(page, "Icon size").selectOption({ label: "48px" });
+    await field(page, "Alignment").selectOption(align);
+    await expect(icons(page).first()).toHaveJSProperty("width", 48);
+    /** The end of each line for right, and its middle for center. */
+    const placeOf = ({ end, start }: { end: number; start: number }) =>
+      Math.round(align === "right" ? end : (start + end) / 2);
+    const places = async (images: Locator) => {
+      const lines = await lineEdges(images);
+      return new Set(lines.map(placeOf)).size;
+    };
+
+    expect(await lineEdges(icons(page))).toHaveLength(2);
+    expect(await places(icons(page))).toBe(1);
+    await previewButton(page).click();
+    const exported = previewEmail(page).getByRole("img");
+    await expect(exported).toHaveCount(10);
+    for (const icon of await exported.all()) {
+      await expect(icon).toHaveJSProperty("complete", true);
+    }
+    expect(await places(exported)).toBe(1);
+  });
+}
+
+test("one line of icons is no taller than the icons and the Block's padding, on the canvas and in the export", async ({
+  page,
+}) => {
+  await openSocial(page, [
+    { network: "facebook", url: "https://facebook.com/shop" },
+  ]);
+  expect(await around(icons(page), blockGroup(page, "Social"))).toEqual({
+    bottom: 16,
+    top: 16,
+  });
+  await previewButton(page).click();
+  const exported = previewEmail(page).getByRole("img");
+  await expect(exported).toHaveJSProperty("complete", true);
+  // The Row's own table, the outermost around the icon.
+  expect(
+    await around(exported, exported.locator("xpath=ancestor::table[last()]"))
+  ).toEqual({ bottom: 16, top: 16 });
 });
 
 test("the Preview loads the icons from the folder the Host app gives now, not the one it rendered with", async ({

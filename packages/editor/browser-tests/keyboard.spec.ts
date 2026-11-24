@@ -1,6 +1,3 @@
-import { readFileSync } from "node:fs";
-import path from "node:path";
-
 import { expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
@@ -47,6 +44,7 @@ import {
   undoByKey,
   violations,
   watchPrevented,
+  docsDarkTheme,
 } from "./helpers.js";
 
 /** Back to the side panel's tabs from the keyboard, the Block still selected. */
@@ -829,27 +827,6 @@ test.describe("labels and focus states", () => {
     await expect(blockWith(page, "L")).toBeInViewport();
   });
 });
-
-/**
- * The dark theme on the docs' "Theme the editor" page, which says its text
- * meets AA contrast, as the page writes it.
- */
-const docsDarkTheme = () => {
-  const css =
-    /## A dark theme\n[\s\S]*?```css[^\n]*\n(?<css>[\s\S]*?)```/u.exec(
-      readFileSync(
-        path.join(
-          import.meta.dirname,
-          "../../../apps/docs/docs/theme-the-editor.mdx"
-        ),
-        "utf-8"
-      )
-    )?.groups?.css;
-  if (!css) {
-    throw new Error("The docs' theming page has no dark theme in CSS");
-  }
-  return css;
-};
 
 test.describe("automated accessibility checks", () => {
   test("pass with Columns, empty Columns, and no Block or one moved selected", async ({

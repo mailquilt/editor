@@ -51,15 +51,14 @@ interface BlockContext {
 
 /**
  * Each link that has a URL, as an icon with the network's name as its alt text.
- * Each icon's image is given, so MJML loads none from Mailjet, and only the
- * gap after it, so the icons line up with the Block's padding.
+ * Each icon's image is given, so MJML loads none from Mailjet.
  */
 const socialToMjml = (
   props: BlockProps["social"],
   attributes: string,
   { socialIconsUrl }: BlockContext
 ) => {
-  const { gap, size, style } = socialIcons(props);
+  const { blockPadding, iconPadding, size, style } = socialIcons(props);
   const links = props.links.filter(
     (link): link is typeof link & { url: string } => link.url !== undefined
   );
@@ -67,12 +66,11 @@ const socialToMjml = (
   if (links.length === 0) {
     return "";
   }
-  const icons = links.map(({ network, url }, index) => {
+  const icons = links.map(({ network, url }) => {
     const label = SOCIAL_NETWORKS[network];
-    const padding = index === links.length - 1 ? "0" : `0 ${gap}px 0 0`;
-    return `<mj-social-element alt="${escapeAttribute(label)}" href="${escapeAttribute(url)}" padding="${padding}" src="${escapeAttribute(socialIconUrl(network, style, socialIconsUrl))}"></mj-social-element>`;
+    return `<mj-social-element alt="${escapeAttribute(label)}" href="${escapeAttribute(url)}" padding="${iconPadding}px" src="${escapeAttribute(socialIconUrl(network, style, socialIconsUrl))}"></mj-social-element>`;
   });
-  return `<mj-social${attributes} icon-size="${size}px" mode="horizontal">${icons.join("")}</mj-social>`;
+  return `<mj-social${attributes} icon-size="${size}px" mode="horizontal" padding="${blockPadding}px">${icons.join("")}</mj-social>`;
 };
 
 /**
@@ -85,7 +83,7 @@ const blockToMjml = (block: Block, context: BlockContext) => {
   const attributes = mjmlAttributes(blockCss);
   switch (block.type) {
     case "text": {
-      return `<mj-text${attributes}>${richTextToHtml(block.props.content, blockCss as TextCss)}</mj-text>`;
+      return `<mj-text${attributes}>${richTextToHtml(block.props.content, fontFamily, blockCss as TextCss)}</mj-text>`;
     }
     case "heading": {
       return `<mj-text${attributes}>${headingToHtml(block.props, fontFamily, blockCss as TextCss)}</mj-text>`;

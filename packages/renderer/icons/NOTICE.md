@@ -10,7 +10,7 @@ When a brand's owner asks, its icon is removed from the next release. That chang
 
 ## Sources
 
-Each icon is the brand's own mark, recolored and drawn as a 96px PNG by `scripts/social-icons.ts`. The color icons add white behind the parts each brand draws in white, such as Facebook's "f".
+Each icon is the brand's own mark, recolored and drawn as a 96px PNG by `scripts/social-icons.ts`. The color icons add white behind the parts each brand draws in white, such as Facebook's "f". In color, X, Threads and TikTok are white on a black rounded square, and the website icon white on dark grey, so they can be seen in dark mode.
 
 | Icons | Source | Licence |
 | --- | --- | --- |
