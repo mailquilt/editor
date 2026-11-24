@@ -11,7 +11,9 @@ import { place } from "./editor-places.js";
 import { ICONS } from "./icons.js";
 import { NO_FIELD_TAGS } from "./merge-tag-picker.js";
 import type { FieldTags } from "./merge-tag-picker.js";
-import { positionLabel } from "./positions.js";
+import { placeIn } from "./positions.js";
+import type { StringId } from "./strings.js";
+import type { Text, TextValues } from "./text.js";
 
 /** One group of controls, and what its fields change. */
 export interface SettingsSection {
@@ -112,9 +114,28 @@ const fieldId = (
 const itemsOf = (field: ListField, values: Record<string, unknown>) =>
   (values[field.key] as readonly ListItem[] | undefined) ?? [];
 
+/**
+ * One of a field's texts, which core names by ID. Each ID core gives is one of
+ * the editor's, which a test checks.
+ */
+const fieldWords = (id: string, textOf: Text, values?: TextValues) =>
+  textOf(id as StringId, values);
+
+/** A field's help, each sentence a text of its own, then the Merge Tag hint. */
+const descriptionOf = (
+  ids: readonly (string | undefined)[],
+  hint: string,
+  textOf: Text
+) =>
+  [...ids.map((id) => id && fieldWords(id, textOf)), hint]
+    .filter(Boolean)
+    .join(" ");
+
 /** What a person calls an item, by its key. */
-const itemLabel = (field: ListField, item: string) =>
-  field.options.find(({ value }) => value === item)?.label ?? item;
+const itemLabel = (field: ListField, item: string, textOf: Text) => {
+  const option = field.options.find(({ value }) => value === item);
+  return option ? fieldWords(option.labelId, textOf) : item;
+};
 
 /**
  * A list field's items after a change, what a screen reader is told of it, and
@@ -124,19 +145,23 @@ const itemLabel = (field: ListField, item: string) =>
 export const changeList = (
   field: ListField,
   items: readonly ListItem[],
-  change: ListChange
+  change: ListChange,
+  textOf: Text
 ): { focus: ListFocus; items: readonly ListItem[]; said: string } => {
   const index = items.findIndex(
     (entry) => entry[field.itemKey] === change.item
   );
-  const label = itemLabel(field, change.item);
+  const name = itemLabel(field, change.item, textOf);
   switch (change.type) {
     case "add": {
       const next = [...items, { [field.itemKey]: change.item }];
       return {
         focus: { control: "text", item: change.item },
         items: next,
-        said: `${label} added, ${positionLabel(next.length - 1, next.length)}.`,
+        said: textOf("said.itemAdded", {
+          name,
+          ...placeIn(next.length - 1, next.length),
+        }),
       };
     }
     case "move": {
@@ -147,7 +172,10 @@ export const changeList = (
           item: change.item,
         },
         items: items.toSpliced(index, 1).toSpliced(to, 0, items[index] ?? {}),
-        said: `${label} moved to ${positionLabel(to, items.length)}.`,
+        said: textOf("said.itemMoved", {
+          name,
+          ...placeIn(to, items.length),
+        }),
       };
     }
     default: {
@@ -157,7 +185,7 @@ export const changeList = (
           ? { control: "remove", item: String(neighbour[field.itemKey]) }
           : { control: "add" },
         items: items.toSpliced(index, 1),
-        said: `${label} removed.`,
+        said: textOf("said.itemRemoved", { name }),
       };
     }
   }
@@ -602,19 +630,19 @@ const ITEM_TOOLS = [
   {
     action: "moveUp",
     icon: ICONS.up,
-    label: (name: string) => `Move ${name} up`,
+    label: "settings.moveUp",
     step: -1,
   },
   {
     action: "moveDown",
     icon: ICONS.down,
-    label: (name: string) => `Move ${name} down`,
+    label: "settings.moveDown",
     step: 1,
   },
   {
     action: "remove",
     icon: ICONS.delete,
-    label: (name: string) => `Remove ${name}`,
+    label: "settings.remove",
     step: 0,
   },
 ] as const;
@@ -629,7 +657,8 @@ const renderListField = (
   section: SettingsSection,
   field: ListField,
   drafts: SettingsDrafts,
-  tagsOf: (fieldId: string) => FieldTags
+  tagsOf: (fieldId: string) => FieldTags,
+  textOf: Text
 ) => {
   const id = fieldId(section, field);
   const descriptionId = `${id}-description`;
@@ -637,9 +666,12 @@ const renderListField = (
   const used = new Set(items.map((entry) => entry[field.itemKey]));
   const unused = field.options.filter(({ value }) => !used.has(value));
   const { hint } = tagsOf(id);
-  const description = [field.description, field.itemField.description, hint]
-    .filter(Boolean)
-    .join(" ");
+  const description = descriptionOf(
+    [field.descriptionId, field.itemField.descriptionId],
+    hint,
+    textOf
+  );
+  const label = fieldWords(field.labelId, textOf);
   // A pressed button has focus when nothing else in the editor did, and then
   // focus goes with the change, as it does from the keyboard.
   const change = (listChange: ListChange) => (event: MouseEvent) =>
@@ -652,7 +684,7 @@ const renderListField = (
 
   const renderItem = (entry: ListItem, index: number) => {
     const item = String(entry[field.itemKey]);
-    const name = itemLabel(field, item);
+    const name = itemLabel(field, item, textOf);
     const inputId = `${id}-${item}`;
     const errorId = `${inputId}-error`;
     const tags = tagsOf(inputId);
@@ -671,7 +703,7 @@ const renderListField = (
         <div class="list-item-head">
           <label for=${inputId}>
             ${name}<span class="visually-hidden">
-              ${field.itemField.label}</span
+              ${fieldWords(field.itemField.labelId, textOf)}</span
             >
           </label>
           <div
@@ -681,12 +713,12 @@ const renderListField = (
             role="toolbar"
           >
             ${ITEM_TOOLS.map(
-              ({ action, icon, label, step }) => html`
+              ({ action, icon, label: toolLabel, step }) => html`
                 <button
-                  aria-label=${label(name)}
+                  aria-label=${textOf(toolLabel, { name })}
                   class=${action === "remove" ? "icon-button danger" : "icon-button"}
                   data-action=${action}
-                  data-tooltip=${label(name)}
+                  data-tooltip=${textOf(toolLabel, { name })}
                   ?disabled=${!enabled[action]}
                   tabindex=${action === stop ? "0" : "-1"}
                   type="button"
@@ -737,7 +769,7 @@ const renderListField = (
                 refusals,
                 html`
                   <p class="error" id=${errorId} role="alert">
-                    ${field.itemField.invalidMessage}
+                    ${fieldWords(field.itemField.invalidMessageId, textOf)}
                   </p>
                 `
               )
@@ -751,13 +783,8 @@ const renderListField = (
   // Firefox's page once a field after it changed. Its visible name is hidden
   // from screen readers, so it isn't read twice.
   return html`
-    <div
-      aria-label=${field.label}
-      class="field list-field"
-      id=${id}
-      role="group"
-    >
-      <span aria-hidden="true" class="list-label">${field.label}</span>
+    <div aria-label=${label} class="field list-field" id=${id} role="group">
+      <span aria-hidden="true" class="list-label">${label}</span>
       ${
         description
           ? html`<p class="description" id=${descriptionId}>${description}</p>`
@@ -777,10 +804,12 @@ const renderListField = (
           ? html`
               <div class="with-control">
                 <div class="select-field">
-                  <select aria-label=${`Choose a ${field.itemName}`}>
+                  <select aria-label=${fieldWords(field.chooseLabelId, textOf)}>
                     ${unused.map(
-                      ({ label, value }) =>
-                        html`<option .value=${value}>${label}</option>`
+                      ({ labelId, value }) =>
+                        html`<option .value=${value}>
+                          ${fieldWords(labelId, textOf)}
+                        </option>`
                     )}
                   </select>
                   ${ICONS.chevronDown}
@@ -798,11 +827,13 @@ const renderListField = (
                     }
                   }}
                 >
-                  Add
+                  ${textOf("settings.add")}
                 </button>
               </div>
             `
-          : html`<p class="description">Every ${field.itemName} is added.</p>`
+          : html`<p class="description">
+              ${fieldWords(field.allAddedId, textOf)}
+            </p>`
       }
     </div>
   `;
@@ -812,16 +843,18 @@ const renderField = (
   section: SettingsSection,
   field: SettingsField,
   drafts: SettingsDrafts,
-  tagsOf: (fieldId: string) => FieldTags
+  tagsOf: (fieldId: string) => FieldTags,
+  textOf: Text
 ) => {
   if (field.type === "list") {
-    return renderListField(section, field, drafts, tagsOf);
+    return renderListField(section, field, drafts, tagsOf, textOf);
   }
+  const label = fieldWords(field.labelId, textOf);
   const id = fieldId(section, field);
   // Every field that holds text, or a URL, takes Merge Tags.
   const tags =
     field.type === "text" && !field.disabled ? tagsOf(id) : NO_FIELD_TAGS;
-  const description = [field.description, tags.hint].filter(Boolean).join(" ");
+  const description = descriptionOf([field.descriptionId], tags.hint, textOf);
   const descriptionId = `${id}-description`;
   const errorId = `${id}-error`;
   const extra = section.extras?.[field.key];
@@ -864,7 +897,7 @@ const renderField = (
       id=${id}
       max=${limits?.max ?? nothing}
       min=${limits?.min ?? nothing}
-      placeholder=${field.type === "color" ? "None" : nothing}
+      placeholder=${field.type === "color" ? textOf("settings.none") : nothing}
       spellcheck="false"
       step=${limits ? "1" : nothing}
       type=${type}
@@ -881,7 +914,7 @@ const renderField = (
           <div class="color">
             <input
               aria-describedby=${describedBy || nothing}
-              aria-label=${`${field.label} picker`}
+              aria-label=${textOf("settings.picker", { label })}
               ?disabled=${field.disabled ?? false}
               type="color"
               .value=${live(
@@ -898,7 +931,9 @@ const renderField = (
         return html`
           <div class="unit-field">
             ${textControl("number", field)}
-            <span aria-hidden="true" class="unit">${field.unit}</span>
+            <span aria-hidden="true" class="unit">
+              ${textOf(`unit.${field.unit}`)}
+            </span>
           </div>
         `;
       }
@@ -907,8 +942,17 @@ const renderField = (
         const options = field.options.some(
           ({ value }) => String(value) === text
         )
-          ? field.options
-          : [...field.options, { label: text, value: text }];
+          ? field.options.map(({ labelId, value }) => ({
+              label: fieldWords(labelId, textOf),
+              value,
+            }))
+          : [
+              ...field.options.map(({ labelId, value }) => ({
+                label: fieldWords(labelId, textOf),
+                value,
+              })),
+              { label: text, value: text },
+            ];
         return html`
           <div class="select-field">
             <select
@@ -917,12 +961,12 @@ const renderField = (
               @change=${onCommit}
             >
               ${options.map(
-                ({ label, value }) => html`
+                ({ label: optionLabel, value }) => html`
                   <option
                     .selected=${live(String(value) === text)}
                     .value=${String(value)}
                   >
-                    ${label}
+                    ${optionLabel}
                   </option>
                 `
               )}
@@ -958,9 +1002,13 @@ const renderField = (
   return html`
     <div class=${INLINE_TYPES.has(field.type) ? "field inline" : "field"}>
       <label for=${id}>
-        ${field.label}${
+        ${label}${
           field.type === "number"
-            ? html`<span class="visually-hidden"> (${field.unit})</span>`
+            ? html`<span class="visually-hidden">
+                ${textOf("settings.unit", {
+                  unit: textOf(`unit.${field.unit}`),
+                })}</span
+              >`
             : nothing
         }
       </label>
@@ -981,7 +1029,13 @@ const renderField = (
               refusals,
               html`
                 <p class="error" id=${errorId} role="alert">
-                  ${field.invalidMessage}
+                  ${fieldWords(
+                    field.invalidMessageId,
+                    textOf,
+                    field.type === "number"
+                      ? { max: field.max, min: field.min }
+                      : undefined
+                  )}
                 </p>
               `
             )
@@ -1000,14 +1054,15 @@ const renderField = (
 export const renderSettingsPanel = (
   section: SettingsSection,
   drafts: SettingsDrafts,
-  tagsOf: (fieldId: string) => FieldTags
+  tagsOf: (fieldId: string) => FieldTags,
+  textOf: Text
 ) => html`
   <div class="settings" data-place=${place("settings")}>
     <div class="section">
       <fieldset>
         <legend>${section.legend}</legend>
         ${section.fields.map((field) =>
-          renderField(section, field, drafts, tagsOf)
+          renderField(section, field, drafts, tagsOf, textOf)
         )}
       </fieldset>
     </div>
@@ -1022,6 +1077,7 @@ interface DraftsHost {
   requestUpdate: () => void;
   /** Tells a screen reader of a change to a list field. */
   say: (words: string) => void;
+  text: Text;
   /** Once the next update has rendered it, in the list field with that `id`. */
   focusInList: (listId: string, at: ListFocus) => void;
 }
@@ -1033,6 +1089,7 @@ export const createSettingsDrafts = ({
   onEnter,
   requestUpdate,
   say,
+  text,
 }: DraftsHost) => {
   const drafts = new Map<string, FieldDraft>();
 
@@ -1085,7 +1142,8 @@ export const createSettingsDrafts = ({
       const { focus, items, said } = changeList(
         field,
         itemsOf(field, section.values),
-        change
+        change,
+        text
       );
       if (!apply(section.command({ [field.key]: items }))?.ok) {
         return;

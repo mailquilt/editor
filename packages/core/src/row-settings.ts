@@ -33,24 +33,21 @@ export const rowPropsSchema = v.strictObject({
  */
 export type RowProps = v.InferOutput<typeof rowPropsSchema>;
 
-const paddingField = (key: string, label: string) =>
-  pixelField(key, label, { fallback: 0, max: MAX_ROW_PADDING, min: 0 });
-
-/** Below the width at which the export's phone styles start. */
-const ON_PHONES = "On screens under 480px wide.";
+const paddingField = (key: string, labelId: string) =>
+  pixelField(key, labelId, { fallback: 0, max: MAX_ROW_PADDING, min: 0 });
 
 const ROW_FIELDS: readonly SettingsField[] = [
   BACKGROUND_COLOR_FIELD,
-  paddingField("paddingTop", "Top padding"),
-  paddingField("paddingRight", "Right padding"),
-  paddingField("paddingBottom", "Bottom padding"),
-  paddingField("paddingLeft", "Left padding"),
+  paddingField("paddingTop", "field.paddingTop"),
+  paddingField("paddingRight", "field.paddingRight"),
+  paddingField("paddingBottom", "field.paddingBottom"),
+  paddingField("paddingLeft", "field.paddingLeft"),
   {
     default: false,
-    description: `${ON_PHONES} A few phone apps still show it.`,
-    invalidMessage: "Turn it on or off.",
+    descriptionId: "field.hideOnPhone.description",
+    invalidMessageId: "invalid.toggle",
     key: "hideOnPhone",
-    label: "Hide on phones",
+    labelId: "field.hideOnPhone",
     type: "toggle",
   },
 ];
@@ -60,10 +57,10 @@ const ROW_FIELDS_WITH_COLUMNS: readonly SettingsField[] = [
   ...ROW_FIELDS,
   {
     default: true,
-    description: `${ON_PHONES} Off keeps the Columns side by side.`,
-    invalidMessage: "Turn it on or off.",
+    descriptionId: "field.stackOnPhone.description",
+    invalidMessageId: "invalid.toggle",
     key: "stackOnPhone",
-    label: "Stack Columns on phones",
+    labelId: "field.stackOnPhone",
     type: "toggle",
   },
 ];

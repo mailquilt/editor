@@ -1,14 +1,23 @@
+/**
+ * A field's words are the IDs of the editor's strings, which hold its English
+ * and which a Host app can replace, so the words a person reads are kept in one
+ * place. Core's own messages, such as a refusal's reason, stay English, for
+ * developers.
+ */
 interface FieldBase {
   /** The property it sets. */
   key: string;
-  label: string;
+  labelId: string;
   /** Help that stays next to the control. */
-  description?: string;
-  /** What to do about a value the schema refuses. */
-  invalidMessage: string;
+  descriptionId?: string;
+  /**
+   * What to do about a value the schema refuses. A number field's fills in
+   * `{min}` and `{max}`.
+   */
+  invalidMessageId: string;
   /** What the control shows while the property isn't set. */
   default?: boolean | number | string;
-  /** Can't be used yet, with `description` saying why. */
+  /** Can't be used yet, with its description saying why. */
   disabled?: boolean;
 }
 
@@ -32,15 +41,17 @@ export type SettingsField = FieldBase &
          */
         type: "list";
         itemKey: string;
-        /** What one item is called, in a sentence, such as "network". */
-        itemName: string;
         itemField: TextField;
-        options: readonly { label: string; value: string }[];
+        /** The menu of options not yet used. */
+        chooseLabelId: string;
+        /** Shown in place of that menu once every option is used. */
+        allAddedId: string;
+        options: readonly { labelId: string; value: string }[];
       }
-    | { type: "number"; max?: number; min: number; unit: string }
+    | { type: "number"; max?: number; min: number; unit: "px" }
     | {
         type: "select";
-        options: readonly { label: string; value: number | string }[];
+        options: readonly { labelId: string; value: number | string }[];
       }
     | { type: "text" }
     /** Yes or no, shown as a switch. */
@@ -49,7 +60,7 @@ export type SettingsField = FieldBase &
 
 export const pixelField = (
   key: string,
-  label: string,
+  labelId: string,
   {
     fallback,
     max,
@@ -57,44 +68,35 @@ export const pixelField = (
   }: { fallback?: number; max?: number; min?: number } = {}
 ): SettingsField => ({
   default: fallback,
-  invalidMessage:
-    max === undefined
-      ? `Use a whole number of pixels, ${min} or more.`
-      : `Use a whole number from ${min} to ${max}.`,
+  invalidMessageId:
+    max === undefined ? "invalid.pixelsAtLeast" : "invalid.pixelsBetween",
   key,
-  label,
+  labelId,
   max,
   min,
   type: "number",
   unit: "px",
 });
 
-/** As `colorSchema` takes them, with an alpha as 0.5 rather than .5. */
-const INVALID_COLOR =
-  "Use a color such as #ff0000, rgb(255, 0, 0) or rgba(255, 0, 0, 0.5).";
-
-export const INVALID_SOLID_COLOR =
-  "Use a solid color such as #ff0000, or rgb(255, 0, 0).";
-
 export const colorField = ({
   fallback,
-  invalidMessage = INVALID_COLOR,
+  invalidMessageId = "invalid.color",
   key = "color",
-  label = "Color",
+  labelId = "field.color",
 }: {
   fallback?: string;
-  invalidMessage?: string;
+  invalidMessageId?: string;
   key?: string;
-  label?: string;
+  labelId?: string;
 } = {}): SettingsField => ({
   default: fallback,
-  invalidMessage,
+  invalidMessageId,
   key,
-  label,
+  labelId,
   type: "color",
 });
 
 export const BACKGROUND_COLOR_FIELD = colorField({
   key: "backgroundColor",
-  label: "Background color",
+  labelId: "field.backgroundColor",
 });

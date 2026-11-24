@@ -1,6 +1,6 @@
 import { BLOCK_TYPES } from "@mailquilt/core";
 import type { Block, Column, Row } from "@mailquilt/core";
-import { blockLabel, blockStyles, rowStyles } from "@mailquilt/core/internal";
+import { blockStyles, rowStyles } from "@mailquilt/core/internal";
 import type { RowProps } from "@mailquilt/core/internal";
 import { css, html, nothing } from "lit";
 import { repeat } from "lit/directives/repeat.js";
@@ -9,23 +9,36 @@ import { BLOCK_VIEWS, hasRichText, renderBlockContent } from "./block-types.js";
 import { place } from "./editor-places.js";
 import { renderFormatBar } from "./format-bar.js";
 import { ICONS } from "./icons.js";
-import { keyLabel } from "./key-map.js";
+import { keyLabel, withKeys } from "./key-map.js";
 import { renderMergeTagPicker } from "./merge-tag-picker.js";
 import type { PanelApi } from "./panel-api.js";
-import { blocksIn, columnLabel, positionLabel } from "./positions.js";
+import { blocksIn, columnPlace, placeIn } from "./positions.js";
 import { styleProperties } from "./style-properties.js";
-import { UI_LANG } from "./theme.js";
+import { blockTypeName } from "./text.js";
+import type { TextValues } from "./text.js";
 
-const MOVE_BUTTONS = (["up", "down", "left", "right"] as const).map(
-  (direction) => ({
-    direction,
-    ...keyLabel("blockToolbar", "moveBlock", { direction }),
-  })
-);
+const MOVE_BUTTONS = (
+  [
+    ["up", "canvas.moveBlockUp"],
+    ["down", "canvas.moveBlockDown"],
+    ["left", "canvas.moveBlockLeft"],
+    ["right", "canvas.moveBlockRight"],
+  ] as const
+).map(([direction, label]) => ({
+  direction,
+  label,
+  ...keyLabel("blockToolbar", "moveBlock", { direction }),
+}));
 
 /** A Row moves only up and down. */
-const ROW_MOVE_BUTTONS = (["up", "down"] as const).map((direction) => ({
+const ROW_MOVE_BUTTONS = (
+  [
+    ["up", "canvas.moveRowUp"],
+    ["down", "canvas.moveRowDown"],
+  ] as const
+).map(([direction, label]) => ({
   direction,
+  label,
   ...keyLabel("rowToolbar", "moveRow", { direction }),
 }));
 
@@ -611,7 +624,7 @@ export interface CanvasEvents {
 }
 
 /** Only a pointer drags, so this isn't offered to assistive technology. */
-const renderDragHandle = (tooltip = "Drag Block") => html`
+const renderDragHandle = (tooltip: string) => html`
   <div
     aria-hidden="true"
     class="drag-handle"
@@ -627,18 +640,17 @@ const renderDragHandle = (tooltip = "Drag Block") => html`
  * On a phone there's no room for the canvas and the side panel. The editor
  * stays as it is, so nothing is lost, and the email can still be previewed.
  */
-export const renderNarrowNotice = ({ openPreview }: PanelApi) => html`
+export const renderNarrowNotice = ({ openPreview, text }: PanelApi) => html`
   <div
     class="ui frame narrow-notice"
     data-place=${place("notice")}
-    lang=${UI_LANG}
+    lang=${text("language")}
     part="frame"
   >
     <span class="notice-icon">${ICONS.monitor}</span>
-    <p class="notice-title">Editing needs more room</p>
+    <p class="notice-title">${text("canvas.narrowTitle")}</p>
     <p class="notice-body">
-      Make the editor at least ${MIN_EDITOR_WIDTH}px wide, such as by widening
-      the window, to change this email. You can still preview it here.
+      ${text("canvas.narrowText", { width: MIN_EDITOR_WIDTH })}
     </p>
     <button
       class="text-button primary"
@@ -646,7 +658,7 @@ export const renderNarrowNotice = ({ openPreview }: PanelApi) => html`
       type="button"
       @click=${openPreview}
     >
-      ${ICONS.preview}<span>Preview email</span>
+      ${ICONS.preview}<span>${text("canvas.narrowPreview")}</span>
     </button>
   </div>
 `;
@@ -662,6 +674,7 @@ const renderRowToolbar = (
   count: number,
   api: PanelApi
 ) => {
+  const { text } = api;
   const hiddenOnPhones = (row.props as RowProps).hideOnPhone === true;
   // By position, as an ID a saved email gives can hold a space.
   const markId = `row-${index}-hidden-on-phones`;
@@ -669,33 +682,33 @@ const renderRowToolbar = (
     <div
       aria-current=${row.id === api.selectedRow?.row.id ? "true" : nothing}
       aria-describedby=${hiddenOnPhones ? markId : nothing}
-      aria-label=${`Row ${index + 1}`}
+      aria-label=${text("canvas.row", { row: index + 1 })}
       aria-orientation="vertical"
       class="ui row-toolbar"
       data-place=${place("rowToolbar")}
       role="toolbar"
     >
       <div class="bar">
-        ${renderDragHandle("Drag Row")}
+        ${renderDragHandle(text("canvas.dragRow"))}
         <button
-          aria-label="Select Row"
+          aria-label=${text("canvas.selectRow")}
           class="icon-button"
           ?data-active=${row.id === api.selectedRow?.row.id}
           data-action="select-row"
-          data-tooltip="Select Row"
+          data-tooltip=${text("canvas.selectRow")}
           type="button"
           @click=${({ detail }: MouseEvent) => api.selectRow(row.id, detail === 0)}
         >
           ${ICONS.select}
         </button>
         ${ROW_MOVE_BUTTONS.map(
-          ({ direction, keys, shortcuts }) => html`
+          ({ direction, keys, label, shortcuts }) => html`
             <button
               aria-keyshortcuts=${shortcuts}
-              aria-label=${`Move Row ${direction}`}
+              aria-label=${text(label)}
               class="icon-button"
               data-action=${`move-${direction}`}
-              data-tooltip=${`Move Row ${direction} (${keys})`}
+              data-tooltip=${withKeys(text(label), keys, text)}
               ?disabled=${direction === "up" ? index === 0 : index === count - 1}
               tabindex="-1"
               type="button"
@@ -707,10 +720,14 @@ const renderRowToolbar = (
         )}
         <button
           aria-keyshortcuts=${DUPLICATE_ROW.shortcuts}
-          aria-label="Duplicate Row"
+          aria-label=${text("canvas.duplicateRow")}
           class="icon-button"
           data-action="duplicate"
-          data-tooltip=${`Duplicate Row (${DUPLICATE_ROW.keys})`}
+          data-tooltip=${withKeys(
+            text("canvas.duplicateRow"),
+            DUPLICATE_ROW.keys,
+            text
+          )}
           tabindex="-1"
           type="button"
           @click=${({ detail }: MouseEvent) =>
@@ -720,10 +737,10 @@ const renderRowToolbar = (
         </button>
         <button
           aria-keyshortcuts=${DELETE_ROW.shortcuts}
-          aria-label="Delete Row"
+          aria-label=${text("canvas.deleteRow")}
           class="icon-button danger"
           data-action="delete"
-          data-tooltip=${`Delete Row (${DELETE_ROW.keys})`}
+          data-tooltip=${withKeys(text("canvas.deleteRow"), DELETE_ROW.keys, text)}
           tabindex="-1"
           type="button"
           @click=${({ detail }: MouseEvent) => api.deleteRow(row.id, detail === 0)}
@@ -735,9 +752,9 @@ const renderRowToolbar = (
             ? html`
                 <span class="separator"></span>
                 <span
-                  aria-label="Hidden on phones"
+                  aria-label=${text("canvas.hiddenOnPhones")}
                   class="row-mark"
-                  data-tooltip="Hidden on phones"
+                  data-tooltip=${text("canvas.hiddenOnPhones")}
                   id=${markId}
                   role="img"
                 >
@@ -752,24 +769,24 @@ const renderRowToolbar = (
 };
 
 /** The selected Block's tools. One stop for Tab, then arrow keys go along. */
-const renderBlockToolbar = (api: PanelApi) => html`
+const renderBlockToolbar = ({ text, ...api }: PanelApi) => html`
   <div
-    aria-label="Block tools"
+    aria-label=${text("canvas.blockTools")}
     aria-orientation="vertical"
     class="ui bar block-toolbar"
     data-place=${place("blockToolbar")}
     role="toolbar"
   >
-    ${renderDragHandle()}
+    ${renderDragHandle(text("canvas.dragBlock"))}
     <span class="separator"></span>
     ${MOVE_BUTTONS.map(
-      ({ direction, keys, shortcuts }, index) => html`
+      ({ direction, keys, label, shortcuts }, index) => html`
         <button
           aria-keyshortcuts=${shortcuts}
-          aria-label=${`Move Block ${direction}`}
+          aria-label=${text(label)}
           class="icon-button"
           data-action=${`move-${direction}`}
-          data-tooltip=${`Move Block ${direction} (${keys})`}
+          data-tooltip=${withKeys(text(label), keys, text)}
           tabindex=${index === 0 ? "0" : "-1"}
           type="button"
           @click=${() => api.moveBlock(direction)}
@@ -781,10 +798,14 @@ const renderBlockToolbar = (api: PanelApi) => html`
     <span class="separator"></span>
     <button
       aria-keyshortcuts=${DUPLICATE_BLOCK.shortcuts}
-      aria-label="Duplicate Block"
+      aria-label=${text("canvas.duplicateBlock")}
       class="icon-button"
       data-action="duplicate"
-      data-tooltip=${`Duplicate Block (${DUPLICATE_BLOCK.keys})`}
+      data-tooltip=${withKeys(
+        text("canvas.duplicateBlock"),
+        DUPLICATE_BLOCK.keys,
+        text
+      )}
       tabindex="-1"
       type="button"
       @click=${({ detail }: MouseEvent) => api.duplicateBlock(detail === 0)}
@@ -792,10 +813,10 @@ const renderBlockToolbar = (api: PanelApi) => html`
       ${ICONS.duplicate}
     </button>
     <button
-      aria-label="Delete Block"
+      aria-label=${text("canvas.deleteBlock")}
       class="icon-button danger"
       data-action="delete"
-      data-tooltip="Delete Block"
+      data-tooltip=${text("canvas.deleteBlock")}
       tabindex="-1"
       type="button"
       @click=${({ detail }: MouseEvent) => api.deleteBlock(detail === 0)}
@@ -807,24 +828,26 @@ const renderBlockToolbar = (api: PanelApi) => html`
 
 const renderBlock = (
   block: Block,
-  /** Where the Block is, in words. */
-  label: string,
+  /** Where the Block is, as `blockPlace` gives it. */
+  where: TextValues,
   /** Whether it's the email's one stop for Tab, as `renderRows` says. */
   isTabStop: boolean,
   api: PanelApi,
   state: CanvasState,
   events: CanvasEvents
 ) => {
+  const { text } = api;
   const selected = block.id === api.selectedBlock?.block.id;
   const rich = hasRichText(block);
+  const type = blockTypeName(block.type, text);
   return html`
     <div
       aria-current=${selected ? "true" : nothing}
       aria-describedby=${rich ? "block-keys" : "block-keys-no-text"}
-      aria-label=${`${blockLabel(block.type)} Block, ${label}`}
+      aria-label=${text("canvas.block", { ...where, type })}
       class="block"
       data-block-id=${block.id}
-      data-label=${blockLabel(block.type)}
+      data-label=${type}
       data-place=${place("block")}
       role="group"
       style=${styleProperties(rich ? blockStyles(block) : {})}
@@ -834,13 +857,14 @@ const renderBlock = (
       @focus=${() => events.onBlockFocus(block.id)}
       @focusout=${events.onBlockFocusout}
     >
-      ${selected ? nothing : renderDragHandle()}
+      ${selected ? nothing : renderDragHandle(text("canvas.dragBlock"))}
       ${rich ? state.textOf(block.id) : nothing}
       ${renderBlockContent(block, {
         failedImages: state.failedImages,
         lang: state.emailLang,
         onImageError: events.onImageError,
         socialIconsUrl: state.socialIconsUrl,
+        text,
         uploading: state.isUploading(block.id),
       })}
       ${selected ? renderBlockToolbar(api) : nothing}
@@ -856,8 +880,8 @@ const renderBlock = (
  */
 const renderColumn = (
   { blocks, id, width }: Column,
-  /** Where the Column is, in words. */
-  label: string,
+  /** Where the Column is, as `columnPlace` gives it. */
+  where: TextValues,
   /** The Block that's the email's one stop for Tab, if any. */
   tabStop: string | undefined,
   api: PanelApi,
@@ -877,7 +901,7 @@ const renderColumn = (
       (block, blockIndex) =>
         renderBlock(
           block,
-          `${label}, ${positionLabel(blockIndex, blocks.length)}`,
+          { ...where, ...placeIn(blockIndex, blocks.length) },
           block.id === tabStop,
           api,
           state,
@@ -890,21 +914,25 @@ const renderColumn = (
             <div class="ui placeholder" data-testid="placeholder">
               <div class="placeholder-label" data-testid="placeholder-label">
                 <span class="placeholder-icon">${ICONS.plus}</span>
-                <p>Drop a Block here</p>
+                <p>${api.text("canvas.dropHere")}</p>
               </div>
               <div
-                aria-label=${`Add a Block to ${label}`}
+                aria-label=${api.text("canvas.addToColumn", where)}
                 class="add-blocks"
                 data-place=${place("addBlocks")}
                 data-testid="add-blocks"
                 role="toolbar"
               >
                 ${BLOCK_TYPES.map(
-                  ({ label: typeLabel, type }, index) => html`
+                  ({ type }, index) => html`
                     <button
-                      aria-label=${`Add ${typeLabel} Block here`}
+                      aria-label=${api.text("canvas.addHere", {
+                        type: blockTypeName(type, api.text),
+                      })}
                       class="icon-button"
-                      data-tooltip=${`Add ${typeLabel} Block here`}
+                      data-tooltip=${api.text("canvas.addHere", {
+                        type: blockTypeName(type, api.text),
+                      })}
                       tabindex=${index === 0 ? "0" : "-1"}
                       type="button"
                       @click=${() =>
@@ -964,7 +992,7 @@ export const renderRows = (
           data-testid="row-tag"
           @click=${() => api.selectRow(row.id, false)}
         >
-          Row
+          ${api.text("canvas.rowTag")}
         </div>
         ${renderRowToolbar(row, rowIndex, rows.length, api)}
         <div
@@ -978,7 +1006,7 @@ export const renderRows = (
             (column, columnIndex) =>
               renderColumn(
                 column,
-                columnLabel(rowIndex, columnIndex),
+                columnPlace(rowIndex, columnIndex),
                 tabStop,
                 api,
                 state,
@@ -992,9 +1020,9 @@ export const renderRows = (
 };
 
 /** Away from the side panel, so it never covers the settings. */
-export const renderFloatingToolbar = (api: PanelApi) => html`
+export const renderFloatingToolbar = ({ text, ...api }: PanelApi) => html`
   <div
-    aria-label="Email tools"
+    aria-label=${text("canvas.emailTools")}
     class="ui bar floating-toolbar"
     data-place=${place("emailTools")}
     role="group"
@@ -1002,9 +1030,9 @@ export const renderFloatingToolbar = (api: PanelApi) => html`
   >
     <button
       aria-keyshortcuts=${UNDO.shortcuts}
-      aria-label="Undo"
+      aria-label=${text("canvas.undo")}
       class="icon-button"
-      data-tooltip=${`Undo (${UNDO.keys})`}
+      data-tooltip=${withKeys(text("canvas.undo"), UNDO.keys, text)}
       ?disabled=${!api.canUndo}
       type="button"
       @click=${() => api.stepHistory("undo")}
@@ -1013,9 +1041,9 @@ export const renderFloatingToolbar = (api: PanelApi) => html`
     </button>
     <button
       aria-keyshortcuts=${REDO.shortcuts}
-      aria-label="Redo"
+      aria-label=${text("canvas.redo")}
       class="icon-button"
-      data-tooltip=${`Redo (${REDO.keys})`}
+      data-tooltip=${withKeys(text("canvas.redo"), REDO.keys, text)}
       ?disabled=${!api.canRedo}
       type="button"
       @click=${() => api.stepHistory("redo")}
@@ -1024,9 +1052,9 @@ export const renderFloatingToolbar = (api: PanelApi) => html`
     </button>
     <span class="separator"></span>
     <button
-      aria-label="Preview"
+      aria-label=${text("canvas.preview")}
       class="icon-button"
-      data-tooltip="Preview"
+      data-tooltip=${text("canvas.preview")}
       type="button"
       @click=${api.openPreview}
     >

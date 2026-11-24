@@ -9,7 +9,7 @@ The editor is the `<mail-quilt>` element, and the [Shell](./shell) is `<mail-qui
 
 ## The editor
 
-`<mail-quilt>` has four properties, two events and one method:
+`<mail-quilt>` has five properties, two events and one method:
 
 | Name | What it does |
 | --- | --- |
@@ -17,6 +17,7 @@ The editor is the `<mail-quilt>` element, and the [Shell](./shell) is `<mail-qui
 | `uploadImage` | A function that uploads an image to your storage and returns a promise of `{ url }`. With it, the Image settings have an Upload image button, and image files can be dropped or pasted on the email. [Upload images](./upload-images) shows one, and what the editor does with it. |
 | `mergeTags` | Your app's Merge Tags, as an array of `{ name, label }`, such as `[{ name: "first_name", label: "First name" }]`. `name` is what goes between the braces, and `label` is optional. With it, typing `{{` in text, or in any setting that holds text or a URL, opens a list of them to pick from, and the format bar has a Merge Tag button. A tag in text shows its label, or its name without one, but the export and the Preview always have `{{name}}`. [Merge Tags](#merge-tags) says more. |
 | `socialIconsUrl` | The URL of a folder in your storage holding the Social Block's icons, copied from `@mailquilt/renderer`'s `icons`. The canvas, Preview and `exportHtml()` load the icons from there. Without it, they load from jsDelivr, at the renderer's exact version. [Social icons](./social-icons) says why you might set it. |
+| `strings` | Your own words for any of the editor's, by ID, such as `{ "canvas.undo": "Annuler" }`. Any you leave out stay in English. [Text in your words](#text-in-your-words) says how to find the IDs. |
 | `mq-change` | An event fired after every change. The new email is in `event.detail.document`. |
 | `mq-error` | An event fired when the editor refuses an email, which then keeps the email it had. The reason is in `event.detail.reason`. The [document format](./document-format) page lists what the editor accepts. |
 | `exportHtml()` | Returns a promise of the email's HTML, ready to send. It rejects if the editor has no email. |
@@ -54,6 +55,29 @@ editor.mergeTags = [
 
 Without `mergeTags`, or with no tag it can offer, typing `{{` opens nothing and there's no Merge Tag button.
 
+### Text in your words
+
+Every word the editor shows, or reads out to a screen reader, has an ID, and `strings` replaces any of them, such as to translate the editor. `STRINGS` lists every ID with its English, which is what shows for any you leave out:
+
+```js
+import { STRINGS } from "@mailquilt/editor/strings";
+
+editor.strings = {
+  language: "fr",
+  "canvas.undo": "Annuler",
+  "said.blockMoved":
+    "Déplacé : ligne {row}, colonne {column}, place {position} sur {count}.",
+};
+```
+
+- A word in braces, such as `{row}`, is filled in by the editor. Your text can put it anywhere, or leave it out. A Merge Tag in an example, such as `{{cta_url}}`, has two braces and is never filled in.
+- `language` is the language your texts are in, `en` until you set it. The editor marks its own words with it, so a screen reader reads them in that language, and joins lists in it, such as the names of files it can't upload.
+- Key names in tooltips and in what a screen reader is told to press have IDs too, such as `key.ctrl`, which a German keyboard calls `Strg`.
+- A message about a refused email, such as the Shell's `shell.cantOpen`, fills `{reason}` with the reason in English, which is for developers. Leave `{reason}` out to show only your words. `mq-error` always gives the English reason.
+- `@mailquilt/editor/strings` defines no elements, so a server can import it too.
+- Setting `strings` again redraws the editor's words. The email doesn't change, so it fires no `mq-change`.
+- Only English ships, and the email's own content is never changed.
+
 ## The Shell
 
 `<mail-quilt-shell>` has the editor's properties, events and method, and three attributes of its own:
@@ -64,7 +88,8 @@ Without `mergeTags`, or with no tag it can offer, typing `{{` opens nothing and 
 | `uploadImage` | As on `<mail-quilt>`. The Shell passes it to the editor inside. |
 | `mergeTags` | As on `<mail-quilt>`. The Shell passes it to the editor inside. |
 | `socialIconsUrl` | As on `<mail-quilt>`. The Shell passes it to the editor inside. |
-| `heading` | The text in the header. It's "Email" when unset. |
+| `strings` | As on `<mail-quilt>`. The Shell passes it to the editor inside, and its own words have IDs starting `shell.`. |
+| `heading` | The text in the header. It's "Email" when unset, or your `shell.email`. |
 | `actions` | The buttons to show, by name and separated by spaces: `import-json`, `export-json` and `export-html`. Leave it out to show all three. |
 | `save-key` | Where the email is kept in the browser, as the `saveKey` property. Use one for each email and each person. Leave it out to store nothing. [Saving](./shell#saving) says how it works. |
 | `mq-change` | Fired after every change, including an import. The new email is in `event.detail.document`. |
@@ -77,11 +102,11 @@ Without `mergeTags`, or with no tag it can offer, typing `{{` opens nothing and 
 
 | Component | Props |
 | --- | --- |
-| `MailQuilt` | `value`, `onChange`, `onError`, `uploadImage`, `mergeTags`, `socialIconsUrl` and `ref`. |
+| `MailQuilt` | `value`, `onChange`, `onError`, `uploadImage`, `mergeTags`, `socialIconsUrl`, `strings` and `ref`. |
 | `MailQuiltShell` | The same, and `heading`, `actions` and `saveKey`. `actions` is an array of names, such as `["export-html"]`. |
 
 - `value` is the email to open. `onChange` gets the new email after every change, and `onError` gets the reason when the editor refuses one, or when the editor's code can't load. `onError` is always listening in time.
-- `uploadImage`, `mergeTags` and `socialIconsUrl` are the editor's properties, which the component sets on the element once the editor has loaded. A new `mergeTags` array at each render redraws nothing unless a tag in it changed.
+- `uploadImage`, `mergeTags`, `socialIconsUrl` and `strings` are the editor's properties, which the component sets on the element once the editor has loaded. A new `mergeTags` array or `strings` object at each render redraws nothing unless something in it changed.
 - `ref` gives you the element once the editor has loaded, so you can call `exportHtml()`.
 - Other props go to the element: `aria-*` attributes, React's events such as `onKeyDown`, and `className`, `hidden`, `id`, `inert`, `lang`, `role`, `slot`, `style`, `suppressHydrationWarning` and `title`.
 - On the server, each component renders its empty element, and the editor loads in the browser.
@@ -108,6 +133,7 @@ Without `mergeTags`, or with no tag it can offer, typing `{{` opens nothing and 
 | `MailQuiltProps`, `MailQuiltShellProps` | `@mailquilt/react` | The components' props. |
 | `ShellAction` | `@mailquilt/editor` and `@mailquilt/react` | One of the Shell's button names. |
 | `HostAppProperties` | `@mailquilt/editor` and `@mailquilt/react` | The properties through which your app gives the editor what it can't do itself, such as `uploadImage`. |
+| `MailQuiltStrings`, `StringId` | `@mailquilt/editor` and `@mailquilt/react` | What `strings` takes, and the ID of one of the editor's texts, as `STRINGS` lists them. |
 
 `addEventListener` on the elements knows `mq-change` and `mq-error` by name, so their events are typed without a cast.
 

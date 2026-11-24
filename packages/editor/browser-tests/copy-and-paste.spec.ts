@@ -461,7 +461,7 @@ test.describe("pasting from outside", () => {
 
     expect(await structure(page)).toStrictEqual([[["A"]]]);
     await expect(announcement(page)).toHaveText(
-      "Can't paste. Version 5 is newer than the supported version 4."
+      "Can't paste. It was copied from a newer version of the editor."
     );
   });
 });

@@ -6,7 +6,9 @@ import { place } from "./editor-places.js";
 import { ICONS } from "./icons.js";
 import { claim, keyFor } from "./key-map.js";
 import { refuseFiles } from "./refuse-files.js";
-import { BACKDROP, UI_LANG } from "./theme.js";
+import type { StringId } from "./strings.js";
+import type { Text } from "./text.js";
+import { BACKDROP } from "./theme.js";
 
 /**
  * How long the Preview waits to say it's loading, as long as its outline waits
@@ -20,9 +22,13 @@ const PHONE_WIDTH = 375;
 /** The width the Preview shows the email at. */
 type PreviewWidth = "desktop" | "phone";
 
-const WIDTHS: { icon: TemplateResult; label: string; width: PreviewWidth }[] = [
-  { icon: ICONS.monitor, label: "Desktop", width: "desktop" },
-  { icon: ICONS.phone, label: "Phone", width: "phone" },
+const WIDTHS: {
+  icon: TemplateResult;
+  label: StringId;
+  width: PreviewWidth;
+}[] = [
+  { icon: ICONS.monitor, label: "preview.desktop", width: "desktop" },
+  { icon: ICONS.phone, label: "preview.phone", width: "phone" },
 ];
 
 export const previewStyles = css`
@@ -296,7 +302,11 @@ const guardEmail = (event: Event) => {
  * The width changes the frame and not what's in it, so the email isn't loaded
  * again and keeps its scroll.
  */
-const renderPreviewContent = ({ result }: Preview, width: PreviewWidth) => {
+const renderPreviewContent = (
+  { result }: Preview,
+  width: PreviewWidth,
+  text: Text
+) => {
   const phone = width === "phone" ? "phone" : "";
   if (!result) {
     return html`
@@ -309,13 +319,15 @@ const renderPreviewContent = ({ result }: Preview, width: PreviewWidth) => {
           <iframe
             sandbox="allow-same-origin"
             srcdoc=${result.html}
-            title="Email preview"
+            title=${text("preview.frame")}
             @load=${guardEmail}
           ></iframe>
         </div>
       `
     : html`
-        <p role="alert">The preview couldn't be loaded: ${result.failure}</p>
+        <p role="alert">
+          ${text("preview.failed", { reason: result.failure })}
+        </p>
       `;
 };
 
@@ -330,9 +342,10 @@ interface PreviewEvents {
 
 const renderWidthSwitch = (
   current: PreviewWidth,
-  onWidth: PreviewEvents["onWidth"]
+  onWidth: PreviewEvents["onWidth"],
+  text: Text
 ) => html`
-  <div aria-label="Width" class="segments" role="group">
+  <div aria-label=${text("preview.width")} class="segments" role="group">
     ${WIDTHS.map(
       ({ icon, label, width }) => html`
         <button
@@ -341,7 +354,7 @@ const renderWidthSwitch = (
           type="button"
           @click=${() => onWidth(width)}
         >
-          ${icon}<span>${label}</span>
+          ${icon}<span>${text(label)}</span>
         </button>
       `
     )}
@@ -361,27 +374,30 @@ const renderWidthSwitch = (
 export const renderPreview = (
   preview: Preview | undefined,
   width: PreviewWidth,
-  { onClose, onClosed, onWidth }: PreviewEvents
+  { onClose, onClosed, onWidth }: PreviewEvents,
+  text: Text
 ) => html`
   <dialog
     aria-labelledby="preview-title"
     class="preview"
     data-place=${place("preview")}
-    lang=${UI_LANG}
+    lang=${text("language")}
     @close=${onClosed}
   >
     <div class="ui preview-panel">
       <div class="preview-header">
-        <h2 id="preview-title">Preview</h2>
-        ${renderWidthSwitch(width, onWidth)}
+        <h2 id="preview-title">${text("preview.title")}</h2>
+        ${renderWidthSwitch(width, onWidth, text)}
         <button autofocus class="text-button" type="button" @click=${onClose}>
-          Close
+          ${text("preview.close")}
         </button>
       </div>
       <p class="visually-hidden" role="status">
-        ${preview?.saysLoading && !preview.result ? "Loading preview…" : ""}
+        ${
+          preview?.saysLoading && !preview.result ? text("preview.loading") : ""
+        }
       </p>
-      ${preview ? renderPreviewContent(preview, width) : nothing}
+      ${preview ? renderPreviewContent(preview, width, text) : nothing}
     </div>
   </dialog>
 `;

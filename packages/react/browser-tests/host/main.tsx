@@ -55,6 +55,9 @@ const uploadImage = (file: File) =>
 /** The Host app's Merge Tags. Each render gives a new list, as a host's often does. */
 const mergeTags = () => [{ label: "First name", name: "first_name" }];
 
+/** Texts in the Host app's words. Each render gives a new object, as a host's often does. */
+const strings = () => ({ "canvas.undo": "Annuler" });
+
 /** Where the Host app serves the Social Block's icons itself. */
 const SOCIAL_ICONS_URL = "https://cdn.example/mail-icons/";
 
@@ -105,6 +108,7 @@ const Host = () => {
           }
           mergeTags={mergeTags()}
           socialIconsUrl={SOCIAL_ICONS_URL}
+          strings={strings()}
           uploadImage={uploadImage}
           value={document}
         />
@@ -179,6 +183,7 @@ const ShellHost = () => {
         mergeTags={mergeTags()}
         saveKey={saveKey}
         socialIconsUrl={SOCIAL_ICONS_URL}
+        strings={strings()}
         uploadImage={uploadImage}
         value={document}
       />

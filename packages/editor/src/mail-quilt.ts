@@ -1,16 +1,13 @@
 import { isSameDocument, loadDocument } from "@mailquilt/core";
 import type {
   BlocksDocument,
+  BlockType,
   Command,
   Editor,
   LoadResult,
   RichTextDocument,
 } from "@mailquilt/core";
-import {
-  blockLabel,
-  EMAIL_LOOK,
-  editorOfLoaded,
-} from "@mailquilt/core/internal";
+import { EMAIL_LOOK, editorOfLoaded } from "@mailquilt/core/internal";
 import { renderEmail } from "@mailquilt/renderer";
 import { css, html, LitElement, nothing, unsafeCSS } from "lit";
 import type { PropertyValues } from "lit";
@@ -35,7 +32,7 @@ import { createLinkForm, formatBarStyles } from "./format-bar.js";
 import type { HostAppProperties } from "./host-app.js";
 import { createImageUploads } from "./image-uploads.js";
 import { createKeyDispatch } from "./key-dispatch.js";
-import { keyLabel } from "./key-map.js";
+import { keyLabel, keysInWords } from "./key-map.js";
 import type { Action, KeyScope } from "./key-map.js";
 import {
   mergeTagPickerStyles,
@@ -52,12 +49,15 @@ import {
   renderSidePanel,
   sidePanelStyles,
 } from "./side-panel.js";
+import type { MailQuiltStrings } from "./strings.js";
 import { styleProperties } from "./style-properties.js";
 import { createTextBlockView, textBlockStyles } from "./text-block-view.js";
 import type { ShownMergeTagPicker, TextBlockView } from "./text-block-view.js";
 import type { TextFormats } from "./text-commands.js";
 import { isMergeTagName } from "./text-schema.js";
-import { themeTokens, UI_LANG, uiStyles } from "./theme.js";
+import { blockTypeName, createText } from "./text.js";
+import type { Text } from "./text.js";
+import { themeTokens, uiStyles } from "./theme.js";
 import { createToolFitting } from "./tool-fitting.js";
 import type { ToolFitting } from "./tool-fitting.js";
 import { createTooltips } from "./tooltips.js";
@@ -77,15 +77,21 @@ const TYPING_PAUSE_MS = 1000;
  * The keys for an action, for the Block key help, which a screen reader reads,
  * so each key is named as `aria-keyshortcuts` names it: "A, B, or C".
  */
-const keysFor = (scope: KeyScope, action: Action) =>
-  new Intl.ListFormat(UI_LANG, { type: "disjunction" }).format(
-    keyLabel(scope, action).shortcuts.split(" ")
+const keysFor = (scope: KeyScope, action: Action, text: Text) =>
+  new Intl.ListFormat(text("language"), { type: "disjunction" }).format(
+    keyLabel(scope, action)
+      .shortcuts.split(" ")
+      .map((keys) => keysInWords(keys, text))
   );
-const EDIT_TEXT = keysFor("block", "editText");
-const BACK_TO_BLOCK = keysFor("text", "backToBlock");
-const FORMAT_BAR = keysFor("text", "focusFormatBar");
-const SELECT_BLOCK = keysFor("block", "selectBlock");
-const MOVE_BLOCK = keysFor("block", "moveBlock");
+
+/** The keys the Block key help names. */
+const blockKeys = (text: Text) => ({
+  backToBlock: keysFor("text", "backToBlock", text),
+  editText: keysFor("block", "editText", text),
+  formatBar: keysFor("text", "focusFormatBar", text),
+  moveBlock: keysFor("block", "moveBlock", text),
+  selectBlock: keysFor("block", "selectBlock", text),
+});
 
 /** The element's own frame, the workspace, the email card and the drop line. */
 const elementStyles = css`
@@ -235,6 +241,12 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       ) => JSON.stringify(next ?? []) !== JSON.stringify(previous ?? []),
     },
     socialIconsUrl: { attribute: false },
+    // A React host gives a new object at each render.
+    strings: {
+      attribute: false,
+      hasChanged: (next: MailQuiltStrings, previous: MailQuiltStrings) =>
+        JSON.stringify(next ?? {}) !== JSON.stringify(previous ?? {}),
+    },
     // Only whether there's one changes what shows, and a React host may give
     // a new function at each render, such as on each key.
     uploadImage: {
@@ -263,8 +275,11 @@ export class MailQuilt extends LitElement implements HostAppProperties {
 
   declare mergeTags: HostAppProperties["mergeTags"];
   declare socialIconsUrl: HostAppProperties["socialIconsUrl"];
+  declare strings: HostAppProperties["strings"];
   declare uploadImage: HostAppProperties["uploadImage"];
 
+  /** Each of the editor's texts, in the Host app's words where it gives them. */
+  readonly #text = createText(() => this.strings);
   #editor: Editor | undefined;
   readonly #views = new Map<string, TextBlockView>();
   /** Edits in the same typing session merge into one undo step. */
@@ -306,6 +321,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     },
     requestUpdate: () => this.requestUpdate(),
     say: (words) => this.#announcements.say(words),
+    text: this.#text,
   });
   /** One copy of the document for each update, as `value` makes a new one. */
   #rendered: BlocksDocument | undefined;
@@ -337,6 +353,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
   readonly #announcements = createAnnouncements({
     email: () => this.#editor?.getDocument(),
     requestUpdate: () => this.requestUpdate(),
+    text: this.#text,
   });
   readonly #editing = createEditingActions({
     announcements: this.#announcements,
@@ -348,9 +365,10 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       if (this.uploadImage) {
         return this.#uploads.drop(files, position);
       }
-      this.#announcements.say("Can't paste. This editor can't upload images.");
+      this.#announcements.say(this.#text("paste.noUploads"));
     },
     selection: this.#selection,
+    text: this.#text,
   });
   readonly #uploads = createImageUploads({
     addImageBlocks: (count, position) =>
@@ -373,6 +391,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       }
       return result;
     },
+    text: this.#text,
     uploadImage: () => this.uploadImage,
   });
   readonly #uploadImage = (blockId: string, file: File) => {
@@ -606,7 +625,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
           createTextBlockView({
             canBold,
             content: block.props.content,
-            label: `${blockLabel(block.type)} Block`,
+            label: this.#textLabel(block.type),
             mergeTags: this.#mergeTagsGiven,
             onChange: (next) => this.#commitText(block.id, next),
             onFocus: () => {
@@ -626,7 +645,12 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       }
     }
     this.#removeViewsExcept(blockIds);
+    const typeOf = new Map(blocks.map(({ id, type }) => [id, type]));
     for (const [blockId, view] of this.#views) {
+      const type = typeOf.get(blockId);
+      if (type) {
+        view.setLabel(this.#textLabel(type));
+      }
       view.setLang(this.#emailLang);
       view.setTabStop(blockId === this.#selection.blockId);
     }
@@ -649,30 +673,30 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     }
     const { settings } = email;
     const api = this.#panelApi(email);
+    const text = this.#text;
+    const language = text("language");
+    const keys = blockKeys(text);
 
     return html`
       ${renderPreview(
         this.#preview.shown,
         this.#preview.width,
-        this.#preview.events
+        this.#preview.events,
+        text
       )}
       ${this.#announcements.render()}
-      <p hidden id="block-keys" lang=${UI_LANG}>
-        Press ${EDIT_TEXT} to edit the text, and ${BACK_TO_BLOCK} to come back.
-        In the text, press ${FORMAT_BAR} to reach its formatting. Press
-        ${SELECT_BLOCK} to select another Block, and ${MOVE_BLOCK} to move this
-        one.
+      <p hidden id="block-keys" lang=${language}>
+        ${text("canvas.blockKeys", keys)}
       </p>
-      <p hidden id="block-keys-no-text" lang=${UI_LANG}>
-        Press ${SELECT_BLOCK} to select another Block, and ${MOVE_BLOCK} to move
-        this one.
+      <p hidden id="block-keys-no-text" lang=${language}>
+        ${text("canvas.blockKeysNoText", keys)}
       </p>
       ${this.#narrow ? renderNarrowNotice(api) : nothing}
       <div
         class="ui frame editor"
         data-place=${place("editor")}
         data-testid="editor"
-        lang=${UI_LANG}
+        lang=${language}
         part="frame"
         ?data-collapsed=${this.#narrow}
         style=${styleProperties({ "--_mq-email-width": `${settings.width}px` })}
@@ -743,6 +767,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       selectedRow: this.#editing.selectedRow(email),
       showsSettings: this.#selection.showsSettings,
       tab: this.#selection.tab,
+      text: this.#text,
       uploadErrorOf: this.#uploads.errorOf,
       uploadImage: this.uploadImage ? this.#uploadImage : undefined,
     };
@@ -767,6 +792,10 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     const language = this.#rendered?.settings.language ?? "";
     return language.startsWith("{{") ? "" : language;
   }
+
+  /** What a screen reader calls a Block's text. */
+  readonly #textLabel = (type: BlockType) =>
+    this.#text("canvas.textOf", { type: blockTypeName(type, this.#text) });
 
   readonly #insertMergeTag = () =>
     this.#selection.selectedText?.startMergeTag();

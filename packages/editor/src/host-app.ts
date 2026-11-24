@@ -1,3 +1,5 @@
+import type { MailQuiltStrings } from "./strings.js";
+
 /**
  * What the Host app gives the editor, which it can't do itself, such as storing
  * images. Each is a property of `<mail-quilt>`, which `<mail-quilt-shell>` and
@@ -19,6 +21,12 @@ export interface HostAppProperties {
    */
   socialIconsUrl?: string | undefined;
   /**
+   * Texts that replace the editor's English, by ID, as `STRINGS` lists them,
+   * with their placeholders such as `{row}`. Any left out keep their English.
+   * `language` is the language they're in.
+   */
+  strings?: MailQuiltStrings | undefined;
+  /**
    * Uploads an image to the Host app's own storage and returns its URL, which
    * the Image Block takes. Rejecting with an `Error` shows its message to the
    * person. The upload is aborted through `signal` when its Image Block is
@@ -39,6 +47,7 @@ export interface HostAppProperties {
 export const HOST_APP_PROPERTIES = Object.keys({
   mergeTags: true,
   socialIconsUrl: true,
+  strings: true,
   uploadImage: true,
 } satisfies {
   [Name in keyof HostAppProperties]-?: true;

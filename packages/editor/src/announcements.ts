@@ -2,8 +2,9 @@ import type { BlocksDocument } from "@mailquilt/core";
 import { html } from "lit";
 import { keyed } from "lit/directives/keyed.js";
 
-import { blockPositionLabel, locateRow, positionLabel } from "./positions.js";
-import { UI_LANG } from "./theme.js";
+import { blockPlace, locateRow, placeIn } from "./positions.js";
+import type { StringId } from "./strings.js";
+import type { Text } from "./text.js";
 
 /**
  * What a screen reader hears about changes it can't see, such as a move or a
@@ -14,6 +15,7 @@ interface AnnouncementsHost {
   /** The email as it is now, after the change being announced. */
   email: () => BlocksDocument | undefined;
   requestUpdate: () => void;
+  text: Text;
 }
 
 export type Announcements = ReturnType<typeof createAnnouncements>;
@@ -21,6 +23,7 @@ export type Announcements = ReturnType<typeof createAnnouncements>;
 export const createAnnouncements = ({
   email: current,
   requestUpdate,
+  text: textOf,
 }: AnnouncementsHost) => {
   /** What the screen reader last heard. */
   let text = "";
@@ -48,19 +51,21 @@ export const createAnnouncements = ({
     requestUpdate();
   };
 
-  const blockMoved = (blockId: string, prefix = "Moved to") => {
+  /** `said` names where the Block is now, as `blockPlace` gives it. */
+  const blockMoved = (blockId: string, said: StringId = "said.blockMoved") => {
     const email = current();
-    const label = email && blockPositionLabel(email, blockId);
-    if (label) {
-      say(`${prefix} ${label}.`);
+    const place = email && blockPlace(email, blockId);
+    if (place) {
+      say(textOf(said, place));
     }
   };
 
-  const rowMoved = (rowId: string, prefix = "Row moved to") => {
+  /** `said` names where the Row is now, as `placeIn` gives it. */
+  const rowMoved = (rowId: string, said: StringId = "said.rowMoved") => {
     const email = current();
     const position = email && locateRow(email, rowId);
     if (position) {
-      say(`${prefix} ${positionLabel(position.rowIndex, email.rows.length)}.`);
+      say(textOf(said, placeIn(position.rowIndex, email.rows.length)));
     }
   };
 
@@ -75,7 +80,7 @@ export const createAnnouncements = ({
     render: () => {
       shown = true;
       return html`
-        <div class="visually-hidden" lang=${UI_LANG} role="status">
+        <div class="visually-hidden" lang=${textOf("language")} role="status">
           ${keyed(id, html`<span>${text}</span>`)}
         </div>
       `;

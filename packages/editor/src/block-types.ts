@@ -15,6 +15,7 @@ import { icon } from "./icons.js";
 import { styleProperties } from "./style-properties.js";
 import { createTextSchema } from "./text-schema.js";
 import type { TextSchema } from "./text-schema.js";
+import type { Text } from "./text.js";
 
 // The editor's part of each type of Block, in one table, so a type core adds
 // and this doesn't handle is a type error. Core's part is in its `blocks.ts`.
@@ -144,6 +145,8 @@ export const blockTypeStyles = css`
 export interface DrawContext {
   /** The email's language, which a Block's own words take. */
   lang: string;
+  /** The editor's own words, for what stands in for content. */
+  text: Text;
   failedImages: ReadonlySet<string>;
   onImageError: (src: string) => void;
   /** The Host app's folder of Social icons, as the export takes it. */
@@ -201,16 +204,16 @@ const IMAGE_ICON = icon(
 /** What an Image without a picture to show says in its place. */
 const imageStandIn = (
   src: string | undefined,
-  { failedImages, uploading }: DrawContext
+  { failedImages, text, uploading }: DrawContext
 ) => {
   if (uploading) {
-    return "Uploading…";
+    return text("image.uploading");
   }
   if (src === undefined) {
-    return "No image URL yet";
+    return text("image.noUrl");
   }
   if (failedImages.has(src)) {
-    return `Couldn't load ${src}`;
+    return text("image.failed", { url: src });
   }
   return MERGE_TAG.test(src) ? src : undefined;
 };
@@ -267,7 +270,7 @@ const SOCIAL_ICON = icon(
 const drawSocial = (
   props: BlockProps["social"],
   { "text-align": align }: Record<string, string>,
-  { socialIconsUrl }: DrawContext
+  { socialIconsUrl, text }: DrawContext
 ) => {
   const { links } = props;
   if (!links.some(({ url }) => url !== undefined)) {
@@ -278,8 +281,8 @@ const drawSocial = (
           <span
             >${
               links.length === 0
-                ? "No social links yet"
-                : "No social link has a URL yet"
+                ? text("social.noLinks")
+                : text("social.noUrls")
             }</span
           >
         </div>
@@ -300,7 +303,9 @@ const drawSocial = (
           html`<img
             alt=${
               url === undefined
-                ? `${SOCIAL_NETWORKS[network]}, no URL yet`
+                ? text("social.iconWithoutUrl", {
+                    network: text(`network.${network}`),
+                  })
                 : SOCIAL_NETWORKS[network]
             }
             class=${url === undefined ? "unlinked" : ""}

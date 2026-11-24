@@ -77,35 +77,40 @@ export const newLanguageSettingsSchema = v.strictObject({
  * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
  */
 export const EMAIL_SETTINGS_FIELDS: readonly SettingsField[] = [
-  pixelField("width", "Width", { max: MAX_EMAIL_WIDTH }),
+  pixelField("width", "field.width", { max: MAX_EMAIL_WIDTH }),
   BACKGROUND_COLOR_FIELD,
   {
-    invalidMessage: "Choose a font from the list.",
+    invalidMessageId: "invalid.font",
     key: "fontFamily",
-    label: "Font",
+    labelId: "field.font",
     options: [
-      { label: "Arial", value: "Arial, Helvetica, sans-serif" },
-      { label: "Courier New", value: "'Courier New', Courier, monospace" },
-      { label: "Georgia", value: "Georgia, 'Times New Roman', serif" },
-      { label: "Tahoma", value: "Tahoma, Verdana, sans-serif" },
-      { label: "Times New Roman", value: "'Times New Roman', Times, serif" },
-      { label: "Verdana", value: "Verdana, Geneva, sans-serif" },
+      { labelId: "font.arial", value: "Arial, Helvetica, sans-serif" },
+      {
+        labelId: "font.courierNew",
+        value: "'Courier New', Courier, monospace",
+      },
+      { labelId: "font.georgia", value: "Georgia, 'Times New Roman', serif" },
+      { labelId: "font.tahoma", value: "Tahoma, Verdana, sans-serif" },
+      {
+        labelId: "font.timesNewRoman",
+        value: "'Times New Roman', Times, serif",
+      },
+      { labelId: "font.verdana", value: "Verdana, Geneva, sans-serif" },
     ],
     type: "select",
   },
   {
-    description: "The short text inboxes show after the subject.",
-    invalidMessage: "Use plain text.",
+    descriptionId: "field.preheader.description",
+    invalidMessageId: "invalid.preheader",
     key: "preheader",
-    label: "Preheader",
+    labelId: "field.preheader",
     type: "text",
   },
   {
-    description: "A language code, such as en or pt-BR, or one Merge Tag.",
-    invalidMessage:
-      "Use a language code such as en or pt-BR, or one Merge Tag such as {{language}}.",
+    descriptionId: "field.language.description",
+    invalidMessageId: "invalid.language",
     key: "language",
-    label: "Language",
+    labelId: "field.language",
     type: "text",
   },
 ];

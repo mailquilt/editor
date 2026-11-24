@@ -14,14 +14,14 @@ import { writeCopy } from "./clipboard.js";
 import type { Pasted } from "./clipboard.js";
 import type { EditorFocus } from "./focus.js";
 import {
-  blockPositionLabel,
+  blockPlace,
   dropCommand,
   locate,
   locateRow,
   moveCommand,
   moveRowCommand,
   neighbourBlockId,
-  positionLabel,
+  placeIn,
 } from "./positions.js";
 import type {
   Direction,
@@ -30,6 +30,8 @@ import type {
   RowPosition,
 } from "./positions.js";
 import type { EditorSelection } from "./selection.js";
+import type { StringId } from "./strings.js";
+import type { Text } from "./text.js";
 
 /**
  * What the editor does to the email's Blocks and Rows: adding, deleting and
@@ -59,7 +61,16 @@ interface EditingHost {
     EditorSelection,
     "blockId" | "rowId" | "select" | "selectLanded" | "selectRow"
   >;
+  text: Text;
 }
+
+/** What's said when the selected Block can't move, each way. */
+const BLOCK_CANT_MOVE = {
+  down: "said.blockCantMoveDown",
+  left: "said.blockCantMoveLeft",
+  right: "said.blockCantMoveRight",
+  up: "said.blockCantMoveUp",
+} as const satisfies Record<Direction, StringId>;
 
 /**
  * A Row's layout, or for Column widths that aren't one, as a saved email may
@@ -78,6 +89,7 @@ export const createEditingActions = ({
   focus,
   pasteFiles,
   selection,
+  text,
 }: EditingHost) => {
   /** What the latest change moved, for undo and redo to announce. */
   let lastMoves: MoveOperation[] = [];
@@ -110,7 +122,10 @@ export const createEditingActions = ({
    * From the keyboard, focus goes to the next Block, or else the one before,
    * as the deleted Block's toolbar had it.
    */
-  const deleteBlock = (fromKeyboard: boolean, said = "Block deleted.") => {
+  const deleteBlock = (
+    fromKeyboard: boolean,
+    said = text("said.blockDeleted")
+  ) => {
     const email = current();
     const { blockId } = selection;
     if (!email || blockId === undefined) {
@@ -137,7 +152,7 @@ export const createEditingActions = ({
   const deleteRow = (
     rowId: string,
     fromKeyboard: boolean,
-    said = "Row deleted."
+    said = text("said.rowDeleted")
   ) => {
     const email = current();
     const position = email && locateRow(email, rowId);
@@ -155,7 +170,7 @@ export const createEditingActions = ({
     }
   };
 
-  /** Puts the selected Block on the clipboard, and returns where it is, in words. */
+  /** Puts the selected Block on the clipboard, and returns where it is. */
   const writeBlock = (data: DataTransfer) => {
     const email = current();
     const selected = email && selectedBlock(email);
@@ -163,10 +178,10 @@ export const createEditingActions = ({
       return;
     }
     writeCopy(data, { block: selected.block });
-    return blockPositionLabel(email, selected.block.id);
+    return blockPlace(email, selected.block.id);
   };
 
-  /** Puts a Row on the clipboard, and returns where it is, in words. */
+  /** Puts a Row on the clipboard, and returns where it is. */
   const writeRow = (rowId: string, data: DataTransfer) => {
     const email = current();
     const position = email && locateRow(email, rowId);
@@ -174,7 +189,7 @@ export const createEditingActions = ({
       return;
     }
     writeCopy(data, { row: position.row });
-    return positionLabel(position.rowIndex, email.rows.length);
+    return placeIn(position.rowIndex, email.rows.length);
   };
 
   return {
@@ -250,7 +265,7 @@ export const createEditingActions = ({
     copyBlock: (data: DataTransfer) => {
       const where = writeBlock(data);
       if (where) {
-        announcements.say(`Block copied, ${where}.`);
+        announcements.say(text("said.blockCopied", where));
       }
     },
 
@@ -258,7 +273,7 @@ export const createEditingActions = ({
     copyRow: (rowId: string, data: DataTransfer) => {
       const where = writeRow(rowId, data);
       if (where) {
-        announcements.say(`Row copied, ${where}.`);
+        announcements.say(text("said.rowCopied", where));
       }
     },
 
@@ -266,7 +281,7 @@ export const createEditingActions = ({
     cutBlock: (data: DataTransfer) => {
       const where = writeBlock(data);
       if (where) {
-        deleteBlock(true, `Block cut, ${where}.`);
+        deleteBlock(true, text("said.blockCut", where));
       }
     },
 
@@ -274,7 +289,7 @@ export const createEditingActions = ({
     cutRow: (rowId: string, data: DataTransfer) => {
       const where = writeRow(rowId, data);
       if (where) {
-        deleteRow(rowId, true, `Row cut, ${where}.`);
+        deleteRow(rowId, true, text("said.rowCut", where));
       }
     },
 
@@ -335,7 +350,7 @@ export const createEditingActions = ({
       } else {
         selection.selectLanded(blockId);
       }
-      announcements.blockMoved(blockId, "Block duplicated,");
+      announcements.blockMoved(blockId, "said.blockDuplicated");
     },
 
     /** A copy of a Row, with its Blocks, right after it, which is selected. */
@@ -358,7 +373,7 @@ export const createEditingActions = ({
       });
       if (result?.ok && result.createdId !== undefined) {
         selection.selectRow(result.createdId, fromKeyboard);
-        announcements.rowMoved(result.createdId, "Row duplicated,");
+        announcements.rowMoved(result.createdId, "said.rowDuplicated");
       }
     },
 
@@ -372,13 +387,18 @@ export const createEditingActions = ({
         announcements.say("");
         return;
       }
-      const prefix = step === "undo" ? "Undo moved" : "Redo moved";
       if ("rowId" in operation) {
-        announcements.rowMoved(operation.rowId, `${prefix} a Row to`);
+        announcements.rowMoved(
+          operation.rowId,
+          step === "undo" ? "said.undoMovedRow" : "said.redoMovedRow"
+        );
         return;
       }
       const { blockId } = operation;
-      announcements.blockMoved(blockId, `${prefix} a Block to`);
+      announcements.blockMoved(
+        blockId,
+        step === "undo" ? "said.undoMovedBlock" : "said.redoMovedBlock"
+      );
       if (blockId === selection.blockId) {
         focus.revealBlock(blockId);
       }
@@ -396,22 +416,23 @@ export const createEditingActions = ({
         announcements.blockMoved(blockId);
         focus.revealBlock(blockId);
       } else {
-        announcements.say(`The Block can't move ${direction}.`);
+        announcements.say(text(BLOCK_CANT_MOVE[direction]));
       }
     },
 
     /**
      * One step, keeping the selection, and focus on the Row's tools if it was
-     * there. A Row can't move left or right.
+     * there.
      */
-    moveRow: (rowId: string, direction: Direction) => {
+    moveRow: (rowId: string, direction: "down" | "up") => {
       const email = current();
-      const command =
-        email &&
-        (direction === "up" || direction === "down") &&
-        moveRowCommand(email, rowId, direction);
+      const command = email && moveRowCommand(email, rowId, direction);
       if (!command) {
-        announcements.say(`The Row can't move ${direction}.`);
+        announcements.say(
+          text(
+            direction === "up" ? "said.rowCantMoveUp" : "said.rowCantMoveDown"
+          )
+        );
         return;
       }
       if (apply(command)?.ok) {
@@ -440,7 +461,7 @@ export const createEditingActions = ({
         return;
       }
       if ("refused" in pasted) {
-        announcements.say(`Can't paste. ${pasted.refused}.`);
+        announcements.say(text(`paste.${pasted.refused}`));
         return;
       }
       const block = afterRow === undefined ? selectedBlock(email) : undefined;
@@ -457,7 +478,7 @@ export const createEditingActions = ({
       if ("files" in pasted) {
         const blockId = pasteFiles(pasted.files, position);
         if (blockId !== undefined) {
-          announcements.blockMoved(blockId, "Block pasted,");
+          announcements.blockMoved(blockId, "said.blockPasted");
         }
         return;
       }
@@ -477,7 +498,7 @@ export const createEditingActions = ({
           });
         if (result?.ok && result.createdId !== undefined) {
           selection.selectRow(result.createdId, true);
-          announcements.rowMoved(result.createdId, "Row pasted,");
+          announcements.rowMoved(result.createdId, "said.rowPasted");
         }
         return;
       }
@@ -491,7 +512,7 @@ export const createEditingActions = ({
         const blockId = result.createdId;
         selection.select({ blockId });
         focus.focusWhenRendered({ blockId, on: "block" });
-        announcements.blockMoved(blockId, "Block pasted,");
+        announcements.blockMoved(blockId, "said.blockPasted");
       }
     },
 

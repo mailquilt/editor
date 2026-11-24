@@ -6,6 +6,7 @@ import type { PanelTab } from "./selection.js";
 import type { SettingsDrafts } from "./settings-panel.js";
 import type { ShownMergeTagPicker } from "./text-block-view.js";
 import type { ListType, TextFormats, ToggleableMark } from "./text-commands.js";
+import type { Text } from "./text.js";
 
 /**
  * How the Side panel, its settings, the format bar and the toolbars reach the
@@ -36,6 +37,8 @@ export interface EmailPanelApi {
   selectedRow: RowPosition | undefined;
   /** Whether focus is in the selected Block's text or its format bar. */
   editingText: boolean;
+  /** Each of the editor's texts, in the Host app's words where it gives them. */
+  text: Text;
   /**
    * The formats at the cursor in the selected Block's text. Unset until the text
    * has its editor, and the buttons wait for it.

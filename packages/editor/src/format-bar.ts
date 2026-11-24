@@ -1,13 +1,14 @@
-import { INVALID_LINK, isAllowedLinkHref } from "@mailquilt/core/internal";
+import { isAllowedLinkHref } from "@mailquilt/core/internal";
 import { css, html, nothing } from "lit";
 import { keyed } from "lit/directives/keyed.js";
 
 import { place } from "./editor-places.js";
 import { ICONS } from "./icons.js";
 import type { KeyLabel } from "./key-map.js";
-import { keyLabel, textKeyLabel } from "./key-map.js";
+import { keyLabel, textKeyLabel, withKeys } from "./key-map.js";
 import { fieldTags } from "./merge-tag-picker.js";
 import type { OwnPanelsApi, PanelApi } from "./panel-api.js";
+import type { StringId } from "./strings.js";
 import type { TextBlockView } from "./text-block-view.js";
 import type { ListType, ToggleableMark } from "./text-commands.js";
 
@@ -84,27 +85,31 @@ export const formatBarStyles = css`
 
 const MARK_BUTTONS: {
   keys: KeyLabel;
-  label: string;
+  label: StringId;
   mark: ToggleableMark;
 }[] = [
-  { keys: textKeyLabel("bold"), label: "Bold", mark: "bold" },
-  { keys: textKeyLabel("italic"), label: "Italic", mark: "italic" },
-  { keys: textKeyLabel("underline"), label: "Underline", mark: "underline" },
+  { keys: textKeyLabel("bold"), label: "format.bold", mark: "bold" },
+  { keys: textKeyLabel("italic"), label: "format.italic", mark: "italic" },
+  {
+    keys: textKeyLabel("underline"),
+    label: "format.underline",
+    mark: "underline",
+  },
 ];
 
 const LIST_BUTTONS: {
   keys: KeyLabel;
-  label: string;
+  label: StringId;
   list: ListType;
 }[] = [
   {
     keys: textKeyLabel("bulletList"),
-    label: "Bulleted list",
+    label: "format.bulletList",
     list: "bulletList",
   },
   {
     keys: textKeyLabel("orderedList"),
-    label: "Numbered list",
+    label: "format.numberedList",
     list: "orderedList",
   },
 ];
@@ -215,7 +220,7 @@ const renderLinkForm = (
       }}
     >
       <label>
-        Link URL
+        ${api.text("format.linkUrl")}
         <input
           aria-activedescendant=${tags.activeDescendant}
           aria-controls=${tags.controls}
@@ -236,7 +241,9 @@ const renderLinkForm = (
           ? html`<p class="description" id="link-description">${tags.hint}</p>`
           : nothing
       }
-      <button class="text-button primary" type="submit">Apply</button>
+      <button class="text-button primary" type="submit">
+        ${api.text("format.applyLink")}
+      </button>
       ${
         href === undefined
           ? nothing
@@ -246,18 +253,20 @@ const renderLinkForm = (
                 type="button"
                 @click=${api.removeLink}
               >
-                Remove link
+                ${api.text("format.removeLink")}
               </button>
             `
       }
       <button class="text-button" type="button" @click=${api.cancelLink}>
-        Cancel
+        ${api.text("format.cancelLink")}
       </button>
       ${
         refusals
           ? keyed(
               refusals,
-              html`<p id="link-error" role="alert">${INVALID_LINK}</p>`
+              html`<p id="link-error" role="alert">
+                ${api.text("invalid.link")}
+              </p>`
             )
           : nothing
       }
@@ -270,13 +279,15 @@ const renderLinkForm = (
  * goes back, so it takes no stop of its own from Tab.
  */
 export const renderFormatBar = (api: PanelApi) => {
-  const { formats, linkField } = api;
+  const { formats, linkField, text } = api;
   // Its name, not a pressed state, says the text is in a link, as pressing it
   // opens the link field rather than taking the link away.
-  const linkLabel = formats?.linkHref === undefined ? "Link" : "Edit link";
+  const linkLabel = text(
+    formats?.linkHref === undefined ? "format.link" : "format.editLink"
+  );
   return html`
     <div
-      aria-label="Text formatting"
+      aria-label=${text("format.bar")}
       class="ui bar format-bar"
       data-place=${place("formatBar")}
       role="toolbar"
@@ -285,10 +296,10 @@ export const renderFormatBar = (api: PanelApi) => {
         ({ keys, label, mark }) => html`
           <button
             aria-keyshortcuts=${keys.shortcuts}
-            aria-label=${label}
+            aria-label=${text(label)}
             aria-pressed=${formats?.[mark] ? "true" : "false"}
             class="icon-button"
-            data-tooltip=${`${label} (${keys.keys})`}
+            data-tooltip=${withKeys(text(label), keys.keys, text)}
             ?disabled=${!formats || (mark === "bold" && !formats.canBold)}
             tabindex="-1"
             type="button"
@@ -303,10 +314,10 @@ export const renderFormatBar = (api: PanelApi) => {
         ({ keys, label, list }) => html`
           <button
             aria-keyshortcuts=${keys.shortcuts}
-            aria-label=${label}
+            aria-label=${text(label)}
             aria-pressed=${formats?.list === list ? "true" : "false"}
             class="icon-button"
-            data-tooltip=${`${label} (${keys.keys})`}
+            data-tooltip=${withKeys(text(label), keys.keys, text)}
             ?disabled=${!formats?.canList}
             tabindex="-1"
             type="button"
@@ -323,7 +334,7 @@ export const renderFormatBar = (api: PanelApi) => {
         aria-label=${linkLabel}
         class="icon-button"
         ?data-active=${formats?.linkHref !== undefined}
-        data-tooltip=${`${linkLabel} (${LINK_KEYS.keys})`}
+        data-tooltip=${withKeys(linkLabel, LINK_KEYS.keys, text)}
         ?disabled=${!formats}
         tabindex="-1"
         type="button"
@@ -333,9 +344,13 @@ export const renderFormatBar = (api: PanelApi) => {
       </button>
       <button
         aria-keyshortcuts=${LINE_BREAK_KEYS.shortcuts}
-        aria-label="Line break"
+        aria-label=${text("format.lineBreak")}
         class="icon-button"
-        data-tooltip=${`Line break (${LINE_BREAK_KEYS.keys})`}
+        data-tooltip=${withKeys(
+          text("format.lineBreak"),
+          LINE_BREAK_KEYS.keys,
+          text
+        )}
         ?disabled=${!formats}
         tabindex="-1"
         type="button"
@@ -347,9 +362,9 @@ export const renderFormatBar = (api: PanelApi) => {
         api.insertMergeTag
           ? html`
               <button
-                aria-label="Merge Tag"
+                aria-label=${text("format.mergeTag")}
                 class="icon-button"
-                data-tooltip="Merge Tag (type {{)"
+                data-tooltip=${text("format.mergeTagKeys")}
                 ?disabled=${!formats}
                 tabindex="-1"
                 type="button"

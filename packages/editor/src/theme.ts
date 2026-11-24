@@ -1,13 +1,6 @@
 import { css, unsafeCSS } from "lit";
 
 /**
- * The language of the editor's own words, on everything it draws, so that a
- * screen reader says them in English on any page. Only each Block's content
- * takes the email's language.
- */
-export const UI_LANG = "en";
-
-/**
  * What covers the page behind the Preview, unless a host sets
  * `--mq-color-backdrop`.
  */

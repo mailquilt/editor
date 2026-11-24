@@ -397,6 +397,25 @@ test.describe("the editor's API", () => {
     await expect(picker).toHaveCount(0);
   });
 
+  test("strings reaches the editor, and names the Shell's own buttons", async ({
+    page,
+  }) => {
+    await openShell(page);
+    await shell(page).evaluate((element) => {
+      (element as MailQuiltShell).strings = {
+        "canvas.undo": "Annuler",
+        "shell.exportHtml": "Exporter le HTML",
+      };
+    });
+
+    await expect(
+      shell(page).getByRole("button", { exact: true, name: "Annuler" })
+    ).toBeVisible();
+    await expect(
+      shell(page).getByRole("button", { name: "Exporter le HTML" })
+    ).toBeVisible();
+  });
+
   test("exportHtml() works straight after the Shell is added", async ({
     page,
   }) => {

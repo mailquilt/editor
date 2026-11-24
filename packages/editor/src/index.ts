@@ -5,5 +5,7 @@ export type {
 } from "./mail-quilt.js";
 export { MailQuiltShell } from "./mail-quilt-shell.js";
 export type { HostAppProperties } from "./host-app.js";
+export { STRINGS } from "./strings.js";
+export type { MailQuiltStrings, StringId } from "./strings.js";
 export type { ShellAction } from "./mail-quilt-shell.js";
 export type { BlocksDocument } from "@mailquilt/core";

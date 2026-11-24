@@ -3,17 +3,11 @@ import * as v from "valibot";
 import type { Block, EmailStyle } from "./document.js";
 import {
   imageSrcSchema,
-  INVALID_IMAGE_URL,
-  INVALID_LINK,
   linkHrefSchema,
   headingTextSchema,
   richTextSchema,
 } from "./rich-text.js";
-import {
-  colorField,
-  INVALID_SOLID_COLOR,
-  pixelField,
-} from "./settings-fields.js";
+import { colorField, pixelField } from "./settings-fields.js";
 import type { SettingsField } from "./settings-fields.js";
 import { parseProps } from "./validation.js";
 import {
@@ -27,30 +21,30 @@ import {
 
 /** The alignment dropdown, whose values are all the schema accepts. */
 const ALIGN_OPTIONS = [
-  { label: "Left", value: "left" },
-  { label: "Center", value: "center" },
-  { label: "Right", value: "right" },
+  { labelId: "align.left", value: "left" },
+  { labelId: "align.center", value: "center" },
+  { labelId: "align.right", value: "right" },
 ] as const;
 
 const alignSchema = v.picklist(ALIGN_OPTIONS.map(({ value }) => value));
 
 const alignField = (fallback: string): SettingsField => ({
   default: fallback,
-  invalidMessage: "Choose an alignment from the list.",
+  invalidMessageId: "invalid.alignment",
   key: "align",
-  label: "Alignment",
+  labelId: "field.alignment",
   options: ALIGN_OPTIONS,
   type: "select",
 });
 
 const fontSizeField = (fallback: number) =>
-  pixelField("fontSize", "Font size", { fallback, max: MAX_FONT_SIZE });
+  pixelField("fontSize", "field.fontSize", { fallback, max: MAX_FONT_SIZE });
 
 const LINK_FIELD: SettingsField = {
-  description: "A URL, or a Merge Tag such as {{cta_url}}.",
-  invalidMessage: INVALID_LINK,
+  descriptionId: "field.link.description",
+  invalidMessageId: "invalid.link",
   key: "href",
-  label: "Link",
+  labelId: "field.link",
   type: "text",
 };
 
@@ -127,9 +121,9 @@ const HEADING_FONT_SIZES = { 1: 32, 2: 24, 3: 20 } as const;
 
 /** The level dropdown, whose values are all the schema accepts. */
 const LEVEL_OPTIONS = [
-  { label: "Heading 1", value: 1 },
-  { label: "Heading 2", value: 2 },
-  { label: "Heading 3", value: 3 },
+  { labelId: "level.1", value: 1 },
+  { labelId: "level.2", value: 2 },
+  { labelId: "level.3", value: 3 },
 ] as const;
 
 const headingBlockSchema = v.strictObject({
@@ -144,9 +138,9 @@ type HeadingBlockProps = v.InferOutput<typeof headingBlockSchema>;
 
 const headingFields = (fontSize: number): readonly SettingsField[] => [
   {
-    invalidMessage: "Choose a level from the list.",
+    invalidMessageId: "invalid.level",
     key: "level",
-    label: "Level",
+    labelId: "field.level",
     options: LEVEL_OPTIONS,
     type: "select",
   },
@@ -213,19 +207,19 @@ type ButtonBlockProps = v.InferOutput<typeof buttonBlockSchema>;
 
 const BUTTON_FIELDS: readonly SettingsField[] = [
   {
-    invalidMessage: "Enter the text the Button shows.",
+    invalidMessageId: "invalid.buttonLabel",
     key: "label",
-    label: "Label",
+    labelId: "field.buttonLabel",
     type: "text",
   },
   LINK_FIELD,
   colorField({
     fallback: BUTTON_LOOK.backgroundColor,
-    invalidMessage: INVALID_SOLID_COLOR,
+    invalidMessageId: "invalid.solidColor",
     key: "backgroundColor",
-    label: "Background color",
+    labelId: "field.backgroundColor",
   }),
-  colorField({ fallback: BUTTON_LOOK.color, label: "Text color" }),
+  colorField({ fallback: BUTTON_LOOK.color, labelId: "field.textColor" }),
   alignField(BUTTON_LOOK.align),
 ];
 
@@ -281,23 +275,22 @@ type ImageBlockProps = v.InferOutput<typeof imageBlockSchema>;
 
 const imageFields = (link: SettingsField): readonly SettingsField[] => [
   {
-    description: "A URL, or a Merge Tag such as {{logo_url}}.",
-    invalidMessage: INVALID_IMAGE_URL,
+    descriptionId: "field.imageUrl.description",
+    invalidMessageId: "invalid.imageUrl",
     key: "src",
-    label: "Image URL",
+    labelId: "field.imageUrl",
     type: "text",
   },
   {
-    description: "What a screen reader says, and what shows if images are off.",
-    invalidMessage:
-      "A linked Image needs alt text. To leave this empty, remove the link first.",
+    descriptionId: "field.altText.description",
+    invalidMessageId: "invalid.altText",
     key: "alt",
-    label: "Alt text",
+    labelId: "field.altText",
     type: "text",
   },
   {
-    ...pixelField("width", "Width"),
-    description: "Leave empty to fill the Column.",
+    ...pixelField("width", "field.width"),
+    descriptionId: "field.imageWidth.description",
   },
   link,
 ];
@@ -306,7 +299,7 @@ const IMAGE_FIELDS = imageFields(LINK_FIELD);
 
 const IMAGE_FIELDS_WITHOUT_ALT = imageFields({
   ...LINK_FIELD,
-  description: "Add alt text first, as a screen reader says it for the link.",
+  descriptionId: "field.link.needsAltText",
   disabled: true,
 });
 
@@ -334,7 +327,7 @@ type DividerBlockProps = v.InferOutput<typeof dividerBlockSchema>;
 
 const DIVIDER_FIELDS: readonly SettingsField[] = [
   colorField({ fallback: DIVIDER_LOOK.color }),
-  pixelField("thickness", "Thickness", {
+  pixelField("thickness", "field.thickness", {
     fallback: DIVIDER_LOOK.thickness,
     max: MAX_DIVIDER_THICKNESS,
   }),
@@ -365,7 +358,7 @@ const spacerBlockSchema = v.strictObject({
 type SpacerBlockProps = v.InferOutput<typeof spacerBlockSchema>;
 
 const SPACER_FIELDS: readonly SettingsField[] = [
-  pixelField("height", "Height", {
+  pixelField("height", "field.height", {
     fallback: DEFAULT_SPACER_HEIGHT,
     max: MAX_SPACER_HEIGHT,
   }),
@@ -406,15 +399,15 @@ const SOCIAL_LOOK = {
 } as const;
 
 const ICON_STYLE_OPTIONS = [
-  { label: "Color", value: "color" },
-  { label: "White", value: "white" },
+  { labelId: "iconStyle.color", value: "color" },
+  { labelId: "iconStyle.white", value: "white" },
 ] as const;
 
 /** At least 29px, Instagram's minimum. */
 const ICON_SIZE_OPTIONS = [
-  { label: "32px", value: 32 },
-  { label: "40px", value: 40 },
-  { label: "48px", value: 48 },
+  { labelId: "iconSize.32", value: 32 },
+  { labelId: "iconSize.40", value: 40 },
+  { labelId: "iconSize.48", value: 48 },
 ] as const;
 
 const socialBlockSchema = v.strictObject({
@@ -445,40 +438,39 @@ type SocialBlockProps = v.InferOutput<typeof socialBlockSchema>;
 
 const SOCIAL_FIELDS: readonly SettingsField[] = [
   {
-    description:
-      "Each URL can be a Merge Tag, such as {{facebook_url}}. A link without a URL shows faded, and isn't sent.",
-    invalidMessage: "Each network can be linked only once.",
+    allAddedId: "field.socialLinks.allAdded",
+    chooseLabelId: "field.socialLinks.choose",
+    descriptionId: "field.socialLinks.description",
+    invalidMessageId: "invalid.socialLinks",
     itemField: {
-      invalidMessage: INVALID_LINK,
+      invalidMessageId: "invalid.link",
       key: "url",
-      label: "URL",
+      labelId: "field.socialUrl",
       type: "text",
     },
     itemKey: "network",
-    itemName: "network",
     key: "links",
-    label: "Links",
-    options: Object.entries(SOCIAL_NETWORKS).map(([value, label]) => ({
-      label,
+    labelId: "field.socialLinks",
+    options: Object.keys(SOCIAL_NETWORKS).map((value) => ({
+      labelId: `network.${value}`,
       value,
     })),
     type: "list",
   },
   {
     default: SOCIAL_LOOK.iconStyle,
-    description:
-      "White is for a dark background. Some email apps' dark modes make a dark background light, which hides white icons. Color icons show on light and dark backgrounds.",
-    invalidMessage: "Choose a style from the list.",
+    descriptionId: "field.iconStyle.description",
+    invalidMessageId: "invalid.iconStyle",
     key: "iconStyle",
-    label: "Icon style",
+    labelId: "field.iconStyle",
     options: ICON_STYLE_OPTIONS,
     type: "select",
   },
   {
     default: SOCIAL_LOOK.iconSize,
-    invalidMessage: "Choose a size from the list.",
+    invalidMessageId: "invalid.iconSize",
     key: "iconSize",
-    label: "Icon size",
+    labelId: "field.iconSize",
     options: ICON_SIZE_OPTIONS,
     type: "select",
   },
