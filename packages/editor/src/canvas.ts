@@ -12,7 +12,7 @@ import { ICONS } from "./icons.js";
 import { keyLabel } from "./key-map.js";
 import { renderMergeTagPicker } from "./merge-tag-picker.js";
 import type { PanelApi } from "./panel-api.js";
-import { columnLabel, positionLabel } from "./positions.js";
+import { blocksIn, columnLabel, positionLabel } from "./positions.js";
 import { styleProperties } from "./style-properties.js";
 import { UI_LANG } from "./theme.js";
 
@@ -809,6 +809,8 @@ const renderBlock = (
   block: Block,
   /** Where the Block is, in words. */
   label: string,
+  /** Whether it's the email's one stop for Tab, as `renderRows` says. */
+  isTabStop: boolean,
   api: PanelApi,
   state: CanvasState,
   events: CanvasEvents
@@ -826,7 +828,7 @@ const renderBlock = (
       data-place=${place("block")}
       role="group"
       style=${styleProperties(rich ? blockStyles(block) : {})}
-      tabindex="0"
+      tabindex=${isTabStop ? "0" : "-1"}
       @click=${({ target }: MouseEvent) =>
         events.onBlockClick(block.id, target as Element)}
       @focus=${() => events.onBlockFocus(block.id)}
@@ -856,6 +858,8 @@ const renderColumn = (
   { blocks, id, width }: Column,
   /** Where the Column is, in words. */
   label: string,
+  /** The Block that's the email's one stop for Tab, if any. */
+  tabStop: string | undefined,
   api: PanelApi,
   state: CanvasState,
   events: CanvasEvents
@@ -874,6 +878,7 @@ const renderColumn = (
         renderBlock(
           block,
           `${label}, ${positionLabel(blockIndex, blocks.length)}`,
+          block.id === tabStop,
           api,
           state,
           events
@@ -923,13 +928,24 @@ const rowLook = (row: Row) => {
   return { ...styles, "--_mq-row-background": styles["background-color"] };
 };
 
-/** The email's Rows, with their tools, Columns and Blocks. */
+/**
+ * The email's Rows, with their tools, Columns and Blocks.
+ *
+ * Of the Blocks, one is a stop for Tab: the selected Block, or with nothing
+ * selected the first, and the arrow keys go to the others. So Tab from the
+ * selected Block's toolbar selects no other Block on its way to the settings,
+ * stopping only at the Row and empty Column toolbars after it. With a Row
+ * selected no Block is a stop, so Tab from its toolbar goes the same way.
+ */
 export const renderRows = (
   api: PanelApi,
   state: CanvasState,
   events: CanvasEvents
 ) => {
   const { rows } = api.email;
+  const tabStop =
+    api.selectedBlock?.block.id ??
+    (api.selectedRow ? undefined : blocksIn(api.email)[0]?.id);
   return repeat(
     rows,
     (row) => row.id,
@@ -963,6 +979,7 @@ export const renderRows = (
               renderColumn(
                 column,
                 columnLabel(rowIndex, columnIndex),
+                tabStop,
                 api,
                 state,
                 events

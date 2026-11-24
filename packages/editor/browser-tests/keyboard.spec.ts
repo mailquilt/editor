@@ -118,7 +118,7 @@ const announcementCount = (page: Page) =>
   );
 
 test.describe("selecting a Block", () => {
-  test("Tab reaches a Block and selects it, and then its text", async ({
+  test("Tab reaches a Block and selects it, then its text and toolbar, then leaves the email for its settings", async ({
     page,
   }) => {
     await openEmail(page, [[["First"], ["Second"]]]);
@@ -142,12 +142,23 @@ test.describe("selecting a Block", () => {
     await page.keyboard.press("Tab");
     await expect(blockTool(page, "Move Block up")).toBeFocused();
 
+    // The email is one stop: Tab passes the other Blocks, and the side panel
+    // still shows this one's settings.
     await page.keyboard.press("Tab");
-    await expect(blockWith(page, "Second")).toBeFocused();
-    await expect(blockWith(page, "Second")).toHaveAttribute(
+    await expect(previewButton(page)).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(backButton(page)).toBeFocused();
+    await expect(blockWith(page, "First")).toHaveAttribute(
       "aria-current",
       "true"
     );
+
+    // And back, to the selected Block's text.
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Shift+Tab");
+    await expect(blockTool(page, "Move Block up")).toBeFocused();
+    await page.keyboard.press("Shift+Tab");
+    await expect(textOf(page, "First")).toBeFocused();
   });
 
   test("an arrow key selects the next Block that way", async ({ page }) => {

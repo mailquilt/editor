@@ -141,6 +141,8 @@ export interface TextBlockView {
    * editor's, as its name is the editor's own.
    */
   setLang: (lang: string) => void;
+  /** Whether Tab stops in the text, which it does only in the selected Block's. */
+  setTabStop: (isTabStop: boolean) => void;
   focus: () => void;
   formats: () => TextFormats;
   toggleMark: (mark: ToggleableMark) => void;
@@ -298,7 +300,6 @@ export const createTextBlockView = ({
       "aria-multiline": "true",
       "data-place": place("text"),
       role: "textbox",
-      tabindex: "0",
     },
     clipboardParser: pastedHtmlParser(schema),
     // On each paragraph, a List's items' too.
@@ -487,6 +488,11 @@ export const createTextBlockView = ({
       }
     },
     setLink: (href) => run(commands.setLink(href)),
+    // Not one of the view's attributes, which it would set back on its next
+    // update, as nothing updates it when another Block is selected.
+    setTabStop: (isTabStop) => {
+      view.dom.tabIndex = isTabStop ? 0 : -1;
+    },
     // A new view for each tag redraws them all, and changes nothing else.
     showMergeTags: () =>
       view.setProps({ nodeViews: { mergeTag: mergeTagView(mergeTags) } }),

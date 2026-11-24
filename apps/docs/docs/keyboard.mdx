@@ -10,11 +10,15 @@ Anything a person can do in the editor by dragging, they can also do from the ke
 ## Selecting a Block
 
 <kbd>Tab</kbd> moves into the email and selects a Block. The arrow keys then go
-from Block to Block.
+from Block to Block. The email is one stop for <kbd>Tab</kbd>, at the selected
+Block, so the other Blocks aren't stops: <kbd>Tab</kbd> goes from the selected
+Block to its text and its toolbar, then past the toolbars of the Rows and empty
+Columns after it, to Preview and the side panel, which shows that Block's
+settings.
 
 | Key | What it does |
 | --- | --- |
-| <kbd>Tab</kbd> | Reaches a Block and selects it. From there, <kbd>Tab</kbd> goes into its text, if it has any, and then to its toolbar. |
+| <kbd>Tab</kbd> | Reaches the selected Block, or with nothing selected the first, and selects it. From there, <kbd>Tab</kbd> goes into its text, if it has any, then to its toolbar, and then on past the other Blocks, stopping only at the toolbars of the Rows and empty Columns after it, to the side panel and the Block's settings. |
 | <kbd>Up</kbd> <kbd>Down</kbd> | Selects the Block before or after this one, in reading order. This reaches every Block in the email. |
 | <kbd>Left</kbd> <kbd>Right</kbd> | Selects a Block in the next Column that has one, as close as it can get to the same position. |
 | <kbd>Enter</kbd> | Goes into the Block's text to edit it. Held down, it goes in and stops, with no empty paragraphs added. |
@@ -45,9 +49,12 @@ A selected Block has a toolbar with a drag handle, four move buttons, Duplicate 
 
 A Row's toolbar comes just before the Row's Blocks, so <kbd>Shift</kbd> + <kbd>Tab</kbd> from the Row's first Block reaches it. It has a drag handle, Select Row, the two Move Row buttons, Duplicate Row and Delete Row. Like the Block's toolbar, it's one stop for <kbd>Tab</kbd>, the arrow keys go across its buttons, and <kbd>Home</kbd> and <kbd>End</kbd> go to its first and last.
 
+Select Row shows the Row's settings in the side panel. While a Row is selected, no Block is a stop for <kbd>Tab</kbd>, so <kbd>Tab</kbd> goes on past the toolbars of the Rows and empty Columns after it to those settings.
+
 | Key | What it does |
 | --- | --- |
 | <kbd>Alt</kbd> + <kbd>Up</kbd> <kbd>Down</kbd> | In the Row's toolbar, moves the Row up or down with its Blocks, as one step for undo. |
+| <kbd>Escape</kbd> | In a Row's toolbar while a Row is selected, unselects that Row and selects the first Block of this toolbar's Row, with focus on it. If this toolbar's Row has no Blocks, nothing is selected. As in the Block's toolbar, it first closes the tooltip of the button with focus. |
 
 ## Duplicating and deleting
 

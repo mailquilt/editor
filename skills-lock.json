@@ -8,6 +8,13 @@
       "skillPath": "skills/ai-seo/SKILL.md",
       "computedHash": "5b5dbb143389784211c56e357e20bd44a12c3a0245dbf6dcfbb40348daaaf4ef"
     },
+    "choreograph": {
+      "source": "emilkowalski/skills",
+      "commit": "64eb3deb9a5fbfa041faf783e0bc3fd635872e9c",
+      "sourceType": "github",
+      "skillPath": "skills/choreograph/SKILL.md",
+      "computedHash": "a33a7cf57eacff502f833778eed62244fb5a890bb25124dacde73bcf8716218c"
+    },
     "codebase-design": {
       "source": "mattpocock/skills",
       "commit": "7739eaed7f8f3915437a8def198a6d0d7206dbc7",
@@ -49,6 +56,13 @@
       "sourceType": "github",
       "skillPath": "email-html-mjml/SKILL.md",
       "computedHash": "9d97d45ab3cd3bdb56a2f988c803198987f9d5885e610b27aebe31251f660353"
+    },
+    "emil-design-eng": {
+      "source": "emilkowalski/skills",
+      "commit": "64eb3deb9a5fbfa041faf783e0bc3fd635872e9c",
+      "sourceType": "github",
+      "skillPath": "skills/emil-design-eng/SKILL.md",
+      "computedHash": "e1b377ccde1d32743d1d3f7d8626629deb8055c9114d180c184697928cc66cc6"
     },
     "frontend-design": {
       "source": "anthropics/skills",

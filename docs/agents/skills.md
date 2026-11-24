@@ -4,6 +4,8 @@ Skills are only for areas where they change how an agent works, not for every pa
 
 The planning and build flow is `grill-with-docs` → `to-spec` → `to-tickets` → `implement` for each ticket.
 
+UI work on the editor or the site uses `frontend-design` for visual direction and `emil-design-eng` for interaction polish, as `docs/agents/design.md` sets out.
+
 ## To install later
 
 Install with `npx skills add <skill> -y`.

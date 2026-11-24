@@ -7,6 +7,7 @@ The agent skills in `skills/` are copied from other repositories, as listed in `
 | ai-seo, copywriting, schema, seo-audit | [coreyhaines31/marketingskills](https://github.com/coreyhaines31/marketingskills) | Copyright (c) 2025 Corey Haines |
 | codebase-design, diagnosing-bugs, domain-modeling, grill-with-docs, grilling, implement, pr, setup-matt-pocock-skills, tdd, to-spec, to-tickets, triage | [mattpocock/skills](https://github.com/mattpocock/skills) | Copyright (c) 2026 Matt Pocock |
 | docs-seo | [samber/developer-relations-skills](https://github.com/samber/developer-relations-skills) | Copyright (c) 2026 Samuel Berthe |
+| choreograph, emil-design-eng | [emilkowalski/skills](https://github.com/emilkowalski/skills) | Copyright (c) 2026 Emil Kowalski |
 | lit-best-practices | [artmsilva/lit-best-practices](https://github.com/artmsilva/lit-best-practices) | Copyright (c) artmsilva. The repository has no license file; the skill declares `license: MIT`. |
 | playwright-best-practices | [currents-dev/playwright-best-practices-skill](https://github.com/currents-dev/playwright-best-practices-skill) | Copyright © 2026 Currents Software Inc. |
 | ponytail, ponytail-audit, ponytail-review | [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail) | Copyright (c) 2026 DietrichGebert |

@@ -1,6 +1,6 @@
 import { readPasted } from "./clipboard.js";
 import type { EditingActions } from "./editing-actions.js";
-import { closestPlace, placeOf } from "./editor-places.js";
+import { closestPlace, findPlaces, placeOf } from "./editor-places.js";
 import type { FieldMergeTags } from "./field-merge-tags.js";
 import { focusToolbarButton } from "./focus.js";
 import type { EditorFocus, ToolbarStep } from "./focus.js";
@@ -57,7 +57,7 @@ interface KeyDispatchHost {
   isDragging: () => boolean;
   linkForm: { cancel: () => void; open: () => void };
   previewIsOpen: () => boolean;
-  selection: Pick<EditorSelection, "selectedText">;
+  selection: Pick<EditorSelection, "rowId" | "select" | "selectedText">;
   stepHistory: (step: "redo" | "undo") => void;
 }
 
@@ -150,6 +150,19 @@ export const createKeyDispatch = ({
     redo: () => stepHistory("redo"),
     typeInField: doNothing,
     undo: () => stepHistory("undo"),
+    // To the first Block of the Row whose toolbar this is, which focus
+    // selects, or with none, to nothing selected.
+    unselectRow: ({ target }) => {
+      const row = closestPlace(target as Element, "row");
+      const blockId = row
+        ? findPlaces(row, "block")[0]?.dataset.blockId
+        : undefined;
+      if (blockId === undefined) {
+        selection.select(undefined);
+      } else {
+        focus.focus({ blockId, on: "block" });
+      }
+    },
   };
 
   /**
@@ -209,6 +222,7 @@ export const createKeyDispatch = ({
     canRedo: canStep("redo"),
     canUndo: canStep("undo"),
     dragging: isDragging(),
+    selectedRow: selection.rowId !== undefined,
     selectedText: selection.selectedText !== undefined,
   });
 

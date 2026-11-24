@@ -626,8 +626,9 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       }
     }
     this.#removeViewsExcept(blockIds);
-    for (const view of this.#views.values()) {
+    for (const [blockId, view] of this.#views) {
       view.setLang(this.#emailLang);
+      view.setTabStop(blockId === this.#selection.blockId);
     }
   }
 
