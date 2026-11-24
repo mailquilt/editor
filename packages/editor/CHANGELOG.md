@@ -19,6 +19,7 @@
 
 ### Patch Changes
 
+- 5e07cec: The email is one stop for Tab, so a Block's or a Row's settings can be reached from the keyboard. Before, every Block and its text was a stop, and Tab selected each Block it passed, so the side panel showed the email's last Block by the time Tab got there, and a Row's settings couldn't be reached at all. Now only the selected Block is a stop, or with nothing selected the first, and the arrow keys go to the others as before. Tab goes from the selected Block to its text and toolbar, then past the toolbars of the Rows and empty Columns after it, to Preview and that Block's settings. While a Row is selected no Block is a stop, so Tab from Select Row goes the same way to the Row's settings, and Escape in a Row's toolbar unselects the Row and selects that toolbar's Row's first Block.
 - 10b300f: An empty Column's add buttons are one toolbar, named for where it is, such as "Add a Block to Row 1, Column 2". It's one stop for Tab, as the Block's and Row's toolbars are: the arrow keys go across its buttons, Home and End go to the first and last, and Shift+Tab leaves it. Each button is now named "Add Text Block here" and so on, without the Column, which the toolbar's name gives. Before, each empty Column was one Tab stop per type of Block.
 - Updated dependencies [f08e0bc]
 - Updated dependencies [9925d65]
