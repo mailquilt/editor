@@ -1,82 +1,56 @@
 ---
 title: Vue, Angular and Svelte
-description: Use the Mail Quilt email editor, a Web Component, in Vue, Angular or Svelte. Let the framework know the element, pass the email in and listen for events.
+description: Use the Mail Quilt email editor, a Web Component, in Vue, Angular or Svelte. Let the framework know the element, pass the email in, listen for its events, and get its types.
 seo:
   title: "Use the drag-and-drop email editor in Vue, Angular and Svelte"
 ---
 
-There's no Mail Quilt component for these frameworks yet. The [roadmap](/roadmap) adds Vue and Svelte ones if the element alone isn't enough. The editor is a Web Component, so each of them uses the `<mail-quilt>` element directly, as the [quick start](./quick-start) does. Three things change from framework to framework:
+There's no Mail Quilt component for these frameworks. The editor is a Web Component, so each of them uses the `<mail-quilt>` element directly, as the [quick start](./quick-start) does. Mail Quilt's tests build the code on this page in a Vue 3.5, an Angular 22 and a Svelte 5 app, type-check it, and run it in a browser, so it works as written.
+
+```package-install
+npm install @mailquilt/editor
+```
+
+Four things change from framework to framework:
 
 - **Telling the framework** that `<mail-quilt>` is an element, not one of its own components.
 - **Passing the email as a property.** An attribute can only be a string, and `value` is an object.
 - **Listening for `mq-change` and `mq-error`,** the editor's events.
+- **Typing the element,** so its properties, its events and `exportHtml()` are checked.
 
-:::note
+Each example opens an email, saves every change in the browser, shows the reason if the editor refuses an email, and exports the email as HTML. In your app, save each email to your server from `mq-change` instead, as [Save emails to your server](./save-emails) shows. The [editor's API](./api#the-editor) lists everything the element has.
 
-Mail Quilt's tests don't cover these frameworks yet. The code on this page follows each framework's own docs for custom elements, linked in each section. If something here doesn't work, please [open an issue](https://github.com/mailquilt/editor/issues).
+Each one opens `starterEmail`, the email to open when nothing is saved yet, from a file beside it:
 
-:::
-
-Each example keeps the email in memory. In your app, save it to your server from `mq-change`, as [Save emails to your server](./save-emails) shows. The [editor's API](./api#the-editor) lists everything the element has.
-
-Each example opens `starterEmail` from a file beside it:
-
-<include meta='title="starter-email.js"'>
-  ./_quick-start/starter-email.js
+<include meta='title="starter-email.ts"'>
+  ./_quick-start/other-frameworks/starter-email.ts
 </include>
-
-In TypeScript, as for Angular, name it `starter-email.ts` and give it the `BlocksDocument` type, from `@mailquilt/editor` here as it's the package you installed.
 
 ## Vue
 
 Tell Vue's compiler that tags starting with `mail-quilt` are custom elements, in your Vite config:
 
-```js title="vite.config.js"
-import vue from "@vitejs/plugin-vue";
-import { defineConfig } from "vite";
-
-export default defineConfig({
-  plugins: [
-    vue({
-      template: {
-        compilerOptions: {
-          isCustomElement: (tag) => tag.startsWith("mail-quilt"),
-        },
-      },
-    }),
-  ],
-});
-```
+<include meta='title="vite.config.js"'>
+  ./_quick-start/vue/vite.config.js
+</include>
 
 Then use the element in a component:
 
-```vue title="EmailEditor.vue"
-<script setup>
-import "@mailquilt/editor";
-import { shallowRef } from "vue";
-
-import { starterEmail } from "./starter-email.js";
-
-const email = shallowRef(starterEmail);
-const loadError = shallowRef("");
-const editor = shallowRef(null);
-
-const exportHtml = () => editor.value.exportHtml();
-</script>
-
-<template>
-  <mail-quilt
-    ref="editor"
-    :value.prop="email"
-    @mq-change="(event) => (email = event.detail.document)"
-    @mq-error="(event) => (loadError = event.detail.reason)"
-  />
-  <p>{{ loadError }}</p>
-</template>
-```
+<include meta='title="src/email-editor.vue"'>
+  ./_quick-start/vue/src/email-editor.vue
+</include>
 
 - **`:value.prop`** sets `value` as a property. Vue already prefers a property when the element has one, and `.prop` makes sure.
+- **`@mq-change` and `@mq-error`** listen for the editor's events. Vue adds them as it makes the element, so they hear even the first email being refused.
 - **`shallowRef`** keeps the email as the plain object the editor sent. Each change sends a whole new email, so there's nothing inside it to watch.
+
+For types, add this file to your `src` folder:
+
+<include meta='title="src/mail-quilt.d.ts"'>
+  ./_quick-start/vue/src/mail-quilt.d.ts
+</include>
+
+`@mailquilt/editor/vue` tells Vue's templates about `<mail-quilt>` and `<mail-quilt-shell>`: their properties as props, `$event` in `@mq-change` and `@mq-error`, and the element `useTemplateRef` gives you. Without it, `vue-tsc` doesn't check any of them.
 
 [Vue and Web Components](https://vuejs.org/guide/extras/web-components.html) has the details.
 
@@ -84,97 +58,41 @@ const exportHtml = () => editor.value.exportHtml();
 
 Add `CUSTOM_ELEMENTS_SCHEMA` to the component that uses the element, so Angular doesn't treat `<mail-quilt>` as an unknown element:
 
-```ts title="email-editor.component.ts"
-import {
-  Component,
-  CUSTOM_ELEMENTS_SCHEMA,
-  ElementRef,
-  viewChild,
-} from "@angular/core";
-import "@mailquilt/editor";
-import type {
-  BlocksDocument,
-  MailQuilt,
-  MailQuiltChangeEvent,
-  MailQuiltErrorEvent,
-} from "@mailquilt/editor";
-
-import { starterEmail } from "./starter-email";
-
-@Component({
-  schemas: [CUSTOM_ELEMENTS_SCHEMA],
-  selector: "app-email-editor",
-  template: `
-    <mail-quilt
-      #editor
-      [value]="email"
-      (mq-change)="save($event)"
-      (mq-error)="showError($event)"
-    ></mail-quilt>
-    <p>{{ loadError }}</p>
-  `,
-})
-export class EmailEditorComponent {
-  email: BlocksDocument = starterEmail;
-  loadError = "";
-  readonly editor = viewChild.required<ElementRef<MailQuilt>>("editor");
-
-  save(event: Event) {
-    this.email = (event as MailQuiltChangeEvent).detail.document;
-  }
-
-  showError(event: Event) {
-    this.loadError = (event as MailQuiltErrorEvent).detail.reason;
-  }
-
-  exportHtml() {
-    return this.editor().nativeElement.exportHtml();
-  }
-}
-```
+<include meta='title="src/app/email-editor.ts"'>
+  ./_quick-start/angular/src/app/email-editor.ts
+</include>
 
 - **`[value]`** sets the element's `value` property, as Angular's property bindings do.
-- **`(mq-change)` and `(mq-error)`** listen for the editor's events. Angular types `$event` as a plain `Event`, so the handlers cast it.
+- **`(mq-change)` and `(mq-error)`** listen for the editor's events. Angular adds them as it makes the element, so they hear even the first email being refused.
+- **`#editor`** is the element, which the Export button passes to `exportHtml`.
+
+There's nothing to add for types. Unless your `tsconfig.json` turns `strictTemplates` off, Angular types `$event` in `(mq-change)` and `(mq-error)`, and `#editor`, from the types `@mailquilt/editor` gives the element. Angular doesn't check what's bound to an element's properties, so it doesn't check `[value]`.
 
 Angular's [advanced component configuration](https://angular.dev/guide/components/advanced-configuration) covers `CUSTOM_ELEMENTS_SCHEMA`.
 
 ## Svelte
 
-Svelte's docs don't say how it passes values to a custom element made somewhere else. So this example uses the element itself: it sets `value` and adds the listeners in an effect.
+Svelte knows `<mail-quilt>` is a custom element from the dash in its name, so there's nothing to set up. Use the element in a component:
 
-```svelte title="EmailEditor.svelte"
-<script>
-  import "@mailquilt/editor";
+<include meta='title="src/email-editor.svelte"'>
+  ./_quick-start/svelte/src/email-editor.svelte
+</include>
 
-  import { starterEmail } from "./starter-email.js";
+- **`value={email}`** sets `value` as a property, because the element has one. Importing `@mailquilt/editor` defines the element before the component renders, so it's there when Svelte checks.
+- **`onmq-change` and `onmq-error`** listen for the editor's events, as Svelte 5 names an event attribute: `on` and then the event's name. Svelte adds them as it makes the element, so they hear even the first email being refused.
+- **`$state.raw`** keeps the email as the plain object the editor sent. Each change sends a whole new email, so there's nothing inside it to watch.
 
-  let editor;
-  let email = starterEmail;
-  let loadError = $state("");
+For types, add this file to your `src` folder:
 
-  $effect(() => {
-    const save = (event) => {
-      email = event.detail.document;
-      // Send it to your server too.
-    };
-    const showError = (event) => {
-      loadError = event.detail.reason;
-    };
-    editor.addEventListener("mq-change", save);
-    editor.addEventListener("mq-error", showError);
-    editor.value = email;
-    return () => {
-      editor.removeEventListener("mq-change", save);
-      editor.removeEventListener("mq-error", showError);
-    };
-  });
-</script>
+<include meta='title="src/mail-quilt.d.ts"'>
+  ./_quick-start/svelte/src/mail-quilt.d.ts
+</include>
 
-<mail-quilt bind:this={editor}></mail-quilt>
-<p>{loadError}</p>
-```
+`@mailquilt/editor/svelte` tells Svelte about the attributes of `<mail-quilt>` and `<mail-quilt-shell>`: their properties, and the events `onmq-change` and `onmq-error` get. Without it, the events have no types, which strict TypeScript refuses, and the properties aren't checked.
 
-The listeners are added before `value` is set, so a refusal is heard. Call `editor.exportHtml()` for the HTML.
+## The Shell
+
+`<mail-quilt-shell>`, a whole editor page with a header, Export and Import buttons and saving in the browser, is used the same way, and the types above cover it too. [The Shell](./shell) says what it takes.
 
 ## With server rendering
 

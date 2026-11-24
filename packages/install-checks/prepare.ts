@@ -7,6 +7,7 @@ import {
   freshProjectsDir,
   projectNames,
 } from "./fresh-projects.ts";
+import type { ProjectName } from "./fresh-projects.ts";
 
 const packages = ["core", "renderer", "editor", "react"];
 const here = import.meta.dirname;
@@ -29,13 +30,16 @@ const shellPages = {
 } as const;
 /**
  * The starter email the setup pages show, and each folder whose samples import
- * it from beside them.
+ * it from beside them. Vue, Angular and Svelte's is typed from the editor.
  */
 const starterEmails = {
+  angular: { dirs: ["src/app"], file: "other-frameworks/starter-email.ts" },
   cdn: { dirs: ["."], file: "starter-email.js" },
   nextjs: { dirs: ["app"], file: "starter-email.ts" },
   "plain-js": { dirs: [".", "save", "shell"], file: "starter-email.js" },
   "react-vite": { dirs: ["src"], file: "starter-email.ts" },
+  svelte: { dirs: ["src"], file: "other-frameworks/starter-email.ts" },
+  vue: { dirs: ["src"], file: "other-frameworks/starter-email.ts" },
 } as const;
 /** Read by each project with TypeScript, which its build type-checks. */
 const publishedTypes = {
@@ -67,18 +71,42 @@ const packed: Record<string, string> = Object.fromEntries(
     return [`@mailquilt/${name}`, filename];
   })
 );
-// The repo's TypeScript reads the published types, as the packages' own checks do.
+// The repo's TypeScript reads the published types, as the packages' own checks
+// do. Vue's, Angular's and Svelte's checkers call TypeScript's JS API, which
+// TypeScript 7 doesn't have, so those projects take the TypeScript they name.
 const { devDependencies } = JSON.parse(
   readFileSync(path.join(here, "..", "..", "package.json"), "utf-8")
 );
-const overrides = Object.entries({
-  ...Object.fromEntries(
+const ownTypeScript = new Set<ProjectName>(["angular", "svelte", "vue"]);
+/**
+ * Angular's build tools have install scripts it builds without, and pnpm 11
+ * won't install a package whose scripts are neither allowed nor declined.
+ */
+const declinedBuilds = [
+  "@parcel/watcher",
+  "esbuild",
+  "lmdb",
+  "msgpackr-extract",
+];
+
+const workspaceFor = (project: ProjectName) => {
+  const overrides: Record<string, string> = Object.fromEntries(
     Object.entries(packed).map(([name, file]) => [name, `file:${file}`])
-  ),
-  typescript: devDependencies.typescript,
-})
-  .map(([name, version]) => `  "${name}": "${version}"`)
-  .join("\n");
+  );
+  if (!ownTypeScript.has(project)) {
+    overrides.typescript = devDependencies.typescript;
+  }
+  return [
+    "overrides:",
+    ...Object.entries(overrides).map(
+      ([name, version]) => `  "${name}": "${version}"`
+    ),
+    ...(project === "angular"
+      ? ["allowBuilds:", ...declinedBuilds.map((name) => `  "${name}": false`)]
+      : []),
+    "",
+  ].join("\n");
+};
 
 interface Listed {
   dependencies?: Record<string, Listed>;
@@ -147,15 +175,15 @@ for (const project of projectNames) {
   }
   const { dirs, file } = starterEmails[name];
   for (const each of dirs) {
-    cpSync(path.join(quickStart, file), path.join(dir, each, file));
+    cpSync(
+      path.join(quickStart, file),
+      path.join(dir, each, path.basename(file))
+    );
   }
   if (project !== name) {
     cpSync(path.join(here, "projects", project), dir, { recursive: true });
   }
-  writeFileSync(
-    path.join(dir, "pnpm-workspace.yaml"),
-    `overrides:\n${overrides}\n`
-  );
+  writeFileSync(path.join(dir, "pnpm-workspace.yaml"), workspaceFor(project));
   pnpm(dir, "install");
   checkInstalledFromTarballs(dir);
   // A page with no bundler has no build step.

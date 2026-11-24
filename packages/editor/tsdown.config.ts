@@ -47,10 +47,13 @@ const thirdPartyLicenses: Rolldown.Plugin = {
 
 export default defineConfig([
   {
+    // Vue's and Svelte's types are the app's own, which the entries that type
+    // the elements for them import, so they're never bundled.
+    deps: { neverBundle: ["vue", /^svelte\//u] },
     dts: true,
     // The texts are an entry of their own, which defines no elements, so a
     // server can read them.
-    entry: ["src/index.ts", "src/strings.ts"],
+    entry: ["src/index.ts", "src/strings.ts", "src/svelte.ts", "src/vue.ts"],
     platform: "browser",
     // The target @repo/typescript-config states.
     target: "es2023",

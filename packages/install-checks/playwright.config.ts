@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import { defineConfig, devices } from "@playwright/test";
 
 import { freshProjectDir } from "./fresh-projects.ts";
@@ -55,6 +57,22 @@ export default defineConfig({
       cwd: freshProjectDir("nextjs"),
       env: { NEXT_TELEMETRY_DISABLED: "1" },
       port: freshProjects.nextjs.port,
+    },
+    {
+      command: `node_modules/.bin/vite preview --port ${freshProjects.vue.port} --strictPort`,
+      cwd: freshProjectDir("vue"),
+      port: freshProjects.vue.port,
+    },
+    {
+      command: `node_modules/.bin/vite preview --port ${freshProjects.svelte.port} --strictPort`,
+      cwd: freshProjectDir("svelte"),
+      port: freshProjects.svelte.port,
+    },
+    {
+      // Angular's build has no preview, so the CDN page's server serves it.
+      command: `node ${path.join(freshProjectDir("cdn"), "serve.js")} dist ${freshProjects.angular.port}`,
+      cwd: freshProjectDir("angular"),
+      port: freshProjects.angular.port,
     },
   ],
 });

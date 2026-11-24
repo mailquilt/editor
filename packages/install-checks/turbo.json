@@ -6,7 +6,8 @@
     "check-types": {
       "inputs": [
         "$TURBO_DEFAULT$",
-        "$TURBO_ROOT$/apps/docs/docs/_quick-start/starter-email.*"
+        "$TURBO_ROOT$/apps/docs/docs/_quick-start/starter-email.*",
+        "$TURBO_ROOT$/apps/docs/docs/_quick-start/other-frameworks/starter-email.ts"
       ]
     },
     "test": {

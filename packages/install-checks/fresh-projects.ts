@@ -3,11 +3,14 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 export const projectNames = [
+  "angular",
   "cdn",
   "nextjs",
   "plain-js",
   "react-18-vite",
   "react-vite",
+  "svelte",
+  "vue",
 ] as const;
 export type ProjectName = (typeof projectNames)[number];
 
