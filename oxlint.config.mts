@@ -11,6 +11,8 @@ const root = defineConfig({
     ...(core.ignorePatterns ?? []),
     ".agents",
     ".claude",
+    // Mockups, drawn by hand to design the editor; not shipped.
+    "docs/design",
     ".blume",
     "test-results",
     "playwright-report",
