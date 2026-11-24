@@ -82,6 +82,27 @@ export const checkRefusedDocument = async (page: Page, url: string) => {
 };
 
 /**
+ * Each fresh project opens the email saved under `email`. One the editor
+ * refuses is refused as the page starts, so this proves the page listens for
+ * `mq-error` before the editor fires it, just after `value` is first set.
+ */
+export const checkRefusedSavedEmail = async (page: Page, url: string) => {
+  await page.goto(url);
+  await page.evaluate(() => {
+    localStorage.setItem(
+      "email",
+      JSON.stringify({ kind: "blocks", rows: [], version: 999 })
+    );
+  });
+
+  await page.reload();
+
+  await expect(page.getByTestId("load-error")).toContainText(
+    /version 999 is newer/iu
+  );
+};
+
+/**
  * Each fresh project's Shell page saves under `my-app:email`, opening an email
  * saying "Hello" when nothing is saved. Its exports and refusals are the
  * editor's own tests' to check; this proves the Shell works once installed.

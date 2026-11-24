@@ -41,6 +41,14 @@
       "types": "./dist/strings.d.ts",
       "default": "./dist/strings.js"
     },
+    "./svelte": {
+      "types": "./dist/svelte.d.ts",
+      "default": "./dist/svelte.js"
+    },
+    "./vue": {
+      "types": "./dist/vue.d.ts",
+      "default": "./dist/vue.js"
+    },
     "./package.json": "./package.json"
   },
   "publishConfig": {
@@ -73,10 +81,24 @@
     "@types/react-dom": "^19.3.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "svelte": "^5.59.1",
     "tailwindcss": "^4.3.4",
     "tsdown": "^0.23.5",
     "typescript": "7.0.2",
     "vite": "^8.3.6",
-    "vitest": "^5.1.0"
+    "vitest": "^5.1.0",
+    "vue": "^3.5.46"
+  },
+  "peerDependencies": {
+    "svelte": "*",
+    "vue": "*"
+  },
+  "peerDependenciesMeta": {
+    "svelte": {
+      "optional": true
+    },
+    "vue": {
+      "optional": true
+    }
   }
 }

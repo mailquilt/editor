@@ -135,7 +135,7 @@ editor.strings = {
 | `HostAppProperties` | `@mailquilt/editor` and `@mailquilt/react` | The properties through which your app gives the editor what it can't do itself, such as `uploadImage`. |
 | `MailQuiltStrings`, `StringId` | `@mailquilt/editor` and `@mailquilt/react` | What `strings` takes, and the ID of one of the editor's texts, as `STRINGS` lists them. |
 
-`addEventListener` on the elements knows `mq-change` and `mq-error` by name, so their events are typed without a cast.
+`addEventListener` on the elements knows `mq-change` and `mq-error` by name, so their events are typed without a cast. Angular's templates type them the same way. For Vue's and Svelte's templates, `@mailquilt/editor/vue` and `@mailquilt/editor/svelte` type both elements' properties and events, as [Vue, Angular and Svelte](./other-frameworks) shows.
 
 ## CSS parts
 

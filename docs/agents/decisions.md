@@ -118,6 +118,7 @@ Which module owns what, and why, is in `docs/adr/`:
 - The docs site's `robots.txt`, which Blume writes, allows AI training. The docs are open and meant to be found. (#205)
 - The React components take only the props that mean something on their element, as the API page lists. Two lines disable `react/immutability`, which reads an effect's `let` flag for a late result, React's own pattern, and setting the element's `value`, a DOM element in state, as changing state. (#224)
 - The install checks read the published types with the repo's TypeScript and without `skipLibCheck`, and fail if a package of ours was installed from npm and not its tarball. (#224)
+- The Vue, Angular and Svelte install checks use TypeScript 6, not the repo's 7: `vue-tsc`, Angular's compiler and `svelte-check` call TypeScript's JS API, which TypeScript 7 doesn't have, and Angular 22 asks for `>=6.0 <6.1`. They still read the published types without `skipLibCheck`. Vue and Svelte get the elements' types from `@mailquilt/editor/vue` and `@mailquilt/editor/svelte`, which a host references, as they import `vue` and `svelte`. The editor names both as optional peers of any version (`*`): without a peer, the types can't find `vue` under pnpm's global virtual store, and a narrower range makes npm refuse to install the editor beside Vue 2 or Svelte 4. Angular needs none: its templates read the element and event maps the editor already declares, and it never checks a property bound on an element. (#335)
 
 ## Tests
 
