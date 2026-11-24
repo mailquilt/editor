@@ -177,6 +177,60 @@ test("icons that wrap have the gap between icons between their lines too, on the
   expect(await spaceBetweenLines(exported)).toBe(24);
 });
 
+/** Where each line of icons starts and ends, from the top line down, in px. */
+const lineEdges = async (images: Locator) => {
+  const all = await images.all();
+  const found = await Promise.all(all.map((image) => image.boundingBox()));
+  const lines = new Map<number, { end: number; start: number }>();
+  for (const box of found.filter((each) => each !== null)) {
+    const line = lines.get(box.y) ?? { end: -Infinity, start: Infinity };
+    lines.set(box.y, {
+      end: Math.max(line.end, box.x + box.width),
+      start: Math.min(line.start, box.x),
+    });
+  }
+  return [...lines.entries()]
+    .toSorted(([top], [other]) => top - other)
+    .map(([, edges]) => edges);
+};
+
+for (const align of ["right", "center"] as const) {
+  test(`icons that wrap, aligned ${align}, line up the same on every line, on the canvas and in the export`, async ({
+    page,
+  }) => {
+    await openSocial(
+      page,
+      (Object.keys(SOCIAL_NETWORKS) as (keyof typeof SOCIAL_NETWORKS)[]).map(
+        (network) => ({
+          network,
+          url: `https://${network}.example/shop`,
+        })
+      )
+    );
+    await blockGroup(page, "Social").click();
+    await field(page, "Icon size").selectOption({ label: "48px" });
+    await field(page, "Alignment").selectOption(align);
+    await expect(icons(page).first()).toHaveJSProperty("width", 48);
+    /** The end of each line for right, and its middle for center. */
+    const placeOf = ({ end, start }: { end: number; start: number }) =>
+      Math.round(align === "right" ? end : (start + end) / 2);
+    const places = async (images: Locator) => {
+      const lines = await lineEdges(images);
+      return new Set(lines.map(placeOf)).size;
+    };
+
+    expect(await lineEdges(icons(page))).toHaveLength(2);
+    expect(await places(icons(page))).toBe(1);
+    await previewButton(page).click();
+    const exported = previewEmail(page).getByRole("img");
+    await expect(exported).toHaveCount(10);
+    for (const icon of await exported.all()) {
+      await expect(icon).toHaveJSProperty("complete", true);
+    }
+    expect(await places(exported)).toBe(1);
+  });
+}
+
 test("one line of icons is no taller than the icons and the Block's padding, on the canvas and in the export", async ({
   page,
 }) => {
