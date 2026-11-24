@@ -13,6 +13,8 @@ export default defineConfig({
     "**/*.md",
     // Must stay byte-for-byte what the renderer produced.
     "packages/renderer/test/expected",
+    // Mockups, drawn by hand to design the editor; not shipped.
+    "docs/design",
     ".blume",
     "test-results",
     "playwright-report",
