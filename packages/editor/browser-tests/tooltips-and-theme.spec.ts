@@ -8,6 +8,7 @@ import {
   boxOf,
   canvas,
   centerOf,
+  contrast,
   dropIndicator,
   handleOf,
   hoverRow,
@@ -289,28 +290,6 @@ test("in forced colors, a selected tab, a pressed button and a palette tile are 
   await expect(bold).toHaveAttribute("aria-pressed", "true");
   await expect(bold).toHaveCSS("outline-style", "solid");
 });
-
-/**
- * The contrast between two colors that `getComputedStyle` gives as `rgb()`, or
- * as `color(srgb …)` with channels from 0 to 1, as it gives a `color-mix()`.
- */
-const contrast = (...colors: string[]) => {
-  const [lighter = 0, darker = 0] = colors
-    .map((color) => {
-      const scale = color.startsWith("color(srgb") ? 1 : 255;
-      const [red = 0, green = 0, blue = 0] = (
-        color.match(/[\d.]+/gu) ?? []
-      ).map((value) => {
-        const channel = Number(value) / scale;
-        return channel <= 0.04045
-          ? channel / 12.92
-          : ((channel + 0.055) / 1.055) ** 2.4;
-      });
-      return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
-    })
-    .toSorted((a, b) => b - a);
-  return (lighter + 0.05) / (darker + 0.05);
-};
 
 test("a pressed button has an edge at 3:1, so it isn't told by color alone", async ({
   page,

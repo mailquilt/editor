@@ -56,9 +56,10 @@ export const mergeTagPickerStyles = css`
     background: var(--mq-color-surface-hover);
   }
 
+  /* Its edge is at 3:1, as a pressed button's is, so it isn't told by color alone. */
   .merge-tag-options li[aria-selected="true"] {
     background: var(--mq-color-accent-soft);
-    box-shadow: inset 0 0 0 1px var(--mq-color-outline-hover);
+    box-shadow: inset 0 0 0 1px var(--mq-color-accent-strong);
   }
 
   .merge-tag-options .merge-tag-name {
