@@ -320,7 +320,7 @@ The redesign, and everything that fits it, in one release with one change to the
    - A start screen of Starter emails, and Saved Rows to add, when the Host app supplies them. One sample value for each Merge Tag, which Check can show.
 2. Email style ([ADR 0022](docs/adr/0022-email-style-between-a-block-and-the-defaults.md))
    - The email's own colors, a heading and a body font, Heading 1 to 3 and body sizes, and button corners, which a Block's own value overrides.
-   - First: a value a Block leaves unset and takes from Email style, as every Block stores each of its values today.
+   - First: one place where the Canvas and the export look up a value a Block leaves unset, as each Block falls straight back to its built-in look today.
 3. Fuller settings for every Block, Row and Column
    - Padding, a background color, a border and corners for every Block. Settings for a Column: background color, padding, vertical alignment and a border. Every Block and Row shows on all devices, on desktop only or on phones only. A Phone value for font size, padding and an Image's width.
    - First: settings for a Column, as it has none. What each setting falls back to in Outlook on Windows, which ignores rounded corners.
