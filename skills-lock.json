@@ -50,6 +50,13 @@
       "skillPath": "email-html-mjml/SKILL.md",
       "computedHash": "9d97d45ab3cd3bdb56a2f988c803198987f9d5885e610b27aebe31251f660353"
     },
+    "emil-design-eng": {
+      "source": "emilkowalski/skills",
+      "commit": "64eb3deb9a5fbfa041faf783e0bc3fd635872e9c",
+      "sourceType": "github",
+      "skillPath": "skills/emil-design-eng/SKILL.md",
+      "computedHash": "e1b377ccde1d32743d1d3f7d8626629deb8055c9114d180c184697928cc66cc6"
+    },
     "frontend-design": {
       "source": "anthropics/skills",
       "commit": "41bbe19d1a1a7eaab5e7bb9050a417e5c6cffc8f",
