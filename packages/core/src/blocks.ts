@@ -469,19 +469,29 @@ const socialBlock = {
   styles: ({ align = SOCIAL_LOOK.align }) => ({ "text-align": align }),
 } satisfies BlockDefinition<SocialBlockProps>;
 
+/** The space around a Block's content, in px. */
+const BLOCK_PADDING = 16;
+
 /**
  * A Social Block's icons, with each one's size and the gap between them, which
- * is half that size.
+ * is half that size. Half the gap is above and below each icon too, so lines
+ * that wrap have the gap between them, and the Block's own padding above and
+ * below is that much less, so one line is no taller.
  * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
  */
 export const socialIcons = ({
   iconSize = SOCIAL_LOOK.iconSize,
   iconStyle = SOCIAL_LOOK.iconStyle,
-}: SocialBlockProps) => ({
-  gap: iconSize / 2,
-  size: iconSize,
-  style: iconStyle,
-});
+}: SocialBlockProps) => {
+  const gap = iconSize / 2;
+  return {
+    blockPaddingY: BLOCK_PADDING - gap / 2,
+    gap,
+    iconPaddingY: gap / 2,
+    size: iconSize,
+    style: iconStyle,
+  };
+};
 
 /** Each type of Block, in the order the palette shows them. */
 const BLOCKS = [
@@ -548,7 +558,7 @@ export const validateProps = (
  * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
  */
 export const EMAIL_LOOK = {
-  blockPadding: "16px",
+  blockPadding: `${BLOCK_PADDING}px`,
   fontSize: `${TEXT_LOOK.fontSize}px`,
   lineHeight: String(LINE_HEIGHT),
 } as const;
