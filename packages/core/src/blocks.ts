@@ -443,7 +443,8 @@ const SOCIAL_FIELDS: readonly SettingsField[] = [
   },
   {
     default: SOCIAL_LOOK.iconStyle,
-    description: "White is for a dark background.",
+    description:
+      "White is for a dark background. Some email apps' dark modes make a dark background light, which hides white icons. Color icons show on light and dark backgrounds.",
     invalidMessage: "Choose a style from the list.",
     key: "iconStyle",
     label: "Icon style",

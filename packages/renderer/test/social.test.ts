@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 import { SOCIAL_NETWORKS } from "@mailquilt/core/internal";
+import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 
 import packageJson from "../package.json" with { type: "json" };
@@ -98,6 +99,41 @@ describe("a Social Block", () => {
   });
 });
 
+/** The relative luminance of white, and of #1F1F1F, which Outlook's dark mode gives a white Row. */
+const WHITE = 1;
+const DARK = 0.0137;
+
+const linear = (value: number) => {
+  const channel = value / 255;
+  return channel <= 0.04045
+    ? channel / 12.92
+    : ((channel + 0.055) / 1.055) ** 2.4;
+};
+
+const luminance = (red: number, green: number, blue: number) =>
+  0.2126 * linear(red) + 0.7152 * linear(green) + 0.0722 * linear(blue);
+
+const contrast = (one: number, other: number) =>
+  (Math.max(one, other) + 0.05) / (Math.min(one, other) + 0.05);
+
+/** Whether a twentieth of an icon's RGBA pixels, or more, stands out from `background` by 3:1. */
+const showsOn = (pixels: Buffer | undefined, background: number) => {
+  if (pixels === undefined) {
+    return false;
+  }
+  let standingOut = 0;
+  for (let index = 0; index < pixels.length; index += 4) {
+    const [red = 0, green = 0, blue = 0, alpha = 0] = pixels.subarray(
+      index,
+      index + 4
+    );
+    if (alpha > 230 && contrast(luminance(red, green, blue), background) >= 3) {
+      standingOut += 1;
+    }
+  }
+  return standingOut >= pixels.length / 4 / 20;
+};
+
 describe("the Social icons", () => {
   // jsDelivr serves the icons from the published package, so an icon the
   // renderer names and the package leaves out would be a broken image.
@@ -121,5 +157,35 @@ describe("the Social icons", () => {
       .filter((icon) => !packed.has(icon));
 
     expect(missing).toStrictEqual([]);
+  });
+
+  // Dark mode in Outlook, Yahoo and the Gmail app on iPhone turns a white
+  // background near-black and leaves the images as they are.
+  it("in color, each has a part that shows on white and a part that shows on a dark background", async () => {
+    const networks = Object.keys(
+      SOCIAL_NETWORKS
+    ) as (keyof typeof SOCIAL_NETWORKS)[];
+    const icons = await Promise.all(
+      networks.map((network) =>
+        sharp(
+          fileURLToPath(
+            new URL(
+              `../${socialIconUrl(network, "color", "icons")}`,
+              import.meta.url
+            )
+          )
+        )
+          .ensureAlpha()
+          .raw()
+          .toBuffer()
+      )
+    );
+
+    const hidden = networks.filter(
+      (_, index) =>
+        !(showsOn(icons[index], WHITE) && showsOn(icons[index], DARK))
+    );
+
+    expect(hidden).toStrictEqual([]);
   });
 });
