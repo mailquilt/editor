@@ -57,11 +57,16 @@ const editorDarkTheme = () => {
 /**
  * Opens a page `width` wide. `theme` is what the browser tells the page it
  * prefers, which the site follows. `editorTheme` "dark" also gives every
- * editor on the page the documented dark theme, as a host app would.
+ * editor on the page the documented dark theme, as a host app would. Below
+ * `PHONE_BELOW` the page is a touch phone, unless `phone` is false.
  */
-export const openPage = async ({ width, theme, editorTheme = "light" }) => {
+export const openPage = async ({
+  width,
+  theme,
+  editorTheme = "light",
+  phone = width < PHONE_BELOW,
+}) => {
   const browser = await chromium.launch();
-  const phone = width < PHONE_BELOW;
   const context = await browser.newContext({
     colorScheme: theme,
     deviceScaleFactor: 1,
@@ -145,11 +150,23 @@ const dragAndHold = async (page, value) => {
     throw new Error('A drag is "drag=<from> -> <to>"');
   }
 
+  await page.locator(from).scrollIntoViewIfNeeded({ timeout: STEP_TIMEOUT });
+
   const start = await page.locator(from).boundingBox({ timeout: STEP_TIMEOUT });
   const end = await page.locator(to).boundingBox({ timeout: STEP_TIMEOUT });
+  const viewport = page.viewportSize();
+  // A box can lie outside the window, where the mouse can't reach it.
+  const onScreen = (box) => {
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
 
-  if (!(start && end)) {
-    throw new Error(`Can't drag ${value}: one end isn't on screen`);
+    return x >= 0 && y >= 0 && x < viewport.width && y < viewport.height;
+  };
+
+  if (!(start && end && onScreen(start) && onScreen(end))) {
+    throw new Error(
+      `Can't drag ${value}: both ends must be on screen at once, so pick two that fit in one window`
+    );
   }
 
   await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2);
@@ -183,7 +200,8 @@ export const describeFocus = (page) =>
 
 /** Renders an HTML contact sheet, all of it, to a PNG file. */
 export const renderSheet = async (htmlPath, pngPath, width) => {
-  const { browser, page } = await openPage({ theme: "light", width });
+  // Never a phone, which would lay the sheet out wider and shrink it.
+  const { browser, page } = await openPage({ phone: false, theme: "light", width });
 
   try {
     await page.goto(`file://${htmlPath}`, { waitUntil: "load" });

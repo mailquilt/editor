@@ -32,10 +32,14 @@ node $S/screens.mjs --out /tmp/shots --name playground --path /playground
 node $S/screens.mjs --out /tmp/shots --name playground --path /playground --editor both
 
 # Steps first, run in order
-node $S/screens.mjs --out /tmp/shots --name preview --widths 390,1440 --path /playground \
+node $S/screens.mjs --out /tmp/shots --name preview --widths 768,1440 --path /playground \
   --step 'click=role=button[name="Preview"]'
+# Below 640 px the narrow notice's button is the way in, and it has its own name
+node $S/screens.mjs --out /tmp/shots --name preview-phone --widths 320,390 --path /playground \
+  --step 'click=role=button[name="Preview email"]'
+# The canvas is behind the narrow notice below 640 px, so shoot it from 768 up
 node $S/screens.mjs --out /tmp/shots --name block-toolbar --path /playground \
-  --step 'click=text=Get started' --step 'press=Escape'
+  --widths 768,1024,1440,1920,2560 --step 'click=text=Get started' --step 'press=Escape'
 
 # A drag in progress: picked up and held over the target, not dropped
 node $S/screens.mjs --out /tmp/shots --name drag --widths 1440 --path /playground \
