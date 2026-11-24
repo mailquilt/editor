@@ -15,6 +15,8 @@ Which module owns what, and why, is in `docs/adr/`:
 - Rich text, ADR 0001 and 0003, and Merge Tags in it, ADR 0017.
 - What a copy puts on the clipboard, ADR 0018.
 - Where the Social Block's icons come from, ADR 0019.
+- The editor's Modes and Selection bar, ADR 0021.
+- Email style, and the order a Block's look comes from, ADR 0022.
 
 ## Keys and focus
 

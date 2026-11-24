@@ -39,6 +39,14 @@ _Avoid_: Social links, social bar
 A Row's Columns placed one under another on a phone, rather than side by side.
 _Avoid_: Wrapping, collapsing
 
+**Phone value**:
+A second value of a setting, such as a font size or padding, used when the email is read on a phone. Unset, the phone uses the setting's own value.
+_Avoid_: Mobile override, responsive value
+
+**Decorative image**:
+An Image marked as adding nothing to what the email says, so a screen reader skips it. It has no alt text and no link.
+_Avoid_: Presentational image, empty alt
+
 **Position**:
 Where a Block or Row is in an email: its Column and index, or its index among the Rows. A screen reader hears it in words, such as "Row 1, Column 2, position 3 of 4".
 _Avoid_: Place, location
@@ -56,23 +64,43 @@ _Avoid_: Patch, event
 **Canvas**:
 The part of the editor that shows the email as a card at its own width, on a workspace background, where Blocks are selected, dragged and edited.
 
-**Side panel**:
-The panel docked on the right of the Canvas, with Content, Rows and Settings tabs, which shows the selected Block's or Row's settings instead of its tabs.
-_Avoid_: Sidebar, inspector
+**Mode**:
+One of the editor's three views of an email: Edit, Style and Check. Each has one job.
+_Avoid_: Tab, view, step
+
+**Selection bar**:
+The bar above the Canvas that holds the settings and actions of the selected Block or Row, or of the email when nothing is selected.
+_Avoid_: Toolbar, side panel, inspector
+
+**Rows list**:
+The list of an email's Rows, each shown as a small picture, beside the Canvas in Edit.
+_Avoid_: Strip, rail, outline, layers
+
+**Email style**:
+The colors, fonts, text sizes and button corners that every Block in an email uses unless the Block sets its own.
+_Avoid_: Theme, global styles, brand kit
+
+**Check**:
+The Mode that shows the exported email in an inbox, at desktop and phone width, and lists its Problems.
+_Avoid_: Validation, audit, linter
+
+**Problem**:
+Something in an email that Check finds would go wrong for its readers, such as an Image without alt text. It warns, and never stops an export.
+_Avoid_: Issue, error, warning
 
 **Merge Tag picker**:
 The list of the Host app's Merge Tags that opens when a person types `{{`, from which they pick one.
 _Avoid_: Autocomplete, variable menu
 
 **Preview**:
-The real exported email shown in a dialog, at desktop or phone width.
+The real exported email, shown in Check inside an inbox at desktop and phone width.
 _Avoid_: Mobile view
 
 **Theme token**:
 A CSS custom property starting with `--mq-` that sets one of the editor's own colors, spaces, corners or fonts, and that a host can override on the element. It never changes the email.
 
 **Place**:
-A part of the editor's own interface that focus, keys, a press or a drag finds by name, such as a Block's toolbar, the link field or the Side panel.
+A part of the editor's own interface that focus, keys, a press or a drag finds by name, such as the Selection bar, the link field or the Rows list.
 _Avoid_: Region, area
 
 **Key scope**:
@@ -92,6 +120,10 @@ _Avoid_: Demo, hosted editor
 **Shell**:
 A ready-made editor page: the editor plus a header, Import and Export, and messages.
 _Avoid_: Template, Kit
+
+**Saved Row**:
+A ready-made Row, with its Blocks, that a host offers its users to add to an email.
+_Avoid_: Section, snippet, module, template
 
 **Starter email**:
 A ready-made email that a host offers its users to begin from, instead of an empty one.

@@ -155,15 +155,15 @@ The [document format reference](apps/docs/docs/document-format.mdx) lists every 
 
 ### Planned additions
 
-Later versions add brand styles, display rules, more mobile overrides and HTML documents, each through a migration, as its feature is built.
+Version 4 adds Email style, fuller settings with Phone values, decorative images, web fonts, and the Menu and Video Blocks, in one change to the format. Later versions add display rules, more Phone values and HTML documents, each through a migration, as its feature is built.
 
 ## 5. Blocks and settings
 
 | | Released | Planned |
 |---|---|---|
 | **Layout** | Rows, and Columns from preset layouts | — |
-| **Blocks** | Text (with Lists), Heading, Image, Button, Divider, Spacer, Social | Menus, tables, video thumbnails, headers and footers, custom HTML |
-| **Settings** | Alignment, colors, font size, sizes, links and alt text. Email width, background, font, preheader and language. Row background and padding, and hiding or stacking a Row on phones | Spacing, borders, background images, typography in full, more mobile overrides, brand styles |
+| **Blocks** | Text (with Lists), Heading, Image, Button, Divider, Spacer, Social | Menus and video thumbnails in `0.4.0`. Tables, headers and footers, custom HTML |
+| **Settings** | Alignment, colors, font size, sizes, links and alt text. Email width, background, font, preheader and language. Row background and padding, and hiding or stacking a Row on phones | Email style, spacing, borders, corners, Column settings, showing on one device and Phone values in `0.4.0`. Background images, more Phone values |
 
 Settings are defined as data and drawn by one shared panel:
 
@@ -311,42 +311,66 @@ It doesn't include anything in [Planned features](#10-planned-features).
 
 There are no dates, and items can move. Each item is tracked in GitHub Issues.
 
-**Next**
+**Next: `0.4.0`**
 
-What a team needs before its customers can use the editor. The redesign comes first, then fuller settings, so every Block added later starts in the new editor with the full set. The line under a feature is what its spec has to settle first, because the code doesn't allow for it yet.
+The redesign, and everything that fits it, in one release with one change to the saved format, version 4. The line under a feature is what its spec has to settle first, because the code doesn't allow for it yet.
 
-1. A redesign of the editor's interface, with the email's own styles
-   - Three modes: Edit, Style and Check. Edit has a list of the email's Rows and one bar above the email for what's selected, in place of the side panel and the Block toolbars, and works on phones. Style holds the email's own colors, fonts, sizes and button corners, which a Block's own value overrides. Check replaces the Preview: the email at desktop and phone widths, and what to fix before it's sent, such as an image with no alt text.
-   - First: a value a Block leaves unset and takes from the email's styles, as every Block stores each of its values today.
-2. Fuller settings for every Block, Row and Column
-   - Spacing, borders, corners, backgrounds, typography, and whether a Block shows on phones or on desktop, each changing only what differs from the email's styles. Some settings hold a second value for phones.
-   - First: settings for a Column, as it has none. What each setting falls back to in Outlook on Windows, which ignores rounded corners and background images.
-3. Web fonts
-4. Menu, Video, HTML and Table Blocks
-5. Alt text, or a "decorative" choice, for every image
-6. A plain-text version of each email
-7. Sending a test email, through a function the Host app supplies
-8. Translations of the editor's interface, and right-to-left text
-   - First: the editor's English strings in one place, as about 90 in the editor and 35 in core are written inline and joined together. Left and right as directions, as they're a Column index of −1 and +1.
-9. Starter emails
+1. A redesign of the editor's interface ([ADR 0021](docs/adr/0021-three-modes-and-a-selection-bar.md))
+   - Three Modes: Edit, Style and Check. Edit has the Rows list and one Selection bar above the email for what's selected, in place of the side panel and the Block toolbars, and works on phones. The Rows list, the Selection bar and the Canvas are built as separate parts, so they can be offered to hosts later without a rewrite.
+   - A start screen of Starter emails, and Saved Rows to add, when the Host app supplies them. One sample value for each Merge Tag, which Check can show.
+2. Email style ([ADR 0022](docs/adr/0022-email-style-between-a-block-and-the-defaults.md))
+   - The email's own colors, a heading and a body font, Heading 1 to 3 and body sizes, and button corners, which a Block's own value overrides.
+   - First: a value a Block leaves unset and takes from Email style, as every Block stores each of its values today.
+3. Fuller settings for every Block, Row and Column
+   - Padding, a background color, a border and corners for every Block. Settings for a Column: background color, padding, vertical alignment and a border. Every Block and Row shows on all devices, on desktop only or on phones only. A Phone value for font size, padding and an Image's width.
+   - First: settings for a Column, as it has none. What each setting falls back to in Outlook on Windows, which ignores rounded corners.
+4. A "decorative" choice for every image, exported with empty alt text and never linked
+5. Web fonts, from a list the Host app supplies, for Email style's fonts
+6. Menu and Video Blocks
+7. Check
+   - The email in an inbox at desktop and phone width, its plain-text version, and its HTML, read-only. Sending a test email, through a function the Host app supplies.
+   - Its first Problems: an Image with no image or no alt text, a Button with no link, a Merge Tag not in the Host app's list, an empty preheader, HTML over 102 KB, no language, low contrast, link text such as "click here", and no unsubscribe link when the Host app names its unsubscribe Merge Tag. Each warns, and says what to fix.
+   - First: the rules as a function of their own in the renderer, outside the editor, so a host's server, the CLI and the MCP server can run them too.
+8. The editor's English strings in one place, which a Host app can replace
+   - First: about 90 strings in the editor and 35 in core are written inline and joined together. Core's own messages stay in English, for developers.
+9. A built-in dark theme for the editor, which a Host app turns on
 10. React 18 in `@mailquilt/react`
-   - First: where the components rely on React 19, such as taking `ref` as a plain prop.
+    - First: where the components rely on React 19, such as taking `ref` as a plain prop.
 11. Vue, Angular and Svelte tested in `install-checks`, with types for the element
-12. A JSON Schema for the email format
+12. A JSON Schema for the email format, generated from core's own checks
+13. A docs page for each sending service
+
+**After `0.4.0`**
+
+Left out of `0.4.0` on purpose, to keep it to what fits the redesign. These come first in the release after it, in no order yet.
+
+- Background images for Rows and Columns
+  - First: the VML that Outlook on Windows needs to draw them.
+- Phone values for more settings than font size, padding and an Image's width
+- Table and HTML Blocks
+  - First: for the HTML Block, how its content is sanitized and how a Host app turns it off. For the Table, how a person edits its grid.
+- Right-to-left emails
+  - First: left and right as directions, as they're a Column index of −1 and +1.
+- Translations of the editor's interface, shipped with it
+- A plain-text version a person can edit
+  - First: where it's kept in the email, and what happens to it when the email changes after.
+- More of the email checker: rules from a maintained source such as Can I email, once the HTML Block or HTML mode exists; broken links, through a function the Host app supplies; Merge Tags without a fallback; rules the Host app adds; and `check` in the CLI and the MCP server, as they arrive
+  - First: for fallbacks, a fallback for a Merge Tag, which the format doesn't have.
 
 **Later**
 
 Wanted. The first five open the editor up to the Host app, so they come first, in this order. The rest have no order yet.
 
 - Custom Blocks
+  - First: the settings fields' interface made public, which `0.4.0`'s fields are built to allow.
 - The editor in parts a Host app arranges itself, with the text editor as its own element, and the selection and Commands reachable from outside
-- Saved Rows, whether a person saved them or the Host app supplied them
+- Saving a Row from the editor, through a function the Host app supplies
 - Display rules
+  - First: their output in each sending service's template language, such as Liquid or Handlebars.
 - Parts of an email that can't be changed
-- Light and dark editor themes
-- The email checker
+  - First: who can unlock them, which needs the Host app's roles.
 - A dark-mode preview
-- HTML mode, and a read-only view of the generated code
+- HTML mode
 - Import from HTML, MJML and other editors' formats
 - An MCP server, on its own, with its first five tools, then a CLI and local mode
 - The AI builder
@@ -381,15 +405,15 @@ Switching from Blocks to HTML always works. It warns that the email leaves the v
 
 The HTML Block comes first, on its own. It's the one Block that lets a person put markup of their own on the canvas, so how its content is sanitized, and how a Host app turns the Block off, are settled before it's built. The Block is off unless the Host app turns it on.
 
-### Brand styles, Merge Tags and display rules
+### Email style, Merge Tags and display rules
 
-- **Brand styles:** Blocks refer to shared colors, fonts and button styles, so changing one updates the whole email. The renderer writes the values in directly, because email clients support CSS variables poorly.
+- **Email style:** Blocks use the email's own colors, fonts, sizes and button corners unless they set their own, so changing one updates the whole email. The renderer writes the values in directly, because email clients support CSS variables poorly.
 - **Merge Tags:** groups in the picker, sample data for Preview, and output for Handlebars and Liquid. Merge Tags stay intact through editing, AI changes and rendering.
 - **Display rules:** show or hide Rows and Blocks, and repeat content such as product lists. Rules are stored as structured data, not as template syntax mixed into the content.
 
 ### Email checker
 
-The checker will run in the editor, the CLI and the MCP server. Each result has a severity, an explanation, the Block it's about and a suggested fix.
+The checker will run in the editor, the CLI and the MCP server. Its rules are a function of their own in the renderer, which Check calls. Each Problem has an explanation, the Block or Row it's about and a fix. A severity comes once something can block an export or be turned off. `0.4.0` has the size, accessibility and content rules, and the Merge Tags not in the Host app's list.
 
 | Category | Examples |
 |---|---|
