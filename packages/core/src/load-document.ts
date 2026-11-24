@@ -41,7 +41,7 @@ const blockSchema = v.variant(
 
 // Strict at every level, so a field this version doesn't know is refused rather
 // than dropped, which would lose it at the host's next save.
-const documentSchema = v.strictObject({
+export const documentSchema = v.strictObject({
   kind: v.literal("blocks"),
   rows: v.array(
     v.strictObject({

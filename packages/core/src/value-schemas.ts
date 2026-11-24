@@ -49,12 +49,18 @@ export const fontSizeSchema = pixelSchema(MAX_FONT_SIZE);
 /**
  * The colors MJML's strict check takes, which the export runs, so that an email
  * that loads can also be exported. So an alpha is written as 0.5, not .5, and a
- * channel can be up to 999, which CSS reads as 255.
+ * channel can be up to 999, which CSS reads as 255. Either case is spelled out,
+ * as the JSON Schema's patterns can't have the i flag.
  */
+const HEX = String.raw`#[\dA-Fa-f]{3}(?:[\dA-Fa-f]{3})?`;
+const CHANNELS = String.raw`\(\d{1,3}, ?\d{1,3}, ?\d{1,3}`;
+const RGB = String.raw`[Rr][Gg][Bb]${CHANNELS}\)`;
+const RGBA = String.raw`[Rr][Gg][Bb][Aa]${CHANNELS}, ?\d(?:\.\d{1,3})?\)`;
+
 export const colorSchema = v.pipe(
   v.string(),
   v.regex(
-    /^(?:#[\da-f]{3}(?:[\da-f]{3})?|rgb\(\d{1,3}, ?\d{1,3}, ?\d{1,3}\)|rgba\(\d{1,3}, ?\d{1,3}, ?\d{1,3}, ?\d(?:\.\d{1,3})?\))$/iu,
+    new RegExp(`^(?:${HEX}|${RGB}|${RGBA})$`, "u"),
     "Must be a color written as #rgb, #rrggbb, rgb(255, 0, 0) or rgba(255, 0, 0, 0.5), with at most one space after each comma"
   )
 );
@@ -90,9 +96,9 @@ export const hexColor = (color: string) => {
  * see-through one would come out darker than it should.
  */
 export const solidColorSchema = v.pipe(
-  colorSchema,
-  v.check(
-    (color) => !/^rgba/iu.test(color),
-    "Must be a solid color, not rgba()"
+  v.string(),
+  v.regex(
+    new RegExp(`^(?:${HEX}|${RGB})$`, "u"),
+    "Must be a solid color written as #rgb, #rrggbb or rgb(255, 0, 0), not rgba(), with at most one space after each comma"
   )
 );

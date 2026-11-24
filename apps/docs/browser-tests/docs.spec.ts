@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 
 import { BLOCK_TYPES, loadDocument } from "@mailquilt/core";
+import schema from "@mailquilt/core/schema.json" with { type: "json" };
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
@@ -11,6 +12,9 @@ import {
   SHELL_HEADER_MIN_HEIGHT,
 } from "../site/editor-facts";
 import { examples } from "../site/examples";
+
+/** The first version of the format published with a JSON Schema. */
+const FIRST_SCHEMA_VERSION = 4;
 
 /** For tests of the site's content, which is the same in every browser. */
 const SAME_IN_EVERY_BROWSER = "Checks content, so Chromium alone runs it.";
@@ -295,6 +299,29 @@ test("the document format reference's example is an email core loads", async ({
   );
   // So a new type of Block fails here until the example has one.
   expect(used).toStrictEqual(new Set(BLOCK_TYPES.map(({ type }) => type)));
+});
+
+test("the site serves the format's JSON Schema, and every older version's from 4 on", async ({
+  browserName,
+  request,
+}) => {
+  test.skip(browserName !== "chromium", SAME_IN_EVERY_BROWSER);
+  const current = await request.get(new URL(schema.$id).pathname);
+
+  expect(current.ok()).toBe(true);
+  expect(await current.json()).toStrictEqual(schema);
+  // An address a host's settings point at keeps working after a new version.
+  const older = Array.from(
+    { length: schema.properties.version.const - FIRST_SCHEMA_VERSION },
+    (_, index) => `/schema/v${FIRST_SCHEMA_VERSION + index}.json`
+  );
+  const statuses = await Promise.all(
+    older.map(async (path) => {
+      const response = await request.get(path);
+      return { path, status: response.status() };
+    })
+  );
+  expect(statuses.filter(({ status }) => status >= 400)).toStrictEqual([]);
 });
 
 /** A path to a page rather than a file, without a trailing slash. */
