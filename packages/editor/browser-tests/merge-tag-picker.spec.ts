@@ -9,6 +9,7 @@ import {
   canvas,
   changesSince,
   contrast,
+  docsDarkTheme,
   field,
   formatButton,
   latestDocument,
@@ -466,19 +467,24 @@ test("the highlighted tag in the list has an edge at 3:1, so it isn't told by co
   expect(contrast(edge, list)).toBeGreaterThanOrEqual(3);
 });
 
-test("a Merge Tag in text has an edge at 3:1 against the email, so it's told from typed words", async ({
-  page,
-}) => {
-  await openBlocks(page, ["text"]);
-  await giveMergeTags(page, TAGS);
-  await typeInText(page, "Hi {{first_name}}");
-  const tag = textBlock(page)
-    .getByText("First name", { exact: true })
-    .locator("xpath=ancestor-or-self::*[@data-merge-tag]");
-  await expect(tag).toBeVisible();
+for (const theme of ["default", "the docs' dark"] as const) {
+  test(`a Merge Tag in text has an edge at 3:1 against the email, in the ${theme} theme, so it's told from typed words`, async ({
+    page,
+  }) => {
+    await openBlocks(page, ["text"]);
+    if (theme !== "default") {
+      await page.addStyleTag({ content: docsDarkTheme() });
+    }
+    await giveMergeTags(page, TAGS);
+    await typeInText(page, "Hi {{first_name}}");
+    const tag = textBlock(page)
+      .getByText("First name", { exact: true })
+      .locator("xpath=ancestor-or-self::*[@data-merge-tag]");
+    await expect(tag).toBeVisible();
 
-  const [edge = "", email = ""] = await edgeAndBehind(tag);
+    const [edge = "", email = ""] = await edgeAndBehind(tag);
 
-  expect(edge).not.toBe("");
-  expect(contrast(edge, email)).toBeGreaterThanOrEqual(3);
-});
+    expect(edge).not.toBe("");
+    expect(contrast(edge, email)).toBeGreaterThanOrEqual(3);
+  });
+}

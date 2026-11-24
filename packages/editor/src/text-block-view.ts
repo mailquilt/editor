@@ -77,12 +77,13 @@ export const textBlockStyles = css`
 
   /*
    * A Merge Tag, one unit showing its name, in the text's own color. Its edge is
-   * at 3:1, as it's what tells a tag from typed words.
+   * what tells a tag from typed words, so it's in the text's color too: it stands
+   * out from the email as the text does, whatever the editor's theme.
    */
   .ProseMirror [data-merge-tag] {
     background: var(--mq-color-accent-soft);
     border-radius: var(--mq-radius-small);
-    box-shadow: inset 0 0 0 1px var(--mq-color-accent-strong);
+    box-shadow: inset 0 0 0 1px currentColor;
     padding: 0 var(--mq-space-1);
   }
 
