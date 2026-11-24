@@ -291,12 +291,17 @@ const LIST_INDENT = 1.5;
 
 const LIST_TAGS = { bulletList: "ul", orderedList: "ol" } as const;
 
-/** A Text Block's paragraphs and Lists. */
+/**
+ * A Text Block's paragraphs and Lists. Each paragraph and item has the email's
+ * font on its tag, as a heading does, because some clients, such as Libero,
+ * give a paragraph a font of their own.
+ */
 export const richTextToHtml = (
   { content }: RichTextDocument,
+  fontFamily: string,
   { color, "font-size": fontSize, "line-height": lineHeight }: TextCss
 ) => {
-  const textStyle = `${TEXT_STYLE};line-height:${lineHeight};mso-line-height-rule:exactly`;
+  const textStyle = `${TEXT_STYLE};font-family:${escapeAttribute(fontFamily)};line-height:${lineHeight};mso-line-height-rule:exactly`;
   // A last empty line takes up space on the canvas, but a <br /> at the end of
   // a paragraph doesn't make one on its own. Nor does an empty paragraph.
   const lineHtml = (inline: RichTextParagraph["content"]) =>

@@ -86,7 +86,7 @@ const blockToMjml = (block: Block, context: BlockContext) => {
   const attributes = mjmlAttributes(blockCss);
   switch (block.type) {
     case "text": {
-      return `<mj-text${attributes}>${richTextToHtml(block.props.content, blockCss as TextCss)}</mj-text>`;
+      return `<mj-text${attributes}>${richTextToHtml(block.props.content, fontFamily, blockCss as TextCss)}</mj-text>`;
     }
     case "heading": {
       return `<mj-text${attributes}>${headingToHtml(block.props, fontFamily, blockCss as TextCss)}</mj-text>`;
