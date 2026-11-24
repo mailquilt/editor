@@ -1,0 +1,162 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# CodeRabbit review settings. Reference: https://docs.coderabbit.ai/reference/configuration
+language: en-US
+tone_instructions: >-
+  Plain, direct words. For each finding, say what a host app's user or a developer installing the packages would see go wrong, and rate it against the release bar in docs/agents/review.md.
+early_access: true
+
+reviews:
+  profile: chill
+  # Keep the author's pull request description; put the summary in the walkthrough comment.
+  high_level_summary_in_walkthrough: true
+  in_progress_fortune: false
+  poem: false
+  sequence_diagrams: true
+  estimate_code_review_effort: true
+  assess_linked_issues: true
+  related_issues: true
+  related_prs: true
+  suggested_labels: true
+  auto_apply_labels: true
+  labeling_instructions:
+    - label: accessibility
+      instructions: The change affects keyboard, focus or screen reader use of the editor or the docs site.
+    - label: documentation
+      instructions: The change is only to docs, ADRs, the docs site's content or agent docs.
+    - label: dependencies
+      instructions: The change only updates dependencies or the lockfile.
+
+  path_filters:
+    - "!pnpm-lock.yaml"
+    - "!skills-lock.json"
+    - "!.agents/skills/**"
+    - "!.claude/skills/**"
+
+  path_instructions:
+    - path: "packages/core/**/*.ts"
+      instructions: >-
+        The saved document format and the public contract (value, mq-change, mq-error, exportHtml(), Operations) are promises to hosts: every email a release accepted must keep opening. A check on saved data that gets stricter needs a migration that raises the format version, and a release raises the version once. A change to a public type or the saved format is Breaking and its changeset must say so. Exports that aren't a promise to hosts come from @mailquilt/core/internal.
+    - path: "packages/renderer/**/*.ts"
+      instructions: >-
+        Security first: escaping and link and URL allowlists must hold for every value, Merge Tags included (& < > escaped, and " in attributes). The exported email must render in Outlook, Gmail and Apple Mail, never load web fonts, and keep mjml-browser at its pinned version (ADR 0010). Flag any change to output that the saved expected-HTML files don't reflect.
+    - path: "packages/editor/src/**"
+      instructions: >-
+        A Lit Web Component in Shadow DOM (ADR 0002), styled only through its theme tokens in theme.ts; any other property of its own is named --_mq-…. Check keyboard and focus paths against the key map and focus ADRs (0004, 0007, 0008, 0011, 0014, 0016, 0020, 0021), WCAG 2.2 AA, and docs/agents/design.md.
+    - path: "packages/react/**"
+      instructions: The React components take only the props that mean something on their element, as the API page lists. Don't re-test the editor through them.
+    - path: "**/test/**/*.test.ts"
+      instructions: >-
+        Follow docs/agents/testing.md: test each rule once at the lowest layer that can see it, one representative type for shared paths, each table row a different branch. Always keep security, public contract and accessibility cases.
+    - path: "**/browser-tests/**"
+      instructions: >-
+        Find elements by role and name, a documented part or a data-testid, never by class. Read a Command's result once right after the action; poll only for what settles later (layout, saves, timers). Use a unit test where one will do, as each browser test runs in three browsers.
+    - path: ".changeset/*.md"
+      instructions: Each sentence must match the code. It says "Breaking" if a public type or the saved format changes.
+    - path: "apps/docs/**"
+      instructions: >-
+        Every claim about behaviour, API or options must match the packages' code. Never show a feature that isn't built as if it works. Site styling follows docs/agents/design.md and theme.css's --site-* tokens.
+    - path: "skills/**"
+      instructions: This skill ships to users. Each instruction and API name in it must match the published packages.
+    - path: ".github/workflows/**"
+      instructions: >-
+        Actions pinned to a full commit SHA, least-privilege permissions per job, no untrusted input interpolated into run steps. The publish job must keep provenance and publish only commits that passed every check.
+
+  auto_review:
+    enabled: true
+    drafts: false
+    auto_incremental_review: true
+    base_branches:
+      - "^main$"
+
+  finishing_touches:
+    unit_tests:
+      enabled: true
+    simplify:
+      enabled: true
+    autofix:
+      enabled: true
+    fix_ci:
+      enabled: true
+    resolve_merge_conflict:
+      enabled: true
+
+  pre_merge_checks:
+    title:
+      mode: warning
+      requirements: >-
+        Conventional Commits style (feat:, fix:, docs:, test:, chore:, ci:) followed by a plain sentence that says what changes for the user, with the issue number in brackets when there is one.
+    description:
+      mode: warning
+    issue_assessment:
+      mode: warning
+    custom_checks:
+      - name: One behaviour
+        mode: warning
+        instructions: >-
+          The pull request changes one behaviour. Fail if it mixes unrelated changes, for example a feature with an unrelated refactor or fix.
+      - name: Changeset present
+        mode: warning
+        instructions: >-
+          Fail if code in a published package (packages/core, packages/renderer, packages/editor, packages/react) changes in a way users can see and no .changeset/*.md file is added or updated.
+      - name: Breaking changes declared
+        mode: warning
+        instructions: >-
+          Fail if a public type, the public contract or the saved document format changes and the changeset does not say "Breaking", or the saved format changes without a migration.
+      - name: Decisions respected
+        mode: warning
+        instructions: >-
+          Fail if the change reverses anything in docs/agents/decisions.md or docs/adr/ without saying which one and why in the description, and updating that document.
+
+  tools:
+    oxc:
+      enabled: true
+    biome:
+      enabled: false
+    eslint:
+      enabled: false
+    gitleaks:
+      enabled: true
+    actionlint:
+      enabled: true
+    zizmor:
+      enabled: true
+    osvScanner:
+      enabled: true
+    yamllint:
+      enabled: true
+    markdownlint:
+      enabled: true
+    github-checks:
+      enabled: true
+
+chat:
+  auto_reply: true
+
+knowledge_base:
+  web_search:
+    enabled: true
+  learnings:
+    scope: auto
+  issues:
+    scope: auto
+  pull_requests:
+    scope: auto
+  code_guidelines:
+    enabled: true
+    filePatterns:
+      - files: "docs/agents/review.md,docs/agents/decisions.md,docs/adr/*.md,GLOSSARY.md"
+        applyTo: "**/*"
+      - files: "docs/agents/testing.md"
+        applyTo: "**/test/**,**/browser-tests/**,**/tests/**"
+      - files: "docs/agents/design.md"
+        applyTo: "packages/editor/**,apps/docs/**"
+
+issue_enrichment:
+  auto_enrich:
+    enabled: true
+  planning:
+    enabled: true
+    auto_planning:
+      enabled: true
+      labels:
+        - ready-for-agent
