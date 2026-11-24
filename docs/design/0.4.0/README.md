@@ -12,7 +12,14 @@ node docs/design/0.4.0/shoot.mjs "$PWD/apps/docs/package.json" "$PWD/docs/design
 
 Add a last argument of comma-separated ID prefixes, such as `k0,p1`, to make only those. `SCALE=1` makes them at 1x. The mockups are hand-drawn HTML, not the editor, so their markup and class names aren't a guide to the build; only what they show is.
 
-The photos in `img/` are from Unsplash.
+The photos in `img/` are from Unsplash and are under the [Unsplash License](https://unsplash.com/license), not this repository's MIT License. Each file is named after its Unsplash image:
+
+- `1442512595331-e89e73853f31.jpg`: https://images.unsplash.com/photo-1442512595331-e89e73853f31
+- `1447933601403-0c6688de566e.jpg`: https://images.unsplash.com/photo-1447933601403-0c6688de566e
+- `1495474472287-4d71bcdd2085.jpg`: https://images.unsplash.com/photo-1495474472287-4d71bcdd2085
+- `1497935586351-b67a49e012bf.jpg`: https://images.unsplash.com/photo-1497935586351-b67a49e012bf
+- `1509042239860-f550ce710b93.jpg`: https://images.unsplash.com/photo-1509042239860-f550ce710b93
+- `1511920170033-f8396924c348.jpg`: https://images.unsplash.com/photo-1511920170033-f8396924c348
 
 The direction is the approved concept (ADR 0021, ADR 0022). This brief adds what the concept didn't draw: each surface's job, every state it has and its copy, written before the mockups. Frame IDs point at `mockups.html`; every frame also has a `-dark` twin in the built-in dark theme, except `h01`, which shows a host's own tokens.
 
