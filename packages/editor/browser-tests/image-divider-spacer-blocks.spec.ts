@@ -548,6 +548,10 @@ test.describe("a Spacer", () => {
   });
 
   test.describe("as thin as it gets", () => {
+    // Its handle fades in, and WebKit in CI has been seen to stop a fade partway
+    // until the page is next drawn. Reduced motion turns the fade off.
+    test.use({ reducedMotion: "reduce" });
+
     test("moves by its handle when selected, not what comes next", async ({
       page,
     }) => {
