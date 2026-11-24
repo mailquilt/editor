@@ -396,8 +396,14 @@ describe("in a Row's toolbar", () => {
     );
   });
 
-  it("Escape reaches the host page", () => {
+  it("Escape with no Row selected reaches the host page", () => {
     expect(keyIn("rowToolbar", press("Escape"))).toBeUndefined();
+  });
+
+  it("Escape with a Row selected unselects it, and stops there", () => {
+    expect(
+      keyIn("rowToolbar", press("Escape"), { selectedRow: true })
+    ).toStrictEqual(acts("unselectRow", { stops: true }));
   });
 
   it("Ctrl/⌘+D duplicates the Row, and stops there", () => {

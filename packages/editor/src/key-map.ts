@@ -67,7 +67,8 @@ export type Action =
   | "redo"
   | "selectBlock"
   | "typeInField"
-  | "undo";
+  | "undo"
+  | "unselectRow";
 
 /** The browser's clipboard events, which its keys and its Edit menu fire. */
 export type ClipboardEventType = "copy" | "cut" | "paste";
@@ -119,10 +120,11 @@ interface EntryOptions {
   clipboard?: ClipboardEventType;
   keepsDefault?: boolean;
   /**
-   * Only when the editor has what it acts on: a Block with text selected, or a
-   * step to undo or redo. Otherwise the press reaches the host page.
+   * Only when the editor has what it acts on: a Block with text selected, a
+   * Row selected, or a step to undo or redo. Otherwise the press reaches the
+   * host page.
    */
-  needs?: "canRedo" | "canUndo" | "selectedText";
+  needs?: "canRedo" | "canUndo" | "selectedRow" | "selectedText";
   /** Only on devices other than Apple's. */
   platform?: "other";
   stops: boolean;
@@ -400,6 +402,9 @@ const KEY_SCOPES = {
   },
   rowToolbar: {
     keys: [
+      // A selected Row's Blocks aren't stops for Tab, so this is the way back
+      // to them.
+      escape("unselectRow", { needs: "selectedRow" }),
       // A Row moves only up and down, so Alt+← and Alt+→ only keep the page.
       ...arrows("Alt-", {
         action: "moveRow",
@@ -655,6 +660,8 @@ interface Context {
   canUndo: boolean;
   /** A Block or Row is being dragged. */
   dragging: boolean;
+  /** A Row is selected. */
+  selectedRow: boolean;
   /** The selected Block has text. */
   selectedText: boolean;
 }
@@ -693,6 +700,7 @@ const bindingIn = <Of extends string>(
     canRedo = false,
     canUndo = false,
     dragging = false,
+    selectedRow = false,
     selectedText = false,
   }: Partial<Context>
 ): Binding<Of> | undefined => {
@@ -702,6 +710,7 @@ const bindingIn = <Of extends string>(
       canRedo,
       canUndo,
       dragging,
+      selectedRow,
       selectedText,
     })
   );
