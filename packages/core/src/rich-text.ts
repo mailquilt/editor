@@ -11,25 +11,31 @@ export const MERGE_TAG = /\{\{[^{}]+\}\}/u;
  * colon before the path, query or fragment, because the tag's value could be
  * empty or finish a scheme, as in `{{x}}javascript:alert(1)`.
  */
-const MERGE_TAG_URL = new RegExp(
-  `^${MERGE_TAG.source}[^:/?#]*(?:[/?#]|$)`,
-  "u"
-);
+const MERGE_TAG_URL = String.raw`${MERGE_TAG.source}[^:/?#]*(?:[/?#]|$)`;
+
+/**
+ * Schemes in either case, spelled out rather than with the i flag, which with
+ * u would also take ſ as s, and which the JSON Schema's patterns can't have.
+ */
+const HTTP = "[Hh][Tt][Tt][Pp][Ss]?:";
 
 /**
  * An allowlist, because email has no use for any other scheme or a relative URL.
  * Being anchored at the start also refuses what browsers would clean up into
  * `javascript:`, such as a leading space or a tab inside the scheme.
- * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
  */
-export const isAllowedLinkHref = (href: string) =>
-  // oxlint-disable-next-line require-unicode-regexp -- With u, i would also take ſ as s.
-  /^(?:https?:|mailto:|tel:)/i.test(href) || MERGE_TAG_URL.test(href);
+const LINK_HREF = new RegExp(
+  `^(?:${HTTP}|[Mm][Aa][Ii][Ll][Tt][Oo]:|[Tt][Ee][Ll]:|${MERGE_TAG_URL})`,
+  "u"
+);
+
+/** For Mail Quilt's own packages: not documented, and not yet a promise to hosts. */
+export const isAllowedLinkHref = (href: string) => LINK_HREF.test(href);
 
 export const linkHrefSchema = v.pipe(
   v.string(),
-  v.check(
-    isAllowedLinkHref,
+  v.regex(
+    LINK_HREF,
     "A link must start with http:, https:, mailto:, tel: or a Merge Tag"
   )
 );
@@ -37,9 +43,8 @@ export const linkHrefSchema = v.pipe(
 /** Its own allowlist, so that a scheme added for links doesn't reach images. */
 export const imageSrcSchema = v.pipe(
   v.string(),
-  v.check(
-    // oxlint-disable-next-line require-unicode-regexp -- As for links.
-    (src) => /^https?:/i.test(src) || MERGE_TAG_URL.test(src),
+  v.regex(
+    new RegExp(`^(?:${HTTP}|${MERGE_TAG_URL})`, "u"),
     "An image URL must start with http:, https: or a Merge Tag"
   )
 );

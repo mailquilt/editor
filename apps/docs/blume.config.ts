@@ -1,5 +1,6 @@
-import { appendFile } from "node:fs/promises";
+import { appendFile, mkdir, writeFile } from "node:fs/promises";
 
+import schema from "@mailquilt/core/schema.json" with { type: "json" };
 import type { AstroIntegration } from "astro";
 import { defineConfig } from "blume";
 import { filesystem } from "blume/sources";
@@ -30,6 +31,27 @@ const securityHeaders: AstroIntegration = {
     },
   },
   name: "mailquilt-security-headers",
+};
+
+/**
+ * The format's JSON Schema, from the @mailquilt/core the site is built with, at
+ * the address its `$id` gives, which names its version. Written before the
+ * site is, so every Blume command serves it and its links can be checked. When
+ * the version goes up, the last release's package is added beside the current
+ * one, so the old version's address keeps working.
+ */
+const jsonSchema: AstroIntegration = {
+  hooks: {
+    "astro:config:setup": async ({ config }) => {
+      const file = new URL(
+        `.${new URL(schema.$id).pathname}`,
+        config.publicDir
+      );
+      await mkdir(new URL(".", file), { recursive: true });
+      await writeFile(file, `${JSON.stringify(schema, null, 2)}\n`);
+    },
+  },
+  name: "mailquilt-json-schema",
 };
 
 export default defineConfig({
@@ -64,7 +86,7 @@ export default defineConfig({
     repo: "editor",
   },
   // Blume runs its own first, so `_headers` is there to add to.
-  integrations: [securityHeaders],
+  integrations: [securityHeaders, jsonSchema],
   // Each docs page's date comes from the last commit that changed it, for
   // the page and the sitemap.
   lastModified: "git",

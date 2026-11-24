@@ -9,6 +9,20 @@ Mail Quilt saves an email as a JSON document: Rows hold Columns, and Columns hol
 
 The editor never repairs a document. If one doesn't match this format, the editor refuses it, keeps the email it had, and fires `mq-error` with the reason. A field the editor doesn't know is refused too, rather than dropped, so your next save can't lose it.
 
+## JSON Schema
+
+To check an email in your own code, or have your code editor check a file as you write it, use the format's [JSON Schema](/schema/v4.json). From version 4 on, each version of the format has a schema at an address of its own, such as `https://editor.mailquilt.com/schema/v4.json`, which stays when a newer version comes. `@mailquilt/core` includes the one for the version it saves, as `@mailquilt/core/schema.json`. It's written for JSON Schema draft 2020-12, whose patterns are JavaScript regular expressions, so use a validator that reads them as JavaScript does.
+
+The schema is made from the checks the editor runs, so a version 4 email the schema refuses, the editor refuses too. A few rules compare one value with another, which JSON Schema can't express, so only the editor, and `loadDocument` in `@mailquilt/core`, checks them:
+
+- Every Row, Column and Block has an [ID](#ids) of its own.
+- A Row's Column widths add up to 100.
+- Text has each mark at most once.
+- A Social Block links each network once.
+- A linked Image has alt text.
+
+An email can't name its schema in a `$schema` field, because a field the format doesn't know is refused. Tell your code editor which files the schema is for in its settings instead.
+
 ## Example
 
 <div data-testid="example-email">

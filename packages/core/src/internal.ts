@@ -23,3 +23,6 @@ export type { SettingsField } from "./settings-fields.js";
 export { editorOfLoaded } from "./editor.js";
 export { copiedJson, loadCopied } from "./copied.js";
 export type { PastedResult, PasteRefusalCode } from "./copied.js";
+// What the build turns into the format's JSON Schema.
+export { DOCUMENT_VERSION } from "./document.js";
+export { documentSchema } from "./load-document.js";

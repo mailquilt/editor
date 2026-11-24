@@ -57,6 +57,7 @@ describe(loadDocument, () => {
     "rgb(1,2,3)",
     "rgb(1, 2, 3)",
     "rgba(1,2,3,0.5)",
+    "RGBA(1, 2, 3, 0.5)",
     "rgb(999, 999, 999)",
   ])("reads the background color %s", (backgroundColor) => {
     const email = readFixture("version-4");
