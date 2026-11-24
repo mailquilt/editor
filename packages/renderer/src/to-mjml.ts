@@ -59,7 +59,7 @@ const socialToMjml = (
   attributes: string,
   { socialIconsUrl }: BlockContext
 ) => {
-  const { gap, size, style } = socialIcons(props);
+  const { blockPaddingY, gap, iconPaddingY, size, style } = socialIcons(props);
   const links = props.links.filter(
     (link): link is typeof link & { url: string } => link.url !== undefined
   );
@@ -69,10 +69,11 @@ const socialToMjml = (
   }
   const icons = links.map(({ network, url }, index) => {
     const label = SOCIAL_NETWORKS[network];
-    const padding = index === links.length - 1 ? "0" : `0 ${gap}px 0 0`;
+    const end = index === links.length - 1 ? 0 : gap;
+    const padding = `${iconPaddingY}px ${end}px ${iconPaddingY}px 0`;
     return `<mj-social-element alt="${escapeAttribute(label)}" href="${escapeAttribute(url)}" padding="${padding}" src="${escapeAttribute(socialIconUrl(network, style, socialIconsUrl))}"></mj-social-element>`;
   });
-  return `<mj-social${attributes} icon-size="${size}px" mode="horizontal">${icons.join("")}</mj-social>`;
+  return `<mj-social${attributes} icon-size="${size}px" mode="horizontal" padding="${blockPaddingY}px ${EMAIL_LOOK.blockPadding}">${icons.join("")}</mj-social>`;
 };
 
 /**
