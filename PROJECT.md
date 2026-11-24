@@ -313,23 +313,26 @@ There are no dates, and items can move. Each item is tracked in GitHub Issues.
 
 **Next**
 
-What a team needs before its customers can use the editor. They're specified together, with brand styles and settings first, because every Block added later then starts with the full set. The line under a feature is what its spec has to settle first, because the code doesn't allow for it yet.
+What a team needs before its customers can use the editor. The redesign comes first, then fuller settings, so every Block added later starts in the new editor with the full set. The line under a feature is what its spec has to settle first, because the code doesn't allow for it yet.
 
-1. Brand styles, and fuller settings for every Block, Row and Column
-   - Brand styles are the email's own defaults for text, each Heading level, links and Buttons. A Block's settings then change only what differs: spacing, borders, corners, backgrounds, typography, and whether it shows on phones or on desktop. Some settings hold a second value for phones.
-   - First: a value a Block leaves unset and takes from the email's brand styles, as every Block stores each of its values today. Settings for a Column, as it has none. What each setting falls back to in Outlook on Windows, which ignores rounded corners and background images.
-2. Web fonts
-3. Menu, Video, HTML and Table Blocks
-4. Alt text, or a "decorative" choice, for every image
-5. A plain-text version of each email
-6. Sending a test email, through a function the Host app supplies
-7. Translations of the editor's interface, and right-to-left text
+1. A redesign of the editor's interface, with the email's own styles
+   - Three modes: Edit, Style and Check. Edit has a list of the email's Rows and one bar above the email for what's selected, in place of the side panel and the Block toolbars, and works on phones. Style holds the email's own colors, fonts, sizes and button corners, which a Block's own value overrides. Check replaces the Preview: the email at desktop and phone widths, and what to fix before it's sent, such as an image with no alt text.
+   - First: a value a Block leaves unset and takes from the email's styles, as every Block stores each of its values today.
+2. Fuller settings for every Block, Row and Column
+   - Spacing, borders, corners, backgrounds, typography, and whether a Block shows on phones or on desktop, each changing only what differs from the email's styles. Some settings hold a second value for phones.
+   - First: settings for a Column, as it has none. What each setting falls back to in Outlook on Windows, which ignores rounded corners and background images.
+3. Web fonts
+4. Menu, Video, HTML and Table Blocks
+5. Alt text, or a "decorative" choice, for every image
+6. A plain-text version of each email
+7. Sending a test email, through a function the Host app supplies
+8. Translations of the editor's interface, and right-to-left text
    - First: the editor's English strings in one place, as about 90 in the editor and 35 in core are written inline and joined together. Left and right as directions, as they're a Column index of −1 and +1.
-8. Starter emails
-9. React 18 in `@mailquilt/react`
+9. Starter emails
+10. React 18 in `@mailquilt/react`
    - First: where the components rely on React 19, such as taking `ref` as a plain prop.
-10. Vue, Angular and Svelte tested in `install-checks`, with types for the element
-11. A JSON Schema for the email format
+11. Vue, Angular and Svelte tested in `install-checks`, with types for the element
+12. A JSON Schema for the email format
 
 **Later**
 
