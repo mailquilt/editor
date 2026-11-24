@@ -15,5 +15,15 @@ overrides:
   path-to-regexp@6.1.0: 6.3.0
   postcss-selector-parser@6.0.10: 6.1.6
 
+# @astrojs/astro2tsx, which `blume check` uses, depends on @emnapi/core 1.11.3
+# but not on the @emnapi/runtime that goes with it, so it got whichever one
+# was installed. Rolldown's wasm binding brings in 2.0.0-beta.2, and a 1.x core
+# with a 2.x runtime crashes. This gives it the runtime that matches its core.
+# It stops applying once astro2tsx moves off 0.1.3.
+packageExtensions:
+  "@astrojs/astro2tsx@0.1.3":
+    dependencies:
+      "@emnapi/runtime": 1.11.3
+
 patchedDependencies:
   blume@2.2.7: patches/blume@2.2.7.patch
