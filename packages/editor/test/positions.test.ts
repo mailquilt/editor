@@ -3,7 +3,7 @@ import type { Block, BlocksDocument, Column } from "@mailquilt/core";
 import { describe, expect, it } from "vitest";
 
 import {
-  blockPositionLabel,
+  blockPlace,
   dropCommand,
   moveCommand,
   moveRowCommand,
@@ -209,14 +209,17 @@ describe("the Command for a drop", () => {
   });
 });
 
-describe("where a Block is, in words", () => {
+describe("where a Block is, as its texts count it", () => {
   it("names its Row, its Column, and its position there, counting from 1", () => {
-    expect(blockPositionLabel(email, "b")).toBe(
-      "Row 1, Column 1, position 2 of 2"
-    );
+    expect(blockPlace(email, "b")).toStrictEqual({
+      column: 1,
+      count: 2,
+      position: 2,
+      row: 1,
+    });
   });
 
   it("is none for a Block that isn't in the email", () => {
-    expect(blockPositionLabel(email, "gone")).toBeUndefined();
+    expect(blockPlace(email, "gone")).toBeUndefined();
   });
 });

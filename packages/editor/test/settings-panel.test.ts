@@ -2,19 +2,27 @@ import type { SettingsField } from "@mailquilt/core/internal";
 import { describe, expect, it } from "vitest";
 
 import { changeList, fieldValue } from "../src/settings-panel.js";
+import { createText } from "../src/text.js";
 
 const field = (type: "number" | "text"): SettingsField =>
   type === "number"
-    ? { invalidMessage: "", key: "size", label: "", min: 1, type, unit: "px" }
-    : { invalidMessage: "", key: "name", label: "", type };
+    ? {
+        invalidMessageId: "",
+        key: "size",
+        labelId: "",
+        min: 1,
+        type,
+        unit: "px",
+      }
+    : { invalidMessageId: "", key: "name", labelId: "", type };
 
 const select: SettingsField = {
-  invalidMessage: "",
+  invalidMessageId: "",
   key: "width",
-  label: "",
+  labelId: "",
   options: [
-    { label: "Narrow", value: 400 },
-    { label: "Wide", value: 600 },
+    { labelId: "", value: 400 },
+    { labelId: "", value: 600 },
   ],
   type: "select",
 };
@@ -48,9 +56,9 @@ describe("what's typed in a settings field means", () => {
 
   it("yes or no, in a switch", () => {
     const toggle: SettingsField = {
-      invalidMessage: "",
+      invalidMessageId: "",
       key: "hideOnPhone",
-      label: "",
+      labelId: "",
       type: "toggle",
     };
 
@@ -60,19 +68,23 @@ describe("what's typed in a settings field means", () => {
 });
 
 const links: Extract<SettingsField, { type: "list" }> = {
-  invalidMessage: "",
-  itemField: { invalidMessage: "", key: "url", label: "URL", type: "text" },
+  allAddedId: "",
+  chooseLabelId: "",
+  invalidMessageId: "",
+  itemField: { invalidMessageId: "", key: "url", labelId: "", type: "text" },
   itemKey: "network",
-  itemName: "network",
   key: "links",
-  label: "Links",
+  labelId: "",
   options: [
-    { label: "Facebook", value: "facebook" },
-    { label: "Instagram", value: "instagram" },
-    { label: "X", value: "x" },
+    { labelId: "network.facebook", value: "facebook" },
+    { labelId: "network.instagram", value: "instagram" },
+    { labelId: "network.x", value: "x" },
   ],
   type: "list",
 };
+
+/** The editor's English, as a Host app that replaces none of it gets. */
+const text = createText(() => {});
 
 const facebook = { network: "facebook", url: "https://facebook.com/shop" };
 const x = { network: "x" };
@@ -80,7 +92,7 @@ const x = { network: "x" };
 describe("a change to a list field's items", () => {
   it("adds an item without its text at the end, and focus goes to its text", () => {
     expect(
-      changeList(links, [facebook], { item: "instagram", type: "add" })
+      changeList(links, [facebook], { item: "instagram", type: "add" }, text)
     ).toStrictEqual({
       focus: { control: "text", item: "instagram" },
       items: [facebook, { network: "instagram" }],
@@ -90,7 +102,12 @@ describe("a change to a list field's items", () => {
 
   it("moves an item one step, and focus stays on the button that moved it", () => {
     expect(
-      changeList(links, [facebook, x], { item: "x", step: -1, type: "move" })
+      changeList(
+        links,
+        [facebook, x],
+        { item: "x", step: -1, type: "move" },
+        text
+      )
     ).toStrictEqual({
       focus: { control: "moveUp", item: "x" },
       items: [x, facebook],
@@ -100,7 +117,12 @@ describe("a change to a list field's items", () => {
 
   it("removes an item, and focus goes to the Remove button of the item after it", () => {
     expect(
-      changeList(links, [facebook, x], { item: "facebook", type: "remove" })
+      changeList(
+        links,
+        [facebook, x],
+        { item: "facebook", type: "remove" },
+        text
+      )
     ).toStrictEqual({
       focus: { control: "remove", item: "x" },
       items: [x],
@@ -110,13 +132,14 @@ describe("a change to a list field's items", () => {
 
   it("removes the last item, and focus goes to the item before it", () => {
     expect(
-      changeList(links, [facebook, x], { item: "x", type: "remove" }).focus
+      changeList(links, [facebook, x], { item: "x", type: "remove" }, text)
+        .focus
     ).toStrictEqual({ control: "remove", item: "facebook" });
   });
 
   it("removes the only item, and focus goes to the way to add one", () => {
     expect(
-      changeList(links, [x], { item: "x", type: "remove" }).focus
+      changeList(links, [x], { item: "x", type: "remove" }, text).focus
     ).toStrictEqual({ control: "add" });
   });
 });

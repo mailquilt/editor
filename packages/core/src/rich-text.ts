@@ -26,13 +26,6 @@ export const isAllowedLinkHref = (href: string) =>
   // oxlint-disable-next-line require-unicode-regexp -- With u, i would also take ſ as s.
   /^(?:https?:|mailto:|tel:)/i.test(href) || MERGE_TAG_URL.test(href);
 
-/**
- * What a person is told when a link is refused, matching `isAllowedLinkHref`.
- * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
- */
-export const INVALID_LINK =
-  "Use a URL that starts with https:, http:, mailto: or tel:, such as https://example.com, or a Merge Tag such as {{cta_url}}.";
-
 export const linkHrefSchema = v.pipe(
   v.string(),
   v.check(
@@ -40,9 +33,6 @@ export const linkHrefSchema = v.pipe(
     "A link must start with http:, https:, mailto:, tel: or a Merge Tag"
   )
 );
-
-export const INVALID_IMAGE_URL =
-  "Use a URL that starts with https: or http:, such as https://example.com/logo.png, or a Merge Tag such as {{logo_url}}.";
 
 /** Its own allowlist, so that a scheme added for links doesn't reach images. */
 export const imageSrcSchema = v.pipe(

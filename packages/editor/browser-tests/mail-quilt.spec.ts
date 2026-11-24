@@ -4,6 +4,8 @@ import type { Page } from "@playwright/test";
 import type { MailQuilt } from "../src/index.js";
 import {
   addSecondTextBlock,
+  announcement,
+  blockWith,
   boxOf,
   canvas,
   changeCount,
@@ -17,6 +19,7 @@ import {
   hostEvents,
   latestDocument,
   linkUrlField,
+  openEmail,
   openTestPage,
   pasteHtml,
   pretendPlatform,
@@ -755,6 +758,35 @@ test.describe("refusing a document", () => {
       value: null,
     });
   });
+});
+
+// The texts are filled the same everywhere, so one on screen and one
+// announced show the wiring. Filling them has unit tests.
+test("a Host app's strings replace the editor's English, on screen and when announced", async ({
+  page,
+}) => {
+  await openEmail(page, [[["A", "B"]]]);
+  await canvas(page).evaluate((element) => {
+    (element as MailQuilt).strings = {
+      "canvas.moveBlockDown": "Descendre le bloc",
+      language: "fr",
+      "said.blockMoved": "Déplacé : ligne {row}, place {position} sur {count}.",
+    };
+  });
+  await blockWith(page, "A").click();
+
+  await canvas(page)
+    .getByRole("button", { exact: true, name: "Descendre le bloc" })
+    .click();
+
+  await expect(announcement(page)).toHaveText(
+    "Déplacé : ligne 1, place 2 sur 2."
+  );
+  await expect(announcement(page)).toHaveAttribute("lang", "fr");
+  // A text it doesn't name keeps its English.
+  await expect(
+    canvas(page).getByRole("button", { exact: true, name: "Delete Block" })
+  ).toBeVisible();
 });
 
 test("a host's fixed height never cuts the email short", async ({ page }) => {

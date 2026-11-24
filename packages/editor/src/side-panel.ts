@@ -1,7 +1,6 @@
 import { BLOCK_TYPES, ROW_LAYOUTS } from "@mailquilt/core";
 import type { RowLayout } from "@mailquilt/core";
 import {
-  blockLabel,
   blockSettingsFields,
   EMAIL_SETTINGS_FIELDS,
   rowSettingsFields,
@@ -16,12 +15,15 @@ import { ICONS } from "./icons.js";
 import { UPLOADABLE_TYPES } from "./image-uploads.js";
 import { fieldTags } from "./merge-tag-picker.js";
 import type { PanelApi } from "./panel-api.js";
-import { columnLabel } from "./positions.js";
+import { columnPlace } from "./positions.js";
 import type { BlockPosition, RowPosition } from "./positions.js";
 import type { PanelTab } from "./selection.js";
 import { draftKey, renderSettingsPanel } from "./settings-panel.js";
 import type { SettingsSection } from "./settings-panel.js";
+import type { StringId } from "./strings.js";
 import { styleProperties } from "./style-properties.js";
+import { blockTypeName } from "./text.js";
+import type { Text } from "./text.js";
 
 export const sidePanelStyles = css`
   .layout-option {
@@ -305,10 +307,10 @@ export const sidePanelStyles = css`
   }
 `;
 
-const PANEL_TABS: { icon: TemplateResult; id: PanelTab; label: string }[] = [
-  { icon: ICONS.content, id: "content", label: "Content" },
-  { icon: ICONS.rows, id: "rows", label: "Rows" },
-  { icon: ICONS.settings, id: "settings", label: "Settings" },
+const PANEL_TABS: { icon: TemplateResult; id: PanelTab; label: StringId }[] = [
+  { icon: ICONS.content, id: "content", label: "side.content" },
+  { icon: ICONS.rows, id: "rows", label: "side.rows" },
+  { icon: ICONS.settings, id: "settings", label: "side.settings" },
 ];
 
 /** A layout as its Column widths, for a picker that names it beside this. */
@@ -332,9 +334,9 @@ const renderPanelHeader = (
 ) => html`
   <div class="panel-header" data-place=${place("controls")}>
     <button
-      aria-label="Back"
+      aria-label=${api.text("side.back")}
       class="icon-button"
-      data-tooltip="Back"
+      data-tooltip=${api.text("side.back")}
       type="button"
       @click=${({ detail }: MouseEvent) => api.showTabs(detail === 0)}
     >
@@ -350,12 +352,13 @@ const renderPanelHeader = (
 
 /** A selected Row: its layout, then its settings. Empty Rows too. */
 const renderRowProperties = ({ row, rowIndex }: RowPosition, api: PanelApi) => {
+  const { text } = api;
   const current = rowLayoutOf(row);
   const section: SettingsSection = {
     command: (props) => ({ props, rowId: row.id, type: "updateRowProps" }),
     fields: rowSettingsFields(row),
     id: "row",
-    legend: "Row",
+    legend: text("side.row"),
     targetId: row.id,
     unsetColor: api.email.settings.backgroundColor,
     values: row.props,
@@ -363,13 +366,17 @@ const renderRowProperties = ({ row, rowIndex }: RowPosition, api: PanelApi) => {
   return html`
     ${renderPanelHeader(
       ICONS.rows,
-      `Row ${rowIndex + 1}`,
-      current ? `${current} layout` : "Custom layout",
+      text("side.rowTitle", { row: rowIndex + 1 }),
+      current
+        ? text("side.layoutOf", { layout: current })
+        : text("side.customLayout"),
       api
     )}
     <div class="panel-scroll thin-scrollbar">
       <div class="panel-section">
-        <h3 class="panel-section-title" id="row-layout-title">Layout</h3>
+        <h3 class="panel-section-title" id="row-layout-title">
+          ${text("side.layout")}
+        </h3>
         <div
           aria-labelledby="row-layout-title"
           class="layout-choices"
@@ -390,7 +397,7 @@ const renderRowProperties = ({ row, rowIndex }: RowPosition, api: PanelApi) => {
           )}
         </div>
       </div>
-      ${renderSettingsPanel(section, api.drafts, fieldTags(api))}
+      ${renderSettingsPanel(section, api.drafts, fieldTags(api), text)}
     </div>
   `;
 };
@@ -407,7 +414,8 @@ export const blockDraftKey = (blockId: string, fieldKey: string) =>
  */
 const renderUploadButton = (
   blockId: string,
-  uploadImage: (blockId: string, file: File) => void
+  uploadImage: (blockId: string, file: File) => void,
+  text: Text
 ) => html`
   <button
     class="text-button"
@@ -417,7 +425,7 @@ const renderUploadButton = (
         (currentTarget as Element).nextElementSibling as HTMLInputElement
       ).click()}
   >
-    Upload image
+    ${text("side.uploadImage")}
   </button>
   <input
     accept=${UPLOADABLE_TYPES.join(",")}
@@ -451,7 +459,7 @@ const renderProperties = (
         ? {
             src: {
               control: api.uploadImage
-                ? renderUploadButton(block.id, api.uploadImage)
+                ? renderUploadButton(block.id, api.uploadImage, api.text)
                 : undefined,
               error: api.uploadErrorOf(block.id),
             },
@@ -459,44 +467,44 @@ const renderProperties = (
         : undefined,
     fields: blockSettingsFields(block),
     id: BLOCK_SECTION_ID,
-    legend: "Block",
+    legend: api.text("side.block"),
     targetId: block.id,
     values: block.props,
   };
   return html`
     ${renderPanelHeader(
       BLOCK_VIEWS[block.type].icon,
-      blockLabel(block.type),
-      columnLabel(rowIndex, columnIndex),
+      blockTypeName(block.type, api.text),
+      api.text("side.blockPlace", columnPlace(rowIndex, columnIndex)),
       api
     )}
     <div class="panel-scroll thin-scrollbar">
-      ${renderSettingsPanel(section, api.drafts, fieldTags(api))}
+      ${renderSettingsPanel(section, api.drafts, fieldTags(api), api.text)}
     </div>
   `;
 };
 
 const renderTabPanel = (api: PanelApi) => {
+  const { text } = api;
   switch (api.tab) {
     case "content": {
       return html`
         <div class="panel-intro">
-          <h3 class="panel-section-title">Blocks</h3>
-          <p class="panel-hint">
-            Drag one onto the email, or choose one to add it after the selected
-            Block, into the selected Row, or at the end.
-          </p>
+          <h3 class="panel-section-title">${text("side.blocks")}</h3>
+          <p class="panel-hint">${text("side.blocksHelp")}</p>
         </div>
         <div
-          aria-label="Add content"
+          aria-label=${text("side.addContent")}
           class="tiles"
           data-place=${place("controls")}
           role="group"
         >
           ${BLOCK_TYPES.map(
-            ({ label, type }) => html`
+            ({ type }) => html`
               <button
-                aria-label=${`Add ${label} Block`}
+                aria-label=${text("side.addBlock", {
+                  type: blockTypeName(type, text),
+                })}
                 class="tile"
                 data-block-type=${type}
                 data-place=${place("paletteItem")}
@@ -504,7 +512,7 @@ const renderTabPanel = (api: PanelApi) => {
                 @click=${() => api.addBlock(type)}
               >
                 ${BLOCK_VIEWS[type].icon}
-                <span>${label}</span>
+                <span>${blockTypeName(type, text)}</span>
               </button>
             `
           )}
@@ -514,14 +522,11 @@ const renderTabPanel = (api: PanelApi) => {
     case "rows": {
       return html`
         <div class="panel-intro">
-          <h3 class="panel-section-title">Layouts</h3>
-          <p class="panel-hint">
-            Drag one between Rows, or choose one to add it after the selected
-            Row, or at the end of the email.
-          </p>
+          <h3 class="panel-section-title">${text("side.layouts")}</h3>
+          <p class="panel-hint">${text("side.layoutsHelp")}</p>
         </div>
         <div
-          aria-label="Add a Row"
+          aria-label=${text("side.addRow")}
           class="layout-tiles"
           data-place=${place("controls")}
           role="group"
@@ -529,7 +534,7 @@ const renderTabPanel = (api: PanelApi) => {
           ${ROW_LAYOUTS.map(
             (layout) => html`
               <button
-                aria-label=${`Add ${layout} Row`}
+                aria-label=${text("side.addLayout", { layout })}
                 class="layout-tile"
                 data-place=${place("paletteItem")}
                 data-row-layout=${layout}
@@ -550,12 +555,13 @@ const renderTabPanel = (api: PanelApi) => {
           command: (settings) => ({ settings, type: "updateEmailSettings" }),
           fields: EMAIL_SETTINGS_FIELDS,
           id: "email",
-          legend: "Email",
+          legend: text("side.email"),
           targetId: "",
           values: { ...api.email.settings },
         },
         api.drafts,
-        fieldTags(api)
+        fieldTags(api),
+        text
       );
     }
   }
@@ -566,7 +572,7 @@ const renderTabs = (api: PanelApi) => {
   return html`
     <div class="panel-top">
       <div
-        aria-label="Side panel"
+        aria-label=${api.text("side.panel")}
         class="segments"
         data-place=${place("panelTabs")}
         role="tablist"
@@ -584,7 +590,7 @@ const renderTabs = (api: PanelApi) => {
               @click=${() => api.selectTab(id)}
               @focus=${() => api.selectTab(id)}
             >
-              ${icon}<span>${label}</span>
+              ${icon}<span>${api.text(label)}</span>
             </button>
           `
         )}

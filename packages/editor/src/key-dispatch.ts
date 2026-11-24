@@ -208,9 +208,10 @@ export const createKeyDispatch = ({
     (event: KeyboardEvent, direction: Direction) => void
   > = {
     moveBlock: (_event, direction) => editing.moveBlock(direction),
+    // The key map moves a Row only up and down.
     moveRow: (event, direction) => {
       const rowId = rowOf(event.target);
-      if (rowId !== undefined) {
+      if (rowId !== undefined && (direction === "up" || direction === "down")) {
         editing.moveRow(rowId, direction);
       }
     },

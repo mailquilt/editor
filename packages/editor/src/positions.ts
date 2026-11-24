@@ -53,18 +53,29 @@ export type DropPosition =
   | { columnId: string; index: number }
   | { rowIndex: number };
 
-export const columnLabel = (rowIndex: number, columnIndex: number) =>
-  `Row ${rowIndex + 1}, Column ${columnIndex + 1}`;
+/** A Column's place, as its texts' `{row}` and `{column}` count from 1. */
+export const columnPlace = (rowIndex: number, columnIndex: number) => ({
+  column: columnIndex + 1,
+  row: rowIndex + 1,
+});
 
-export const positionLabel = (index: number, count: number) =>
-  `position ${index + 1} of ${count}`;
+/** A place in a list, as its texts' `{position} of {count}` count from 1. */
+export const placeIn = (index: number, count: number) => ({
+  count,
+  position: index + 1,
+});
 
-/** Where a Block is, in words. */
-export const blockPositionLabel = (email: BlocksDocument, blockId: string) => {
+/**
+ * Where a Block is, as the `{row}`, `{column}`, `{position}` and `{count}` of
+ * the texts that say so.
+ */
+export const blockPlace = (email: BlocksDocument, blockId: string) => {
   const position = locate(email, blockId);
   return (
-    position &&
-    `${columnLabel(position.rowIndex, position.columnIndex)}, ${positionLabel(position.index, position.column.blocks.length)}`
+    position && {
+      ...columnPlace(position.rowIndex, position.columnIndex),
+      ...placeIn(position.index, position.column.blocks.length),
+    }
   );
 };
 

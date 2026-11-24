@@ -145,6 +145,8 @@ export interface TextBlockView {
    * editor's, as its name is the editor's own.
    */
   setLang: (lang: string) => void;
+  /** What a screen reader calls the text box, as the Host app's texts change. */
+  setLabel: (label: string) => void;
   /** Whether Tab stops in the text, which it does only in the selected Block's. */
   setTabStop: (isTabStop: boolean) => void;
   focus: () => void;
@@ -261,6 +263,14 @@ interface TextBlockViewHost {
   schema: TextSchema;
 }
 
+/** The text box's attributes, named `label` for a screen reader. */
+const textBoxAttributes = (label: string) => ({
+  "aria-label": label,
+  "aria-multiline": "true",
+  "data-place": place("text"),
+  role: "textbox",
+});
+
 /**
  * Owns the DOM and ProseMirror view of one Block's text. Lit only puts
  * `element` on the canvas, so the view survives re-renders. The editor keeps
@@ -298,13 +308,10 @@ export const createTextBlockView = ({
     )
   );
 
+  let shownLabel = label;
+
   const view = new EditorView(element, {
-    attributes: {
-      "aria-label": label,
-      "aria-multiline": "true",
-      "data-place": place("text"),
-      role: "textbox",
-    },
+    attributes: textBoxAttributes(label),
     clipboardParser: pastedHtmlParser(schema),
     // On each paragraph, a List's items' too.
     decorations: ({ doc }) => {
@@ -483,6 +490,12 @@ export const createTextBlockView = ({
         tr.setSelection(Selection.near(tr.doc.resolve(cursor)));
       }
       view.dispatch(tr.setMeta(FROM_SET_CONTENT, true));
+    },
+    setLabel: (next) => {
+      if (next !== shownLabel) {
+        shownLabel = next;
+        view.setProps({ attributes: textBoxAttributes(next) });
+      }
     },
     setLang: (next) => {
       if (next !== lang) {

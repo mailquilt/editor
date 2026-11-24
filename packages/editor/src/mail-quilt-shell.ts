@@ -10,7 +10,10 @@ import type { HostAppProperties } from "./host-app.js";
 import "./mail-quilt.js";
 import type { MailQuilt } from "./mail-quilt.js";
 import { refuseFiles } from "./refuse-files.js";
-import { themeTokens, UI_LANG, uiStyles } from "./theme.js";
+import type { StringId } from "./strings.js";
+import { createText } from "./text.js";
+import type { Text } from "./text.js";
+import { themeTokens, uiStyles } from "./theme.js";
 import { takeValueSetEarly } from "./value-set-early.js";
 
 /** The Shell's own buttons. */
@@ -27,13 +30,23 @@ const inheritTokens = unsafeCSS(
   `mail-quilt { ${TOKEN_NAMES.map((name) => `${name}: inherit;`).join(" ")} }`
 );
 
+/**
+ * Why an email couldn't be read: core's reason, in English for developers, or
+ * one of the Shell's own texts.
+ */
+type Unread = { ok: false; reason: string } | { ok: false; reasonId: StringId };
+
+/** The reason, in the Host app's words where it's the Shell's own. */
+const reasonOf = (unread: Unread, text: Text) =>
+  "reasonId" in unread ? text(unread.reasonId) : unread.reason;
+
 /** Never throws, as what it reads may have been damaged or edited by hand. */
-const parseEmail = (text: string): LoadResult => {
+const parseEmail = (json: string): LoadResult | Unread => {
   let parsed: unknown;
   try {
-    parsed = JSON.parse(text);
+    parsed = JSON.parse(json);
   } catch {
-    return { ok: false, reason: "Not valid JSON" };
+    return { ok: false, reasonId: "shell.notJson" };
   }
   return loadDocument(parsed);
 };
@@ -217,7 +230,7 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
    * them show. Names the Shell doesn't know are ignored.
    */
   declare actions: string | null | undefined;
-  /** "Email" when unset or empty. */
+  /** The Shell's own heading, `shell.email` in `strings`, when unset or empty. */
   declare heading: string | null | undefined;
   /** Where the email is kept in the browser. Without it, nothing is stored. */
   declare saveKey: string | null | undefined;
@@ -225,9 +238,13 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
   declare mergeTags: HostAppProperties["mergeTags"];
   /** As on `<mail-quilt>`. */
   declare socialIconsUrl: HostAppProperties["socialIconsUrl"];
+  /** As on `<mail-quilt>`, and for the Shell's own words too. */
+  declare strings: HostAppProperties["strings"];
   /** As on `<mail-quilt>`. */
   declare uploadImage: HostAppProperties["uploadImage"];
 
+  /** The Shell's own words, in the Host app's where it gives them. */
+  readonly #text = createText(() => this.strings);
   readonly #editor: MailQuilt = document.createElement("mail-quilt");
   readonly #body = createRef<HTMLElement>();
   readonly #fileInput = createRef<HTMLInputElement>();
@@ -252,7 +269,7 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
    */
   readonly #notices = new Map<
     NoticeOf,
-    { readonly id: number; readonly text: string }
+    { readonly id: number; readonly words: (text: Text) => string }
   >();
   #noticeId = 0;
 
@@ -271,9 +288,8 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
       this.#keep(detail.document);
     });
     this.#editor.addEventListener("mq-error", ({ detail }) => {
-      this.#showNotice(
-        "refused",
-        `This email couldn't be opened: ${detail.reason}`
+      this.#showNotice("refused", (text) =>
+        text("shell.cantOpen", { reason: detail.reason })
       );
     });
   }
@@ -338,14 +354,16 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
   protected override render() {
     const named = this.actions?.split(/\s+/u);
     const shows = (action: ShellAction) => named?.includes(action) ?? true;
-    const cantSave = shows("export-json")
-      ? "This browser can't save your email here. Export it as JSON to keep it."
-      : "This browser can't save your email here.";
+    const text = this.#text;
+    const language = text("language");
+    const cantSave = text(
+      shows("export-json") ? "shell.cantSave" : "shell.cantSaveNoExport"
+    );
     const buttons: readonly (readonly [ShellAction, string, () => unknown])[] =
       [
-        ["import-json", "Import JSON", this.#chooseFile],
-        ["export-json", "Export JSON", this.#exportJson],
-        ["export-html", "Export HTML", this.#exportHtmlFile],
+        ["import-json", text("shell.importJson"), this.#chooseFile],
+        ["export-json", text("shell.exportJson"), this.#exportJson],
+        ["export-html", text("shell.exportHtml"), this.#exportHtmlFile],
       ];
 
     return html`
@@ -358,12 +376,12 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
           <h2
             class="heading"
             dir=${this.heading ? "auto" : nothing}
-            lang=${this.heading ? nothing : UI_LANG}
+            lang=${this.heading ? nothing : language}
             part="heading"
           >
-            ${this.heading || "Email"}
+            ${this.heading || text("shell.email")}
           </h2>
-          <div class="actions" lang=${UI_LANG} part="actions">
+          <div class="actions" lang=${language} part="actions">
             ${buttons.map(([action, label, onClick]) =>
               shows(action)
                 ? html`
@@ -398,7 +416,7 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
             }
           </div>
         </div>
-        <div class="messages" lang=${UI_LANG} part="messages">
+        <div class="messages" lang=${language} part="messages">
           ${
             this.#cantSave
               ? html`<p part="message" role="alert">${cantSave}</p>`
@@ -407,7 +425,8 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
           ${repeat(
             this.#notices.values(),
             ({ id }) => id,
-            ({ text }) => html`<p part="message" role="alert">${text}</p>`
+            ({ words }) =>
+              html`<p part="message" role="alert">${words(text)}</p>`
           )}
         </div>
         <div class="body thin-scrollbar" data-testid="body" ${ref(this.#body)}>
@@ -508,9 +527,8 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
     }
     const loaded = parseEmail(saved);
     if (!loaded.ok) {
-      this.#showNotice(
-        "saved",
-        `Your saved email couldn't be opened: ${loaded.reason}`
+      this.#showNotice("saved", (text) =>
+        text("shell.cantOpenSaved", { reason: reasonOf(loaded, text) })
       );
       // The next change is saved over it.
       try {
@@ -549,9 +567,10 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
   }
 
   /** Always renders, so the same notice again is read out again. */
-  #showNotice(of: NoticeOf, text: string) {
+  /** `words` are made at each render, so they follow a change to `strings`. */
+  #showNotice(of: NoticeOf, words: (text: Text) => string) {
     this.#noticeId += 1;
-    this.#notices.set(of, { id: this.#noticeId, text });
+    this.#notices.set(of, { id: this.#noticeId, words });
     this.requestUpdate();
   }
 
@@ -563,7 +582,7 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
 
   readonly #exportHtmlFile = async () => {
     if (!this.value) {
-      this.#showNotice("export", "There's no email to export.");
+      this.#showNotice("export", (text) => text("shell.nothingToExport"));
       return;
     }
     try {
@@ -571,14 +590,16 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
       this.#clearNotice("export");
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
-      this.#showNotice("export", `The HTML couldn't be exported: ${reason}`);
+      this.#showNotice("export", (text) =>
+        text("shell.cantExport", { reason })
+      );
     }
   };
 
   readonly #exportJson = () => {
     const email = this.value;
     if (!email) {
-      this.#showNotice("export", "There's no email to export.");
+      this.#showNotice("export", (text) => text("shell.nothingToExport"));
       return;
     }
     downloadFile(
@@ -601,16 +622,16 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
     if (!file) {
       return;
     }
-    let loaded: LoadResult;
+    let loaded: LoadResult | Unread;
     try {
       loaded = parseEmail(await file.text());
     } catch {
-      loaded = { ok: false, reason: "The file couldn't be read" };
+      loaded = { ok: false, reasonId: "shell.cantRead" };
     }
     if (!loaded.ok) {
-      this.#showNotice(
-        "import",
-        `That file couldn't be imported: ${loaded.reason}`
+      const unread = loaded;
+      this.#showNotice("import", (text) =>
+        text("shell.cantImport", { reason: reasonOf(unread, text) })
       );
       return;
     }

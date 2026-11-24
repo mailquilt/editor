@@ -28,7 +28,9 @@ export type {
   HostAppProperties,
   MailQuilt as MailQuiltElement,
   MailQuiltShell as MailQuiltShellElement,
+  MailQuiltStrings,
   ShellAction,
+  StringId,
 } from "@mailquilt/editor";
 
 /** What both components take, the Host app's properties among them. */
@@ -187,6 +189,7 @@ export const MailQuilt = ({
   mergeTags,
   ref,
   socialIconsUrl,
+  strings,
   uploadImage,
   value,
   ...attributes
@@ -194,7 +197,7 @@ export const MailQuilt = ({
   createElement("mail-quilt", {
     ...attributes,
     ref: useEditorElement({
-      hostApp: { mergeTags, socialIconsUrl, uploadImage },
+      hostApp: { mergeTags, socialIconsUrl, strings, uploadImage },
       onChange,
       onError,
       ref,
@@ -216,6 +219,7 @@ export const MailQuiltShell = ({
   ref,
   saveKey,
   socialIconsUrl,
+  strings,
   uploadImage,
   value,
   ...rest
@@ -230,7 +234,7 @@ export const MailQuiltShell = ({
   return createElement("mail-quilt-shell", {
     ...attributes,
     ref: useEditorElement({
-      hostApp: { mergeTags, socialIconsUrl, uploadImage },
+      hostApp: { mergeTags, socialIconsUrl, strings, uploadImage },
       onChange,
       onError,
       ref,

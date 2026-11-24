@@ -4,7 +4,7 @@ import {
   loadCopied,
   SOCIAL_NETWORKS,
 } from "@mailquilt/core/internal";
-import type { BlockProps } from "@mailquilt/core/internal";
+import type { BlockProps, PasteRefusalCode } from "@mailquilt/core/internal";
 import { DOMSerializer } from "prosemirror-model";
 
 import { BLOCK_VIEWS, hasRichText } from "./block-types.js";
@@ -155,7 +155,7 @@ export type Pasted =
   | { block: NewBlock }
   | { row: Row }
   | { files: File[] }
-  | { refused: string };
+  | { refused: PasteRefusalCode };
 
 /** The JSON a copy from a Mail Quilt editor holds, if the HTML is one. */
 const copiedIn = (html: string) => {
@@ -179,7 +179,7 @@ export const readPasted = (data: DataTransfer): Pasted | undefined => {
   if (copied !== undefined) {
     const loaded = loadCopied(copied);
     if (!loaded.ok) {
-      return { refused: loaded.reason };
+      return { refused: loaded.code };
     }
     return "row" in loaded
       ? { row: loaded.row }

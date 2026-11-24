@@ -6,6 +6,7 @@ import { PICKER_ID, pickerOptionId } from "./merge-tags.js";
 import type { MergeTagPickerState } from "./merge-tags.js";
 import type { PanelApi } from "./panel-api.js";
 import { styleProperties } from "./style-properties.js";
+import type { Text } from "./text.js";
 
 /** Between the picker and its line, below it or above it. */
 export const PICKER_GAP_PX = 4;
@@ -79,10 +80,11 @@ export const mergeTagPickerStyles = css`
 /** The picker's tags, in text or under a field. */
 const renderOptions = (
   { highlighted, options }: Omit<MergeTagPickerState, "from">,
-  pick: (index: number) => void
+  pick: (index: number) => void,
+  text: Text
 ) => html`
   <ul
-    aria-label="Merge Tags"
+    aria-label=${text("mergeTags.picker")}
     class="merge-tag-options"
     id=${PICKER_ID}
     role="listbox"
@@ -115,6 +117,7 @@ const renderOptions = (
 export const renderMergeTagPicker = ({
   mergeTagPicker: picker,
   pickMergeTag,
+  text,
 }: PanelApi) => {
   if (!picker) {
     return nothing;
@@ -130,7 +133,7 @@ export const renderMergeTagPicker = ({
         "inset-inline-start": `${anchor.left}px`,
       })}
     >
-      ${renderOptions(picker, pickMergeTag)}
+      ${renderOptions(picker, pickMergeTag, text)}
     </div>
   `;
 };
@@ -140,7 +143,9 @@ export interface FieldTags {
   /** Its attributes that name the open list and its highlighted tag. */
   activeDescendant: string | typeof nothing;
   controls: string | typeof nothing;
-  /** What its description adds: that `{{` adds a Merge Tag. */
+  /** Whether typing `{{` in it opens the list, as it has tags to offer. */
+  takesTags: boolean;
+  /** What its description adds: that `{{` adds a Merge Tag. It can be empty. */
   hint: string;
   /** The open list, under it. */
   list: TemplateResult | typeof nothing;
@@ -152,10 +157,8 @@ export const NO_FIELD_TAGS: FieldTags = {
   controls: nothing,
   hint: "",
   list: nothing,
+  takesTags: false,
 };
-
-/** With no-break spaces, so the braces never end or start a line. */
-const FIELD_HINT = "Type\u00A0{{\u00A0to add a Merge Tag.";
 
 /**
  * The Merge Tags of a field that holds text or a URL, by its `id`. Focus stays
@@ -163,28 +166,30 @@ const FIELD_HINT = "Type\u00A0{{\u00A0to add a Merge Tag.";
  * list and its highlighted tag.
  */
 export const fieldTags =
-  ({ fieldMergeTags }: PanelApi) =>
+  ({ fieldMergeTags, text }: PanelApi) =>
   (fieldId: string): FieldTags => {
     if (!fieldMergeTags) {
       return NO_FIELD_TAGS;
     }
     const { pick, shown } = fieldMergeTags;
+    const hint = text("mergeTags.hint");
     if (shown?.fieldId !== fieldId) {
-      return { ...NO_FIELD_TAGS, hint: FIELD_HINT };
+      return { ...NO_FIELD_TAGS, hint, takesTags: true };
     }
     return {
       activeDescendant: pickerOptionId(shown.highlighted),
       controls: PICKER_ID,
-      hint: FIELD_HINT,
+      hint,
       list: html`
         <div
           class="ui bar field-merge-tag-picker"
           data-place=${place("fieldMergeTagPicker")}
           @mousedown=${(event: MouseEvent) => event.preventDefault()}
         >
-          ${renderOptions(shown, pick)}
+          ${renderOptions(shown, pick, text)}
         </div>
       `,
+      takesTags: true,
     };
   };
 

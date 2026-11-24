@@ -164,6 +164,27 @@ test.describe("uploading an image from the Image settings", () => {
     await expect(image(page)).toHaveAttribute("src", PHOTO);
   });
 
+  test("says why the editor refused a file in the Host app's words, as strings changes", async ({
+    page,
+  }) => {
+    await openImage(page);
+    await giveUploadImage(page);
+    await pickFile(page, "logo.svg", "image/svg+xml");
+    await expect
+      .poll(() => uploadError(page))
+      .toBe("Use a PNG, JPEG or GIF image.");
+
+    await canvas(page).evaluate((element) => {
+      (element as MailQuilt).strings = {
+        "upload.wrongType": "Utilisez une image PNG, JPEG ou GIF.",
+      };
+    });
+
+    await expect
+      .poll(() => uploadError(page))
+      .toBe("Utilisez une image PNG, JPEG ou GIF.");
+  });
+
   test("refusing a file leaves the upload already running", async ({
     page,
   }) => {

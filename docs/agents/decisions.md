@@ -49,6 +49,9 @@ Which module owns what, and why, is in `docs/adr/`:
 - The selected Block's toolbar and format bar are fitted back inside the canvas by `tool-fitting.ts`, on a page that scales the editor too. The format bar goes above the Block, or past the toolbar, rather than cover the toolbar or be cut off. (#162)
 - Each module keeps its CSS beside its template, and styles shared by every surface are `theme.ts`'s. A custom property of the editor's own that isn't a theme token is named `--_mq-…`. Every shadow is a theme token's, apart from the white rings that keep a selection and the drop line visible on a dark email, and a color swatch's edge. (#220)
 
+- Every word the editor and the Shell show or announce is in `strings.ts`, by ID, and a host replaces any through `strings`. A text that varies is one whole text with named placeholders, so it translates whole, such as one per move direction rather than a direction put into a sentence. A key's name is replaced where it's shown, by `keysInWords`, so the key map keeps its own names. `language` is a text too, for the `lang` of the editor's words and the lists it joins. (#312)
+- Core's settings fields name their words by text ID, which the editor fills in, so a field's words are in one place with the rest. A unit test checks each ID core names is one of the editor's. Core's own messages, a refusal's reason among them, stay English, for developers: a paste refusal has a code the editor says in its own words, and a refused email's reason goes into the Shell's message as `{reason}`. (#312)
+
 ## Editing
 
 - Links accept any `https:`, `http:`, `mailto:` or `tel:` URL, or a Merge Tag. (#36)

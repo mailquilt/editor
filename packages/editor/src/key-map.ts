@@ -1,5 +1,7 @@
 import type { Place } from "./editor-places.js";
 import type { Direction } from "./positions.js";
+import type { StringId } from "./strings.js";
+import type { Text } from "./text.js";
 
 /**
  * Every key the editor answers to, in each key scope: what the key does there,
@@ -749,6 +751,41 @@ export const clipboardFor = (
 /** What a press heard first does, or undefined if it goes on as usual. */
 export const keyHeardFirst = (scope: HeardFirst, press: KeyPress) =>
   bindingIn(HEARD_FIRST[scope], press, {});
+
+/** The keys `KeyLabel` names in words, and their texts. */
+const KEY_TEXTS: Readonly<Record<string, StringId>> = {
+  Alt: "key.alt",
+  ArrowDown: "key.arrowDown",
+  ArrowLeft: "key.arrowLeft",
+  ArrowRight: "key.arrowRight",
+  ArrowUp: "key.arrowUp",
+  Backspace: "key.backspace",
+  Ctrl: "key.ctrl",
+  Delete: "key.delete",
+  End: "key.end",
+  Enter: "key.enter",
+  Escape: "key.escape",
+  Home: "key.home",
+  Shift: "key.shift",
+  Tab: "key.tab",
+};
+
+const KEY_WORD = new RegExp(
+  `\\b(?:${Object.keys(KEY_TEXTS).join("|")})\\b`,
+  "gu"
+);
+
+/**
+ * Keys as a `KeyLabel` names them, with each key that has a name in words in
+ * the editor's own, such as Ctrl for a German keyboard's Strg. A letter or a
+ * symbol, such as ⌘ or ↑, stays as it is.
+ */
+export const keysInWords = (keys: string, text: Text) =>
+  keys.replaceAll(KEY_WORD, (name) => text(KEY_TEXTS[name] as StringId));
+
+/** A tooltip that names a control and its keys, such as "Undo (Ctrl+Z)". */
+export const withKeys = (label: string, keys: string, text: Text) =>
+  text("withKeys", { keys: keysInWords(keys, text), label });
 
 /** How a key is named for people. */
 export interface KeyLabel {

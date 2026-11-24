@@ -79,11 +79,13 @@ describe(loadCopied, () => {
       "JSON that's malformed",
       `{"version":3,"block":`,
       "The copied content isn't JSON",
+      "notCopied",
     ],
     [
       "a newer version, with the message value gives",
       JSON.stringify({ block: button, version: 5 }),
       "Version 5 is newer than the supported version 4",
+      "newerVersion",
     ],
     [
       "an unknown Block type",
@@ -92,6 +94,7 @@ describe(loadCopied, () => {
         version: 3,
       }),
       "block.type: Invalid type",
+      "invalid",
     ],
     [
       "a refused link",
@@ -104,6 +107,7 @@ describe(loadCopied, () => {
         version: 3,
       }),
       "block.props.href:",
+      "invalid",
     ],
     [
       "a refused link in a Row, named in the Row",
@@ -124,26 +128,31 @@ describe(loadCopied, () => {
         version: 3,
       }),
       "row.columns.0.blocks.0.props.href:",
+      "invalid",
     ],
     [
       "neither a Block nor a Row",
       JSON.stringify({ version: 3 }),
       "Copied content holds one Block or one Row",
+      "notCopied",
     ],
     [
       "a field it doesn't know",
       JSON.stringify({ block: button, script: "x", version: 3 }),
       "Copied content holds one Block or one Row",
+      "notCopied",
     ],
     [
       "something that isn't an object",
       "[]",
       "Copied content holds one Block or one Row",
+      "notCopied",
     ],
-  ])("refuses %s", (_case, json, reason) => {
-    const result = loadCopied(json);
-
-    expect(result.ok).toBeFalsy();
-    expect(result).toHaveProperty("reason", expect.stringContaining(reason));
+  ])("refuses %s", (_case, json, reason, code) => {
+    expect(loadCopied(json)).toStrictEqual({
+      code,
+      ok: false,
+      reason: expect.stringContaining(reason),
+    });
   });
 });
