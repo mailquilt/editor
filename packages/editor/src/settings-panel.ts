@@ -701,11 +701,7 @@ const renderListField = (
     return html`
       <li class="list-item" data-item-key=${item}>
         <div class="list-item-head">
-          <label for=${inputId}>
-            ${name}<span class="visually-hidden">
-              ${fieldWords(field.itemField.labelId, textOf)}</span
-            >
-          </label>
+          <label for=${inputId}>${name}</label>
           <div
             aria-label=${name}
             class="list-item-tools"
@@ -734,14 +730,20 @@ const renderListField = (
             )}
           </div>
         </div>
+        <!-- Named as one text, so a translation can put the item's name where
+          its language needs it. -->
         <input
           aria-activedescendant=${tags.activeDescendant}
           aria-controls=${tags.controls}
           aria-describedby=${[description ? descriptionId : "", refusals ? errorId : ""].filter(Boolean).join(" ") || nothing}
           aria-invalid=${refusals ? "true" : "false"}
+          aria-label=${textOf("settings.listItem", {
+            label: fieldWords(field.itemField.labelId, textOf),
+            name,
+          })}
           autocomplete="off"
           data-draft-key=${key}
-          ?data-merge-tags=${tags.hint !== ""}
+          ?data-merge-tags=${tags.takesTags}
           data-place=${draft ? place("settingsDraft") : nothing}
           id=${inputId}
           spellcheck="false"
@@ -891,7 +893,7 @@ const renderField = (
       aria-invalid=${refused ? "true" : "false"}
       autocomplete="off"
       data-draft-key=${key}
-      ?data-merge-tags=${tags.hint !== ""}
+      ?data-merge-tags=${tags.takesTags}
       data-place=${draft ? place("settingsDraft") : nothing}
       ?disabled=${field.disabled ?? false}
       id=${id}

@@ -227,7 +227,7 @@ const renderLinkForm = (
           aria-describedby=${describedBy || nothing}
           aria-invalid=${refusals ? "true" : "false"}
           autocomplete="off"
-          ?data-merge-tags=${tags.hint !== ""}
+          ?data-merge-tags=${tags.takesTags}
           id=${LINK_URL_ID}
           name="href"
           spellcheck="false"

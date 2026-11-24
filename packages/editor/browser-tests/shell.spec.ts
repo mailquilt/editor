@@ -416,6 +416,30 @@ test.describe("the editor's API", () => {
     ).toBeVisible();
   });
 
+  test("a message on show takes the Host app's words when strings changes", async ({
+    page,
+  }) => {
+    await page.goto("/shell.html?refused-first");
+    await shell(page).getByRole("button", { name: "Export HTML" }).click();
+    const message = shell(page)
+      .getByRole("alert")
+      .filter({ hasText: "There's no email to export." });
+    await expect(message).toBeVisible();
+
+    await shell(page).evaluate((element) => {
+      (element as MailQuiltShell).strings = {
+        "shell.nothingToExport": "Aucun e-mail à exporter.",
+      };
+    });
+
+    await expect(
+      shell(page)
+        .getByRole("alert")
+        .filter({ hasText: "Aucun e-mail à exporter." })
+    ).toBeVisible();
+    await expect(message).toHaveCount(0);
+  });
+
   test("exportHtml() works straight after the Shell is added", async ({
     page,
   }) => {

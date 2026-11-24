@@ -336,6 +336,27 @@ test.describe("in a field", () => {
     await expect(label).toHaveValue("Hi {{last_name}}");
   });
 
+  // A host can hide the hint, which only describes what {{ does.
+  test("a text setting still opens the list on {{ when the Host app's hint is empty", async ({
+    page,
+  }) => {
+    await openBlocks(page, ["button"]);
+    await giveMergeTags(page, TAGS);
+    await canvas(page).evaluate((element) => {
+      (element as MailQuilt).strings = { "mergeTags.hint": "" };
+    });
+    await blockGroup(page, "Button").focus();
+    const label = field(page, "Label");
+    await label.click();
+    await page.keyboard.press("ControlOrMeta+a");
+    await page.keyboard.type("{{la");
+
+    await expect(picker(page).getByRole("option")).toHaveText([
+      "Last name {{last_name}}",
+    ]);
+    await expect(label).not.toHaveAccessibleDescription(/Merge Tag/u);
+  });
+
   test("the list under a field closes when the Host app takes its tags away", async ({
     page,
   }) => {

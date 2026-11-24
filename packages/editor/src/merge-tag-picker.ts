@@ -143,7 +143,9 @@ export interface FieldTags {
   /** Its attributes that name the open list and its highlighted tag. */
   activeDescendant: string | typeof nothing;
   controls: string | typeof nothing;
-  /** What its description adds: that `{{` adds a Merge Tag. */
+  /** Whether typing `{{` in it opens the list, as it has tags to offer. */
+  takesTags: boolean;
+  /** What its description adds: that `{{` adds a Merge Tag. It can be empty. */
   hint: string;
   /** The open list, under it. */
   list: TemplateResult | typeof nothing;
@@ -155,6 +157,7 @@ export const NO_FIELD_TAGS: FieldTags = {
   controls: nothing,
   hint: "",
   list: nothing,
+  takesTags: false,
 };
 
 /**
@@ -171,7 +174,7 @@ export const fieldTags =
     const { pick, shown } = fieldMergeTags;
     const hint = text("mergeTags.hint");
     if (shown?.fieldId !== fieldId) {
-      return { ...NO_FIELD_TAGS, hint };
+      return { ...NO_FIELD_TAGS, hint, takesTags: true };
     }
     return {
       activeDescendant: pickerOptionId(shown.highlighted),
@@ -186,6 +189,7 @@ export const fieldTags =
           ${renderOptions(shown, pick, text)}
         </div>
       `,
+      takesTags: true,
     };
   };
 

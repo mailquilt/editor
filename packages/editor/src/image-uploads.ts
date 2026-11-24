@@ -5,7 +5,14 @@ import type { FileDropTarget } from "./dragging.js";
 import type { HostAppProperties } from "./host-app.js";
 import { blocksIn, locate } from "./positions.js";
 import type { DropPosition } from "./positions.js";
+import type { StringId } from "./strings.js";
 import type { Text } from "./text.js";
+
+/**
+ * Why an upload failed: one of the editor's texts, kept by ID so it follows a
+ * change to `strings`, or the Host app's own message, as it gave it.
+ */
+type Why = StringId | { message: string };
 
 /**
  * Uploads through the Host app's `uploadImage`, each for one Image Block, from
@@ -48,7 +55,10 @@ export const createImageUploads = ({
   /** Each upload that's running, by its Block. */
   const running = new Map<string, AbortController>();
   /** Why a Block's last upload failed, and its URL then, while that stays. */
-  const failures = new Map<string, { message: string; src: unknown }>();
+  const failures = new Map<string, { src: unknown; why: Why }>();
+
+  const messageOf = (why: Why) =>
+    typeof why === "string" ? text(why) : why.message;
 
   /** The Image Block's URL, if it has one. */
   const srcOf = (blockId: string) => {
@@ -58,8 +68,9 @@ export const createImageUploads = ({
   };
 
   /** Says why, with the file's name for a Block the drop has just added. */
-  const fail = (blockId: string, message: string, fileName?: string) => {
-    failures.set(blockId, { message, src: srcOf(blockId) });
+  const fail = (blockId: string, why: Why, fileName?: string) => {
+    failures.set(blockId, { src: srcOf(blockId), why });
+    const message = messageOf(why);
     announcements.say(
       fileName ? text("upload.ofFiles", { files: fileName, message }) : message
     );
@@ -83,7 +94,7 @@ export const createImageUploads = ({
     }
     const fileName = named ? file.name : undefined;
     if (!isUploadable(file)) {
-      fail(blockId, text("upload.wrongType"), fileName);
+      fail(blockId, "upload.wrongType", fileName);
       return;
     }
     abort(blockId);
@@ -93,7 +104,7 @@ export const createImageUploads = ({
     // The canvas shows it too, where a screen reader isn't.
     announcements.say(text("upload.started"));
     let url: unknown;
-    let message = text("upload.failed");
+    let why: Why = "upload.failed";
     try {
       // A JavaScript Host app can resolve with anything.
       const result: { url?: unknown } | undefined = await uploadImage(file, {
@@ -102,7 +113,7 @@ export const createImageUploads = ({
       url = result?.url;
     } catch (error) {
       if (error instanceof Error && error.message) {
-        ({ message } = error);
+        why = { message: error.message };
       }
     }
     // Aborted, or replaced by another upload.
@@ -114,7 +125,7 @@ export const createImageUploads = ({
     if (result?.ok || result?.code === "unchanged") {
       announcements.say(text("upload.done"));
     } else {
-      fail(blockId, message, fileName);
+      fail(blockId, why, fileName);
     }
   };
 
@@ -181,7 +192,7 @@ export const createImageUploads = ({
     errorOf: (blockId: string) => {
       const failure = failures.get(blockId);
       return failure && failure.src === srcOf(blockId)
-        ? failure.message
+        ? messageOf(failure.why)
         : undefined;
     },
 

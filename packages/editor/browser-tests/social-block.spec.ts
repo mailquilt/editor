@@ -375,6 +375,23 @@ test.describe("the links in the Side panel", () => {
     });
   });
 
+  // So a translation can put the network's name where its language needs it.
+  test("a link's URL field is named by one text, with the network's name in it", async ({
+    page,
+  }) => {
+    await openSocial(page, [FACEBOOK]);
+    await canvas(page).evaluate((element) => {
+      (element as MailQuilt).strings = {
+        "settings.listItem": "{label} de {name}",
+      };
+    });
+    await selectSocial(page);
+
+    await expect(field(page, "URL de Facebook")).toHaveValue(
+      "https://facebook.com/shop"
+    );
+  });
+
   test("from the keyboard, a link's toolbar is one Tab stop, and focus stays with what it moved or goes to the next link's Remove", async ({
     page,
   }) => {

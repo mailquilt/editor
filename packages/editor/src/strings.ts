@@ -138,6 +138,8 @@ export const STRINGS = {
   "settings.picker": "{label} picker",
   "settings.unit": "({unit})",
   "settings.add": "Add",
+  /** A list item's field, such as a Social link's URL, named with its item. */
+  "settings.listItem": "{name} {label}",
   "settings.moveUp": "Move {name} up",
   "settings.moveDown": "Move {name} down",
   "settings.remove": "Remove {name}",
