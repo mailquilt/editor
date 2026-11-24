@@ -33,6 +33,12 @@ interface Source {
   whiteParts?: string;
   /** Lucide's icons are lines, where the others are filled shapes. */
   lines?: boolean;
+  /**
+   * In color, the mark is white on a rounded square of its color, as X asks
+   * for white on black. A black or dark grey mark alone would disappear where
+   * an email app's dark mode turns a white background near-black.
+   */
+  tile?: boolean;
 }
 
 const simpleIcon = (
@@ -45,6 +51,15 @@ const simpleIcon = (
   viewBox: "0 0 24 24",
   whiteParts,
 });
+
+/** A black mark, which goes on a tile in color. */
+const tiledIcon = (slug: string): Source => ({
+  ...simpleIcon(slug, "#000000"),
+  tile: true,
+});
+
+/** How much of the tile the mark fills, across and down. */
+const TILE_MARK = 0.6;
 
 /** Inside a round mark, so none of it shows past the edge. */
 const WHITE_CIRCLE = '<circle cx="12" cy="12" r="11.8" />';
@@ -61,16 +76,17 @@ const SOURCES = {
     whiteParts: '<rect height="400" width="400" x="24" y="56" />',
   },
   pinterest: simpleIcon("pinterest", "#BD081C", WHITE_CIRCLE),
-  threads: simpleIcon("threads", "#000000"),
-  tiktok: simpleIcon("tiktok", "#000000"),
+  threads: tiledIcon("threads"),
+  tiktok: tiledIcon("tiktok"),
   website: {
     color: "#3F3F46",
     lines: true,
+    tile: true,
     url: `${LUCIDE}/globe.svg`,
     // The globe and its lines, without Lucide's margin.
     viewBox: "1 1 22 22",
   },
-  x: simpleIcon("x", "#000000"),
+  x: tiledIcon("x"),
   youtube: simpleIcon(
     "youtube",
     "#FF0000",
@@ -86,20 +102,33 @@ const shapesOf = (svg: string) =>
     .replace(/<\/svg>\s*$/u, "")
     .replaceAll(/\sfill="currentColor"/gu, "");
 
+const paintOf = (source: Source, color: string) =>
+  source.lines
+    ? `fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"`
+    : `fill="${color}"`;
+
+/** The mark in white, smaller, in the middle of a rounded square of its color. */
+const tiled = (shapes: string, source: Source) => {
+  const [x = 0, y = 0, size = 0] = source.viewBox.split(" ").map(Number);
+  const inset = ((1 - TILE_MARK) / 2) * size;
+  return `<rect x="${x}" y="${y}" width="${size}" height="${size}" rx="${size * 0.22}" fill="${source.color}" /><g transform="translate(${x + inset} ${y + inset}) scale(${TILE_MARK}) translate(${-x} ${-y})"><g ${paintOf(source, "#FFFFFF")}>${shapes}</g></g>`;
+};
+
 const iconSvg = (
   shapes: string,
   source: Source,
   color: string,
   white: boolean
 ) => {
-  const paint = source.lines
-    ? `fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"`
-    : `fill="${color}"`;
   const backing =
     !white && source.whiteParts
       ? `<g fill="#FFFFFF">${source.whiteParts}</g>`
       : "";
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="${source.viewBox}">${backing}<g ${paint}>${shapes}</g></svg>`;
+  const drawn =
+    !white && source.tile
+      ? tiled(shapes, source)
+      : `${backing}<g ${paintOf(source, color)}>${shapes}</g>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="${source.viewBox}">${drawn}</svg>`;
 };
 
 const iconsDir = path.join(import.meta.dirname, "..", "icons");
