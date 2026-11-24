@@ -129,6 +129,24 @@ const planUpdateEmailSettings = (
   );
 
 /**
+ * Merges `style` into the Email style as `planProps` merges props, and leaves
+ * no Email style once every field is cleared, so the email is as it was before
+ * it had one.
+ */
+const planUpdateEmailStyle = (
+  document: BlocksDocument,
+  style: Record<string, unknown>
+): CommandPlan => {
+  const merged = Object.entries({
+    ...document.settings.style,
+    ...style,
+  }).filter(([, value]) => value !== null);
+  return planUpdateEmailSettings(document, {
+    style: merged.length > 0 ? Object.fromEntries(merged) : null,
+  });
+};
+
+/**
  * A new Block of a type, with a new ID, and `props` or else the type's
  * defaults. Not a copy of either, as inserting the Block copies it. `owner`
  * names it in a refusal, as it has no ID yet that a host would know.
@@ -481,6 +499,9 @@ export const planCommand = (
     }
     case "updateEmailSettings": {
       return planUpdateEmailSettings(document, output.settings);
+    }
+    case "updateEmailStyle": {
+      return planUpdateEmailStyle(document, output.style);
     }
     case "insertBlock": {
       const made = newBlock(output.blockType, output.props, "the new Block");

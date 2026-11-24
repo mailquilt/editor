@@ -1,8 +1,9 @@
 import { loadDocument } from "@mailquilt/core";
-import type { Block, Column, Row } from "@mailquilt/core";
+import type { Block, Column, EmailStyle, Row } from "@mailquilt/core";
 import {
   blockStyles,
   EMAIL_LOOK,
+  linkColor,
   rowStyles,
   SOCIAL_NETWORKS,
   socialIcons,
@@ -46,7 +47,9 @@ export interface RenderEmailOptions {
 /** What every Block is rendered with. */
 interface BlockContext {
   fontFamily: string;
+  headingFontFamily: string;
   socialIconsUrl: string | undefined;
+  style: EmailStyle;
 }
 
 /**
@@ -78,15 +81,17 @@ const socialToMjml = (
  * the same properties.
  */
 const blockToMjml = (block: Block, context: BlockContext) => {
-  const { fontFamily } = context;
-  const blockCss = blockStyles(block);
+  const { fontFamily, headingFontFamily, style } = context;
+  const blockCss = blockStyles(block, style);
   const attributes = mjmlAttributes(blockCss);
   switch (block.type) {
     case "text": {
-      return `<mj-text${attributes}>${richTextToHtml(block.props.content, fontFamily, blockCss as TextCss)}</mj-text>`;
+      const textCss = blockCss as TextCss;
+      return `<mj-text${attributes}>${richTextToHtml(block.props.content, fontFamily, textCss, linkColor(block.props, style, textCss.color))}</mj-text>`;
     }
     case "heading": {
-      return `<mj-text${attributes}>${headingToHtml(block.props, fontFamily, blockCss as TextCss)}</mj-text>`;
+      const textCss = blockCss as TextCss;
+      return `<mj-text${attributes}>${headingToHtml(block.props, headingFontFamily, textCss, linkColor(block.props, style, textCss.color))}</mj-text>`;
     }
     case "button": {
       const { href, label } = block.props;
@@ -160,6 +165,17 @@ export const toMjml = (
     throw new Error(loaded.reason);
   }
   const { rows, settings } = loaded.document;
+  const style = settings.style ?? {};
+  const context: BlockContext = {
+    fontFamily: settings.fontFamily,
+    headingFontFamily: style.headingFontFamily ?? settings.fontFamily,
+    socialIconsUrl,
+    style,
+  };
+  // Behind every Row, unless a Row sets its own.
+  const sectionColor = style.emailBackgroundColor
+    ? ` background-color="${escapeAttribute(style.emailBackgroundColor)}"`
+    : "";
   const phoneRules = [
     rows.some(stacksColumns)
       ? `.${SHARED_COLUMN} { max-width:100% !important; }`
@@ -184,7 +200,7 @@ export const toMjml = (
     ${phoneStyles}
     <mj-attributes>
       <mj-all font-family="${escapeAttribute(settings.fontFamily)}" />
-      <mj-section padding="0" />
+      <mj-section padding="0"${sectionColor} />
       <mj-text padding="${EMAIL_LOOK.blockPadding}" />
       <mj-button font-size="${EMAIL_LOOK.fontSize}" line-height="${EMAIL_LOOK.lineHeight}" padding="${EMAIL_LOOK.blockPadding}" />
       <mj-image padding="${EMAIL_LOOK.blockPadding}" />
@@ -194,7 +210,7 @@ export const toMjml = (
     </mj-attributes>
   </mj-head>
   <mj-body background-color="${escapeAttribute(settings.backgroundColor)}" width="${settings.width}px">
-    ${rows.map((row) => rowToMjml(row, { fontFamily: settings.fontFamily, socialIconsUrl })).join("")}
+    ${rows.map((row) => rowToMjml(row, context)).join("")}
   </mj-body>
 </mjml>`;
   // In the order MJML writes the Columns, for `finishHtml`.

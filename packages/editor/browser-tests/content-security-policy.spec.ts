@@ -78,7 +78,7 @@ const STYLED_EMAIL = {
     fontFamily: "Arial, Helvetica, sans-serif",
     width: 600,
   },
-  version: 3,
+  version: 4,
 };
 
 /**

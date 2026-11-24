@@ -32,7 +32,7 @@ A Command is a plain object with a `type`. `apply()` returns `{ ok: true }` when
 | `code` | The Command was refused because |
 | --- | --- |
 | `invalidCommand` | it isn't a Command, or one of its fields isn't what that Command takes, such as a negative index or an unknown layout. |
-| `invalidProps` | its `props` or `settings` would give the Block, Row or email a value it can't have, such as a color that isn't one. |
+| `invalidProps` | its `props`, `settings` or `style` would give the Block, Row or email a value it can't have, such as a color that isn't one. |
 | `noSuchBlock`, `noSuchColumn`, `noSuchRow` | the email has no Block, Column or Row with the ID it names. |
 | `unknownBlockType` | its `blockType` isn't one of the Block types. |
 | `indexPastEnd` | its index is past the end of the Column, or of the email's Rows. |
@@ -52,10 +52,11 @@ A Command is a plain object with a `type`. `apply()` returns `{ ok: true }` when
 | `moveRow` | `rowId`, `index` | Moves a Row, with its Blocks. |
 | `removeRow` | `rowId` | Removes a Row. |
 | `updateEmailSettings` | `settings` | Changes the email's width, background, font, preheader or language. |
+| `updateEmailStyle` | `style` | Changes the email's [Email style](./document-format#email-style), such as its text color or button corners. |
 
 A Block's type is one of `text`, `heading`, `image`, `button`, `divider`, `spacer` and `social`. A layout is one of `100`, `50/50`, `33/67`, `67/33`, `33/33/33` and `25/25/25/25`, written as a string. Both lists are exported. `ROW_LAYOUTS` is the layouts as strings, and `BLOCK_TYPES` is an array of `{ type, label }` objects. In TypeScript, a type is a `BlockType`.
 
-In the Commands that change something, `props` and `settings` hold only what you're changing. The rest stays as it is. To remove an optional property, set it to `null`:
+In the Commands that change something, `props`, `settings` and `style` hold only what you're changing. The rest stays as it is. To remove an optional property, set it to `null`:
 
 ```js
 editor.apply({
@@ -137,7 +138,7 @@ Each Operation is a record of one thing that happened to the email, and is plain
 | `insert` | A Block, Column or Row was added: `block`, `column` or `row`, with the whole of what was added, and `at`, where it is now. |
 | `remove` | A Block, Column or Row was taken out: `block`, `column` or `row`, with the whole of what was removed, and `at`, where it was. |
 | `move` | A Block moved, with `blockId`, or a Row did, with `rowId`. `from` is where it was, and `to` where it is, as an index once it had left `from`. |
-| `setProps` | A Block's, a Row's or the email's settings changed, named by `blockId`, `rowId` or `emailSettings: true`. `props` holds all of them after the change, and `previousProps` all of them before it. |
+| `setProps` | A Block's, a Row's or the email's settings changed, named by `blockId`, `rowId` or `emailSettings: true`, which `updateEmailStyle` gives too. `props` holds all of them after the change, and `previousProps` all of them before it. |
 | `setColumnWidth` | A Column's width changed: `columnId`, its `width`, and its `previousWidth`, as percentages. |
 
 A Block's position, in `at`, `from` or `to`, is `{ columnId, index }`. A Column's is `{ rowId, index }`, and a Row's is `{ index }`:

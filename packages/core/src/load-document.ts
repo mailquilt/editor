@@ -7,6 +7,7 @@ import { emailSettingsSchema } from "./email-settings.js";
 import { MERGE_TAG } from "./rich-text.js";
 import { rowPropsSchema } from "./row-settings.js";
 import { describeIssues } from "./validation.js";
+import { isPlainObject, plainObject } from "./value-schemas.js";
 
 export type LoadResult =
   | { ok: true; document: BlocksDocument }
@@ -25,22 +26,6 @@ type Migrations = Record<
 const COLUMN_WIDTH_TOLERANCE = 1e-6;
 
 const idSchema = v.pipe(v.string(), v.nonEmpty());
-
-/**
- * An object JSON can hold, so not a list, a Date or a Map. A Proxy of one, as
- * Vue's reactive() makes, is one too.
- */
-const isPlainObject = (value: unknown) =>
-  Object.prototype.toString.call(value) === "[object Object]";
-
-// The object schemas let any object through, so props whose keys are all
-// optional would load a list, a Date or a Map as `{}`. Anything that isn't an
-// object is left for them to refuse.
-const plainObject = v.check(
-  (input: unknown) =>
-    typeof input !== "object" || input === null || isPlainObject(input),
-  "Expected an object, not a list or another kind of object"
-);
 
 // Each type of Block's props are checked by its own schema, found by its type.
 const blockSchema = v.variant(
@@ -299,6 +284,12 @@ const fromVersion2 = (document: Record<string, unknown>) => {
 };
 
 /**
+ * Version 4 adds Email style, and other optional fields, which no version 3
+ * email has, so a version 3 email is already a version 4 one.
+ */
+const fromVersion3 = (document: Record<string, unknown>) => document;
+
+/**
  * Checks a saved email and migrates it if it's an older version, without
  * changing what was passed in. It never repairs a document, so a host's
  * auto-save can't overwrite the original with a damaged copy. It gives a reason,
@@ -308,4 +299,5 @@ const fromVersion2 = (document: Record<string, unknown>) => {
 export const loadDocument = createDocumentLoader(DOCUMENT_VERSION, {
   1: fromVersion1,
   2: fromVersion2,
+  3: fromVersion3,
 });

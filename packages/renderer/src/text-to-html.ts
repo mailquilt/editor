@@ -299,13 +299,14 @@ const LIST_TAGS = { bulletList: "ul", orderedList: "ol" } as const;
 export const richTextToHtml = (
   { content }: RichTextDocument,
   fontFamily: string,
-  { color, "font-size": fontSize, "line-height": lineHeight }: TextCss
+  { "font-size": fontSize, "line-height": lineHeight }: TextCss,
+  linkColor: string
 ) => {
   const textStyle = `${TEXT_STYLE};font-family:${escapeAttribute(fontFamily)};line-height:${lineHeight};mso-line-height-rule:exactly`;
   // A last empty line takes up space on the canvas, but a <br /> at the end of
   // a paragraph doesn't make one on its own. Nor does an empty paragraph.
   const lineHtml = (inline: RichTextParagraph["content"]) =>
-    `${inlineToHtml(color, inline)}${endsWithoutText(inline) ? "<br />" : ""}`;
+    `${inlineToHtml(linkColor, inline)}${endsWithoutText(inline) ? "<br />" : ""}`;
   // The indent is a margin in pixels, which classic Outlook takes, where it
   // ignores a List's padding. A numbered List starts at 1, its default.
   const indent = Math.round(Number(fontSize.replace("px", "")) * LIST_INDENT);
@@ -344,10 +345,11 @@ const hasText = ({ content }: RichTextDocument) =>
 export const headingToHtml = (
   { content, level }: BlockProps["heading"],
   fontFamily: string,
-  { "line-height": lineHeight, ...blockCss }: TextCss
+  { "line-height": lineHeight, ...blockCss }: TextCss,
+  linkColor: string
 ) => {
   const lines = content.content
-    .map((paragraph) => inlineToHtml(blockCss.color, paragraph.content))
+    .map((paragraph) => inlineToHtml(linkColor, paragraph.content))
     .join("<br />");
   const lastLine = endsWithoutText(content.content.at(-1)?.content)
     ? "<br />"

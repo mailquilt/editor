@@ -6,6 +6,7 @@ export type {
   BlocksDocument,
   Column,
   EmailSettings,
+  EmailStyle,
   Row,
 } from "./document.js";
 export type {

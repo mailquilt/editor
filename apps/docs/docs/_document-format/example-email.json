@@ -1,12 +1,13 @@
 {
   "kind": "blocks",
-  "version": 3,
+  "version": 4,
   "settings": {
     "width": 600,
     "backgroundColor": "#f4f4f5",
     "fontFamily": "Arial, Helvetica, sans-serif",
     "preheader": "Your order is on its way",
-    "language": "en"
+    "language": "en",
+    "style": { "linkColor": "#2563eb", "buttonBorderRadius": 6 }
   },
   "rows": [
     {
