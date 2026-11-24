@@ -121,6 +121,7 @@ Which module owns what, and why, is in `docs/adr/`:
   - A control's icon, by its `svg`, and the host page's `html` and `body`, which hold what a test records.
   - Code run in the page, which has no locators, by tag and role attributes.
 - CI fails on a test that passes only on a retry, so a flake is seen and fixed. The retries stay, to tell a flake from a test that always fails. The trace kept is the first run's, the one that failed. (#171, #221)
+- A test that reads an opacity the editor fades, such as a toolbar's on hover, runs with `reducedMotion: "reduce"`, which turns the fades off. WebKit in CI has stopped a fade partway until the page was next drawn, and the test read the half-faded value.
 - Tests copy and paste through events, not the system's clipboard, which tests running at the same time could share. One test copies a Block and a Row between two pages through the system's clipboard in each browser, as ADR 0018 asks, since browsers clean pasted HTML differently. (#171, #277)
 - A Command applies at once, and the test host's state has the change before a test can read it, so a test reads the editor's value, or the host's, once, right after an action. A poll would let a change that came late pass. Tests poll only for what settles later, such as layout, the Shell's saves and timers. (#221)
 - Core keeps a "stores…" test for each Block type's own settings. (#82)

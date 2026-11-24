@@ -38,6 +38,11 @@ import {
   undoByKey,
 } from "./helpers.js";
 
+// These tests read an opacity that fades in or out. WebKit in CI has been seen
+// to stop a fade partway until the page is next drawn, so with reduced motion,
+// which turns the editor's fades off, they read where it ends.
+test.use({ reducedMotion: "reduce" });
+
 /** The language an element is in, from the nearest element that says. */
 const langOf = (locator: Locator) =>
   locator
