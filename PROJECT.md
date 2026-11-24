@@ -151,19 +151,19 @@ The [document format reference](apps/docs/docs/document-format.mdx) lists every 
 - **Links are limited** to `http:`, `https:`, `mailto:`, `tel:` and Merge Tags such as `{{cta_url}}`, so a link can't run code. Image URLs are limited to `http:`, `https:` and Merge Tags.
 - **An Image without a URL** shows a placeholder on the canvas and is left out of the export. An Image needs alt text before it can have a link, because alt text is all that can name that link.
 - **Documents that can't be trusted are refused, never repaired:** malformed ones, unknown Block types and versions newer than the package supports. Nothing changes them, so a host's auto-save can't overwrite the original.
-- **Whatever loads also exports,** so values follow what MJML accepts. Colors are `#rgb`, `#rrggbb`, `rgb()` or `rgba()`, the email width is a whole number of pixels up to 1200, and a Column is at least 1% wide. A language set by a Command must be a code such as `en` or `pt-BR`. A saved one loads whatever it is, so the email can still be opened and fixed, and the renderer escapes it.
+- **Whatever loads also exports,** so values follow what MJML accepts. Colors are `#rgb`, `#rrggbb`, `rgb()` or `rgba()`, the email width is a whole number of pixels up to 1200, and a Column is at least 1% wide. A language set by a Command must be a code such as `en` or `pt-BR`, or one Merge Tag as its whole value, such as `{{language}}`. A saved one loads whatever it is, so the email can still be opened and fixed, and the renderer escapes it.
 
 ### Planned additions
 
-Version 3 adds Merge Tags as units of text, Lists, a Row's padding and phone settings, and the Social Block, in one change to the format. Later versions add these through migrations, as their features are built: brand styles, display rules, more mobile overrides and HTML documents.
+Later versions add brand styles, display rules, more mobile overrides and HTML documents, each through a migration, as its feature is built.
 
 ## 5. Blocks and settings
 
 | | Released | Planned |
 |---|---|---|
 | **Layout** | Rows, and Columns from preset layouts | — |
-| **Blocks** | Text, Heading, Image (by URL), Button, Divider, Spacer | Social links, lists and tables, video thumbnails, headers and footers, custom HTML |
-| **Settings** | Alignment, colors, font size, sizes, links and alt text. Email width, background, font, preheader and language. Row background | Spacing, borders, background images, typography in full, mobile overrides, brand styles |
+| **Blocks** | Text (with Lists), Heading, Image, Button, Divider, Spacer, Social | Menus, tables, video thumbnails, headers and footers, custom HTML |
+| **Settings** | Alignment, colors, font size, sizes, links and alt text. Email width, background, font, preheader and language. Row background and padding, and hiding or stacking a Row on phones | Spacing, borders, background images, typography in full, more mobile overrides, brand styles |
 
 Settings are defined as data and drawn by one shared panel:
 
@@ -194,7 +194,7 @@ With a bundler, import `@mailquilt/editor`. Without one, such as in Rails, Larav
 ```html
 <mail-quilt id="builder"></mail-quilt>
 <script type="module">
-  import "https://cdn.jsdelivr.net/npm/@mailquilt/editor@0.2.0/dist/cdn/index.js";
+  import "https://cdn.jsdelivr.net/npm/@mailquilt/editor@0.3.0/dist/cdn/index.js";
 
   const builder = document.querySelector("#builder");
   builder.addEventListener("mq-change", (event) => save(event.detail.document));
@@ -210,6 +210,7 @@ With a bundler, import `@mailquilt/editor`. Without one, such as in Rails, Larav
 - **`mq-change`** fires after each change, with the new document. The `mq-` prefix keeps it apart from the native `change` event of inputs.
 - **`mq-error`** fires when a document is refused, and nothing changes. `event.detail.reason` says why. It fires just after the code that set `value` finishes, so add the listener before setting `value`.
 - **`exportHtml()`** returns the email's HTML, and loads MJML the first time it's called.
+- **`uploadImage`, `mergeTags` and `socialIconsUrl`** are optional properties for what the Host app supplies: a function that uploads an image to its own storage, its list of Merge Tags, and where the Social Block's icons are served from.
 
 ### The Shell
 
@@ -282,12 +283,15 @@ Effect isn't used in the published packages, and may be reconsidered for the CLI
 ## 8. What's released
 
 - The packages `core`, `renderer`, `editor` (with a CDN build) and `react`
-- Text, Heading, Image (by URL), Button, Divider and Spacer Blocks
+- Text, Heading, Image, Button, Divider, Spacer and Social Blocks
+- Bulleted and numbered Lists in Text Blocks, one level deep
 - Rows of 1 to 4 Columns, from preset layouts, with padding, and settings to hide a Row on phones or keep its Columns side by side there
 - Settings for each Block, Row and the email
 - Drag and drop, with a keyboard path for every drag action
+- Copy, cut, paste and duplicate for Blocks and Rows, in one email, between emails and from other apps
+- Image upload to the Host app's storage, from the Image settings or by dropping files on the email
 - Undo and redo
-- Merge Tags typed into text and links, kept through editing and rendering, with any `&`, `<` or `>` in them escaped, and a `"` too in a link or image URL
+- Merge Tags as one unit in text, a list of the Host app's Merge Tags that typing `{{` opens in text and in every text or URL setting, and tags kept through rendering, with any `&`, `<` or `>` in them escaped, and a `"` too in a link or image URL
 - Save and load as JSON
 - Preview of the real exported HTML, in a sandboxed iframe, at desktop or phone width
 - HTML export, tested in Gmail, Apple Mail, Outlook and other major email clients
@@ -297,7 +301,7 @@ Effect isn't used in the published packages, and may be reconsidered for the CLI
 - The Shell: a ready-made editor page with Import, Export and messages
 - The docs and the Playground
 
-It doesn't include a Merge Tag picker, image uploads, or anything in [Planned features](#10-planned-features).
+It doesn't include anything in [Planned features](#10-planned-features).
 
 ### The docs and the Playground
 
@@ -309,35 +313,26 @@ There are no dates, and items can move. Each item is tracked in GitHub Issues.
 
 **Next**
 
-What a team needs before its customers can use the editor. The first six are specified together and ship together, in `0.3.0`, with one change to the saved format. These come before the MCP server and the AI builder because a team that can't upload an image or pick a Merge Tag stops there, whatever else the editor does. The rest are specified together after that, and brand styles and settings come first among them, because every Block added later then starts with the full set. The line under a feature is what its spec has to settle first, because the code doesn't allow for it yet.
+What a team needs before its customers can use the editor. The redesign comes first, then fuller settings, so every Block added later starts in the new editor with the full set. The line under a feature is what its spec has to settle first, because the code doesn't allow for it yet.
 
-1. Image upload, to storage the Host app supplies
-   - First: a way in for the Host app's service, as the element takes only `value`, and each new property is passed on by hand in three places. A drag that can take a dropped file, as every file is refused on the whole element today.
-2. A Merge Tag picker, filled by the Host app
-   - First: Merge Tags as something other than plain text matched by a pattern, as Backspace inside one leaves a broken tag, and `{{ }}` is fixed in core. The same way in for the Host app as image upload.
-3. Lists in text
-   - First: deleting an empty paragraph that isn't top-level, as the text assumes every paragraph is. A new format version for the new node.
-4. Row padding, hiding or stacking on phones, and a mobile preview
-   - First: a Column's inline width that allows for Row padding, as it assumes the Row is as wide as the email. Columns that stay side by side on phones without a media query, through `mj-group`, as every Row stacks today. A settings field that holds a yes or no, as each holds one string or number.
-5. Copy, paste and duplicate
-   - First: a Command that inserts a Block or Row with its content, and key dispatch that hears copy and paste events.
-6. A Social Block
-   - First: icons that don't load from Mailjet, as MJML's social element does by default. A settings field that holds a list a person can add to, remove from and reorder, as each holds one string or number. A Tab stop in an empty Column that isn't one per Block type, as each new type adds one.
-7. Brand styles, and fuller settings for every Block, Row and Column
-   - Brand styles are the email's own defaults for text, each Heading level, links and Buttons. A Block's settings then change only what differs: spacing, borders, corners, backgrounds, typography, and whether it shows on phones or on desktop. Some settings hold a second value for phones.
-   - First: a value a Block leaves unset and takes from the email's brand styles, as every Block stores each of its values today. Settings for a Column, as it has none. What each setting falls back to in Outlook on Windows, which ignores rounded corners and background images.
-8. Web fonts
-9. Menu, Video, HTML and Table Blocks
-10. Alt text, or a "decorative" choice, for every image
-11. A plain-text version of each email
-12. Sending a test email, through a function the Host app supplies
-13. Translations of the editor's interface, and right-to-left text
-    - First: the editor's English strings in one place, as about 90 in the editor and 35 in core are written inline and joined together. Left and right as directions, as they're a Column index of −1 and +1.
-14. Starter emails
-15. React 18 in `@mailquilt/react`
-    - First: where the components rely on React 19, such as taking `ref` as a plain prop.
-16. Vue, Angular and Svelte tested in `install-checks`, with types for the element
-17. A JSON Schema for the email format
+1. A redesign of the editor's interface, with the email's own styles
+   - Three modes: Edit, Style and Check. Edit has a list of the email's Rows and one bar above the email for what's selected, in place of the side panel and the Block toolbars, and works on phones. Style holds the email's own colors, fonts, sizes and button corners, which a Block's own value overrides. Check replaces the Preview: the email at desktop and phone widths, and what to fix before it's sent, such as an image with no alt text.
+   - First: a value a Block leaves unset and takes from the email's styles, as every Block stores each of its values today.
+2. Fuller settings for every Block, Row and Column
+   - Spacing, borders, corners, backgrounds, typography, and whether a Block shows on phones or on desktop, each changing only what differs from the email's styles. Some settings hold a second value for phones.
+   - First: settings for a Column, as it has none. What each setting falls back to in Outlook on Windows, which ignores rounded corners and background images.
+3. Web fonts
+4. Menu, Video, HTML and Table Blocks
+5. Alt text, or a "decorative" choice, for every image
+6. A plain-text version of each email
+7. Sending a test email, through a function the Host app supplies
+8. Translations of the editor's interface, and right-to-left text
+   - First: the editor's English strings in one place, as about 90 in the editor and 35 in core are written inline and joined together. Left and right as directions, as they're a Column index of −1 and +1.
+9. Starter emails
+10. React 18 in `@mailquilt/react`
+   - First: where the components rely on React 19, such as taking `ref` as a plain prop.
+11. Vue, Angular and Svelte tested in `install-checks`, with types for the element
+12. A JSON Schema for the email format
 
 **Later**
 
@@ -389,7 +384,7 @@ The HTML Block comes first, on its own. It's the one Block that lets a person pu
 ### Brand styles, Merge Tags and display rules
 
 - **Brand styles:** Blocks refer to shared colors, fonts and button styles, so changing one updates the whole email. The renderer writes the values in directly, because email clients support CSS variables poorly.
-- **Merge Tags:** a picker, sample data for Preview, and output for plain values, Handlebars and Liquid. Merge Tags stay intact through editing, AI changes and rendering.
+- **Merge Tags:** groups in the picker, sample data for Preview, and output for Handlebars and Liquid. Merge Tags stay intact through editing, AI changes and rendering.
 - **Display rules:** show or hide Rows and Blocks, and repeat content such as product lists. Rules are stored as structured data, not as template syntax mixed into the content.
 
 ### Email checker
@@ -495,7 +490,7 @@ Conflicts and the transport belong to the developer or their library. The design
 
 ### Extension points
 
-Custom Blocks and settings fields, custom checker rules, image upload through the Host app's `uploadImage`, a media library adapter, the AI adapter, the Host app's Merge Tags through `mergeTags`, sending adapters, translations of the editor's interface, and white-labeling with no required Mail Quilt branding. Theme tokens are already available.
+Custom Blocks and settings fields, custom checker rules, a media library adapter, the AI adapter, sending adapters, translations of the editor's interface, and white-labeling with no required Mail Quilt branding. Theme tokens, `uploadImage`, `mergeTags` and `socialIconsUrl` are already available.
 
 ## 11. Quality and testing
 
@@ -516,7 +511,8 @@ What's built:
 
 - No email holds HTML of its own yet, so nothing is sanitized. Pasted HTML is read through the text's schema, so it keeps only what a Text or Heading can store, and a link only if its URL is allowed.
 - An email that doesn't match the document format is refused, never repaired.
-- Links and image URLs are limited to the schemes in [the document's rules](#rules).
+- Links and image URLs are limited to the schemes in [the document's rules](#rules). So are the URLs of a Social Block's links, and the URL an image upload returns.
+- A pasted Block or Row is checked as an imported email is, and gets new IDs, so a crafted clipboard can't put in an email anything a saved email couldn't hold.
 - The renderer escapes what it writes in one place. Any `&`, `<` or `>` in a Merge Tag is escaped, and a `"` too in a link or image URL. The value a sending service fills a Merge Tag with is the service's to escape.
 - Preview runs in a sandboxed iframe, with no scripts.
 - Commands from code are validated exactly like the editor's own.
@@ -524,8 +520,6 @@ What's built:
 Planned:
 
 - The HTML Block's content, and any HTML the AI writes, are sanitized.
-- A pasted Block or Row is checked as an imported email is, and gets new IDs, so a crafted clipboard can't put in an email anything a saved email couldn't hold.
-- The URL an image upload returns is checked as any image URL is.
 - Commands from AI, MCP and collaboration are validated exactly like the editor's own.
 - The Playground never stores or logs anyone's AI keys or prompts.
 

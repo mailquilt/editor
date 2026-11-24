@@ -1,6 +1,6 @@
 {
   "name": "@mailquilt/renderer",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Turns a Mail Quilt email into HTML for Gmail, Outlook, Apple Mail and other email clients, with MJML. Runs without a DOM.",
   "keywords": [
     "email",

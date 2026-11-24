@@ -1,6 +1,0 @@
----
-"@mailquilt/core": minor
-"@mailquilt/editor": minor
----
-
-Copy, cut and paste Blocks and Rows. Ctrl/⌘+C, X and V, or the browser's Edit menu, copy, cut and paste a Block that has focus, or a Row from its toolbar, and paste from the toolbar below the email with nothing selected. A copy puts plain text on the clipboard, with each Merge Tag as `{{name}}`, and simple HTML made without MJML, whose wrapper holds the Block or Row and the format version as JSON in a `data-mail-quilt` attribute. Pasted into a Mail Quilt editor, in the same email, another email or another tab, it keeps every setting: the JSON is checked as an email from outside is, an older version is migrated, a newer one is refused with the reason `value` gives, and every Row, Column and Block gets a new ID. Text or HTML from another app becomes a Text Block, read as a paste into text is, and an image file becomes an Image Block uploaded through `uploadImage`, as a dropped file is, and is refused without it. A paste goes after the selected Block, or in a new Row after the selected Row, or at the end, and is selected. A pasted Block, Row or text is one undo step. Cut is copy, then Delete Block or Delete Row. Each is announced with where it happened. Paste inside a Block's text is unchanged.
