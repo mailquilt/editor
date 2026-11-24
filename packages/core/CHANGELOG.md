@@ -14,6 +14,12 @@
   
   The export writes the icons with MJML's social element, each one's image given, so nothing loads from Mailjet, with the network's name as its alt text and a gap of half the icon's size. The icons are PNGs in the renderer's `icons` folder, and emails load them from jsDelivr at the renderer's exact version. `renderEmail` takes a `socialIconsUrl` option, and `<mail-quilt>`, `<mail-quilt-shell>` and both React components take a `socialIconsUrl` property, so a Host app can serve the icons from its own storage. The canvas and Preview load the same URLs as the export, and an empty `socialIconsUrl` counts as none. On the canvas, a faded icon's name says it has no URL yet. A Social Block copied into another app gives its linked networks' names. The logos are their owners' trademarks, and `icons/NOTICE.md` credits each source and its licence.
 
+### Patch Changes
+
+- 729d5d7: Two details of the export, found by the 0.3.0 Email on Acid run. Each paragraph and List item has the email's font on its own tag, as a heading does, because Libero gave paragraphs a font of its own while List items kept the email's. And a Social Block's icons that wrap onto a second line now line up the same on every line: right-aligned, each line ends at the Block's edge, where before the last line ended further right. Half the gap between icons is on every side of each icon, and the Block's padding is that much less, so a single line sits where it did, on the canvas and in the email.
+- be4a8a2: A Social Block's icons that wrap onto a second line, as on a phone, have the same gap between the lines as between the icons. Before, the lines touched. Half the gap is above and below each icon, and the Block's padding above and below is that much less, so a single line of icons is as tall as before, in the email and on the canvas.
+- 9b3ac5e: The Social Block's color icons can be seen in dark mode. X, Threads and TikTok are white on a black rounded square, and the website icon white on dark grey. Drawn black on their own, they disappeared where an email app's dark mode turned a white background near-black, as Outlook, Outlook.com, Yahoo and the Gmail app on iPhone do. The Side panel says that white icons need their dark background, which some email apps' dark modes make light, and that color icons show on light and dark backgrounds.
+
 ## 0.2.0
 
 ### Minor Changes

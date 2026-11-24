@@ -13,13 +13,19 @@
 
 ### Patch Changes
 
+- 729d5d7: Two details of the export, found by the 0.3.0 Email on Acid run. Each paragraph and List item has the email's font on its own tag, as a heading does, because Libero gave paragraphs a font of its own while List items kept the email's. And a Social Block's icons that wrap onto a second line now line up the same on every line: right-aligned, each line ends at the Block's edge, where before the last line ended further right. Half the gap between icons is on every side of each icon, and the Block's padding is that much less, so a single line sits where it did, on the canvas and in the email.
+- be4a8a2: A Social Block's icons that wrap onto a second line, as on a phone, have the same gap between the lines as between the icons. Before, the lines touched. Half the gap is above and below each icon, and the Block's padding above and below is that much less, so a single line of icons is as tall as before, in the email and on the canvas.
+- 9b3ac5e: The Social Block's color icons can be seen in dark mode. X, Threads and TikTok are white on a black rounded square, and the website icon white on dark grey. Drawn black on their own, they disappeared where an email app's dark mode turned a white background near-black, as Outlook, Outlook.com, Yahoo and the Gmail app on iPhone do. The Side panel says that white icons need their dark background, which some email apps' dark modes make light, and that color icons show on light and dark backgrounds.
 - Updated dependencies [f08e0bc]
 - Updated dependencies [9925d65]
+- Updated dependencies [729d5d7]
 - Updated dependencies [703bc4e]
 - Updated dependencies [77b334b]
 - Updated dependencies [151b5dc]
 - Updated dependencies [1a5332b]
 - Updated dependencies [647bc11]
+- Updated dependencies [be4a8a2]
+- Updated dependencies [9b3ac5e]
   - @mailquilt/core@0.3.0
 
 ## 0.2.0

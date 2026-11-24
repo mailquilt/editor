@@ -18,13 +18,17 @@
 - Updated dependencies [9925d65]
 - Updated dependencies [5e07cec]
 - Updated dependencies [10b300f]
+- Updated dependencies [729d5d7]
 - Updated dependencies [703bc4e]
+- Updated dependencies [4cb002d]
 - Updated dependencies [77b334b]
 - Updated dependencies [20992ed]
 - Updated dependencies [151b5dc]
 - Updated dependencies [63f6621]
 - Updated dependencies [1a5332b]
 - Updated dependencies [647bc11]
+- Updated dependencies [be4a8a2]
+- Updated dependencies [9b3ac5e]
 - Updated dependencies [9648b8a]
   - @mailquilt/editor@0.3.0
 

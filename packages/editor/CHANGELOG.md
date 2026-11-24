@@ -21,13 +21,20 @@
 
 - 5e07cec: The email is one stop for Tab, so a Block's or a Row's settings can be reached from the keyboard. Before, every Block and its text was a stop, and Tab selected each Block it passed, so the side panel showed the email's last Block by the time Tab got there, and a Row's settings couldn't be reached at all. Now only the selected Block is a stop, or with nothing selected the first, and the arrow keys go to the others as before. Tab goes from the selected Block to its text and toolbar, then past the toolbars of the Rows and empty Columns after it, to Preview and that Block's settings. While a Row is selected no Block is a stop, so Tab from Select Row goes the same way to the Row's settings, and Escape in a Row's toolbar unselects the Row and selects that toolbar's Row's first Block.
 - 10b300f: An empty Column's add buttons are one toolbar, named for where it is, such as "Add a Block to Row 1, Column 2". It's one stop for Tab, as the Block's and Row's toolbars are: the arrow keys go across its buttons, Home and End go to the first and last, and Shift+Tab leaves it. Each button is now named "Add Text Block here" and so on, without the Column, which the toolbar's name gives. Before, each empty Column was one Tab stop per type of Block.
+- 729d5d7: Two details of the export, found by the 0.3.0 Email on Acid run. Each paragraph and List item has the email's font on its own tag, as a heading does, because Libero gave paragraphs a font of its own while List items kept the email's. And a Social Block's icons that wrap onto a second line now line up the same on every line: right-aligned, each line ends at the Block's edge, where before the last line ended further right. Half the gap between icons is on every side of each icon, and the Block's padding is that much less, so a single line sits where it did, on the canvas and in the email.
+- 4cb002d: The highlighted tag in the Merge Tag list, and a Merge Tag in text, have an edge at 3:1 or more. Before, the edge was at about 2:1, so a person with low vision couldn't easily tell which tag <kbd>Enter</kbd> would put in, or a tag from typed words. The highlighted tag's edge uses `--mq-color-accent-strong`, as a pressed button's does. A Merge Tag's edge in text is in the text's own color, so it stands out from the email as the text does, whatever the editor's theme.
+- be4a8a2: A Social Block's icons that wrap onto a second line, as on a phone, have the same gap between the lines as between the icons. Before, the lines touched. Half the gap is above and below each icon, and the Block's padding above and below is that much less, so a single line of icons is as tall as before, in the email and on the canvas.
+- 9b3ac5e: The Social Block's color icons can be seen in dark mode. X, Threads and TikTok are white on a black rounded square, and the website icon white on dark grey. Drawn black on their own, they disappeared where an email app's dark mode turned a white background near-black, as Outlook, Outlook.com, Yahoo and the Gmail app on iPhone do. The Side panel says that white icons need their dark background, which some email apps' dark modes make light, and that color icons show on light and dark backgrounds.
 - Updated dependencies [f08e0bc]
 - Updated dependencies [9925d65]
+- Updated dependencies [729d5d7]
 - Updated dependencies [703bc4e]
 - Updated dependencies [77b334b]
 - Updated dependencies [151b5dc]
 - Updated dependencies [1a5332b]
 - Updated dependencies [647bc11]
+- Updated dependencies [be4a8a2]
+- Updated dependencies [9b3ac5e]
   - @mailquilt/core@0.3.0
   - @mailquilt/renderer@0.3.0
 
