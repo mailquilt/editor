@@ -286,17 +286,17 @@ const drawSocial = (
       </div>
     `;
   }
-  const { blockPaddingY, gap, iconPaddingY, size, style } = socialIcons(props);
+  const { blockPadding, iconPadding, size, style } = socialIcons(props);
   return html`
     <div
       class="padded-block social-icons"
       style=${styleProperties({
-        "padding-block": `${blockPaddingY}px`,
+        padding: `${blockPadding}px`,
         "text-align": align,
       })}
     >
       ${links.map(
-        ({ network, url }, index) =>
+        ({ network, url }) =>
           html`<img
             alt=${
               url === undefined
@@ -308,9 +308,7 @@ const drawSocial = (
             src=${socialIconUrl(network, style, socialIconsUrl)}
             style=${styleProperties({
               height: `${size}px`,
-              "margin-block": `${iconPaddingY}px`,
-              "margin-inline-end":
-                index === links.length - 1 ? "0" : `${gap}px`,
+              margin: `${iconPadding}px`,
               width: `${size}px`,
             })}
           />`
