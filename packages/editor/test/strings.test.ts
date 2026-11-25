@@ -54,22 +54,22 @@ describe(createText, () => {
   it("keeps the English for a text the Host app doesn't name", () => {
     const text = createText(() => ({ "canvas.row": "Ligne {row}" }));
 
-    expect(text("canvas.undo")).toBe(STRINGS["canvas.undo"]);
+    expect(text("topBar.undo")).toBe(STRINGS["topBar.undo"]);
   });
 
   // `strings` is plain data from the host, and isn't type-checked there.
   it("keeps the English for a text that isn't a string", () => {
-    const strings = { "canvas.undo": 1 } as unknown as MailQuiltStrings;
+    const strings = { "topBar.undo": 1 } as unknown as MailQuiltStrings;
 
-    expect(createText(() => strings)("canvas.undo")).toBe("Undo");
+    expect(createText(() => strings)("topBar.undo")).toBe("Undo");
   });
 
   it("reads the Host app's texts afresh each time", () => {
     const host: { strings?: MailQuiltStrings } = {};
     const text = createText(() => host.strings);
-    host.strings = { "canvas.undo": "Annuler" };
+    host.strings = { "topBar.undo": "Annuler" };
 
-    expect(text("canvas.undo")).toBe("Annuler");
+    expect(text("topBar.undo")).toBe("Annuler");
   });
 });
 

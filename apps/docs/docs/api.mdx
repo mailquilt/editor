@@ -5,7 +5,7 @@ seo:
   title: "Email editor API: properties, events and React props"
 ---
 
-The editor is the `<mail-quilt>` element, and the [Shell](./shell) is `<mail-quilt-shell>`, the editor with a header and messages around it. `@mailquilt/editor` registers both, and `@mailquilt/react` wraps both as components.
+The editor is the `<mail-quilt>` element, and the [Shell](./shell) is `<mail-quilt-shell>`, the editor with the email's name, Export, Import and messages added. `@mailquilt/editor` registers both, and `@mailquilt/react` wraps both as components.
 
 ## The editor
 
@@ -17,7 +17,7 @@ The editor is the `<mail-quilt>` element, and the [Shell](./shell) is `<mail-qui
 | `uploadImage` | A function that uploads an image to your storage and returns a promise of `{ url }`. With it, the Image settings have an Upload image button, and image files can be dropped or pasted on the email. [Upload images](./upload-images) shows one, and what the editor does with it. |
 | `mergeTags` | Your app's Merge Tags, as an array of `{ name, label }`, such as `[{ name: "first_name", label: "First name" }]`. `name` is what goes between the braces, and `label` is optional. With it, typing `{{` in text, or in any setting that holds text or a URL, opens a list of them to pick from, and the format bar has a Merge Tag button. A tag in text shows its label, or its name without one, but the export and the Preview always have `{{name}}`. [Merge Tags](#merge-tags) says more. |
 | `socialIconsUrl` | The URL of a folder in your storage holding the Social Block's icons, copied from `@mailquilt/renderer`'s `icons`. The canvas, Preview and `exportHtml()` load the icons from there. Without it, they load from jsDelivr, at the renderer's exact version. [Social icons](./social-icons) says why you might set it. |
-| `strings` | Your own words for any of the editor's, by ID, such as `{ "canvas.undo": "Annuler" }`. Any you leave out stay in English. [Text in your words](#text-in-your-words) says how to find the IDs. |
+| `strings` | Your own words for any of the editor's, by ID, such as `{ "topBar.undo": "Annuler" }`. Any you leave out stay in English. [Text in your words](#text-in-your-words) says how to find the IDs. |
 | `mq-change` | An event fired after every change. The new email is in `event.detail.document`. |
 | `mq-error` | An event fired when the editor refuses an email, which then keeps the email it had. The reason is in `event.detail.reason`. The [document format](./document-format) page lists what the editor accepts. |
 | `exportHtml()` | Returns a promise of the email's HTML, ready to send. It rejects if the editor has no email. |
@@ -64,7 +64,7 @@ import { STRINGS } from "@mailquilt/editor/strings";
 
 editor.strings = {
   language: "fr",
-  "canvas.undo": "Annuler",
+  "topBar.undo": "Annuler",
   "said.blockMoved":
     "Déplacé : ligne {row}, colonne {column}, place {position} sur {count}.",
 };
@@ -84,13 +84,13 @@ editor.strings = {
 
 | Name | What it does |
 | --- | --- |
-| `value` | The email the Shell shows, as on `<mail-quilt>`. With `save-key`, a saved email opens instead of the first one you set. With no `value` and nothing saved, the editor is empty and the export buttons say there's no email to export. |
+| `value` | The email the Shell shows, as on `<mail-quilt>`. With `save-key`, a saved email opens instead of the first one you set. With no `value` and nothing saved, the editor is empty and Export is off. |
 | `uploadImage` | As on `<mail-quilt>`. The Shell passes it to the editor inside. |
 | `mergeTags` | As on `<mail-quilt>`. The Shell passes it to the editor inside. |
 | `socialIconsUrl` | As on `<mail-quilt>`. The Shell passes it to the editor inside. |
 | `strings` | As on `<mail-quilt>`. The Shell passes it to the editor inside, and its own words have IDs starting `shell.`. |
-| `heading` | The text in the header. It's "Email" when unset, or your `shell.email`. |
-| `actions` | The buttons to show, by name and separated by spaces: `import-json`, `export-json` and `export-html`. Leave it out to show all three. |
+| `heading` | The email's name, at the left of the top bar. It's "Email" when unset, or your `shell.email`. |
+| `actions` | What the Shell offers, by name and separated by spaces: `export-html` and `export-json` in the Export menu, and `import-json` in the More menu. Leave it out to offer all three. |
 | `save-key` | Where the email is kept in the browser, as the `saveKey` property. Use one for each email and each person. Leave it out to store nothing. [Saving](./shell#saving) says how it works. |
 | `mq-change` | Fired after every change, including an import. The new email is in `event.detail.document`. |
 | `mq-error` | Fired when the editor refuses an email you set as `value`. The reason is in `event.detail.reason`, and the message bar shows it too. |
@@ -139,7 +139,7 @@ editor.strings = {
 
 ## CSS parts
 
-The frame around the editor, with its corners and its 1px ring, is the `frame` part. Style it with `mail-quilt::part(frame)`, such as `border-radius: 0` for an editor that fills a panel edge to edge. When the editor is narrower than {{editor-min-width}} pixels, the notice it shows instead of the canvas is the `frame` part too, so what you give the frame, such as a height or corners, applies to the notice. In the Shell, the frame is the Shell's own, the `frame` part of `<mail-quilt-shell>`, and the editor inside draws none. Style it with `mail-quilt-shell::part(frame)`. The Shell's header and message bar are parts too, which [Customizing it](./shell#customizing-it) lists.
+The frame around the editor, with its corners and its 1px ring, is the `frame` part. Style it with `mail-quilt::part(frame)`, such as `border-radius: 0` for an editor that fills a panel edge to edge. The top bar inside it, with Undo, Redo, the Modes and the Desktop and Phone views, is the `top-bar` part, and takes the frame's top corners. When the editor is narrower than {{editor-min-width}} pixels, it shows a notice below the top bar instead of the canvas, inside the frame, so what you give the frame, such as a height or corners, applies there too. In the Shell, the frame is the Shell's own, the `frame` part of `<mail-quilt-shell>`, and the editor inside draws none. Style it with `mail-quilt-shell::part(frame)`, and the top bar with `mail-quilt-shell::part(header)`. The Shell's own pieces of the top bar and its message bar are parts too, which [Customizing it](./shell#customizing-it) lists.
 
 Colors, spacing, corners and the font are [theme tokens](./theme-tokens), not parts.
 

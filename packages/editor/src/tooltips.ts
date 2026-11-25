@@ -81,9 +81,20 @@ export const createTooltips = ({ root, tooltip }: TooltipsHost): Tooltips => {
     tooltip.style.top = `${top}px`;
   };
 
-  /** The control with focus from the keyboard, read when it's needed. */
+  /**
+   * The control with focus from the keyboard, read when it's needed: one of
+   * the editor's own, or one the Shell put in its slots, whose focus the
+   * editor's root doesn't report.
+   */
   const focused = () => {
-    const element = root.activeElement;
+    const around = root.host.getRootNode();
+    const outside =
+      around instanceof Document || around instanceof ShadowRoot
+        ? around.activeElement
+        : null;
+    const element =
+      root.activeElement ??
+      (outside && root.host.contains(outside) ? outside : null);
     const trigger = triggerOf(element);
     return trigger === element && trigger?.matches(":focus-visible")
       ? trigger

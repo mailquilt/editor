@@ -40,6 +40,21 @@ export const STRINGS = {
   /** A control and the keys that do the same, in its tooltip. */
   withKeys: "{label} ({keys})",
 
+  // The top bar, above every Mode.
+  "topBar.undo": "Undo",
+  "topBar.redo": "Redo",
+  "topBar.modes": "Modes",
+  "topBar.edit": "Edit",
+  "topBar.style": "Style",
+  "topBar.check": "Check",
+  /** A Mode's tooltip, which says how to reach the others. */
+  "topBar.modeKeys": "{mode} (← → to move between Modes)",
+  /** Why Style, Check and the Shell's Export are off. */
+  "topBar.emptyEmail": "Add something to the email first",
+  "topBar.view": "View",
+  "topBar.desktop": "Desktop",
+  "topBar.phone": "Phone",
+
   // The Canvas.
   "canvas.block":
     "{type} Block, Row {row}, Column {column}, position {position} of {count}",
@@ -64,8 +79,6 @@ export const STRINGS = {
   "canvas.addToColumn": "Add a Block to Row {row}, Column {column}",
   "canvas.addHere": "Add {type} Block here",
   "canvas.emailTools": "Email tools",
-  "canvas.undo": "Undo",
-  "canvas.redo": "Redo",
   "canvas.preview": "Preview",
   "canvas.textOf": "{type} Block",
   "canvas.blockKeys":
@@ -304,9 +317,17 @@ export const STRINGS = {
 
   // The Shell.
   "shell.email": "Email",
-  "shell.importJson": "Import JSON",
-  "shell.exportJson": "Export JSON",
-  "shell.exportHtml": "Export HTML",
+  "shell.saved": "Saved",
+  "shell.notSaved": "Not saved",
+  "shell.export": "Export",
+  "shell.exportHtml": "HTML file",
+  "shell.exportHtmlHelp": "The email, ready to send",
+  "shell.exportJson": "JSON file",
+  "shell.exportJsonHelp": "To open in Mail Quilt again",
+  "shell.more": "More",
+  "shell.importJson": "Import JSON…",
+  /** The button in the message that the browser can't save. */
+  "shell.exportJsonNow": "Export JSON",
   "shell.cantSave":
     "This browser can't save your email here. Export it as JSON to keep it.",
   "shell.cantSaveNoExport": "This browser can't save your email here.",

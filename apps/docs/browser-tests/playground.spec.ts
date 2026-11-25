@@ -29,7 +29,7 @@ test("runs on the Shell, below the page's title", async ({ page }) => {
   await expect(textBlock(page)).toBeVisible();
   const shell = page.locator("mail-quilt-shell");
   await expect(
-    shell.getByRole("button", { name: "Import JSON" })
+    shell.getByRole("button", { exact: true, name: "Export" })
   ).toBeVisible();
   // The note that held its place has gone.
   await expect(page.getByText("The Playground is loading.")).toBeHidden();

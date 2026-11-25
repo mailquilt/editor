@@ -9,15 +9,13 @@ import { refuseFiles } from "./refuse-files.js";
 import type { StringId } from "./strings.js";
 import type { Text } from "./text.js";
 import { BACKDROP } from "./theme.js";
+import { PHONE_WIDTH } from "./top-bar.js";
 
 /**
  * How long the Preview waits to say it's loading, as long as its outline waits
  * to show, so a quick render says nothing.
  */
 const LOADING_SAID_AFTER_MS = 150;
-
-/** A common phone's width, below every phone media query of an email's. */
-const PHONE_WIDTH = 375;
 
 /** The width the Preview shows the email at. */
 type PreviewWidth = "desktop" | "phone";

@@ -132,7 +132,7 @@ test("strings reaches the element", async ({ page }) => {
       .evaluate(
         (element: MailQuiltElement | MailQuiltShellElement) => element.strings
       );
-    expect(given).toEqual({ "canvas.undo": "Annuler" });
+    expect(given).toEqual({ "topBar.undo": "Annuler" });
   }
 });
 

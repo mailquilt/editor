@@ -2,22 +2,21 @@
 title: Shell
 sidebar:
   label: Ready-made page (Shell)
-description: Put a ready-made email editor page in your app, with a header, Export and Import buttons, messages and saving in the browser.
+description: Put a ready-made email editor page in your app, with the email's name, Export and Import, messages and saving in the browser, in the editor's own top bar.
 seo:
   title: "Shell: a ready-made email editor page"
 ---
 
-`<mail-quilt>` is only the editor. Around it, your app still needs somewhere to export the email, somewhere to show why an email was refused, and a way to keep the person's work. `<mail-quilt-shell>` is all of that in one element: the editor, with a header above it and a message bar between them.
+`<mail-quilt>` is only the editor. Around it, your app still needs somewhere to export the email, somewhere to show why an email was refused, and a way to keep the person's work. `<mail-quilt-shell>` is all of that in one element: the editor, with the Shell's own controls in the editor's top bar, and a message bar below it. The page has one header.
 
 ## What it has
 
-The header has the heading and up to three buttons:
+On the left of the top bar, before Undo and Redo, are the heading, which names the email, and with `save-key`, whether it's saved: "Saved", or "Not saved" when the browser can't save it. On the right, after the Desktop and Phone views, are More and Export:
 
-- **Export HTML** downloads the email as `email.html`, ready to send.
-- **Export JSON** downloads it as `email.json`, the [document format](./document-format) the editor saves.
-- **Import JSON** opens a `.json` file in place of the current email, which undo can't bring back, and with `save-key` it's saved straight away. If the editor refuses it, the message bar says why and the current email stays.
+- **Export** opens a menu of two files. **HTML file** downloads the email as `email.html`, ready to send. **JSON file** downloads it as `email.json`, the [document format](./document-format) the editor saves. With nothing in the email, Export is off, and its tooltip says to add something first.
+- **More** opens a menu with **Import JSON…**, which opens a `.json` file in place of the current email, which undo can't bring back, and with `save-key` it's saved straight away. If the editor refuses it, the message bar says why and the current email stays.
 
-The message bar shows emails the editor refuses, exports that fail and saves that fail. Screen readers announce each message. A message stays until the person's next change, and one that the browser can't save stays until a change saves. One about an import also goes once an import works, and one about an export once either export works. The [Playground](/playground) is a Shell.
+The message bar shows emails the editor refuses, exports that fail and saves that fail. When the browser can't save, its message has an Export JSON button, while JSON file is in the Export menu. Screen readers announce each message. A message stays until the person's next change, and one that the browser can't save stays until a change saves. One about an import also goes once an import works, and one about an export once either export works. The [Playground](/playground) is a Shell.
 
 ## With a bundler
 
@@ -35,7 +34,7 @@ npm install @mailquilt/editor
 
 Importing `@mailquilt/editor` registers both `<mail-quilt>` and `<mail-quilt-shell>`. On a page with no build step, load the CDN build as [HTML, no build step](./html) shows. It registers both too.
 
-The Shell fills the width and height of the space you give it, and the editor takes everything below the header. If the email is longer than that, the editor scrolls inside the Shell.
+The Shell fills the width and height of the space you give it. If the email is longer than that, the editor scrolls inside the Shell, below its top bar, which stays in view.
 
 ## React
 
@@ -76,7 +75,7 @@ The Shell takes `value`, `heading`, `actions` and `save-key`, and the editor's `
 
 Set `heading` to name what's being edited, such as `heading="Welcome email"`.
 
-Choose the buttons with `actions`. An app that keeps emails on its own server may want only Export HTML, so people don't move emails around as files:
+Choose what the Shell offers with `actions`. An app that keeps emails on its own server may want only the HTML file, so people don't move emails around as files:
 
 ```html
 <mail-quilt-shell actions="export-html"></mail-quilt-shell>
@@ -86,23 +85,25 @@ Choose the buttons with `actions`. An app that keeps emails on its own server ma
 <MailQuiltShell actions={["export-html"]} />
 ```
 
-The buttons keep their own order, whatever order you name them in, and `actions=""` shows none. Without Export JSON, a failed save says the browser can't save without suggesting it. If you leave out Export HTML, call `exportHtml()` from a control of your own, so people can still get the HTML.
+`export-html` and `export-json` are the Export menu's items, and `import-json` is More's. They keep their own order, whatever order you name them in. Export shows while it has an item, and More while it has Import JSON, so `actions=""` shows neither. Without `export-json`, a failed save says the browser can't save without suggesting it. If you leave out `export-html`, call `exportHtml()` from a control of your own, so people can still get the HTML.
 
-The Shell draws its header and messages from the same [theme tokens](./theme-tokens) as the editor. Set them on `<mail-quilt-shell>`, and the editor inside uses them too.
+The Shell draws its controls and messages from the same [theme tokens](./theme-tokens) as the editor. Set them on `<mail-quilt-shell>`, and the editor inside uses them too.
 
 To restyle the Shell beyond the tokens, its frame and each piece of the header and the message bar are CSS parts. Style them from your own stylesheet with `::part()`:
 
-| Part          | What it is                                       |
-| ------------- | ------------------------------------------------ |
-| `frame`       | The frame, with its corners and its 1px ring.    |
-| `header`      | The bar above the editor.                        |
-| `heading`     | The heading's text.                              |
-| `actions`     | The group of buttons on the right of the header. |
-| `import-json` | The Import JSON button, while it shows.          |
-| `export-json` | The Export JSON button, while it shows.          |
-| `export-html` | The Export HTML button, while it shows.          |
-| `messages`    | The message bar, below the header.               |
-| `message`     | Each message in the bar.                         |
+| Part          | What it is                                                  |
+| ------------- | ----------------------------------------------------------- |
+| `frame`       | The frame, with its corners and its 1px ring.               |
+| `header`      | The top bar, which is the editor's, with the Shell's in it. |
+| `heading`     | The heading's text.                                         |
+| `status`      | Whether the email is saved, with `save-key`.                |
+| `actions`     | More and Export, on the right of the top bar.               |
+| `export`      | The Export button, while it shows.                          |
+| `import-json` | Import JSON in the More menu, while it shows.               |
+| `export-json` | JSON file in the Export menu, while it shows.               |
+| `export-html` | HTML file in the Export menu, while it shows.               |
+| `messages`    | The message bar, below the top bar.                         |
+| `message`     | Each message in the bar.                                    |
 
 ```css title="styles.css"
 mail-quilt-shell::part(header) {
@@ -116,6 +117,6 @@ mail-quilt-shell::part(heading) {
 
 ## Shell or `<mail-quilt>`?
 
-Use the Shell when the editor is a page of its own and its header can be the page's controls. It gets an editor page working with a few lines, and a refused email or a failed save always reaches the person.
+Use the Shell when the editor is a page of its own and its top bar can be the page's controls. It gets an editor page working with a few lines, and a refused email or a failed save always reaches the person.
 
-Use `<mail-quilt>` on its own when the editor sits inside a page your app already lays out, such as beside a form with the email's subject and recipients, or when you want buttons of your own in the header. You can choose and restyle the Shell's buttons, but you can't add to them.
+Use `<mail-quilt>` on its own when the editor sits inside a page your app already lays out, such as beside a form with the email's subject and recipients, or when you want buttons of your own. You can choose and restyle what the Shell adds to the top bar, but you can't add to it.

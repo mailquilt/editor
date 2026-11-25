@@ -431,9 +431,10 @@ const KEY_SCOPES = {
   // Elsewhere in the email.
   email: { keys: [], within: "email" },
   panelTabs: { keys: TOOLBAR, within: "editor" },
+  modes: { keys: TOOLBAR, within: "editor" },
   settingsDraft: { keys: [escape("discardDraft")], within: "field" },
   listItemTools: { keys: TOOLBAR, within: "editor" },
-  // Anywhere else in the editor, such as the Side panel or floating toolbar.
+  // Anywhere else in the editor, such as the top bar or the Side panel.
   editor: { keys: [], within: "editor" },
   // The browser closes the dialog. Stopping the press keeps a host's own
   // dialog around the editor open.

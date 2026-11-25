@@ -7,6 +7,16 @@ seo:
 
 Anything a person can do in the editor by dragging, they can also do from the keyboard. This page lists the keys, so you can pass them on to the people using your app.
 
+## The top bar and the Modes
+
+The top bar is above the email in every Mode. It holds Undo and Redo, the three Modes, Edit, Style and Check, and the Desktop and Phone views. In the [Shell](./shell), it also holds the email's name, whether it's saved, More and Export.
+
+The Modes are one stop for <kbd>Tab</kbd>, at the Mode you're in. The arrow keys go to the next or previous Mode and open it, and <kbd>Home</kbd> and <kbd>End</kbd> the first or last. With nothing in the email, Style and Check are off. The arrow keys still reach them, and their tooltip says why. Check shows the email at desktop and phone width together, so it has no Desktop and Phone buttons.
+
+When Undo or Redo has nothing left to do, focus goes to the other one, or if neither works, to the toolbar below the email, or in Style and Check to the Mode you're in.
+
+In the Shell, Export and More each open a menu. <kbd>Enter</kbd> or <kbd>Down</kbd> opens it with focus on its first item, and <kbd>Up</kbd> on its last. The arrow keys go along its items, <kbd>Home</kbd> and <kbd>End</kbd> to the first and last, and <kbd>Enter</kbd> chooses one. <kbd>Escape</kbd> closes the menu and goes back to its button, and goes no further, so a dialog of your page's around the Shell stays open. <kbd>Tab</kbd>, or a press anywhere else, closes it too.
+
 ## Selecting a Block
 
 <kbd>Tab</kbd> moves into the email and selects a Block. The arrow keys then go
@@ -149,7 +159,7 @@ In a field, <kbd>Enter</kbd> puts in the tag as the text `{{name}}` without appl
 | <kbd>Shift</kbd> + <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>Z</kbd> | Redoes it. |
 | <kbd>Ctrl</kbd> + <kbd>Y</kbd> | Also redoes it, except on a Mac. |
 
-With nothing to undo or redo, these keys are left to your page.
+They work in every Mode, anywhere in the editor but the Shell's name, More and Export, as the Undo and Redo buttons in the top bar do. With nothing to undo or redo, these keys are left to your page.
 
 ## Keys and your page
 
@@ -183,6 +193,6 @@ Opening Preview moves focus to its Close button. Before Close, Desktop and Phone
 
 ## How it's tested
 
-The editor's browser tests press these keys in Chromium, Firefox and WebKit. They also run [axe-core](https://github.com/dequelabs/axe-core) with its WCAG 2.2 AA rules against the editor in several states: with Columns and empty Columns, with a Block selected, with the link field showing an error, with the Merge Tag picker open in text and under a settings field, with a Social Block's links showing a refused URL, and with Preview open at each width.
+The editor's browser tests press these keys in Chromium, Firefox and WebKit. They also run [axe-core](https://github.com/dequelabs/axe-core) with its WCAG 2.2 AA rules against the editor in several states: in each Mode, with the Shell's Export menu open, with Columns and empty Columns, with a Block selected, with the link field showing an error, with the Merge Tag picker open in text and under a settings field, with a Social Block's links showing a refused URL, and with Preview open at each width.
 
 Automated checks don't find everything. The [accessibility statement](./accessibility) says which WCAG 2.2 criteria the editor meets, what it doesn't, and how each was checked. If a screen reader or another tool has trouble with the editor, please [open an issue](https://github.com/mailquilt/editor/issues).

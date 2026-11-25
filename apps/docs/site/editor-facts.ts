@@ -5,11 +5,11 @@
 /** Narrower than this, `<mail-quilt>` shows a notice in place of the canvas. */
 export const EDITOR_MIN_WIDTH = 640;
 
-/** The least height `<mail-quilt>` takes, however short the email. */
+/**
+ * The least height `<mail-quilt>` takes, however short the email, with its top
+ * bar, which is also the Shell's header.
+ */
 export const EDITOR_MIN_HEIGHT = 600;
-
-/** The least height of the Shell's header, above its editor. */
-export const SHELL_HEADER_MIN_HEIGHT = 48;
 
 /** What the editor's accent tokens are when the host sets none. */
 export const DEFAULT_ACCENT = { accent: "#3355ff", strong: "#2340d6" };

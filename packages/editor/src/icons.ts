@@ -19,6 +19,10 @@ export const icon = (content: SVGTemplateResult) => html`
 `;
 
 export const ICONS = {
+  /** A warning triangle, before a message. */
+  alert: icon(
+    svg`<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01" />`
+  ),
   bold: icon(
     svg`<path d="M7 5h6a3.5 3.5 0 0 1 0 7H7zM7 12h7a3.5 3.5 0 0 1 0 7H7z" stroke-width="2.25" />`
   ),
@@ -39,8 +43,20 @@ export const ICONS = {
   duplicate: icon(
     svg`<rect height="12" rx="2" width="12" x="8" y="8" /><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />`
   ),
+  /** An arrow up out of a tray. */
+  export: icon(
+    svg`<path d="M12 15V3M7 8l5-5 5 5M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5" />`
+  ),
+  /** A page with its corner folded. */
+  file: icon(
+    svg`<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5" />`
+  ),
   grip: icon(
     svg`<g fill="currentColor" stroke="none"><circle cx="9" cy="6" r="1.5" /><circle cx="15" cy="6" r="1.5" /><circle cx="9" cy="12" r="1.5" /><circle cx="15" cy="12" r="1.5" /><circle cx="9" cy="18" r="1.5" /><circle cx="15" cy="18" r="1.5" /></g>`
+  ),
+  /** An arrow down into a tray. */
+  import: icon(
+    svg`<path d="M12 3v12M7 10l5 5 5-5M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5" />`
   ),
   italic: icon(svg`<path d="M10 5h8M6 19h8M14 5l-4 14" />`),
   left: icon(svg`<path d="M19 12H5M11 6l-6 6 6 6" />`),
@@ -54,6 +70,10 @@ export const ICONS = {
   ),
   monitor: icon(
     svg`<rect height="13" rx="2" width="18" x="3" y="4" /><path d="M8 21h8M12 17v4" />`
+  ),
+  /** Three dots in a row, for a menu of what else there is. */
+  more: icon(
+    svg`<g fill="currentColor" stroke="none"><circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" /></g>`
   ),
   /** A 1 and a 2, each before a line, and a third line. */
   orderedList: icon(

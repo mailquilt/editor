@@ -619,7 +619,8 @@ test.describe("layout", () => {
     const emailBox = await boxOf(canvas(page).getByTestId("email"));
     const panelBox = await boxOf(canvas(page).getByTestId("side-panel"));
     const hostBox = await boxOf(canvas(page));
-    expect(panelBox.y).toBe(hostBox.y);
+    const topBar = await boxOf(canvas(page).locator('[part="top-bar"]'));
+    expect(panelBox.y).toBe(topBar.y + topBar.height);
     expect(panelBox.x).toBeGreaterThanOrEqual(emailBox.x + emailBox.width);
     expect(panelBox.x + panelBox.width).toBe(hostBox.x + hostBox.width);
   });

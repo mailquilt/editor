@@ -31,9 +31,14 @@ export type FocusTarget =
   /** A Row's tool, by its `data-action` while it's enabled, or else its first that is. */
   | { on: "rowTool"; action?: string; rowId: string }
   | { on: "tab"; tab: PanelTab }
+  /** Undo or Redo in the top bar while it's enabled, or else the other. */
+  | { on: "history"; action: "redo" | "undo" }
   /** A part of a list field in the settings, by the list's `id`. */
   | { on: "list"; listId: string; at: ListFocus }
-  /** The floating toolbar, which keeps keyboard undo working. */
+  /**
+   * The floating toolbar, which keeps keyboard undo working, or in Style and
+   * Check, where it isn't shown, the Mode's tab.
+   */
   | { on: "emailTools" };
 
 /** A Block or a Row, to scroll into view. */
@@ -132,7 +137,8 @@ const targetOf = (element: Element): FocusTarget => {
     "text",
     "blockToolbar",
     "block",
-    "rowToolbar"
+    "rowToolbar",
+    "history"
   );
   const place = found?.dataset.place;
   const { action } = (element as HTMLElement).dataset;
@@ -153,6 +159,11 @@ const targetOf = (element: Element): FocusTarget => {
         blockId: closestPlace(element, "block")?.dataset.blockId,
         on: "text",
       };
+    }
+    case "history": {
+      return action === "redo" || action === "undo"
+        ? { action, on: "history" }
+        : { on: "emailTools" };
     }
     case "block": {
       return element === found
@@ -222,6 +233,38 @@ export const createFocus = ({
     ];
   };
 
+  /** Undo or Redo while it's enabled, or else the other. */
+  const historyStep = (action: "redo" | "undo") => {
+    const steps = [
+      ...(findPlace(root(), "history")?.querySelectorAll<HTMLElement>(
+        "button:not(:disabled)"
+      ) ?? []),
+    ];
+    return steps.find((step) => step.dataset.action === action) ?? steps[0];
+  };
+
+  /**
+   * The floating toolbar, or in Style or Check, where it isn't shown, the
+   * Mode's tab, or the narrow notice's button where the Modes aren't shown.
+   */
+  const emailTools = (): Focusable | null | undefined => {
+    const toolbar = findPlace(root(), "emailTools");
+    if (toolbar?.closest("[hidden]")) {
+      return (
+        findPlace(root(), "modes")?.querySelector<HTMLElement>(
+          '[aria-selected="true"]'
+        ) ?? findPlace(root(), "notice")?.querySelector("button")
+      );
+    }
+    // Without scrolling the page to it: in a Shell whose bottom is below the
+    // window, the toolbar is out of view.
+    return (
+      toolbar && {
+        focus: (options) => toolbar.focus({ ...options, preventScroll: true }),
+      }
+    );
+  };
+
   /** What takes focus for a target, if it's there. */
   const focusableFor = (target: FocusTarget): Focusable | null | undefined => {
     switch (target.on) {
@@ -267,16 +310,11 @@ export const createFocus = ({
       case "tab": {
         return root().querySelector<HTMLElement>(`#tab-${target.tab}`);
       }
+      case "history": {
+        return historyStep(target.action);
+      }
       case "emailTools": {
-        const toolbar = findPlace(root(), "emailTools");
-        // Without scrolling the page to it: in a Shell whose bottom is below the
-        // window, the toolbar is out of view.
-        return (
-          toolbar && {
-            focus: (options) =>
-              toolbar.focus({ ...options, preventScroll: true }),
-          }
-        );
+        return emailTools();
       }
       default: {
         return undefined;

@@ -9,7 +9,6 @@ import {
   DEFAULT_ACCENT,
   EDITOR_MIN_HEIGHT,
   EDITOR_MIN_WIDTH,
-  SHELL_HEADER_MIN_HEIGHT,
 } from "../site/editor-facts";
 import { examples } from "../site/examples";
 
@@ -692,8 +691,4 @@ test("the sizes and accent the site states are the editor's own", async ({
     };
   });
   expect(accent).toStrictEqual(DEFAULT_ACCENT);
-  await expect(shell.locator('[part="header"]')).toHaveCSS(
-    "min-height",
-    `${SHELL_HEADER_MIN_HEIGHT}px`
-  );
 });

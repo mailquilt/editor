@@ -536,26 +536,6 @@ test.describe("dropping image files", () => {
     await expect(uploadCalls(page)).resolves.toHaveLength(1);
   });
 
-  test("a file dropped on the floating toolbar is refused, even over an Image Block", async ({
-    page,
-  }) => {
-    await page.setViewportSize({ height: 800, width: 1280 });
-    await openBlocks(page, ["image", "image"]);
-    await giveUploadImage(page);
-    // The toolbar stays at the bottom of the window, over the second image.
-    const before = await boxOf(blockGroup(page, "Image").nth(1));
-    await page.evaluate((by) => window.scrollBy(0, by), before.y - 300);
-    const point = await centerOf(
-      canvas(page).getByRole("group", { name: "Email tools" })
-    );
-    const second = await boxOf(blockGroup(page, "Image").nth(1));
-    expect(point.y).toBeGreaterThan(second.y);
-    expect(point.y).toBeLessThan(second.y + second.height);
-    expect(point.x).toBeGreaterThan(second.x);
-
-    await expect(dropFilesAt(page, point)).resolves.toBe("refused");
-  });
-
   test("a file dropped on the open Preview is still refused", async ({
     page,
   }) => {

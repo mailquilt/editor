@@ -13,6 +13,7 @@ import {
   emailWith,
   emailWithLink,
   focusStartOfTextBlock,
+  hostEvents,
   palette,
   selectRowButton,
   test,
@@ -22,10 +23,17 @@ import {
 
 const shell = (page: Page) => page.locator("mail-quilt-shell");
 
-/** Clicks an export button and returns the file it gives the person. */
-const exportFile = async (page: Page, button: string) => {
+/** Opens one of the Shell's menus in the top bar, and returns it. */
+const openMenu = async (page: Page, name: "Export" | "More") => {
+  await shell(page).getByRole("button", { exact: true, name }).click();
+  return shell(page).getByRole("menu");
+};
+
+/** Exports from the Export menu, and returns the file it gives the person. */
+const exportFile = async (page: Page, item: "HTML file" | "JSON file") => {
+  const menu = await openMenu(page, "Export");
   const downloading = page.waitForEvent("download");
-  await shell(page).getByRole("button", { name: button }).click();
+  await menu.getByRole("menuitem", { name: item }).click();
   const download = await downloading;
   return {
     name: download.suggestedFilename(),
@@ -34,8 +42,9 @@ const exportFile = async (page: Page, button: string) => {
 };
 
 const importFile = async (page: Page, text: string) => {
+  const menu = await openMenu(page, "More");
   const choosing = page.waitForEvent("filechooser");
-  await shell(page).getByRole("button", { name: "Import JSON" }).click();
+  await menu.getByRole("menuitem", { name: "Import JSON…" }).click();
   const chooser = await choosing;
   await chooser.setFiles({
     buffer: Buffer.from(text),
@@ -50,7 +59,13 @@ test.beforeEach(({ page }) => {
   page.on("filechooser", () => null);
 });
 
-const header = (page: Page) => shell(page).locator('[part="header"]');
+/** The editor's top bar, which the Shell adds its own to. */
+const header = (page: Page) =>
+  shell(page).locator("mail-quilt").locator('[part="top-bar"]');
+
+/** The Shell's own buttons, in the top bar. */
+const actions = (page: Page) =>
+  shell(page).locator('[part="actions"]').getByRole("button");
 
 /** An element's box, with where it starts and ends going down. */
 const boxWithEdges = async (target: Locator) => {
@@ -75,7 +90,7 @@ test("a heading the host sets is in the page's language and its own text's direc
   await page.evaluate(() =>
     document.documentElement.setAttribute("dir", "rtl")
   );
-  const heading = header(page).getByRole("heading");
+  const heading = shell(page).locator('[part="heading"]');
 
   await shell(page).evaluate((element) => {
     element.setAttribute("heading", "בריכה");
@@ -107,11 +122,15 @@ test.describe("choosing the buttons with actions", () => {
   test("shows only the ones it names, in the Shell's own order", async ({
     page,
   }) => {
-    await openShell(page, "?actions=export-html%20import-json");
+    await openShell(page, "?actions=export-json%20import-json%20export-html");
 
-    await expect(header(page).getByRole("button")).toHaveText([
-      "Import JSON",
-      "Export HTML",
+    await expect(actions(page)).toHaveCount(2);
+    await expect(actions(page).first()).toHaveAccessibleName("More");
+    await expect(actions(page).last()).toHaveAccessibleName("Export");
+    const menu = await openMenu(page, "Export");
+    await expect(menu.getByRole("menuitem")).toHaveText([
+      /HTML file/u,
+      /JSON file/u,
     ]);
   });
 
@@ -119,14 +138,16 @@ test.describe("choosing the buttons with actions", () => {
     page,
   }) => {
     await openShell(page, "?actions=");
-    await expect(header(page).getByRole("button")).toHaveCount(0);
-    await expect(header(page)).toContainText("Email");
+    await expect(actions(page)).toHaveCount(0);
+    await expect(shell(page).locator('[part="heading"]')).toHaveText("Email");
 
     await shell(page).evaluate((element) =>
       element.setAttribute("actions", "export-json send-test")
     );
 
-    await expect(header(page).getByRole("button")).toHaveText(["Export JSON"]);
+    await expect(actions(page)).toHaveCount(1);
+    const menu = await openMenu(page, "Export");
+    await expect(menu.getByRole("menuitem")).toHaveText([/JSON file/u]);
   });
 
   test("the can't-save message only suggests Export JSON when it shows", async ({
@@ -161,7 +182,7 @@ test.describe("moving an email with JSON", () => {
     await openShell(page);
     await focusStartOfTextBlock(page);
     await page.keyboard.type("Exported ");
-    const { name, text } = await exportFile(page, "Export JSON");
+    const { name, text } = await exportFile(page, "JSON file");
     expect(name).toBe("email.json");
     // Formatted, so a person can read it.
     expect(text).toContain('\n  "kind": "blocks"');
@@ -192,7 +213,7 @@ test.describe("moving an email with JSON", () => {
 
   test("importing the open email isn't a change", async ({ page }) => {
     await openShell(page);
-    const { text } = await exportFile(page, "Export JSON");
+    const { text } = await exportFile(page, "JSON file");
     await importFile(page, text);
 
     // One that is a change, so the one before it would be counted too.
@@ -272,7 +293,7 @@ test.describe("moving an email with JSON", () => {
     page,
   }) => {
     await openShell(page);
-    const { text } = await exportFile(page, "Export JSON");
+    const { text } = await exportFile(page, "JSON file");
 
     await importFile(page, "{not json");
     await expect(shell(page).getByRole("alert")).toBeVisible();
@@ -286,24 +307,28 @@ test.describe("moving an email with JSON", () => {
     await expect(shell(page).getByRole("alert")).toHaveCount(0);
   });
 
-  test("with no email, the exports say so and download nothing", async ({
+  test("with no email, Export is off and says why, and downloads nothing", async ({
     page,
   }) => {
     let downloads = 0;
     page.on("download", () => {
       downloads += 1;
     });
+    await page.goto("/shell.html?refused-first");
+    await expect(shell(page).getByRole("alert")).toContainText("newer");
+    const exportButton = shell(page).getByRole("button", {
+      exact: true,
+      name: "Export",
+    });
 
-    for (const name of ["Export JSON", "Export HTML"]) {
-      await page.goto("/shell.html?refused-first");
-      await expect(shell(page).getByRole("alert")).toContainText("newer");
-      await shell(page).getByRole("button", { name }).click();
-      await expect(
-        shell(page)
-          .getByRole("alert")
-          .filter({ hasText: "There's no email to export." })
-      ).toBeVisible();
-    }
+    await expect(exportButton).toHaveAttribute("aria-disabled", "true");
+    await exportButton.hover({ force: true });
+    await expect(canvas(page).getByRole("tooltip")).toHaveText(
+      "Add something to the email first"
+    );
+    // Playwright waits for a control that's off, so the click is sent as is.
+    await exportButton.click({ force: true });
+    await expect(shell(page).getByRole("menu")).toHaveCount(0);
     await expect(
       shell(page).evaluate((element) =>
         (element as MailQuiltShell).exportHtml()
@@ -313,10 +338,101 @@ test.describe("moving an email with JSON", () => {
     // A download is reported a moment after it starts, so one that does start
     // afterwards shows whether any started before it.
     await openShell(page);
-    const download = page.waitForEvent("download");
-    await shell(page).getByRole("button", { name: "Export JSON" }).click();
-    await download;
+    await exportFile(page, "JSON file");
     expect(downloads).toBe(1);
+  });
+
+  test("Export turns off when the email is emptied, and back on with undo", async ({
+    page,
+  }) => {
+    await openShell(page);
+    const exportButton = shell(page).getByRole("button", {
+      exact: true,
+      name: "Export",
+    });
+    // Delete in a Row's toolbar deletes that Row.
+    await selectRowButton(page, 1).focus();
+    await page.keyboard.press("Delete");
+
+    await expect(exportButton).toHaveAttribute("aria-disabled", "true");
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(exportButton).not.toHaveAttribute("aria-disabled");
+  });
+});
+
+test.describe("the menus", () => {
+  test("open from the keyboard, go along with the arrow keys, and close with Escape back on their button", async ({
+    page,
+  }) => {
+    await openShell(page);
+    const exportButton = shell(page).getByRole("button", {
+      exact: true,
+      name: "Export",
+    });
+    const menu = shell(page).getByRole("menu");
+    await exportButton.focus();
+
+    await page.keyboard.press("Enter");
+    await expect(exportButton).toHaveAttribute("aria-expanded", "true");
+    await expect(menu.getByRole("menuitem").first()).toBeFocused();
+    await page.keyboard.press("ArrowDown");
+    await expect(menu.getByRole("menuitem").last()).toBeFocused();
+    await page.keyboard.press("ArrowDown");
+    await expect(menu.getByRole("menuitem").first()).toBeFocused();
+    const escapes = await hostEvents(page, "keydown", ["key"]);
+    await page.keyboard.press("Escape");
+
+    await expect(menu).toHaveCount(0);
+    await expect(exportButton).toBeFocused();
+    await expect(exportButton).toHaveAttribute("aria-expanded", "false");
+    // A host's dialog around the Shell stays open.
+    expect(await escapes()).toStrictEqual([]);
+  });
+
+  test("close again with a click on their button, and choose an item with a click", async ({
+    page,
+  }) => {
+    await openShell(page);
+    const menu = shell(page).getByRole("menu");
+
+    await openMenu(page, "Export");
+    await shell(page)
+      .getByRole("button", { exact: true, name: "Export" })
+      .click();
+    await expect(menu).toHaveCount(0);
+
+    // As Safari and Firefox on a Mac don't focus a button that's clicked.
+    await exportFile(page, "JSON file");
+    await expect(menu).toHaveCount(0);
+  });
+
+  test("close with Tab, or a press anywhere else", async ({ page }) => {
+    await openShell(page);
+    const menu = shell(page).getByRole("menu");
+
+    await openMenu(page, "More");
+    await page.keyboard.press("Tab");
+    await expect(menu).toHaveCount(0);
+
+    await openMenu(page, "Export");
+    // On the Canvas's workspace, which keeps focus where it is.
+    const area = await boxOf(canvas(page).getByTestId("workspace"));
+    await page.mouse.click(area.x + 10, area.y + 10);
+    await expect(menu).toHaveCount(0);
+  });
+
+  test("their button shows its tooltip with focus from the keyboard", async ({
+    page,
+  }) => {
+    await openShell(page);
+    await shell(page)
+      .getByRole("button", { exact: true, name: "More" })
+      .focus();
+    // Browsers only show focus from a script after keyboard use.
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Shift+Tab");
+
+    await expect(canvas(page).getByRole("tooltip")).toHaveText("More");
   });
 });
 
@@ -403,16 +519,17 @@ test.describe("the editor's API", () => {
     await openShell(page);
     await shell(page).evaluate((element) => {
       (element as MailQuiltShell).strings = {
-        "canvas.undo": "Annuler",
-        "shell.exportHtml": "Exporter le HTML",
+        "topBar.undo": "Annuler",
+        "shell.exportHtml": "Fichier HTML",
       };
     });
 
     await expect(
       shell(page).getByRole("button", { exact: true, name: "Annuler" })
     ).toBeVisible();
+    const menu = await openMenu(page, "Export");
     await expect(
-      shell(page).getByRole("button", { name: "Exporter le HTML" })
+      menu.getByRole("menuitem", { name: "Fichier HTML" })
     ).toBeVisible();
   });
 
@@ -420,22 +537,21 @@ test.describe("the editor's API", () => {
     page,
   }) => {
     await page.goto("/shell.html?refused-first");
-    await shell(page).getByRole("button", { name: "Export HTML" }).click();
     const message = shell(page)
       .getByRole("alert")
-      .filter({ hasText: "There's no email to export." });
+      .filter({ hasText: "This email couldn't be opened" });
     await expect(message).toBeVisible();
 
     await shell(page).evaluate((element) => {
       (element as MailQuiltShell).strings = {
-        "shell.nothingToExport": "Aucun e-mail à exporter.",
+        "shell.cantOpen": "Cet e-mail n'a pas pu être ouvert : {reason}",
       };
     });
 
     await expect(
       shell(page)
         .getByRole("alert")
-        .filter({ hasText: "Aucun e-mail à exporter." })
+        .filter({ hasText: "Cet e-mail n'a pas pu être ouvert" })
     ).toBeVisible();
     await expect(message).toHaveCount(0);
   });
@@ -554,7 +670,8 @@ test.describe("the editor's API", () => {
     // MJML loads on first export, so this is when that request can fail.
     await page.route("**/*.js", (route) => route.abort());
 
-    await shell(page).getByRole("button", { name: "Export HTML" }).click();
+    const menu = await openMenu(page, "Export");
+    await menu.getByRole("menuitem", { name: "HTML file" }).click();
 
     const alerts = shell(page).getByRole("alert");
     const failed = alerts.filter({ hasText: "couldn't be exported" });
@@ -566,9 +683,9 @@ test.describe("the editor's API", () => {
     const refused = alerts.filter({ hasText: "valid JSON" });
     await expect(refused).toBeVisible();
 
-    await exportFile(page, "Export JSON");
+    await exportFile(page, "JSON file");
     await expect(failed).toHaveCount(0);
-    const { name, text } = await exportFile(page, "Export HTML");
+    const { name, text } = await exportFile(page, "HTML file");
     expect(name).toBe("email.html");
     expect(text).toContain("Hello");
     await expect(refused).toBeVisible();
@@ -1138,7 +1255,7 @@ test.describe("look", () => {
     await expect(page.getByTestId("alone")).toBeHidden();
   });
 
-  test("fills the space the host gives it, the editor below the header", async ({
+  test("fills the space the host gives it, the editor's top bar its header", async ({
     page,
   }) => {
     await openShell(page);
@@ -1154,7 +1271,8 @@ test.describe("look", () => {
 
     expect(boxes.header.top).toBe(boxes.frame.top);
     expect(boxes.header.width).toBe(boxes.frame.width);
-    expect(boxes.editor.top).toBe(boxes.header.bottom);
+    expect(boxes.editor.top).toBe(boxes.frame.top);
+    expect(boxes.panel.top).toBe(boxes.header.bottom);
     expect(boxes.editor.bottom).toBe(boxes.frame.bottom);
     expect(boxes.panel.bottom).toBe(boxes.frame.bottom);
   });
@@ -1276,7 +1394,10 @@ test("shows the dragging cursor over the Shell during a drag", async ({
   page,
 }) => {
   await openShell(page);
-  const button = shell(page).getByRole("button", { name: "Export HTML" });
+  const button = shell(page).getByRole("button", {
+    exact: true,
+    name: "Export",
+  });
   const cursor = () =>
     button.evaluate((element) => getComputedStyle(element).cursor);
   const usual = await cursor();
@@ -1296,7 +1417,7 @@ test("shows the dragging cursor over the Shell during a drag", async ({
   await expect.poll(cursor).toBe(usual);
 });
 
-test("a file dropped on the header doesn't open in the page, and one on the canvas is uploaded", async ({
+test("a file dropped on the Shell's name doesn't open in the page, and one on the canvas is uploaded", async ({
   page,
 }) => {
   await openShell(page);
@@ -1305,7 +1426,9 @@ test("a file dropped on the header doesn't open in the page, and one on the canv
       Promise.resolve({ url: "https://cdn.example/uploaded.png" });
   });
 
-  await expect(dropFileOn(header(page))).resolves.toBe("refused");
+  await expect(
+    dropFileOn(shell(page).locator('[part="heading"]'))
+  ).resolves.toBe("refused");
   await expect(dropFileOn(shell(page).getByTestId("workspace"))).resolves.toBe(
     "taken"
   );
@@ -1318,18 +1441,23 @@ test.describe("accessibility", () => {
 
     expect(await violations(page, "mail-quilt-shell")).toStrictEqual([]);
   });
+
+  test("meets WCAG 2.2 AA with the Export menu open and its save status", async ({
+    page,
+  }) => {
+    await openShell(page, "?save-key=test:email");
+    const menu = await openMenu(page, "Export");
+    // Once it has grown in, as text that's fading in has less contrast.
+    await expect(menu).toHaveCSS("opacity", "1");
+
+    expect(await violations(page, "mail-quilt-shell")).toStrictEqual([]);
+  });
 });
 
 test.describe("too narrow to edit in", () => {
   test("the notice fills the space below the header", async ({ page }) => {
     await page.goto("/shell.html?narrow");
-    // The editor's frame, inside the Shell's.
-    const notice = shell(page)
-      .locator('[part="frame"]')
-      .filter({
-        hasNot: page.locator('[part="header"]'),
-        hasText: "Editing needs more room",
-      });
+    const notice = shell(page).locator('[data-place="notice"]');
     await expect(notice).toBeVisible();
 
     const noticeBox = await boxWithEdges(notice);
@@ -1356,14 +1484,19 @@ test.describe("parts", () => {
 
     expect(parts).toStrictEqual([
       "frame",
-      "header",
       "heading",
       "actions",
       "import-json",
-      "export-json",
+      "export",
       "export-html",
+      "export-json",
       "messages",
       "message",
     ]);
+    // The top bar is the editor's, and still the Shell's header part.
+    await page.addStyleTag({
+      content: "mail-quilt-shell::part(header) { background: rgb(1, 2, 3) }",
+    });
+    await expect(header(page)).toHaveCSS("background-color", "rgb(1, 2, 3)");
   });
 });

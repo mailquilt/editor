@@ -61,8 +61,10 @@ const backToTabs = async (page: Page) => {
 const controlsWithoutRing = (page: Page) =>
   canvas(page).evaluate((host) => {
     const root = host.shadowRoot as ShadowRoot;
+    // Focus on a Mode chooses it, so only the chosen one, as the others share
+    // its look.
     const controls = root.querySelectorAll<HTMLElement>(
-      'button:not(:disabled), input, select, [role="group"][tabindex], [role="textbox"]'
+      'button:not(:disabled, [role="tab"][aria-controls^="mode-panel"][aria-selected="false"]), input, select, [role="group"][tabindex], [role="textbox"]'
     );
     return [...controls]
       .filter((control) => {
@@ -939,7 +941,9 @@ test.describe("automated accessibility checks", () => {
     const scan = () => violations(page, "mail-quilt", { excludeIframe: true });
     expect(await scan()).toEqual([]);
 
-    const phone = page.getByRole("button", { exact: true, name: "Phone" });
+    const phone = page
+      .getByRole("dialog", { name: "Preview" })
+      .getByRole("button", { exact: true, name: "Phone" });
     await phone.click();
     await expect(phone).toHaveAttribute("aria-pressed", "true");
 

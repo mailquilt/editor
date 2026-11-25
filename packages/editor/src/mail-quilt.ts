@@ -62,6 +62,14 @@ import { createToolFitting } from "./tool-fitting.js";
 import type { ToolFitting } from "./tool-fitting.js";
 import { createTooltips } from "./tooltips.js";
 import type { Tooltips } from "./tooltips.js";
+import {
+  modePanelId,
+  modeTabId,
+  PHONE_WIDTH,
+  renderTopBar,
+  topBarStyles,
+} from "./top-bar.js";
+import type { Device, Mode, TopBarEvents } from "./top-bar.js";
 import { takeValueSetEarly } from "./value-set-early.js";
 
 /**
@@ -106,9 +114,31 @@ const elementStyles = css`
   }
 
   /*
-   * The canvas, then the side panel docked on its right. In a host too narrow
-   * for both, the panel goes below rather than squeeze the email. Clipped
-   * rather than hidden, which would stop the panel and toolbar sticking.
+   * The top bar, the Shell's messages, then the Mode's panel, which fills any
+   * height the host gives, but never shrinks below the email.
+   */
+  .app {
+    display: flex;
+    flex: 1 0 auto;
+    flex-direction: column;
+    min-height: 600px;
+  }
+
+  /* Too narrow to edit in, it's only as tall as the top bar and the notice. */
+  .app[data-narrow] {
+    min-height: 0;
+  }
+
+  /* Style and Check, until they have panels of their own. */
+  .mode-panel {
+    flex: 1 0 auto;
+  }
+
+  /*
+   * Edit: the canvas, then the side panel docked on its right. In a host too
+   * narrow for both, the panel goes below rather than squeeze the email.
+   * Clipped rather than hidden, which would stop the panel and toolbar
+   * sticking. What focus scrolls to stays clear of the top bar.
    */
   .editor {
     /* Beside the email, room for a Block's tools and a Row's. */
@@ -121,10 +151,12 @@ const elementStyles = css`
     align-items: stretch;
     display: flex;
     overflow: clip;
-    /* Fills any height the host gives, but never shrinks below the email. */
     flex: 1 0 auto;
     flex-wrap: wrap;
-    min-height: 600px;
+  }
+
+  .editor * {
+    scroll-margin-block-start: var(--_mq-top-bar-height);
   }
 
   /*
@@ -132,8 +164,7 @@ const elementStyles = css`
    * still in the layout, so a host that takes the width of its content
    * keeps the width the editor gives it, and grows again with the window.
    * Every part hides, as the email card and the tools start their styles
-   * again, and so none of them takes focus. Important, as otherwise a host's
-   * size for ::part(frame), which the notice shares, would win here.
+   * again, and so none of them takes focus.
    */
   .editor[data-collapsed] {
     flex-grow: 0 !important;
@@ -265,6 +296,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     formatBarStyles,
     mergeTagPickerStyles,
     previewStyles,
+    topBarStyles,
     elementStyles,
     canvasStyles,
     textBlockStyles,
@@ -347,6 +379,22 @@ export class MailQuilt extends LitElement implements HostAppProperties {
   #tooltips: { element: HTMLElement; tooltips: Tooltips } | undefined;
   /** Too narrow to edit in, as on a phone or in a narrow part of a page. */
   #narrow = false;
+  /** Edit until the person picks another, and with nothing in the email. */
+  #mode: Mode = "edit";
+  #device: Device = "desktop";
+  readonly #topBarEvents: TopBarEvents = {
+    selectDevice: (device) => {
+      this.#device = device;
+      this.requestUpdate();
+    },
+    selectMode: (mode) => {
+      if (mode !== this.#mode) {
+        this.#mode = mode;
+        this.requestUpdate();
+      }
+    },
+    stepHistory: (step) => this.#stepHistory(step),
+  };
   /** Made on the page, as a server rendering the editor has no ResizeObserver. */
   #resizeObserver: ResizeObserver | undefined;
 
@@ -602,6 +650,10 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       this.#preview.forget();
     }
     this.#rendered = this.value;
+    // There's nothing to style or check, and the Modes for them are off.
+    if (!this.#rendered?.rows.length) {
+      this.#mode = "edit";
+    }
     const email = this.isConnected ? this.#rendered : undefined;
     const blocks = email ? blocksIn(email) : [];
     const blockIds = new Set(blocks.map(({ id }) => id));
@@ -666,40 +718,118 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     }
   }
 
+  /**
+   * With no email, nothing, unless something is in the top bar's slots, such
+   * as the Shell's name, Export and messages, which then show with the top
+   * bar, its controls off.
+   */
   protected override render() {
     const email = this.#rendered;
-    if (!email) {
+    if (!(email || this.querySelector(":scope > [slot]"))) {
       return nothing;
     }
-    const { settings } = email;
-    const api = this.#panelApi(email);
     const text = this.#text;
     const language = text("language");
+    const mode = this.#mode;
+    const narrow = this.#narrow;
     const keys = blockKeys(text);
 
     return html`
-      ${renderPreview(
-        this.#preview.shown,
-        this.#preview.width,
-        this.#preview.events,
-        text
-      )}
-      ${this.#announcements.render()}
-      <p hidden id="block-keys" lang=${language}>
-        ${text("canvas.blockKeys", keys)}
-      </p>
-      <p hidden id="block-keys-no-text" lang=${language}>
-        ${text("canvas.blockKeysNoText", keys)}
-      </p>
-      ${this.#narrow ? renderNarrowNotice(api) : nothing}
+      ${
+        email
+          ? html`
+              ${renderPreview(
+                this.#preview.shown,
+                this.#preview.width,
+                this.#preview.events,
+                text
+              )}
+              ${this.#announcements.render()}
+              <p hidden id="block-keys" lang=${language}>
+                ${text("canvas.blockKeys", keys)}
+              </p>
+              <p hidden id="block-keys-no-text" lang=${language}>
+                ${text("canvas.blockKeysNoText", keys)}
+              </p>
+            `
+          : nothing
+      }
       <div
-        class="ui frame editor"
+        class="ui frame app"
         data-place=${place("editor")}
-        data-testid="editor"
         lang=${language}
         part="frame"
-        ?data-collapsed=${this.#narrow}
-        style=${styleProperties({ "--_mq-email-width": `${settings.width}px` })}
+        ?data-narrow=${narrow}
+      >
+        ${renderTopBar(
+          {
+            canRedo: this.#editor?.canRedo() ?? false,
+            canUndo: this.#editor?.canUndo() ?? false,
+            device: this.#device,
+            isEmpty: !email?.rows.length,
+            mode,
+            narrow,
+            text,
+          },
+          this.#topBarEvents
+        )}
+        <slot name="messages"></slot>
+        ${
+          email
+            ? this.#renderEdit(email)
+            : html`
+                <div
+                  aria-labelledby=${modeTabId("edit")}
+                  class="mode-panel"
+                  id=${modePanelId("edit")}
+                  role="tabpanel"
+                  ?hidden=${narrow}
+                ></div>
+              `
+        }
+        ${(["style", "check"] as const).map(
+          (panel) => html`
+            <div
+              aria-labelledby=${modeTabId(panel)}
+              class="mode-panel"
+              id=${modePanelId(panel)}
+              role="tabpanel"
+              ?hidden=${narrow || mode !== panel}
+            ></div>
+          `
+        )}
+        <div
+          class="ui tooltip"
+          data-place=${place("tooltip")}
+          hidden
+          role="tooltip"
+        ></div>
+      </div>
+    `;
+  }
+
+  /** The Edit Mode: the Canvas and the side panel, or the narrow notice. */
+  #renderEdit(email: BlocksDocument) {
+    const { settings } = email;
+    const api = this.#panelApi(email);
+    const narrow = this.#narrow;
+    // The Phone view's email is a phone's width. Its Rows stack and hide as on
+    // a phone once the Canvas draws Phone values.
+    const width =
+      this.#device === "phone"
+        ? Math.min(settings.width, PHONE_WIDTH)
+        : settings.width;
+    return html`
+      ${narrow ? renderNarrowNotice(api) : nothing}
+      <div
+        aria-labelledby=${modeTabId("edit")}
+        class="editor"
+        data-testid="editor"
+        id=${modePanelId("edit")}
+        role="tabpanel"
+        ?data-collapsed=${narrow}
+        ?hidden=${this.#mode !== "edit"}
+        style=${styleProperties({ "--_mq-email-width": `${width}px` })}
       >
         <div
           class="canvas-area"
@@ -718,7 +848,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
               "--_mq-email-background": settings.backgroundColor,
               "background-color": settings.backgroundColor,
               "font-family": settings.fontFamily,
-              width: `${settings.width}px`,
+              width: `${width}px`,
             })}
           >
             ${renderRows(api, this.#canvasState, this.#canvasEvents)}
@@ -732,12 +862,6 @@ export class MailQuilt extends LitElement implements HostAppProperties {
           ${renderFloatingToolbar(api)}
         </div>
         ${renderSidePanel(api)}
-        <div
-          class="ui tooltip"
-          data-place=${place("tooltip")}
-          hidden
-          role="tooltip"
-        ></div>
       </div>
     `;
   }
