@@ -46,8 +46,6 @@ const DUPLICATE_BLOCK = keyLabel("blockToolbar", "duplicateBlock");
 const DUPLICATE_ROW = keyLabel("rowToolbar", "duplicateRow");
 /** Delete and Backspace work in a Row's toolbar, not in a Block's. */
 const DELETE_ROW = keyLabel("rowToolbar", "deleteRow");
-const UNDO = keyLabel("editor", "undo");
-const REDO = keyLabel("editor", "redo");
 
 /**
  * The Rows, Columns and Blocks on the canvas, their tools, the floating
@@ -525,8 +523,8 @@ export const canvasStyles = css`
   }
 
   /*
-   * Undo, Redo and Preview, at the bottom left of the canvas while it shows,
-   * as far from the canvas's left edge as from the window's bottom.
+   * The Preview, at the bottom left of the canvas while it shows, as far from
+   * the canvas's left edge as from the window's bottom.
    */
   .floating-toolbar {
     align-self: flex-start;
@@ -542,7 +540,7 @@ export const canvasStyles = css`
     outline-offset: 1px;
   }
 
-  /* Standing in for the editor, so it fills any height the host gives too. */
+  /* Standing in for the Modes, so it fills any height the host gives too. */
   .narrow-notice {
     align-items: center;
     flex-grow: 1;
@@ -638,14 +636,14 @@ const renderDragHandle = (tooltip: string) => html`
 
 /**
  * On a phone there's no room for the canvas and the side panel. The editor
- * stays as it is, so nothing is lost, and the email can still be previewed.
+ * stays as it is, below the top bar, so nothing is lost, and the email can
+ * still be previewed.
  */
 export const renderNarrowNotice = ({ openPreview, text }: PanelApi) => html`
   <div
-    class="ui frame narrow-notice"
+    class="ui narrow-notice"
     data-place=${place("notice")}
     lang=${text("language")}
-    part="frame"
   >
     <span class="notice-icon">${ICONS.monitor}</span>
     <p class="notice-title">${text("canvas.narrowTitle")}</p>
@@ -1019,8 +1017,11 @@ export const renderRows = (
   );
 };
 
-/** Away from the side panel, so it never covers the settings. */
-export const renderFloatingToolbar = ({ text, ...api }: PanelApi) => html`
+/**
+ * Away from the side panel, so it never covers the settings. Undo and redo are
+ * in the top bar; the Preview stays here until Check takes its place.
+ */
+export const renderFloatingToolbar = ({ openPreview, text }: PanelApi) => html`
   <div
     aria-label=${text("canvas.emailTools")}
     class="ui bar floating-toolbar"
@@ -1029,34 +1030,11 @@ export const renderFloatingToolbar = ({ text, ...api }: PanelApi) => html`
     tabindex="-1"
   >
     <button
-      aria-keyshortcuts=${UNDO.shortcuts}
-      aria-label=${text("canvas.undo")}
-      class="icon-button"
-      data-tooltip=${withKeys(text("canvas.undo"), UNDO.keys, text)}
-      ?disabled=${!api.canUndo}
-      type="button"
-      @click=${() => api.stepHistory("undo")}
-    >
-      ${ICONS.undo}
-    </button>
-    <button
-      aria-keyshortcuts=${REDO.shortcuts}
-      aria-label=${text("canvas.redo")}
-      class="icon-button"
-      data-tooltip=${withKeys(text("canvas.redo"), REDO.keys, text)}
-      ?disabled=${!api.canRedo}
-      type="button"
-      @click=${() => api.stepHistory("redo")}
-    >
-      ${ICONS.redo}
-    </button>
-    <span class="separator"></span>
-    <button
       aria-label=${text("canvas.preview")}
       class="icon-button"
       data-tooltip=${text("canvas.preview")}
       type="button"
-      @click=${api.openPreview}
+      @click=${openPreview}
     >
       ${ICONS.preview}
     </button>

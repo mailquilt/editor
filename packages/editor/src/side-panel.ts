@@ -122,14 +122,17 @@ export const sidePanelStyles = css`
     flex: 1;
     flex-direction: column;
     /*
-     * No taller than the window, or than the part of a Shell the email
-     * scrolls in, which the Shell gives as --_mq-visible-height.
+     * Below the top bar, and no taller than the rest of the window, or of the
+     * part of a Shell the email scrolls in, which the Shell gives as
+     * --_mq-visible-height.
      */
-    max-height: min(100dvh, var(--_mq-visible-height, 100dvh));
+    max-height: calc(
+      min(100dvh, var(--_mq-visible-height, 100dvh)) - var(--_mq-top-bar-height)
+    );
     min-width: 0;
     overflow: hidden;
     position: sticky;
-    top: 0;
+    top: var(--_mq-top-bar-height);
   }
 
   .panel-scroll {

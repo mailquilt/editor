@@ -56,7 +56,7 @@ const uploadImage = (file: File) =>
 const mergeTags = () => [{ label: "First name", name: "first_name" }];
 
 /** Texts in the Host app's words. Each render gives a new object, as a host's often does. */
-const strings = () => ({ "canvas.undo": "Annuler" });
+const strings = () => ({ "topBar.undo": "Annuler" });
 
 /** Where the Host app serves the Social Block's icons itself. */
 const SOCIAL_ICONS_URL = "https://cdn.example/mail-icons/";

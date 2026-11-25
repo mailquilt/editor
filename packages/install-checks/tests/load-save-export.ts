@@ -115,7 +115,7 @@ export const checkShell = async (page: Page, url: string) => {
   await page.goto(url);
   await expect(text).toHaveText("Hello");
   await expect(
-    shell.getByRole("button", { name: "Import JSON" })
+    shell.getByRole("button", { exact: true, name: "Export" })
   ).toBeVisible();
 
   await focusStartOfTextBlock(page);

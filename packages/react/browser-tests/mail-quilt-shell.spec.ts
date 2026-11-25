@@ -13,22 +13,28 @@ test("shows the email in value, with the heading", async ({ page }) => {
     "Campaign"
   );
   await expect(
-    shell(page).getByRole("button", { name: "Import JSON" })
+    shell(page).getByRole("button", { exact: true, name: "Export" })
   ).toBeVisible();
 });
 
 test("actions picks the Shell's buttons, and an empty list shows none", async ({
   page,
 }) => {
-  for (const [query, buttons] of [
-    ["/?shell&only-html", ["Export HTML"]],
+  for (const [query, menuItems] of [
+    ["/?shell&only-html", [/HTML file/u]],
     ["/?shell&no-actions", []],
   ] as const) {
     await page.goto(query);
     await expect(textBlock(page)).toHaveText("Hello");
     await expect(
       shell(page).locator('[part="actions"]').getByRole("button")
-    ).toHaveText([...buttons]);
+    ).toHaveCount(menuItems.length);
+    if (menuItems.length > 0) {
+      await shell(page).getByRole("button", { name: "Export" }).click();
+      await expect(shell(page).getByRole("menuitem")).toHaveText([
+        ...menuItems,
+      ]);
+    }
   }
 });
 
@@ -45,9 +51,8 @@ test("heading, actions and saveKey can change after the Shell has started", asyn
   await expect(shell(page).getByRole("heading", { level: 2 })).toHaveText(
     "Renamed"
   );
-  await expect(
-    shell(page).locator('[part="actions"]').getByRole("button")
-  ).toHaveText(["Export JSON"]);
+  await shell(page).getByRole("button", { name: "Export" }).click();
+  await expect(shell(page).getByRole("menuitem")).toHaveText([/JSON file/u]);
   await focusStartOfTextBlock(page);
   await page.keyboard.type("Saved ");
   await expect

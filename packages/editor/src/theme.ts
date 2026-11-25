@@ -64,6 +64,9 @@ export const uiStyles = css`
     --_mq-font-size-panel-title: 15px;
     --_mq-font-size-notice-title: 17px;
 
+    /* The top bar's height, which what sticks below it stays clear of. */
+    --_mq-top-bar-height: 52px;
+
     /* What's in front of what on the canvas, from the back. */
     --_mq-layer-handle: 1;
     --_mq-layer-shown-handle: 2;
@@ -71,6 +74,7 @@ export const uiStyles = css`
     --_mq-layer-drop-indicator: 6;
     --_mq-layer-floating-toolbar: 7;
     --_mq-layer-block-tools: 8;
+    --_mq-layer-top-bar: 10;
     --_mq-layer-tooltip: 20;
   }
 
@@ -266,10 +270,11 @@ export const uiStyles = css`
     color: var(--mq-color-text);
   }
 
+  /* An edge at 3:1, as a field's, so the chosen one doesn't rest on a shadow. */
   .segment:is([aria-selected="true"], [aria-pressed="true"]) {
     background: var(--mq-color-surface);
     box-shadow:
-      0 0 0 1px var(--mq-color-border),
+      0 0 0 1px var(--mq-color-border-strong),
       var(--mq-shadow-small);
     color: var(--mq-color-text);
   }

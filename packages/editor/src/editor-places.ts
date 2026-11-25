@@ -16,15 +16,15 @@ const PLACES = {
   /** A Column. Its `data-column-id` names it. */
   column: {},
   /**
-   * Buttons that act on the email or what's selected, in the Side panel or the
-   * notice, and aren't in a toolbar.
+   * Buttons that act on the email or what's selected, in the Side panel, the
+   * top bar or the notice, and aren't in a toolbar.
    */
   controls: { press: "keepsFocus" },
   /** A drag handle, on a Block or in a toolbar. */
   dragHandle: { press: "grabs" },
   /** The line that shows where a drop would land. */
   dropIndicator: {},
-  /** The editor's frame, beside the Preview and the narrow notice. */
+  /** The editor's frame, with the top bar and the Modes, beside the Preview. */
   editor: {},
   /** The email on the canvas. */
   email: {},
@@ -49,6 +49,10 @@ const PLACES = {
    * in the text, so a press picks a tag without taking it.
    */
   mergeTagPicker: { ofText: true, press: "keepsFocus" },
+  /** Undo and Redo, in the top bar. Each has its `data-action`. */
+  history: { press: "keepsFocus" },
+  /** The Modes, Edit, Style and Check, in the top bar. */
+  modes: {},
   /** The notice shown instead of the editor when there's no room to edit. */
   notice: {},
   /**
