@@ -80,6 +80,18 @@ test.describe("on a screen too narrow to edit in", () => {
     ).resolves.toBe(0);
   });
 
+  test("focus on a Mode goes to the notice's Preview when the editor narrows", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ height: 800, width: 1280 });
+    await page.goto("/");
+    await canvas(page).getByRole("tab", { name: "Edit" }).focus();
+
+    await page.setViewportSize(NARROW_VIEWPORT);
+
+    await expect(previewEmailButton(page)).toBeFocused();
+  });
+
   test("gives the editor back, with the same email, once there's room", async ({
     page,
   }) => {

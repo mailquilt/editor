@@ -385,8 +385,13 @@ test.describe("the menus", () => {
     await expect(menu).toHaveCount(0);
     await expect(exportButton).toBeFocused();
     await expect(exportButton).toHaveAttribute("aria-expanded", "false");
+    // As Escape acts with any modifiers.
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("Shift+Escape");
+    await expect(menu).toHaveCount(0);
     // A host's dialog around the Shell stays open.
-    expect(await escapes()).toStrictEqual([]);
+    const heard = await escapes();
+    expect(heard.filter(({ key }) => key === "Escape")).toStrictEqual([]);
   });
 
   test("close again with a click on their button, and choose an item with a click", async ({
@@ -930,6 +935,23 @@ test.describe("saving in the browser", () => {
 
     await expect.poll(() => saved(page)).toContain("Unsaved Saved Hello");
     await expect(shell(page).getByRole("alert")).toHaveCount(0);
+  });
+
+  test("says Saved only once the email it shows is saved", async ({ page }) => {
+    await openShell(page, `?save-key=${key}`);
+    const status = shell(page).locator('[part="status"]');
+    // The host's first email, which nothing has saved yet.
+    await expect(status).toHaveCount(0);
+
+    await focusStartOfTextBlock(page);
+    await page.keyboard.type("Saved ");
+    await expect(status).toHaveText("Saved");
+    await setShellValue(page, emailWith([[["Other"]]]));
+    await expect(status).toHaveCount(0);
+
+    await page.reload();
+    await expect(textBlock(page)).toHaveText("Saved Hello");
+    await expect(status).toHaveText("Saved");
   });
 
   test("keeps saying it can't save while showing another reason", async ({

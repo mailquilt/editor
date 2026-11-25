@@ -249,7 +249,8 @@ export const createFocus = ({
    */
   const emailTools = (): Focusable | null | undefined => {
     const toolbar = findPlace(root(), "emailTools");
-    if (toolbar?.closest("[hidden]")) {
+    // Not shown: in Style or Check, or behind the narrow notice.
+    if (toolbar?.closest("[hidden], [data-collapsed]")) {
       return (
         findPlace(root(), "modes")?.querySelector<HTMLElement>(
           '[aria-selected="true"]'

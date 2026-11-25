@@ -450,6 +450,11 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
   /** Set while the browser can't save the email. */
   #cantSave = false;
   /**
+   * Whether the open email is the one saved under `save-key`, so the top bar
+   * says "Saved" only then. One the host opens is saved from its next change.
+   */
+  #saved = false;
+  /**
    * A `save-key` whose saved email couldn't be opened or copied where nothing
    * saves, so nothing is saved over it.
    */
@@ -631,7 +636,7 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
           ${this.heading || text("shell.email")}
         </h2>
         ${
-          this.saveKey
+          this.saveKey && (this.#cantSave || this.#saved)
             ? html`
                 <span
                   class="status"
@@ -878,6 +883,14 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
     ];
     const index = items.indexOf(target);
     const { altKey, ctrlKey, key, metaKey, shiftKey } = event;
+    // With any modifiers, as Escape acts elsewhere in the editor. It closes the
+    // menu and goes no further, so a host's dialog stays open.
+    if (key === "Escape" && this.#openMenu === menu) {
+      event.preventDefault();
+      event.stopPropagation();
+      this.#closeMenu("button");
+      return;
+    }
     if (altKey || ctrlKey || metaKey || shiftKey) {
       return;
     }
@@ -902,11 +915,6 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
     if (key in next) {
       event.preventDefault();
       next[key]?.focus();
-    } else if (key === "Escape") {
-      // It closes the menu and goes no further, so a host's dialog stays open.
-      event.preventDefault();
-      event.stopPropagation();
-      this.#closeMenu("button");
     }
   };
 
@@ -936,6 +944,7 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
     const state = opening.state === "first" && isFirst ? "first" : "open";
     this.#opening = { key: opening.key, state, value };
     this.#editor.value = value;
+    this.#saved = false;
     // Export is off with nothing in the email.
     this.requestUpdate();
   }
@@ -957,6 +966,7 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
     this.#cantSave = false;
     this.#notices.delete("saved");
     const saved = key ? this.#readSavedEmail(key) : undefined;
+    this.#saved = Boolean(saved);
     if (saved) {
       this.#opening = { key, state: "saved", value: opening.value };
       this.#editor.value = saved;
@@ -1030,8 +1040,9 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
           cantSave = true;
         }
       }
-      if (cantSave !== this.#cantSave) {
+      if (cantSave !== this.#cantSave || cantSave === this.#saved) {
         this.#cantSave = cantSave;
+        this.#saved = !cantSave;
         this.requestUpdate();
       }
     }

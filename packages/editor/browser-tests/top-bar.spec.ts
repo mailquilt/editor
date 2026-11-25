@@ -110,12 +110,12 @@ test.describe("undo and redo", () => {
     await mode(page, "Style").click();
 
     await undoButton(page).click();
-    await expect.poll(() => structure(page)).toEqual([[["A"]]]);
+    expect(await structure(page)).toEqual([[["A"]]]);
     await redoButton(page).click();
-    await expect.poll(() => structure(page)).toEqual(typed);
+    expect(await structure(page)).toEqual(typed);
     await mode(page, "Style").focus();
     await undoByKey(page);
-    await expect.poll(() => structure(page)).toEqual([[["A"]]]);
+    expect(await structure(page)).toEqual([[["A"]]]);
   });
 
   test("in Style, focus goes to the Mode when a new email takes undo away", async ({
