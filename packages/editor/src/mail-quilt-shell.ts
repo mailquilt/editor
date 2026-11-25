@@ -943,8 +943,12 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
     // A first email set late opens, and a copy of it then doesn't.
     const state = opening.state === "first" && isFirst ? "first" : "open";
     this.#opening = { key: opening.key, state, value };
+    const shown = this.#editor.value;
     this.#editor.value = value;
-    this.#saved = false;
+    // The same email again, as a controlled host sets it, is still saved.
+    if (!isSameDocument(this.#editor.value, shown)) {
+      this.#saved = false;
+    }
     // Export is off with nothing in the email.
     this.requestUpdate();
   }

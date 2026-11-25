@@ -946,6 +946,12 @@ test.describe("saving in the browser", () => {
     await focusStartOfTextBlock(page);
     await page.keyboard.type("Saved ");
     await expect(status).toHaveText("Saved");
+    // A controlled host sets the email it already shows, which changes nothing.
+    await shell(page).evaluate((element) => {
+      const shellElement = element as MailQuiltShell;
+      shellElement.value = structuredClone(shellElement.value);
+    });
+    await expect(status).toHaveText("Saved");
     await setShellValue(page, emailWith([[["Other"]]]));
     await expect(status).toHaveCount(0);
 
