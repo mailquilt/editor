@@ -548,7 +548,8 @@ const POPOVER_OPENERS: readonly [RegExp, RegExp][] = [
 
 /**
  * A setting's field, opening what shows it if it isn't showing: its popover
- * from the Selection bar, or else More.
+ * from the Selection bar, or else More. A side of a Row's padding shows once
+ * "Same on every side" is off.
  */
 export const setting = async (page: Page, name: string) => {
   const control = field(page, name);
@@ -565,6 +566,12 @@ export const setting = async (page: Page, name: string) => {
   await ((await button.count()) === 1
     ? openPopover(page, opener)
     : openMore(page));
+  const sameOnEverySide = canvas(page).getByRole("switch", {
+    name: "Same on every side",
+  });
+  if (name.endsWith(" padding (px)") && (await sameOnEverySide.isChecked())) {
+    await sameOnEverySide.click();
+  }
   await expect(control).toBeVisible();
   return control;
 };

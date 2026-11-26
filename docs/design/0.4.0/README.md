@@ -120,8 +120,9 @@ Copy rules for every surface: sentence case; name the thing, not the control ("A
 | Nothing selected: the email's preheader, language and width in the bar, its background and font under More until Style takes them | `g03-email-in-bar`, `g04-email-more` |
 | More for a Button and a Row, before Box and Show on (#323, #324) | `g06-button-more`, `g07-row-more` |
 | Text selected: its size, color and alignment in the bar, the format bar at the text | `g08-text-format-at-text` |
+| Row padding the same on every side: one field, with Same on every side on | `g09-padding-same-on-every-side` |
 
-The `g` frames were picked for #315 on 2026-11-26, as states the frames above leave out. For a Text Block, `g08` replaces the formatting `2-edit-text` draws in the bar, as #315 and the spec keep the format bar next to the text. With nothing selected, `g03` replaces `e01`'s hint and Add, as the email's settings go in the bar and adding comes with #316.
+The `g` frames were picked for #315 on 2026-11-26, as states the frames above leave out. For a Text Block, `g08` replaces the formatting `2-edit-text` draws in the bar, as #315 and the spec keep the format bar next to the text. With nothing selected, `g03` replaces `e01`'s hint and Add, as the email's settings go in the bar and adding comes with #316. `g09` draws `e09`'s switch turned on: it's on wherever every side is the same, unless the person turned it off, and turning it on gives every side Top's value.
 
 **Copy.** Chip: "Row 3 / Button" (the path is a menu: "Row 3", "Column 1", and "Email", which selects nothing). More panel title: the Block's name ("Button"). Section titles: "Box", "Show on", "Actions". Dimmed action tooltip: "It's in the only Column". Nothing selected: the chip "Email", then "Preheader", "Language" and "Width".
 

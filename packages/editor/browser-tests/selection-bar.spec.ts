@@ -9,6 +9,7 @@ import {
   blockWith,
   boxOf,
   canvas,
+  currentValue,
   emailWith,
   field,
   morePanel,
@@ -24,6 +25,7 @@ import {
   test,
   textOf,
   tooltip,
+  undo,
   violations,
 } from "./helpers.js";
 
@@ -186,7 +188,7 @@ test.describe("the Selection bar", () => {
     await openEmail(page, [[["A"]], [["B"]]]);
     await selectRow(page, 1);
     await barButton(page, "Padding").click();
-    const padding = canvas(page).getByLabel("Top padding (px)");
+    const padding = field(page, "Every side (px)");
     await expect(padding).toBeFocused();
 
     await page.keyboard.type("12");
@@ -211,6 +213,98 @@ test.describe("the Selection bar", () => {
     await page.keyboard.press("Escape");
 
     await expect(blockGroup(page, "Button")).toBeFocused();
+  });
+});
+
+const PADDING_SIDES = [
+  "paddingTop",
+  "paddingRight",
+  "paddingBottom",
+  "paddingLeft",
+] as const;
+
+/** The first Row's padding, each side in order, 0 where it isn't set. */
+const rowPadding = async (page: Page) => {
+  const { rows } = await currentValue(page);
+  const props = (rows[0]?.props ?? {}) as Record<string, unknown>;
+  return PADDING_SIDES.map((side) => props[side] ?? 0);
+};
+
+const sameOnEverySide = (page: Page) =>
+  canvas(page).getByRole("switch", { name: "Same on every side" });
+
+test.describe("a Row's padding", () => {
+  test("with every side the same, is one field that sets all four, as one undo step", async ({
+    page,
+  }) => {
+    await openEmail(page, [[["A"]]]);
+    await selectRow(page, 1);
+
+    await barButton(page, "Padding").click();
+    const everySide = field(page, "Every side (px)");
+    await expect(everySide).toBeFocused();
+    await expect(sameOnEverySide(page)).toBeChecked();
+    await expect(field(page, "Top padding (px)")).toHaveCount(0);
+
+    await page.keyboard.type("24");
+    await page.keyboard.press("Enter");
+    await expect.poll(() => rowPadding(page)).toEqual([24, 24, 24, 24]);
+
+    await undo(page);
+    await expect.poll(() => rowPadding(page)).toEqual([0, 0, 0, 0]);
+  });
+
+  test("turned off shows each side and changes nothing, and turned on gives every side Top's, as one undo step", async ({
+    page,
+  }) => {
+    await openEmail(page, [[["A"]]]);
+    const email = emailWith([[["A"]]]);
+    Object.assign(email.rows[0] ?? {}, {
+      props: { paddingLeft: 32, paddingTop: 12 },
+    });
+    await setValue(page, email);
+    await selectRow(page, 1);
+    await barButton(page, "Padding").click();
+    const same = sameOnEverySide(page);
+    await expect(same).not.toBeChecked();
+    await expect(field(page, "Left padding (px)")).toHaveValue("32");
+
+    await same.focus();
+    await page.keyboard.press("Space");
+    await expect(same).toBeChecked();
+    await expect(same).toBeFocused();
+    await expect(field(page, "Every side (px)")).toHaveValue("12");
+    await expect.poll(() => rowPadding(page)).toEqual([12, 12, 12, 12]);
+
+    await page.keyboard.press("Space");
+    await expect(same).not.toBeChecked();
+    await expect(field(page, "Left padding (px)")).toHaveValue("12");
+    await expect.poll(() => rowPadding(page)).toEqual([12, 12, 12, 12]);
+
+    await undo(page);
+    await expect.poll(() => rowPadding(page)).toEqual([12, 0, 0, 32]);
+    await barButton(page, "Padding").click();
+    await expect(sameOnEverySide(page)).not.toBeChecked();
+  });
+
+  test("a value refused in a field it hides isn't shown again", async ({
+    page,
+  }) => {
+    await openEmail(page, [[["A"]]]);
+    await selectRow(page, 1);
+    await barButton(page, "Padding").click();
+    await sameOnEverySide(page).click();
+    const top = field(page, "Top padding (px)");
+    await top.fill("999");
+    await top.press("Enter");
+    await expect(top).toHaveAttribute("aria-invalid", "true");
+
+    await sameOnEverySide(page).click();
+    await expect(field(page, "Every side (px)")).toHaveValue("0");
+    await sameOnEverySide(page).click();
+
+    await expect(top).toHaveValue("0");
+    await expect(top).toHaveAttribute("aria-invalid", "false");
   });
 });
 

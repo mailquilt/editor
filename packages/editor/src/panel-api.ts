@@ -142,6 +142,8 @@ export interface OwnPanelsApi {
   selectTab: (tab: PanelTab) => void;
   /** Opens a popover from the Selection bar, by its button's `data-action`. */
   togglePopover: (id: string) => void;
+  /** Shows a Row's padding by side, or as one value while it's the same. */
+  showPaddingBySide: (rowId: string, bySide: boolean) => void;
   /** Opens the chip's menu, or closes it. */
   toggleMenu: () => void;
   /** Closes the chip's menu, with focus back on the chip if `returnFocus`. */

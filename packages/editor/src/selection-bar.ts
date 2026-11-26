@@ -468,8 +468,20 @@ export const selectionBarStyles = css`
     grid-template-columns: 1fr 1fr;
   }
 
-  .bar-popover.grid legend {
+  .bar-popover.grid legend,
+  .bar-popover.grid fieldset > .field:only-of-type {
     grid-column: 1 / -1;
+  }
+
+  /* Under the fields, the name and the switch on one line. */
+  .bar-popover .same-sides .section {
+    padding-block-start: 0;
+  }
+
+  .bar-popover.grid .same-sides .field.inline {
+    align-items: center;
+    flex-direction: row;
+    justify-content: space-between;
   }
 
   .bar-popover.grid .field.inline {
@@ -656,6 +668,11 @@ export interface BarPanelsState {
   menuOpen: boolean;
   /** Whether More is open. It stays open as the selection changes. */
   moreOpen: boolean;
+  /**
+   * The Rows whose padding shows each side, as the person turned "Same on
+   * every side" off, though every side is the same.
+   */
+  paddingBySide: ReadonlySet<string>;
 }
 
 interface BarPanelsHost {
@@ -676,9 +693,11 @@ const isInOpen = (element: Element, opened: Place, button: string) =>
  * Escape closes them back to their button. More stays open until it's closed.
  */
 export const createBarPanels = ({ focus, requestUpdate }: BarPanelsHost) => {
+  const paddingBySide = new Set<string>();
   const state: BarPanelsState = {
     menuOpen: false,
     moreOpen: false,
+    paddingBySide,
     popover: undefined,
   };
 
@@ -750,6 +769,16 @@ export const createBarPanels = ({ focus, requestUpdate }: BarPanelsHost) => {
       if (state.menuOpen && !isInOpen(target, "barMenu", "chip")) {
         closeMenu(false);
       }
+    },
+
+    /** Shows a Row's padding by side, or as one value while it's the same. */
+    showPaddingBySide(rowId: string, bySide: boolean) {
+      if (bySide) {
+        paddingBySide.add(rowId);
+      } else {
+        paddingBySide.delete(rowId);
+      }
+      requestUpdate();
     },
 
     /** A new selection has its own bar, with nothing of the last one's open. */
@@ -1383,6 +1412,99 @@ const renderPopover = (
   </div>
 `;
 
+/** The one field a Row's padding is while it's the same on every side. */
+const EVERY_SIDE = "paddingEverySide";
+
+/**
+ * A Row's padding: one field while it's the same on every side, which sets
+ * all four as one step, or a field for each side once "Same on every side" is
+ * off. It's on wherever every side is the same, unless the person turned it
+ * off; turning it on gives every side Top's value.
+ */
+const renderPaddingPopover = (
+  section: SettingsSection,
+  sides: readonly SettingsField[],
+  legend: string,
+  api: PanelApi
+) => {
+  const { drafts, text } = api;
+  const [top] = sides;
+  if (!top) {
+    return nothing;
+  }
+  const texts = sides.map((side) => fieldText(side, section.values));
+  const equal = texts.every((value) => value === texts[0]);
+  const same = equal && !api.bar.paddingBySide.has(section.targetId);
+  const everySide = { ...top, key: EVERY_SIDE, labelId: "bar.everySide" };
+  const everySection: SettingsSection = {
+    ...section,
+    command: (changes) =>
+      section.command(
+        Object.fromEntries(sides.map(({ key }) => [key, changes[EVERY_SIDE]]))
+      ),
+    fields: [everySide],
+    values: { ...section.values, [EVERY_SIDE]: section.values[top.key] },
+  };
+  const switchId = `bar-${section.id}-padding-same`;
+  const onSame = ({ currentTarget }: Event) => {
+    const on = (currentTarget as HTMLInputElement).checked;
+    // What was typed in the fields it hides isn't what the email has.
+    if (on) {
+      drafts.drop(section, sides);
+    } else {
+      drafts.drop(everySection, [everySide]);
+    }
+    api.showPaddingBySide(section.targetId, !on);
+    if (on && !equal) {
+      drafts.onCommit(everySection, everySide, {
+        badInput: false,
+        text: texts[0] ?? "",
+      });
+    }
+  };
+  return html`
+    <div
+      aria-label=${legend}
+      class="ui bar-popover grid"
+      data-place=${place("barPopover")}
+      role="dialog"
+      tabindex="-1"
+    >
+      ${
+        same
+          ? renderSettingsPanel(
+              { ...everySection, legend },
+              drafts,
+              fieldTags(api),
+              text,
+              [everySide]
+            )
+          : renderSettingsPanel(
+              { ...section, legend },
+              drafts,
+              fieldTags(api),
+              text,
+              sides
+            )
+      }
+      <div class="settings same-sides">
+        <div class="section">
+          <div class="field inline">
+            <label for=${switchId}>${text("bar.sameOnEverySide")}</label>
+            <input
+              id=${switchId}
+              role="switch"
+              type="checkbox"
+              .checked=${live(same)}
+              @change=${onSame}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+};
+
 const renderPopoverControl = (
   section: SettingsSection,
   control: Extract<Control, { kind: "popover" }>,
@@ -1395,6 +1517,15 @@ const renderPopoverControl = (
   }
   const name = api.text(control.name);
   const label = control.label?.(section.values, api.text);
+  const popoverOf = () =>
+    control.id === "popover-padding"
+      ? renderPaddingPopover(section, fields, name, api)
+      : renderPopover(
+          section,
+          fields,
+          { grid: control.grid, legend: name },
+          api
+        );
   return html`
     <span class="bar-anchor">
       <button
@@ -1421,16 +1552,7 @@ const renderPopoverControl = (
             : nothing
         }
       </button>
-      ${
-        open
-          ? renderPopover(
-              section,
-              fields,
-              { grid: control.grid, legend: name },
-              api
-            )
-          : nothing
-      }
+      ${open ? popoverOf() : nothing}
     </span>
   `;
 };

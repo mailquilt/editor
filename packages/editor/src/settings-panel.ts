@@ -60,6 +60,8 @@ interface FieldDraft extends Typed {
  */
 export interface SettingsDrafts {
   draftOf: (key: string) => FieldDraft | undefined;
+  /** Forgets what was typed in fields that are no longer shown. */
+  drop: (section: SettingsSection, fields: readonly SettingsField[]) => void;
   /**
    * Each change to what's typed, before it's committed. In a list field, it's
    * typed in the text of the item whose key is `item`.
@@ -1167,6 +1169,11 @@ export const createSettingsDrafts = ({
       say(said);
     },
     draftOf: (key) => drafts.get(key),
+    drop: (section, dropped) => {
+      for (const field of dropped) {
+        drafts.delete(draftKey(section, field));
+      }
+    },
     onCommit: (section, field, typed, item) =>
       commit(section, field, typed, false, item),
     onInput: (section, field, typed, item) => {
