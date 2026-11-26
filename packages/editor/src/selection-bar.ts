@@ -2142,6 +2142,16 @@ export const fitSelectionBar = (root: ParentNode) => {
     "data-compact",
     compact !== undefined
   );
+  // Focus on an action the bar now leaves to More goes to More's button, so
+  // it stays in the editor.
+  const focused = (bar.getRootNode() as ShadowRoot).activeElement;
+  if (
+    focused &&
+    bar.contains(focused) &&
+    focused.getClientRects().length === 0
+  ) {
+    bar.querySelector<HTMLElement>('[data-action="more"]')?.focus();
+  }
 };
 
 /** More where it docks beside the email: a column as tall as the editor. */

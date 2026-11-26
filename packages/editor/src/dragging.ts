@@ -171,10 +171,10 @@ export const createDragging = ({
    * are counted without the `dragged` one, as a move's index is. There's no
    * landing far from the editor, which is how to abandon a drag, or on the side
    * panel, so that letting go of a palette item that barely moved adds nothing,
-   * or on the Selection bar, its More panel or the floating toolbar, which are
-   * over the email or beside it. Nor is there outside a scroll container the
-   * editor is in, such as the Shell's, where what's under the pointer is
-   * scrolled out of sight.
+   * or on the Selection bar, its popovers, menu and More panel or the floating
+   * toolbar, which are over the email or beside it. Nor is there outside a
+   * scroll container the editor is in, such as the Shell's, where what's under
+   * the pointer is scrolled out of sight.
    */
   const landing = (
     source: DragSource,
@@ -189,6 +189,9 @@ export const createDragging = ({
       ...findPlaces(root, "blockBar"),
       ...findPlaces(root, "rowBar"),
       ...findPlaces(root, "emailBar"),
+      // Hanging from the bar over the email, outside the bar's own box.
+      ...findPlaces(root, "barPopover"),
+      ...findPlaces(root, "barMenu"),
       ...findPlaces(root, "morePanel"),
     ];
     if (

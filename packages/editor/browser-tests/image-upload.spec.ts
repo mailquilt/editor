@@ -22,6 +22,7 @@ import {
   setting,
   openBlocks,
   openEmail,
+  openPopover,
   previewButton,
   previewDialog,
   redo,
@@ -449,6 +450,24 @@ test.describe("dropping image files", () => {
 
     await expect(second.locator("img")).toHaveAttribute("src", UPLOADED);
     await expect(first).toContainText("Uploading…");
+  });
+
+  test("files dropped on a popover from the Selection bar add nothing behind it", async ({
+    page,
+  }) => {
+    await openEmail(page, [[["One", "Two", "Three"]]]);
+    await giveUploadImage(page);
+    await blockWith(page, "One").focus();
+    const popover = await openPopover(page, /^Color:/u);
+    const { height, width, x, y } = await boxOf(popover);
+    // Its lower part, over the email.
+    const point = { x: x + width / 2, y: y + height - 8 };
+    const email = await boxOf(canvas(page).getByTestId("email"));
+    expect(point.y).toBeGreaterThan(email.y);
+
+    await dropFilesAt(page, point);
+
+    await expect(blockTypes(page)).resolves.toEqual(["text", "text", "text"]);
   });
 
   test("files dropped outside any Column add their Image Blocks in a new Row", async ({

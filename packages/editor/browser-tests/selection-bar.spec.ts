@@ -9,6 +9,7 @@ import {
   blockWith,
   boxOf,
   canvas,
+  emailWith,
   field,
   morePanel,
   moreAction,
@@ -18,6 +19,7 @@ import {
   openMore,
   selectionBar,
   selectRow,
+  setValue,
   structure,
   test,
   textOf,
@@ -35,7 +37,11 @@ const editorOf = async (page: Page, width: number) => {
 /** Wide enough for More to dock beside the email and the side panel. */
 const WIDE = 1400;
 
-/** Keeps what the editor puts on the clipboard, which tests can't share. */
+/**
+ * Keeps what the editor puts on the clipboard. The browser's copy, which
+ * More's Copy and Cut start, fires its event with data of the test's own
+ * rather than the system's clipboard, which tests running at once share.
+ */
 const keepCopies = (page: Page) =>
   page.evaluate(() => {
     const copied: Record<string, string> = {};
@@ -44,6 +50,22 @@ const keepCopies = (page: Page) =>
     DataTransfer.prototype.setData = function setData(format, data) {
       copied[format] = data;
       original.call(this, format, data);
+    };
+    const execCommand = document.execCommand.bind(document);
+    document.execCommand = (command: string, ...rest) => {
+      if (command !== "copy") {
+        return execCommand(command, ...rest);
+      }
+      // Not a ClipboardEvent, whose constructor ignores this data in Firefox.
+      const event = new Event(command, {
+        bubbles: true,
+        cancelable: true,
+        composed: true,
+      });
+      Object.defineProperty(event, "clipboardData", {
+        value: new DataTransfer(),
+      });
+      return document.dispatchEvent(event);
     };
   });
 
@@ -429,6 +451,43 @@ test.describe("More", () => {
     );
   });
 
+  test("Paste below drops what it read when the host gave another email meanwhile", async ({
+    page,
+  }) => {
+    await openEmail(page, [[["A"]]]);
+    await blockWith(page, "A").focus();
+    // The clipboard is read once the test lets it be, as a person allows it.
+    await page.evaluate(() => {
+      Object.defineProperty(navigator.clipboard, "read", {
+        configurable: true,
+        value: () =>
+          // oxlint-disable-next-line promise/avoid-new -- The test settles the read.
+          new Promise((resolve) => {
+            Object.assign(window, {
+              allowRead: () =>
+                resolve([
+                  {
+                    getType: (type: string) =>
+                      Promise.resolve(new Blob(["<p>Pasted</p>"], { type })),
+                    types: ["text/html"],
+                  },
+                ]),
+            });
+          }),
+      });
+    });
+    const paste = await moreAction(page, "Paste below");
+    await paste.click();
+
+    await setValue(page, emailWith([[["Other"]]]));
+    await page.evaluate(() =>
+      (window as unknown as { allowRead: () => void }).allowRead()
+    );
+
+    await expect(blockWith(page, "Other")).toBeVisible();
+    await expect.poll(() => structure(page)).toEqual([[["Other"]]]);
+  });
+
   test("moves the Block into the next Column, and says why it can't in the only one", async ({
     page,
   }) => {
@@ -446,6 +505,20 @@ test.describe("More", () => {
     await blockWith(page, "B").focus();
     await right.click();
     await expect(structure(page)).resolves.toEqual([[["A"]], [[], ["B"]]]);
+  });
+
+  test("where the bar's actions go into More with focus on one, focus goes to More's button", async ({
+    page,
+  }) => {
+    await openEmail(page, [[["A"], ["B"]], [["C"]]]);
+    await editorOf(page, 1800);
+    await selectRow(page, 1);
+    await barButton(page, "Duplicate Row").focus();
+
+    await editorOf(page, 645);
+
+    await expect(barButton(page, "Duplicate Row")).toBeHidden();
+    await expect(moreButton(page)).toBeFocused();
   });
 
   test("has the bar's own actions where the bar is short of room, and only there", async ({
@@ -476,6 +549,8 @@ test.describe("More", () => {
     await expect(structure(page)).resolves.toEqual([[["C"]], [["A"], ["B"]]]);
     await expect(down).toBeFocused();
     await expect(down).toHaveAttribute("aria-disabled", "true");
+    // From elsewhere, as the pointer is still where the click left it.
+    await page.mouse.move(0, 0);
     await down.hover();
     await expect(tooltip(page)).toHaveText("It's the last Row");
   });

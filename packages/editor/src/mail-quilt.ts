@@ -989,6 +989,9 @@ export class MailQuilt extends LitElement implements HostAppProperties {
    * editor read it, pasted as Ctrl/⌘+V would paste it.
    */
   async #pasteBelow() {
+    // The email the paste is for, as the host can give another while the
+    // browser asks the person.
+    const editor = this.#editor;
     const data = new DataTransfer();
     try {
       const items = await navigator.clipboard.read();
@@ -1014,6 +1017,9 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       }
     } catch {
       this.#announcements.say(this.#text("paste.notAllowed"));
+      return;
+    }
+    if (this.#editor !== editor) {
       return;
     }
     this.#editing.paste(readPasted(data) ?? { refused: "notCopied" });
