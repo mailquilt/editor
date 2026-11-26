@@ -125,6 +125,16 @@ const barControls = (bar: Element) =>
   );
 
 /**
+ * Where a popover from the bar takes focus: its first field to type in, as a
+ * color's hex field rather than its picker, which opens a dialog, or else its
+ * first control, such as a switch.
+ */
+const popoverStart = (popover: Element | null | undefined) =>
+  popover?.querySelector<HTMLElement>(
+    'input:not([type="color"], [type="checkbox"]), select'
+  ) ?? popover?.querySelector<HTMLElement>('input:not([type="color"]), button');
+
+/**
  * Goes along the Selection bar's controls from `from`. In a field, only from
  * the end of its text that way, as the arrow keys move the cursor otherwise.
  */
@@ -411,11 +421,8 @@ export const createFocus = ({
       case "bar": {
         return barControl(target);
       }
-      // A color's hex field rather than its picker, which opens a dialog.
       case "barPopover": {
-        return findPlace(root(), "barPopover")?.querySelector<HTMLElement>(
-          'input:not([type="color"]), select, button'
-        );
+        return popoverStart(findPlace(root(), "barPopover"));
       }
       case "barMenu": {
         return findPlace(root(), "barMenu")?.querySelector<HTMLElement>(

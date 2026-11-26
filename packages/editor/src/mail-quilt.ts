@@ -561,6 +561,8 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     toggleMenu: () => this.#barPanels.toggleMenu(),
     toggleMore: (fromKeyboard) => this.#barPanels.toggleMore(fromKeyboard),
     togglePopover: (id) => this.#barPanels.togglePopover(id),
+    showPaddingBySide: (rowId, bySide) =>
+      this.#barPanels.showPaddingBySide(rowId, bySide),
   } satisfies Partial<PanelApi>;
 
   readonly #canvasEvents: CanvasEvents = {

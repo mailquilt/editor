@@ -147,6 +147,8 @@ export const STRINGS = {
   "bar.columns": "Columns",
   "bar.layout": "{layout} layout",
   "bar.padding": "Padding",
+  "bar.everySide": "Every side",
+  "bar.sameOnEverySide": "Same on every side",
   "bar.stackOnPhones": "Stack on phones",
   "bar.preheader": "Preheader",
   "bar.language": "Language",
