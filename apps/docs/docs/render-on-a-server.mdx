@@ -35,6 +35,51 @@ const html = await renderEmail(email, {
 
 [Social icons](./social-icons) says why they load this way, and what to set in the editor so the canvas shows the same icons.
 
+## Check an email before you send
+
+`checkEmail()` lists what would go wrong for an email's readers, such as an Image with no alt text or a Button with no link. These are its Problems. Your server can stop a send that has any, or send anyway: a Problem never stops `renderEmail()`.
+
+```js
+import { checkEmail } from "@mailquilt/renderer";
+
+const problems = await checkEmail(email, {
+  mergeTags: [
+    { name: "first_name" },
+    { name: "unsubscribe_url", unsubscribe: true },
+  ],
+});
+for (const { blockId, code, message } of problems) {
+  console.log(code, blockId ?? "the email", message);
+}
+```
+
+It takes the same document `renderEmail()` does, refuses the same emails, and renders the email to measure its HTML, with `socialIconsUrl` if you give one. Pass `mergeTags`, the list you give the editor, to check each tag's name, read without the spaces around it, so `{{ first_name }}` is `first_name`, and mark your unsubscribe tag to check that the email links to it. Without the list, neither rule runs.
+
+The promise gives an array of Problems in the email's order: its settings first, then each Block, then the email as a whole. Each Problem has:
+
+- `code`, one of the codes below, which stays the same in later versions.
+- `message`, what's wrong and why it matters, in English, for your logs or your team. It isn't written for your customers, and its words can change.
+- `rowId`, `columnId` and `blockId`, for a Problem in a Block.
+- `field`, the setting that fixes it, such as `alt` on an Image, or `preheader` in the email's settings. A Problem about the email as a whole has none.
+- `mergeTag`, for `unknown-merge-tag`, the tag's name, which goes between the braces.
+
+| Code | What it means | `field` |
+| --- | --- | --- |
+| `empty-preheader` | The email has no preheader, or only spaces, so inboxes show its first words after the subject. | `preheader` |
+| `no-language` | The email has no language, or an empty one, so screen readers may read it in the wrong voice. | `language` |
+| `image-without-src` | An Image has no image, so it's left out of the email. | `src` |
+| `image-without-alt` | An Image has an image but no alt text, so readers who can't see it, or whose email client blocks images, don't know what it shows. | `alt` |
+| `button-without-link` | A Button has no link, so pressing it does nothing. | `href` |
+| `low-text-contrast` | A Text Block's or Heading's text has less contrast with what's behind it than WCAG AA asks: 4.5:1, or 3:1 for text of 24px, or 18.67px and bold. | `color` |
+| `low-link-contrast` | The links in a Text Block or Heading are in a color of their own, from Email style, with less contrast than that. A URL or email address written in the text counts, as the renderer links it. | `color` |
+| `low-button-contrast` | A Button's label has less contrast than that with the Button's color. | `color` |
+| `vague-link-text` | A link or Button says only "click here", "here", "read more", "learn more", "link" or "this link", in any case and with any punctuation. It checks these English phrases only. | `content` or `label` |
+| `unknown-merge-tag` | A Merge Tag isn't in your `mergeTags`, such as a typo like `{{frist_name}}`. One for each tag in each place it's found. | Where the tag is, such as `content`, `href` or `preheader` |
+| `html-too-large` | The HTML is over 102 KB, counted in bytes, so Gmail cuts it off and hides the rest behind a link. | None |
+| `no-unsubscribe-link` | No link in the email goes to a Merge Tag you marked `unsubscribe`. A link counts when the tag is anywhere in its URL, and not when it's on an Image with no image, which is left out of the email. | None |
+
+Contrast is read as the email shows it: a Block's own colors, or else Email style, or else the built-in look, against the Row's color, or else Email style's color behind the Rows, or else the page's. A see-through color is mixed with what's behind it. Each piece of text is checked in the color and weight it's drawn in, so bold text counts as bold, and text that's all links isn't checked in the text color. A Block with no text in it has no contrast to check.
+
 ## When the renderer refuses an email
 
 The renderer accepts what the editor accepts. If the document is malformed, has a Block type this version doesn't know, or was saved by a newer version, the promise rejects, and the error's message says what was wrong:

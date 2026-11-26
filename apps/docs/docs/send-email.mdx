@@ -31,7 +31,7 @@ const html = fillMergeTags(await htmlFor(email), {
 
 - **It fills tags in text and in URLs.** A link or image URL can start with a tag, such as `{{unsubscribe_url}}`, so that value should be a whole URL. A tag later in a URL, as in `https://example.com/u/{{user_id}}`, fills in the part it stands for.
 - **It escapes each value.** An `&`, `<`, `>`, `"` or `'` becomes an HTML entity, so a name such as `<b>Ada</b>` shows as typed rather than adding markup, and a value can't end the link it's in. An `&` in a URL becomes `&amp;`, which HTML reads as the same URL.
-- **It refuses an email with a tag it has no value for.** It throws, and the message names the tags, such as `No value for {{frist_name}}`. Customers type their own tags and Mail Quilt doesn't check their names, so leaving the tag would send `{{frist_name}}` to the reader. A send that stops is easier to fix than an email you can't take back. To send anyway, give the tag a value, even an empty one.
+- **It refuses an email with a tag it has no value for.** It throws, and the message names the tags, such as `No value for {{frist_name}}`. Customers type their own tags, and the editor doesn't stop one that isn't yours, so leaving the tag would send `{{frist_name}}` to the reader. [`checkEmail()`](./render-on-a-server#check-an-email-before-you-send) can find such a tag before you send. A send that stops is easier to fix than an email you can't take back. To send anyway, give the tag a value, even an empty one.
 - **Spaces inside the braces don't matter,** so `{{ first_name }}` is filled from `first_name`.
 
 ### What it doesn't do

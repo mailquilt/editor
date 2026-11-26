@@ -220,6 +220,13 @@ const linkWrittenAddresses = (inline: TextOrBreak[]) => {
   return { pieces, text };
 };
 
+/**
+ * A paragraph's pieces as the email draws them, with each address written in
+ * its text as a link, for Check to read their colors and weights.
+ */
+export const drawnPieces = (inline: Inline[] = []) =>
+  linkWrittenAddresses(tagsAsText(inline)).pieces.map(({ node }) => node);
+
 const isSameMark = (a: RichTextMark, b: RichTextMark) =>
   a.type === "link" && b.type === "link"
     ? a.attrs.href === b.attrs.href
