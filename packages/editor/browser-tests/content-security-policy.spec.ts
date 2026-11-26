@@ -12,7 +12,7 @@ import {
   layoutTile,
   letGo,
   moveTo,
-  openTab,
+  openAddPanel,
   selectNothing,
   openMore,
   openTestPage,
@@ -175,7 +175,7 @@ test("under a strict policy, the canvas shows the email with its settings, and n
     "rgb(15, 118, 110)"
   );
   // Its pictures of the layouts set inline styles too, which nothing may block.
-  await openTab(page, "Rows");
+  await openAddPanel(page);
   await expect(layoutTile(page, "50/50")).toBeVisible();
   // A dropdown's arrow, which no image source may hide, and the Selection
   // bar's swatches and More, which set inline styles too.

@@ -3,6 +3,7 @@ import type { Page } from "@playwright/test";
 
 import type { MailQuilt } from "../src/index.js";
 import {
+  addBlock,
   announcement,
   blockGroup,
   blockProps,
@@ -133,7 +134,7 @@ test.describe("uploading an image from the Image settings", () => {
     page,
   }) => {
     await openEmail(page, [[["A"]]]);
-    await canvas(page).getByRole("button", { name: "Add Image Block" }).click();
+    await addBlock(page, "Image");
     const url = field(page, "Image URL");
     await expect(url).toHaveAttribute("placeholder", "Paste an image URL");
 

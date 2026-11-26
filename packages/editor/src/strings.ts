@@ -70,9 +70,10 @@ export const STRINGS = {
   "canvas.duplicateRow": "Duplicate Row",
   "canvas.deleteRow": "Delete Row",
   "canvas.hiddenOnPhones": "Hidden on phones",
-  "canvas.dropHere": "Drop a Block here",
-  "canvas.addToColumn": "Add a Block to Row {row}, Column {column}",
-  "canvas.addHere": "Add {type} Block here",
+  "canvas.dropHere": "Add a Block, or drop one here",
+  /** An empty Column's button, which shows `canvas.dropHere`, named with where it is. */
+  "canvas.addToColumn":
+    "Add a Block, or drop one here, in Row {row}, Column {column}",
   "canvas.emailTools": "Email tools",
   "canvas.preview": "Preview",
   "canvas.textOf": "{type} Block",
@@ -115,7 +116,7 @@ export const STRINGS = {
   /** With no-break spaces, so the braces never end or start a line. */
   "mergeTags.hint": "Type\u00A0{{\u00A0to add a Merge Tag.",
 
-  // The side panel.
+  // The Selection bar.
   /** The Selection bar, named for what it's the settings of. */
   "bar.of": "{name} settings",
   "bar.email": "Email",
@@ -169,19 +170,21 @@ export const STRINGS = {
   "more.lastRow": "It's the last Row",
   "more.selectRow": "Select Row {row}",
 
-  "side.panel": "Side panel",
-  "side.content": "Content",
-  "side.rows": "Rows",
-  "side.blocks": "Blocks",
-  "side.blocksHelp":
-    "Drag one onto the email, or choose one to add it after the selected Block, into the selected Row, or at the end.",
-  "side.addContent": "Add content",
-  "side.addBlock": "Add {type} Block",
-  "side.layouts": "Layouts",
-  "side.layoutsHelp":
-    "Drag one between Rows, or choose one to add it after the selected Row, or at the end of the email.",
-  "side.addRow": "Add a Row",
-  "side.addLayout": "Add {layout} Row",
+  // Adding Blocks and Rows: the Add panel, and the picker on the Canvas.
+  "add.add": "Add",
+  "add.panel": "Add",
+  "add.searchAll": "Search Blocks and Rows",
+  "add.searchBlocks": "Search Blocks",
+  "add.blocks": "Blocks",
+  "add.emptyRows": "Empty Rows",
+  "add.addBlock": "Add {type} Block",
+  "add.addLayout": "Add {layout} Row",
+  "add.here": "Add a Block here",
+  /** Under the picker, where what's picked goes: "Adds below the Text, in Row 3". */
+  "add.below": "Adds below the {type}, in Row {row}",
+  "add.noBlock": "No Block called “{query}”",
+  "add.nothing": "Nothing called “{query}”",
+  "add.try": "Try Text, Image or Button.",
 
   // Settings fields.
   "settings.none": "None",
@@ -298,6 +301,8 @@ export const STRINGS = {
   "said.blockMoved":
     "Moved to Row {row}, Column {column}, position {position} of {count}.",
   "said.rowMoved": "Row moved to position {position} of {count}.",
+  "said.blockAdded":
+    "{type} Block added, Row {row}, Column {column}, position {position} of {count}.",
   "said.blockDeleted": "Block deleted.",
   "said.rowDeleted": "Row deleted.",
   "said.blockCopied":

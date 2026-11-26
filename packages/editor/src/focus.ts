@@ -2,11 +2,11 @@ import {
   closestPlace,
   findBlock,
   findPlace,
+  findPlaces,
   findRow,
   isOfText,
 } from "./editor-places.js";
 import type { Place } from "./editor-places.js";
-import type { PanelTab } from "./selection.js";
 import type { ListFocus } from "./settings-panel.js";
 import type { TextBlockView } from "./text-block-view.js";
 
@@ -42,7 +42,13 @@ export type FocusTarget =
   | { on: "formatBar" }
   /** The link field, with its URL selected to type over. */
   | { on: "linkField" }
-  | { on: "tab"; tab: PanelTab }
+  /**
+   * The Add panel's search, or the picker's, or in an empty Column, where it
+   * has none, its first tile.
+   */
+  | { on: "adding"; in: "addPanel" | "addPicker" }
+  /** An empty Column's button, which opens the picker there. */
+  | { on: "emptyColumn"; columnId: string }
   /** Undo or Redo in the top bar while it's enabled, or else the other. */
   | { on: "history"; action: "redo" | "undo" }
   /** A part of a list field in the settings, by the list's `id`. */
@@ -252,6 +258,18 @@ const targetOf = (element: Element): FocusTarget => {
     return listTool;
   }
   const { action } = (element as HTMLElement).dataset;
+  if (closestPlace(element, "addPicker")) {
+    return { in: "addPicker", on: "adding" };
+  }
+  if (closestPlace(element, "addPanel")) {
+    return { in: "addPanel", on: "adding" };
+  }
+  const columnId =
+    closestPlace(element, "addBlocks") &&
+    closestPlace(element, "column")?.dataset.columnId;
+  if (columnId) {
+    return { columnId, on: "emptyColumn" };
+  }
   if (closestPlace(element, "morePanel")) {
     return { action, on: "more" };
   }
@@ -407,6 +425,26 @@ export const createFocus = ({
     );
   };
 
+  /**
+   * The Add panel's search, the picker's search or else its first tile, or an
+   * empty Column's button.
+   */
+  const addingControl = (
+    target: Extract<FocusTarget, { on: "adding" | "emptyColumn" }>
+  ) => {
+    if (target.on === "emptyColumn") {
+      const column = findPlaces(root(), "column").find(
+        ({ dataset }) => dataset.columnId === target.columnId
+      );
+      return column && findPlace(column, "addBlocks");
+    }
+    const container = findPlace(root(), target.in);
+    return (
+      container?.querySelector("input") ??
+      container?.querySelector<HTMLElement>("button")
+    );
+  };
+
   /** What takes focus for a target, if it's there. */
   const focusableFor = (target: FocusTarget): Focusable | null | undefined => {
     switch (target.on) {
@@ -448,8 +486,9 @@ export const createFocus = ({
           }
         );
       }
-      case "tab": {
-        return root().querySelector<HTMLElement>(`#tab-${target.tab}`);
+      case "adding":
+      case "emptyColumn": {
+        return addingControl(target);
       }
       case "history": {
         return historyStep(target.action);
@@ -539,6 +578,12 @@ export const createFocus = ({
       if (shown) {
         reveal(shown);
       }
+    },
+
+    /** What focus is on now, to come back to, if it's in the editor. */
+    current(): FocusTarget | undefined {
+      const element = focused();
+      return element ? targetOf(element) : undefined;
     },
 
     /** Before an update: notes where focus is. */

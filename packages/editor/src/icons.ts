@@ -36,9 +36,6 @@ export const ICONS = {
   ),
   /** A dropdown's arrow. */
   chevronDown: icon(svg`<path d="m7 10 5 5 5-5" />`),
-  content: icon(
-    svg`<rect height="7" rx="1.5" width="7" x="3.5" y="3.5" /><rect height="7" rx="1.5" width="7" x="13.5" y="3.5" /><rect height="7" rx="1.5" width="7" x="3.5" y="13.5" /><rect height="7" rx="1.5" width="7" x="13.5" y="13.5" />`
-  ),
   delete: icon(
     svg`<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />`
   ),
@@ -112,6 +109,10 @@ export const ICONS = {
   right: icon(svg`<path d="M5 12h14M13 6l6 6-6 6" />`),
   rows: icon(
     svg`<rect height="6" rx="1.5" width="18" x="3" y="4" /><rect height="6" rx="1.5" width="18" x="3" y="14" />`
+  ),
+  /** A magnifying glass, for a search field. */
+  search: icon(
+    svg`<circle cx="11" cy="11" r="6.5" /><path d="m20 20-4.2-4.2" />`
   ),
   /** A dashed frame with a pointer at its corner, for selecting what it frames. */
   select: icon(

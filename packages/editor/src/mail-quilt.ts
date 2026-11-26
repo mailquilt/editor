@@ -12,6 +12,12 @@ import { renderEmail } from "@mailquilt/renderer";
 import { css, html, LitElement, nothing, unsafeCSS } from "lit";
 import type { PropertyValues } from "lit";
 
+import {
+  addingStyles,
+  createAdding,
+  createInsertHover,
+  renderAddPanel,
+} from "./adding.js";
 import { createAnnouncements } from "./announcements.js";
 import { BLOCK_VIEWS, blockTypeStyles, hasRichText } from "./block-types.js";
 import {
@@ -52,7 +58,6 @@ import {
 } from "./selection-bar.js";
 import { createSelection } from "./selection.js";
 import { createSettingsDrafts, settingsPanelStyles } from "./settings-panel.js";
-import { renderSidePanel, sidePanelStyles } from "./side-panel.js";
 import type { MailQuiltStrings } from "./strings.js";
 import { styleProperties } from "./style-properties.js";
 import { createTextBlockView, textBlockStyles } from "./text-block-view.js";
@@ -86,8 +91,14 @@ const CLIPBOARD_EVENTS = ["copy", "cut", "paste"] as const;
 /** Beside the email on the Canvas, each side. */
 const CANVAS_GUTTER_PX = 40;
 
-/** The side panel's width, and More's where it docks. */
+/** More's width. */
 const PANEL_WIDTH_PX = 320;
+
+/**
+ * The Add panel's width: four tiles across, and narrower than More, so it
+ * docks beside the usual email from 968px wide, on a small laptop too.
+ */
+const ADD_WIDTH_PX = 288;
 
 /** Typing after a gap this long starts a new undo step. */
 const TYPING_PAUSE_MS = 1000;
@@ -146,24 +157,20 @@ const elementStyles = css`
   }
 
   /*
-   * Edit: the canvas, then the side panel docked on its right. In a host too
-   * narrow for both, the panel goes below rather than squeeze the email.
-   * Clipped rather than hidden, which would stop the panel and toolbar
+   * Edit: the Add panel while it's open, the canvas, then More where it docks.
+   * Clipped rather than hidden, which would stop the panels and toolbar
    * sticking. What focus scrolls to stays clear of the top bar.
    */
   .editor {
     /* Beside the email, room for a Block's handle and a Row's tag. */
     --_mq-gutter: ${unsafeCSS(CANVAS_GUTTER_PX)}px;
     --_mq-panel-width: ${unsafeCSS(PANEL_WIDTH_PX)}px;
-    /* Where the email and the panel stop fitting side by side. */
-    --_mq-side-by-side: calc(
-      var(--_mq-email-width) + 2 * var(--_mq-gutter) + var(--_mq-panel-width)
-    );
+    --_mq-add-width: ${unsafeCSS(ADD_WIDTH_PX)}px;
     align-items: stretch;
     display: flex;
     overflow: clip;
     flex: 1 0 auto;
-    flex-wrap: wrap;
+    position: relative;
   }
 
   .editor * {
@@ -198,11 +205,10 @@ const elementStyles = css`
   .canvas-area {
     background-color: var(--mq-color-workspace);
     display: flex;
-    /* The email's own width, so the panel wraps before the email shrinks. */
-    flex: 999 1 calc(var(--_mq-email-width) + 2 * var(--_mq-gutter));
+    flex: 1 1 calc(var(--_mq-email-width) + 2 * var(--_mq-gutter));
     flex-direction: column;
     gap: var(--mq-space-5);
-    /* Room for a selected Block's tools when the panel has gone below. */
+    /* Room for a selected Block's tools. */
     min-height: 480px;
     min-width: 0;
     /* The Selection bar spans the top, so the gutters are only at the sides. */
@@ -311,7 +317,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     themeTokens,
     uiStyles,
     settingsPanelStyles,
-    sidePanelStyles,
+    addingStyles,
     selectionBarStyles,
     blockTypeStyles,
     formatBarStyles,
@@ -365,6 +371,16 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     requestUpdate: () => this.requestUpdate(),
     textOf: (blockId) => this.#views.get(blockId),
   });
+  readonly #adding = createAdding({
+    focus: this.#focus,
+    selected: () => {
+      if (this.#selection.blockId !== undefined) {
+        return "block";
+      }
+      return this.#selection.rowId === undefined ? undefined : "row";
+    },
+    requestUpdate: () => this.requestUpdate(),
+  });
   readonly #barPanels = createBarPanels({
     focus: this.#focus,
     requestUpdate: () => this.requestUpdate(),
@@ -406,6 +422,8 @@ export class MailQuilt extends LitElement implements HostAppProperties {
   });
   /** Set while the element is connected. */
   #dragging: Dragging | undefined;
+  /** Set while the element is connected. */
+  #insertHover: { destroy: () => void } | undefined;
   /** Set while the element is connected, as it observes sizes on the page. */
   #toolFitting: ToolFitting | undefined;
   #tooltips: { element: HTMLElement; tooltips: Tooltips } | undefined;
@@ -486,6 +504,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     tags: this.#mergeTagsGiven,
   });
   readonly #keys = createKeyDispatch({
+    adding: this.#adding,
     bar: this.#barPanels,
     canStep: (step) =>
       step === "undo"
@@ -507,13 +526,17 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     stepHistory: (step) => this.#stepHistory(step),
   });
 
-  /** What the Side panel, the Selection bar and More do, made once. */
+  /** What the Add panel, the Selection bar and More do, made once. */
   readonly #panelActions = {
-    addBlock: (blockType, position) =>
-      this.#editing.addBlock(blockType, position),
+    addBlock: (blockType) => this.#editing.addBlock(blockType),
+    addBlockAt: (blockType, at) => {
+      this.#adding.closePicker(false);
+      this.#editing.addBlock(blockType, at);
+    },
     addRow: (layout, fromKeyboard) =>
       this.#editing.addRow(layout, fromKeyboard),
     cancelLink: () => this.#linkForm.cancel(),
+    closeAddPanel: (returnFocus) => this.#adding.closePanel(returnFocus),
     closeMenu: (returnFocus) => this.#barPanels.closeMenu(returnFocus),
     closeMore: (returnFocus) => this.#barPanels.closeMore(returnFocus),
     copySelected: () =>
@@ -534,13 +557,16 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     insertLineBreak: () => this.#selection.selectedText?.insertLineBreak(),
     moveBlock: (direction) => this.#editing.moveBlock(direction),
     moveRow: (rowId, direction) => this.#editing.moveRow(rowId, direction),
+    openAddPanel: (fromKeyboard) => this.#adding.openPanel(fromKeyboard),
     openLinkField: () => this.#linkForm.open(),
+    openPicker: (at, fromKeyboard) => this.#adding.openPicker(at, fromKeyboard),
     openPreview: () => this.#preview.open(),
     pasteBelow: () => {
       void this.#pasteBelow();
     },
     pickMergeTag: (index) => this.#selection.selectedText?.pickMergeTag(index),
     removeLink: () => this.#linkForm.remove(),
+    searchAdd: (where, query) => this.#adding.search(where, query),
     selectEmail: (fromKeyboard) => {
       this.#selection.select(undefined);
       this.#focus.focusWhenRendered(
@@ -550,7 +576,6 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     },
     selectRow: (rowId, fromKeyboard) =>
       this.#selection.selectRow(rowId, fromKeyboard),
-    selectTab: (tab) => this.#selection.selectTab(tab),
     setRowLayout: (rowId, layout) => {
       this.#apply({ layout, rowId, type: "setRowLayout" });
     },
@@ -598,6 +623,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       root.addEventListener(type, this.#fieldMergeTags.onFieldEvent);
     }
     root.addEventListener("focusout", (event) => {
+      this.#adding.onFocusout(event as FocusEvent);
       this.#fieldMergeTags.onFocusout(event as FocusEvent);
       this.#barPanels.onFocusout(event as FocusEvent);
     });
@@ -606,6 +632,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     );
     root.addEventListener("pointerdown", (event) => {
       this.#lastInput = "pointer";
+      this.#adding.onPointerdown(event as PointerEvent);
       this.#barPanels.onPointerdown(event as PointerEvent);
     });
     root.addEventListener(
@@ -682,7 +709,8 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       const narrow = width < MIN_EDITOR_WIDTH;
       const changed =
         narrow !== this.#narrow ||
-        this.#docksMore(width) !== this.#docksMore(this.#width);
+        this.#docksMore(width) !== this.#docksMore(this.#width) ||
+        this.#docksAdd(width) !== this.#docksAdd(this.#width);
       this.#narrow = narrow;
       this.#width = width;
       if (changed) {
@@ -708,6 +736,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
         return email ? locate(email, blockId)?.block.type === "image" : false;
       },
     });
+    this.#insertHover = createInsertHover(this.renderRoot);
     this.#toolFitting = createToolFitting({
       onMove: () => this.#tooltips?.tooltips.sync(),
       root: this.renderRoot,
@@ -725,6 +754,8 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     }
     this.#dragging?.destroy();
     this.#dragging = undefined;
+    this.#insertHover?.destroy();
+    this.#insertHover = undefined;
     this.#toolFitting?.destroy();
     this.#toolFitting = undefined;
     this.#tooltips?.tooltips.destroy();
@@ -754,6 +785,13 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     const blockIds = new Set(blocks.map(({ id }) => id));
     this.#focus.beforeUpdate();
     if (email) {
+      this.#adding.beforeUpdate(
+        new Map(
+          email.rows.flatMap(({ columns }) =>
+            columns.map((column) => [column.id, column.blocks.length] as const)
+          )
+        )
+      );
       this.#selection.beforeUpdate({
         blockIds,
         rowIds: new Set(email.rows.map(({ id }) => id)),
@@ -903,7 +941,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     `;
   }
 
-  /** The Edit Mode: the Canvas and the side panel, or the narrow notice. */
+  /** The Edit Mode: the Canvas and its panels, or the narrow notice. */
   #renderEdit(email: BlocksDocument) {
     const { settings } = email;
     const api = this.#panelApi(email);
@@ -926,6 +964,12 @@ export class MailQuilt extends LitElement implements HostAppProperties {
         ?hidden=${this.#mode !== "edit"}
         style=${styleProperties({ "--_mq-email-width": `${width}px` })}
       >
+        ${
+          // First, as it's drawn first, so Tab reaches it in that order.
+          api.adding.panel
+            ? renderAddPanel(api, this.#docksAdd(this.#width))
+            : nothing
+        }
         <div
           class="canvas-area"
           data-place=${place("workspace")}
@@ -957,7 +1001,6 @@ export class MailQuilt extends LitElement implements HostAppProperties {
           ${renderSelectionBar(api)} ${renderFloatingToolbar(api)}
         </div>
         ${api.bar.moreOpen && api.bar.docked ? renderMoreDock(api) : nothing}
-        ${renderSidePanel(api)}
       </div>
     `;
   }
@@ -976,13 +1019,29 @@ export class MailQuilt extends LitElement implements HostAppProperties {
   }
 
   /**
+   * Whether the Add panel, while it's open, docks beside the email at
+   * `width`: where the email, its gutters and the panel fit side by side.
+   * Below that, it floats over the Canvas's edge.
+   */
+  #docksAdd(width: number) {
+    const widths = this.#canvasWidths();
+    return (
+      this.#adding.state.panel !== undefined &&
+      widths !== undefined &&
+      width >= widths.withGutters + ADD_WIDTH_PX
+    );
+  }
+
+  /**
    * Whether More docks beside the email at `width`: where the email, its
-   * gutters, More and the side panel fit side by side. Below that, it floats.
+   * gutters, More and a docked Add panel fit side by side. Below that, it
+   * floats.
    */
   #docksMore(width: number) {
     const widths = this.#canvasWidths();
+    const add = this.#docksAdd(width) ? ADD_WIDTH_PX : 0;
     return (
-      widths !== undefined && width >= widths.withGutters + 2 * PANEL_WIDTH_PX
+      widths !== undefined && width >= widths.withGutters + PANEL_WIDTH_PX + add
     );
   }
 
@@ -1027,13 +1086,14 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     this.#editing.paste(readPasted(data) ?? { refused: "notCopied" });
   }
 
-  /** What the Side panel, the Selection bar and More show, and what they do. */
+  /** What the Add panel, the Selection bar and More show, and what they do. */
   #panelApi(email: BlocksDocument): PanelApi {
     // Only with a tag the picker can offer.
     const offersTags =
       this.mergeTags?.some(({ name }) => isMergeTagName(name)) ?? false;
     return {
       ...this.#panelActions,
+      adding: this.#adding.state,
       bar: {
         ...this.#barPanels.state,
         docked: this.#docksMore(this.#width),
@@ -1054,7 +1114,6 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       mergeTagPicker: this.#mergeTagPicker,
       selectedBlock: this.#editing.selectedBlock(email),
       selectedRow: this.#editing.selectedRow(email),
-      tab: this.#selection.tab,
       text: this.#text,
       uploadErrorOf: this.#uploads.errorOf,
       uploadImage: this.uploadImage ? this.#uploadImage : undefined,

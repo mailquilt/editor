@@ -2,6 +2,7 @@ import { expect } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 
 import {
+  addBlock,
   blockGroup,
   blockProps,
   blockTypes,
@@ -17,7 +18,6 @@ import {
   setting,
   openBlocks,
   openExport,
-  palette,
   pasteHtml,
   settle,
   setValue,
@@ -92,7 +92,7 @@ test.describe("the palette", () => {
   }) => {
     await openBlocks(page, ["text"]);
 
-    await palette(page, "Button").click();
+    await addBlock(page, "Button");
 
     await expect(blockGroup(page, "Button")).toBeFocused();
     await expect(buttonFace(page)).toHaveText("Button");

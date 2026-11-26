@@ -134,7 +134,7 @@ export interface TopBarEvents {
 
 /**
  * One Tab stop, with arrow keys between the Modes, which are chosen as focus
- * reaches them, as the Side panel's tabs are. A Mode that's off still takes
+ * reaches them, as in any tab list. A Mode that's off still takes
  * focus, so its tooltip can say why.
  */
 const renderModes = (

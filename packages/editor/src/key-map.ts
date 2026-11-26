@@ -35,9 +35,11 @@ type HeardFirstAction = "cancelDrag" | "closeTooltip" | "ignore";
 
 /** What a key does in the editor. */
 export type Action =
+  | "addFirstMatch"
   | "backToBlock"
   | "backToText"
   | "cancelLink"
+  | "closeAdd"
   | "closeMenu"
   | "closeMergeTagPicker"
   | "closeMore"
@@ -64,6 +66,7 @@ export type Action =
   | "nextButton"
   | "nextControl"
   | "nextMergeTag"
+  | "openAddPanel"
   | "openLinkField"
   | "paste"
   | "pasteAfterRow"
@@ -73,6 +76,7 @@ export type Action =
   | "previousMergeTag"
   | "redo"
   | "selectBlock"
+  | "toAddResults"
   | "typeInField"
   | "undo"
   | "unselectRow";
@@ -334,13 +338,28 @@ const clipboard = (
 const PASTE = clipboard("paste", "paste");
 
 /**
+ * `/` opens the Add panel, from the email and the Selection bar, though not
+ * from text or a field, where it's typed. With Shift too, as on a German
+ * keyboard, where `/` is Shift+7.
+ */
+const OPEN_ADD: Entry = {
+  action: "openAddPanel",
+  keys: ["/", "Shift-/"],
+  stops: true,
+  waitsForDrag: true,
+};
+
+/** Escape closes the Add panel or the picker, and focus goes back. */
+const CLOSE_ADD = escape("closeAdd");
+
+/**
  * What a key scope is within, which gives it the keys for there after its own.
  * Alt+← and Alt+→ keep the page from anywhere, as `KEEP_PAGE` says.
  */
 type Within =
   /** In the email, where Ctrl/⌘+K, undo and redo work. */
   | "email"
-  /** Elsewhere in the editor, such as the Side panel, where undo and redo work. */
+  /** Elsewhere in the editor, such as the top bar, where undo and redo work. */
   | "editor"
   /** A field, with its own typing and undo. */
   | "field"
@@ -390,6 +409,7 @@ const KEY_SCOPES = {
       clipboard("copy", "copyBlock"),
       clipboard("cut", "cutBlock"),
       PASTE,
+      OPEN_ADD,
     ],
     within: "email",
   },
@@ -428,6 +448,7 @@ const KEY_SCOPES = {
       ...MOVE_BLOCK,
       duplicate("duplicateBlock"),
       PASTE,
+      OPEN_ADD,
       ...TOOLBAR,
     ],
     within: "email",
@@ -456,26 +477,43 @@ const KEY_SCOPES = {
       clipboard("cut", "cutRow"),
       // After this Row, as a paste with a Row selected goes.
       clipboard("paste", "pasteAfterRow"),
+      OPEN_ADD,
       ...TOOLBAR,
     ],
     within: "email",
   },
   // With nothing selected, a paste goes at the end, as from the floating
   // toolbar.
-  emailBar: { keys: [PASTE, ...TOOLBAR], within: "editor" },
+  emailBar: { keys: [PASTE, OPEN_ADD, ...TOOLBAR], within: "editor" },
   // Undo and redo are the editor's, as in any settings field with nothing
   // typed, and Delete and Backspace are the field's.
   barField: { keys: BAR_FIELD, within: "editor" },
   barPopover: { keys: [escape("closePopover")], within: "editor" },
   barMenu: { keys: [escape("closeMenu"), ...TOOLBAR], within: "editor" },
   morePanel: { keys: [escape("closeMore")], within: "editor" },
-  addBlocks: { keys: TOOLBAR, within: "email" },
+  addBlocks: { keys: [OPEN_ADD], within: "email" },
+  /**
+   * In the Add panel's or the picker's search: Enter adds the first Block or
+   * Row that matches, and ↓ goes to them. Undo and redo are the editor's, as
+   * in a field in the Selection bar, so what was just added can be taken back.
+   */
+  addSearch: {
+    keys: [
+      CLOSE_ADD,
+      { action: "addFirstMatch", keys: ["Enter"], stops: true },
+      { action: "toAddResults", keys: ["ArrowDown"], stops: true },
+    ],
+    within: "editor",
+  },
+  // One stop for Tab, with arrow keys between them, as a toolbar's.
+  addTiles: { keys: [CLOSE_ADD, OPEN_ADD, ...TOOLBAR], within: "editor" },
+  addPicker: { keys: [CLOSE_ADD], within: "editor" },
+  addPanel: { keys: [CLOSE_ADD], within: "editor" },
   // Where focus goes with nothing selected, such as after the last Block is
   // deleted, so a paste goes at the end.
-  emailTools: { keys: [PASTE], within: "editor" },
+  emailTools: { keys: [PASTE, OPEN_ADD], within: "editor" },
   // Elsewhere in the email.
   email: { keys: [], within: "email" },
-  panelTabs: { keys: TOOLBAR, within: "editor" },
   modes: { keys: TOOLBAR, within: "editor" },
   // Tab leaves the Selection bar from a field in it, and does nothing more
   // elsewhere.
@@ -484,7 +522,7 @@ const KEY_SCOPES = {
     within: "field",
   },
   listItemTools: { keys: TOOLBAR, within: "editor" },
-  // Anywhere else in the editor, such as the top bar or the Side panel.
+  // Anywhere else in the editor, such as the top bar.
   editor: { keys: [], within: "editor" },
   // The browser closes the dialog. Stopping the press keeps a host's own
   // dialog around the editor open.

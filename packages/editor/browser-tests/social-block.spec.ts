@@ -7,6 +7,7 @@ import type { Locator, Page } from "@playwright/test";
 
 import type { MailQuilt } from "../src/index.js";
 import {
+  addBlock,
   announcement,
   blockGroup,
   blockProps,
@@ -17,7 +18,6 @@ import {
   setting,
   holdMjml,
   openPopover,
-  palette,
   previewButton,
   previewDialog,
   previewEmail,
@@ -115,7 +115,7 @@ test("a new Social Block says it has no links, as the email shows nothing", asyn
 }) => {
   await page.goto("/");
 
-  await palette(page, "Social").click();
+  await addBlock(page, "Social");
 
   await expect(blockGroup(page, "Social")).toContainText("No social links yet");
   await expect(icons(page)).toHaveCount(0);

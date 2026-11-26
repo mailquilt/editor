@@ -5,6 +5,10 @@ import type { Locator, Page } from "@playwright/test";
 
 import type { MailQuiltShell } from "../src/index.js";
 import {
+  palette,
+  addPanel,
+  openAddPanel,
+  addBlock,
   boxOf,
   canvas,
   changeCount,
@@ -14,7 +18,6 @@ import {
   emailWithLink,
   focusStartOfTextBlock,
   hostEvents,
-  palette,
   selectRow,
   setting,
   test,
@@ -475,7 +478,7 @@ test.describe("the editor's API", () => {
     await shell(page).evaluate((element, url) => {
       (element as MailQuiltShell).uploadImage = () => Promise.resolve({ url });
     }, uploaded);
-    await palette(page, "Image").click();
+    await addBlock(page, "Image");
 
     const choosing = page.waitForEvent("filechooser");
     await shell(page)
@@ -1296,16 +1299,16 @@ test.describe("look", () => {
       editor: await boxWithEdges(editor),
       frame: await boxWithEdges(page.getByTestId("frame")),
       header: await boxWithEdges(header(page)),
-      // The editor itself stretches, so its side panel runs to the bottom.
-      panel: await boxWithEdges(editor.getByTestId("side-panel")),
+      // The editor itself stretches, so its Canvas runs to the bottom.
+      workspace: await boxWithEdges(editor.getByTestId("workspace")),
     };
 
     expect(boxes.header.top).toBe(boxes.frame.top);
     expect(boxes.header.width).toBe(boxes.frame.width);
     expect(boxes.editor.top).toBe(boxes.frame.top);
-    expect(boxes.panel.top).toBe(boxes.header.bottom);
+    expect(boxes.workspace.top).toBe(boxes.header.bottom);
     expect(boxes.editor.bottom).toBe(boxes.frame.bottom);
-    expect(boxes.panel.bottom).toBe(boxes.frame.bottom);
+    expect(boxes.workspace.bottom).toBe(boxes.frame.bottom);
   });
 
   test("with its bottom below the window, editing doesn't scroll the page", async ({
@@ -1317,7 +1320,8 @@ test.describe("look", () => {
     const editor = shell(page).locator("mail-quilt");
     const pageScroll = () => page.evaluate(() => window.scrollY);
 
-    // A Block added from the side panel, whose button goes away with focus on it.
+    // A Block added from the Add panel, which focus goes into.
+    await editor.getByRole("button", { exact: true, name: "Add" }).click();
     await editor.getByRole("button", { name: "Add Text Block" }).click();
     await expect(textBlock(page)).toHaveCount(2);
     expect(await pageScroll()).toBe(0);
@@ -1356,24 +1360,24 @@ test.describe("look", () => {
     await expect.poll(barTop).toBeGreaterThanOrEqual(0);
   });
 
-  test("a long email keeps the whole side panel in view", async ({ page }) => {
+  test("a long email keeps the whole Add panel in view", async ({ page }) => {
     await page.goto("/shell.html?long");
     await expect(textBlock(page).first()).toBeVisible();
+    await openAddPanel(page);
 
-    const panel = await boxWithEdges(
-      shell(page).locator("mail-quilt").getByTestId("side-panel-content")
-    );
+    const panel = await boxWithEdges(addPanel(page));
     const frameBox = await boxWithEdges(page.getByTestId("frame"));
 
     expect(panel.bottom).toBeLessThanOrEqual(frameBox.bottom);
   });
 
-  // Moving it stops the observer that sizes the side panel, and starts it again.
-  test("moved and put back, it still keeps the side panel in view", async ({
+  // Moving it stops the observer that sizes the Add panel, and starts it again.
+  test("moved and put back, it still keeps the Add panel in view", async ({
     page,
   }) => {
     await page.goto("/shell.html?long");
     await expect(textBlock(page).first()).toBeVisible();
+    await openAddPanel(page);
 
     await shell(page).evaluate((element) => {
       const parent = element.parentElement;
@@ -1388,9 +1392,7 @@ test.describe("look", () => {
 
     await expect
       .poll(async () => {
-        const panel = await boxWithEdges(
-          shell(page).locator("mail-quilt").getByTestId("side-panel-content")
-        );
+        const panel = await boxWithEdges(addPanel(page));
         const frameBox = await boxWithEdges(page.getByTestId("frame"));
         return panel.bottom <= frameBox.bottom;
       })
@@ -1444,9 +1446,8 @@ test.describe("look", () => {
     });
 
     await expect(header(page)).toHaveCSS("background-color", "rgb(1, 2, 3)");
-    await expect(
-      shell(page).locator("mail-quilt").getByTestId("side-panel-content")
-    ).toHaveCSS("background-color", "rgb(1, 2, 3)");
+    await openAddPanel(page);
+    await expect(addPanel(page)).toHaveCSS("background-color", "rgb(1, 2, 3)");
   });
 
   test("theme on the Shell darkens its header and the editor inside", async ({
@@ -1460,7 +1461,8 @@ test.describe("look", () => {
     });
 
     await expect(header(page)).toHaveCSS("background-color", "rgb(22, 23, 25)");
-    await expect(editor.getByTestId("side-panel-content")).toHaveCSS(
+    await openAddPanel(page);
+    await expect(addPanel(page)).toHaveCSS(
       "background-color",
       "rgb(22, 23, 25)"
     );
@@ -1480,11 +1482,8 @@ test("shows the dragging cursor over the Shell during a drag", async ({
   const cursor = () =>
     button.evaluate((element) => getComputedStyle(element).cursor);
   const usual = await cursor();
-  const tile = await boxWithEdges(
-    shell(page)
-      .getByRole("group", { name: "Add content" })
-      .getByRole("button", { exact: true, name: "Add Text Block" })
-  );
+  await openAddPanel(page);
+  const tile = await boxWithEdges(palette(page, "Text"));
 
   await page.mouse.move(tile.x + tile.width / 2, tile.y + tile.height / 2);
   await page.mouse.down();

@@ -146,7 +146,11 @@ The `g` frames were picked for #315 on 2026-11-26, as states the frames above le
 | Search with no match | `a03-insert-no-match` |
 | Empty Column's add control | `e05-new-empty-row` |
 | The Add panel from `/` or "Add": Blocks, Empty Rows, Saved Rows; dragging | `3-add-drag` |
+| Add at the end of the email's bar | `a04-add-in-email-bar` |
+| The Add panel open, before the Rows list | `a05-add-panel-open` |
 | A drop that can't go there | `m05-refused-drop` |
+
+`a04` and `a05` were picked for #316 on 2026-11-26, as states the frames above leave out: Add at the end of the email's bar, after More, since `g03` gave that bar to the email's settings, and the Add panel open with the side panel gone, before the Rows list (#317) takes its place. Until #332, the panel has no Saved Rows.
 
 **Copy.** + tooltip: "Add a Block here". Picker search: "Search Blocks". Picker footer: "Adds below the Text, in Row 3". No match: "No Block called “tabel”" and "Try Text, Image or Button."
 

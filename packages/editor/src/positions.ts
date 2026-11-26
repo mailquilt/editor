@@ -39,8 +39,8 @@ export const locateRow = (email: BlocksDocument, rowId: string) => {
 export type RowPosition = NonNullable<ReturnType<typeof locateRow>>;
 
 /**
- * What a drag brings: a Block or Row on the canvas, a new Block from the palette,
- * or a new Row from the Rows tab.
+ * What a drag brings: a Block or Row on the canvas, or a new Block or Row from
+ * the Add panel.
  */
 export type DragSource =
   | { blockId: string }

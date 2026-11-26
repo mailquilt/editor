@@ -1,11 +1,11 @@
-import { BLOCK_TYPES } from "@mailquilt/core";
 import type { Block, Column, Row } from "@mailquilt/core";
 import { blockStyles, rowStyles } from "@mailquilt/core/internal";
 import type { RowProps } from "@mailquilt/core/internal";
 import { css, html, nothing } from "lit";
 import { repeat } from "lit/directives/repeat.js";
 
-import { BLOCK_VIEWS, hasRichText, renderBlockContent } from "./block-types.js";
+import { renderAddPicker, renderInsertPoint } from "./adding.js";
+import { hasRichText, renderBlockContent } from "./block-types.js";
 import { place } from "./editor-places.js";
 import { renderFormatBar } from "./format-bar.js";
 import { ICONS } from "./icons.js";
@@ -90,8 +90,10 @@ export const canvasStyles = css`
     }
   }
 
+  /* What's opened in the Column, the picker, hangs from it. */
   .column {
     min-width: 0;
+    position: relative;
     transition: background-color 120ms;
   }
 
@@ -127,110 +129,57 @@ export const canvasStyles = css`
   }
 
   /*
-   * Quiet until the pointer or focus comes to it. The label and the buttons
-   * share one spot, so whichever shows is centred: the buttons on hover or
-   * keyboard focus, and the label otherwise.
+   * Quiet until the pointer or focus comes to it, and a drop target while a
+   * Block is dragged over it.
    */
   .placeholder {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .placeholder-button {
+    align-items: center;
     background: var(--mq-color-surface);
     border: 1.5px dashed var(--mq-color-border-strong);
     border-radius: var(--mq-radius-small);
     color: var(--mq-color-text-muted);
-    display: grid;
+    cursor: pointer;
+    display: flex;
     flex: 1;
-    font-size: var(--mq-font-size-small);
-    font-weight: 500;
+    flex-direction: column;
+    font: 500 var(--mq-font-size-small) / 1.4 var(--mq-font-family);
+    gap: var(--mq-space-2);
+    justify-content: center;
     min-width: 0;
-    place-items: center;
     padding: var(--mq-space-3) var(--mq-space-2);
     text-align: center;
     transition:
       background-color 120ms,
-      border-color 120ms;
+      border-color 120ms,
+      color 120ms;
   }
 
-  .column.empty:hover .placeholder,
-  .placeholder:focus-within,
-  .email[data-dragging] .column[data-drop-target] .placeholder {
+  .placeholder-button:hover,
+  .email[data-dragging] .column[data-drop-target] .placeholder-button {
     border-color: var(--mq-color-accent);
     color: var(--mq-color-accent-strong);
   }
 
-  .placeholder p {
-    margin: 0;
-  }
-
-  .placeholder-label,
-  .placeholder .add-blocks {
-    grid-area: 1 / 1;
-    transition: opacity 120ms;
-  }
-
-  /*
-   * Faded out, it still paints over the buttons in its spot, so it never
-   * takes the pointer from them.
-   */
-  .placeholder-label {
-    align-items: center;
-    display: flex;
-    flex-direction: column;
-    gap: var(--mq-space-1);
-    pointer-events: none;
-  }
-
-  .column.empty:hover .placeholder-label,
-  .placeholder:focus-within .placeholder-label {
-    opacity: 0;
-  }
-
-  .email[data-dragging] .placeholder-label {
-    opacity: 1;
-  }
-
-  .email[data-dragging] .placeholder .add-blocks {
-    opacity: 0;
-  }
-
   .placeholder-icon {
     align-items: center;
-    background: var(--mq-color-surface-muted);
+    background: var(--mq-color-surface);
     border-radius: 50%;
+    box-shadow: inset 0 0 0 1px var(--mq-color-border-strong);
     display: flex;
     height: 28px;
     justify-content: center;
+    transition: scale 100ms;
     width: 28px;
   }
 
-  .placeholder .add-blocks {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--mq-space-1);
-    justify-content: center;
-    opacity: 0;
-  }
-
-  .column.empty:hover .add-blocks,
-  .placeholder:focus-within .add-blocks {
-    opacity: 1;
-  }
-
-  /* With no hover to bring them out, the buttons show instead of the label. */
-  @media (hover: none) {
-    .placeholder .add-blocks {
-      opacity: 1;
-    }
-
-    .placeholder-label {
-      opacity: 0;
-    }
-  }
-
-  /* In the placeholder's color, which turns to the accent as a drop target. */
-  .placeholder .icon-button {
-    border: 1px solid var(--mq-color-border);
-    color: inherit;
-    height: 26px;
-    width: 26px;
+  .placeholder-button:active .placeholder-icon {
+    scale: 0.97;
   }
 
   .block {
@@ -494,7 +443,7 @@ const renderDragHandle = (tooltip: string) => html`
 `;
 
 /**
- * On a phone there's no room for the canvas and the side panel. The editor
+ * On a phone there's no room for the canvas and its panels. The editor
  * stays as it is, below the top bar, so nothing is lost, and the email can
  * still be previewed.
  */
@@ -566,9 +515,10 @@ const renderBlock = (
 };
 
 /**
- * A Column, with its Blocks. An empty one has a toolbar to add a Block: one stop
- * for Tab, then arrow keys go along. In a Row with no Blocks, focus there
- * selects the Row, so Tab goes on to the Selection bar with its settings.
+ * A Column, with its Blocks, and after each a + that adds a Block there. An
+ * empty one has a button that opens the picker in it, one stop for Tab. In a
+ * Row with no Blocks, focus there selects the Row, so Tab goes on to the
+ * Selection bar with its settings.
  */
 const renderColumn = (
   { blocks, id, width }: Column,
@@ -592,56 +542,49 @@ const renderColumn = (
     ${repeat(
       blocks,
       (block) => block.id,
-      (block, blockIndex) =>
-        renderBlock(
+      (block, blockIndex) => html`
+        ${renderBlock(
           block,
           { ...where, ...placeIn(blockIndex, blocks.length) },
           block.id === tabStop,
           api,
           state,
           events
-        )
+        )}
+        ${renderInsertPoint({ columnId: id, index: blockIndex + 1 }, api)}
+      `
     )}
     ${
       blocks.length === 0
         ? html`
             <div class="ui placeholder" data-testid="placeholder">
-              <div class="placeholder-label" data-testid="placeholder-label">
-                <span class="placeholder-icon">${ICONS.plus}</span>
-                <p>${api.text("canvas.dropHere")}</p>
-              </div>
-              <div
-                aria-label=${api.text("canvas.addToColumn", where)}
-                class="add-blocks"
-                data-place=${place("addBlocks")}
-                data-testid="add-blocks"
-                role="toolbar"
-                @focusin=${() => {
-                  if (emptyRowId !== undefined) {
-                    events.onEmptyRowFocus(emptyRowId);
-                  }
-                }}
-              >
-                ${BLOCK_TYPES.map(
-                  ({ type }, index) => html`
-                    <button
-                      aria-label=${api.text("canvas.addHere", {
-                        type: blockTypeName(type, api.text),
-                      })}
-                      class="icon-button"
-                      data-tooltip=${api.text("canvas.addHere", {
-                        type: blockTypeName(type, api.text),
-                      })}
-                      tabindex=${index === 0 ? "0" : "-1"}
+              ${
+                api.adding.picker?.at.columnId === id
+                  ? renderAddPicker(api, true)
+                  : html`<button
+                      aria-haspopup="dialog"
+                      aria-label=${api.text("canvas.addToColumn", where)}
+                      class="placeholder-button"
+                      data-place=${place("addBlocks")}
+                      data-testid="add-blocks"
                       type="button"
-                      @click=${() =>
-                        api.addBlock(type, { columnId: id, index: 0 })}
+                      @click=${({ detail }: MouseEvent) =>
+                        api.openPicker(
+                          { columnId: id, index: 0 },
+                          detail === 0
+                        )}
+                      @focusin=${() => {
+                        if (emptyRowId !== undefined) {
+                          events.onEmptyRowFocus(emptyRowId);
+                        }
+                      }}
                     >
-                      ${BLOCK_VIEWS[type].icon}
-                    </button>
-                  `
-                )}
-              </div>
+                      <span class="placeholder-icon">${ICONS.plus}</span>
+                      <span data-testid="placeholder-label"
+                        >${api.text("canvas.dropHere")}</span
+                      >
+                    </button>`
+              }
             </div>
           `
         : nothing
@@ -727,7 +670,7 @@ export const renderRows = (
 };
 
 /**
- * Away from the Selection bar and the side panel, so it never covers them.
+ * Away from the Selection bar and the Add panel, so it never covers them.
  * Undo and redo are in the top bar; the Preview stays here until Check takes
  * its place.
  */

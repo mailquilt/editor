@@ -1,6 +1,7 @@
 import { expect } from "@playwright/test";
 
 import {
+  addBlock,
   blockGroup,
   boxOf,
   canvas,
@@ -9,8 +10,7 @@ import {
   layoutOption,
   layoutTile,
   openEmail,
-  openTab,
-  palette,
+  openAddPanel,
   rowTag,
   rowTools,
   selectedBlock,
@@ -57,14 +57,12 @@ test.describe("selecting a Row", () => {
     await expect(selectionBar(page)).toHaveAccessibleName("Text settings");
   });
 
-  test("a Content tile adds into the selected Row's first Column, at its end", async ({
+  test("a Block from the Add panel goes into the selected Row's first Column, at its end", async ({
     page,
   }) => {
     await openEmail(page, [[["A"], ["B"]], [["C"]]]);
     await selectRow(page, 1);
-    await openTab(page, "Content");
-
-    await palette(page, "Text").click();
+    await addBlock(page, "Text");
 
     await expect(structure(page)).resolves.toEqual([
       [["A", ""], ["B"]],
@@ -73,12 +71,12 @@ test.describe("selecting a Row", () => {
   });
 });
 
-test.describe("dragging a layout from the Rows tab", () => {
+test.describe("dragging a layout from the Add panel", () => {
   test("adds a Row with it between two Rows, and selects it", async ({
     page,
   }) => {
     await openEmail(page, [[["A"]], [["B"]]]);
-    await openTab(page, "Rows");
+    await openAddPanel(page);
     const tile = layoutTile(page, "50/50");
     const from = await boxOf(tile);
     const second = await boxOf(canvas(page).getByTestId("row").nth(1));

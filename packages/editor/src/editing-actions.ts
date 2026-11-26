@@ -31,6 +31,7 @@ import type {
 } from "./positions.js";
 import type { EditorSelection } from "./selection.js";
 import type { StringId } from "./strings.js";
+import { blockTypeName } from "./text.js";
 import type { Text } from "./text.js";
 
 /**
@@ -191,10 +192,24 @@ export const createEditingActions = ({
     return placeIn(position.rowIndex, email.rows.length);
   };
 
+  /** Says a new Block's type and where it is. */
+  const announceAdded = (blockId: string | undefined) => {
+    const email = current();
+    const position = email && blockId !== undefined && locate(email, blockId);
+    if (position) {
+      announcements.say(
+        text("said.blockAdded", {
+          ...blockPlace(email, blockId),
+          type: blockTypeName(position.block.type, text),
+        })
+      );
+    }
+  };
+
   return {
     /**
-     * Adds a Block and selects it, ready to type in if it has text. By default it
-     * goes where `defaultBlockPosition` says.
+     * Adds a Block, selects it, ready to type in if it has text, and says
+     * where it went. By default it goes where `defaultBlockPosition` says.
      */
     addBlock: (
       blockType: string,
@@ -212,6 +227,7 @@ export const createEditingActions = ({
       );
       if (result?.ok) {
         selection.selectLanded(result.createdId);
+        announceAdded(result.createdId);
       }
     },
 
@@ -314,6 +330,8 @@ export const createEditingActions = ({
       }
       if ("blockId" in source) {
         announcements.blockMoved(source.blockId);
+      } else {
+        announceAdded(result.createdId);
       }
       selection.selectLanded(
         "blockId" in source ? source.blockId : result.createdId

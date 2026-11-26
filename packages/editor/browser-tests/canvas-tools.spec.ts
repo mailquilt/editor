@@ -1,9 +1,9 @@
-import { BLOCK_TYPES } from "@mailquilt/core";
 import { expect } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 
 import type { MailQuilt } from "../src/index.js";
 import {
+  addPanel,
   announcement,
   barButton,
   blockGroup,
@@ -11,16 +11,15 @@ import {
   blockWith,
   boxOf,
   canvas,
-  centerOf,
   currentValue,
   emailWith,
   formatBar,
   hoverRow,
   linkUrlField,
   moveCursorToLineEnd,
+  openAddPanel,
   openBlocks,
   openEmail,
-  panelTab,
   previewButton,
   rowTag,
   rowTools,
@@ -34,7 +33,6 @@ import {
   test,
   textBlock,
   textOf,
-  undoButton,
   undoByKey,
 } from "./helpers.js";
 
@@ -143,35 +141,19 @@ test.describe("a Row on the canvas", () => {
 });
 
 test.describe("an empty Column", () => {
-  test("every add button takes the pointer's click", async ({ page }) => {
+  test("its button opens the picker in it, which adds a Block there", async ({
+    page,
+  }) => {
     await openBlocks(page, ["button"], []);
     const column = canvas(page).getByTestId("column").nth(1);
-    await expect(
-      column.getByRole("button", { name: / Block here$/u })
-    ).toHaveCount(BLOCK_TYPES.length);
 
-    for (const { label, type } of BLOCK_TYPES) {
-      await column.hover();
-      // Once the buttons have faded in, over the label that has faded out.
-      await expect(column.getByTestId("add-blocks")).toHaveCSS("opacity", "1");
-      await expect(column.getByTestId("placeholder-label")).toHaveCSS(
-        "opacity",
-        "0"
-      );
+    await column.getByTestId("add-blocks").click();
+    await column
+      .getByRole("button", { exact: true, name: "Add Spacer Block" })
+      .click();
 
-      // A plain press where the button shows, as a person's pointer makes.
-      const { x, y } = await centerOf(
-        column.getByRole("button", {
-          exact: true,
-          name: `Add ${label} Block here`,
-        })
-      );
-      await page.mouse.click(x, y);
-
-      expect(await blockTypes(page, 0, 1)).toEqual([type]);
-      await undoButton(page).click();
-      expect(await blockTypes(page, 0, 1)).toEqual([]);
-    }
+    expect(await blockTypes(page, 0, 1)).toEqual(["spacer"]);
+    await expect(canvas(page).getByTestId("add-picker")).toHaveCount(0);
   });
 });
 
@@ -207,9 +189,11 @@ test.describe("the email's language", () => {
       }
     );
     await setValue(page, email);
+    await openAddPanel(page);
     await textBlock(page).click();
 
     const elements = {
+      addPanel: addPanel(page),
       block: blockGroup(page, "Text"),
       selectionBar: selectionBar(page),
       button: canvas(page).getByTestId("button-face"),
@@ -217,7 +201,6 @@ test.describe("the email's language", () => {
       imageAlt: blockGroup(page, "Image").getByRole("img"),
       listItem: textBlock(page).locator("li p"),
       placeholder: canvas(page).getByTestId("placeholder"),
-      sidePanel: canvas(page).getByTestId("side-panel"),
       status: announcement(page),
       text: textBlock(page).locator("p").first(),
       textBox: textBlock(page),
@@ -231,6 +214,7 @@ test.describe("the email's language", () => {
     );
 
     expect(langs).toEqual({
+      addPanel: "en",
       block: "en",
       button: "de",
       formatBar: "en",
@@ -238,7 +222,6 @@ test.describe("the email's language", () => {
       listItem: "de",
       placeholder: "en",
       selectionBar: "en",
-      sidePanel: "en",
       status: "en",
       text: "de",
       textBox: "en",
@@ -265,18 +248,17 @@ test.describe("an empty Column on a touch screen", () => {
     viewport: { height: 900, width: 1280 },
   });
 
-  test("shows its add buttons alone, not under its label", async ({ page }) => {
-    await openBlocks(page, ["button"], []);
+  test("has its add button, and no + between Blocks, which needs a hover", async ({
+    page,
+  }) => {
+    await openBlocks(page, ["button", "divider"], []);
     const column = canvas(page).getByTestId("column").nth(1);
     expect(await page.evaluate(() => matchMedia("(hover: none)").matches)).toBe(
       true
     );
 
-    await expect(column.getByTestId("add-blocks")).toHaveCSS("opacity", "1");
-    await expect(column.getByTestId("placeholder-label")).toHaveCSS(
-      "opacity",
-      "0"
-    );
+    await expect(column.getByTestId("add-blocks")).toBeVisible();
+    await expect(canvas(page).getByTestId("insert-point").first()).toBeHidden();
     // With no hover to show them, a Block's drag handle always shows, and a
     // Row's tag, which selects the Row, for the Selection bar.
     await expect(
@@ -597,10 +579,8 @@ test.describe("the floating toolbar", () => {
 
     const box = await boxOf(toolbar);
     const area = await boxOf(canvas(page).getByTestId("workspace"));
-    const panel = await boxOf(canvas(page).getByTestId("side-panel"));
     // In the corner, rather than anywhere along the canvas.
     expect(box.x - area.x).toBeLessThan(80);
-    expect(box.x + box.width).toBeLessThan(panel.x);
     // At the bottom of the canvas, or of the window while the canvas goes on.
     const bottom = Math.min(
       area.y + area.height,
@@ -641,10 +621,11 @@ test.describe("the floating toolbar", () => {
       "text",
       "spacer",
     ]);
-    await page.setViewportSize({ height: 400, width: 1000 });
+    // Narrow enough that the email reaches under the toolbar.
+    await page.setViewportSize({ height: 400, width: 720 });
     await page.addStyleTag({
       content:
-        "main { padding: 0 !important } mail-quilt { width: 1000px !important }",
+        "main { padding: 0 !important } mail-quilt { width: 680px !important }",
     });
     await blockGroup(page, "Text").first().focus();
 
@@ -696,7 +677,7 @@ test.describe("a click on the workspace, outside the email", () => {
     await selectNothing(page);
 
     await expect(canvas(page).locator('[aria-current="true"]')).toHaveCount(0);
-    await expect(panelTab(page, "Content")).toBeVisible();
+    await expect(barButton(page, "Add")).toBeVisible();
     await undoByKey(page);
     await expect(textBlock(page)).toHaveText("Words");
   });

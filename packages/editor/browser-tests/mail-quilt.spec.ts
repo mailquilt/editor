@@ -3,6 +3,8 @@ import type { Page } from "@playwright/test";
 
 import type { MailQuilt } from "../src/index.js";
 import {
+  addPanel,
+  openAddPanel,
   addSecondTextBlock,
   announcement,
   blockWith,
@@ -157,9 +159,10 @@ test("on a right-to-left host page, the editor and the email stay left to right,
   const first = await boxOf(columns.nth(0));
   const second = await boxOf(columns.nth(1));
   expect(first.x).toBeLessThan(second.x);
+  await openAddPanel(page);
   const workspace = await boxOf(canvas(page).getByTestId("workspace"));
-  const panel = await boxOf(canvas(page).getByTestId("side-panel"));
-  expect(workspace.x).toBeLessThan(panel.x);
+  const panel = await boxOf(addPanel(page));
+  expect(panel.x).toBeLessThan(workspace.x);
 });
 
 test("moving the element keeps the email editable", async ({ page }) => {
