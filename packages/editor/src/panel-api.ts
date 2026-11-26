@@ -1,17 +1,17 @@
 import type { BlocksDocument, RowLayout } from "@mailquilt/core";
 
+import type { AddingState, AddPlace } from "./adding.js";
 import type { ShownFieldPicker } from "./field-merge-tags.js";
 import type { BlockPosition, Direction, RowPosition } from "./positions.js";
 import type { BarPanelsState } from "./selection-bar.js";
-import type { PanelTab } from "./selection.js";
 import type { SettingsDrafts } from "./settings-panel.js";
 import type { ShownMergeTagPicker } from "./text-block-view.js";
 import type { ListType, TextFormats, ToggleableMark } from "./text-commands.js";
 import type { Text } from "./text.js";
 
 /**
- * How the Side panel, the Selection bar and its More panel, and the format bar
- * reach the editor. They touch nothing else of `<mail-quilt>` or the Canvas. A new copy
+ * How the Add panel and picker, the Selection bar and its More panel, and the
+ * format bar reach the editor. They touch nothing else of `<mail-quilt>` or the Canvas. A new copy
  * for each update.
  *
  * An action that does more from the keyboard, such as moving focus or showing
@@ -47,14 +47,13 @@ export interface EmailPanelApi {
   formats: TextFormats | undefined;
 
   /**
-   * Adds a Block and selects it, ready to type in if it has text. Without a
-   * position, it goes after the selected Block, at the end of the selected Row's
-   * first Column, or else at the end of the email.
+   * Adds a Block, selects it, ready to type in if it has text, and says where
+   * it went. It goes after the selected Block, at the end of the selected
+   * Row's first Column, or else at the end of the email.
    */
-  addBlock: (
-    blockType: string,
-    position?: { columnId: string; index: number }
-  ) => void;
+  addBlock: (blockType: string) => void;
+  /** Adds a Block at a place, as `addBlock` does, and closes the picker. */
+  addBlockAt: (blockType: string, at: AddPlace) => void;
   /** After the selected Row or Block's Row, or else at the end, and selects it. */
   addRow: (layout: RowLayout, fromKeyboard: boolean) => void;
   /** The selected Block. From the keyboard, focus goes to its neighbour. */
@@ -115,7 +114,8 @@ export interface EmailPanelApi {
  * changes it. A host's own panel would keep its own.
  */
 export interface OwnPanelsApi {
-  tab: PanelTab;
+  /** The Add panel and the picker, while they're open. */
+  adding: AddingState;
   /**
    * What the Selection bar has open, and whether More is docked beside the
    * email, where it fits, rather than floating over it.
@@ -139,7 +139,14 @@ export interface OwnPanelsApi {
   /** What's typed in the settings fields and isn't the email's value. */
   drafts: SettingsDrafts;
 
-  selectTab: (tab: PanelTab) => void;
+  /** Opens the Add panel, with focus in its search. */
+  openAddPanel: (fromKeyboard: boolean) => void;
+  /** Closes the Add panel, with focus back where it was if `returnFocus`. */
+  closeAddPanel: (returnFocus: boolean) => void;
+  /** Opens the picker at a place on the Canvas, with focus in it. */
+  openPicker: (at: AddPlace, fromKeyboard: boolean) => void;
+  /** What's typed in the Add panel's or the picker's search. */
+  searchAdd: (where: "panel" | "picker", query: string) => void;
   /** Opens a popover from the Selection bar, by its button's `data-action`. */
   togglePopover: (id: string) => void;
   /** Shows a Row's padding by side, or as one value while it's the same. */

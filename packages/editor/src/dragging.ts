@@ -38,7 +38,7 @@ interface Grab {
 
 /**
  * What a press on `target` picks up: a Block by its handle, a Row by its tag,
- * or an item in the palette or the Rows tab.
+ * or a tile in the Add panel.
  */
 const grabAt = (target: Element): Grab | undefined => {
   const tag = closestPlace(target, "rowTag");
@@ -148,7 +148,7 @@ interface Shown {
 }
 
 /**
- * Drags Blocks, Rows and palette items with pointer events, and takes files
+ * Drags Blocks, Rows and the Add panel's tiles with pointer events, and takes files
  * dragged in from outside. The drop position comes from the pointer when the
  * drag ends, so nothing moves until then, and the indicator shows the same
  * answer on the way there. The keyboard has its own way to move each one,
@@ -169,9 +169,9 @@ export const createDragging = ({
   /**
    * Where a drop of `source` would land now, and the line that shows it. Blocks
    * are counted without the `dragged` one, as a move's index is. There's no
-   * landing far from the editor, which is how to abandon a drag, or on the side
-   * panel, so that letting go of a palette item that barely moved adds nothing,
-   * or on the Selection bar, its popovers, menu and More panel or the floating
+   * landing far from the editor, which is how to abandon a drag, or on the Add
+   * panel or the picker, so that letting go of a tile that barely moved adds
+   * nothing, or on the Selection bar, its popovers, menu and More panel or the floating
    * toolbar, which are over the email or beside it. Nor is there outside a
    * scroll container the editor is in, such as the Shell's, where what's under
    * the pointer is scrolled out of sight.
@@ -184,7 +184,12 @@ export const createDragging = ({
   ): (Shown & { position: DropPosition }) | undefined => {
     const email = findPlace(root, "email");
     const controls = [
-      ...findPlaces(root, "sidePanel"),
+      ...findPlaces(root, "addPanel"),
+      // The picker between Blocks, over the email. One in an empty Column is
+      // that Column, which still takes a drop.
+      ...findPlaces(root, "addPicker").filter((picker) =>
+        closestPlace(picker, "insertPoint")
+      ),
       ...findPlaces(root, "emailTools"),
       ...findPlaces(root, "blockBar"),
       ...findPlaces(root, "rowBar"),
@@ -331,7 +336,7 @@ export const createDragging = ({
       restoreCursor: showGrabbingCursor(root),
     };
     // A Block or Row stays where it was, unseen, so that its text keeps its
-    // editor, focus and cursor. The palette keeps its item.
+    // editor, focus and cursor. The Add panel keeps its tile.
     if (isOnCanvas(grab.source)) {
       grab.element.dataset.dragSource = "";
     }
@@ -459,7 +464,7 @@ export const createDragging = ({
 
   /**
    * Where files dragged in from outside would land: where a new Block from the
-   * palette would, unless it's on a Block that takes them. Only over the canvas,
+   * Add panel would, unless it's on a Block that takes them. Only over the canvas,
    * as the browser says, and not over the Preview or the narrow notice above it.
    */
   const fileLanding = (

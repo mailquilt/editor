@@ -22,13 +22,13 @@ In the Shell, Export and More each open a menu. <kbd>Enter</kbd> or <kbd>Down</k
 <kbd>Tab</kbd> moves into the email and selects a Block. The arrow keys then go
 from Block to Block. The email is one stop for <kbd>Tab</kbd>, at the selected
 Block, so the other Blocks aren't stops: <kbd>Tab</kbd> goes from the selected
-Block to its text, then past the toolbars of any empty Columns after it, to the
+Block to its text, then past the buttons of any empty Columns after it, to the
 Selection bar above the email, which has that Block's settings, and then to
-Preview and the side panel.
+Preview.
 
 | Key | What it does |
 | --- | --- |
-| <kbd>Tab</kbd> | Reaches the selected Block, or with nothing selected the first, and selects it. From there, <kbd>Tab</kbd> goes into its text, if it has any, and then on past the other Blocks, stopping only at the toolbars of empty Columns after it, to the Selection bar and the Block's settings. |
+| <kbd>Tab</kbd> | Reaches the selected Block, or with nothing selected the first, and selects it. From there, <kbd>Tab</kbd> goes into its text, if it has any, and then on past the other Blocks, stopping only at the buttons of empty Columns after it, to the Selection bar and the Block's settings. |
 | <kbd>Up</kbd> <kbd>Down</kbd> | Selects the Block before or after this one, in reading order. This reaches every Block in the email. |
 | <kbd>Left</kbd> <kbd>Right</kbd> | Selects a Block in the next Column that has one, as close as it can get to the same position. |
 | <kbd>Enter</kbd> | Goes into the Block's text to edit it. Held down, it goes in and stops, with no empty paragraphs added. |
@@ -65,9 +65,9 @@ More opens a panel beside the email where there's room for it, and over the emai
 
 ## Rows
 
-A Row is selected by its tag, which shows above its end while the pointer is over the Row, or from the keyboard by the Selection bar's chip, whose menu names the Block's Row. A Row whose Columns are all empty has no Block to start from, so focus on one of its Columns' toolbars selects it. With a Row selected, the Selection bar has its layout, its padding and its Move Row, Duplicate Row and Delete Row buttons.
+A Row is selected by its tag, which shows above its end while the pointer is over the Row, or from the keyboard by the Selection bar's chip, whose menu names the Block's Row. A Row whose Columns are all empty has no Block to start from, so focus on one of its Columns' buttons selects it. With a Row selected, the Selection bar has its layout, its padding and its Move Row, Duplicate Row and Delete Row buttons.
 
-While a Row is selected, no Block is a stop for <kbd>Tab</kbd>, so <kbd>Tab</kbd> goes on past the toolbars of the empty Columns after it to the Selection bar.
+While a Row is selected, no Block is a stop for <kbd>Tab</kbd>, so <kbd>Tab</kbd> goes on past the buttons of the empty Columns after it to the Selection bar.
 
 | Key | What it does |
 | --- | --- |
@@ -106,15 +106,31 @@ In a Block's text or a settings field, these keys copy, cut and paste text as us
 
 ## Adding a Block
 
-The side panel's tabs, Content and Rows, are one stop for <kbd>Tab</kbd>. The arrow keys open the next or previous tab, and <kbd>Home</kbd> and <kbd>End</kbd> the first or last.
+| Key | What it does |
+| --- | --- |
+| <kbd>/</kbd> | On a Block, in the Selection bar outside its fields, on an empty Column's button, or in the toolbar below the email, opens the Add panel with focus in its search. In a Block's text or a field, it types a slash. On a keyboard where <kbd>/</kbd> needs Shift, such as a German one, <kbd>Shift</kbd> + <kbd>/</kbd> works too. |
 
-In the side panel's Content tab, press <kbd>Enter</kbd> on a Block to add it after the selected Block, in the same Column. With a Row selected instead, it goes to the end of that Row's first Column. With nothing selected, it goes to the end of the email's last Column.
+The Add panel has every type of Block, then the layouts of an empty Row. Type in its search to show only the ones whose name has what you typed. <kbd>Down</kbd> goes from the search to the first Block, and <kbd>Enter</kbd> adds the first one that's shown. <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>Z</kbd> in the search undoes the email, so you can take back what you just added. The Blocks are one stop for <kbd>Tab</kbd>, and the Rows another: the arrow keys go along them, and <kbd>Home</kbd> and <kbd>End</kbd> go to the first and last.
 
-An empty Column has a toolbar named for where it is, such as "Add a Block to Row 1, Column 2", with a button for each type of Block, such as "Add Text Block here". Like the Selection bar, it's one stop for <kbd>Tab</kbd>, the arrow keys go across its buttons, and <kbd>Home</kbd> and <kbd>End</kbd> go to its first and last. <kbd>Enter</kbd> adds that Block to the Column.
+<kbd>Enter</kbd> on a Block adds it after the selected Block, in the same
+Column. With a Row selected instead, it goes to the end of that Row's first
+Column, and with nothing selected, to the end of the email's last Column. The
+new Block is selected, with focus in its text if it has any, and screen readers
+hear its type and where it is, such as "Text Block added, Row 3, Column 1,
+position 2 of 3." Where the panel sits beside the email, it stays open, so you
+can add another. Where it opens over the email, it closes, so you can see what
+you added.
+<kbd>Escape</kbd> closes it, and focus goes to the selected Block, or back to
+where it was. The Add button at the end of the Selection bar, with nothing
+selected, opens it too.
+
+An empty Column has a button named for where it is, such as "Add a Block, or drop one here, in Row 1, Column 2", one stop for <kbd>Tab</kbd>. <kbd>Enter</kbd> opens a picker in the Column with focus on its first Block. The arrow keys go along them, <kbd>Enter</kbd> adds one to the Column, and <kbd>Escape</kbd> closes the picker and goes back to the button.
+
+With a mouse, rest the pointer on the edge between two Blocks, and a line with a + shows there. The + opens the same picker there, with a search, and it adds below the Block above it. On a touch screen there's no +, so use the Add panel or an empty Column's button.
 
 ## Adding a Row
 
-In the side panel's Rows tab, press <kbd>Enter</kbd> on a layout to add a Row with it after the selected Row, or after the Row of the selected Block. With nothing selected, it goes at the end of the email.
+In the Add panel, press <kbd>Enter</kbd> on a layout to add an empty Row with it after the selected Row, or after the Row of the selected Block. With nothing selected, it goes at the end of the email. The new Row is selected, with focus on the Selection bar's chip.
 
 ## Settings
 
@@ -124,7 +140,7 @@ A Social Block's links are a list in its Links popover, each with its URL field 
 
 ## Cancelling a drag
 
-While a Block or Row is dragged with the pointer, including a new one from the side panel, <kbd>Escape</kbd> cancels the drag. Nothing moves and nothing is added. Until the drag ends, the keys that select or move a Block or Row, or go into a Block's text, do nothing.
+While a Block or Row is dragged with the pointer, including a new one from the Add panel, <kbd>Escape</kbd> cancels the drag. Nothing moves and nothing is added. Until the drag ends, the keys that select or move a Block or Row, or go into a Block's text, do nothing.
 
 ## Editing text
 

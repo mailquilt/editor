@@ -3,13 +3,9 @@ import type { EditorFocus } from "./focus.js";
 import type { TextBlockView } from "./text-block-view.js";
 
 /**
- * Which Block or Row is selected, whether its text is being edited, and the
- * Side panel's tab. Everything else in the editor asks this module to select
+ * Which Block or Row is selected, and whether its text is being edited. Everything else in the editor asks this module to select
  * something. Focus is the focus module's.
  */
-
-/** The Side panel's tabs, for adding Blocks and Rows. */
-export type PanelTab = "content" | "rows";
 
 /** A Block, which the Selection bar acts on, a Row, or nothing. */
 type Selected = { blockId: string } | { rowId: string } | undefined;
@@ -40,8 +36,6 @@ export const createSelection = ({
    * it.
    */
   let editingText = false;
-  /** The Side panel's tab. */
-  let tab: PanelTab = "content";
 
   const selectedBlockId = () =>
     selected && "blockId" in selected ? selected.blockId : undefined;
@@ -176,22 +170,10 @@ export const createSelection = ({
       );
     },
 
-    /** The ARIA tabs pattern: a tab that arrow keys move to shows its panel too. */
-    selectTab(next: PanelTab) {
-      if (next !== tab) {
-        tab = next;
-        requestUpdate();
-      }
-    },
-
     /** The selected Block's text, if it has any. */
     get selectedText() {
       const blockId = selectedBlockId();
       return blockId === undefined ? undefined : textOf(blockId);
-    },
-
-    get tab() {
-      return tab;
     },
   };
 };

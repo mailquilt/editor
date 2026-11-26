@@ -336,6 +336,13 @@ export const selectionBarStyles = css`
     color: var(--mq-color-accent-strong);
   }
 
+  /* The key a button's action has, as frame a04 draws it after "Add". */
+  .bar-button kbd {
+    color: var(--mq-color-text-muted);
+    font: inherit;
+    margin-inline-start: calc(var(--mq-space-1) - var(--mq-space-2));
+  }
+
   .bar-button .count {
     color: var(--mq-color-text-muted);
   }
@@ -533,7 +540,7 @@ export const selectionBarStyles = css`
 
   /*
    * More: under the bar's end, over the email, or docked beside it where it
-   * fits, as tall as the editor, as the side panel is.
+   * fits, as tall as the editor, as the Add panel is.
    */
   .more-panel {
     background: var(--mq-color-surface);
@@ -1854,6 +1861,30 @@ const renderKeyedButton = (
   </button>
 `;
 
+/**
+ * With nothing selected, at the bar's end, the Add button, which opens the
+ * Add panel, as `/` does.
+ */
+const renderAddButton = (api: PanelApi) => {
+  const { text } = api;
+  const keys = keyLabel("emailBar", "openAddPanel");
+  return html`
+    <button
+      aria-expanded=${api.adding.panel ? "true" : "false"}
+      aria-keyshortcuts=${keys.shortcuts}
+      class="bar-button"
+      data-action="add"
+      data-tooltip=${withKeys(text("add.add"), keys.keys, text)}
+      tabindex="-1"
+      type="button"
+      @click=${({ detail }: MouseEvent) => api.openAddPanel(detail === 0)}
+    >
+      ${ICONS.plus}<span>${text("add.add")}</span
+      ><kbd aria-hidden="true">${keys.keys}</kbd>
+    </button>
+  `;
+};
+
 /** The Block's or Row's own actions, and More, at the bar's end. */
 const renderActions = (target: Target, api: PanelApi) => {
   const { text } = api;
@@ -1872,7 +1903,7 @@ const renderActions = (target: Target, api: PanelApi) => {
     </button>
   `;
   if (target.kind === "email") {
-    return more;
+    return html`${more} ${renderSeparator()} ${renderAddButton(api)}`;
   }
   const own = actionsOf(target, api);
   return html`

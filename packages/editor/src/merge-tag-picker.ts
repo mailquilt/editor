@@ -196,7 +196,7 @@ export const fieldTags =
 /**
  * Scrolls the open picker to its highlighted tag, after an update. Only the
  * list scrolls, not the page around it, except that a list under a field is
- * scrolled into view, as it can open below what the Side panel shows.
+ * scrolled into view, as it can open below what More shows.
  */
 export const showHighlightedTag = (root: ParentNode) => {
   const underField = findPlace(root, "fieldMergeTagPicker");

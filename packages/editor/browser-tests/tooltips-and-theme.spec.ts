@@ -3,6 +3,9 @@ import type { Page } from "@playwright/test";
 
 import type { MailQuilt } from "../src/index.js";
 import {
+  addPanel,
+  openAddPanel,
+  palette,
   blockGroup,
   blockTools,
   blockWith,
@@ -202,15 +205,18 @@ test.describe("theme tokens", () => {
     });
 
     await expect(workspace).toHaveCSS("background-color", "rgb(1, 2, 3)");
-    await expect(
-      canvas(page).getByRole("tab", { name: "Content" }).locator("svg")
-    ).toHaveCSS("color", "rgb(200, 0, 100)");
-    await expect(canvas(page).getByRole("tab", { name: "Content" })).toHaveCSS(
+    // The selected Block's outline.
+    await textBlock(page).click();
+    await expect(blockGroup(page, "Text")).toHaveCSS(
+      "outline-color",
+      "rgb(200, 0, 100)"
+    );
+    await expect(canvas(page).getByRole("tab", { name: "Edit" })).toHaveCSS(
       "font-family",
       "Georgia, serif"
     );
-    // At rest, a tab that isn't selected and an icon button are muted.
-    await expect(canvas(page).getByRole("tab", { name: "Rows" })).toHaveCSS(
+    // At rest, a Mode that isn't selected and an icon button are muted.
+    await expect(canvas(page).getByRole("tab", { name: "Style" })).toHaveCSS(
       "color",
       "rgb(4, 5, 6)"
     );
@@ -222,9 +228,9 @@ test.describe("theme tokens", () => {
   }) => {
     await openBlocks(page, ["text"]);
     const workspace = canvas(page).getByTestId("workspace");
-    const contentIcon = canvas(page)
-      .getByRole("tab", { name: "Content" })
-      .locator("svg");
+    // The selected Block's outline.
+    const selected = blockGroup(page, "Text");
+    await textBlock(page).click();
     await expect(workspace).toHaveCSS("background-color", "rgb(238, 239, 241)");
 
     // As a property, which the attribute follows, as the theme is drawn from it.
@@ -234,13 +240,13 @@ test.describe("theme tokens", () => {
 
     await expect(canvas(page)).toHaveAttribute("theme", "dark");
     await expect(workspace).toHaveCSS("background-color", "rgb(16, 17, 19)");
-    await expect(contentIcon).toHaveCSS("color", "rgb(111, 134, 255)");
+    await expect(selected).toHaveCSS("outline-color", "rgb(111, 134, 255)");
 
     await canvas(page).evaluate((element) => {
       element.style.setProperty("--mq-color-accent", "rgb(200, 0, 100)");
     });
 
-    await expect(contentIcon).toHaveCSS("color", "rgb(200, 0, 100)");
+    await expect(selected).toHaveCSS("outline-color", "rgb(200, 0, 100)");
     await expect(workspace).toHaveCSS("background-color", "rgb(16, 17, 19)");
     // What the browser draws itself, such as a dropdown's open list, is dark too.
     await textBlock(page).click();
@@ -310,7 +316,8 @@ test.describe("theme tokens", () => {
     });
 
     // The surface around the card takes them, so they're set.
-    const panel = canvas(page).getByTestId("side-panel");
+    await openAddPanel(page);
+    const panel = addPanel(page);
     await expect(panel).toHaveCSS("background-color", "rgb(1, 2, 3)");
     await expect(panel).toHaveCSS("color", "rgb(4, 5, 6)");
     await expect(panel).toHaveCSS("font-size", "31px");
@@ -320,20 +327,19 @@ test.describe("theme tokens", () => {
   });
 });
 
-test("in forced colors, a selected tab, a pressed button and a palette tile are outlined", async ({
+test("in forced colors, a selected Mode, a pressed button and a tile in the Add panel are outlined", async ({
   page,
 }) => {
   await page.emulateMedia({ forcedColors: "active" });
   await openBlocks(page, ["text"]);
+  await openAddPanel(page);
 
-  await expect(canvas(page).getByRole("tab", { name: "Content" })).toHaveCSS(
+  await expect(canvas(page).getByRole("tab", { name: "Edit" })).toHaveCSS(
     "outline-style",
     "solid"
   );
   // Its edge is otherwise a shadow, which forced colors drop.
-  await expect(
-    canvas(page).getByRole("button", { name: "Add Text Block" })
-  ).toHaveCSS("outline-style", "solid");
+  await expect(palette(page, "Text")).toHaveCSS("outline-style", "solid");
 
   await textBlock(page).click();
   await page.keyboard.press("ControlOrMeta+a");
@@ -492,6 +498,7 @@ test.describe("on a dark host page", () => {
     page,
   }) => {
     await openBlocks(page, ["text"]);
+    await openAddPanel(page);
     await page.addStyleTag({
       content:
         "html, body, main { background: #000 !important; color: #fff !important; font-family: serif !important; }",
@@ -507,7 +514,7 @@ test.describe("on a dark host page", () => {
         return { backgroundColor, color, serif: fontFamily === "serif" };
       };
       return {
-        panel: style('[data-testid="side-panel-content"]'),
+        panel: style('[data-testid="add-panel"]'),
         tooltip: style('[role="tooltip"]'),
       };
     });

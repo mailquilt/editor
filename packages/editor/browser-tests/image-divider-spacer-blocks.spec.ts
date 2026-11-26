@@ -3,6 +3,7 @@ import type { Locator, Page } from "@playwright/test";
 
 import type { MailQuilt } from "../src/index.js";
 import {
+  addBlock,
   addRow,
   blockGroup,
   blockProps,
@@ -17,8 +18,6 @@ import {
   hostEvents,
   openBlocks,
   openExport,
-  openTab,
-  palette,
   rowTag,
   serveImages,
   TALL_VIEWPORT,
@@ -110,7 +109,7 @@ test.describe("selecting an Image", () => {
 test.describe("an Image", () => {
   test("asks for a URL until it has one", async ({ page }) => {
     await openBlocks(page, ["text"]);
-    await palette(page, "Image").click();
+    await addBlock(page, "Image");
 
     await expect(image(page)).toHaveCount(0);
     await expect(blockGroup(page, "Image")).toContainText("No image URL yet");
@@ -118,7 +117,7 @@ test.describe("an Image", () => {
 
   test("shows and exports its URL and alt text", async ({ page }) => {
     await openBlocks(page, ["text"]);
-    await palette(page, "Image").click();
+    await addBlock(page, "Image");
 
     await change(await setting(page, "Image URL"), PHOTO);
     await change(await setting(page, "Alt text"), "A red bicycle");
@@ -649,8 +648,7 @@ test.describe("accessibility", () => {
       await expect(violations(page)).resolves.toEqual([]);
     }
 
-    await openTab(page, "Content");
-    await palette(page, "Image").click();
+    await addBlock(page, "Image");
     await expect(
       blockGroup(page, "Image").filter({ hasText: "No image URL yet" })
     ).toBeVisible();

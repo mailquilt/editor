@@ -1,3 +1,4 @@
+import { focusFirstTile, pickFirstTile } from "./adding.js";
 import { readPasted } from "./clipboard.js";
 import type { EditingActions } from "./editing-actions.js";
 import { closestPlace, placeOf } from "./editor-places.js";
@@ -30,6 +31,12 @@ import type { EditorSelection } from "./selection.js";
  */
 
 interface KeyDispatchHost {
+  /** The Add panel and the picker. */
+  adding: {
+    closePanel: (returnFocus: boolean) => void;
+    closePicker: (returnFocus: boolean) => void;
+    openPanel: (fromKeyboard: boolean) => void;
+  };
   /** The Selection bar's popover, menu and More, which Escape closes. */
   bar: {
     closeMenu: (returnFocus: boolean) => void;
@@ -97,6 +104,7 @@ const fieldStep = (step: ToolbarStep) => (event: KeyboardEvent) => {
 const onClipboardEvent = doNothing;
 
 export const createKeyDispatch = ({
+  adding,
   bar,
   canStep,
   drafts,
@@ -134,9 +142,17 @@ export const createKeyDispatch = ({
     Exclude<Action, DirectedAction>,
     (event: KeyboardEvent) => void
   > = {
+    addFirstMatch: ({ target }) => pickFirstTile(target as Element),
     backToBlock: () => focus.focus({ on: "block" }),
     backToText: () => focus.focus({ on: "text" }),
     cancelLink: () => linkForm.cancel(),
+    closeAdd: ({ target }) => {
+      if (closestPlace(target as Element, "addPicker")) {
+        adding.closePicker(true);
+      } else {
+        adding.closePanel(true);
+      }
+    },
     closeMenu: () => bar.closeMenu(true),
     closeMergeTagPicker: (event) => pickerOf(event)?.closeMergeTagPicker(),
     closeMore: () => bar.closeMore(true),
@@ -171,6 +187,7 @@ export const createKeyDispatch = ({
     nextButton: toolbarStep("next"),
     nextControl: fieldStep("next"),
     nextMergeTag: (event) => pickerOf(event)?.moveInMergeTagPicker(1),
+    openAddPanel: () => adding.openPanel(true),
     openLinkField: () => linkForm.open(),
     paste: onClipboardEvent,
     pasteAfterRow: onClipboardEvent,
@@ -179,6 +196,7 @@ export const createKeyDispatch = ({
     previousControl: fieldStep("previous"),
     previousMergeTag: (event) => pickerOf(event)?.moveInMergeTagPicker(-1),
     redo: () => stepHistory("redo"),
+    toAddResults: ({ target }) => focusFirstTile(target as Element),
     typeInField: doNothing,
     undo: () => stepHistory("undo"),
     // To the selected Row's first Block, which focus selects, or with none,

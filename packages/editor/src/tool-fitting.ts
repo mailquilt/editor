@@ -1,7 +1,11 @@
-import { findPlace, findPlaces } from "./editor-places.js";
+import { closestPlace, findPlace, findPlaces } from "./editor-places.js";
+import type { Place } from "./editor-places.js";
 import { scaleOf } from "./geometry.js";
 import { PICKER_GAP_PX } from "./merge-tag-picker.js";
 import { fitSelectionBar } from "./selection-bar.js";
+
+/** The Selection bar, whichever is showing. */
+const BAR_PLACES: readonly Place[] = ["blockBar", "rowBar", "emailBar"];
 
 /** Space kept between a tool and the canvas's edge, its Block or the other tool. */
 const GAP_PX = 6;
@@ -22,8 +26,9 @@ interface ToolFittingHost {
 }
 
 /**
- * The selected Block's format bar and Merge Tag picker are put beside it by
- * CSS, which can't know how much room is there. The editor clips what reaches
+ * The selected Block's format bar and Merge Tag picker, and the picker that
+ * adds a Block, are put beside what they're for by CSS, which can't know how
+ * much room is there. The editor clips what reaches
  * past the canvas, such as a format bar under a narrow first Column, and the
  * Selection bar covers the canvas's top. This moves each back in, and keeps the
  * format bar next to its text.
@@ -38,8 +43,58 @@ export const createToolFitting = ({
 }: ToolFittingHost): ToolFitting => {
   let observed: Element[] = [];
 
+  /**
+   * The picker between two Blocks is centred on its Column, which near the
+   * Canvas's edge can put it past it, where it would be clipped.
+   */
+  const fitAddPicker = (workspace: HTMLElement) => {
+    const picker = findPlace(root, "addPicker");
+    // In an empty Column, it's as wide as the Column.
+    if (!(picker && closestPlace(picker, "insertPoint"))) {
+      return;
+    }
+    picker.style.removeProperty("--_mq-picker-shift");
+    picker.style.removeProperty("--_mq-picker-lift");
+    const canvas = workspace.getBoundingClientRect();
+    const box = picker.getBoundingClientRect();
+    const scaleX = scaleOf(canvas.width, workspace.offsetWidth);
+    const scaleY = scaleOf(canvas.height, workspace.offsetHeight);
+    const shift = shiftInto(
+      box.left,
+      box.right,
+      canvas.left + GAP_PX * scaleX,
+      canvas.right - GAP_PX * scaleX
+    );
+    if (shift !== 0) {
+      picker.style.setProperty("--_mq-picker-shift", `${shift / scaleX}px`);
+    }
+    // Below its line, or else above it, where the Canvas ends too soon, but
+    // never under the Selection bar, which sticks over the Canvas's top.
+    const line = picker.parentElement?.getBoundingClientRect().top ?? box.top;
+    const bottom = canvas.bottom - GAP_PX * scaleY;
+    if (box.bottom > bottom) {
+      const selectionBar = BAR_PLACES.map((name) => findPlace(root, name))
+        .find(Boolean)
+        ?.getBoundingClientRect();
+      const top =
+        Math.max(canvas.top, selectionBar?.bottom ?? canvas.top) +
+        GAP_PX * scaleY;
+      // As far above the line as it was below it, or else as far in as it goes.
+      const gap = box.top - line;
+      const above = gap + box.height + gap;
+      const lift =
+        box.top - above >= top
+          ? above
+          : -shiftInto(box.top, box.bottom, top, bottom);
+      picker.style.setProperty("--_mq-picker-lift", `${-lift / scaleY}px`);
+    }
+  };
+
   const fit = () => {
     const workspace = findPlace(root, "workspace");
+    if (workspace) {
+      fitAddPicker(workspace);
+    }
     const bar = findPlace(root, "formatBar");
     const picker = findPlace(root, "mergeTagPicker");
     for (const tool of [bar, picker]) {

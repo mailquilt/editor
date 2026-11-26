@@ -2,6 +2,8 @@ import { expect } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 
 import {
+  addPanel,
+  openAddPanel,
   addRow,
   addText,
   barButton,
@@ -619,33 +621,32 @@ test.describe("the color picker", () => {
   });
 });
 
-test.describe("layout", () => {
-  test("puts the panel below rather than squeeze the email", async ({
+test.describe("the Add panel's layout", () => {
+  test("floats over the Canvas's edge rather than squeeze the email", async ({
     page,
   }) => {
     await inHostOf(page, 900);
+    await openAddPanel(page);
     const onCanvas = canvas(page).getByTestId("email");
     await expect(onCanvas).toHaveCSS("width", "600px");
-    const emailBox = await boxOf(onCanvas);
-    const panelBox = await boxOf(canvas(page).getByTestId("side-panel"));
+    const panelBox = await boxOf(addPanel(page));
     const hostBox = await boxOf(canvas(page));
-    expect(panelBox.y).toBeGreaterThanOrEqual(emailBox.y + emailBox.height);
-    // Below, it takes the editor's whole width.
-    expect(panelBox.width).toBe(hostBox.width);
+    expect(panelBox.x).toBe(hostBox.x);
   });
 
-  test("keeps the panel docked on the right when the email fits beside it", async ({
+  test("docks at the Canvas's start when the email fits beside it", async ({
     page,
   }) => {
     await inHostOf(page, 1100);
+    await openAddPanel(page);
 
     const emailBox = await boxOf(canvas(page).getByTestId("email"));
-    const panelBox = await boxOf(canvas(page).getByTestId("side-panel"));
+    const panelBox = await boxOf(addPanel(page));
     const hostBox = await boxOf(canvas(page));
     const topBar = await boxOf(canvas(page).locator('[part="top-bar"]'));
     expect(panelBox.y).toBe(topBar.y + topBar.height);
-    expect(panelBox.x).toBeGreaterThanOrEqual(emailBox.x + emailBox.width);
-    expect(panelBox.x + panelBox.width).toBe(hostBox.x + hostBox.width);
+    expect(panelBox.x).toBe(hostBox.x);
+    expect(panelBox.x + panelBox.width).toBeLessThanOrEqual(emailBox.x);
   });
 });
 

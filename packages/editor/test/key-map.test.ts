@@ -503,14 +503,6 @@ describe("in what the Selection bar opens", () => {
   });
 });
 
-describe("in an empty Column's toolbar", () => {
-  it("an arrow key goes along its buttons", () => {
-    expect(keyIn("addBlocks", press("ArrowRight"))).toStrictEqual(
-      acts("nextButton")
-    );
-  });
-});
-
 describe("in the floating toolbar", () => {
   it("only paste is the editor's, as it has nothing of its own to copy", () => {
     expect(keyIn("emailTools", press("Mod-v"))).toStrictEqual(
@@ -522,13 +514,53 @@ describe("in the floating toolbar", () => {
   });
 });
 
-describe("in the side panel's tabs", () => {
-  it("an arrow key goes to the next tab", () => {
-    expect(keyIn("panelTabs", press("ArrowDown"))?.action).toBe("nextButton");
+describe("adding", () => {
+  it("/ opens the Add panel from the email and the Selection bar", () => {
+    for (const scope of [
+      "block",
+      "blockBar",
+      "rowBar",
+      "emailBar",
+      "emailTools",
+      "addBlocks",
+    ] as const) {
+      expect(keyIn(scope, press("/"))?.action).toBe("openAddPanel");
+    }
   });
 
-  it("Ctrl/⌘+K isn't the editor's", () => {
-    expect(keyIn("panelTabs", press("Mod-k"))).toBeUndefined();
+  it("/ with Shift opens it too, where a keyboard types / with Shift", () => {
+    expect(keyIn("block", press("Shift-/"))?.action).toBe("openAddPanel");
+  });
+
+  it("/ is typed in text and in fields", () => {
+    for (const scope of ["text", "barField", "addSearch"] as const) {
+      expect(keyIn(scope, press("/"))).toBeUndefined();
+    }
+  });
+
+  it("in the search, Enter adds the first match and ↓ goes to the tiles", () => {
+    expect(keyIn("addSearch", press("Enter"))?.action).toBe("addFirstMatch");
+    expect(keyIn("addSearch", press("ArrowDown"))?.action).toBe("toAddResults");
+    expect(keyIn("addSearch", press("ArrowLeft"))).toBeUndefined();
+  });
+
+  it("in the search, undo is the editor's, to take back what was added", () => {
+    expect(keyIn("addSearch", press("Mod-z"))?.action).toBe("undo");
+  });
+
+  it("Escape closes the panel or the picker, from any part of it", () => {
+    for (const scope of [
+      "addSearch",
+      "addTiles",
+      "addPanel",
+      "addPicker",
+    ] as const) {
+      expect(keyIn(scope, press("Escape"))?.action).toBe("closeAdd");
+    }
+  });
+
+  it("the arrow keys go along the tiles", () => {
+    expect(keyIn("addTiles", press("ArrowRight"))?.action).toBe("nextButton");
   });
 });
 

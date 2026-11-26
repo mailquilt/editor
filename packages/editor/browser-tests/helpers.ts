@@ -161,37 +161,54 @@ export const focusStartOfTextBlock = async (page: Page) => {
   await settle(page);
 };
 
+/** The Add panel, while it's open. */
+export const addPanel = (page: Page) => canvas(page).getByTestId("add-panel");
+
+/** The Add panel's tile for a type of Block. */
 export const palette = (page: Page, name: string) =>
-  page
-    .getByRole("group", { name: "Add content" })
-    .getByRole("button", { exact: true, name: `Add ${name} Block` });
+  addPanel(page).getByRole("button", {
+    exact: true,
+    name: `Add ${name} Block`,
+  });
 
-/** The Rows tab's tile for a layout, with the tab showing. */
+/** The Add panel's tile for a layout. */
 export const layoutTile = (page: Page, layout: string) =>
-  canvas(page)
-    .getByRole("group", { name: "Add a Row" })
-    .getByRole("button", { exact: true, name: `Add ${layout} Row` });
+  addPanel(page).getByRole("button", {
+    exact: true,
+    name: `Add ${layout} Row`,
+  });
 
-export const panelTab = (page: Page, name: string) =>
-  canvas(page).getByRole("tab", { exact: true, name });
-
-/** Shows a side panel tab. */
-export const openTab = async (page: Page, name: string) => {
-  const tab = panelTab(page, name);
-  if ((await tab.getAttribute("aria-selected")) !== "true") {
-    await tab.click();
+/**
+ * Opens the Add panel, as `/` does from the Selection bar's More button, which
+ * every bar has, so what's selected stays selected.
+ */
+export const openAddPanel = async (page: Page) => {
+  if (await addPanel(page).isVisible()) {
+    return;
   }
+  await canvas(page)
+    .getByTestId("selection-bar")
+    .getByRole("button", { exact: true, name: "More settings and actions" })
+    .focus();
+  await page.keyboard.press("/");
+  await expect(addPanel(page)).toBeVisible();
 };
 
-/** The Content tab's tile for a type of Block, with the tab showing. */
+/** The Add panel's tile for a type of Block, with the panel open. */
 const showPalette = async (page: Page, name: string) => {
-  await openTab(page, "Content");
+  await openAddPanel(page);
   return palette(page, name);
 };
 
-/** Adds a Row with this layout from the Rows tab. */
+/** Adds a Block of this type from the Add panel, with a click. */
+export const addBlock = async (page: Page, name: string) => {
+  await openAddPanel(page);
+  await palette(page, name).click();
+};
+
+/** Adds a Row with this layout from the Add panel. */
 export const addRow = async (page: Page, layout = "100") => {
-  await openTab(page, "Rows");
+  await openAddPanel(page);
   await layoutTile(page, layout).click();
 };
 

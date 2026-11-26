@@ -2,6 +2,8 @@ import { expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
 import {
+  addPanel,
+  openAddPanel,
   announcement,
   barButton,
   blockGroup,
@@ -36,7 +38,7 @@ const editorOf = async (page: Page, width: number) => {
   });
 };
 
-/** Wide enough for More to dock beside the email and the side panel. */
+/** Wide enough for More to dock beside the email and the Add panel. */
 const WIDE = 1400;
 
 /**
@@ -347,7 +349,7 @@ test.describe("a Row's padding", () => {
 });
 
 test.describe("a Row of empty Columns", () => {
-  test("is selected by focus in one of its Columns' toolbars, so Tab reaches its settings", async ({
+  test("is selected by focus on one of its Columns' buttons, so Tab reaches its settings", async ({
     page,
   }) => {
     await openEmail(page, [[["A"]], [[], []]]);
@@ -356,9 +358,9 @@ test.describe("a Row of empty Columns", () => {
     await page.keyboard.press("Tab");
     await page.keyboard.press("Tab");
     await expect(
-      canvas(page)
-        .getByRole("toolbar", { name: "Add a Block to Row 2, Column 1" })
-        .getByRole("button", { name: "Add Text Block here" })
+      canvas(page).getByRole("button", {
+        name: "Add a Block, or drop one here, in Row 2, Column 1",
+      })
     ).toBeFocused();
     await expect(selectionBar(page)).toHaveAccessibleName("Row 2 settings");
 
@@ -451,35 +453,40 @@ test.describe("More", () => {
   }) => {
     await openBlocks(page, ["text"]);
     await editorOf(page, WIDE);
+    await openAddPanel(page);
     await blockGroup(page, "Text").focus();
 
     await moreButton(page).click();
 
-    // Beside the email and before the side panel, once the editor has laid
+    // After the email, and the Add panel before it, once the editor has laid
     // itself out at its new width. A poll that throws stops, so a box not
     // there yet, as More moves, is a "not yet".
     await expect
       .poll(async () => {
         const email = await canvas(page).getByTestId("email").boundingBox();
         const docked = await morePanel(page).boundingBox();
-        const side = await canvas(page).getByTestId("side-panel").boundingBox();
+        const add = await addPanel(page).boundingBox();
         return Boolean(
           email &&
           docked &&
-          side &&
+          add &&
           docked.x >= email.x + email.width &&
-          docked.x + docked.width <= side.x
+          add.x + add.width <= email.x
         );
       })
       .toBe(true);
 
-    await editorOf(page, 1100);
-    const workspace = await boxOf(canvas(page).getByTestId("workspace"));
+    await editorOf(page, 900);
+    // Both read in the poll, as the page scrolls once the editor narrows.
     await expect
       .poll(async () => {
         const floating = await morePanel(page).boundingBox();
+        const workspace = await canvas(page)
+          .getByTestId("workspace")
+          .boundingBox();
         return Boolean(
           floating &&
+          workspace &&
           floating.x + floating.width <= workspace.x + workspace.width
         );
       })
@@ -490,7 +497,7 @@ test.describe("More", () => {
     page,
   }) => {
     await openEmail(page, [[["A"], ["B"], ["C"], ["D"]]]);
-    await editorOf(page, 1000);
+    await editorOf(page, 900);
     await blockWith(page, "A").focus();
     await moreButton(page).click();
     await expect(morePanel(page)).toBeVisible();
@@ -675,7 +682,7 @@ test.describe("More", () => {
     page,
   }) => {
     await openEmail(page, [[["A"], ["B"]], [["C"]]]);
-    // Room for the bar beside the side panel and a docked More.
+    // Room for the bar beside a docked More.
     await editorOf(page, 1800);
     await selectRow(page, 1);
     await expect(barButton(page, "Move Row down")).toBeVisible();
@@ -731,7 +738,7 @@ test.describe("automated accessibility checks of the Selection bar", () => {
     expect(await violations(page)).toEqual([]);
 
     // Floating, over the Canvas.
-    await editorOf(page, 1100);
+    await editorOf(page, 900);
     await expect(morePanel(page)).toBeVisible();
     expect(await violations(page)).toEqual([]);
   });

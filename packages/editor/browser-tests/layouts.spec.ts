@@ -2,6 +2,7 @@ import { expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
 import {
+  addPanel,
   addRow,
   addText,
   announcement,
@@ -42,8 +43,18 @@ const shownLayout = async (page: Page, position: number, layout: string) => {
 const deleteRowButton = (page: Page, position: number) =>
   rowTools(page, position).getByRole("button", { name: "Delete Row" });
 
+/** An empty Column's button, which opens the picker there. */
 const addToColumn = (page: Page) =>
-  page.getByRole("button", { name: "Add Text Block here" });
+  page.getByRole("button", { name: /^Add a Block, or drop one here, in Row/u });
+
+/** Adds a Text Block to the empty Column, from its picker. */
+const addTextToColumn = async (page: Page) => {
+  await addToColumn(page).click();
+  await canvas(page)
+    .getByTestId("add-picker")
+    .getByRole("button", { exact: true, name: "Add Text Block" })
+    .click();
+};
 
 const widths = async (page: Page, rowIndex = 0) => {
   const { rows } = await currentValue(page);
@@ -126,12 +137,16 @@ test.describe("deleting a Block", () => {
 
     await expect(textBlock(page)).toHaveCount(0);
     // The Selection bar now has the email's settings, and focus is on its
-    // last button, where keyboard undo works.
+    // last button, Add, where keyboard undo works. A second Enter opens the
+    // Add panel, where it still does.
     await expect(
-      canvas(page).getByRole("button", { name: "More settings and actions" })
+      canvas(page).getByRole("button", { exact: true, name: "Add" })
     ).toBeFocused();
     await page.keyboard.press("Enter");
     expect(await structure(page)).toStrictEqual([[[]]]);
+    await expect(
+      addPanel(page).getByRole("textbox", { name: "Search Blocks and Rows" })
+    ).toBeFocused();
     await undoByKey(page);
     await expect(textBlock(page)).toHaveText("Hello");
   });
@@ -181,7 +196,7 @@ test.describe("an empty Column", () => {
     await chooseLayout(page, 1, "50/50");
     await expect(addToColumn(page)).toHaveCount(1);
 
-    await addToColumn(page).click();
+    await addTextToColumn(page);
     await page.keyboard.type("Right");
 
     await expect(addToColumn(page)).toHaveCount(0);
@@ -205,7 +220,7 @@ test.describe("an empty Column", () => {
 });
 
 test.describe("adding and deleting Rows", () => {
-  test("the Rows tab selects the Row it adds, so the next goes after it", async ({
+  test("an empty Row from the Add panel is selected, so the next goes after it", async ({
     page,
   }) => {
     // A Row after the selected one, so that "after it" isn't also the end.
@@ -287,7 +302,7 @@ test.describe("choosing a layout", () => {
     page,
   }) => {
     await chooseLayout(page, 1, "50/50");
-    await addToColumn(page).click();
+    await addTextToColumn(page);
     await page.keyboard.type("Right");
     await expect(selectedText(page)).toHaveText("Right");
     await selectedText(page).evaluate((element) => {
@@ -313,7 +328,7 @@ test.describe("choosing a layout", () => {
 });
 
 test.describe("structure changes and the rest of the editor", () => {
-  test("the Rows tab adds an empty full-width Row at the end, and a keyboard undo with nothing focused takes it back", async ({
+  test("the Add panel adds an empty full-width Row at the end, and a keyboard undo with nothing focused takes it back", async ({
     page,
   }) => {
     await addRow(page);

@@ -7,8 +7,20 @@
  * under its name, which has to be one of these too.
  */
 const PLACES = {
-  /** The toolbar in an empty Column, with a button to add each type of Block. */
+  /** The button in an empty Column that opens the picker there. */
   addBlocks: {},
+  /** The Add panel, of Block types and empty Rows. */
+  addPanel: {},
+  /** The picker that adds a Block at a place on the Canvas. */
+  addPicker: {},
+  /** The search in the Add panel or the picker. */
+  addSearch: {},
+  /**
+   * A group of the Add panel's or the picker's tiles. A press keeps focus
+   * where it is, such as in a Block's text, as a press that starts a drag
+   * from a tile and ends back on it adds nothing.
+   */
+  addTiles: { press: "keepsFocus" },
   /** A Block on the canvas. Its `data-block-id` names it. */
   block: {},
   /** A popover from a button in the Selection bar, with settings in it. */
@@ -25,8 +37,8 @@ const PLACES = {
   /** A Column. Its `data-column-id` names it. */
   column: {},
   /**
-   * Buttons that act on the email or what's selected, in the Side panel, the
-   * top bar or the notice, and aren't in a toolbar or the Selection bar.
+   * Buttons that act on the email or what's selected, in the top bar or the
+   * notice, and aren't in a toolbar or the Selection bar.
    */
   controls: { press: "keepsFocus" },
   /** A drag handle, on a Block. */
@@ -70,13 +82,13 @@ const PLACES = {
   morePanel: { press: "keepsFocus" },
   /** The notice shown instead of the editor when there's no room to edit. */
   notice: {},
+  /** A + between two Blocks, which opens the picker there. */
+  insertPoint: { press: "keepsFocus" },
   /**
-   * An item in the palette or the Rows tab, which a drag adds. Its
-   * `data-block-type` or `data-row-layout` names it.
+   * A tile in the Add panel, which a drag adds. Its `data-block-type` or
+   * `data-row-layout` names it.
    */
   paletteItem: {},
-  /** The Side panel's tabs. */
-  panelTabs: {},
   /** The Preview dialog. */
   preview: {},
   /** A Row with its tag. Its `data-row-id` names it. */
@@ -91,8 +103,6 @@ const PLACES = {
   settings: {},
   /** A settings field holding typed text that isn't applied yet. */
   settingsDraft: {},
-  /** The Side panel. */
-  sidePanel: {},
   /** A Block's text, made by ProseMirror. */
   text: {},
   /** The editor's one tooltip. */

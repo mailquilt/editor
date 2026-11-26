@@ -2,6 +2,7 @@ import { expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
 import {
+  addBlock,
   announcement,
   blockGroup,
   blockWith,
@@ -27,7 +28,7 @@ import {
   moveTo,
   openBlocks,
   openEmail,
-  openTab,
+  openAddPanel,
   palette,
   pickUp,
   previewButton,
@@ -746,11 +747,12 @@ test("text dragged within a Block's text still moves", async ({ page }) => {
   await expect(textBlock(page)).toHaveText(/^ ?TwoOne ?$/u);
 });
 
-test.describe("dragging from the palette", () => {
+test.describe("dragging from the Add panel", () => {
   test("selects the new Block, ready to type in, and a click still adds one", async ({
     page,
   }) => {
     await openEmail(page, [[["One"]]]);
+    await openAddPanel(page);
 
     await drag(
       page,
@@ -762,9 +764,7 @@ test.describe("dragging from the palette", () => {
     await expect(textBlock(page).nth(1)).toHaveText("Typed");
     expect(await structure(page)).toStrictEqual([[["One", "Typed"]]]);
 
-    // The new Block's settings show instead of the tabs.
-    await openTab(page, "Content");
-    await palette(page, "Text").click();
+    await addBlock(page, "Text");
     await expect(structure(page)).resolves.toEqual([[["One", "Typed", ""]]]);
   });
 
@@ -772,6 +772,7 @@ test.describe("dragging from the palette", () => {
     await openEmail(page, [[["One"]]]);
     await deleteRow(page, 1);
     await expect(textBlock(page)).toHaveCount(0);
+    await openAddPanel(page);
     const email = await boxOf(canvas(page).getByTestId("email"));
 
     await drag(page, palette(page, "Text"), {
@@ -784,8 +785,9 @@ test.describe("dragging from the palette", () => {
     expect(await structure(page)).toStrictEqual([]);
   });
 
-  test("leaves the palette button where it was", async ({ page }) => {
+  test("leaves the tile where it was", async ({ page }) => {
     await openEmail(page, [[["One"]]]);
+    await openAddPanel(page);
     const before = await boxOf(palette(page, "Text"));
 
     await pickUp(page, palette(page, "Text"));
@@ -793,18 +795,16 @@ test.describe("dragging from the palette", () => {
     await expect(palette(page, "Text")).toBeVisible();
     await letGo(page);
 
-    // The new Block's settings show instead of the tabs.
-    await openTab(page, "Content");
     expect(await boxOf(palette(page, "Text"))).toStrictEqual(before);
     await expect(dragMarks(page)).toHaveCount(0);
   });
 
-  test("let go back on the palette, adds nothing and leaves the text cursor", async ({
+  test("let go back on the Add panel, adds nothing and leaves the text cursor", async ({
     page,
   }) => {
     await openEmail(page, [[["One", "Two"]]]);
+    await openAddPanel(page);
     await putCursorAfterTwo(page);
-    await openTab(page, "Content");
     const start = await centerOf(palette(page, "Text"));
 
     await pickUp(page, palette(page, "Text"));
@@ -820,6 +820,7 @@ test.describe("dragging from the palette", () => {
     page,
   }) => {
     await openEmail(page, [[["One"]]]);
+    await openAddPanel(page);
     const { x, y } = await centerOf(palette(page, "Text"));
 
     await page.clock.install();
@@ -1301,11 +1302,12 @@ test.describe("on a touch screen", () => {
     await expect(dragMarks(page)).toHaveCount(0);
   });
 
-  test("a palette item swiped up scrolls the Side panel, and adds nothing", async ({
+  test("a tile in the Add panel swiped up scrolls the panel, and adds nothing", async ({
     page,
   }) => {
     await page.setViewportSize({ height: 300, width: 1280 });
     await openEmail(page, [[["One"]]]);
+    await openAddPanel(page);
     const tile = palette(page, "Image");
     await tile.scrollIntoViewIfNeeded();
     /** How far the nearest container that can scroll is scrolled. */
@@ -1326,8 +1328,9 @@ test.describe("on a touch screen", () => {
     expect(await structure(page)).toStrictEqual([[["One"]]]);
   });
 
-  test("a palette item drags a new Block in", async ({ page }) => {
+  test("a tile in the Add panel drags a new Block in", async ({ page }) => {
     await openEmail(page, [[["One"]]]);
+    await openAddPanel(page);
 
     await touchDrag(
       page,

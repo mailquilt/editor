@@ -106,6 +106,11 @@ const insAt = (inner) => (s) => email(s).replace('<div class="b" style="margin:0
 F.push({ id: "a01-insert-hover", html: () => app({ ctx: ctxNone, email: insAt(`<b>${ic("plus", "sm")}</b><span class="tip">Add a Block here</span>`)({}) }) });
 F.push({ id: "a02-insert-picker", html: () => app({ ctx: ctxNone, email: insAt(`<b>${ic("plus", "sm")}</b><div class="pop ipick"><div class="search">${ic("search", "sm")}<span>Search Blocks</span></div>${bgrid(0)}<div class="foot">Adds below the Text, in Row 3</div></div>`)({}) }) });
 F.push({ id: "a03-insert-no-match", html: () => app({ ctx: ctxNone, email: insAt(`<b>${ic("plus", "sm")}</b><div class="pop ipick"><div class="search">${ic("search", "sm")}<span class="typed">tabel</span><span class="caret" style="background:var(--text);height:15px"></span></div><div class="nomatch"><b>No Block called “tabel”</b>Try Text, Image or Button.</div></div>`)({}) }) });
+// Picked for #316 on 2026-11-26, as the frames above left Add out of the email's bar (g03), and drew the Add panel over a Rows list not built yet.
+const addInEmailBar = () => ctxEmailA.replace(/<\/div>$/, `<span class="vr"></span><span class="btn sm ghost">${ic("plus", "sm")}Add <span style="color:var(--text-3);font-weight:500;margin-left:2px">/</span></span></div>`);
+const addPanelAlone = () => F.find((f) => f.id === "3-add-drag").html().match(/<aside class="lib">[\s\S]*<\/aside>/)[0].replace(/<h4>Saved Rows[\s\S]*?<\/div>\s*<\/div>\s*(?=<\/aside>)/, "");
+F.push({ id: "a04-add-in-email-bar", html: () => app({ layout: "plain", left: "", ctx: addInEmailBar(), email: email({}) }) });
+F.push({ id: "a05-add-panel-open", html: () => app({ layout: "plain", left: "", ctx: addInEmailBar(), email: email({}), over: addPanelAlone() }) });
 
 // ---------- 5. Style ----------
 group("s0", "Style: pickers and their states", "Set the shared look and see it change. A value not set shows the built-in default; fonts come from the system and the host's list.");
