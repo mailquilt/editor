@@ -76,6 +76,14 @@ interface KeyDispatchHost {
   rowsList: { closeAdd: (returnFocus: boolean) => void };
   selection: Pick<EditorSelection, "rowId" | "select" | "selectedText">;
   stepHistory: (step: "redo" | "undo") => void;
+  /** The Style panel's popovers. */
+  style: {
+    closePopover: (returnFocus: boolean) => void;
+    moveFont: (step: -1 | 1) => void;
+    nudgeColor: (direction: Direction, far: boolean) => void;
+    pickFont: () => void;
+    tabOut: (event: KeyboardEvent) => void;
+  };
 }
 
 /** For a key whose press only needs keeping from the browser, or stopping. */
@@ -120,6 +128,7 @@ export const createKeyDispatch = ({
   rowsList,
   selection,
   stepHistory,
+  style,
 }: KeyDispatchHost) => {
   /** The last key pressed, and where, before it was held down. */
   let lastPress: { key: string; target: EventTarget | undefined } | undefined;
@@ -163,6 +172,7 @@ export const createKeyDispatch = ({
     // The browser closes the dialog.
     closePreview: doNothing,
     closeRowsAdd: () => rowsList.closeAdd(true),
+    closeStylePopover: () => style.closePopover(true),
     copyBlock: onClipboardEvent,
     copyRow: onClipboardEvent,
     cutBlock: onClipboardEvent,
@@ -190,16 +200,20 @@ export const createKeyDispatch = ({
     leaveToolbar: toolbarStep("leave"),
     nextButton: toolbarStep("next"),
     nextControl: fieldStep("next"),
+    nextFont: () => style.moveFont(1),
     nextMergeTag: (event) => pickerOf(event)?.moveInMergeTagPicker(1),
     openAddPanel: () => adding.openPanel(true),
     openLinkField: () => linkForm.open(),
     paste: onClipboardEvent,
     pasteAfterRow: onClipboardEvent,
+    pickFont: () => style.pickFont(),
     pickMergeTag: (event) => pickerOf(event)?.pickMergeTag(),
     previousButton: toolbarStep("previous"),
     previousControl: fieldStep("previous"),
+    previousFont: () => style.moveFont(-1),
     previousMergeTag: (event) => pickerOf(event)?.moveInMergeTagPicker(-1),
     redo: () => stepHistory("redo"),
+    tabOutOfStylePopover: (event) => style.tabOut(event),
     toAddResults: ({ target }) => focusFirstTile(target as Element),
     typeInField: doNothing,
     undo: () => stepHistory("undo"),
@@ -273,6 +287,8 @@ export const createKeyDispatch = ({
         editing.moveRow(rowId, direction);
       }
     },
+    nudgeColor: ({ shiftKey }, direction) =>
+      style.nudgeColor(direction, shiftKey),
     selectBlock: (_event, direction) => editing.selectNeighbour(direction),
   };
 

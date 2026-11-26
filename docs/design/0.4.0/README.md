@@ -182,6 +182,15 @@ The `g` frames were picked for #315 on 2026-11-26, as states the frames above le
 | Font picker open: the host's web fonts and system fonts, a web font loading, keyboard focus | `s04-font-picker` |
 | A web font that failed to load, and one loading | `s05-font-failed` |
 | Phone sheet | `p03-style` |
+| Nothing set: "Default" and the built-in value on every unset field; Page and Body always have one | `s10-style-nothing-set` |
+| A size pressed: its field, and "Use the default (32px)" | `s11-size-field` |
+| Button corners: Square, Rounded or Pill, named under each; "Use the default (3px)" once one is picked | `s12-corners` |
+| The Headings font's default, "Same as body", first in its list | `s13-headings-font` |
+| A selected Block with more than one value of its own: one callout for each | `s14-own-values` |
+| Hovering a setting: the Blocks it changes, and those that keep their own, marked "Keeps its own" | `s15-hover-keeps-own` |
+| Where the email and the panel fit side by side, the panel docks; narrower, it floats over the Canvas's edge, as More does | `s16-style-1024`, `s17-style-768` |
+
+The `s1` frames were picked for #318 on 2026-11-26, as states the frames above leave out. Width, preheader and language stay in Edit's email bar (`g03`), so Style has no Layout or Inbox section; the email's background and font move from that bar's More to Style, as Page and Body. In Style the Canvas is for looking: a Block can be selected by pointer, or stays selected from Edit, to see the values it keeps as its own, but nothing is typed, added, moved or deleted there. Corners are 0px, 8px and 100px. Until #328, the font lists hold only system fonts.
 
 **Copy.** Title "Email style", lead "Every Block uses these unless it sets its own." Unset value: "Default" beside the built-in value. Color picker: "Hex", "In this email", "Use the default (#2563EB)" (the built-in Button color). Font picker groups: "Your fonts" (the host's) and "System fonts"; each web font shows "Falls back to Georgia". Search: "Search fonts". Loading: "Loading Inter…". Failed: "Fraunces couldn't be loaded, so you see Georgia, its fallback. Readers may see Georgia too."
 

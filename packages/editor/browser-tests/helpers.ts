@@ -179,16 +179,17 @@ export const layoutTile = (page: Page, layout: string) =>
   });
 
 /**
- * Opens the Add panel, as `/` does from the Selection bar's More button, which
- * every bar has, so what's selected stays selected.
+ * Opens the Add panel, as `/` does from the Selection bar's More button, or
+ * with nothing selected, its Add button, so what's selected stays selected.
  */
 export const openAddPanel = async (page: Page) => {
   if (await addPanel(page).isVisible()) {
     return;
   }
-  await canvas(page)
-    .getByTestId("selection-bar")
+  const bar = canvas(page).getByTestId("selection-bar");
+  await bar
     .getByRole("button", { exact: true, name: "More settings and actions" })
+    .or(bar.locator('[data-action="add"]'))
     .focus();
   await page.keyboard.press("/");
   await expect(addPanel(page)).toBeVisible();
@@ -987,4 +988,41 @@ export const contrast = (...colors: string[]) => {
     })
     .toSorted((a, b) => b - a);
   return (lighter + 0.05) / (darker + 0.05);
+};
+
+/** The Style Mode's panel, of the email's Email style. */
+export const stylePanel = (page: Page) =>
+  canvas(page).getByTestId("style-panel");
+
+/** Chooses the Style Mode, and waits for its panel. */
+export const openStyle = async (page: Page) => {
+  await canvas(page).getByRole("tab", { exact: true, name: "Style" }).click();
+  await expect(stylePanel(page)).toBeVisible();
+  return stylePanel(page);
+};
+
+/** A setting in the Style panel, by its name, which its value follows. */
+export const styleSetting = (page: Page, name: string) =>
+  stylePanel(page).getByRole("button", {
+    // "Body" isn't "Body text".
+    name: new RegExp(`^${name} (?!text )(?:Default )?`, "u"),
+  });
+
+/** Sets a color in Style, typed in its picker's Hex field, and closes it. */
+export const pickStyleColor = async (
+  page: Page,
+  name: string,
+  color: string
+) => {
+  await styleSetting(page, name).click();
+  await change(stylePanel(page).getByLabel("Hex"), color);
+  await page.keyboard.press("Escape");
+};
+
+/** Picks a font in Style from its setting's list. */
+export const pickStyleFont = async (page: Page, name: string, font: string) => {
+  await styleSetting(page, name).click();
+  await stylePanel(page)
+    .getByRole("option", { exact: true, name: font })
+    .click();
 };

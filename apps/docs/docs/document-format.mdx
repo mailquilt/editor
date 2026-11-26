@@ -66,6 +66,8 @@ An email saved by a newer version can't be opened by a package that only knows a
 | `language` | Optional. The email's language. A new language has to be a code such as `en` or `pt-BR`, or one [Merge Tag](#merge-tags) such as `{{language}}` that your sending tool fills with each person's code, and `updateEmailSettings` refuses anything else, from the editor or your code. A saved document loads with any text here, and sending it back unchanged isn't refused, so an email with a bad value can still be opened and fixed. |
 | `style` | Optional. The [Email style](#email-style). |
 
+In the editor, `width`, `preheader` and `language` are in the Selection bar with nothing selected. `backgroundColor` and `fontFamily` are Page and Body in Style, beside the Email style.
+
 ## Email style
 
 The look every Block in the email uses unless it sets its own. A Block takes its own value first, then the Email style's, then the built-in look, so changing the Email style never changes a value a person set on a Block. Every field is optional, and one left out gives the built-in look.
@@ -90,7 +92,7 @@ The look every Block in the email uses unless it sets its own. A Block takes its
 }
 ```
 
-`updateEmailStyle` changes some of its fields and leaves the rest, as [Change emails in code](./change-emails-in-code) shows.
+In the editor, every field is in Style, where each can be set, or cleared back to its default. Button corners there are Square, `0`, Rounded, `8`, or Pill, `100`. `updateEmailStyle` changes some of its fields and leaves the rest, as [Change emails in code](./change-emails-in-code) shows.
 
 ## Row
 

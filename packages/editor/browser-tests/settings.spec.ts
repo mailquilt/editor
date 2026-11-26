@@ -21,7 +21,10 @@ import {
   emailWith,
   setting,
   openExport,
+  openStyle,
   openTestPage,
+  pickStyleColor,
+  pickStyleFont,
   redoByKey,
   rowTag,
   rowTools,
@@ -120,22 +123,6 @@ test.describe("the Selection bar's settings", () => {
     await expect(canvas(page).getByLabel("Preheader")).toBeVisible();
   });
 
-  test("keeps a saved font that isn't on the list", async ({ page }) => {
-    const value = emailWith([[["Hi"]]]);
-    value.settings.fontFamily = "Papyrus, fantasy";
-    await setValue(page, value);
-
-    await expect(await emailField(page, "Font")).toHaveValue(
-      "Papyrus, fantasy"
-    );
-    const font = await emailField(page, "Font");
-    await expect(
-      font.getByRole("option", {
-        name: "Papyrus, fantasy",
-      })
-    ).toHaveCount(1);
-  });
-
   test("shows a saved email's settings", async ({ page }) => {
     const value = emailWith([[["Hi"]]]);
     value.settings = {
@@ -148,15 +135,6 @@ test.describe("the Selection bar's settings", () => {
     await setValue(page, value);
 
     await expect(await emailField(page, "Width (px)")).toHaveValue("500");
-    await expect(await emailField(page, "Background color")).toHaveValue(
-      "rgb(1, 2, 3)"
-    );
-    await expect(await emailField(page, "Background color picker")).toHaveValue(
-      "#010203"
-    );
-    await expect(await emailField(page, "Font")).toHaveValue(
-      "Georgia, 'Times New Roman', serif"
-    );
     await expect(await emailField(page, "Preheader")).toHaveValue("Salut");
     await expect(await emailField(page, "Language")).toHaveValue("fr");
   });
@@ -279,11 +257,12 @@ test.describe("Email settings", () => {
     const verdana = "Verdana, Geneva, sans-serif";
     await setValue(page, emailWith([[["Styled"]]]));
     await change(await emailField(page, "Width (px)"), "500");
-    await change(await emailField(page, "Background color"), "#eeeeee");
-    const font = await emailField(page, "Font");
-    await font.selectOption(verdana);
     await change(await emailField(page, "Preheader"), "Hello {{first_name}}");
     await change(await emailField(page, "Language"), "pt-BR");
+    // The email's look is set in Style.
+    await openStyle(page);
+    await pickStyleColor(page, "Page", "#eeeeee");
+    await pickStyleFont(page, "Body", "Verdana");
 
     expect(await settingsOf(page)).toStrictEqual({
       backgroundColor: "#eeeeee",

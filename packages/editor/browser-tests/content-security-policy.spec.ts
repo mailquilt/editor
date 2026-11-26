@@ -13,12 +13,13 @@ import {
   letGo,
   moveTo,
   openAddPanel,
-  selectNothing,
-  openMore,
+  openStyle,
   openTestPage,
   pasteHtml,
   pickUp,
   setValue,
+  styleSetting,
+  stylePanel,
   TALL_VIEWPORT,
   test,
   textBlock,
@@ -177,12 +178,17 @@ test("under a strict policy, the canvas shows the email with its settings, and n
   // Its pictures of the layouts set inline styles too, which nothing may block.
   await openAddPanel(page);
   await expect(layoutTile(page, "50/50")).toBeVisible();
-  // A dropdown's arrow, which no image source may hide, and the Selection
-  // bar's swatches and More, which set inline styles too.
-  await selectNothing(page);
-  await openMore(page);
+  // Style's swatches, a color's shade and each font's own face set inline
+  // styles too.
+  await openStyle(page);
+  await styleSetting(page, "Buttons").click();
   await expect(
-    canvas(page).getByRole("combobox", { exact: true, name: "Font" })
+    stylePanel(page).getByRole("slider", { name: "Buttons shade" })
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+  await styleSetting(page, "Headings").click();
+  await expect(
+    stylePanel(page).getByRole("option", { name: "Georgia" })
   ).toBeVisible();
 
   expect(await blockedByPolicy(page)).toStrictEqual([]);

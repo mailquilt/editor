@@ -1,6 +1,7 @@
 import { ROW_LAYOUTS } from "@mailquilt/core";
-import type { BlockType, RowLayout } from "@mailquilt/core";
+import type { Block, BlockType, EmailStyle, RowLayout } from "@mailquilt/core";
 import {
+  blockStyles,
   blockSettingsFields,
   EMAIL_SETTINGS_FIELDS,
   rowLayoutOf,
@@ -892,6 +893,41 @@ const renderUpload = (
   />
 `;
 
+/** The CSS a Block's prop is drawn as, where Email style can give its value. */
+const SHARED_PROPS = {
+  backgroundColor: "background-color",
+  color: "color",
+  fontSize: "font-size",
+} as const;
+
+/**
+ * A Block's fields, each showing what the Canvas draws while the Block sets
+ * none of its own: Email style's value, or else the built-in look.
+ */
+const withSharedDefaults = (block: Block, style: EmailStyle) => {
+  // Its other props stay, such as a Heading's level, which its size is for.
+  const others = Object.fromEntries(
+    Object.entries(block.props).filter(
+      ([key]) => !Object.hasOwn(SHARED_PROPS, key)
+    )
+  );
+  const shared = blockStyles(
+    { props: others, type: block.type } as Block,
+    style
+  );
+  return blockSettingsFields(block).map((field) => {
+    const property = SHARED_PROPS[field.key as keyof typeof SHARED_PROPS];
+    const value = property && shared[property];
+    if (value === undefined) {
+      return field;
+    }
+    return {
+      ...field,
+      default: field.type === "number" ? Number(value.slice(0, -2)) : value,
+    };
+  });
+};
+
 const blockSection = (
   { block }: BlockPosition,
   api: PanelApi
@@ -913,7 +949,7 @@ const blockSection = (
           },
         }
       : undefined,
-  fields: blockSettingsFields(block),
+  fields: withSharedDefaults(block, api.email.settings.style ?? {}),
   id: BLOCK_SECTION_ID,
   legend: blockTypeName(block.type, api.text),
   targetId: block.id,
@@ -926,13 +962,19 @@ const rowSection = ({ row }: RowPosition, api: PanelApi): SettingsSection => ({
   id: "row",
   legend: api.text("bar.row"),
   targetId: row.id,
-  unsetColor: api.email.settings.backgroundColor,
+  // Behind a Row without its own: the email's color, or else the page's.
+  unsetColor:
+    api.email.settings.style?.emailBackgroundColor ??
+    api.email.settings.backgroundColor,
   values: row.props,
 });
 
+/** The email's look, its background and font, which is set in Style. */
+const STYLED_IN_STYLE = new Set(["backgroundColor", "fontFamily"]);
+
 const emailSection = (api: PanelApi): SettingsSection => ({
   command: (settings) => ({ settings, type: "updateEmailSettings" }),
-  fields: EMAIL_SETTINGS_FIELDS,
+  fields: EMAIL_SETTINGS_FIELDS.filter(({ key }) => !STYLED_IN_STYLE.has(key)),
   id: "email",
   legend: api.text("bar.email"),
   targetId: "",
@@ -1902,8 +1944,9 @@ const renderActions = (target: Target, api: PanelApi) => {
       ${ICONS.more}
     </button>
   `;
+  // The email's settings all fit the bar, so it has no More.
   if (target.kind === "email") {
-    return html`${more} ${renderSeparator()} ${renderAddButton(api)}`;
+    return renderAddButton(api);
   }
   const own = actionsOf(target, api);
   return html`

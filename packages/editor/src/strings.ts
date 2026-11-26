@@ -186,6 +186,69 @@ export const STRINGS = {
   "add.nothing": "Nothing called “{query}”",
   "add.try": "Try Text, Image or Button.",
 
+  // The Style Mode: the email's Email style, beside the Canvas.
+  "style.title": "Email style",
+  "style.lead": "Every Block uses these unless it sets its own.",
+  "style.colors": "Colors",
+  "style.page": "Page",
+  "style.email": "Email",
+  "style.text": "Text",
+  "style.buttons": "Buttons",
+  "style.links": "Links",
+  "style.type": "Text",
+  "style.headings": "Headings",
+  "style.body": "Body",
+  "style.heading1": "Heading 1",
+  "style.heading2": "Heading 2",
+  "style.heading3": "Heading 3",
+  "style.bodyText": "Body text",
+  "style.corners": "Button corners",
+  "style.square": "Square",
+  "style.rounded": "Rounded",
+  "style.pill": "Pill",
+  /** Beside a setting that isn't set, before the built-in value. */
+  "style.default": "Default",
+  "style.sameAsPage": "Same as page",
+  "style.sameAsText": "Same as text",
+  "style.sameAsBody": "Same as body",
+  /** Under "Same as body" in the Headings font list. */
+  "style.bodyFont": "{font}, the body font",
+  "style.useDefault": "Use the default ({value})",
+  "style.pixels": "{value}px",
+  /** A size's field: "Heading 1 size". */
+  "style.size": "{label} size",
+  "style.defaultIs": "Default is {value}",
+  /** A size's field, for screen readers: "Heading 1 size (px)". */
+  "style.sizeField": "{size} ({unit})",
+  "style.hex": "Hex",
+  "style.inThisEmail": "In this email",
+  /** The square that picks how saturated and bright a color is. */
+  "style.shade": "{label} shade",
+  "style.shadeValue": "Saturation {saturation}%, brightness {brightness}%",
+  "style.hue": "Hue",
+  "style.searchFonts": "Search fonts",
+  "style.systemFonts": "System fonts",
+  "style.noFont": "No font called “{query}”",
+  /** On the email, over the first Block a hovered setting changes: "Heading 1 · 32px". */
+  "style.reaches": "{label} · {value}",
+  /** On the email, over a Block that keeps its own value as a setting changes. */
+  "style.keepsOwn": "Keeps its own · {value}",
+  // A selected Block's own values, each with a way to match the rest or share it.
+  "style.own.makeIt": "Make it {shared}",
+  "style.own.headingSize": "This Heading is {own}",
+  "style.own.headingSizeWhy": "Every other Heading {level} is {shared}.",
+  "style.own.headingSizeShare": "Make every Heading {level} {own}",
+  "style.own.headingColor": "This Heading’s text is {own}",
+  "style.own.textSize": "This Text is {own}",
+  "style.own.textSizeWhy": "Other body text is {shared}.",
+  "style.own.textSizeShare": "Make all body text {own}",
+  "style.own.textColor": "This Text’s color is {own}",
+  "style.own.colorWhy": "Other text is {shared}.",
+  "style.own.colorShare": "Make all text {own}",
+  "style.own.button": "This Button is {own}",
+  "style.own.buttonWhy": "Other Buttons are {shared}.",
+  "style.own.buttonShare": "Make every Button {own}",
+
   // The Rows list, beside the Canvas, and the email with no Rows.
   "rows.list": "Rows",
   /** A Row in the list: "Row 3 of 6: Heading, Text, Button". */

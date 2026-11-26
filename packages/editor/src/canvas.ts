@@ -1,12 +1,16 @@
 import { ROW_LAYOUTS } from "@mailquilt/core";
-import type { Block, Column, Row } from "@mailquilt/core";
-import { blockStyles, rowStyles } from "@mailquilt/core/internal";
+import type { Block, Column, EmailStyle, Row } from "@mailquilt/core";
+import { rowStyles } from "@mailquilt/core/internal";
 import type { RowProps } from "@mailquilt/core/internal";
 import { css, html, nothing } from "lit";
 import { repeat } from "lit/directives/repeat.js";
 
 import { renderAddPicker, renderInsertPoint } from "./adding.js";
-import { hasRichText, renderBlockContent } from "./block-types.js";
+import {
+  hasRichText,
+  renderBlockContent,
+  textBlockLook,
+} from "./block-types.js";
 import { place } from "./editor-places.js";
 import { renderFormatBar } from "./format-bar.js";
 import { ICONS } from "./icons.js";
@@ -14,6 +18,7 @@ import { renderMergeTagPicker } from "./merge-tag-picker.js";
 import type { PanelApi } from "./panel-api.js";
 import { blocksIn, columnPlace, placeIn } from "./positions.js";
 import { renderThumbnail } from "./selection-bar.js";
+import type { StyleMark } from "./style-panel.js";
 import { styleProperties } from "./style-properties.js";
 import { blockTypeName } from "./text.js";
 import type { TextValues } from "./text.js";
@@ -29,6 +34,54 @@ export const canvasStyles = css`
 
   .row {
     display: flex;
+  }
+
+  /* In Style, the email is only looked at, so Edit's tools aren't on it. */
+  .styling .drag-handle,
+  .styling .insert-point,
+  .styling .row-tag {
+    display: none;
+  }
+
+  /* In Style: what the setting being looked at changes, and what keeps its own. */
+  [data-style-mark="changes"] {
+    outline: 1px dashed var(--mq-color-accent);
+    outline-offset: -1px;
+  }
+
+  /* A selected Block that's marked says what the setting does, in its place. */
+  .styling .block[data-style-tagged]::after {
+    display: none;
+  }
+
+  [data-style-mark="keeps"] {
+    outline: 1px dotted var(--mq-color-text-muted);
+    outline-offset: -1px;
+  }
+
+  .style-tag {
+    border-radius: var(--mq-radius-small);
+    bottom: calc(100% + 2px);
+    font:
+      500 var(--_mq-font-size-tag) / 20px var(--mq-font-family),
+      sans-serif;
+    inset-inline-start: 0;
+    padding: 0 6px;
+    pointer-events: none;
+    position: absolute;
+    white-space: nowrap;
+    z-index: var(--_mq-layer-tags);
+  }
+
+  .style-tag.changes {
+    background: var(--mq-color-text);
+    color: var(--mq-color-surface);
+  }
+
+  .style-tag.keeps {
+    background: var(--mq-color-surface);
+    box-shadow: 0 0 0 1px var(--mq-color-border-strong);
+    color: var(--mq-color-text-muted);
   }
 
   .row-frame:hover > .row {
@@ -464,6 +517,8 @@ export interface CanvasState {
   socialIconsUrl: string | undefined;
   /** A Block's text, once its editor has been made. */
   textOf: (blockId: string) => HTMLElement | undefined;
+  /** In Style, what the setting being looked at changes, or leaves its own. */
+  styleMarks: ReadonlyMap<string, StyleMark>;
 }
 
 export interface CanvasEvents {
@@ -517,6 +572,17 @@ export const renderNarrowNotice = ({ openPreview, text }: PanelApi) => html`
   </div>
 `;
 
+/** Over what a setting in Style changes, or keeps its own value: what and how. */
+const renderStyleTag = (mark: StyleMark | undefined) =>
+  mark?.tag
+    ? html`<span
+        aria-hidden="true"
+        class=${`ui style-tag ${mark.kind}`}
+        data-testid="style-tag"
+        >${mark.tag}</span
+      >`
+    : nothing;
+
 const renderBlock = (
   block: Block,
   /** Where the Block is, as `blockPlace` gives it. */
@@ -528,6 +594,8 @@ const renderBlock = (
   events: CanvasEvents
 ) => {
   const { text } = api;
+  const style = api.email.settings.style ?? {};
+  const mark = state.styleMarks.get(block.id);
   const selected = block.id === api.selectedBlock?.block.id;
   const rich = hasRichText(block);
   const type = blockTypeName(block.type, text);
@@ -540,19 +608,22 @@ const renderBlock = (
       data-block-id=${block.id}
       data-label=${type}
       data-place=${place("block")}
+      data-style-mark=${mark?.kind ?? nothing}
+      ?data-style-tagged=${mark?.tag !== undefined}
       role="group"
-      style=${styleProperties(rich ? blockStyles(block) : {})}
+      style=${styleProperties(rich ? textBlockLook(block, style) : {})}
       tabindex=${isTabStop ? "0" : "-1"}
       @focus=${() => events.onBlockFocus(block.id)}
       @focusout=${events.onBlockFocusout}
     >
-      ${renderDragHandle(text("canvas.dragBlock"))}
+      ${renderDragHandle(text("canvas.dragBlock"))} ${renderStyleTag(mark)}
       ${rich ? state.textOf(block.id) : nothing}
       ${renderBlockContent(block, {
         failedImages: state.failedImages,
         lang: state.emailLang,
         onImageError: events.onImageError,
         socialIconsUrl: state.socialIconsUrl,
+        style,
         text,
         uploading: state.isUploading(block.id),
       })}
@@ -643,10 +714,18 @@ const renderColumn = (
   </div>
 `;
 
-/** As in the export, and for what's dragged out of it, which has no Row behind it. */
-const rowLook = (row: Row) => {
+/**
+ * As in the export, where a Row without a color of its own takes the Email
+ * style's, and for what's dragged out of it, which has no Row behind it.
+ */
+export const rowLook = (row: Row, { emailBackgroundColor }: EmailStyle) => {
   const styles = rowStyles(row);
-  return { ...styles, "--_mq-row-background": styles["background-color"] };
+  const background = styles["background-color"] ?? emailBackgroundColor;
+  return {
+    ...styles,
+    "--_mq-row-background": background,
+    "background-color": background,
+  };
 };
 
 /**
@@ -734,10 +813,12 @@ export const renderRows = (
               : nothing
           }
         </div>
+        ${renderStyleTag(state.styleMarks.get(row.id))}
         <div
           class="row"
+          data-style-mark=${state.styleMarks.get(row.id)?.kind ?? nothing}
           data-testid="row"
-          style=${styleProperties(rowLook(row))}
+          style=${styleProperties(rowLook(row, api.email.settings.style ?? {}))}
         >
           ${repeat(
             row.columns,

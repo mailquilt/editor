@@ -11,7 +11,7 @@ Anything a person can do in the editor by dragging, they can also do from the ke
 
 The top bar is above the email in every Mode. It holds Undo and Redo, the three Modes, Edit, Style and Check, and the Desktop and Phone views. In the [Shell](./shell), it also holds the email's name, whether it's saved, More and Export.
 
-The Modes are one stop for <kbd>Tab</kbd>, at the Mode you're in. The arrow keys go to the next or previous Mode and open it, and <kbd>Home</kbd> and <kbd>End</kbd> the first or last. With nothing in the email, Style and Check are off. The arrow keys still reach them, and their tooltip says why. Style and Check are still being built and show nothing yet, so use Preview in Edit to see the email. Check will show the email at desktop and phone width together, so it has no Desktop and Phone buttons.
+The Modes are one stop for <kbd>Tab</kbd>, at the Mode you're in. The arrow keys go to the next or previous Mode and open it, and <kbd>Home</kbd> and <kbd>End</kbd> the first or last. With nothing in the email, Style and Check are off. The arrow keys still reach them, and their tooltip says why. Check is still being built and shows nothing yet, so use Preview in Edit to see the email. Check will show the email at desktop and phone width together, so it has no Desktop and Phone buttons.
 
 When Undo or Redo has nothing left to do, focus goes to the other one, or if neither works, to the toolbar below the email, or in Style and Check to the Mode you're in.
 
@@ -155,6 +155,31 @@ In the Add panel or the Rows list's +, press <kbd>Enter</kbd> on a layout to add
 A settings field, such as a Button's link or a Row's padding, changes the email when you press <kbd>Enter</kbd> or leave the field. Until then, <kbd>Escape</kbd> takes back what you typed and shows the email's value again. A value the editor refuses stays in the field with the reason, until you fix it or press <kbd>Escape</kbd>. With nothing typed, <kbd>Escape</kbd> in a popover's field or More's closes it, and in a field in the Selection bar it's left to your page. A choice of a few, such as an alignment, is a row of buttons in the Selection bar, and pressing one sets it.
 
 A Social Block's links are a list in its Links popover, each with its URL field and a toolbar of Move up, Move down and Remove. The toolbar comes before the URL, and like the Selection bar it's one stop for <kbd>Tab</kbd>: the arrow keys go across its buttons, and <kbd>Home</kbd> and <kbd>End</kbd> go to its first and last. After a move, focus stays on the button that moved the link. After a removal, it goes to the Remove button of the next link, or of the one before if it was the last, or to the list of networks if none is left. To add a link, choose a network that isn't in the list yet and press Add, and focus goes to the new link's URL. What's typed in a URL stays with its link when links move or are removed.
+
+## Style
+
+Style shows the email beside its Email style. The email there is only to look at: nothing in it takes focus or is typed in, and it isn't read out, as Edit has it to read and change. A press on a Block selects it, and the panel then says each value the Block keeps as its own, with a button to make it match the rest and one to give every Block like it the same value.
+
+Each setting in the panel is a button that says its value, or "Default" and what that is. Focus on one, or the pointer over it, marks on the email what it changes, and what keeps a value of its own. <kbd>Enter</kbd> opens what picks its value, with focus in it and its text selected to type over, and <kbd>Escape</kbd> closes that and goes back to the setting. <kbd>Tab</kbd> from its last control closes it and goes on to the next setting, and <kbd>Shift</kbd> + <kbd>Tab</kbd> from its first goes back to its own. A press outside it closes it too. Button corners are a group of three choices, which the arrow keys go along and choose.
+
+A color opens with focus in its Hex field, where a color typed is set with <kbd>Enter</kbd>. Before it, the shade and the hue are picked with the pointer or the keys, and the email changes as they move.
+
+| Key | What it does |
+| --- | --- |
+| <kbd>Left</kbd> <kbd>Right</kbd> | In the shade, makes the color less or more saturated. |
+| <kbd>Up</kbd> <kbd>Down</kbd> | In the shade, makes the color brighter or darker. |
+| <kbd>Shift</kbd> + <kbd>Left</kbd> <kbd>Right</kbd> <kbd>Up</kbd> <kbd>Down</kbd> | In the shade, the same, ten times as far. |
+
+The keys pressed in the shade at one time are one step for undo, as is one drag across it.
+
+A font opens with focus in its search, which shows only the fonts whose name has what you typed.
+
+| Key | What it does |
+| --- | --- |
+| <kbd>Up</kbd> <kbd>Down</kbd> | In a font's search, goes along the fonts that are shown. |
+| <kbd>Enter</kbd> | In a font's search, picks the font the arrow keys are on, closes the list and goes back to the setting. |
+
+A size opens with focus in its field. Each setting changed, and each value cleared with "Use the default", is one step for undo. <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>Z</kbd> undoes the email from anywhere in the panel.
 
 ## Cancelling a drag
 

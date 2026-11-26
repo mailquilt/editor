@@ -1,12 +1,18 @@
 import { ROW_LAYOUTS } from "@mailquilt/core";
-import type { Block, Row } from "@mailquilt/core";
-import { blockStyles, EMAIL_LOOK, rowStyles } from "@mailquilt/core/internal";
+import type { Block, EmailStyle, Row } from "@mailquilt/core";
+import { EMAIL_LOOK } from "@mailquilt/core/internal";
 import type { RowProps } from "@mailquilt/core/internal";
 import { css, html, nothing, unsafeCSS } from "lit";
 import { repeat } from "lit/directives/repeat.js";
 import { DOMSerializer } from "prosemirror-model";
 
-import { BLOCK_VIEWS, hasRichText, renderBlockContent } from "./block-types.js";
+import {
+  BLOCK_VIEWS,
+  hasRichText,
+  renderBlockContent,
+  textBlockLook,
+} from "./block-types.js";
+import { rowLook } from "./canvas.js";
 import { closestPlace, findPlaces, place } from "./editor-places.js";
 import type { EditorFocus } from "./focus.js";
 import { ICONS } from "./icons.js";
@@ -650,9 +656,13 @@ const drawText = (block: Extract<Block, { type: "heading" | "text" }>) => {
   return element;
 };
 
-const renderPictureBlock = (block: Block, context: PictureContext) =>
+const renderPictureBlock = (
+  block: Block,
+  context: PictureContext,
+  style: EmailStyle
+) =>
   hasRichText(block)
-    ? html`<div style=${styleProperties(blockStyles(block))}>
+    ? html`<div style=${styleProperties(textBlockLook(block, style))}>
         ${context.textPicture(block)}
       </div>`
     : html`<div>
@@ -663,45 +673,49 @@ const renderPictureBlock = (block: Block, context: PictureContext) =>
             // The Canvas hears an image that fails, as it shows the same one.
           },
           socialIconsUrl: context.socialIconsUrl,
+          style,
           text: context.api.text,
           uploading: false,
         })}
       </div>`;
 
 /** A Row as the Canvas draws it, but nothing in it to press or reach. */
-const renderPicture = (row: Row, context: PictureContext) => html`
-  <span class="rows-card">
-    <span
-      aria-hidden="true"
-      class="rows-picture"
-      data-place=${place("rowPicture")}
-      inert
-    >
-      <span class="picture-row" style=${styleProperties(rowStyles(row))}>
-        ${row.columns.map(
-          ({ blocks, width }) => html`
-            <span
-              class=${blocks.length === 0 ? "picture-column empty" : "picture-column"}
-              style=${styleProperties({ width: `${width}%` })}
-            >
-              ${blocks.map((block) => renderPictureBlock(block, context))}
-            </span>
-          `
-        )}
+const renderPicture = (row: Row, context: PictureContext) => {
+  const style = context.api.email.settings.style ?? {};
+  return html`
+    <span class="rows-card">
+      <span
+        aria-hidden="true"
+        class="rows-picture"
+        data-place=${place("rowPicture")}
+        inert
+      >
+        <span class="picture-row" style=${styleProperties(rowLook(row, style))}>
+          ${row.columns.map(
+            ({ blocks, width }) => html`
+              <span
+                class=${blocks.length === 0 ? "picture-column empty" : "picture-column"}
+                style=${styleProperties({ width: `${width}%` })}
+              >
+                ${blocks.map((block) => renderPictureBlock(block, context, style))}
+              </span>
+            `
+          )}
+        </span>
       </span>
+      ${
+        (row.props as RowProps).hideOnPhone === true
+          ? html`<span
+              aria-hidden="true"
+              class="rows-badge"
+              data-tooltip=${context.api.text("rows.desktopOnly")}
+              >${ICONS.phoneOff}</span
+            >`
+          : nothing
+      }
     </span>
-    ${
-      (row.props as RowProps).hideOnPhone === true
-        ? html`<span
-            aria-hidden="true"
-            class="rows-badge"
-            data-tooltip=${context.api.text("rows.desktopOnly")}
-            >${ICONS.phoneOff}</span
-          >`
-        : nothing
-    }
-  </span>
-`;
+  `;
+};
 
 /** "Row 3 of 6: Heading, Text, Button", and that it's desktop only. */
 const rowName = (row: Row, index: number, count: number, api: PanelApi) => {
