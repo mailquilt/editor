@@ -65,7 +65,7 @@ More opens a panel beside the email where there's room for it, and over the emai
 
 ## Rows
 
-A Row is selected by its tag, which shows above its end while the pointer is over the Row, or from the keyboard by the Selection bar's chip, whose menu names the Block's Row. A Row whose Columns are all empty has no Block to start from, so focus on one of its Columns' buttons selects it. With a Row selected, the Selection bar has its layout, its padding and its Move Row, Duplicate Row and Delete Row buttons.
+A Row is selected by its tag, which shows above its end while the pointer is over the Row, from the Rows list beside the email, or from the keyboard by the Selection bar's chip, whose menu names the Block's Row. A Row whose Columns are all empty has no Block to start from, so focus on one of its Columns' buttons selects it. With a Row selected, the Selection bar has its layout, its padding and its Move Row, Duplicate Row and Delete Row buttons.
 
 While a Row is selected, no Block is a stop for <kbd>Tab</kbd>, so <kbd>Tab</kbd> goes on past the buttons of the empty Columns after it to the Selection bar.
 
@@ -73,6 +73,24 @@ While a Row is selected, no Block is a stop for <kbd>Tab</kbd>, so <kbd>Tab</kbd
 | --- | --- |
 | <kbd>Alt</kbd> + <kbd>Up</kbd> <kbd>Down</kbd> | In the Selection bar, moves the selected Row up or down with its Blocks, as one step for undo. |
 | <kbd>Escape</kbd> | In the Selection bar, unselects the Row and selects its first Block, with focus on it. If the Row has no Blocks, nothing is selected, and focus stays in the bar, which shows the email's settings. As with a Block, it first closes the tooltip of the control with focus. |
+
+### The Rows list
+
+The Rows list, before the email, shows each Row as a small picture, or collapsed, as its number. Its button at the top collapses it or expands it, and it stays that way while the email is open. Each Row is named with its Position and what it holds, such as "Row 3 of 6: Heading, Text, Button". The Row that's selected, or that holds the selected Block, is marked as the current one.
+
+The list's Rows are one stop for <kbd>Tab</kbd>: the current Row, or else the first. Focus on a Row doesn't select it, and its ring sits further out than the current Row's, so the two are told apart. While one has focus, its tooltip says its Position and the keys that move it. A Row that isn't on phones has a crossed-out phone on its picture, and "Desktop only" in its name.
+
+| Key | What it does |
+| --- | --- |
+| <kbd>Up</kbd> <kbd>Down</kbd> | Goes to the Row before or after. <kbd>Home</kbd> and <kbd>End</kbd> go to the first and last. |
+| <kbd>Enter</kbd> | Selects the Row, so the Selection bar shows its settings, and scrolls the email to it. Focus stays on the Row in the list. |
+| <kbd>Alt</kbd> + <kbd>Up</kbd> <kbd>Down</kbd> | Moves the Row with focus up or down with its Blocks, as one step for undo, and selects it, so the Selection bar shows what moved. Focus stays on it. |
+
+With the pointer, a click selects a Row the same way, and dragging a Row's picture moves it. A Row dragged on the email can be dropped on the list too.
+
+The list's + opens the layouts of an empty Row, with focus on the first. The arrow keys go along them, and <kbd>Enter</kbd> adds an empty Row with that layout after the current Row, or at the end with nothing selected, as the layouts say under them. <kbd>Escape</kbd> closes them and goes back to the +.
+
+An email with no Rows says "Start with a Row" on the email, with the same layouts, one stop for <kbd>Tab</kbd>, and <kbd>/</kbd> there opens the Add panel.
 
 ## Duplicating and deleting
 
@@ -108,7 +126,7 @@ In a Block's text or a settings field, these keys copy, cut and paste text as us
 
 | Key | What it does |
 | --- | --- |
-| <kbd>/</kbd> | On a Block, in the Selection bar outside its fields, on an empty Column's button, or in the toolbar below the email, opens the Add panel with focus in its search. In a Block's text or a field, it types a slash. On a keyboard where <kbd>/</kbd> needs Shift, such as a German one, <kbd>Shift</kbd> + <kbd>/</kbd> works too. |
+| <kbd>/</kbd> | On a Block, in the Selection bar outside its fields, on a Row in the Rows list, on an empty Column's button, or in the toolbar below the email, opens the Add panel with focus in its search. In a Block's text or a field, it types a slash. On a keyboard where <kbd>/</kbd> needs Shift, such as a German one, <kbd>Shift</kbd> + <kbd>/</kbd> works too. |
 
 The Add panel has every type of Block, then the layouts of an empty Row. Type in its search to show only the ones whose name has what you typed. <kbd>Down</kbd> goes from the search to the first Block, and <kbd>Enter</kbd> adds the first one that's shown. <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>Z</kbd> in the search undoes the email, so you can take back what you just added. The Blocks are one stop for <kbd>Tab</kbd>, and the Rows another: the arrow keys go along them, and <kbd>Home</kbd> and <kbd>End</kbd> go to the first and last.
 
@@ -130,7 +148,7 @@ With a mouse, rest the pointer on the edge between two Blocks, and a line with a
 
 ## Adding a Row
 
-In the Add panel, press <kbd>Enter</kbd> on a layout to add an empty Row with it after the selected Row, or after the Row of the selected Block. With nothing selected, it goes at the end of the email. The new Row is selected, with focus on the Selection bar's chip.
+In the Add panel or the Rows list's +, press <kbd>Enter</kbd> on a layout to add an empty Row with it after the selected Row, or after the Row of the selected Block. With nothing selected, it goes at the end of the email. The new Row is selected, with focus on the Selection bar's chip.
 
 ## Settings
 

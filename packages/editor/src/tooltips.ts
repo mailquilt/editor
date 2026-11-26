@@ -44,6 +44,8 @@ interface TooltipsHost {
  * 2.2 SC 1.4.13: it opens on hover and on keyboard focus, stays while the
  * pointer is over it, and Escape closes it without moving focus or the pointer.
  * It only repeats a name the control already has, so nothing points to it.
+ * A control with `data-tooltip-on="focus"` shows its tooltip only for keyboard
+ * focus, and one with `data-tooltip-side="end"` shows it after itself.
  *
  * It takes no pointer events, so it can never cover a control that's pressed.
  * Whether the pointer is over it comes from where the pointer is instead.
@@ -71,6 +73,19 @@ export const createTooltips = ({ root, tooltip }: TooltipsHost): Tooltips => {
   const moveBeside = (trigger: HTMLElement) => {
     const box = trigger.getBoundingClientRect();
     const { height, width } = tooltip.getBoundingClientRect();
+    // After its control, where that's asked for and there's room, as in a
+    // list, where above it would cover the item before.
+    const after = box.right + OFFSET_PX;
+    if (
+      trigger.dataset.tooltipSide === "end" &&
+      after + width <= document.documentElement.clientWidth - EDGE_PX
+    ) {
+      const middle = box.top + box.height / 2 - height / 2;
+      const lowest = document.documentElement.clientHeight - height - EDGE_PX;
+      tooltip.style.left = `${after}px`;
+      tooltip.style.top = `${Math.max(EDGE_PX, Math.min(middle, lowest))}px`;
+      return;
+    }
     const above = box.top - OFFSET_PX - height;
     const top = above >= EDGE_PX ? above : box.bottom + OFFSET_PX;
     const left = Math.min(
@@ -118,8 +133,14 @@ export const createTooltips = ({ root, tooltip }: TooltipsHost): Tooltips => {
       return;
     }
     const trigger = triggerOf(event.target);
-    // Pressed, as in a drag, nothing opens.
-    if (trigger && trigger !== hovered && event.buttons === 0) {
+    // Pressed, as in a drag, nothing opens, and one that's only for keyboard
+    // focus doesn't open on hover.
+    if (
+      trigger &&
+      trigger !== hovered &&
+      event.buttons === 0 &&
+      trigger.dataset.tooltipOn !== "focus"
+    ) {
       dismissed = undefined;
       hovered = trigger;
       update();

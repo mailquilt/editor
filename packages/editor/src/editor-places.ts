@@ -97,6 +97,24 @@ const PLACES = {
   rowBar: { press: "keepsFocus" },
   /** The tag that selects a Row, and drags it. */
   rowTag: { press: "grabs" },
+  /**
+   * The Rows list beside the Canvas. A press keeps focus where it is, until
+   * what it does moves it, as a press on a Row there may start a drag.
+   */
+  rowsList: { press: "keepsFocus" },
+  /**
+   * The Rows list's Rows, each a button that selects its Row, by its
+   * `data-row-id`, and drags it. One stop for Tab, with arrow keys between them.
+   */
+  rowsItems: {},
+  /** The layouts from the Rows list's +, which add an empty Row. */
+  rowsAdd: {},
+  /** The layouts on an email with no Rows, which add its first. */
+  startLayouts: {},
+  /** The line in the Rows list that shows where a dragged Row would land. */
+  rowsDropIndicator: {},
+  /** A Row's picture in the Rows list, which is sized as it's drawn. */
+  rowPicture: {},
   /** The Selection bar with nothing selected, which has the email's settings. */
   emailBar: { press: "keepsFocus" },
   /** Settings fields, in a popover from the Selection bar or its More panel. */

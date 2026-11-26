@@ -33,14 +33,28 @@ const midpointY = (element: Element) => {
 
 interface Grab {
   element: HTMLElement;
+  /** What the copy that follows the pointer is of, if not `element`. */
+  ghostOf?: HTMLElement;
   source: DragSource;
 }
 
 /**
- * What a press on `target` picks up: a Block by its handle, a Row by its tag,
- * or a tile in the Add panel.
+ * What a press on `target` picks up: a Block by its handle, a Row by its tag
+ * or its picture in the Rows list, or a tile in the Add panel.
  */
 const grabAt = (target: Element): Grab | undefined => {
+  const item =
+    closestPlace(target, "rowsItems") &&
+    target.closest<HTMLElement>("[data-row-id]");
+  // Collapsed, the list has no pictures, and its numbers only select.
+  const picture = item && findPlace(item, "rowPicture")?.parentElement;
+  if (item && picture) {
+    return {
+      element: item,
+      ghostOf: picture,
+      source: { rowId: item.dataset.rowId as string },
+    };
+  }
   const tag = closestPlace(target, "rowTag");
   const row = tag && closestPlace(tag, "row");
   if (row) {
@@ -143,12 +157,51 @@ interface DraggingHost {
 /** What's under a drop, and the line that shows where it lands, if any. */
 interface Shown {
   line?: { left: number; width: number; y: number };
+  /** The line is in the Rows list, rather than on the email. */
+  inList?: boolean;
   /** The Column it lands in, or the Block that takes it. */
   over?: HTMLElement;
 }
 
 /**
- * Drags Blocks, Rows and the Add panel's tiles with pointer events, and takes files
+ * Whether `element` is the Row being moved, on the email or in the Rows list,
+ * which a move's index doesn't count, wherever the drag started.
+ */
+const isMoved = (element: HTMLElement, source: DragSource) =>
+  "rowId" in source && element.dataset.rowId === source.rowId;
+
+/** Where a Row dropped on the Rows list would land, among its Rows. */
+const listLanding = (
+  list: HTMLElement,
+  pointer: Point,
+  source: DragSource
+): Shown & { position: DropPosition } => {
+  const items = [...list.querySelectorAll<HTMLElement>("[data-row-id]")].filter(
+    (each) => !isMoved(each, source)
+  );
+  const index = items.filter((each) => midpointY(each) < pointer.y).length;
+  const next = items[index];
+  const previous = items[index - 1];
+  const box = list.getBoundingClientRect();
+  // Halfway across the gap between two Rows.
+  const y =
+    next && previous
+      ? (previous.getBoundingClientRect().bottom +
+          next.getBoundingClientRect().top) /
+        2
+      : (next?.getBoundingClientRect().top ??
+        previous?.getBoundingClientRect().bottom ??
+        box.top);
+  return {
+    inList: true,
+    line: { left: box.left, width: box.width, y },
+    position: { rowIndex: index },
+  };
+};
+
+/**
+ * Drags Blocks, Rows, from the Canvas or the Rows list, and the Add panel's
+ * tiles with pointer events, and takes files
  * dragged in from outside. The drop position comes from the pointer when the
  * drag ends, so nothing moves until then, and the indicator shows the same
  * answer on the way there. The keyboard has its own way to move each one,
@@ -168,9 +221,10 @@ export const createDragging = ({
 
   /**
    * Where a drop of `source` would land now, and the line that shows it. Blocks
-   * are counted without the `dragged` one, as a move's index is. There's no
-   * landing far from the editor, which is how to abandon a drag, or on the Add
-   * panel or the picker, so that letting go of a tile that barely moved adds
+   * are counted without the `dragged` one, as a move's index is. A Row lands
+   * among the Rows list's Rows over it. There's no landing far from the
+   * editor, which is how to abandon a drag, or elsewhere on the Rows list, or
+   * on the Add panel or the picker, so that letting go of a tile that barely moved adds
    * nothing, or on the Selection bar, its popovers, menu and More panel or the floating
    * toolbar, which are over the email or beside it. Nor is there outside a
    * scroll container the editor is in, such as the Shell's, where what's under
@@ -183,7 +237,21 @@ export const createDragging = ({
     dragged?: Element
   ): (Shown & { position: DropPosition }) | undefined => {
     const email = findPlace(root, "email");
+    const list = findPlace(root, "rowsItems");
+    // A Row over the Rows list's Rows lands among them there, and nothing
+    // else lands on the list. Its Rows scroll inside it, under its head.
+    if (
+      list?.parentElement &&
+      contains(list.parentElement, pointer) &&
+      contains(list, pointer) &&
+      autoScroll.shows(pointer)
+    ) {
+      return isRowSource(source)
+        ? listLanding(list, pointer, source)
+        : undefined;
+    }
     const controls = [
+      ...findPlaces(root, "rowsList"),
       ...findPlaces(root, "addPanel"),
       // The picker between Blocks, over the email. One in an empty Column is
       // that Column, which still takes a drop.
@@ -212,7 +280,7 @@ export const createDragging = ({
       : findPlaces(email, "column").find((each) => contains(each, pointer));
     const parent = column ?? email;
     const items = findPlaces(parent, column ? "block" : "row").filter(
-      (each) => each !== dragged
+      (each) => each !== dragged && !isMoved(each, source)
     );
     const index = items.filter((each) => midpointY(each) < pointer.y).length;
     const next = items[index];
@@ -233,8 +301,25 @@ export const createDragging = ({
     };
   };
 
+  /** The line in the Rows list, which the list's own styles place across it. */
+  const showListIndicator = (target?: Shown) => {
+    const list = findPlace(root, "rowsItems");
+    const indicator = list && findPlace(list, "rowsDropIndicator");
+    if (!(list && indicator)) {
+      return;
+    }
+    const line = target?.inList ? target.line : undefined;
+    indicator.hidden = !line;
+    if (line) {
+      const origin = list.getBoundingClientRect();
+      const scaleY = scaleOf(origin.height, list.offsetHeight);
+      indicator.style.top = `${(line.y - origin.top) / scaleY}px`;
+    }
+  };
+
   /** The line where a drop would land, and the Column or Block it lands in. */
   const showIndicator = (target?: Shown) => {
+    showListIndicator(target);
     const email = findPlace(root, "email");
     const indicator = findPlace(root, "dropIndicator");
     if (!(email && indicator)) {
@@ -251,7 +336,7 @@ export const createDragging = ({
     if (landsIn) {
       landsIn.dataset.dropTarget = "";
     }
-    const line = target?.line;
+    const line = target?.inList ? undefined : target?.line;
     indicator.hidden = !line;
     if (line) {
       const origin = email.getBoundingClientRect();
@@ -330,8 +415,14 @@ export const createDragging = ({
       return;
     }
     drag = {
-      autoScroll: createAutoScroll(root.host),
-      ghost: createDragGhost(grab.element),
+      // A Row's drag scrolls the Rows list too, to land in a long one.
+      autoScroll: createAutoScroll(
+        root.host,
+        isRowSource(grab.source)
+          ? (findPlace(root, "rowsItems")?.parentElement ?? undefined)
+          : undefined
+      ),
+      ghost: createDragGhost(grab.ghostOf ?? grab.element),
       pointer: { x: event.clientX, y: event.clientY },
       restoreCursor: showGrabbingCursor(root),
     };

@@ -76,6 +76,24 @@ F.push({ id: "l03-add-row", html: () => app({ left: rail(4).replace('<span class
 F.push({ id: "l04-add-row-no-saved", html: () => app({ left: rail(4).replace('<span class="ib">' + ic("plus") + "</span>", '<span class="ib on">' + ic("plus") + "</span>") + addRowPop(false), ctx: ctxRow, stage: "margin-top:-330px", email: email({ row: 4 }) }).replace('<div class="app rail">', '<div class="app rail" style="position:relative">') });
 F.push({ id: "l05-empty-email", html: () => app({ left: `<aside class="rail-p"><div class="rail-h"><b>Rows<span>0</span></b><span class="ib">${ic("plus")}</span></div><div class="emptyrail"><b>No Rows yet</b>Add one here or on the email.</div></aside>`, ctx: ctxNone.replace(/<span class="hint">[\s\S]*?<span class="vr"><\/span>/, ""), top: topBar({ mode: "edit", fresh: true }), email: `<div class="em blank"><div class="slotrow"><b>Start with a Row</b>Pick how many Columns it has. You can change it after.<div class="lts">${LAYOUTS.map((w) => `<span>${w.map((x) => `<b style="flex:${x}"></b>`).join("")}</span>`).join("")}</div></div></div>` }) });
 
+// Picked for #317 on 2026-11-26, as states the frames above leave out: where the
+// expanded list collapses, the list at 768, and the collapsed list's tooltip and +.
+const tipAt = (style, words, keys = "") => `<div class="tip" style="position:absolute;${style}">${words}${keys ? `<kbd>${keys}</kbd>` : ""}</div>`;
+const railWith = (sel, head) => rail(sel).replace(/<div class="rail-h">[\s\S]*?<\/div>/, `<div class="rail-h">${head}</div>`);
+
+// The Rows icon at the header's start, where the collapsed list has it, so one button in one place opens and collapses it.
+const headA = `<span style="display:flex;align-items:center;gap:6px;margin-left:-8px"><span class="ib on">${ic("rows")}</span><b>Rows<span>6</span></b></span><span class="ib">${ic("plus")}</span>`;
+F.push({ id: "l06-collapse-at-start", html: () => app({ left: railWith(4, headA), ctx: ctxRow, stage: "margin-top:-330px", email: email({ row: 4 }), over: "" }).replace('<div class="app rail">', '<div class="app rail" style="position:relative">').replace(/<\/div>$/, tipAt("left:8px;top:96px", "Collapse the Rows list") + "</div>") });
+
+// Collapsed, at 1024 (r1024), hovering the button that expands it.
+F.push({ id: "l08-expand-tooltip", w: 1024, h: 768, html: () => `<div class="app collapsed" style="position:relative">${topBar({ mode: "edit" })}${collapsedRail(3).replace('<span class="ib">', '<span class="ib on">')}<main class="cv">${ctxButton}<div class="stage">${email({ sel: "btn" })}</div></main>${tipAt("left:8px;top:96px", "Expand the Rows list")}</div>` });
+
+// + in the collapsed list: the same popover, beside it.
+F.push({ id: "l09-add-from-collapsed", w: 1024, h: 768, html: () => `<div class="app collapsed" style="position:relative">${topBar({ mode: "edit" })}${collapsedRail(3).replace(/<span class="ib" style="margin-top:4px">/, '<span class="ib on" style="margin-top:4px">')}<main class="cv">${ctxRow.replace(">Row 4<", ">Row 3<")}<div class="stage" style="margin-top:-280px">${email({ row: 3 })}</div></main>${addRowPop(false).replace('class="pop addrow"', 'class="pop addrow" style="left:50px;top:300px"').replace("Adds below Row 4", "Adds below Row 3")}</div>` });
+
+// At 768: the collapsed list, as at 1024, so the control never moves.
+F.push({ id: "l07-collapsed-768", w: 768, h: 1024, html: () => `<div class="app collapsed">${topBar({ mode: "edit", compact: true })}${collapsedRail(3)}<main class="cv">${ctxButtonCompact}<div class="stage">${email({ sel: "btn" })}</div></main></div>` });
+
 // ---------- 3. Selection bar and More ----------
 group("b0", "Selection bar: More", "Settings that don't fit the bar, the fuller settings and the less common actions, one press away. Picked: a docked drawer where the email fits beside it (b02, b04), a floating panel below that (b05), a sheet on phones. The other frames show why.");
 const calloutText = (s, m) => email(s, m).replace('style="margin:0 -12px 22px; padding:4px 12px"', 'style="margin:0 0 22px; padding:16px 20px; background:#efe6da; border-radius:8px"');

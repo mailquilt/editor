@@ -51,6 +51,15 @@ export type FocusTarget =
   | { on: "emptyColumn"; columnId: string }
   /** Undo or Redo in the top bar while it's enabled, or else the other. */
   | { on: "history"; action: "redo" | "undo" }
+  /**
+   * In the Rows list: a Row, by its ID, or its toggle, its +, or the first of
+   * the +'s layouts, by their `data-action`, or else the toggle.
+   */
+  | {
+      on: "rowsList";
+      rowId?: string;
+      action?: "add-row" | "layout" | "toggle-rows";
+    }
   /** A part of a list field in the settings, by the list's `id`. */
   | { on: "list"; listId: string; at: ListFocus }
   /**
@@ -249,13 +258,35 @@ const listToolOf = (element: Element): FocusTarget | undefined => {
   };
 };
 
+/** A Row in the Rows list, or one of the list's buttons, by what it is. */
+const rowsListTargetOf = (element: Element): FocusTarget | undefined => {
+  if (!closestPlace(element, "rowsList")) {
+    return undefined;
+  }
+  const { action, rowId } = (element as HTMLElement).dataset;
+  if (rowId !== undefined) {
+    return { on: "rowsList", rowId };
+  }
+  if (action === "add-row" || action === "toggle-rows") {
+    return { action, on: "rowsList" };
+  }
+  return {
+    action: closestPlace(element, "rowsAdd") ? "layout" : undefined,
+    on: "rowsList",
+  };
+};
+
+/** In a list field's item toolbar, or in the Rows list. */
+const listTargetOf = (element: Element) =>
+  listToolOf(element) ?? rowsListTargetOf(element);
+
 const targetOf = (element: Element): FocusTarget => {
   if (isOfText(element)) {
     return { on: "text" };
   }
-  const listTool = listToolOf(element);
-  if (listTool) {
-    return listTool;
+  const inAList = listTargetOf(element);
+  if (inAList) {
+    return inAList;
   }
   const { action } = (element as HTMLElement).dataset;
   if (closestPlace(element, "addPicker")) {
@@ -445,6 +476,26 @@ export const createFocus = ({
     );
   };
 
+  /** A Row in the Rows list, or one of its buttons, or else its toggle. */
+  const rowsListControl = ({
+    action,
+    rowId,
+  }: Extract<FocusTarget, { on: "rowsList" }>) => {
+    const list = findPlace(root(), "rowsList");
+    const items = list && findPlace(list, "rowsItems");
+    const row =
+      rowId === undefined
+        ? undefined
+        : items?.querySelector<HTMLElement>(
+            `[data-row-id="${CSS.escape(rowId)}"]`
+          );
+    return (
+      row ??
+      list?.querySelector<HTMLElement>(`[data-action="${action ?? ""}"]`) ??
+      list?.querySelector<HTMLElement>('[data-action="toggle-rows"]')
+    );
+  };
+
   /** What takes focus for a target, if it's there. */
   const focusableFor = (target: FocusTarget): Focusable | null | undefined => {
     switch (target.on) {
@@ -508,10 +559,14 @@ export const createFocus = ({
    * panel, once it's closed, to the bar's More button.
    */
   const find = (target: FocusTarget): Focusable | undefined => {
-    const found =
-      target.on === "list"
-        ? inList(root(), target.listId, target.at)
-        : focusableFor(target);
+    let found: Focusable | null | undefined;
+    if (target.on === "list") {
+      found = inList(root(), target.listId, target.at);
+    } else if (target.on === "rowsList") {
+      found = rowsListControl(target);
+    } else {
+      found = focusableFor(target);
+    }
     if (found) {
       return found;
     }

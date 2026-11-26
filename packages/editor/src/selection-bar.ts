@@ -375,7 +375,7 @@ export const selectionBarStyles = css`
     padding: 0;
   }
 
-  /* A layout as its Column widths, in the bar and the Rows tab. */
+  /* A layout as its Column widths, in the bar, the Add panel and the Rows list. */
   .thumbnail {
     display: flex;
     gap: 3px;

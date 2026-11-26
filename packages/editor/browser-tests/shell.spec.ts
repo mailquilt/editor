@@ -1356,7 +1356,9 @@ test.describe("look", () => {
     // Moved, so it's scrolled into view.
     await page.keyboard.press("Alt+ArrowDown");
 
-    await expect(editor.locator('[aria-current="true"]')).toBeInViewport();
+    await expect(
+      editor.getByTestId("email").locator('[aria-current="true"]')
+    ).toBeInViewport();
     await expect.poll(barTop).toBeGreaterThanOrEqual(0);
   });
 

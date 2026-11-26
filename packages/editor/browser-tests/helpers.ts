@@ -402,6 +402,9 @@ export const hoverRow = (page: Page, position: number) =>
  * tools.
  */
 export const selectRow = async (page: Page, position: number) => {
+  // The Rows list takes its shape a frame after the editor's width changes,
+  // which can move the Row from under the pointer.
+  await settle(page);
   // More, where it floats over the Canvas, can cover the Row's tag.
   const close = canvas(page)
     .getByTestId("more-panel")
@@ -409,6 +412,9 @@ export const selectRow = async (page: Page, position: number) => {
   if (await close.isVisible()) {
     await close.click();
   }
+  // In an editor wider than the window, the tag at the Row's end can be out
+  // of sight, and scrolling to it on the click would leave the Row's hover.
+  await rowTag(page, position).scrollIntoViewIfNeeded();
   await hoverRow(page, position);
   await rowTag(page, position).click();
   await expect(rowTools(page, position)).toBeVisible();

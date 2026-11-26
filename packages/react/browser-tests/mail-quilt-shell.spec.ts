@@ -9,9 +9,7 @@ test("shows the email in value, with the heading", async ({ page }) => {
   await page.goto("/?shell");
 
   await expect(textBlock(page)).toHaveText("Hello");
-  await expect(shell(page).getByRole("heading", { level: 2 })).toHaveText(
-    "Campaign"
-  );
+  await expect(shell(page).locator("[part=heading]")).toHaveText("Campaign");
   await expect(
     shell(page).getByRole("button", { exact: true, name: "Export" })
   ).toBeVisible();
@@ -48,9 +46,7 @@ test("heading, actions and saveKey can change after the Shell has started", asyn
 
   await page.getByRole("button", { name: "Change props" }).click();
 
-  await expect(shell(page).getByRole("heading", { level: 2 })).toHaveText(
-    "Renamed"
-  );
+  await expect(shell(page).locator("[part=heading]")).toHaveText("Renamed");
   await shell(page).getByRole("button", { name: "Export" }).click();
   await expect(shell(page).getByRole("menuitem")).toHaveText([/JSON file/u]);
   await focusStartOfTextBlock(page);

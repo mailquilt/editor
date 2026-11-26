@@ -1,3 +1,4 @@
+import { ROW_LAYOUTS } from "@mailquilt/core";
 import type { Block, Column, Row } from "@mailquilt/core";
 import { blockStyles, rowStyles } from "@mailquilt/core/internal";
 import type { RowProps } from "@mailquilt/core/internal";
@@ -12,6 +13,7 @@ import { ICONS } from "./icons.js";
 import { renderMergeTagPicker } from "./merge-tag-picker.js";
 import type { PanelApi } from "./panel-api.js";
 import { blocksIn, columnPlace, placeIn } from "./positions.js";
+import { renderThumbnail } from "./selection-bar.js";
 import { styleProperties } from "./style-properties.js";
 import { blockTypeName } from "./text.js";
 import type { TextValues } from "./text.js";
@@ -344,6 +346,52 @@ export const canvasStyles = css`
     outline-offset: 1px;
   }
 
+  /*
+   * An email with no Rows: a slot to start one, with the layouts, as an empty
+   * Column's placeholder is drawn.
+   */
+  .start-row {
+    align-items: center;
+    display: flex;
+    justify-content: center;
+    min-height: 420px;
+    padding: var(--mq-space-5);
+  }
+
+  .start-slot {
+    border: 1.5px dashed var(--mq-color-border-strong);
+    border-radius: var(--mq-radius-small);
+    color: var(--mq-color-text-muted);
+    font: var(--mq-font-size) / 1.45 var(--mq-font-family);
+    padding: calc(var(--mq-space-5) + var(--mq-space-3)) var(--mq-space-5);
+    text-align: center;
+    width: min(520px, 100%);
+  }
+
+  .start-title {
+    color: var(--mq-color-text);
+    font-size: var(--_mq-font-size-bar-title);
+    font-weight: 600;
+    margin: 0 0 var(--mq-space-1);
+  }
+
+  .start-text {
+    margin: 0;
+  }
+
+  .start-layouts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--mq-space-2);
+    justify-content: center;
+    margin-block-start: var(--mq-space-4);
+  }
+
+  .start-layouts .add-tile {
+    min-height: 40px;
+    width: 64px;
+  }
+
   /* Standing in for the Modes, so it fills any height the host gives too. */
   .narrow-notice {
     align-items: center;
@@ -602,6 +650,44 @@ const rowLook = (row: Row) => {
 };
 
 /**
+ * With no Rows, a slot to start one, which adds a Row with the layout picked.
+ * Its layouts are one stop for Tab, with arrow keys between them.
+ */
+const renderStartRow = (api: PanelApi) => {
+  const { text } = api;
+  return html`
+    <div class="ui start-row" data-testid="start-row">
+      <div class="start-slot">
+        <p class="start-title">${text("canvas.startTitle")}</p>
+        <p class="start-text">${text("canvas.startText")}</p>
+        <div
+          aria-label=${text("canvas.startTitle")}
+          class="start-layouts"
+          data-place=${place("startLayouts")}
+          role="group"
+        >
+          ${ROW_LAYOUTS.map(
+            (layout, index) => html`
+              <button
+                aria-label=${text("add.addLayout", { layout })}
+                class="add-tile"
+                data-tooltip=${text("add.addLayout", { layout })}
+                tabindex=${index === 0 ? "0" : "-1"}
+                type="button"
+                @click=${({ detail }: MouseEvent) =>
+                  api.addRow(layout, detail === 0)}
+              >
+                ${renderThumbnail(layout)}
+              </button>
+            `
+          )}
+        </div>
+      </div>
+    </div>
+  `;
+};
+
+/**
  * The email's Rows, with their tags, Columns and Blocks.
  *
  * Of the Blocks, one is a stop for Tab: the selected Block, or with nothing
@@ -616,6 +702,9 @@ export const renderRows = (
   events: CanvasEvents
 ) => {
   const { rows } = api.email;
+  if (rows.length === 0) {
+    return renderStartRow(api);
+  }
   const tabStop =
     api.selectedBlock?.block.id ??
     (api.selectedRow ? undefined : blocksIn(api.email)[0]?.id);

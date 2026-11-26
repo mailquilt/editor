@@ -83,8 +83,14 @@ Copy rules for every surface: sentence case; name the thing, not the control ("A
 | Long email, scrolled | `m06-long-email` |
 | A Row that isn't on every device: a badge on its picture, a crossed-out phone for "Desktop only" (`4-edit-row`, Row 5) or a phone for "Phones only" (`f03-hidden-mark`) |
 | Empty email: no Rows yet | `l05-empty-email` |
+| The expanded list's collapse button, the Rows icon at the start of its head | `l06-collapse-at-start` |
+| At 768: the collapsed list, as at 1024 | `l07-collapsed-768` |
+| Collapsed, the button that expands it | `l08-expand-tooltip` |
+| Collapsed, the +'s layouts beside it | `l09-add-from-collapsed` |
 
-**Copy.** Header: "Rows" and the count. A Row is named for screen readers as "Row 3 of 6: Heading, Text, Button". Badge tooltip: "Desktop only" or "Phones only". Keyboard tooltip: "Row 3 of 6" and "Alt+↑ or Alt+↓ to move". Add popover: "Empty Row" and "Saved Rows", and "Adds below Row 4". Empty: "No Rows yet", "Add one here or on the email." On the email: "Start with a Row", "Pick how many Columns it has. You can change it after." and the layouts.
+The `l06` to `l09` frames were picked for #317 on 2026-11-26, as states the frames above leave out. `l07` replaces `r768-edit`'s Rows button in the top bar: the collapsed list fits at 768, so its control stays where it is at every width. Until the person collapses or expands it, the list is expanded where it fits beside the email with More docked, and collapsed below, as `r1024-edit` draws it. With nothing selected, the +'s layouts say "Adds at the end".
+
+**Copy.** Header: "Rows" and the count. A Row is named for screen readers as "Row 3 of 6: Heading, Text, Button". Badge tooltip: "Desktop only" or "Phones only". Keyboard tooltip: "Row 3 of 6" and "Alt+↑ or Alt+↓ to move". Add popover: "Empty Row" and "Saved Rows", and "Adds below Row 4", or "Adds at the end" with nothing selected. Toggle tooltips: "Collapse the Rows list" and "Expand the Rows list". Empty: "No Rows yet", "Add one here or on the email." On the email: "Start with a Row", "Pick how many Columns it has. You can change it after." and the layouts.
 
 ---
 

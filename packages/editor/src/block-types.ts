@@ -157,7 +157,7 @@ export interface DrawContext {
 
 /** The editor's part of one type of Block. */
 type BlockTypeView<Type extends BlockType> = {
-  /** In the palette and the Side panel. */
+  /** In the Add panel and the picker. */
   icon: TemplateResult;
 } & (
   | {

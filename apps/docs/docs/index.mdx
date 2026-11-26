@@ -12,7 +12,7 @@ Mail Quilt is {{package-count}} npm packages for adding a drag-and-drop email ed
 There are three ways in, from the most done for you to the least:
 
 - **The Shell** is a whole editor page, ready-made. You build nothing. The [Playground](/playground) is one.
-- **The editor** is the `<mail-quilt>` element, or `MailQuilt` in React: the canvas, its Selection bar and its Add panel. You build your own page around it.
+- **The editor** is the `<mail-quilt>` element, or `MailQuilt` in React: the canvas, the Rows list, its Selection bar and its Add panel. You build your own page around it.
 - **The core and the renderer** are the email as data, the Commands that change it, and the HTML. The editor is built on them, and you can [build on them too](./change-emails-in-code).
 
 Most of these docs are about the editor, because that's where most apps start. [Packages](./packages) says what each one is for.
@@ -23,7 +23,7 @@ Add `<mail-quilt>` to a page, and the people using your app can design emails wi
 
 - Build an email from {{block-names}} Blocks.
 - Lay it out in Rows of one to {{most-columns}} Columns.
-- Add Blocks where they're working, from the + between two Blocks or the Add panel, drag them in from the panel, drag them to reorder them or move them to another Column, and drag Rows to reorder them. Everything they can do by dragging, they can also do with the keyboard.
+- Add Blocks where they're working, from the + between two Blocks or the Add panel, drag them in from the panel, drag them to reorder them or move them to another Column, and drag Rows to reorder them, on the email or in the Rows list, which shows each Row as a small picture. Everything they can do by dragging, they can also do with the keyboard.
 - Make text bold, italic or underlined, add links, and write Merge Tags such as `{{first_name}}`.
 - Change the settings of each Block and Row, and of the email as a whole.
 - Undo and redo every change.
