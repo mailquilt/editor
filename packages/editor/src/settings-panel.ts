@@ -40,7 +40,7 @@ export interface SettingsSection {
  * What's typed in a field. A number field the browser can't read, such as
  * "1e", has empty text and `badInput`.
  */
-interface Typed {
+export interface Typed {
   text: string;
   badInput: boolean;
 }
@@ -118,7 +118,7 @@ const itemsOf = (field: ListField, values: Record<string, unknown>) =>
  * One of a field's texts, which core names by ID. Each ID core gives is one of
  * the editor's, which a test checks.
  */
-const fieldWords = (id: string, textOf: Text, values?: TextValues) =>
+export const fieldWords = (id: string, textOf: Text, values?: TextValues) =>
   textOf(id as StringId, values);
 
 /** A field's help, each sentence a text of its own, then the Merge Tag hint. */
@@ -561,7 +561,7 @@ const itemOf = (
  * What a field shows when nothing different has been typed into it, or in a
  * list field, an item's text.
  */
-const fieldText = (
+export const fieldText = (
   field: SettingsField,
   values: Record<string, unknown>,
   item?: string
@@ -571,7 +571,9 @@ const fieldText = (
     : String(values[field.key] ?? field.default ?? "");
 
 /** What a control holds. */
-const typedIn = (control: HTMLInputElement | HTMLSelectElement): Typed => ({
+export const typedIn = (
+  control: HTMLInputElement | HTMLSelectElement
+): Typed => ({
   badInput: control.validity.badInput,
   text: control.value,
 });
@@ -1053,18 +1055,23 @@ const renderField = (
   `;
 };
 
-/** The one settings panel: every control in it comes from fields that are data. */
+/**
+ * The one settings panel: every control in it comes from fields that are data.
+ * It shows `shown` of the section's fields, or else all of them, and a change
+ * to one retries what was refused in any of them.
+ */
 export const renderSettingsPanel = (
   section: SettingsSection,
   drafts: SettingsDrafts,
   tagsOf: (fieldId: string) => FieldTags,
-  textOf: Text
+  textOf: Text,
+  shown: readonly SettingsField[] = section.fields
 ) => html`
   <div class="settings" data-place=${place("settings")}>
     <div class="section">
       <fieldset>
         <legend>${section.legend}</legend>
-        ${section.fields.map((field) =>
+        ${shown.map((field) =>
           renderField(section, field, drafts, tagsOf, textOf)
         )}
       </fieldset>

@@ -2,6 +2,7 @@ import type { BlocksDocument, RowLayout } from "@mailquilt/core";
 
 import type { ShownFieldPicker } from "./field-merge-tags.js";
 import type { BlockPosition, Direction, RowPosition } from "./positions.js";
+import type { BarPanelsState } from "./selection-bar.js";
 import type { PanelTab } from "./selection.js";
 import type { SettingsDrafts } from "./settings-panel.js";
 import type { ShownMergeTagPicker } from "./text-block-view.js";
@@ -9,8 +10,8 @@ import type { ListType, TextFormats, ToggleableMark } from "./text-commands.js";
 import type { Text } from "./text.js";
 
 /**
- * How the Side panel, its settings, the format bar and the toolbars reach the
- * editor. They touch nothing else of `<mail-quilt>` or the Canvas. A new copy
+ * How the Side panel, the Selection bar and its More panel, and the format bar
+ * reach the editor. They touch nothing else of `<mail-quilt>` or the Canvas. A new copy
  * for each update.
  *
  * An action that does more from the keyboard, such as moving focus or showing
@@ -58,7 +59,10 @@ export interface EmailPanelApi {
   addRow: (layout: RowLayout, fromKeyboard: boolean) => void;
   /** The selected Block. From the keyboard, focus goes to its neighbour. */
   deleteBlock: (fromKeyboard: boolean) => void;
-  /** From the keyboard, focus goes to the neighbouring Row's tools. */
+  /**
+   * From the keyboard, the neighbouring Row is selected, and focus stays on
+   * the Selection bar, so the next press deletes that Row.
+   */
   deleteRow: (rowId: string, fromKeyboard: boolean) => void;
   /**
    * A copy of the selected Block right after it, which is selected. From the
@@ -66,7 +70,7 @@ export interface EmailPanelApi {
    */
   duplicateBlock: (fromKeyboard: boolean) => void;
   /** A copy of a Row right after it, which is selected. */
-  duplicateRow: (rowId: string, fromKeyboard: boolean) => void;
+  duplicateRow: (rowId: string) => void;
   /** The selected Block, one step. */
   moveBlock: (direction: Direction) => void;
   moveRow: (rowId: string, direction: "down" | "up") => void;
@@ -89,8 +93,19 @@ export interface EmailPanelApi {
   uploadImage: ((blockId: string, file: File) => void) | undefined;
   /** Why an Image Block's last upload failed, until its next one or a new URL. */
   uploadErrorOf: (blockId: string) => string | undefined;
-  /** Selects a Row instead of any Block, and shows its settings. */
+  /** Selects a Row instead of any Block, which the Selection bar then shows. */
   selectRow: (rowId: string, fromKeyboard: boolean) => void;
+  /** Selects nothing, so the Selection bar shows the email's settings. */
+  selectEmail: (fromKeyboard: boolean) => void;
+  /** Puts the selected Block or Row on the clipboard, as Ctrl/⌘+C does. */
+  copySelected: () => void;
+  /** Copies the selected Block or Row, then deletes it, as Ctrl/⌘+X does. */
+  cutSelected: () => void;
+  /**
+   * Pastes what's on the clipboard after the selected Block or Row, as Ctrl/⌘+V
+   * does, once the browser lets the editor read it.
+   */
+  pasteBelow: () => void;
   openPreview: () => void;
 }
 
@@ -100,9 +115,12 @@ export interface EmailPanelApi {
  * changes it. A host's own panel would keep its own.
  */
 export interface OwnPanelsApi {
-  /** Whether the Side panel shows what's selected, instead of its tabs. */
-  showsSettings: boolean;
   tab: PanelTab;
+  /**
+   * What the Selection bar has open, and whether More is docked beside the
+   * email, where it fits, rather than floating over it.
+   */
+  bar: BarPanelsState & { docked: boolean };
   /**
    * Set while the link field is open. Each refusal counts, so the same one again
    * is a new alert and is read out.
@@ -121,12 +139,17 @@ export interface OwnPanelsApi {
   /** What's typed in the settings fields and isn't the email's value. */
   drafts: SettingsDrafts;
 
-  /**
-   * Back from what's selected to the Side panel's tabs. From the keyboard, focus
-   * goes to the current tab.
-   */
-  showTabs: (fromKeyboard: boolean) => void;
   selectTab: (tab: PanelTab) => void;
+  /** Opens a popover from the Selection bar, by its button's `data-action`. */
+  togglePopover: (id: string) => void;
+  /** Opens the chip's menu, or closes it. */
+  toggleMenu: () => void;
+  /** Closes the chip's menu, with focus back on the chip if `returnFocus`. */
+  closeMenu: (returnFocus: boolean) => void;
+  /** Opens More, with focus in it from the keyboard, or closes it. */
+  toggleMore: (fromKeyboard: boolean) => void;
+  /** Closes More, with focus back on its button if `returnFocus`. */
+  closeMore: (returnFocus: boolean) => void;
   /** Opens the link field for the selected Block's text. */
   openLinkField: () => void;
   /** Links the text, unless the URL isn't allowed, which the field then says. */

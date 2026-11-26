@@ -11,11 +11,11 @@ import {
   openEmail,
   openTab,
   palette,
-  panelBlock,
   rowTag,
   rowTools,
   selectedBlock,
-  selectRowButton,
+  selectionBar,
+  selectRow,
   settle,
   structure,
   TALL_VIEWPORT,
@@ -26,7 +26,7 @@ import {
 test.use({ viewport: TALL_VIEWPORT });
 
 test.describe("selecting a Row", () => {
-  test("its tag selects it, and the panel shows its settings", async ({
+  test("its tag selects it, and the Selection bar shows its settings", async ({
     page,
   }) => {
     await openEmail(page, [[["A"]], [["B"], ["C"]]]);
@@ -34,12 +34,11 @@ test.describe("selecting a Row", () => {
 
     await rowTag(page, 2).click();
 
-    await expect(rowTools(page, 2)).toHaveAttribute("aria-current", "true");
-    await expect(selectedBlock(page)).toHaveCount(0);
+    await expect(rowTools(page, 2)).toBeVisible();
     await expect(
-      canvas(page).getByRole("group", { exact: true, name: "Row" })
-    ).toBeVisible();
-    await expect(panelBlock(page)).toHaveCount(0);
+      canvas(page).locator('[data-testid="row-frame"][data-row-selected]')
+    ).toHaveCount(1);
+    await expect(selectedBlock(page)).toHaveCount(0);
     await expect(layoutOption(page, "50/50")).toHaveAttribute(
       "aria-pressed",
       "true"
@@ -48,24 +47,21 @@ test.describe("selecting a Row", () => {
 
   test("gives way to a selected Block", async ({ page }) => {
     await openEmail(page, [[["A"]], [["B"]]]);
-    await selectRowButton(page, 1).focus();
-    await page.keyboard.press("Enter");
-    await expect(rowTools(page, 1)).toHaveAttribute("aria-current", "true");
+    await selectRow(page, 1);
 
     await blockGroup(page, "Text").last().focus();
     await expect(blockGroup(page, "Text").last()).toHaveAttribute(
       "aria-current",
       "true"
     );
-    await expect(rowTools(page, 1)).not.toHaveAttribute("aria-current");
+    await expect(selectionBar(page)).toHaveAccessibleName("Text settings");
   });
 
   test("a Content tile adds into the selected Row's first Column, at its end", async ({
     page,
   }) => {
     await openEmail(page, [[["A"], ["B"]], [["C"]]]);
-    await selectRowButton(page, 1).focus();
-    await page.keyboard.press("Enter");
+    await selectRow(page, 1);
     await openTab(page, "Content");
 
     await palette(page, "Text").click();
@@ -103,7 +99,7 @@ test.describe("dragging a layout from the Rows tab", () => {
       [[], []],
       [["B"]],
     ]);
-    await expect(rowTools(page, 2)).toHaveAttribute("aria-current", "true");
+    await expect(rowTools(page, 2)).toBeVisible();
     await undoByKey(page);
     await expect(structure(page)).resolves.toEqual([[["A"]], [["B"]]]);
   });

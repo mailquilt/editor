@@ -11,16 +11,25 @@ const PLACES = {
   addBlocks: {},
   /** A Block on the canvas. Its `data-block-id` names it. */
   block: {},
-  /** The selected Block's toolbar. */
-  blockToolbar: { press: "keepsFocus" },
+  /** A popover from a button in the Selection bar, with settings in it. */
+  barPopover: {},
+  /** The menu from the Selection bar's chip, of what's around the selection. */
+  barMenu: {},
+  /**
+   * A field in the Selection bar that's typed in, such as a Button's link. The
+   * arrow keys go on to the bar's other controls from either end of its text.
+   */
+  barField: {},
+  /** The Selection bar while a Block is selected. */
+  blockBar: { press: "keepsFocus" },
   /** A Column. Its `data-column-id` names it. */
   column: {},
   /**
    * Buttons that act on the email or what's selected, in the Side panel, the
-   * top bar or the notice, and aren't in a toolbar.
+   * top bar or the notice, and aren't in a toolbar or the Selection bar.
    */
   controls: { press: "keepsFocus" },
-  /** A drag handle, on a Block or in a toolbar. */
+  /** A drag handle, on a Block. */
   dragHandle: { press: "grabs" },
   /** The line that shows where a drop would land. */
   dropIndicator: {},
@@ -32,9 +41,10 @@ const PLACES = {
   emailTools: { press: "keepsFocus" },
   /**
    * The Merge Tag picker under a field that holds text or a URL. Focus stays
-   * in the field, so a press picks a tag without taking it.
+   * in the field, so a press picks a tag without taking it, or committing the
+   * field, in the Selection bar or More too.
    */
-  fieldMergeTagPicker: {},
+  fieldMergeTagPicker: { press: "asBrowser" },
   /** The format bar beside the text being edited. */
   formatBar: { ofText: true, press: "keepsFocus" },
   /** The link field, in the format bar. */
@@ -53,6 +63,11 @@ const PLACES = {
   history: { press: "keepsFocus" },
   /** The Modes, Edit, Style and Check, in the top bar. */
   modes: {},
+  /**
+   * The Selection bar's More panel: the settings that don't fit the bar, and
+   * the less common actions.
+   */
+  morePanel: { press: "keepsFocus" },
   /** The notice shown instead of the editor when there's no room to edit. */
   notice: {},
   /**
@@ -64,13 +79,15 @@ const PLACES = {
   panelTabs: {},
   /** The Preview dialog. */
   preview: {},
-  /** A Row with its tag and toolbar. Its `data-row-id` names it. */
+  /** A Row with its tag. Its `data-row-id` names it. */
   row: {},
+  /** The Selection bar while a Row is selected. */
+  rowBar: { press: "keepsFocus" },
   /** The tag that selects a Row, and drags it. */
   rowTag: { press: "grabs" },
-  /** A Row's toolbar. */
-  rowToolbar: { press: "keepsFocus" },
-  /** The settings fields the Side panel shows. */
+  /** The Selection bar with nothing selected, which has the email's settings. */
+  emailBar: { press: "keepsFocus" },
+  /** Settings fields, in a popover from the Selection bar or its More panel. */
   settings: {},
   /** A settings field holding typed text that isn't applied yet. */
   settingsDraft: {},
@@ -86,11 +103,13 @@ const PLACES = {
 
 /**
  * What a press with the pointer does to focus there, beyond what the browser
- * does. Each leaves focus and the selection where they are. A place that
- * `grabs` starts a drag, and one that `keepsFocus` acts on what's selected,
- * though a field in it still takes focus.
+ * does. A place that `grabs` starts a drag, and one that `keepsFocus` acts on
+ * what's selected, though a field in it still takes focus: each leaves focus
+ * and the selection where they are. One `asBrowser`, in a place that does
+ * otherwise, such as the Merge Tag picker under a field in the Selection bar,
+ * does only what the browser does, and what the place does itself.
  */
-type Press = "grabs" | "keepsFocus";
+type Press = "asBrowser" | "grabs" | "keepsFocus";
 
 /** What a place is, beyond its name. */
 interface Traits {

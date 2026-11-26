@@ -9,7 +9,6 @@ import { BLOCK_VIEWS, hasRichText, renderBlockContent } from "./block-types.js";
 import { place } from "./editor-places.js";
 import { renderFormatBar } from "./format-bar.js";
 import { ICONS } from "./icons.js";
-import { keyLabel, withKeys } from "./key-map.js";
 import { renderMergeTagPicker } from "./merge-tag-picker.js";
 import type { PanelApi } from "./panel-api.js";
 import { blocksIn, columnPlace, placeIn } from "./positions.js";
@@ -17,39 +16,9 @@ import { styleProperties } from "./style-properties.js";
 import { blockTypeName } from "./text.js";
 import type { TextValues } from "./text.js";
 
-const MOVE_BUTTONS = (
-  [
-    ["up", "canvas.moveBlockUp"],
-    ["down", "canvas.moveBlockDown"],
-    ["left", "canvas.moveBlockLeft"],
-    ["right", "canvas.moveBlockRight"],
-  ] as const
-).map(([direction, label]) => ({
-  direction,
-  label,
-  ...keyLabel("blockToolbar", "moveBlock", { direction }),
-}));
-
-/** A Row moves only up and down. */
-const ROW_MOVE_BUTTONS = (
-  [
-    ["up", "canvas.moveRowUp"],
-    ["down", "canvas.moveRowDown"],
-  ] as const
-).map(([direction, label]) => ({
-  direction,
-  label,
-  ...keyLabel("rowToolbar", "moveRow", { direction }),
-}));
-
-const DUPLICATE_BLOCK = keyLabel("blockToolbar", "duplicateBlock");
-const DUPLICATE_ROW = keyLabel("rowToolbar", "duplicateRow");
-/** Delete and Backspace work in a Row's toolbar, not in a Block's. */
-const DELETE_ROW = keyLabel("rowToolbar", "deleteRow");
-
 /**
- * The Rows, Columns and Blocks on the canvas, their tools, the floating
- * toolbar and the narrow notice.
+ * The Rows, Columns and Blocks on the canvas, their tags and handles, the
+ * floating toolbar and the narrow notice.
  */
 export const canvasStyles = css`
   .row-frame {
@@ -269,13 +238,15 @@ export const canvasStyles = css`
   }
 
   /*
-   * Where a focused Block, and its tools, are scrolled to: clear of its tag above
-   * and of the floating toolbar below.
+   * Where a focused Block is scrolled to: clear of the top bar and the
+   * Selection bar, and its tag, above, and of the floating toolbar below.
    */
   .block,
-  .block-toolbar,
   .ProseMirror {
-    scroll-margin-block: 48px 72px;
+    scroll-margin-block: calc(
+        var(--_mq-top-bar-height) + var(--_mq-selection-bar-height) + 28px
+      )
+      72px;
   }
 
   .block:hover {
@@ -397,129 +368,13 @@ export const canvasStyles = css`
     }
   }
 
-  /*
-   * Down the selected Block's start side, outside it: in the gutter for the
-   * first Column, and over the end of the Column before for the others, where
-   * no Block keeps its handle.
-   */
-  .block-toolbar {
-    background: var(--mq-color-text);
-    border-color: transparent;
-    color: var(--mq-color-surface);
-    flex-direction: column;
-    inset-block-start: 0;
-    inset-inline-end: calc(100% + 4px);
-    position: absolute;
-    /* Over the floating toolbar, which it can be moved onto at the canvas's end. */
-    z-index: var(--_mq-layer-block-tools);
-  }
-
-  .block-toolbar .icon-button {
-    color: color-mix(in srgb, var(--mq-color-surface) 78%, transparent);
-  }
-
-  .block-toolbar .icon-button:hover {
-    background: color-mix(in srgb, var(--mq-color-surface) 14%, transparent);
-    color: var(--mq-color-surface);
-  }
-
-  .block-toolbar .icon-button.danger:hover {
-    background: var(--mq-color-danger);
-    color: var(--mq-color-on-accent);
-  }
-
-  .block-toolbar .icon-button:focus-visible {
-    outline-color: var(--mq-color-surface);
-  }
-
-  .block-toolbar .separator {
-    background: color-mix(in srgb, var(--mq-color-surface) 18%, transparent);
-    height: 1px;
-    margin: 2px 4px;
-    width: auto;
-  }
-
-  .block-toolbar .drag-handle,
-  .row-toolbar .drag-handle {
-    background: none;
-    border: 0;
-    border-radius: var(--mq-radius-small);
-    box-shadow: none;
-    height: 22px;
-    opacity: 1;
-    position: static;
-    width: 28px;
-  }
-
-  .block-toolbar .drag-handle {
-    color: color-mix(in srgb, var(--mq-color-surface) 60%, transparent);
-  }
-
-  .block-toolbar .drag-handle:hover {
-    background: color-mix(in srgb, var(--mq-color-surface) 14%, transparent);
-    color: var(--mq-color-surface);
-  }
-
-  /*
-   * A Row's tools, beside it on the right. The padding bridges the gap, so the
-   * pointer can get there without leaving the Row. Hidden, it takes no clicks.
-   */
-  .row-toolbar {
-    inset-block-start: 0;
-    inset-inline-start: 100%;
-    opacity: 0;
-    padding-inline-start: var(--mq-space-2);
-    pointer-events: none;
-    position: absolute;
-    transition: opacity 120ms;
-    z-index: var(--_mq-layer-tags);
-  }
-
-  /*
-   * Not while one of its Blocks is selected, which has tools of its own. Its
-   * tag still shows on hover, and selects the Row.
-   */
-  .row-frame:hover:not(:has(.block[aria-current="true"])) > .row-toolbar,
-  .row-frame[data-row-selected] > .row-toolbar,
-  .row-toolbar:focus-within {
-    opacity: 1;
-    pointer-events: auto;
-  }
-
-  /*
-   * While the pointer is on a Row, only its toolbar shows, so a short Row's
-   * toolbar never sits over another's buttons.
-   */
-  .email:has(.row-frame:hover)
-    .row-frame:not(:hover)
-    > .row-toolbar:not(:has(:focus-visible)) {
-    opacity: 0;
-    pointer-events: none;
-  }
-
-  .row-toolbar > .bar {
-    flex-direction: column;
-  }
-
-  .row-toolbar .drag-handle:hover {
-    background: var(--mq-color-surface-hover);
-    color: var(--mq-color-text);
-  }
-
-  .row-toolbar .separator {
-    height: 1px;
-    margin: 2px 4px;
-    width: auto;
-  }
-
-  /* What a Row does that the canvas, at desktop width, doesn't show. */
-  .row-mark {
-    align-items: center;
-    color: var(--mq-color-text-muted);
-    display: inline-flex;
-    height: 28px;
-    justify-content: center;
-    width: 28px;
+  /* Beside "Row" on its tag, that it's hidden on phones. */
+  .row-tag .icon {
+    display: inline-block;
+    height: 12px;
+    margin-inline-start: 4px;
+    vertical-align: -2px;
+    width: 12px;
   }
 
   /*
@@ -599,7 +454,7 @@ export const MIN_EDITOR_WIDTH = 640;
 
 /**
  * What the Canvas shows of its own, besides what the panel API gives it. Its
- * toolbars and format bar use only the panel API.
+ * format bar uses only the panel API.
  */
 export interface CanvasState {
   /** On each Block's content. With none set, it's unknown, as in the export. */
@@ -615,8 +470,12 @@ export interface CanvasState {
 }
 
 export interface CanvasEvents {
-  onBlockClick: (blockId: string, target: Element) => void;
   onBlockFocus: (blockId: string) => void;
+  /**
+   * Focus in an empty Column's toolbar, in a Row with no Blocks, which then
+   * has no other way in from the keyboard.
+   */
+  onEmptyRowFocus: (rowId: string) => void;
   onBlockFocusout: () => void;
   onImageError: (src: string) => void;
 }
@@ -661,169 +520,6 @@ export const renderNarrowNotice = ({ openPreview, text }: PanelApi) => html`
   </div>
 `;
 
-/**
- * Beside the Row, on hover, on focus, and while the Row is selected. One stop
- * for Tab, then arrow keys go along. Alt+↑ and Alt+↓ move the Row from here,
- * as the Move buttons say.
- */
-const renderRowToolbar = (
-  row: Row,
-  index: number,
-  count: number,
-  api: PanelApi
-) => {
-  const { text } = api;
-  const hiddenOnPhones = (row.props as RowProps).hideOnPhone === true;
-  // By position, as an ID a saved email gives can hold a space.
-  const markId = `row-${index}-hidden-on-phones`;
-  return html`
-    <div
-      aria-current=${row.id === api.selectedRow?.row.id ? "true" : nothing}
-      aria-describedby=${hiddenOnPhones ? markId : nothing}
-      aria-label=${text("canvas.row", { row: index + 1 })}
-      aria-orientation="vertical"
-      class="ui row-toolbar"
-      data-place=${place("rowToolbar")}
-      role="toolbar"
-    >
-      <div class="bar">
-        ${renderDragHandle(text("canvas.dragRow"))}
-        <button
-          aria-label=${text("canvas.selectRow")}
-          class="icon-button"
-          ?data-active=${row.id === api.selectedRow?.row.id}
-          data-action="select-row"
-          data-tooltip=${text("canvas.selectRow")}
-          type="button"
-          @click=${({ detail }: MouseEvent) => api.selectRow(row.id, detail === 0)}
-        >
-          ${ICONS.select}
-        </button>
-        ${ROW_MOVE_BUTTONS.map(
-          ({ direction, keys, label, shortcuts }) => html`
-            <button
-              aria-keyshortcuts=${shortcuts}
-              aria-label=${text(label)}
-              class="icon-button"
-              data-action=${`move-${direction}`}
-              data-tooltip=${withKeys(text(label), keys, text)}
-              ?disabled=${direction === "up" ? index === 0 : index === count - 1}
-              tabindex="-1"
-              type="button"
-              @click=${() => api.moveRow(row.id, direction)}
-            >
-              ${ICONS[direction]}
-            </button>
-          `
-        )}
-        <button
-          aria-keyshortcuts=${DUPLICATE_ROW.shortcuts}
-          aria-label=${text("canvas.duplicateRow")}
-          class="icon-button"
-          data-action="duplicate"
-          data-tooltip=${withKeys(
-            text("canvas.duplicateRow"),
-            DUPLICATE_ROW.keys,
-            text
-          )}
-          tabindex="-1"
-          type="button"
-          @click=${({ detail }: MouseEvent) =>
-            api.duplicateRow(row.id, detail === 0)}
-        >
-          ${ICONS.duplicate}
-        </button>
-        <button
-          aria-keyshortcuts=${DELETE_ROW.shortcuts}
-          aria-label=${text("canvas.deleteRow")}
-          class="icon-button danger"
-          data-action="delete"
-          data-tooltip=${withKeys(text("canvas.deleteRow"), DELETE_ROW.keys, text)}
-          tabindex="-1"
-          type="button"
-          @click=${({ detail }: MouseEvent) => api.deleteRow(row.id, detail === 0)}
-        >
-          ${ICONS.delete}
-        </button>
-        ${
-          hiddenOnPhones
-            ? html`
-                <span class="separator"></span>
-                <span
-                  aria-label=${text("canvas.hiddenOnPhones")}
-                  class="row-mark"
-                  data-tooltip=${text("canvas.hiddenOnPhones")}
-                  id=${markId}
-                  role="img"
-                >
-                  ${ICONS.phoneOff}
-                </span>
-              `
-            : nothing
-        }
-      </div>
-    </div>
-  `;
-};
-
-/** The selected Block's tools. One stop for Tab, then arrow keys go along. */
-const renderBlockToolbar = ({ text, ...api }: PanelApi) => html`
-  <div
-    aria-label=${text("canvas.blockTools")}
-    aria-orientation="vertical"
-    class="ui bar block-toolbar"
-    data-place=${place("blockToolbar")}
-    role="toolbar"
-  >
-    ${renderDragHandle(text("canvas.dragBlock"))}
-    <span class="separator"></span>
-    ${MOVE_BUTTONS.map(
-      ({ direction, keys, label, shortcuts }, index) => html`
-        <button
-          aria-keyshortcuts=${shortcuts}
-          aria-label=${text(label)}
-          class="icon-button"
-          data-action=${`move-${direction}`}
-          data-tooltip=${withKeys(text(label), keys, text)}
-          tabindex=${index === 0 ? "0" : "-1"}
-          type="button"
-          @click=${() => api.moveBlock(direction)}
-        >
-          ${ICONS[direction]}
-        </button>
-      `
-    )}
-    <span class="separator"></span>
-    <button
-      aria-keyshortcuts=${DUPLICATE_BLOCK.shortcuts}
-      aria-label=${text("canvas.duplicateBlock")}
-      class="icon-button"
-      data-action="duplicate"
-      data-tooltip=${withKeys(
-        text("canvas.duplicateBlock"),
-        DUPLICATE_BLOCK.keys,
-        text
-      )}
-      tabindex="-1"
-      type="button"
-      @click=${({ detail }: MouseEvent) => api.duplicateBlock(detail === 0)}
-    >
-      ${ICONS.duplicate}
-    </button>
-    <button
-      aria-label=${text("canvas.deleteBlock")}
-      class="icon-button danger"
-      data-action="delete"
-      data-tooltip=${text("canvas.deleteBlock")}
-      tabindex="-1"
-      type="button"
-      @click=${({ detail }: MouseEvent) => api.deleteBlock(detail === 0)}
-    >
-      ${ICONS.delete}
-    </button>
-  </div>
-`;
-
 const renderBlock = (
   block: Block,
   /** Where the Block is, as `blockPlace` gives it. */
@@ -850,12 +546,10 @@ const renderBlock = (
       role="group"
       style=${styleProperties(rich ? blockStyles(block) : {})}
       tabindex=${isTabStop ? "0" : "-1"}
-      @click=${({ target }: MouseEvent) =>
-        events.onBlockClick(block.id, target as Element)}
       @focus=${() => events.onBlockFocus(block.id)}
       @focusout=${events.onBlockFocusout}
     >
-      ${selected ? nothing : renderDragHandle(text("canvas.dragBlock"))}
+      ${renderDragHandle(text("canvas.dragBlock"))}
       ${rich ? state.textOf(block.id) : nothing}
       ${renderBlockContent(block, {
         failedImages: state.failedImages,
@@ -865,7 +559,6 @@ const renderBlock = (
         text,
         uploading: state.isUploading(block.id),
       })}
-      ${selected ? renderBlockToolbar(api) : nothing}
       ${selected && rich && api.editingText ? renderFormatBar(api) : nothing}
       ${selected && rich ? renderMergeTagPicker(api) : nothing}
     </div>
@@ -874,7 +567,8 @@ const renderBlock = (
 
 /**
  * A Column, with its Blocks. An empty one has a toolbar to add a Block: one stop
- * for Tab, then arrow keys go along.
+ * for Tab, then arrow keys go along. In a Row with no Blocks, focus there
+ * selects the Row, so Tab goes on to the Selection bar with its settings.
  */
 const renderColumn = (
   { blocks, id, width }: Column,
@@ -882,6 +576,8 @@ const renderColumn = (
   where: TextValues,
   /** The Block that's the email's one stop for Tab, if any. */
   tabStop: string | undefined,
+  /** Its Row's, when the Row has no Blocks at all. */
+  emptyRowId: string | undefined,
   api: PanelApi,
   state: CanvasState,
   events: CanvasEvents
@@ -920,6 +616,11 @@ const renderColumn = (
                 data-place=${place("addBlocks")}
                 data-testid="add-blocks"
                 role="toolbar"
+                @focusin=${() => {
+                  if (emptyRowId !== undefined) {
+                    events.onEmptyRowFocus(emptyRowId);
+                  }
+                }}
               >
                 ${BLOCK_TYPES.map(
                   ({ type }, index) => html`
@@ -955,13 +656,13 @@ const rowLook = (row: Row) => {
 };
 
 /**
- * The email's Rows, with their tools, Columns and Blocks.
+ * The email's Rows, with their tags, Columns and Blocks.
  *
  * Of the Blocks, one is a stop for Tab: the selected Block, or with nothing
  * selected the first, and the arrow keys go to the others. So Tab from the
- * selected Block's toolbar selects no other Block on its way to the settings,
- * stopping only at the Row and empty Column toolbars after it. With a Row
- * selected no Block is a stop, so Tab from its toolbar goes the same way.
+ * selected Block selects no other Block on its way to the Selection bar,
+ * stopping only at the empty Columns' toolbars after it. With a Row selected
+ * no Block is a stop.
  */
 export const renderRows = (
   api: PanelApi,
@@ -990,9 +691,14 @@ export const renderRows = (
           data-testid="row-tag"
           @click=${() => api.selectRow(row.id, false)}
         >
-          ${api.text("canvas.rowTag")}
+          ${api.text("canvas.rowTag")}${
+            (row.props as RowProps).hideOnPhone === true
+              ? html`<span data-tooltip=${api.text("canvas.hiddenOnPhones")}
+                  >${ICONS.phoneOff}</span
+                >`
+              : nothing
+          }
         </div>
-        ${renderRowToolbar(row, rowIndex, rows.length, api)}
         <div
           class="row"
           data-testid="row"
@@ -1006,6 +712,9 @@ export const renderRows = (
                 column,
                 columnPlace(rowIndex, columnIndex),
                 tabStop,
+                row.columns.every(({ blocks }) => blocks.length === 0)
+                  ? row.id
+                  : undefined,
                 api,
                 state,
                 events
@@ -1018,8 +727,9 @@ export const renderRows = (
 };
 
 /**
- * Away from the side panel, so it never covers the settings. Undo and redo are
- * in the top bar; the Preview stays here until Check takes its place.
+ * Away from the Selection bar and the side panel, so it never covers them.
+ * Undo and redo are in the top bar; the Preview stays here until Check takes
+ * its place.
  */
 export const renderFloatingToolbar = ({ openPreview, text }: PanelApi) => html`
   <div

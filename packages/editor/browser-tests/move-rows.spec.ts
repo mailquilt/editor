@@ -3,6 +3,7 @@ import type { Page } from "@playwright/test";
 
 import {
   announcement,
+  barButton,
   bottomOf,
   boxOf,
   canvas,
@@ -13,6 +14,7 @@ import {
   hoverRow,
   letGo,
   moveCursorToLineEnd,
+  moreAction,
   moveTo,
   openEmail,
   pickUp,
@@ -21,7 +23,6 @@ import {
   rowTag,
   rowTools,
   selectRow,
-  selectRowButton,
   structure,
   TALL_VIEWPORT,
   test,
@@ -32,23 +33,33 @@ import {
 
 test.use({ viewport: TALL_VIEWPORT });
 
+/** A tool in the Selection bar while the Row at `position` is selected. */
 const rowTool = (page: Page, position: number, name: string) =>
   rowTools(page, position).getByRole("button", { exact: true, name });
 
-/** Clicks a tool in a Row's toolbar, with the mouse. */
+/**
+ * Selects a Row, then clicks a tool of its in the Selection bar, or in More
+ * where the bar is short of room, as a Row of two Columns's is here.
+ */
 const clickRowTool = async (page: Page, position: number, name: string) => {
-  await hoverRow(page, position);
-  await rowTool(page, position, name).click();
+  await selectRow(page, position);
+  const inBar = rowTool(page, position, name);
+  await (
+    (await inBar.isVisible()) ? inBar : await moreAction(page, name)
+  ).click();
 };
 
 test.describe("the Move Row buttons", () => {
   test("are disabled on the first and last Row", async ({ page }) => {
     await openEmail(page, [[["One"]], [["Two"]], [["Three"]]]);
 
+    await selectRow(page, 1);
     await expect(rowTool(page, 1, "Move Row up")).toBeDisabled();
     await expect(rowTool(page, 1, "Move Row down")).toBeEnabled();
+    await selectRow(page, 2);
     await expect(rowTool(page, 2, "Move Row up")).toBeEnabled();
     await expect(rowTool(page, 2, "Move Row down")).toBeEnabled();
+    await selectRow(page, 3);
     await expect(rowTool(page, 3, "Move Row down")).toBeDisabled();
   });
 
@@ -78,13 +89,15 @@ test.describe("the Move Row buttons", () => {
 });
 
 test.describe("moving a selected Row from the keyboard", () => {
-  test("works from its Move buttons, whose focus stays in the toolbar", async ({
+  test("works from its Move buttons, whose focus stays in the Selection bar", async ({
     page,
   }) => {
     await openEmail(page, [[["One"]], [["Two"]], [["Three"]]]);
     await selectRow(page, 2);
-    await page.keyboard.press("ArrowRight");
-    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("End");
+    await page.keyboard.press("ArrowLeft");
+    await page.keyboard.press("ArrowLeft");
+    await page.keyboard.press("ArrowLeft");
     await expect(rowTool(page, 2, "Move Row down")).toBeFocused();
 
     await page.keyboard.press("Enter");
@@ -93,12 +106,11 @@ test.describe("moving a selected Row from the keyboard", () => {
       [["Three"]],
       [["Two"]],
     ]);
-    // Disabled now, on the last Row, so focus goes to another of its tools,
-    // and the arrow keys go past it.
-    await expect(selectRowButton(page, 3)).toBeFocused();
-    await page.keyboard.press("ArrowRight");
-    await page.keyboard.press("ArrowRight");
+    // Disabled now, on the last Row, so focus goes to the tool that took its
+    // place, and the arrow keys go past it.
     await expect(rowTool(page, 3, "Duplicate Row")).toBeFocused();
+    await page.keyboard.press("ArrowLeft");
+    await expect(rowTool(page, 3, "Move Row up")).toBeFocused();
 
     await page.keyboard.press("Alt+ArrowUp");
     await expect(structure(page)).resolves.toEqual([
@@ -106,7 +118,7 @@ test.describe("moving a selected Row from the keyboard", () => {
       [["Two"]],
       [["Three"]],
     ]);
-    await expect(rowTools(page, 2)).toHaveAttribute("aria-current", "true");
+    await expect(rowTools(page, 2)).toBeVisible();
   });
 
   test("keeps it in view", async ({ page }) => {
@@ -123,7 +135,7 @@ test.describe("moving a selected Row from the keyboard", () => {
 
     for (let position = letters.length - 1; position > 0; position -= 1) {
       await page.keyboard.press("Alt+ArrowUp");
-      await expect(selectRowButton(page, position)).toBeFocused();
+      await expect(barButton(page, `Row ${position}`)).toBeFocused();
       await expect(moved).toBeInViewport();
     }
   });
@@ -141,7 +153,7 @@ test.describe("moving a selected Row from the keyboard", () => {
     await page.keyboard.press("Alt+ArrowUp");
     await expect(announcement(page)).toHaveText("The Row can't move up.");
     await expect(structure(page)).resolves.toEqual([[["One"]], [["Two"]]]);
-    await expect(selectRowButton(page, 1)).toBeFocused();
+    await expect(barButton(page, "Row 1")).toBeFocused();
 
     // A Row moves only up and down, so these say nothing.
     await page.keyboard.press("Alt+ArrowLeft");
@@ -152,12 +164,10 @@ test.describe("moving a selected Row from the keyboard", () => {
   });
 });
 
-/** Shows the Row's tools and tag, then the handle or tag to drag it by. */
-const grip = async (page: Page, position: number, by: "handle" | "tag") => {
+/** Shows a Row's tag, which drags it. */
+const grip = async (page: Page, position: number) => {
   await hoverRow(page, position);
-  return by === "handle"
-    ? rowTools(page, position).getByTestId("drag-handle")
-    : rowTag(page, position);
+  return rowTag(page, position);
 };
 
 /** Into the lower part of a Row, so a drop there lands after it. */
@@ -165,14 +175,13 @@ const belowMiddleOf = (page: Page, position: number) =>
   bottomOf(rowFrame(page, position).getByTestId("row"));
 
 test.describe("dragging a Row", () => {
-  // The other tests drag it by its tag too.
-  test("by its handle moves it between Rows, as one undo step", async ({
+  test("by its tag moves it between Rows, as one undo step", async ({
     page,
   }) => {
     await openEmail(page, [[["One"]], [["Two"]], [["Three"]]]);
 
     const to = await belowMiddleOf(page, 2);
-    await pickUp(page, await grip(page, 1, "handle"));
+    await pickUp(page, await grip(page, 1));
     await moveTo(page, to);
     await expect(dropIndicator(page)).toBeVisible();
     // A Row only ever lands between Rows, never in a Column.
@@ -199,7 +208,7 @@ test.describe("dragging a Row", () => {
   test("letting go where it started moves nothing", async ({ page }) => {
     await openEmail(page, [[["One"]], [["Two"]], [["Three"]]]);
     const expectChanges = await changesSince(page);
-    const tag = await grip(page, 2, "tag");
+    const tag = await grip(page, 2);
     const start = await centerOf(tag);
 
     await pickUp(page, tag);
@@ -222,7 +231,7 @@ test.describe("dragging a Row", () => {
     const away = { x: editor.x + editor.width / 2, y: editor.y - 100 };
     expect(away.y).toBeGreaterThan(0);
 
-    await pickUp(page, await grip(page, 1, "handle"));
+    await pickUp(page, await grip(page, 1));
     await moveTo(page, away);
     await expect(dropIndicator(page)).toBeHidden();
     await letGo(page);
@@ -242,8 +251,7 @@ test.describe("dragging a Row", () => {
     });
 
     const to = await belowMiddleOf(page, 2);
-    // Its toolbar is hidden while its Block is selected, so by its tag.
-    await pickUp(page, await grip(page, 1, "tag"));
+    await pickUp(page, await grip(page, 1));
     await moveTo(page, to);
     await letGo(page);
     await expect(structure(page)).resolves.toEqual([[["Two"]], [["OneA"]]]);
@@ -264,11 +272,11 @@ test.describe("dragging a Row", () => {
     await selectRow(page, 1);
     const to = await belowMiddleOf(page, 2);
 
-    await pickUp(page, await grip(page, 1, "handle"));
+    await pickUp(page, await grip(page, 1));
     await moveTo(page, to);
     await letGo(page);
 
-    await expect(selectRowButton(page, 2)).toBeFocused();
+    await expect(barButton(page, "Row 2")).toBeFocused();
     await page.keyboard.press("Alt+ArrowDown");
     await expect(structure(page)).resolves.toEqual([
       [["Two"]],

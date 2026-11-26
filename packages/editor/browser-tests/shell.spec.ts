@@ -15,7 +15,8 @@ import {
   focusStartOfTextBlock,
   hostEvents,
   palette,
-  selectRowButton,
+  selectRow,
+  setting,
   test,
   textBlock,
   violations,
@@ -350,8 +351,8 @@ test.describe("moving an email with JSON", () => {
       exact: true,
       name: "Export",
     });
-    // Delete in a Row's toolbar deletes that Row.
-    await selectRowButton(page, 1).focus();
+    // Delete in the Selection bar, with a Row selected, deletes that Row.
+    await selectRow(page, 1);
     await page.keyboard.press("Delete");
 
     await expect(exportButton).toHaveAttribute("aria-disabled", "true");
@@ -422,7 +423,8 @@ test.describe("the menus", () => {
     await openMenu(page, "Export");
     // On the Canvas's workspace, which keeps focus where it is.
     const area = await boxOf(canvas(page).getByTestId("workspace"));
-    await page.mouse.click(area.x + 10, area.y + 10);
+    // Below the Selection bar, beside the email.
+    await page.mouse.click(area.x + 10, area.y + 80);
     await expect(menu).toHaveCount(0);
   });
 
@@ -476,7 +478,9 @@ test.describe("the editor's API", () => {
     await palette(page, "Image").click();
 
     const choosing = page.waitForEvent("filechooser");
-    await shell(page).getByRole("button", { name: "Upload image" }).click();
+    await shell(page)
+      .getByRole("button", { name: /^(?:Upload|Replace)$/u })
+      .click();
     const chooser = await choosing;
     await chooser.setFiles({
       buffer: Buffer.from("x"),
@@ -484,16 +488,15 @@ test.describe("the editor's API", () => {
       name: "photo.png",
     });
 
-    await expect(
-      shell(page).getByRole("textbox", { name: "Image URL" })
-    ).toHaveValue(uploaded);
+    // With an image, its URL is in More.
+    await expect(await setting(page, "Image URL")).toHaveValue(uploaded);
 
     await shell(page).evaluate((element) => {
       (element as MailQuiltShell).uploadImage = undefined;
     });
 
     await expect(
-      shell(page).getByRole("button", { name: "Upload image" })
+      shell(page).getByRole("button", { name: /^(?:Upload|Replace)$/u })
     ).toHaveCount(0);
   });
 
@@ -1321,9 +1324,36 @@ test.describe("look", () => {
 
     // A click on the workspace, with the new Block selected.
     const area = await boxOf(editor.getByTestId("workspace"));
-    await page.mouse.click(area.x + 10, area.y + 10);
+    // Below the Selection bar, beside the email.
+    await page.mouse.click(area.x + 10, area.y + 80);
     await expect(editor.locator('[aria-current="true"]')).toHaveCount(0);
     expect(await pageScroll()).toBe(0);
+  });
+
+  test("a Block shown after a change brings the Selection bar into view with it, where the page scrolled the Shell's top away", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ height: 500, width: 1280 });
+    await page.goto("/shell.html?long");
+    // As the site's own pages scroll.
+    await page.addStyleTag({ content: "html { scroll-behavior: smooth }" });
+    await textBlock(page).nth(2).click();
+    await page.keyboard.press("Escape");
+    await page.evaluate(() =>
+      window.scrollTo({ behavior: "instant", top: document.body.scrollHeight })
+    );
+    const editor = shell(page).locator("mail-quilt");
+    const barTop = async () => {
+      const { y } = await boxOf(editor.getByTestId("selection-bar"));
+      return y;
+    };
+    expect(await barTop()).toBeLessThan(0);
+
+    // Moved, so it's scrolled into view.
+    await page.keyboard.press("Alt+ArrowDown");
+
+    await expect(editor.locator('[aria-current="true"]')).toBeInViewport();
+    await expect.poll(barTop).toBeGreaterThanOrEqual(0);
   });
 
   test("a long email keeps the whole side panel in view", async ({ page }) => {
@@ -1372,10 +1402,12 @@ test.describe("look", () => {
   }) => {
     await page.goto("/shell.html?long");
     await expect(textBlock(page).first()).toBeVisible();
-    await selectRowButton(page, 2).focus();
-    // Browsers only show focus from a script after keyboard use.
-    await page.keyboard.press("Tab");
-    await page.keyboard.press("Shift+Tab");
+    // The format bar's first button, which scrolls with the text.
+    await textBlock(page).nth(1).click();
+    await page.keyboard.press("Alt+F10");
+    // There and back, so the browser shows focus from the keyboard.
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("ArrowLeft");
     const tooltip = canvas(page).getByRole("tooltip");
     await expect(tooltip).toBeVisible();
     const before = await boxWithEdges(tooltip);

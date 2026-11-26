@@ -379,6 +379,80 @@ F.push({ id: "p19-empty-email", phone: true, html: () => `<div class="mtop"><spa
 F.push({ id: "p20-video", phone: true, html: () => `${mtopM("edit")}<div class="mcv"><div style="margin-top:-900px">${email({}, true).replace(/<div class="r[^"]*" data-r="6">/, (m) => videoRow(vThumb(false), true).replace('class="c vrow"', 'class="c vrow" style="padding:4px 16px 24px"') + m)}</div></div>
   <div class="mbar"><span class="ib on">${ic("video", "lg")}</span><span class="fld" style="flex:1;height:44px">${ic("link", "sm")}<span>youtube.com/watch…</span></span><span class="ib">${ic("img", "lg")}</span><span class="ib">${ic("more", "lg")}</span></div><div class="home"></div>` });
 
+// Selection bar states the picked frames don't draw (#315).
+group("g0", "Selection bar: more states (#315)", "Picked on 2026-11-26 for #315: the Divider's and Spacer's bars, the email's own settings in the bar with the rest under More, More for a Button and a Row, and a Text Block's bar with the format bar staying at its text.");
+
+const BTN_BLOCK = '<div class="b" style="margin:0 -12px 30px; padding:6px 12px"><span class="ebtn">Shop the roast</span></div>';
+const withBlockAfterButton = (block) => email({}).replace(BTN_BLOCK, BTN_BLOCK + block);
+const selTag = (label) => `<span class="tag">${label}</span><span class="grip">${ic("grip", "sm")}</span>`;
+const dividerBlock = `<div class="b sel" style="margin:-14px -12px 18px; padding:12px 12px">${selTag("Divider")}<div style="border-top:1px solid #d9cbb8"></div></div>`;
+const spacerBlock = `<div class="b sel" style="margin:-14px -12px 18px; height:24px">${selTag("Spacer")}</div>`;
+
+const ctxDivider = `<div class="ctx">${chip("divider", "Row 3", "Divider")}
+  <span class="swb"><span class="sw" style="background:#d9cbb8"></span>Color</span><span class="vr"></span>
+  <span class="lab">Thickness</span><span class="num">1<span class="u">px</span></span><span class="vr"></span>${tail}${moreBtn()}</div>`;
+F.push({ id: "g01-divider", html: () => app({ sel: 3, ctx: ctxDivider, email: withBlockAfterButton(dividerBlock) }) });
+
+const ctxSpacer = `<div class="ctx">${chip("spacer", "Row 3", "Spacer")}
+  <span class="lab">Height</span><span class="num">24<span class="u">px</span></span><span class="vr"></span>${tail}${moreBtn()}</div>`;
+F.push({ id: "g02-spacer", html: () => app({ sel: 3, ctx: ctxSpacer, email: withBlockAfterButton(spacerBlock) }) });
+
+// A: the email's most-used settings in the bar, the rest under More.
+const ctxEmailA = `<div class="ctx">
+  <span class="chip"><span class="ico">${ic("mail")}</span>Email</span><span class="vr"></span>
+  <span class="fld" style="width:300px;overflow:hidden;white-space:nowrap"><span class="lab">Preheader</span>First harvest from Guji. Your pri…</span>
+  <span class="fld" style="width:118px"><span class="lab">Language</span>en</span>
+  <span class="lab">Width</span><span class="num">600<span class="u">px</span></span><span class="vr"></span>${moreBtn()}</div>`;
+F.push({ id: "g03-email-in-bar", html: () => app({ sel: 0, ctx: ctxEmailA, email: email({}) }) });
+const emailMore = (cls) => `<div class="${cls}">
+  <div class="mp-h"><div><b>Email</b></div><span class="ib">${ic("x")}</span></div>
+  <div class="mp-s"><h5>Look</h5>
+    <div class="pr"><span>Background color</span><span class="v"><span class="swf"><span class="sw" style="background:#efe8de"></span>#EFE8DE</span></span></div>
+    <div class="pr"><span>Font</span><span class="v"><span class="swf">Georgia${ic("chev", "sm")}</span></span></div>
+  </div></div>`;
+F.push({ id: "g04-email-more", html: () => app({ layout: "rail drawerapp", sel: 0, ctx: ctxEmailA.replace(moreBtn(), moreBtn(true)), email: email({}), right: emailMore("drawer") }).replace('<div class="app rail drawerapp">', '<div class="app rail drawerapp" style="grid-template-columns:232px 1fr 320px">') });
+
+// More for a Button: its own setting that didn't fit, then the actions. Box and Show on come with #323 and #324.
+const buttonMore = `<div class="drawer">
+  <div class="mp-h"><div><b>Button</b><small>Row 3, Column 1</small></div><span class="ib">${ic("x")}</span></div>
+  <div class="mp-s"><h5>Button</h5>
+    <div style="display:grid;gap:6px;margin:4px 0 6px"><span style="color:var(--text-2)">Label</span><span class="fld" style="width:auto">Shop the roast</span></div>
+  </div>
+  <div class="mp-s"><h5>Actions</h5>
+    <div class="mi">${ic("dup", "sm")}Copy<kbd>⌘C</kbd></div>
+    <div class="mi">${ic("cut", "sm")}Cut<kbd>⌘X</kbd></div>
+    <div class="mi">${ic("down", "sm")}Paste below<kbd>⌘V</kbd></div>
+    <div class="mi dim">${ic("left", "sm")}Move to the Column before<kbd>⌥←</kbd></div>
+    <div class="mi dim">${ic("right", "sm")}Move to the next Column<kbd>⌥→</kbd></div>
+    <div class="mi">${ic("rows", "sm")}Select Row 3<kbd></kbd></div>
+  </div></div>`;
+F.push({ id: "g06-button-more", html: () => app({ layout: "rail drawerapp", sel: 3, ctx: ctxButton.replace(/<span class="ib">(\s*)?<svg class="i "><use href="#more"\/><\/svg><\/span>\s*<\/div>$/, `<span class="ib on">${ic("more")}</span></div>`), email: email({ sel: "btn" }), right: buttonMore }).replace('<div class="app rail drawerapp">', '<div class="app rail drawerapp" style="grid-template-columns:232px 1fr 320px">') });
+
+// More for a Row.
+const rowMore = `<div class="drawer">
+  <div class="mp-h"><div><b>Row 4</b><small>2 Columns</small></div><span class="ib">${ic("x")}</span></div>
+  <div class="mp-s"><h5>Row</h5>
+    <div class="pr"><span>Background color</span><span class="v"><span class="swf"><span class="sw none"></span><span class="dimtxt">None</span></span></span></div>
+    <div class="pr"><span>Hide on phones</span><span class="tgl"></span></div>
+    <div class="note">${ic("info", "sm")}Readers on phones don't see this Row.</div>
+  </div>
+  <div class="mp-s"><h5>Actions</h5>
+    <div class="mi">${ic("dup", "sm")}Copy<kbd>⌘C</kbd></div>
+    <div class="mi">${ic("cut", "sm")}Cut<kbd>⌘X</kbd></div>
+    <div class="mi">${ic("down", "sm")}Paste below<kbd>⌘V</kbd></div>
+  </div></div>`;
+F.push({ id: "g07-row-more", html: () => app({ layout: "rail drawerapp", sel: 4, ctx: ctxRow.replace(/<span class="ib">(\s*)?<svg class="i "><use href="#more"\/><\/svg><\/span>\s*<\/div>$/, `<span class="ib on">${ic("more")}</span></div>`), stage: "margin-top:-330px", email: email({ row: 4 }), right: rowMore }).replace('<div class="app rail drawerapp">', '<div class="app rail drawerapp" style="grid-template-columns:232px 1fr 320px">') });
+
+// Text, as the ticket says: the format bar stays beside the text; the bar has the Block's own settings.
+const ctxTextOwn = `<div class="ctx">${chip("text", "Row 3", "Text")}
+  <span class="num">16<span class="u">px</span></span>
+  <span class="swb"><span class="sw" style="background:#4a3a2e"></span>Color</span><span class="vr"></span>
+  ${segA()}<span class="vr"></span>${tail}${moreBtn()}</div>`;
+const formatBar = `<div class="pop" style="left:calc(50% - 300px + 24px); top:668px; padding:4px; display:flex; gap:2px; align-items:center">
+  <span class="ib">${ic("bold")}</span><span class="ib">${ic("ital")}</span><span class="ib">${ic("under")}</span><span class="vr"></span>
+  <span class="ib">${ic("ul")}</span><span class="ib">${ic("ol")}</span><span class="vr"></span><span class="ib">${ic("link")}</span><span class="ib">${ic("braces")}</span></div>`;
+F.push({ id: "g08-text-format-at-text", html: () => app({ sel: 3, ctx: ctxTextOwn, email: email({ sel: "p", edit: "text", grip: true }).replace("{{first_na", ""), over: formatBar }) });
+
 // Rows list states, after buildRails has drawn the thumbnails.
 AFTER.push(() => {
   document.querySelectorAll(".thumbs[data-lift]").forEach((t) => {

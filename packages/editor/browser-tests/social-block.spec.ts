@@ -11,10 +11,12 @@ import {
   blockGroup,
   blockProps,
   canvas,
+  choose,
   change,
   exportHtml,
-  field,
+  setting,
   holdMjml,
+  openPopover,
   palette,
   previewButton,
   previewDialog,
@@ -42,6 +44,13 @@ test.beforeEach(({ context }) =>
 );
 
 const icons = (page: Page) => blockGroup(page, "Social").getByRole("img");
+
+/** Each alignment's name, as its button in the Selection bar has it. */
+const ALIGN_LABELS = {
+  center: "Center",
+  left: "Left",
+  right: "Right",
+} as const;
 
 /** An email of one Social Block, with the Host app's icons. */
 const openSocial = async (page: Page, links: BlockProps["social"]["links"]) => {
@@ -112,13 +121,15 @@ test("a new Social Block says it has no links, as the email shows nothing", asyn
   await expect(icons(page)).toHaveCount(0);
 });
 
-test("the icons take the size chosen in the Side panel", async ({ page }) => {
+test("the icons take the size chosen in the Selection bar", async ({
+  page,
+}) => {
   await openSocial(page, [
     { network: "facebook", url: "https://facebook.com/shop" },
   ]);
   await blockGroup(page, "Social").click();
 
-  await field(page, "Icon size").selectOption({ label: "48px" });
+  await choose(page, "Icon size", "48");
 
   expect(await blockProps(page)).toMatchObject({ iconSize: 48 });
   await expect(icons(page)).toHaveJSProperty("width", 48);
@@ -163,7 +174,7 @@ test("icons that wrap have the gap between icons between their lines too, on the
     )
   );
   await blockGroup(page, "Social").click();
-  await field(page, "Icon size").selectOption({ label: "48px" });
+  await choose(page, "Icon size", "48");
   await expect(icons(page).first()).toHaveJSProperty("width", 48);
 
   // Ten 48px icons and their 24px gaps are wider than the email.
@@ -208,8 +219,8 @@ for (const align of ["right", "center"] as const) {
       )
     );
     await blockGroup(page, "Social").click();
-    await field(page, "Icon size").selectOption({ label: "48px" });
-    await field(page, "Alignment").selectOption(align);
+    await choose(page, "Icon size", "48");
+    await choose(page, "Alignment", ALIGN_LABELS[align]);
     await expect(icons(page).first()).toHaveJSProperty("width", 48);
     /** The end of each line for right, and its middle for center. */
     const placeOf = ({ end, start }: { end: number; start: number }) =>
@@ -298,15 +309,19 @@ test("a Preview rendered with the old folder isn't kept once the folder changes 
   );
 });
 
-const addChoice = (page: Page) => field(page, "Choose a network");
+const addChoice = (page: Page) => setting(page, "Choose a network");
 
-/** A button on a link's toolbar in the Side panel. */
+/** A button on a link's toolbar in the Links popover. */
 const tool = (page: Page, name: string) =>
   canvas(page).getByRole("button", { exact: true, name });
 
-const selectSocial = (page: Page) => blockGroup(page, "Social").click();
+/** Selects the Social Block, and opens its Links from the Selection bar. */
+const selectSocial = async (page: Page) => {
+  await blockGroup(page, "Social").click();
+  await openPopover(page, /^Links/u);
+};
 
-test.describe("the links in the Side panel", () => {
+test.describe("the links in the Links popover", () => {
   const FACEBOOK = {
     network: "facebook",
     url: "https://facebook.com/shop",
@@ -318,17 +333,16 @@ test.describe("the links in the Side panel", () => {
   }) => {
     await openSocial(page, [FACEBOOK]);
     await selectSocial(page);
-    await expect(addChoice(page).getByRole("option")).not.toContainText([
-      "Facebook",
-    ]);
+    const choice = await addChoice(page);
+    await expect(choice.getByRole("option")).not.toContainText(["Facebook"]);
 
-    await addChoice(page).selectOption({ label: "Instagram" });
+    await choice.selectOption({ label: "Instagram" });
     await page.getByRole("button", { exact: true, name: "Add" }).click();
 
     expect(await blockProps(page)).toMatchObject({
       links: [FACEBOOK, { network: "instagram" }],
     });
-    await expect(field(page, "Instagram URL")).toBeFocused();
+    await expect(await setting(page, "Instagram URL")).toBeFocused();
     await expect(icons(page).nth(1)).toHaveAttribute(
       "alt",
       "Instagram, no URL yet"
@@ -343,7 +357,7 @@ test.describe("the links in the Side panel", () => {
   }) => {
     await openSocial(page, [FACEBOOK, { network: "instagram" }, X]);
     await selectSocial(page);
-    const instagram = field(page, "Instagram URL");
+    const instagram = await setting(page, "Instagram URL");
 
     await change(instagram, "instagram.com/shop");
     await expect(instagram).toHaveAccessibleDescription(
@@ -368,7 +382,7 @@ test.describe("the links in the Side panel", () => {
     await openSocial(page, [FACEBOOK, X]);
     await selectSocial(page);
 
-    await change(field(page, "Facebook URL"), "");
+    await change(await setting(page, "Facebook URL"), "");
 
     expect(await blockProps(page)).toStrictEqual({
       links: [{ network: "facebook" }, X],
@@ -387,7 +401,7 @@ test.describe("the links in the Side panel", () => {
     });
     await selectSocial(page);
 
-    await expect(field(page, "URL de Facebook")).toHaveValue(
+    await expect(await setting(page, "URL de Facebook")).toHaveValue(
       "https://facebook.com/shop"
     );
   });
@@ -397,7 +411,8 @@ test.describe("the links in the Side panel", () => {
   }) => {
     await openSocial(page, [FACEBOOK, { network: "instagram" }, X]);
     await selectSocial(page);
-    await field(page, "Facebook URL").focus();
+    const facebook = await setting(page, "Facebook URL");
+    await facebook.focus();
 
     // Its toolbar comes before its URL. The first link can't move up, so the
     // toolbar's stop is Move down.
@@ -420,7 +435,7 @@ test.describe("the links in the Side panel", () => {
     });
     // Tab leaves the toolbar, to its link's URL.
     await page.keyboard.press("Tab");
-    await expect(field(page, "X URL")).toBeFocused();
+    await expect(await setting(page, "X URL")).toBeFocused();
   });
 
   test("an undo that turns off the focused button leaves focus on its link's toolbar", async ({
@@ -444,7 +459,7 @@ test.describe("the links in the Side panel", () => {
       (element as MailQuilt).mergeTags = [{ name: "x_url" }];
     });
     await selectSocial(page);
-    const url = field(page, "X URL");
+    const url = await setting(page, "X URL");
 
     await url.click();
     await page.keyboard.type("{{");

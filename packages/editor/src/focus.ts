@@ -5,6 +5,7 @@ import {
   findRow,
   isOfText,
 } from "./editor-places.js";
+import type { Place } from "./editor-places.js";
 import type { PanelTab } from "./selection.js";
 import type { ListFocus } from "./settings-panel.js";
 import type { TextBlockView } from "./text-block-view.js";
@@ -22,14 +23,25 @@ import type { TextBlockView } from "./text-block-view.js";
  */
 export type FocusTarget =
   | { on: "block" | "text"; blockId?: string }
-  /** A button on the selected Block's toolbar, by its `data-action`. */
-  | { on: "blockTool"; action: string }
+  /**
+   * A control in the Selection bar, by its `data-action` while it works. Or
+   * else the button that took its place, at `index` among those that work, or
+   * the next after it, or the bar's last.
+   */
+  | { on: "bar"; action?: string; index?: number }
+  /** The first field of the open popover from the Selection bar. */
+  | { on: "barPopover" }
+  /** The first item of the menu from the Selection bar's chip. */
+  | { on: "barMenu" }
+  /**
+   * In the More panel: a control by its `data-action`, or else its first
+   * field or control.
+   */
+  | { on: "more"; action?: string }
   /** The selected Block's format bar, at its first button that works. */
   | { on: "formatBar" }
   /** The link field, with its URL selected to type over. */
   | { on: "linkField" }
-  /** A Row's tool, by its `data-action` while it's enabled, or else its first that is. */
-  | { on: "rowTool"; action?: string; rowId: string }
   | { on: "tab"; tab: PanelTab }
   /** Undo or Redo in the top bar while it's enabled, or else the other. */
   | { on: "history"; action: "redo" | "undo" }
@@ -68,12 +80,109 @@ interface FocusHost {
  */
 export type ToolbarStep = "first" | "last" | "leave" | "next" | "previous";
 
+/** The Selection bar, which is one of three places by what's selected. */
+const BAR_PLACES = [
+  "blockBar",
+  "rowBar",
+  "emailBar",
+] as const satisfies Place[];
+
 /**
- * Goes along the buttons of the toolbar, or the tabs, that `from` is in. Tab
- * leaves from its one stop, wherever the arrow keys got to, so Shift+Tab doesn't
- * land back on that stop.
+ * The Selection bar that `element` is one of the controls of, if any: not in a
+ * popover, the chip's menu or More, which are in the bar but have their own.
+ */
+export const barOf = (element: Element) => {
+  const owner = closestPlace(
+    element,
+    "barPopover",
+    "barMenu",
+    "morePanel",
+    ...BAR_PLACES
+  );
+  return owner &&
+    (BAR_PLACES as readonly string[]).includes(owner.dataset.place ?? "")
+    ? owner
+    : null;
+};
+
+/**
+ * The Selection bar's controls that work, in order: each has a `data-action`.
+ * Not those in a popover, its menu or a More panel inside it, nor any it hides
+ * where it's narrow.
+ */
+const barControls = (bar: Element) =>
+  [...bar.querySelectorAll<HTMLElement>("[data-action]")].filter(
+    (control) =>
+      closestPlace(
+        control,
+        "barPopover",
+        "barMenu",
+        "morePanel",
+        ...BAR_PLACES
+      ) === bar &&
+      !control.matches(":disabled") &&
+      control.getClientRects().length > 0
+  );
+
+/**
+ * Goes along the Selection bar's controls from `from`. In a field, only from
+ * the end of its text that way, as the arrow keys move the cursor otherwise.
+ */
+const focusBarControl = (
+  bar: Element,
+  from: HTMLElement,
+  step: ToolbarStep
+) => {
+  if (
+    from instanceof HTMLInputElement &&
+    from.selectionStart !== null &&
+    (step === "previous" || step === "next")
+  ) {
+    const { selectionEnd, selectionStart, value } = from;
+    const atEdge =
+      selectionStart === selectionEnd &&
+      selectionStart === (step === "previous" ? 0 : value.length);
+    if (!atEdge) {
+      return;
+    }
+  }
+  const controls = barControls(bar);
+  const index = controls.indexOf(from);
+  const last = controls.length - 1;
+  const next: Record<ToolbarStep, HTMLElement | undefined> = {
+    first: controls[0],
+    last: controls[last],
+    leave: controls.find(({ tabIndex }) => tabIndex === 0),
+    next: controls[index === last ? 0 : index + 1],
+    previous: controls[index <= 0 ? last : index - 1],
+  };
+  const to = next[step];
+  to?.focus();
+  if (!(to instanceof HTMLInputElement)) {
+    return;
+  }
+  // Into a field from one side, the cursor is at that side, ready to go on.
+  // A number has no cursor to place, so it's selected, to type over.
+  if (to.selectionStart === null) {
+    to.select();
+  } else {
+    const at = step === "previous" || step === "last" ? to.value.length : 0;
+    to.setSelectionRange(at, at);
+  }
+};
+
+/**
+ * Goes along the buttons of the toolbar, or the tabs, that `from` is in, or
+ * along the Selection bar's controls. Tab leaves from its one stop, wherever
+ * the arrow keys got to, so Shift+Tab doesn't land back on that stop.
  */
 export const focusToolbarButton = (from: Element, step: ToolbarStep) => {
+  // A toolbar in a popover from the bar, such as a link's, is its own.
+  const bar = closestPlace(from, "listItemTools") ? null : barOf(from);
+  if (bar) {
+    focusBarControl(bar, from as HTMLElement, step);
+    return;
+  }
   const button = from as HTMLButtonElement;
   const buttons = [
     ...(button.parentElement?.querySelectorAll<HTMLButtonElement>(
@@ -132,28 +241,27 @@ const targetOf = (element: Element): FocusTarget => {
   if (listTool) {
     return listTool;
   }
-  const found = closestPlace(
-    element,
-    "text",
-    "blockToolbar",
-    "block",
-    "rowToolbar",
-    "history"
-  );
-  const place = found?.dataset.place;
   const { action } = (element as HTMLElement).dataset;
+  if (closestPlace(element, "morePanel")) {
+    return { action, on: "more" };
+  }
+  if (closestPlace(element, "barPopover")) {
+    return { on: "barPopover" };
+  }
+  if (closestPlace(element, "barMenu")) {
+    return { action: "chip", on: "bar" };
+  }
+  const bar = barOf(element);
+  if (bar) {
+    return {
+      action,
+      index: barControls(bar).indexOf(element as HTMLElement),
+      on: "bar",
+    };
+  }
+  const found = closestPlace(element, "text", "block", "history");
+  const place = found?.dataset.place;
   switch (place) {
-    case "rowToolbar": {
-      const rowId = closestPlace(element, "row")?.dataset.rowId;
-      return rowId === undefined
-        ? { on: "emailTools" }
-        : { action, on: "rowTool", rowId };
-    }
-    case "blockToolbar": {
-      return action === undefined
-        ? { on: "emailTools" }
-        : { action, on: "blockTool" };
-    }
     case "text": {
       return {
         blockId: closestPlace(element, "block")?.dataset.blockId,
@@ -222,15 +330,38 @@ export const createFocus = ({
 
   const rowFrame = (rowId: string) => findRow(root(), rowId);
 
-  /** A Row's tools that work, the Select Row button first. */
-  const rowTools = (rowId: string) => {
-    const row = rowFrame(rowId);
-    const toolbar = row && findPlace(row, "rowToolbar");
-    return [
-      ...(toolbar?.querySelectorAll<HTMLButtonElement>(
-        "button:not(:disabled)"
+  /** The control that takes a bar target's focus. */
+  const barControl = ({
+    action,
+    index = 0,
+  }: {
+    action?: string;
+    index?: number;
+  }) => {
+    const bar = BAR_PLACES.map((name) => findPlace(root(), name)).find(Boolean);
+    const controls = bar ? barControls(bar) : [];
+    return (
+      controls.find((control) => control.dataset.action === action) ??
+      controls[Math.min(index, controls.length - 1)] ??
+      controls[0]
+    );
+  };
+
+  /** What takes a More panel target's focus. */
+  const moreControl = (action: string | undefined) => {
+    const panel = findPlace(root(), "morePanel");
+    // Not the actions it only shows where the bar is short of room.
+    const controls = [
+      ...(panel?.querySelectorAll<HTMLElement>(
+        "input, select, button:not(:disabled)"
       ) ?? []),
-    ];
+    ].filter((control) => control.getClientRects().length > 0);
+    return (
+      controls.find((control) => control.dataset.action === action) ??
+      // Its first field, or its first action, past its Close button.
+      controls.find((control) => control.dataset.action !== "close-more") ??
+      controls[0]
+    );
   };
 
   /** Undo or Redo while it's enabled, or else the other. */
@@ -277,13 +408,22 @@ export const createFocus = ({
         }
         return target.on === "text" ? textOf(blockId) : blockElement(blockId);
       }
-      case "blockTool": {
-        const blockId = selectedBlockId();
-        const block = blockId === undefined ? undefined : blockElement(blockId);
-        const toolbar = block && findPlace(block, "blockToolbar");
-        return toolbar?.querySelector<HTMLElement>(
-          `[data-action="${CSS.escape(target.action)}"]`
+      case "bar": {
+        return barControl(target);
+      }
+      // A color's hex field rather than its picker, which opens a dialog.
+      case "barPopover": {
+        return findPlace(root(), "barPopover")?.querySelector<HTMLElement>(
+          'input:not([type="color"]), select, button'
         );
+      }
+      case "barMenu": {
+        return findPlace(root(), "barMenu")?.querySelector<HTMLElement>(
+          "button:not(:disabled)"
+        );
+      }
+      case "more": {
+        return moreControl(target.action);
       }
       case "formatBar": {
         return findPlace(root(), "formatBar")?.querySelector<HTMLElement>(
@@ -299,13 +439,6 @@ export const createFocus = ({
               field.select();
             },
           }
-        );
-      }
-      case "rowTool": {
-        const tools = rowTools(target.rowId);
-        return (
-          tools.find((tool) => tool.dataset.action === target.action) ??
-          tools[0]
         );
       }
       case "tab": {
@@ -324,8 +457,9 @@ export const createFocus = ({
   };
 
   /**
-   * What takes focus for a target, or else for the nearest one that's there: a
-   * Block's tool gives way to its text, and its text to the Block itself.
+   * What takes focus for a target, or else for the nearest one that's there:
+   * a Block's text gives way to the Block itself, and a control in the More
+   * panel, once it's closed, to the bar's More button.
    */
   const find = (target: FocusTarget): Focusable | undefined => {
     const found =
@@ -335,8 +469,8 @@ export const createFocus = ({
     if (found) {
       return found;
     }
-    if (target.on === "blockTool") {
-      return find({ on: "text" });
+    if (target.on === "more") {
+      return find({ action: "more", on: "bar" });
     }
     if (target.on === "text") {
       return find({ blockId: target.blockId, on: "block" });
@@ -355,16 +489,18 @@ export const createFocus = ({
   };
 
   const reveal = (target: Shown) => {
+    // Where the page scrolls around a Shell, which scrolls too, the Selection
+    // bar keeps to the Shell's top and the page can take it out of sight. It
+    // comes first, so the Block or Row wins where both don't fit, and at once,
+    // as a page that scrolls smoothly would otherwise go only to the second.
+    root()
+      .querySelector(".bar-dock")
+      ?.scrollIntoView({ behavior: "instant", block: "nearest" });
     if ("rowId" in target) {
       rowFrame(target.rowId)?.scrollIntoView({ block: "nearest" });
       return;
     }
-    const block = blockElement(target.blockId);
-    block?.scrollIntoView({ block: "nearest" });
-    // Its tools can reach past a thin Block, under the floating toolbar, which
-    // would hide the one with focus.
-    const toolbar = block && findPlace(block, "blockToolbar");
-    toolbar?.scrollIntoView({ block: "nearest" });
+    blockElement(target.blockId)?.scrollIntoView({ block: "nearest" });
   };
 
   return {

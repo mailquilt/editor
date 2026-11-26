@@ -3,15 +3,15 @@ import type { EditorFocus } from "./focus.js";
 import type { TextBlockView } from "./text-block-view.js";
 
 /**
- * Which Block or Row is selected, whether its text is being edited, and what
- * the Side panel shows. Everything else in the editor asks this module to
- * select something. Focus is the focus module's.
+ * Which Block or Row is selected, whether its text is being edited, and the
+ * Side panel's tab. Everything else in the editor asks this module to select
+ * something. Focus is the focus module's.
  */
 
-/** The Side panel's tabs, one of which it shows while it doesn't show what's selected. */
-export type PanelTab = "content" | "rows" | "settings";
+/** The Side panel's tabs, for adding Blocks and Rows. */
+export type PanelTab = "content" | "rows";
 
-/** A Block, which the toolbars act on, a Row, or nothing. */
+/** A Block, which the Selection bar acts on, a Row, or nothing. */
 type Selected = { blockId: string } | { rowId: string } | undefined;
 
 interface SelectionHost {
@@ -40,9 +40,7 @@ export const createSelection = ({
    * it.
    */
   let editingText = false;
-  /** Whether the side panel shows what's selected, not its tabs. */
-  let showsSettings = false;
-  /** The Side panel's tab, which it shows while it doesn't show what's selected. */
+  /** The Side panel's tab. */
   let tab: PanelTab = "content";
 
   const selectedBlockId = () =>
@@ -61,15 +59,14 @@ export const createSelection = ({
   };
 
   /**
-   * Selects a Block, a Row or nothing, and shows what's selected in the side
-   * panel. Whether a Block's text is being edited is up to where focus is.
+   * Selects a Block, a Row or nothing, which the Selection bar then shows.
+   * Whether a Block's text is being edited is up to where focus is.
    */
   const select = (target: Selected) => {
-    if (isSelected(target) && showsSettings === (target !== undefined)) {
+    if (isSelected(target)) {
       return;
     }
     selected = target;
-    showsSettings = target !== undefined;
     if (selectedBlockId() === undefined) {
       editingText = false;
     }
@@ -82,17 +79,9 @@ export const createSelection = ({
       editingText = inText;
       requestUpdate();
     }
-    // The Block is selected already, and the panel stays as it was left.
+    // The Block is selected already.
     if (!focus.restoring) {
       select({ blockId });
-    }
-  };
-
-  /** Shows the selected Block's or Row's settings in the side panel. */
-  const showSettings = () => {
-    if (!showsSettings) {
-      showsSettings = true;
-      requestUpdate();
     }
   };
 
@@ -118,21 +107,6 @@ export const createSelection = ({
 
     get editingText() {
       return editingText;
-    },
-
-    /**
-     * Shows the selected Block's settings again after Back, when its text still has
-     * focus and so gets no new focus event. Its toolbar, and what belongs to
-     * its text, leave the panel be.
-     */
-    onBlockClick(blockId: string, target: Element) {
-      if (
-        blockId === selectedBlockId() &&
-        !closestPlace(target, "blockToolbar") &&
-        !isOfText(target)
-      ) {
-        showSettings();
-      }
     },
 
     onBlockFocus(blockId: string) {
@@ -190,14 +164,14 @@ export const createSelection = ({
     },
 
     /**
-     * Selects a Row instead of any Block, and shows its settings. Its toolbar's
-     * button takes focus, so typing can't go on in a Block's text, with its
+     * Selects a Row instead of any Block, and the Selection bar shows it. The
+     * bar's chip takes focus, so typing can't go on in a Block's text, with its
      * focus ring when this was from the keyboard.
      */
     selectRow(rowId: string, fromKeyboard: boolean) {
       select({ rowId });
       focus.focusWhenRendered(
-        { action: "select-row", on: "rowTool", rowId },
+        { action: "chip", on: "bar" },
         { focusVisible: fromKeyboard }
       );
     },
@@ -214,22 +188,6 @@ export const createSelection = ({
     get selectedText() {
       const blockId = selectedBlockId();
       return blockId === undefined ? undefined : textOf(blockId);
-    },
-
-    /**
-     * Back to the side panel's tabs, with the Block still selected for what's
-     * added next. From the keyboard, focus goes to the current tab.
-     */
-    showTabs(fromKeyboard: boolean) {
-      showsSettings = false;
-      requestUpdate();
-      if (fromKeyboard) {
-        focus.focusWhenRendered({ on: "tab", tab });
-      }
-    },
-
-    get showsSettings() {
-      return showsSettings;
     },
 
     get tab() {

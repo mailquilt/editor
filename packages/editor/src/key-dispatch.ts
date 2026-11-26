@@ -1,6 +1,6 @@
 import { readPasted } from "./clipboard.js";
 import type { EditingActions } from "./editing-actions.js";
-import { closestPlace, findPlaces, placeOf } from "./editor-places.js";
+import { closestPlace, placeOf } from "./editor-places.js";
 import type { FieldMergeTags } from "./field-merge-tags.js";
 import { focusToolbarButton } from "./focus.js";
 import type { EditorFocus, ToolbarStep } from "./focus.js";
@@ -30,6 +30,12 @@ import type { EditorSelection } from "./selection.js";
  */
 
 interface KeyDispatchHost {
+  /** The Selection bar's popover, menu and More, which Escape closes. */
+  bar: {
+    closeMenu: (returnFocus: boolean) => void;
+    closeMore: (returnFocus: boolean) => void;
+    closePopover: (returnFocus: boolean) => void;
+  };
   /** Whether there's a step to take that way. */
   canStep: (step: "redo" | "undo") => boolean;
   drafts: { discard: (event: KeyboardEvent) => void };
@@ -54,6 +60,8 @@ interface KeyDispatchHost {
     "closeMergeTagPicker" | "isOpenIn" | "moveInMergeTagPicker" | "pickMergeTag"
   >;
   focus: Pick<EditorFocus, "focus" | "focused" | "focusIsOutsideText">;
+  /** The first Block of a Row, if it has any. */
+  firstBlockIn: (rowId: string) => string | undefined;
   isDragging: () => boolean;
   linkForm: { cancel: () => void; open: () => void };
   previewIsOpen: () => boolean;
@@ -72,18 +80,29 @@ const toolbarStep =
   ({ target }: KeyboardEvent) =>
     focusToolbarButton(target as Element, step);
 
-/** The Row whose toolbar an element is in. */
-const rowOf = (target: EventTarget | null) =>
-  closestPlace(target as Element, "row")?.dataset.rowId;
+/**
+ * From a field, where the key moves the cursor unless it goes on to another
+ * control. Once it has, the key does nothing more there, so it doesn't move
+ * the cursor just placed in the next field, or undo its selection.
+ */
+const fieldStep = (step: ToolbarStep) => (event: KeyboardEvent) => {
+  const from = event.target as Element;
+  focusToolbarButton(from, step);
+  if (!from.matches(":focus")) {
+    event.preventDefault();
+  }
+};
 
 /** For a key whose action is done on the clipboard event it fires. */
 const onClipboardEvent = doNothing;
 
 export const createKeyDispatch = ({
+  bar,
   canStep,
   drafts,
   editing,
   fieldMergeTags,
+  firstBlockIn,
   focus,
   isDragging,
   linkForm,
@@ -95,6 +114,13 @@ export const createKeyDispatch = ({
   let lastPress: { key: string; target: EventTarget | undefined } | undefined;
   /** The keys a Block's text answered. */
   const answeredInText = new WeakSet<KeyboardEvent>();
+  /**
+   * What the next clipboard event does, when a button of the editor's own
+   * fires it, rather than a key where focus is.
+   */
+  let pendingClipboard: ClipboardAction | undefined;
+  /** The Row the Selection bar acts on, which a Row's keys there are for. */
+  const rowOf = () => selection.rowId;
 
   /**
    * The picker a key was pressed with open: under the field the key was
@@ -111,7 +137,10 @@ export const createKeyDispatch = ({
     backToBlock: () => focus.focus({ on: "block" }),
     backToText: () => focus.focus({ on: "text" }),
     cancelLink: () => linkForm.cancel(),
+    closeMenu: () => bar.closeMenu(true),
     closeMergeTagPicker: (event) => pickerOf(event)?.closeMergeTagPicker(),
+    closeMore: () => bar.closeMore(true),
+    closePopover: () => bar.closePopover(true),
     // The browser closes the dialog.
     closePreview: doNothing,
     copyBlock: onClipboardEvent,
@@ -119,18 +148,18 @@ export const createKeyDispatch = ({
     cutBlock: onClipboardEvent,
     cutRow: onClipboardEvent,
     deleteBlock: () => editing.deleteBlock(true),
-    deleteRow: (event) => {
-      const rowId = rowOf(event.target);
+    deleteRow: () => {
+      const rowId = rowOf();
       if (rowId !== undefined) {
         editing.deleteRow(rowId, true);
       }
     },
     discardDraft: (event) => drafts.discard(event),
     duplicateBlock: () => editing.duplicateBlock(true),
-    duplicateRow: (event) => {
-      const rowId = rowOf(event.target);
+    duplicateRow: () => {
+      const rowId = rowOf();
       if (rowId !== undefined) {
-        editing.duplicateRow(rowId, true);
+        editing.duplicateRow(rowId);
       }
     },
     editText: () => focus.focus({ on: "text" }),
@@ -140,23 +169,23 @@ export const createKeyDispatch = ({
     lastButton: toolbarStep("last"),
     leaveToolbar: toolbarStep("leave"),
     nextButton: toolbarStep("next"),
+    nextControl: fieldStep("next"),
     nextMergeTag: (event) => pickerOf(event)?.moveInMergeTagPicker(1),
     openLinkField: () => linkForm.open(),
     paste: onClipboardEvent,
     pasteAfterRow: onClipboardEvent,
     pickMergeTag: (event) => pickerOf(event)?.pickMergeTag(),
     previousButton: toolbarStep("previous"),
+    previousControl: fieldStep("previous"),
     previousMergeTag: (event) => pickerOf(event)?.moveInMergeTagPicker(-1),
     redo: () => stepHistory("redo"),
     typeInField: doNothing,
     undo: () => stepHistory("undo"),
-    // To the first Block of the Row whose toolbar this is, which focus
-    // selects, or with none, to nothing selected.
-    unselectRow: ({ target }) => {
-      const row = closestPlace(target as Element, "row");
-      const blockId = row
-        ? findPlaces(row, "block")[0]?.dataset.blockId
-        : undefined;
+    // To the selected Row's first Block, which focus selects, or with none,
+    // to nothing selected.
+    unselectRow: () => {
+      const rowId = rowOf();
+      const blockId = rowId === undefined ? undefined : firstBlockIn(rowId);
       if (blockId === undefined) {
         selection.select(undefined);
       } else {
@@ -171,18 +200,18 @@ export const createKeyDispatch = ({
    */
   const clipboardActions: Record<
     ClipboardAction,
-    (data: DataTransfer, focused: Element) => void
+    (data: DataTransfer) => void
   > = {
     copyBlock: (data) => editing.copyBlock(data),
-    copyRow: (data, focused) => {
-      const rowId = rowOf(focused);
+    copyRow: (data) => {
+      const rowId = rowOf();
       if (rowId !== undefined) {
         editing.copyRow(rowId, data);
       }
     },
     cutBlock: (data) => editing.cutBlock(data),
-    cutRow: (data, focused) => {
-      const rowId = rowOf(focused);
+    cutRow: (data) => {
+      const rowId = rowOf();
       if (rowId !== undefined) {
         editing.cutRow(rowId, data);
       }
@@ -193,9 +222,9 @@ export const createKeyDispatch = ({
         editing.paste(pasted);
       }
     },
-    pasteAfterRow: (data, focused) => {
+    pasteAfterRow: (data) => {
       const pasted = readPasted(data);
-      const rowId = rowOf(focused);
+      const rowId = rowOf();
       if (pasted && rowId !== undefined) {
         editing.paste(pasted, rowId);
       }
@@ -209,8 +238,8 @@ export const createKeyDispatch = ({
   > = {
     moveBlock: (_event, direction) => editing.moveBlock(direction),
     // The key map moves a Row only up and down.
-    moveRow: (event, direction) => {
-      const rowId = rowOf(event.target);
+    moveRow: (_event, direction) => {
+      const rowId = rowOf();
       if (rowId !== undefined && (direction === "up" || direction === "down")) {
         editing.moveRow(rowId, direction);
       }
@@ -272,18 +301,35 @@ export const createKeyDispatch = ({
       const data = (event as ClipboardEvent).clipboardData;
       const scope = focused && placeOf(focused, hasKeys);
       const action =
-        scope &&
-        clipboardFor(scope, event.type as ClipboardEventType, {
-          dragging: isDragging(),
-        });
-      if (!(action && data && focused)) {
+        pendingClipboard ??
+        (scope &&
+          clipboardFor(scope, event.type as ClipboardEventType, {
+            dragging: isDragging(),
+          }));
+      if (!(action && data)) {
         return;
       }
       // What a copy or cut sets reaches the clipboard only once the browser's
       // own copy is prevented, and the host page doesn't paste too.
       event.preventDefault();
       event.stopPropagation();
-      clipboardActions[action](data, focused);
+      clipboardActions[action](data);
+    },
+
+    /**
+     * Copies or cuts the selected Block or Row from a button, such as More's,
+     * through the browser's own copy, which only a press lets a page start.
+     * The copy event it fires does `action`, whatever has focus.
+     */
+    runClipboard: (action: "copyBlock" | "copyRow" | "cutBlock" | "cutRow") => {
+      pendingClipboard = action;
+      try {
+        // Deprecated, but the one way a page fires a copy event with its own
+        // data, in every browser, without asking for a permission.
+        document.execCommand("copy");
+      } finally {
+        pendingClipboard = undefined;
+      }
     },
 
     /**

@@ -19,5 +19,6 @@ Until now every Block and every Block's text was a stop, and focus on either sel
 
 ## Consequences
 
-- From the selected Block, Tab reaches its settings after its text, its toolbar, the later Rows' toolbars and Preview.
-- With a Row selected, the Blocks need Escape, or a click, to reach. Escape had nothing to do in a Row's toolbar until now.
+- From the selected Block, Tab reaches the Selection bar after its text and any empty Column's toolbar after it, as the Block and Row toolbars are gone ([ADR 0021](./0021-three-modes-and-a-selection-bar.md)). The bar is one stop, with arrow keys between its controls, and its settings are there, so Tab's path through the email ends at the bar, then Preview. Until 0.4.0 it ended at the side panel's settings, after the Block's toolbar, the later Rows' toolbars and Preview.
+- With a Row selected, the Blocks need Escape, or a click, to reach. Escape in the Selection bar does that, as it did in a Row's toolbar.
+- A Row is selected by its tag, or from the keyboard by the bar's chip, whose menu names the Row and the email. A Row of empty Columns has no Block to start from, so its Columns' toolbars stay stops, and focus in one selects that Row, which "Focus on them selects nothing" above no longer says of them.

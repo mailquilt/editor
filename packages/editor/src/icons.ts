@@ -19,6 +19,10 @@ export const icon = (content: SVGTemplateResult) => html`
 `;
 
 export const ICONS = {
+  /** Lines lined up at the start, the middle or the end, for alignment. */
+  alignCenter: icon(svg`<path d="M3 6h18M6 12h12M4 18h16" />`),
+  alignLeft: icon(svg`<path d="M3 6h18M3 12h12M3 18h16" />`),
+  alignRight: icon(svg`<path d="M3 6h18M9 12h12M5 18h16" />`),
   /** A warning triangle, before a message. */
   alert: icon(
     svg`<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01" />`
@@ -58,11 +62,21 @@ export const ICONS = {
   import: icon(
     svg`<path d="M12 3v12M7 10l5 5 5-5M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5" />`
   ),
+  /** A cross, to close a panel. */
+  close: icon(svg`<path d="M18 6 6 18M6 6l12 12" />`),
+  /** Scissors. */
+  cut: icon(
+    svg`<circle cx="6" cy="6" r="3" /><circle cx="6" cy="18" r="3" /><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12" />`
+  ),
   italic: icon(svg`<path d="M10 5h8M6 19h8M14 5l-4 14" />`),
   left: icon(svg`<path d="M19 12H5M11 6l-6 6 6 6" />`),
   lineBreak: icon(svg`<path d="M20 5v7a4 4 0 0 1-4 4H5M9 12l-4 4 4 4" />`),
   link: icon(
     svg`<path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1" />`
+  ),
+  /** An envelope, for the email itself. */
+  mail: icon(
+    svg`<rect height="15" rx="2.5" width="19" x="2.5" y="4.5" /><path d="m3 7 9 6 9-6" />`
   ),
   /** A pair of braces, as a Merge Tag is written. */
   mergeTag: icon(
@@ -78,6 +92,10 @@ export const ICONS = {
   /** A 1 and a 2, each before a line, and a third line. */
   orderedList: icon(
     svg`<path d="M11 6h9M11 12h9M11 18h9M4 4.5 5.5 3.5V9M4 9h3M4 13a1.5 1.5 0 0 1 3 .25c0 1.25-3 2-3 3.75h3" />`
+  ),
+  /** A box inside a dashed one, for the space around it. */
+  padding: icon(
+    svg`<rect height="18" rx="2.5" stroke-dasharray="2.5 2.5" width="18" x="3" y="3" /><rect height="8" rx="1" width="8" x="8" y="8" />`
   ),
   phone: icon(
     svg`<rect height="18" rx="2.5" width="12" x="6" y="3" /><path d="M11 17.5h2" />`
@@ -105,4 +123,6 @@ export const ICONS = {
   underline: icon(svg`<path d="M7 4v7a5 5 0 0 0 10 0V4M5 20h14" />`),
   undo: icon(svg`<path d="M9 14 4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />`),
   up: icon(svg`<path d="M12 19V5M6 11l6-6 6 6" />`),
+  /** Arrows out to either side, for a width. */
+  width: icon(svg`<path d="M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4" />`),
 };

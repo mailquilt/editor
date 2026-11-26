@@ -11,17 +11,17 @@ This page covers `<mail-quilt>` and `<mail-quilt-shell>`, version 0.3. It makes 
 
 ## What doesn't meet AA
 
-**1.4.10 Reflow.** When the editor is narrower than {{editor-min-width}} pixels, as at 400% zoom on a 1280-pixel screen, it shows its top bar, with Undo and Redo and, in the Shell, its name, More and Export, and a notice in place of the canvas and the side panel. The email can still be previewed and exported, and Undo and Redo still work, but nothing else can change it.
+**1.4.10 Reflow.** When the editor is narrower than {{editor-min-width}} pixels, as at 400% zoom on a 1280-pixel screen, it shows its top bar, with Undo and Redo and, in the Shell, its name, More and Export, and a notice in place of the canvas, the Selection bar and the side panel. The email can still be previewed and exported, and Undo and Redo still work, but nothing else can change it.
 
-WCAG allows content that needs a two-dimensional layout to scroll in both directions, and an email that is {{email-width}} pixels wide is that kind of content. The side panel isn't, so its settings should still be reachable at that width. They aren't yet.
+WCAG allows content that needs a two-dimensional layout to scroll in both directions, and an email that is {{email-width}} pixels wide is that kind of content. The Selection bar and the side panel aren't, so their settings should still be reachable at that width. They aren't yet.
 
-At 200% zoom on a 1280-pixel screen, an editor that has the page's full width has 640 pixels, and everything works. The side panel moves below the email. An editor that shares the page, with a sidebar beside it for example, is narrower than that and shows the notice.
+At 200% zoom on a 1280-pixel screen, an editor that has the page's full width has 640 pixels, and everything works. The side panel moves below the email, and the Selection bar puts its Move, Duplicate and Delete buttons in More. An editor that shares the page, with a sidebar beside it for example, is narrower than that and shows the notice.
 
 ## How it was checked
 
 The audit was done on 19 November 2026, for version 0.2. Version 0.3 was checked again on 24 November 2026, as each item below says.
 
-- **Automated checks.** [axe-core](https://github.com/dequelabs/axe-core) 4.14, with its WCAG 2.2 AA rules, ran against the Shell and the editor in Chromium 158, Firefox 159 and WebKit 27.2. It checked nothing selected, a Block selected, each tab of the side panel, the link field showing an error, and Preview open. It found no violations. For 0.3, the editor's browser tests run the same rules in the same three browsers with what 0.3 added showing too: each type of Block selected, the Merge Tag list in text and under a settings field, a Row's switch to hide it on phones, a Social Block's links with a refused URL, and Preview at each width. They find no violations.
+- **Automated checks.** [axe-core](https://github.com/dequelabs/axe-core) 4.14, with its WCAG 2.2 AA rules, ran against the Shell and the editor in Chromium 158, Firefox 159 and WebKit 27.2. It checked nothing selected, a Block selected, each tab of the side panel, the link field showing an error, and Preview open. It found no violations. For 0.3, the editor's browser tests run the same rules in the same three browsers with what 0.3 added showing too: each type of Block selected, the Merge Tag list in text and under a settings field, a Row's switch to hide it on phones, a Social Block's links with a refused URL, and Preview at each width. On `main`, they also run with the Selection bar's popover, its chip's menu and More, docked and floating, open. They find no violations.
 - **The keyboard.** The editor's browser tests press every key on the [Keyboard and screen readers](./keyboard) page in the same three browsers.
 - **Measurements in the browser.** These covered the size of every control, the contrast of control edges and states, extra text spacing, widths from 320 to 1280 pixels, and forced colors as the browser emulates them. For 0.3 they were repeated on 24 November 2026 for every control it added, in Chromium, in the default theme, the dark theme from [Theme the editor](./theme-the-editor) and forced colors. That found the highlighted tag in the Merge Tag list, and a Merge Tag in text, with an edge at about 2:1, which is now at 3:1 or more. The dark theme is now built in, as `theme="dark"`. The automated checks run in it, and on 26 November 2026 its text, field edges and focus rings were checked at the contrast this page gives, including a Block's keyboard focus on a white email.
 - **Reading the code.** Every criterion below was checked against the source, including what each control is named and what a screen reader is told. It was done again for what 0.3 added.
@@ -54,12 +54,12 @@ NVDA, real browser zoom and Windows High Contrast haven't been checked by hand y
 | 1.4.10 Reflow | AA | **Doesn't meet** | Measured at 320 pixels: see above |
 | 1.4.11 Non-text contrast | AA | Meets | Measured: field edges, switches, button states, the highlighted Merge Tag, Merge Tags in text and focus rings are at 3:1 or more |
 | 1.4.12 Text spacing | AA | Meets | Measured: no text is cut off with extra spacing |
-| 1.4.13 Content on hover or focus | AA | Meets | Code, tests: tooltips and the Merge Tag list stay while hovered and close with Escape |
+| 1.4.13 Content on hover or focus | AA | Meets | Code, tests: tooltips and the Merge Tag list stay while hovered and close with Escape, and the Selection bar's popovers and menu, which open only when pressed, close with Escape too |
 | 2.1.1 Keyboard | A | Meets | Keyboard tests: every drag has keys and buttons too |
-| 2.1.2 No keyboard trap | A | Meets | Keyboard tests: text, toolbars, the link field, the Merge Tag list, a Social Block's links and Preview |
+| 2.1.2 No keyboard trap | A | Meets | Keyboard tests: text, toolbars, the Selection bar, its fields, popovers, menu and More, the link field, the Merge Tag list, a Social Block's links and Preview |
 | 2.1.4 Character key shortcuts | A | Meets | Code: every letter key needs Ctrl or ⌘ |
 | 2.2.1 Timing adjustable | A | Doesn't apply | No time limits |
-| 2.2.2 Pause, stop, hide | A | Meets | Code: the only animation shows while the Preview loads, and stops for reduced motion |
+| 2.2.2 Pause, stop, hide | A | Meets | Code: the animations show while the Preview loads and, for 140ms, as the Selection bar's popovers, menu and More open, and stop for reduced motion |
 | 2.3.1 Three flashes or below | A | Meets | Code: nothing flashes |
 | 2.4.1 Bypass blocks | A | Doesn't apply | The host page's |
 | 2.4.2 Page titled | A | Doesn't apply | The host page's |
@@ -68,7 +68,7 @@ NVDA, real browser zoom and Windows High Contrast haven't been checked by hand y
 | 2.4.5 Multiple ways | AA | Doesn't apply | The host page's |
 | 2.4.6 Headings and labels | AA | Meets | Code |
 | 2.4.7 Focus visible | AA | Meets | Code, measured in forced colors too |
-| 2.4.11 Focus not obscured (minimum) | AA | Meets | Measured: the floating toolbar never covers what has focus |
+| 2.4.11 Focus not obscured (minimum) | AA | Meets | Measured: the floating toolbar never covers what has focus, and a Block focused from the keyboard scrolls clear of the Selection bar. More, where it opens over the email, closes when a Block takes focus from the keyboard, as it could cover a narrow Column's Block |
 | 2.5.1 Pointer gestures | A | Meets | Code: no gesture needs more than one finger or a path |
 | 2.5.2 Pointer cancellation | A | Meets | Code: a drag lands on release, and Escape cancels it |
 | 2.5.3 Label in name | A | Meets | Code: each name starts with its visible words |

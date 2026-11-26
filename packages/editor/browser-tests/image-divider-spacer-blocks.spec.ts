@@ -13,13 +13,13 @@ import {
   change,
   drag,
   EXPORT_VIEWPORT,
-  field,
+  setting,
   hostEvents,
   openBlocks,
   openExport,
   openTab,
   palette,
-  selectRowButton,
+  rowTag,
   serveImages,
   TALL_VIEWPORT,
   test,
@@ -91,7 +91,7 @@ const spacerHandle = (page: Page) =>
 
 const makeThin = async (page: Page) => {
   await blockGroup(page, "Spacer").focus();
-  await change(field(page, "Height (px)"), "1");
+  await change(await setting(page, "Height (px)"), "1");
 };
 
 test.describe("selecting an Image", () => {
@@ -120,8 +120,8 @@ test.describe("an Image", () => {
     await openBlocks(page, ["text"]);
     await palette(page, "Image").click();
 
-    await change(field(page, "Image URL"), PHOTO);
-    await change(field(page, "Alt text"), "A red bicycle");
+    await change(await setting(page, "Image URL"), PHOTO);
+    await change(await setting(page, "Alt text"), "A red bicycle");
 
     await expect(image(page)).toHaveAttribute("src", PHOTO);
     await expect(image(page)).toHaveAttribute("alt", "A red bicycle");
@@ -136,9 +136,9 @@ test.describe("an Image", () => {
     await blockGroup(page, "Image").focus();
 
     // oxlint-disable-next-line no-script-url -- What's being refused.
-    await change(field(page, "Image URL"), "javascript:alert(1)");
+    await change(await setting(page, "Image URL"), "javascript:alert(1)");
 
-    await expect(field(page, "Image URL")).toHaveAttribute(
+    await expect(await setting(page, "Image URL")).toHaveAttribute(
       "aria-invalid",
       "true"
     );
@@ -152,12 +152,12 @@ test.describe("an Image", () => {
     await openBlocks(page, ["image"]);
     await blockGroup(page, "Image").focus();
 
-    await expect(field(page, "Link")).toBeDisabled();
+    await expect(await setting(page, "Link")).toBeDisabled();
 
-    await change(field(page, "Alt text"), "A red bicycle");
+    await change(await setting(page, "Alt text"), "A red bicycle");
 
-    await expect(field(page, "Link")).toBeEnabled();
-    await change(field(page, "Link"), "https://shop.example");
+    await expect(await setting(page, "Link")).toBeEnabled();
+    await change(await setting(page, "Link"), "https://shop.example");
     await expect(blockProps(page)).resolves.toEqual({
       alt: "A red bicycle",
       href: "https://shop.example",
@@ -170,12 +170,12 @@ test.describe("an Image", () => {
   }) => {
     await openBlocks(page, ["image"]);
     await blockGroup(page, "Image").focus();
-    await change(field(page, "Alt text"), "A red bicycle");
-    await change(field(page, "Link"), "https://shop.example");
+    await change(await setting(page, "Alt text"), "A red bicycle");
+    await change(await setting(page, "Link"), "https://shop.example");
 
-    await change(field(page, "Alt text"), "");
+    await change(await setting(page, "Alt text"), "");
 
-    await expect(field(page, "Alt text")).toHaveAttribute(
+    await expect(await setting(page, "Alt text")).toHaveAttribute(
       "aria-invalid",
       "true"
     );
@@ -185,14 +185,14 @@ test.describe("an Image", () => {
     });
 
     // What was refused is fine now, with nothing more to do in its field.
-    await change(field(page, "Link"), "");
+    await change(await setting(page, "Link"), "");
 
     await expect(blockProps(page)).resolves.toEqual({ src: PHOTO });
-    await expect(field(page, "Alt text")).toHaveAttribute(
+    await expect(await setting(page, "Alt text")).toHaveAttribute(
       "aria-invalid",
       "false"
     );
-    await expect(field(page, "Link")).toBeDisabled();
+    await expect(await setting(page, "Link")).toBeDisabled();
 
     await undo(page);
 
@@ -211,7 +211,7 @@ test.describe("an Image", () => {
     await openBlocks(page, ["image"]);
     await blockGroup(page, "Image").focus();
 
-    await change(field(page, "Image URL"), missing);
+    await change(await setting(page, "Image URL"), missing);
 
     await expect(blockGroup(page, "Image")).toContainText(
       `Couldn't load ${missing}`
@@ -222,7 +222,7 @@ test.describe("an Image", () => {
       height: 152,
     });
 
-    await change(field(page, "Image URL"), PHOTO);
+    await change(await setting(page, "Image URL"), PHOTO);
 
     await expect(image(page)).toHaveAttribute("src", PHOTO);
 
@@ -249,17 +249,17 @@ test.describe("an Image", () => {
     await context.route(missing, (route) => route.abort());
     await openBlocks(page, ["image"]);
     await blockGroup(page, "Image").focus();
-    await change(field(page, "Image URL"), missing);
+    await change(await setting(page, "Image URL"), missing);
     await expect(blockGroup(page, "Image")).toContainText(
       `Couldn't load ${missing}`
     );
 
-    await change(field(page, "Image URL"), PHOTO);
+    await change(await setting(page, "Image URL"), PHOTO);
     await expect(image(page)).toHaveAttribute("src", PHOTO);
 
     // As if it had finished uploading.
     await context.unroute(missing);
-    await change(field(page, "Image URL"), missing);
+    await change(await setting(page, "Image URL"), missing);
 
     await expect(image(page)).toHaveAttribute("src", missing);
   });
@@ -272,15 +272,16 @@ test.describe("an Image", () => {
     await context.route(missing, (route) => route.abort());
     await openBlocks(page, ["image"]);
     await blockGroup(page, "Image").focus();
-    await change(field(page, "Image URL"), missing);
+    await change(await setting(page, "Image URL"), missing);
     await expect(blockGroup(page, "Image")).toContainText(
       `Couldn't load ${missing}`
     );
 
     // As if it had finished uploading.
     await context.unroute(missing);
-    await field(page, "Image URL").clear();
-    await change(field(page, "Image URL"), missing);
+    const url = await setting(page, "Image URL");
+    await url.clear();
+    await change(await setting(page, "Image URL"), missing);
 
     await expect(image(page)).toHaveAttribute("src", missing);
   });
@@ -289,9 +290,9 @@ test.describe("an Image", () => {
     await openBlocks(page, ["image"]);
     await blockGroup(page, "Image").focus();
 
-    await change(field(page, "Image URL"), "{{logo_url}}");
-    await change(field(page, "Alt text"), "{{company}} logo");
-    await change(field(page, "Link"), "{{site_url}}");
+    await change(await setting(page, "Image URL"), "{{logo_url}}");
+    await change(await setting(page, "Alt text"), "{{company}} logo");
+    await change(await setting(page, "Link"), "{{site_url}}");
 
     // There's nothing to load yet, and a request for it would only fail.
     await expect(image(page)).toHaveCount(0);
@@ -308,8 +309,8 @@ test.describe("an Image", () => {
   }) => {
     await openBlocks(page, ["text", "image"]);
     await blockGroup(page, "Image").focus();
-    await change(field(page, "Alt text"), "A red bicycle");
-    await change(field(page, "Link"), "https://shop.example");
+    await change(await setting(page, "Alt text"), "A red bicycle");
+    await change(await setting(page, "Link"), "https://shop.example");
 
     await expect(blockGroup(page, "Image").locator("a")).toHaveCount(0);
     await blockGroup(page, "Text").focus();
@@ -360,7 +361,7 @@ test.describe("an Image", () => {
     await openBlocks(page, ["image"]);
     await blockGroup(page, "Image").focus();
 
-    await change(field(page, "Width (px)"), "120");
+    await change(await setting(page, "Width (px)"), "120");
 
     const onCanvas = await sizeOf(image(page));
     expect(onCanvas).toEqual({ height: 120, width: 120 });
@@ -380,7 +381,7 @@ test.describe("an Image", () => {
     await openBlocks(page, ["image"], ["text"]);
     await blockGroup(page, "Image").focus();
 
-    await change(field(page, "Width (px)"), "5000");
+    await change(await setting(page, "Width (px)"), "5000");
 
     const onCanvas = await sizeOf(image(page));
     const { opened } = await openExport(page, EXPORT_VIEWPORT);
@@ -397,7 +398,7 @@ test.describe("an Image", () => {
   }) => {
     await openBlocks(page, ["image"]);
     await blockGroup(page, "Image").focus();
-    const width = field(page, "Width (px)");
+    const width = await setting(page, "Width (px)");
     const isBadInput = () =>
       width.evaluate((element: HTMLInputElement) => element.validity.badInput);
     await width.click();
@@ -409,12 +410,12 @@ test.describe("an Image", () => {
     expect(await isBadInput()).toBe(false);
   });
 
-  test("scrolling over the focused Width leaves it as it is, with focus still in the editor", async ({
+  test("scrolling over the focused Width leaves it as it is, with focus still in its popover", async ({
     page,
   }) => {
     await openBlocks(page, ["image"]);
     await blockGroup(page, "Image").focus();
-    const width = field(page, "Width (px)");
+    const width = await setting(page, "Width (px)");
     await change(width, "100");
 
     await width.focus();
@@ -422,7 +423,7 @@ test.describe("an Image", () => {
     await page.mouse.wheel(0, -200);
 
     await expect(
-      canvas(page).getByRole("group", { name: "Email tools" })
+      canvas(page).getByRole("dialog", { name: "Width" })
     ).toBeFocused();
     await expect(width).toHaveValue("100");
   });
@@ -432,7 +433,7 @@ test.describe("an Image", () => {
   }) => {
     await openBlocks(page, ["image", "text"]);
     await blockGroup(page, "Image").focus();
-    await change(field(page, "Width (px)"), "100");
+    await change(await setting(page, "Width (px)"), "100");
 
     const onCanvas = await space(
       blockGroup(page, "Image"),
@@ -456,8 +457,8 @@ test.describe("a Divider", () => {
     await openBlocks(page, ["divider"]);
     await blockGroup(page, "Divider").focus();
 
-    await change(field(page, "Color"), "#ff0000");
-    await change(field(page, "Thickness (px)"), "6");
+    await change(await setting(page, "Color"), "#ff0000");
+    await change(await setting(page, "Thickness (px)"), "6");
 
     const onCanvas = await look(line(page));
     const { opened } = await openExport(page, EXPORT_VIEWPORT);
@@ -476,7 +477,7 @@ test.describe("a Spacer", () => {
     await openBlocks(page, ["spacer"]);
     await blockGroup(page, "Spacer").focus();
 
-    await change(field(page, "Height (px)"), "70");
+    await change(await setting(page, "Height (px)"), "70");
 
     await expect(sizeOf(blockGroup(page, "Spacer"))).resolves.toMatchObject({
       height: 70,
@@ -515,36 +516,23 @@ test.describe("a Spacer", () => {
     ).resolves.toBeTruthy();
   });
 
-  test("leaves its Row's toolbar its clicks, as thin as it gets", async ({
+  test("leaves the next Row's tag its clicks, as thin as it gets", async ({
     page,
   }) => {
     await openBlocks(page, ["spacer"]);
     await makeThin(page);
     await addRow(page);
     await blockGroup(page, "Spacer").focus();
-    const takesClicks = async (position: number) => {
-      const { height, width } = await sizeOf(selectRowButton(page, position));
-      return takesClickAt(
-        selectRowButton(page, position),
-        width / 2,
-        height / 2
-      );
-    };
 
-    // A Row's toolbar takes clicks once it shows, on hover.
+    // The next Row's tag shows on hover, over the end of the Spacer's Row.
     await canvas(page)
       .getByTestId("row")
       .nth(1)
       .hover({ position: { x: 300, y: 0 } });
-    await expect(takesClicks(2)).resolves.toBeTruthy();
-
-    // The Spacer's own Row shows its toolbar once its tag selects the Row.
-    await canvas(page)
-      .getByTestId("row")
-      .first()
-      .hover({ position: { x: 300, y: 0 } });
-    await canvas(page).getByTestId("row-tag").first().click();
-    await expect(takesClicks(1)).resolves.toBeTruthy();
+    const { height, width } = await sizeOf(rowTag(page, 2));
+    await expect(
+      takesClickAt(rowTag(page, 2), width / 2, height / 2)
+    ).resolves.toBeTruthy();
   });
 
   test.describe("as thin as it gets", () => {
@@ -681,10 +669,10 @@ test.describe("accessibility", () => {
       "spacer",
     ]);
     await blockGroup(page, "Button").focus();
-    await change(field(page, "Link"), "https://shop.example");
+    await change(await setting(page, "Link"), "https://shop.example");
     await blockGroup(page, "Image").focus();
-    await change(field(page, "Alt text"), "A red bicycle");
-    await change(field(page, "Link"), "https://shop.example");
+    await change(await setting(page, "Alt text"), "A red bicycle");
+    await change(await setting(page, "Link"), "https://shop.example");
     const { opened } = await openExport(page);
 
     await expect(

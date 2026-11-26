@@ -13,6 +13,8 @@ import {
   letGo,
   moveTo,
   openTab,
+  selectNothing,
+  openMore,
   openTestPage,
   pasteHtml,
   pickUp,
@@ -175,8 +177,10 @@ test("under a strict policy, the canvas shows the email with its settings, and n
   // Its pictures of the layouts set inline styles too, which nothing may block.
   await openTab(page, "Rows");
   await expect(layoutTile(page, "50/50")).toBeVisible();
-  // A dropdown's arrow, which no image source may hide.
-  await openTab(page, "Settings");
+  // A dropdown's arrow, which no image source may hide, and the Selection
+  // bar's swatches and More, which set inline styles too.
+  await selectNothing(page);
+  await openMore(page);
   await expect(
     canvas(page).getByRole("combobox", { exact: true, name: "Font" })
   ).toBeVisible();

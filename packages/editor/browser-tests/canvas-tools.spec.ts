@@ -5,9 +5,8 @@ import type { Locator, Page } from "@playwright/test";
 import type { MailQuilt } from "../src/index.js";
 import {
   announcement,
-  backButton,
+  barButton,
   blockGroup,
-  blockTools,
   blockTypes,
   blockWith,
   boxOf,
@@ -26,7 +25,8 @@ import {
   rowTag,
   rowTools,
   selectedBlock,
-  selectRowButton,
+  selectionBar,
+  selectNothing,
   serveImages,
   settle,
   setValue,
@@ -50,26 +50,25 @@ const langOf = (locator: Locator) =>
     .evaluate((element) => element.closest("[lang]")?.getAttribute("lang"));
 
 test.describe("a Block on the canvas", () => {
-  test("only the selected one has a toolbar", async ({ page }) => {
+  test("the selected one keeps its drag handle, and the Selection bar has its tools", async ({
+    page,
+  }) => {
     await openBlocks(page, ["button", "divider"]);
-    await expect(blockTools(page)).toHaveCount(0);
+    await expect(selectionBar(page)).toHaveAccessibleName("Email settings");
 
     await blockGroup(page, "Button").focus();
 
-    await expect(blockTools(page)).toHaveCount(1);
+    await expect(selectionBar(page)).toHaveAccessibleName("Button settings");
     await expect(
-      blockGroup(page, "Button").getByRole("toolbar", { name: "Block tools" })
+      blockGroup(page, "Button").getByTestId("drag-handle")
     ).toBeVisible();
-    await expect(blockTools(page).getByTestId("drag-handle")).toBeVisible();
   });
 
-  test("Alt+↑ in its toolbar moves the Block", async ({ page }) => {
+  test("Alt+↑ in the Selection bar moves the Block", async ({ page }) => {
     await openBlocks(page, ["button", "divider"]);
     await blockGroup(page, "Divider").focus();
     await page.keyboard.press("Tab");
-    await expect(
-      blockTools(page).getByRole("button", { name: "Move Block up" })
-    ).toBeFocused();
+    await expect(barButton(page, "Row 1 / Divider")).toBeFocused();
 
     await page.keyboard.press("Alt+ArrowUp");
 
@@ -82,96 +81,64 @@ test.describe("a Block on the canvas", () => {
 });
 
 test.describe("a Row on the canvas", () => {
-  test("shows its toolbar on hover", async ({ page }) => {
-    await openBlocks(page, ["button"]);
-    await expect(rowTools(page, 1)).toHaveCSS("opacity", "0");
-
-    await hoverRow(page, 1);
-
-    await expect(rowTools(page, 1)).toHaveCSS("opacity", "1");
-  });
-
-  test("hides its toolbar while one of its Blocks is selected, even on hover", async ({
+  test("its tag shows on hover, even while one of its Blocks is selected, and selects the Row", async ({
     page,
   }) => {
     await openEmail(page, [[["A"]], [["B"]]]);
     await page.mouse.move(0, 0);
+    await expect(rowTag(page, 2)).toHaveCSS("opacity", "0");
 
     await blockGroup(page, "Text").last().focus();
     await hoverRow(page, 2);
 
-    await expect(rowTools(page, 2)).toHaveCSS("opacity", "0");
-    // Its tag still shows, and selects the Row, which brings the toolbar back.
     const tag = rowTag(page, 2);
     await expect(tag).toHaveCSS("opacity", "1");
     await tag.click();
-    await expect(rowTools(page, 2)).toHaveCSS("opacity", "1");
-    await expect(rowTools(page, 2)).toHaveAttribute("aria-current", "true");
+    await expect(rowTools(page, 2)).toBeVisible();
+    await expect(blockWith(page, "B")).not.toHaveAttribute("aria-current");
   });
 
-  test("from a selected Row, Tab passes its Blocks to leave the email for its settings, and Escape goes back to its first Block", async ({
+  test("from a selected Row, Tab passes its Blocks to leave the Selection bar, and Escape goes back to its first Block", async ({
     page,
   }) => {
     await openEmail(page, [[["A"]], [["B"]]]);
-    await selectRowButton(page, 1).focus();
-    await page.keyboard.press("Enter");
-    await expect(rowTools(page, 1)).toHaveAttribute("aria-current", "true");
-
+    await blockWith(page, "A").focus();
+    // Past its text, to the bar's chip, whose menu selects its Row.
     await page.keyboard.press("Tab");
-    await expect(selectRowButton(page, 2)).toBeFocused();
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("Enter");
+    await expect(rowTools(page, 1)).toBeVisible();
+    await expect(barButton(page, "Row 1")).toBeFocused();
+
     await page.keyboard.press("Tab");
     await expect(previewButton(page)).toBeFocused();
-    await expect(rowTools(page, 1)).toHaveAttribute("aria-current", "true");
+    await expect(rowTools(page, 1)).toBeVisible();
 
     await page.keyboard.press("Shift+Tab");
-    await page.keyboard.press("Shift+Tab");
-    await expect(selectRowButton(page, 1)).toBeFocused();
-    // The first only closes Select Row's tooltip.
+    await expect(barButton(page, "Row 1")).toBeFocused();
+    // The first only closes the chip's tooltip.
     await page.keyboard.press("Escape");
-    await expect(rowTools(page, 1)).toHaveAttribute("aria-current", "true");
     await page.keyboard.press("Escape");
     await expect(blockWith(page, "A")).toBeFocused();
     await expect(blockWith(page, "A")).toHaveAttribute("aria-current", "true");
   });
 
-  test("Escape in a selected Row's toolbar with no Block in the Row leaves nothing selected", async ({
+  test("Escape in a selected Row's bar with no Block in the Row leaves nothing selected", async ({
     page,
   }) => {
     await openEmail(page, [[["A"]], [[]]]);
-    await selectRowButton(page, 2).focus();
-    await page.keyboard.press("Enter");
-    await expect(rowTools(page, 2)).toHaveAttribute("aria-current", "true");
+    await hoverRow(page, 2);
+    await rowTag(page, 2).click();
+    await expect(barButton(page, "Row 2")).toBeFocused();
+    await page.keyboard.press("Escape");
 
-    // The first only closes Select Row's tooltip.
-    await page.keyboard.press("Escape");
-    await page.keyboard.press("Escape");
-    await expect(rowTools(page, 2)).not.toHaveAttribute("aria-current");
-    await expect(selectRowButton(page, 2)).toBeFocused();
+    await expect(selectionBar(page)).toHaveAccessibleName("Email settings");
     await expect(blockWith(page, "A")).not.toHaveAttribute("aria-current");
-  });
-
-  test("Shift+Tab from one of its Blocks reaches its toolbar in one stop, and from further along leaves it", async ({
-    page,
-  }) => {
-    await openEmail(page, [[["A"]], [["B"]]]);
-    await blockGroup(page, "Text").last().focus();
-
-    await page.keyboard.press("Shift+Tab");
-
-    // One stop for the whole toolbar, at its first tool.
-    await expect(selectRowButton(page, 2)).toBeFocused();
-    await expect(rowTools(page, 2)).toHaveCSS("opacity", "1");
-
-    // Shift+Tab from further along leaves it, rather than going back to that stop.
-    await page.keyboard.press("ArrowRight");
+    // Focus stays in the bar, which now has the email's settings.
     await expect(
-      rowTools(page, 2).getByRole("button", { name: "Move Row up" })
+      canvas(page).getByRole("textbox", { name: "Preheader" })
     ).toBeFocused();
-    await page.keyboard.press("Shift+Tab");
-    await expect(selectRowButton(page, 2)).not.toBeFocused();
-    await expect(
-      rowTools(page, 2).getByRole("button", { name: "Move Row up" })
-    ).not.toBeFocused();
   });
 });
 
@@ -244,13 +211,12 @@ test.describe("the email's language", () => {
 
     const elements = {
       block: blockGroup(page, "Text"),
-      blockTools: blockTools(page),
+      selectionBar: selectionBar(page),
       button: canvas(page).getByTestId("button-face"),
       formatBar: formatBar(page),
       imageAlt: blockGroup(page, "Image").getByRole("img"),
       listItem: textBlock(page).locator("li p"),
       placeholder: canvas(page).getByTestId("placeholder"),
-      rowTools: rowTools(page, 1),
       sidePanel: canvas(page).getByTestId("side-panel"),
       status: announcement(page),
       text: textBlock(page).locator("p").first(),
@@ -266,13 +232,12 @@ test.describe("the email's language", () => {
 
     expect(langs).toEqual({
       block: "en",
-      blockTools: "en",
       button: "de",
       formatBar: "en",
       imageAlt: "de",
       listItem: "de",
       placeholder: "en",
-      rowTools: "en",
+      selectionBar: "en",
       sidePanel: "en",
       status: "en",
       text: "de",
@@ -313,14 +278,14 @@ test.describe("an empty Column on a touch screen", () => {
       "0"
     );
     // With no hover to show them, a Block's drag handle always shows, and a
-    // Row's tag, which selects the Row and shows its tools.
+    // Row's tag, which selects the Row, for the Selection bar.
     await expect(
       blockGroup(page, "Button").getByTestId("drag-handle")
     ).toHaveCSS("opacity", "1");
     const tag = canvas(page).getByTestId("row-tag");
     await expect(tag).toHaveCSS("opacity", "1");
     await tag.tap();
-    await expect(rowTools(page, 1)).toHaveCSS("opacity", "1");
+    await expect(rowTools(page, 1)).toBeVisible();
   });
 });
 
@@ -374,15 +339,15 @@ test.describe("the format bar", () => {
 });
 
 /**
- * What a pointer can't press of the selected Block's text and controls, by
- * name, once each is scrolled to: its middle and the middle of each edge must
- * be on top. The editor clips what reaches past it. The format bar and the
- * Block's toolbar show a moment after the text takes focus, and are fitted
- * into the canvas after that, so this waits for both before it reads.
+ * What a pointer can't press of the selected Block's text and controls on the
+ * Canvas, by name, once each is scrolled to: its middle and the middle of each
+ * edge must be on top. The editor clips what reaches past it, and the
+ * Selection bar sticks over the Canvas's top. The format bar shows a moment
+ * after the text takes focus, and is fitted into the canvas after that, so
+ * this waits for it before it reads.
  */
 const unpressable = async (page: Page) => {
   await expect(formatBar(page)).toBeVisible();
-  await expect(blockTools(page)).toBeVisible();
   await settle(page);
   const controls = [
     selectedBlock(page).getByRole("textbox", {
@@ -391,8 +356,7 @@ const unpressable = async (page: Page) => {
     }),
     ...(await formatBar(page).getByRole("button").all()),
     ...(await formatBar(page).getByRole("textbox").all()),
-    ...(await blockTools(page).getByRole("button").all()),
-    blockTools(page).getByTestId("drag-handle"),
+    selectedBlock(page).getByTestId("drag-handle"),
   ];
   const missed: string[] = [];
   for (const control of controls) {
@@ -442,7 +406,7 @@ const verticalGap = async (a: Locator, b: Locator) => {
 };
 
 test.describe("the selected Block's tools", () => {
-  // In the last Column, the Block's toolbar is in the way of its text's end.
+  // In the last Column, the format bar can't sit at its text's end.
   for (const [column, text, where, rows, nextToText] of [
     ["first", "W", "at the email's start", [FOUR_COLUMNS], true],
     ["last", "Z", "at the email's start", [FOUR_COLUMNS], false],
@@ -462,7 +426,7 @@ test.describe("the selected Block's tools", () => {
       false,
     ],
   ] as const) {
-    test(`in the ${column} of four Columns ${where}, the text and every button of the Block's toolbar, the format bar and the link field take the pointer`, async ({
+    test(`in the ${column} of four Columns ${where}, the text, its drag handle, the format bar and the link field take the pointer`, async ({
       page,
     }) => {
       await openEmail(
@@ -503,7 +467,7 @@ test.describe("the selected Block's tools", () => {
     ).toBeLessThanOrEqual(3);
   });
 
-  test("the format bar keeps clear of the Block's toolbar as its text gets more lines", async ({
+  test("the format bar stays in reach as its text gets more lines", async ({
     page,
   }) => {
     // Little room beside a narrow email, so the format bar is above the Block.
@@ -718,20 +682,6 @@ test.describe("a Block's drag handle and link shortcut", () => {
 
     await expect(linkUrlField(page)).toBeFocused();
   });
-
-  test("a click on another Block's handle leaves the tabs showing", async ({
-    page,
-  }) => {
-    await openEmail(page, [[["A", "B"]]]);
-    await blockGroup(page, "Text").first().focus();
-    await backButton(page).click();
-
-    const b = blockWith(page, "B");
-    await b.hover();
-    await b.getByTestId("drag-handle").click();
-
-    await expect(panelTab(page, "Content")).toBeVisible();
-  });
 });
 
 test.describe("a click on the workspace, outside the email", () => {
@@ -741,12 +691,10 @@ test.describe("a click on the workspace, outside the email", () => {
     await openBlocks(page, ["text", "button"]);
     await textBlock(page).click();
     await page.keyboard.type("!");
-    await expect(blockTools(page)).toBeVisible();
+    await expect(selectionBar(page)).toHaveAccessibleName("Text settings");
 
-    const area = await boxOf(canvas(page).getByTestId("workspace"));
-    await page.mouse.click(area.x + 10, area.y + 10);
+    await selectNothing(page);
 
-    await expect(blockTools(page)).toHaveCount(0);
     await expect(canvas(page).locator('[aria-current="true"]')).toHaveCount(0);
     await expect(panelTab(page, "Content")).toBeVisible();
     await undoByKey(page);
@@ -759,13 +707,15 @@ test.describe("a click on the workspace, outside the email", () => {
     await page.setViewportSize(TALL_VIEWPORT);
     await openEmail(page, [[["A", "B"]]]);
     await blockGroup(page, "Text").first().focus();
-    const handle = await boxOf(blockTools(page).getByTestId("drag-handle"));
+    const handle = await boxOf(selectedBlock(page).getByTestId("drag-handle"));
     const area = await boxOf(canvas(page).getByTestId("workspace"));
 
-    await page.mouse.move(handle.x + 10, handle.y + 10);
+    await page.mouse.move(handle.x + 5, handle.y + 5);
     await page.mouse.down();
-    await page.mouse.move(handle.x + 20, handle.y + 20, { steps: 3 });
-    await page.mouse.move(area.x + 10, area.y + 10, { steps: 6 });
+    await page.mouse.move(handle.x + 15, handle.y + 15, { steps: 3 });
+    await page.mouse.move(area.x + area.width - 10, area.y + 80, {
+      steps: 6,
+    });
     await settle(page);
     await page.mouse.up();
     await settle(page);

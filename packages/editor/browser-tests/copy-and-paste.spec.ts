@@ -5,6 +5,7 @@ import type { Locator, Page } from "@playwright/test";
 import type { MailQuilt } from "../src/index.js";
 import {
   announcement,
+  barButton,
   blockGroup,
   blockProps,
   blocks,
@@ -16,7 +17,8 @@ import {
   openBlocks,
   openEmail,
   pasteHtml,
-  selectRowButton,
+  rowTools,
+  selectRow,
   serveImages,
   setValue,
   structure,
@@ -40,6 +42,12 @@ const BUTTON = {
 
 const emailTools = (page: Page) =>
   canvas(page).getByRole("group", { name: "Email tools" });
+
+/** Selects a Row, and gives the Selection bar's chip, where focus is then. */
+const rowChip = async (page: Page, position: number) => {
+  await selectRow(page, position);
+  return barButton(page, `Row ${position}`);
+};
 
 /** A Text Block by where it is, as its name says. */
 const textBlockAt = (page: Page, where: string) =>
@@ -143,9 +151,11 @@ test.describe("through the system's clipboard", () => {
     const [, pastedBlock] = await blocks(other);
     expect(pastedBlock).toMatchObject({ props: BUTTON, type: "button" });
 
-    await selectRowButton(page, 1).focus();
+    const chip = await rowChip(page, 1);
+    await chip.focus();
     await page.keyboard.press("ControlOrMeta+c");
-    await selectRowButton(other, 1).focus();
+    const otherChip = await rowChip(other, 1);
+    await otherChip.focus();
     await other.keyboard.press("ControlOrMeta+v");
 
     const { rows } = await currentValue(other);
@@ -246,7 +256,7 @@ test.describe("copying", () => {
       version: 4,
     });
 
-    const copied = await copyFrom(selectRowButton(page, 1));
+    const copied = await copyFrom(await rowChip(page, 1));
 
     expect(copied["text/plain"]).toBe(
       "Hi {{first_name}}\n\nOne\n\nLogo\n\nBuy\n\nFacebook: https://facebook.com/shop"
@@ -329,13 +339,25 @@ test.describe("pasting a copied Block", () => {
     expect(await structure(page)).toStrictEqual([[["A", "B"]]]);
   });
 
+  test("in the Selection bar with a Block selected, puts it after the Block too", async ({
+    page,
+  }) => {
+    await openEmail(page, [[["A", "B"]]]);
+    const copied = await copyFrom(blockWith(page, "A"));
+    await blockWith(page, "B").focus();
+
+    await pasteAt(barButton(page, "Row 1 / Text"), copied);
+
+    expect(await structure(page)).toStrictEqual([[["A", "B", "A"]]]);
+  });
+
   test("puts it in a new Row after the selected Row, or in a new Row at the end with nothing selected", async ({
     page,
   }) => {
     await openEmail(page, [[["A"]], [["B"]]]);
     const copied = await copyFrom(blockWith(page, "B"));
 
-    await pasteAt(selectRowButton(page, 1), copied);
+    await pasteAt(await rowChip(page, 1), copied);
     expect(await structure(page)).toStrictEqual([[["A"]], [["B"]], [["B"]]]);
 
     await openEmail(page, [[["A"]], [["C"]]]);
@@ -349,7 +371,7 @@ test.describe("pasting a copied Row", () => {
     page,
   }) => {
     await openEmail(page, [[["A"], ["B"]], [["C"]], [["D"]]]);
-    const copied = await copyFrom(selectRowButton(page, 1));
+    const copied = await copyFrom(await rowChip(page, 1));
 
     await pasteAt(blockWith(page, "C"), copied);
     expect(await structure(page)).toStrictEqual([
@@ -359,7 +381,7 @@ test.describe("pasting a copied Row", () => {
       [["D"]],
     ]);
 
-    await pasteAt(selectRowButton(page, 1), copied);
+    await pasteAt(await rowChip(page, 1), copied);
     expect(await structure(page)).toStrictEqual([
       [["A"], ["B"]],
       [["A"], ["B"]],
@@ -367,7 +389,8 @@ test.describe("pasting a copied Row", () => {
       [["A"], ["B"]],
       [["D"]],
     ]);
-    await expect(selectRowButton(page, 2)).toBeFocused();
+    await expect(rowTools(page, 2)).toBeVisible();
+    await expect(barButton(page, "Row 2")).toBeFocused();
     await expect(announcement(page)).toHaveText("Row pasted, position 2 of 5.");
     const { rows } = await currentValue(page);
     expect(rows[1]?.columns.map(({ width }) => width)).toStrictEqual([50, 50]);
@@ -483,17 +506,18 @@ test.describe("cutting", () => {
     );
   });
 
-  test("in a Row's toolbar copies the Row, then deletes it, moving focus to the next Row's toolbar", async ({
+  test("in the Selection bar with a Row selected copies the Row, then deletes it, selecting the next Row", async ({
     page,
   }) => {
     await openEmail(page, [[["A"]], [["B"]]]);
-    await selectRowButton(page, 1).focus();
+    const chip = await rowChip(page, 1);
 
-    const cut = await fire(selectRowButton(page, 1), "cut");
+    const cut = await fire(chip, "cut");
 
     expect(cut["text/plain"]).toBe("A");
     expect(await structure(page)).toStrictEqual([[["B"]]]);
-    await expect(selectRowButton(page, 1)).toBeFocused();
+    await expect(rowTools(page, 1)).toBeVisible();
+    await expect(barButton(page, "Row 1")).toBeFocused();
     await expect(announcement(page)).toHaveText("Row cut, position 1 of 2.");
   });
 });

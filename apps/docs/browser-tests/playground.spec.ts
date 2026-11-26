@@ -16,9 +16,7 @@ test("starts with several Rows, so moving one can be tried straight away", async
   );
   await page.goto(PLAYGROUND);
   await expect(textBlock(page)).toBeVisible();
-  await expect(page.getByRole("toolbar", { name: /^Row \d+$/u })).toHaveCount(
-    3
-  );
+  await expect(page.getByTestId("row")).toHaveCount(3);
   await expect(
     page.getByRole("group", { name: /^Text Block, Row/u })
   ).toHaveAccessibleName(/^Text Block, Row 2,/u);

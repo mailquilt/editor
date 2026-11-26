@@ -175,18 +175,8 @@ export const layoutTile = (page: Page, layout: string) =>
 export const panelTab = (page: Page, name: string) =>
   canvas(page).getByRole("tab", { exact: true, name });
 
-/** The side panel's way from a selected Block's settings back to its tabs. */
-export const backButton = (page: Page) =>
-  canvas(page).getByRole("button", { exact: true, name: "Back" });
-
-/**
- * Shows a side panel tab. A selected Block's settings show instead of the tabs, so
- * this goes back to them first, and the Block stays selected.
- */
+/** Shows a side panel tab. */
 export const openTab = async (page: Page, name: string) => {
-  if (await backButton(page).isVisible()) {
-    await backButton(page).click();
-  }
   const tab = panelTab(page, name);
   if ((await tab.getAttribute("aria-selected")) !== "true") {
     await tab.click();
@@ -205,11 +195,65 @@ export const addRow = async (page: Page, layout = "100") => {
   await layoutTile(page, layout).click();
 };
 
-export const rowTools = (page: Page, position: number) =>
-  canvas(page).getByRole("toolbar", { exact: true, name: `Row ${position}` });
+/** The Selection bar above the Canvas, whatever it's showing. */
+export const selectionBar = (page: Page) =>
+  canvas(page).getByTestId("selection-bar");
 
-export const selectRowButton = (page: Page, position: number) =>
-  rowTools(page, position).getByRole("button", { name: "Select Row" });
+/** A button in the Selection bar, by its name. */
+export const barButton = (page: Page, name: string) =>
+  selectionBar(page).getByRole("button", { exact: true, name });
+
+/**
+ * Selects nothing, with a click on the workspace beside the email, away
+ * from the floating toolbar, so the Selection bar shows the email's settings.
+ */
+export const selectNothing = async (page: Page) => {
+  const area = await boxOf(canvas(page).getByTestId("workspace"));
+  const bar = await boxOf(selectionBar(page));
+  // Just below the bar, at the workspace's end, beside the email.
+  await page.mouse.click(area.x + area.width - 10, bar.y + bar.height + 10);
+  await expect(selectionBar(page)).toHaveAccessibleName("Email settings");
+};
+
+/** The Selection bar while a Row is selected, which has that Row's tools. */
+export const rowTools = (page: Page, position: number) =>
+  canvas(page).getByRole("toolbar", {
+    exact: true,
+    name: `Row ${position} settings`,
+  });
+
+/** More, opened from the Selection bar. */
+export const morePanel = (page: Page) => canvas(page).getByTestId("more-panel");
+
+export const moreButton = (page: Page) =>
+  barButton(page, "More settings and actions");
+
+/** Opens More from the Selection bar, if it isn't open. */
+export const openMore = async (page: Page) => {
+  if ((await moreButton(page).getAttribute("aria-expanded")) !== "true") {
+    await moreButton(page).click();
+  }
+  return morePanel(page);
+};
+
+/** One of More's actions, such as Copy, opening More first. */
+export const moreAction = async (page: Page, name: string) => {
+  const more = await openMore(page);
+  return more.getByRole("button", { exact: true, name });
+};
+
+/**
+ * Opens the popover a Selection bar button opens, such as Padding, if it
+ * isn't open. Its name can be the start of the button's, as a color's
+ * button is named with its value.
+ */
+export const openPopover = async (page: Page, name: string | RegExp) => {
+  const button = selectionBar(page).getByRole("button", { name });
+  if ((await button.getAttribute("aria-expanded")) !== "true") {
+    await button.click();
+  }
+  return canvas(page).getByRole("dialog");
+};
 
 /** What the editor last said to screen readers. */
 export const announcement = (page: Page) => canvas(page).getByRole("status");
@@ -330,41 +374,39 @@ export const rowFrame = (page: Page, position: number) =>
 export const rowTag = (page: Page, position: number) =>
   rowFrame(page, position).getByTestId("row-tag");
 
-/** A Row's toolbar shows on hover, so the pointer goes there first. */
+/** A Row's tag shows on hover, so the pointer goes there first. */
 export const hoverRow = (page: Page, position: number) =>
   rowFrame(page, position)
     .getByTestId("row")
     .hover({ position: { x: 4, y: 4 } });
 
 /**
- * Shows a Row's toolbar. While one of its Blocks is selected, it only shows
- * once its tag has selected the Row.
+ * Selects a Row with the mouse, from its tag, so the Selection bar shows its
+ * tools.
  */
-export const showRowTools = async (page: Page, position: number) => {
-  await hoverRow(page, position);
-  if (
-    (await rowFrame(page, position)
-      .locator('[role="group"][aria-current="true"]')
-      .count()) > 0
-  ) {
-    await rowTag(page, position).click();
-  }
-};
-
-/** Selects a Row from its toolbar, with the mouse, to show it in the side panel. */
 export const selectRow = async (page: Page, position: number) => {
-  await showRowTools(page, position);
-  await selectRowButton(page, position).click();
+  // More, where it floats over the Canvas, can cover the Row's tag.
+  const close = canvas(page)
+    .getByTestId("more-panel")
+    .getByRole("button", { exact: true, name: "Close" });
+  if (await close.isVisible()) {
+    await close.click();
+  }
+  await hoverRow(page, position);
+  await rowTag(page, position).click();
+  await expect(rowTools(page, position)).toBeVisible();
 };
 
-/** A layout in the selected Row's side panel. */
-export const layoutOption = (page: Page, layout: string) =>
-  canvas(page)
-    .getByTestId("side-panel")
-    .getByRole("group", { name: "Layout" })
-    .getByRole("button", { exact: true, name: layout });
+/** Shows a Row's tools: the Selection bar with the Row selected. */
+export const showRowTools = selectRow;
 
-/** Chooses a Row's layout in the side panel, with the mouse. */
+/** A layout in the Selection bar, with a Row selected. */
+export const layoutOption = (page: Page, layout: string) =>
+  selectionBar(page)
+    .getByRole("group", { name: "Columns" })
+    .getByRole("button", { exact: true, name: `${layout} layout` });
+
+/** Chooses a Row's layout in the Selection bar, with the mouse. */
 export const chooseLayout = async (
   page: Page,
   position: number,
@@ -374,17 +416,16 @@ export const chooseLayout = async (
   await layoutOption(page, layout).click();
 };
 
-/** Deletes a Row from its toolbar, with the mouse. */
+/** Deletes a Row from the Selection bar, with the mouse. */
 export const deleteRow = async (page: Page, position: number) => {
-  await showRowTools(page, position);
+  await selectRow(page, position);
   await rowTools(page, position)
     .getByRole("button", { name: "Delete Row" })
     .click();
 };
 
-/** The selected Block's toolbar, on the canvas. */
-export const blockTools = (page: Page) =>
-  canvas(page).getByRole("toolbar", { name: "Block tools" });
+/** The Selection bar, which has the selected Block's tools. */
+export const blockTools = selectionBar;
 
 /** The format bar, which shows while a Block's text is being edited. */
 export const formatBar = (page: Page) =>
@@ -446,8 +487,7 @@ export const pasteHtml = (target: Locator, html: string) =>
 export const pasteText = (target: Locator, text: string) =>
   paste(target, "text/plain", text);
 
-export const blockTool = (page: Page, name: string) =>
-  blockTools(page).getByRole("button", { exact: true, name });
+export const blockTool = barButton;
 
 export const deleteBlock = (page: Page) => blockTool(page, "Delete Block");
 
@@ -483,11 +523,67 @@ export const selectedBlock = (page: Page) =>
 export const selectedText = (page: Page) =>
   selectedBlock(page).getByRole("textbox");
 
-export const panelBlock = (page: Page) =>
-  page.getByRole("group", { exact: true, name: "Block" });
-
+/**
+ * A setting's field, where it shows: in the Selection bar, or in a popover
+ * from it or More once that's open.
+ */
 export const field = (page: Page, name: string) =>
-  panelBlock(page).getByLabel(name, { exact: true });
+  canvas(page)
+    .getByLabel(name, { exact: true })
+    .and(canvas(page).locator("input, select"));
+
+/**
+ * The Selection bar's button that opens a field in a popover, by the field's
+ * label: a color's is named with its value, after its label.
+ */
+const POPOVER_OPENERS: readonly [RegExp, RegExp][] = [
+  // A Button's colors, which its bar calls Fill and Text.
+  [/^Background color$/u, /^Fill:/u],
+  [/^Text color$/u, /^Text:/u],
+  [/^(?:Top|Right|Bottom|Left) padding \(px\)$/u, /^Padding$/u],
+  [/^Stack Columns on phones$/u, /^Stack on phones$/u],
+  [/^(?!Image URL$).+ URL$|^Choose a network$/u, /^Links/u],
+  [/^Width \(px\)$/u, /^Width/u],
+];
+
+/**
+ * A setting's field, opening what shows it if it isn't showing: its popover
+ * from the Selection bar, or else More.
+ */
+export const setting = async (page: Page, name: string) => {
+  const control = field(page, name);
+  if (await control.isVisible()) {
+    return control;
+  }
+  const opener =
+    POPOVER_OPENERS.find(([label]) => label.test(name))?.[1] ??
+    new RegExp(
+      `^${name.replaceAll(/[$()*+.?[\\\]^{|}]/gu, "\\$&")}(?::|$)`,
+      "u"
+    );
+  const button = selectionBar(page).getByRole("button", { name: opener });
+  await ((await button.count()) === 1
+    ? openPopover(page, opener)
+    : openMore(page));
+  await expect(control).toBeVisible();
+  return control;
+};
+
+/**
+ * Chooses one of a setting's few values in the Selection bar, such as an
+ * alignment, each a button in a group named for the setting.
+ */
+export const choose = (page: Page, name: string, option: string) =>
+  selectionBar(page)
+    .getByRole("group", { exact: true, name })
+    .getByRole("button", { exact: true, name: option })
+    .click();
+
+/** Which of a setting's few values in the Selection bar is chosen. */
+export const chosen = (page: Page, name: string) =>
+  selectionBar(page)
+    .getByRole("group", { exact: true, name })
+    .locator('[aria-pressed="true"]');
 
 export const change = async (control: Locator, text: string) => {
   await control.fill(text);
@@ -814,6 +910,17 @@ export const violations = async (
     skipRules = [],
   }: { excludeIframe?: boolean; skipRules?: string[] } = {}
 ): Promise<{ id: string; targets: unknown[] }[]> => {
+  // What's opening, such as a popover that grows into place, is read once
+  // it's there, rather than at a size it has only on the way.
+  // One cancelled on the way, as by an update, ends too.
+  await page.evaluate(() =>
+    Promise.allSettled(
+      [...document.querySelectorAll("mail-quilt")].flatMap(
+        (host) =>
+          host.shadowRoot?.getAnimations().map(({ finished }) => finished) ?? []
+      )
+    )
+  );
   const builder = new AxeBuilder({ page })
     .include(element)
     .disableRules(skipRules);
