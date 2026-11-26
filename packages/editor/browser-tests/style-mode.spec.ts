@@ -406,7 +406,9 @@ test.describe("the Style Mode", () => {
     await expect(styleSetting(page, "Buttons")).toBeFocused();
 
     await page.keyboard.press("Enter");
-    await stylePanel(page).getByRole("slider", { name: "Buttons shade" }).focus();
+    await stylePanel(page)
+      .getByRole("slider", { name: "Buttons shade" })
+      .focus();
     await page.keyboard.press("Shift+Tab");
     await expect(stylePanel(page).getByRole("dialog")).toHaveCount(0);
     await expect(styleSetting(page, "Buttons")).toBeFocused();
