@@ -186,6 +186,27 @@ export const STRINGS = {
   "add.nothing": "Nothing called “{query}”",
   "add.try": "Try Text, Image or Button.",
 
+  // The Rows list, beside the Canvas, and the email with no Rows.
+  "rows.list": "Rows",
+  /** A Row in the list: "Row 3 of 6: Heading, Text, Button". */
+  "rows.item": "Row {position} of {count}: {blocks}",
+  "rows.itemDesktopOnly": "Row {position} of {count}: {blocks}. Desktop only",
+  "rows.noBlocks": "no Blocks yet",
+  /** The mark on a Row in the list that isn't on phones. */
+  "rows.desktopOnly": "Desktop only",
+  /** A Row's tooltip from the keyboard, with the keys that move it. */
+  "rows.moveKeys": "Row {position} of {count} ({up} or {down} to move)",
+  "rows.collapse": "Collapse the Rows list",
+  "rows.expand": "Expand the Rows list",
+  "rows.add": "Add a Row",
+  "rows.emptyRow": "Empty Row",
+  "rows.addsBelow": "Adds below Row {row}",
+  "rows.addsAtEnd": "Adds at the end",
+  "rows.none": "No Rows yet",
+  "rows.noneHint": "Add one here or on the email.",
+  "canvas.startTitle": "Start with a Row",
+  "canvas.startText": "Pick how many Columns it has. You can change it after.",
+
   // Settings fields.
   "settings.none": "None",
   "settings.picker": "{label} picker",

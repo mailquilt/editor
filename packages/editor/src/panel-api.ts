@@ -3,6 +3,7 @@ import type { BlocksDocument, RowLayout } from "@mailquilt/core";
 import type { AddingState, AddPlace } from "./adding.js";
 import type { ShownFieldPicker } from "./field-merge-tags.js";
 import type { BlockPosition, Direction, RowPosition } from "./positions.js";
+import type { RowsListState } from "./rows-list.js";
 import type { BarPanelsState } from "./selection-bar.js";
 import type { SettingsDrafts } from "./settings-panel.js";
 import type { ShownMergeTagPicker } from "./text-block-view.js";
@@ -10,8 +11,8 @@ import type { ListType, TextFormats, ToggleableMark } from "./text-commands.js";
 import type { Text } from "./text.js";
 
 /**
- * How the Add panel and picker, the Selection bar and its More panel, and the
- * format bar reach the editor. They touch nothing else of `<mail-quilt>` or the Canvas. A new copy
+ * How the Add panel and picker, the Rows list, the Selection bar and its More
+ * panel, and the format bar reach the editor. They touch nothing else of `<mail-quilt>` or the Canvas. A new copy
  * for each update.
  *
  * An action that does more from the keyboard, such as moving focus or showing
@@ -94,6 +95,11 @@ export interface EmailPanelApi {
   uploadErrorOf: (blockId: string) => string | undefined;
   /** Selects a Row instead of any Block, which the Selection bar then shows. */
   selectRow: (rowId: string, fromKeyboard: boolean) => void;
+  /**
+   * Selects a Row from the Rows list, and scrolls the Canvas to it. Focus goes
+   * to the Row in the list, so its keys go on working there.
+   */
+  selectRowInList: (rowId: string, fromKeyboard: boolean) => void;
   /** Selects nothing, so the Selection bar shows the email's settings. */
   selectEmail: (fromKeyboard: boolean) => void;
   /** Puts the selected Block or Row on the clipboard, as Ctrl/⌘+C does. */
@@ -138,6 +144,13 @@ export interface OwnPanelsApi {
     | undefined;
   /** What's typed in the settings fields and isn't the email's value. */
   drafts: SettingsDrafts;
+  /** Whether the person expanded or collapsed the Rows list, and its + is open. */
+  rowsList: RowsListState;
+
+  /** Expands the Rows list, or collapses it, by whether it's `expanded` now. */
+  toggleRowsList: (expanded: boolean, fromKeyboard: boolean) => void;
+  /** Opens the layouts of the Rows list's +, or closes them. */
+  toggleRowsAdd: (fromKeyboard: boolean) => void;
 
   /** Opens the Add panel, with focus in its search. */
   openAddPanel: (fromKeyboard: boolean) => void;

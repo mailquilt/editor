@@ -531,7 +531,7 @@ test.describe("typing in a field", () => {
 });
 
 test.describe("text that hasn't been committed", () => {
-  // addRow presses the Rows tab first, which takes focus, and so commits it.
+  // addRow opens the Add panel first, which takes focus, and so commits it.
   test("is committed when another control is pressed, as one undo step apart from that control's", async ({
     page,
   }) => {

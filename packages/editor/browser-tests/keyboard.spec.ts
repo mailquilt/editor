@@ -127,8 +127,8 @@ test.describe("selecting a Block", () => {
     await openEmail(page, [[["First"], ["Second"]]]);
     await expect(deleteBlock(page)).toHaveCount(0);
 
-    // The top bar's last control, before the email.
-    await canvas(page).getByRole("button", { name: "Phone" }).focus();
+    // The Rows list's last control, before the email.
+    await canvas(page).getByRole("button", { name: "Add a Row" }).focus();
     await page.keyboard.press("Tab");
 
     await expect(blockWith(page, "First")).toBeFocused();

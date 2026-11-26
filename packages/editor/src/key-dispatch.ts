@@ -72,6 +72,8 @@ interface KeyDispatchHost {
   isDragging: () => boolean;
   linkForm: { cancel: () => void; open: () => void };
   previewIsOpen: () => boolean;
+  /** The Rows list's layouts, which Escape closes. */
+  rowsList: { closeAdd: (returnFocus: boolean) => void };
   selection: Pick<EditorSelection, "rowId" | "select" | "selectedText">;
   stepHistory: (step: "redo" | "undo") => void;
 }
@@ -115,6 +117,7 @@ export const createKeyDispatch = ({
   isDragging,
   linkForm,
   previewIsOpen,
+  rowsList,
   selection,
   stepHistory,
 }: KeyDispatchHost) => {
@@ -159,6 +162,7 @@ export const createKeyDispatch = ({
     closePopover: () => bar.closePopover(true),
     // The browser closes the dialog.
     closePreview: doNothing,
+    closeRowsAdd: () => rowsList.closeAdd(true),
     copyBlock: onClipboardEvent,
     copyRow: onClipboardEvent,
     cutBlock: onClipboardEvent,
@@ -255,9 +259,16 @@ export const createKeyDispatch = ({
     (event: KeyboardEvent, direction: Direction) => void
   > = {
     moveBlock: (_event, direction) => editing.moveBlock(direction),
-    // The key map moves a Row only up and down.
-    moveRow: (_event, direction) => {
-      const rowId = rowOf();
+    // The key map moves a Row only up and down: the Row with focus in the
+    // Rows list, or else the selected one.
+    moveRow: ({ target }, direction) => {
+      const listed = (target as HTMLElement).dataset.rowId;
+      // A Row moved from the Rows list is selected, so the Selection bar shows
+      // what moved.
+      if (listed !== undefined) {
+        selection.select({ rowId: listed });
+      }
+      const rowId = listed ?? rowOf();
       if (rowId !== undefined && (direction === "up" || direction === "down")) {
         editing.moveRow(rowId, direction);
       }

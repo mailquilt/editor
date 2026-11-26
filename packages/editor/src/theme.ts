@@ -295,7 +295,7 @@ export const uiStyles = css`
   }
 
   /*
-   * A segmented control, such as the side panel's tabs or the Preview's width:
+   * A segmented control, such as the Modes or the Preview's width:
    * the chosen one is a raised chip in the track.
    */
   .segments {

@@ -45,6 +45,7 @@ export type Action =
   | "closeMore"
   | "closePopover"
   | "closePreview"
+  | "closeRowsAdd"
   | "copyBlock"
   | "copyRow"
   | "cutBlock"
@@ -503,6 +504,30 @@ const KEY_SCOPES = {
       { action: "addFirstMatch", keys: ["Enter"], stops: true },
       { action: "toAddResults", keys: ["ArrowDown"], stops: true },
     ],
+    within: "editor",
+  },
+  /**
+   * The Rows list's Rows, one stop for Tab, with arrow keys between them, as a
+   * toolbar's. Alt+↑ and Alt+↓ move the Row with focus, and Alt+← and Alt+→
+   * only keep the page.
+   */
+  rowsItems: {
+    keys: [
+      ...arrows("Alt-", {
+        action: "moveRow",
+        stops: false,
+        waitsForDrag: true,
+      }).filter(({ direction }) => direction === "up" || direction === "down"),
+      OPEN_ADD,
+      ...TOOLBAR,
+    ],
+    within: "editor",
+  },
+  /** The layouts on an email with no Rows, one stop for Tab. */
+  startLayouts: { keys: [OPEN_ADD, ...TOOLBAR], within: "email" },
+  /** The layouts from the Rows list's +. Escape closes them, back to the +. */
+  rowsAdd: {
+    keys: [escape("closeRowsAdd"), ...TOOLBAR],
     within: "editor",
   },
   // One stop for Tab, with arrow keys between them, as a toolbar's.

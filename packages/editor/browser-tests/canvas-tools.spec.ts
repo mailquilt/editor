@@ -478,7 +478,7 @@ test.describe("the selected Block's tools", () => {
     await page.keyboard.press("ControlOrMeta+k");
     await expect(linkUrlField(page)).toBeFocused();
 
-    // The Side panel goes below, so the canvas ends where the editor does.
+    // The Rows list collapses, and the email and its tools move.
     await page.setViewportSize({ height: 720, width: 1100 });
 
     await expect.poll(() => unpressable(page)).toEqual([]);
@@ -498,7 +498,7 @@ test.describe("the selected Block's tools", () => {
     const tooltip = canvas(page).getByRole("tooltip");
     await expect(tooltip).toBeVisible();
 
-    // The Side panel goes below, and the email and its tools move.
+    // The Rows list collapses, and the email and its tools move.
     await page.setViewportSize({ height: 720, width: 1100 });
 
     await expect
@@ -704,7 +704,9 @@ test.describe("a click on the workspace, outside the email", () => {
     await page.mouse.up();
     await settle(page);
 
-    await expect(canvas(page).locator('[aria-current="true"]')).toHaveCount(1);
+    await expect(
+      canvas(page).getByTestId("email").locator('[aria-current="true"]')
+    ).toHaveCount(1);
     await expect(blockWith(page, "A")).toHaveAttribute("aria-current", "true");
   });
 });

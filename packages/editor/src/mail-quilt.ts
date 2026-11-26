@@ -50,6 +50,14 @@ import { blocksIn, locate, locateRow } from "./positions.js";
 import { createPresses } from "./presses.js";
 import { createPreview, previewStyles, renderPreview } from "./preview.js";
 import {
+  createRowPictures,
+  createRowsList,
+  renderRowsList,
+  ROWS_LIST_COLLAPSED_WIDTH_PX,
+  ROWS_LIST_WIDTH_PX,
+  rowsListStyles,
+} from "./rows-list.js";
+import {
   blockDraftKey,
   createBarPanels,
   renderMoreDock,
@@ -318,6 +326,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     uiStyles,
     settingsPanelStyles,
     addingStyles,
+    rowsListStyles,
     selectionBarStyles,
     blockTypeStyles,
     formatBarStyles,
@@ -381,6 +390,12 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     },
     requestUpdate: () => this.requestUpdate(),
   });
+  readonly #rowsList = createRowsList({
+    focus: this.#focus,
+    requestUpdate: () => this.requestUpdate(),
+  });
+  /** Set while the element is connected, as it observes sizes on the page. */
+  #rowPictures: ReturnType<typeof createRowPictures> | undefined;
   readonly #barPanels = createBarPanels({
     focus: this.#focus,
     requestUpdate: () => this.requestUpdate(),
@@ -522,6 +537,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     isDragging: () => this.#dragging?.isDragging() ?? false,
     linkForm: this.#linkForm,
     previewIsOpen: () => this.#preview.isOpen,
+    rowsList: this.#rowsList,
     selection: this.#selection,
     stepHistory: (step) => this.#stepHistory(step),
   });
@@ -538,6 +554,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     },
     addRow: (layout, fromKeyboard) => {
       this.#closeFloatingAdd();
+      this.#rowsList.closeAdd(false);
       this.#editing.addRow(layout, fromKeyboard);
     },
     cancelLink: () => this.#linkForm.cancel(),
@@ -581,6 +598,14 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     },
     selectRow: (rowId, fromKeyboard) =>
       this.#selection.selectRow(rowId, fromKeyboard),
+    selectRowInList: (rowId, fromKeyboard) => {
+      this.#selection.select({ rowId });
+      this.#focus.focusWhenRendered(
+        { on: "rowsList", rowId },
+        { focusVisible: fromKeyboard }
+      );
+      this.#focus.revealRow(rowId);
+    },
     setRowLayout: (rowId, layout) => {
       this.#apply({ layout, rowId, type: "setRowLayout" });
     },
@@ -591,6 +616,9 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     toggleMenu: () => this.#barPanels.toggleMenu(),
     toggleMore: (fromKeyboard) => this.#barPanels.toggleMore(fromKeyboard),
     togglePopover: (id) => this.#barPanels.togglePopover(id),
+    toggleRowsAdd: (fromKeyboard) => this.#rowsList.toggleAdd(fromKeyboard),
+    toggleRowsList: (expanded, fromKeyboard) =>
+      this.#rowsList.toggleExpanded(expanded, fromKeyboard),
     showPaddingBySide: (rowId, bySide) =>
       this.#barPanels.showPaddingBySide(rowId, bySide),
   } satisfies Partial<PanelApi>;
@@ -629,6 +657,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     }
     root.addEventListener("focusout", (event) => {
       this.#adding.onFocusout(event as FocusEvent);
+      this.#rowsList.onFocusout(event as FocusEvent);
       this.#fieldMergeTags.onFocusout(event as FocusEvent);
       this.#barPanels.onFocusout(event as FocusEvent);
     });
@@ -638,6 +667,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     root.addEventListener("pointerdown", (event) => {
       this.#lastInput = "pointer";
       this.#adding.onPointerdown(event as PointerEvent);
+      this.#rowsList.onPointerdown(event as PointerEvent);
       this.#barPanels.onPointerdown(event as PointerEvent);
     });
     root.addEventListener(
@@ -715,6 +745,8 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       const changed =
         narrow !== this.#narrow ||
         this.#docksMore(width) !== this.#docksMore(this.#width) ||
+        JSON.stringify(this.#rowsListShape(width)) !==
+          JSON.stringify(this.#rowsListShape(this.#width)) ||
         this.#docksAdd(width) !== this.#docksAdd(this.#width);
       this.#narrow = narrow;
       this.#width = width;
@@ -742,6 +774,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       },
     });
     this.#insertHover = createInsertHover(this.renderRoot);
+    this.#rowPictures = createRowPictures(this.renderRoot);
     this.#toolFitting = createToolFitting({
       onMove: () => this.#tooltips?.tooltips.sync(),
       root: this.renderRoot,
@@ -761,6 +794,8 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     this.#dragging = undefined;
     this.#insertHover?.destroy();
     this.#insertHover = undefined;
+    this.#rowPictures?.destroy();
+    this.#rowPictures = undefined;
     this.#toolFitting?.destroy();
     this.#toolFitting = undefined;
     this.#tooltips?.tooltips.destroy();
@@ -852,6 +887,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
   protected override updated() {
     // First, so focus that moves scrolls to where the tools end up.
     this.#toolFitting?.sync();
+    this.#rowPictures?.sync();
     this.#focus.afterUpdate();
     if (this.isConnected && this.shadowRoot) {
       this.#syncTooltips(this.shadowRoot);
@@ -973,7 +1009,30 @@ export class MailQuilt extends LitElement implements HostAppProperties {
         style=${styleProperties({ "--_mq-email-width": `${width}px` })}
       >
         ${
-          // First, as it's drawn first, so Tab reaches it in that order.
+          // First, as they're drawn first, so Tab reaches them in that order.
+          // The Add panel takes the Rows list's place where it docks, and
+          // otherwise opens over it.
+          this.#docksAdd(this.#width)
+            ? nothing
+            : renderRowsList(
+                api,
+                {
+                  ...this.#shownRowsList(),
+                  email: {
+                    background: settings.backgroundColor,
+                    font: settings.fontFamily,
+                    width,
+                  },
+                },
+                {
+                  emailLang: this.#emailLang,
+                  failedImages: this.#failedImages,
+                  socialIconsUrl: this.socialIconsUrl,
+                  textPicture: (block) => this.#rowsList.textPicture(block),
+                }
+              )
+        }
+        ${
           api.adding.panel
             ? renderAddPanel(api, this.#docksAdd(this.#width))
             : nothing
@@ -1041,6 +1100,44 @@ export class MailQuilt extends LitElement implements HostAppProperties {
   }
 
   /**
+   * Whether the Rows list is expanded at `width`, and whether, expanded, it's
+   * over the Canvas's start rather than beside the email. Until the person
+   * expands or collapses it, it's expanded where it fits beside the email
+   * with More docked too, and collapsed below that.
+   */
+  #rowsListShape(width: number) {
+    const widths = this.#canvasWidths();
+    const room = (list: number) =>
+      widths !== undefined && width >= widths.withGutters + list;
+    const expanded =
+      this.#rowsList.state.expanded ??
+      room(ROWS_LIST_WIDTH_PX + PANEL_WIDTH_PX);
+    return { expanded, floating: expanded && !room(ROWS_LIST_WIDTH_PX) };
+  }
+
+  /**
+   * The Rows list as it's drawn. Where it would open over the Canvas, it stays
+   * collapsed while the Add panel is open over the Canvas there too.
+   */
+  #shownRowsList() {
+    const shape = this.#rowsListShape(this.#width);
+    return shape.floating && this.#adding.state.panel
+      ? { expanded: false, floating: false }
+      : shape;
+  }
+
+  /** How wide the Add panel or the Rows list is beside the email at `width`. */
+  #startWidth(width: number) {
+    if (this.#docksAdd(width)) {
+      return ADD_WIDTH_PX;
+    }
+    const { expanded, floating } = this.#rowsListShape(width);
+    return expanded && !floating
+      ? ROWS_LIST_WIDTH_PX
+      : ROWS_LIST_COLLAPSED_WIDTH_PX;
+  }
+
+  /**
    * The Add panel over the Canvas's start closes once it adds, as what it
    * added could be under it. Docked, it stays open to add another.
    */
@@ -1052,14 +1149,14 @@ export class MailQuilt extends LitElement implements HostAppProperties {
 
   /**
    * Whether More docks beside the email at `width`: where the email, its
-   * gutters, More and a docked Add panel fit side by side. Below that, it
-   * floats.
+   * gutters, More and the Rows list or a docked Add panel fit side by side.
+   * Below that, it floats.
    */
   #docksMore(width: number) {
     const widths = this.#canvasWidths();
-    const add = this.#docksAdd(width) ? ADD_WIDTH_PX : 0;
     return (
-      widths !== undefined && width >= widths.withGutters + PANEL_WIDTH_PX + add
+      widths !== undefined &&
+      width >= widths.withGutters + PANEL_WIDTH_PX + this.#startWidth(width)
     );
   }
 
@@ -1129,6 +1226,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       formats: this.#formats,
       insertMergeTag: offersTags ? this.#insertMergeTag : undefined,
       linkField: this.#linkForm.state,
+      rowsList: this.#rowsList.state,
       mergeTagPicker: this.#mergeTagPicker,
       selectedBlock: this.#editing.selectedBlock(email),
       selectedRow: this.#editing.selectedRow(email),
@@ -1238,7 +1336,11 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     this.#lastTypedAt = now;
     this.#apply(
       { blockId, props: { content }, type: "updateBlockProps" },
-      { mergeKey: `${blockId}:${this.#typingSession}`, render: false }
+      {
+        mergeKey: `${blockId}:${this.#typingSession}`,
+        // The Rows list's picture of it, where the list shows pictures.
+        render: !this.#docksAdd(this.#width) && this.#shownRowsList().expanded,
+      }
     );
   }
 
@@ -1289,6 +1391,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     this.#failedImages.clear();
     // Their Blocks are gone with the email they were in.
     this.#uploads.clear();
+    this.#rowsList.forget();
     this.#reset();
     // Checked once, by the value's setter.
     this.#editor = loaded && editorOfLoaded(loaded);
