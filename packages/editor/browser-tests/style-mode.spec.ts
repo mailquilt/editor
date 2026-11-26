@@ -11,6 +11,7 @@ import {
   openExport,
   openStyle,
   pickStyleColor,
+  setting,
   setValue,
   styleSetting,
   stylePanel,
@@ -418,6 +419,24 @@ test.describe("the Style Mode", () => {
       .click();
     expect(await styleOf(page)).toBeUndefined();
     await expect(buttonFace(page)).toHaveCSS("border-top-left-radius", "3px");
+  });
+
+  test("in Edit, a Block's settings show the Email style's value where it sets none, as the Canvas draws it", async ({
+    page,
+  }) => {
+    await openStyled(page);
+    await styleSetting(page, "Heading 1").click();
+    await change(stylePanel(page).getByLabel("Heading 1 size (px)"), "40");
+    await pickStyleColor(page, "Text", "#112233");
+
+    await canvas(page).getByRole("tab", { exact: true, name: "Edit" }).click();
+    await canvas(page)
+      .getByTestId("email")
+      .getByText("Shared", { exact: true })
+      .click();
+
+    await expect(await setting(page, "Font size (px)")).toHaveValue("40");
+    await expect(await setting(page, "Color")).toHaveValue("#112233");
   });
 
   test("marks on the Canvas what a hovered setting changes, and what keeps its own", async ({

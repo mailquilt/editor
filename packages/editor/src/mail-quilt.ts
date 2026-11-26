@@ -1478,6 +1478,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     // Their Blocks are gone with the email they were in.
     this.#uploads.clear();
     this.#rowsList.forget();
+    this.#stylePanel.forget();
     this.#reset();
     // Checked once, by the value's setter.
     this.#editor = loaded && editorOfLoaded(loaded);

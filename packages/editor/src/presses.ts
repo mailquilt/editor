@@ -84,8 +84,8 @@ export const createPresses = ({ focus, selection }: PressesHost) => {
      * In Chromium, a focused number field steps with the wheel, though it has no
      * arrows, while the person only meant to scroll the panel. Focus leaves it
      * for the floating toolbar, which commits it and keeps keyboard undo
-     * working, or in a popover from the Selection bar, for the popover, which
-     * stays open.
+     * working, or in a popover from the Selection bar or Style, for the
+     * popover, which stays open.
      */
     onWheel({ target }: WheelEvent) {
       const element = focus.focused();
@@ -98,7 +98,7 @@ export const createPresses = ({ focus, selection }: PressesHost) => {
       ) {
         return;
       }
-      const popover = closestPlace(element, "barPopover");
+      const popover = closestPlace(element, "barPopover", "stylePopover");
       if (popover) {
         popover.focus({ focusVisible: false, preventScroll: true });
       } else {

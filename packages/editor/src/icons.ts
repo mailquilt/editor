@@ -59,9 +59,9 @@ export const ICONS = {
   import: icon(
     svg`<path d="M12 3v12M7 10l5 5 5-5M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5" />`
   ),
-  /** A cross, to close a panel. */
   /** A tick, beside what's chosen in a list. */
   check: icon(svg`<path d="m5 12.5 4.5 4.5L19 7.5" />`),
+  /** A cross, to close a panel. */
   close: icon(svg`<path d="M18 6 6 18M6 6l12 12" />`),
   /** Scissors. */
   cut: icon(

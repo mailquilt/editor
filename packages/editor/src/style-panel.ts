@@ -855,8 +855,10 @@ export const stylePanelStyles = css`
     padding-inline-start: 32px;
   }
 
+  /* Positioned, as the options' offsets that keep one in sight are from it. */
   .style-popover > .font-list {
     flex-shrink: 1;
+    position: relative;
     margin-block-start: var(--mq-space-1);
     overflow-y: auto;
   }
@@ -998,6 +1000,15 @@ export const createStylePanel = ({
     );
 
   const toggle = (setting: Setting, anchor: HTMLElement) => {
+    // What's typed in the open popover is set first, as focus leaving it
+    // would set it, since a press on a setting keeps focus where it is.
+    const typing = (anchor.getRootNode() as ShadowRoot).activeElement;
+    if (
+      typing instanceof HTMLInputElement &&
+      closestPlace(typing, "stylePopover")
+    ) {
+      typing.blur();
+    }
     if (open?.key === setting.key) {
       close(true);
       return;
@@ -1068,6 +1079,8 @@ export const createStylePanel = ({
           session += 1;
         }}
         @pointerdown=${(event: PointerEvent) => {
+          // A drag is a step of its own, apart from keys pressed before it.
+          session += 1;
           const element = event.currentTarget as HTMLElement;
           element.setPointerCapture(event.pointerId);
           element.focus({ focusVisible: false });
@@ -1078,6 +1091,9 @@ export const createStylePanel = ({
           if (element.hasPointerCapture(event.pointerId)) {
             pickColor({ ...(open?.hsv ?? hsv), ...shadeAt(element, event) });
           }
+        }}
+        @pointercancel=${() => {
+          session += 1;
         }}
         @pointerup=${() => {
           session += 1;
@@ -1628,8 +1644,9 @@ export const createStylePanel = ({
                     // One undo step: the shared value, and the Block's own gone.
                     session += 1;
                     const mergeKey = `style:share:${session}`;
-                    apply(setCommand(value.key, value.own), mergeKey);
-                    apply(clearOwn(), mergeKey);
+                    if (apply(setCommand(value.key, value.own), mergeKey)?.ok) {
+                      apply(clearOwn(), mergeKey);
+                    }
                     session += 1;
                     done();
                   }}
@@ -1677,15 +1694,17 @@ export const createStylePanel = ({
             open.placed.top === undefined ? undefined : `${open.placed.top}px`,
         })}
         tabindex="-1"
-        @focusout=${({ currentTarget, relatedTarget }: FocusEvent) => {
-          if (
-            !(
-              relatedTarget instanceof Node &&
-              (currentTarget as Element).contains(relatedTarget)
-            )
-          ) {
-            close(false);
-          }
+        @focusout=${({ currentTarget }: FocusEvent) => {
+          // Once focus has landed, as it leaves a field the popover takes
+          // away, such as when another setting's popover takes its place.
+          const wasOpen = open;
+          const popover = currentTarget as Element;
+          setTimeout(() => {
+            const landed = (popover.getRootNode() as ShadowRoot).activeElement;
+            if (open === wasOpen && !(landed && popover.contains(landed))) {
+              close(false);
+            }
+          }, 0);
         }}
       >
         ${open.kind === "corners" ? nothing : renderers[open.kind](open, shownEmail, label)}
@@ -1824,9 +1843,24 @@ export const createStylePanel = ({
 
     /** After an update: the font the arrow keys are on stays in sight. */
     sync(root: ParentNode) {
-      findPlace(root, "stylePopover")
-        ?.querySelector("[data-active]")
-        ?.scrollIntoView({ block: "nearest" });
+      const option = findPlace(
+        root,
+        "stylePopover"
+      )?.querySelector<HTMLElement>("[data-active]");
+      const list = option?.parentElement;
+      // Only the list scrolls, never the page around the editor.
+      if (!(option && list)) {
+        return;
+      }
+      if (option.offsetTop < list.scrollTop) {
+        list.scrollTop = option.offsetTop;
+      } else if (
+        option.offsetTop + option.offsetHeight >
+        list.scrollTop + list.clientHeight
+      ) {
+        list.scrollTop =
+          option.offsetTop + option.offsetHeight - list.clientHeight;
+      }
     },
   };
 };
