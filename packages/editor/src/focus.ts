@@ -60,6 +60,11 @@ export type FocusTarget =
       rowId?: string;
       action?: "add-row" | "layout" | "toggle-rows";
     }
+  /**
+   * In the Style panel: a control by its `data-action`, or else the first
+   * control of its open popover.
+   */
+  | { on: "style"; action?: string }
   /** A part of a list field in the settings, by the list's `id`. */
   | { on: "list"; listId: string; at: ListFocus }
   /**
@@ -276,9 +281,19 @@ const rowsListTargetOf = (element: Element): FocusTarget | undefined => {
   };
 };
 
-/** In a list field's item toolbar, or in the Rows list. */
+/** In the Style panel: one of its popovers, or a control by its `data-action`. */
+const styleTargetOf = (element: Element): FocusTarget | undefined => {
+  if (closestPlace(element, "stylePopover")) {
+    return { on: "style" };
+  }
+  return closestPlace(element, "stylePanel")
+    ? { action: (element as HTMLElement).dataset.action, on: "style" }
+    : undefined;
+};
+
+/** In a list field's item toolbar, the Rows list or the Style panel. */
 const listTargetOf = (element: Element) =>
-  listToolOf(element) ?? rowsListTargetOf(element);
+  listToolOf(element) ?? rowsListTargetOf(element) ?? styleTargetOf(element);
 
 const targetOf = (element: Element): FocusTarget => {
   if (isOfText(element)) {
@@ -440,7 +455,7 @@ export const createFocus = ({
   const emailTools = (): Focusable | null | undefined => {
     const toolbar = findPlace(root(), "emailTools");
     // Not shown: in Style or Check, or behind the narrow notice.
-    if (toolbar?.closest("[hidden], [data-collapsed]")) {
+    if (!toolbar || toolbar.closest("[hidden], [data-collapsed]")) {
       return (
         findPlace(root(), "modes")?.querySelector<HTMLElement>(
           '[aria-selected="true"]'
@@ -449,11 +464,9 @@ export const createFocus = ({
     }
     // Without scrolling the page to it: in a Shell whose bottom is below the
     // window, the toolbar is out of view.
-    return (
-      toolbar && {
-        focus: (options) => toolbar.focus({ ...options, preventScroll: true }),
-      }
-    );
+    return {
+      focus: (options) => toolbar.focus({ ...options, preventScroll: true }),
+    };
   };
 
   /**
@@ -554,6 +567,19 @@ export const createFocus = ({
   };
 
   /**
+   * In the Style panel: a control by its `data-action`, or else the field its
+   * open popover starts in, which the popover marks.
+   */
+  const styleControl = (action: string | undefined) =>
+    action === undefined
+      ? findPlace(root(), "stylePopover")?.querySelector<HTMLElement>(
+          "[data-start]"
+        )
+      : findPlace(root(), "stylePanel")?.querySelector<HTMLElement>(
+          `[data-action="${CSS.escape(action)}"]`
+        );
+
+  /**
    * What takes focus for a target, or else for the nearest one that's there:
    * a Block's text gives way to the Block itself, and a control in the More
    * panel, once it's closed, to the bar's More button.
@@ -564,6 +590,8 @@ export const createFocus = ({
       found = inList(root(), target.listId, target.at);
     } else if (target.on === "rowsList") {
       found = rowsListControl(target);
+    } else if (target.on === "style") {
+      found = styleControl(target.action);
     } else {
       found = focusableFor(target);
     }

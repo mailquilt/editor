@@ -70,9 +70,9 @@ export const textBlockStyles = css`
     padding: 0;
   }
 
-  /* In the Block's color, as the export writes it, and underlined. */
+  /* In the color the export writes, and underlined. */
   .ProseMirror a {
-    color: inherit;
+    color: var(--_mq-link-color, inherit);
   }
 
   /*

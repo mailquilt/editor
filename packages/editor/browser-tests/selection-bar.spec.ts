@@ -530,7 +530,7 @@ test.describe("More", () => {
     await expect(moreButton(page)).toBeFocused();
   });
 
-  test("shows whatever is selected while it's open, and the email's settings with nothing selected", async ({
+  test("shows whatever is selected while it's open, and closes with nothing selected", async ({
     page,
   }) => {
     await openBlocks(page, ["button"]);
@@ -541,12 +541,9 @@ test.describe("More", () => {
     await barButton(page, "Row 1 / Button").click();
     await canvas(page).getByRole("menuitem", { name: "Email" }).click();
 
-    await expect(
-      morePanel(page).getByRole("heading", { name: "Email" })
-    ).toBeVisible();
-    await expect(
-      morePanel(page).getByLabel("Font", { exact: true })
-    ).toBeVisible();
+    // The email's settings all fit its bar, which has no More.
+    await expect(morePanel(page)).toBeHidden();
+    await expect(moreButton(page)).toHaveCount(0);
   });
 
   test("Copy and Cut put the Block on the clipboard, as Ctrl/⌘+C and X do", async ({

@@ -201,3 +201,28 @@
 /* phone inputs at 16px, so Safari on iPhone doesn't zoom */
 .frame.phone .fld, .frame.phone .fld span, .frame.phone .search span { font-size: 16px !important; }
 .em.m .vthumb img { width: 100%; height: auto; aspect-ratio: 16 / 9; }
+
+/* #318's Style states */
+.hrow3 { display: flex; justify-content: space-between; align-items: center; }
+.hrow3 .m { font-weight: 400; color: var(--text-3); font-size: 12px; display: flex; gap: 6px; align-items: center; }
+.hrow3 .lnk { font-weight: 500; color: var(--accent-2); font-size: 12px; }
+.typ .m .tagd { margin-right: 4px; }
+.shape2 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 12px; }
+.shape2 .shp { display: grid; gap: 4px; justify-items: center; }
+.shape2 .shp small { font-size: 12px; color: var(--text-2); }
+.shape2 .tile { width: 100%; height: 48px; border-radius: var(--r-card); background: var(--field); box-shadow: inset 0 0 0 1px var(--edge); display: grid; place-items: center; }
+.shape2 .tile i { width: 52px; height: 16px; background: var(--text); }
+.shape2 .on .tile { box-shadow: inset 0 0 0 2px var(--accent); }
+.shape2 .on small { color: var(--text); font-weight: 600; }
+.sizepop { width: 264px; padding: 12px; }
+.sizepop .hd2 { font-weight: 600; margin-bottom: 10px; }
+.sizepop .def { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); display: flex; align-items: center; gap: 8px; color: var(--text); }
+.b.keep { outline: 1px dotted var(--text-3); outline-offset: -1px; }
+.tag.keep { background: var(--chrome); color: var(--text-2); box-shadow: 0 0 0 1px var(--line-2); border-radius: 4px; top: -22px; }
+.app.panel.p320 { grid-template-columns: 1fr 320px; }
+.side.floatp { position: absolute; top: 12px; right: 12px; bottom: 12px; width: 320px; border-radius: var(--r-pop); box-shadow: var(--sh-pop); border: 0; }
+.em.fresh, .em.fresh .r { background: #fff !important; }
+.em.fresh .h1, .em.fresh .pn { font-family: Arial, Helvetica, sans-serif !important; color: #000 !important; }
+.em.fresh .p, .em.fresh .pd, .em.fresh .pp, .em.fresh .nav, .em.fresh .foot, .em.fresh q { color: #000 !important; }
+.em.fresh .ebtn { background: #2563eb !important; color: #fff !important; border-radius: 3px !important; font-family: Arial, sans-serif; }
+.em.fresh .plink { color: #000 !important; }

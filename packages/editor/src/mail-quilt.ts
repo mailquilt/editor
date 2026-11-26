@@ -32,7 +32,7 @@ import { readPasted } from "./clipboard.js";
 import { createDragging } from "./dragging.js";
 import type { Dragging } from "./dragging.js";
 import { createEditingActions } from "./editing-actions.js";
-import { findPlace, place } from "./editor-places.js";
+import { findPlace, findPlaces, place } from "./editor-places.js";
 import { createFieldMergeTags } from "./field-merge-tags.js";
 import { createFocus } from "./focus.js";
 import { createLinkForm, formatBarStyles } from "./format-bar.js";
@@ -67,6 +67,8 @@ import {
 import { createSelection } from "./selection.js";
 import { createSettingsDrafts, settingsPanelStyles } from "./settings-panel.js";
 import type { MailQuiltStrings } from "./strings.js";
+import { createStylePanel, stylePanelStyles } from "./style-panel.js";
+import type { StyleMark } from "./style-panel.js";
 import { styleProperties } from "./style-properties.js";
 import { createTextBlockView, textBlockStyles } from "./text-block-view.js";
 import type { ShownMergeTagPicker, TextBlockView } from "./text-block-view.js";
@@ -95,6 +97,9 @@ import { takeValueSetEarly } from "./value-set-early.js";
  * WebKit at this element, rather than at the Block or Row with focus.
  */
 const CLIPBOARD_EVENTS = ["copy", "cut", "paste"] as const;
+
+/** Outside Style, nothing on the Canvas is marked for a setting. */
+const NO_MARKS: ReadonlyMap<string, StyleMark> = new Map();
 
 /** Beside the email on the Canvas, each side. */
 const CANVAS_GUTTER_PX = 40;
@@ -223,6 +228,11 @@ const elementStyles = css`
     padding: 0 var(--_mq-gutter) var(--mq-space-4);
   }
 
+  /* In Style, with no Selection bar above it, the email keeps a gutter there too. */
+  .styling .canvas-area {
+    padding-block-start: var(--_mq-gutter);
+  }
+
   /*
    * The email card: the email's own settings, and of the editor's tokens only
    * its shadow, on the workspace. Inherited properties cross the Shadow DOM
@@ -328,6 +338,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     addingStyles,
     rowsListStyles,
     selectionBarStyles,
+    stylePanelStyles,
     blockTypeStyles,
     formatBarStyles,
     mergeTagPickerStyles,
@@ -373,6 +384,13 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     onSelect: () => {
       this.#linkForm.close();
       this.#barPanels.onSelect();
+      // With nothing selected, More has nothing to show.
+      if (
+        this.#selection.blockId === undefined &&
+        this.#selection.rowId === undefined
+      ) {
+        this.#barPanels.closeMore(false);
+      }
       this.#formats = this.#selection.selectedText?.formats();
       this.#mergeTagPicker = this.#selection.selectedText?.mergeTagPicker();
       this.requestUpdate();
@@ -403,6 +421,13 @@ export class MailQuilt extends LitElement implements HostAppProperties {
   readonly #presses = createPresses({
     focus: this.#focus,
     selection: this.#selection,
+  });
+  readonly #stylePanel = createStylePanel({
+    apply: (command, mergeKey) =>
+      this.#apply(command, { mergeKey, refusable: true }),
+    focus: this.#focus,
+    requestUpdate: () => this.requestUpdate(),
+    text: this.#text,
   });
   readonly #drafts = createSettingsDrafts({
     apply: (command) => this.#apply(command, { refusable: true }),
@@ -459,6 +484,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     selectMode: (mode) => {
       if (mode !== this.#mode) {
         this.#mode = mode;
+        this.#stylePanel.forget();
         this.requestUpdate();
       }
     },
@@ -540,6 +566,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     rowsList: this.#rowsList,
     selection: this.#selection,
     stepHistory: (step) => this.#stepHistory(step),
+    style: this.#stylePanel,
   });
 
   /** What the Add panel, the Selection bar and More do, made once. */
@@ -747,7 +774,8 @@ export class MailQuilt extends LitElement implements HostAppProperties {
         this.#docksMore(width) !== this.#docksMore(this.#width) ||
         JSON.stringify(this.#rowsListShape(width)) !==
           JSON.stringify(this.#rowsListShape(this.#width)) ||
-        this.#docksAdd(width) !== this.#docksAdd(this.#width);
+        this.#docksAdd(width) !== this.#docksAdd(this.#width) ||
+        this.#docksStyle(width) !== this.#docksStyle(this.#width);
       this.#narrow = narrow;
       this.#width = width;
       if (changed) {
@@ -819,6 +847,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     // There's nothing to style or check, and the Modes for them are off.
     if (!this.#rendered?.rows.length) {
       this.#mode = "edit";
+      this.#stylePanel.forget();
     }
     const email = this.isConnected ? this.#rendered : undefined;
     const blocks = email ? blocksIn(email) : [];
@@ -890,6 +919,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     this.#rowPictures?.sync();
     this.#focus.afterUpdate();
     if (this.isConnected && this.shadowRoot) {
+      this.#stylePanel.sync(this.shadowRoot);
       this.#syncTooltips(this.shadowRoot);
       showHighlightedTag(this.shadowRoot);
     }
@@ -951,30 +981,20 @@ export class MailQuilt extends LitElement implements HostAppProperties {
           this.#topBarEvents
         )}
         <slot name="messages"></slot>
-        ${
-          email
-            ? this.#renderEdit(email)
-            : html`
-                <div
-                  aria-labelledby=${modeTabId("edit")}
-                  class="mode-panel"
-                  id=${modePanelId("edit")}
-                  role="tabpanel"
-                  ?hidden=${narrow}
-                ></div>
-              `
-        }
-        ${(["style", "check"] as const).map(
-          (panel) => html`
-            <div
-              aria-labelledby=${modeTabId(panel)}
-              class="mode-panel"
-              id=${modePanelId(panel)}
-              role="tabpanel"
-              ?hidden=${narrow || mode !== panel}
-            ></div>
-          `
-        )}
+        ${email ? this.#renderCanvas(email) : nothing}
+        ${(["edit", "style", "check"] as const)
+          .filter((panel) => !(email && panel === this.#canvasMode))
+          .map(
+            (panel) => html`
+              <div
+                aria-labelledby=${modeTabId(panel)}
+                class="mode-panel"
+                id=${modePanelId(panel)}
+                role="tabpanel"
+                ?hidden=${narrow || mode !== panel}
+              ></div>
+            `
+          )}
         <div
           class="ui tooltip"
           data-place=${place("tooltip")}
@@ -985,11 +1005,24 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     `;
   }
 
-  /** The Edit Mode: the Canvas and its panels, or the narrow notice. */
-  #renderEdit(email: BlocksDocument) {
+  /**
+   * The Mode the Canvas is the panel of: Style, where the email is shown beside
+   * its Email style, or else Edit, which it's hidden behind in Check.
+   */
+  get #canvasMode(): Mode {
+    return this.#mode === "style" ? "style" : "edit";
+  }
+
+  /**
+   * The Canvas, in Edit with its panels or the narrow notice, or in Style,
+   * where the email is only looked at, beside the Style panel.
+   */
+  #renderCanvas(email: BlocksDocument) {
     const { settings } = email;
     const api = this.#panelApi(email);
     const narrow = this.#narrow;
+    const canvasMode = this.#canvasMode;
+    const styling = canvasMode === "style";
     // The Phone view's email is a phone's width. Its Rows stack and hide as on
     // a phone once the Canvas draws Phone values.
     const width =
@@ -999,20 +1032,20 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     return html`
       ${narrow ? renderNarrowNotice(api) : nothing}
       <div
-        aria-labelledby=${modeTabId("edit")}
-        class="editor"
+        aria-labelledby=${modeTabId(canvasMode)}
+        class=${styling ? "editor styling" : "editor"}
         data-testid="editor"
-        id=${modePanelId("edit")}
+        id=${modePanelId(canvasMode)}
         role="tabpanel"
         ?data-collapsed=${narrow}
-        ?hidden=${this.#mode !== "edit"}
+        ?hidden=${this.#mode === "check"}
         style=${styleProperties({ "--_mq-email-width": `${width}px` })}
       >
         ${
           // First, as they're drawn first, so Tab reaches them in that order.
           // The Add panel takes the Rows list's place where it docks, and
           // otherwise opens over it.
-          this.#docksAdd(this.#width)
+          styling || this.#docksAdd(this.#width)
             ? nothing
             : renderRowsList(
                 api,
@@ -1033,7 +1066,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
               )
         }
         ${
-          api.adding.panel
+          api.adding.panel && !styling
             ? renderAddPanel(api, this.#docksAdd(this.#width))
             : nothing
         }
@@ -1041,13 +1074,14 @@ export class MailQuilt extends LitElement implements HostAppProperties {
           class="canvas-area"
           data-place=${place("workspace")}
           data-testid="workspace"
-          @click=${this.#presses.onWorkspaceClick}
+          @click=${styling ? this.#selectToStyle : this.#presses.onWorkspaceClick}
           @pointerdown=${this.#presses.onWorkspacePointerdown}
         >
           <div
             class="email"
             data-place=${place("email")}
             data-testid="email"
+            ?inert=${styling}
             @beforeinput=${this.#keys.onBeforeInput}
             style=${styleProperties({
               // Also for what's dragged, which has nothing behind it.
@@ -1065,11 +1099,58 @@ export class MailQuilt extends LitElement implements HostAppProperties {
               hidden
             ></div>
           </div>
-          ${renderSelectionBar(api)} ${renderFloatingToolbar(api)}
+          ${
+            styling
+              ? nothing
+              : html`${renderSelectionBar(api)} ${renderFloatingToolbar(api)}`
+          }
         </div>
-        ${api.bar.moreOpen && api.bar.docked ? renderMoreDock(api) : nothing}
+        ${
+          !styling && api.bar.moreOpen && api.bar.docked
+            ? renderMoreDock(api)
+            : nothing
+        }
+        ${styling ? this.#renderStylePanel(email, api) : nothing}
       </div>
     `;
+  }
+
+  /** Docked beside the email where both fit, and otherwise over the Canvas's edge. */
+  #renderStylePanel(email: BlocksDocument, api: PanelApi) {
+    const docked = this.#docksStyle(this.#width);
+    const panel = this.#stylePanel.render({
+      email,
+      floating: !docked,
+      selected: api.selectedBlock?.block,
+    });
+    return docked
+      ? html`<div class="style-dock">${panel}</div>`
+      : html`<div class="style-float">${panel}</div>`;
+  }
+
+  /**
+   * In Style, the email is only looked at, so it takes no presses. One
+   * selects the Block under it, which the Style panel then says what keeps
+   * its own value, or with none there, nothing.
+   */
+  readonly #selectToStyle = ({ clientX, clientY }: MouseEvent) => {
+    const block = findPlaces(this.renderRoot, "block").find((element) => {
+      const { bottom, left, right, top } = element.getBoundingClientRect();
+      return (
+        clientX >= left &&
+        clientX <= right &&
+        clientY >= top &&
+        clientY <= bottom
+      );
+    });
+    const blockId = block?.dataset.blockId;
+    this.#selection.select(blockId === undefined ? undefined : { blockId });
+  };
+
+  /** Whether the Style panel docks beside the email at `width`. */
+  #docksStyle(width: number) {
+    const widths = this.#canvasWidths();
+    return widths !== undefined && width >= widths.withGutters + PANEL_WIDTH_PX;
   }
 
   /** The email's width on the Canvas, and with its gutters. */
@@ -1237,8 +1318,13 @@ export class MailQuilt extends LitElement implements HostAppProperties {
   }
 
   get #canvasState(): CanvasState {
+    const email = this.#rendered;
     return {
       emailLang: this.#emailLang,
+      styleMarks:
+        this.#mode === "style" && email
+          ? this.#stylePanel.marks(email)
+          : NO_MARKS,
       failedImages: this.#failedImages,
       isUploading: this.#uploads.isUploading,
       socialIconsUrl: this.socialIconsUrl,

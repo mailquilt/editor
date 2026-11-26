@@ -123,6 +123,14 @@ const PLACES = {
   settingsDraft: {},
   /** A Block's text, made by ProseMirror. */
   text: {},
+  /** The Style Mode's panel, of the email's Email style. */
+  stylePanel: {},
+  /** A popover from the Style panel, with a color, size or font to pick. */
+  stylePopover: {},
+  /** The square in a color popover that picks a color's shade. */
+  colorArea: {},
+  /** The search in a font popover, which picks from the fonts under it. */
+  fontSearch: {},
   /** The editor's one tooltip. */
   tooltip: {},
   /** The workspace around the email. */

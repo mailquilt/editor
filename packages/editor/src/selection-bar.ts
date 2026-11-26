@@ -930,9 +930,12 @@ const rowSection = ({ row }: RowPosition, api: PanelApi): SettingsSection => ({
   values: row.props,
 });
 
+/** The email's look, its background and font, which is set in Style. */
+const STYLED_IN_STYLE = new Set(["backgroundColor", "fontFamily"]);
+
 const emailSection = (api: PanelApi): SettingsSection => ({
   command: (settings) => ({ settings, type: "updateEmailSettings" }),
-  fields: EMAIL_SETTINGS_FIELDS,
+  fields: EMAIL_SETTINGS_FIELDS.filter(({ key }) => !STYLED_IN_STYLE.has(key)),
   id: "email",
   legend: api.text("bar.email"),
   targetId: "",
@@ -1902,8 +1905,9 @@ const renderActions = (target: Target, api: PanelApi) => {
       ${ICONS.more}
     </button>
   `;
+  // The email's settings all fit the bar, so it has no More.
   if (target.kind === "email") {
-    return html`${more} ${renderSeparator()} ${renderAddButton(api)}`;
+    return renderAddButton(api);
   }
   const own = actionsOf(target, api);
   return html`

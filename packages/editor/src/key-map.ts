@@ -46,6 +46,7 @@ export type Action =
   | "closePopover"
   | "closePreview"
   | "closeRowsAdd"
+  | "closeStylePopover"
   | "copyBlock"
   | "copyRow"
   | "cutBlock"
@@ -65,15 +66,19 @@ export type Action =
   | "moveBlock"
   | "moveRow"
   | "nextButton"
+  | "nextFont"
+  | "nudgeColor"
   | "nextControl"
   | "nextMergeTag"
   | "openAddPanel"
   | "openLinkField"
   | "paste"
   | "pasteAfterRow"
+  | "pickFont"
   | "pickMergeTag"
   | "previousButton"
   | "previousControl"
+  | "previousFont"
   | "previousMergeTag"
   | "redo"
   | "selectBlock"
@@ -92,7 +97,11 @@ export type ClipboardAction = Extract<
 >;
 
 /** The actions of the arrow keys, which go one way. */
-export type DirectedAction = "moveBlock" | "moveRow" | "selectBlock";
+export type DirectedAction =
+  | "moveBlock"
+  | "moveRow"
+  | "nudgeColor"
+  | "selectBlock";
 
 /** What happens to a press besides its action. */
 interface Effect {
@@ -547,6 +556,30 @@ const KEY_SCOPES = {
     within: "field",
   },
   listItemTools: { keys: TOOLBAR, within: "editor" },
+  /**
+   * The Style panel's popovers. Escape closes one, and focus goes back to the
+   * setting it's for. Undo and redo are the editor's, as in the Selection bar.
+   */
+  stylePopover: { keys: [escape("closeStylePopover")], within: "editor" },
+  /** The arrow keys change a color's shade, and with Shift, ten times as much. */
+  colorArea: {
+    keys: [
+      ...arrows("", { action: "nudgeColor", stops: true }),
+      ...arrows("Shift-", { action: "nudgeColor", stops: true }),
+      escape("closeStylePopover"),
+    ],
+    within: "editor",
+  },
+  /** ↑ and ↓ go along the fonts that match, and Enter picks the one they're on. */
+  fontSearch: {
+    keys: [
+      { action: "previousFont", keys: ["ArrowUp"], stops: true },
+      { action: "nextFont", keys: ["ArrowDown"], stops: true },
+      { action: "pickFont", keys: ["Enter"], stops: true },
+      escape("closeStylePopover"),
+    ],
+    within: "editor",
+  },
   // Anywhere else in the editor, such as the top bar.
   editor: { keys: [], within: "editor" },
   // The browser closes the dialog. Stopping the press keeps a host's own

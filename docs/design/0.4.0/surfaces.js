@@ -162,6 +162,60 @@ F.push({ id: "s05-font-failed", html: () => `<div class="app panel">${topBar({ m
   .replace('<span class="v fld" style="height:30px">Arial' + ic("chev", "sm"), `<span class="v fld" style="height:30px"><span class="spin d"></span>Inter${ic("chev", "sm")}`)
   .replace('<div class="typ on"', '<div class="fldnote m" style="margin-top:-4px">Loading Inter…</div><div class="typ"')}</div>` });
 
+// Picked for #318: the Style states the frames above leave out. Layout and
+// Inbox stay in Edit's email bar (g03), so Style has neither.
+group("s1", "Style: what the frames above leave out (#318)", "Unset values, editing a size, corners, the Headings font's default, a Block's own values, and Style where the email and the panel don't fit side by side.");
+const styleCore = (callout) => styleSide(callout).replace(/<div class="sec"><h3>Layout<\/h3>[\s\S]*?(?=<\/aside>)/, "");
+const dflt = (words, sw) => `<span class="tagd">Default</span><span class="hex def">${words}</span><span class="sw" style="background:${sw};opacity:.45"></span>`;
+const freshSide = () => styleCore()
+  .replace('<span class="hex">#EFE8DE</span><span class="sw" style="background:#efe8de"></span>', '<span class="hex">#FFFFFF</span><span class="sw" style="background:#fff;box-shadow:inset 0 0 0 1px var(--edge)"></span>')
+  .replace('<span class="hex">#FBF7F1</span><span class="sw" style="background:#fbf7f1"></span>', dflt("Same as page", "#fff"))
+  .replace('<span class="hex">#2B1D14</span><span class="sw" style="background:#2b1d14"></span>', dflt("#000000", "#000"))
+  .replace('<span class="hex">#2B1D14</span><span class="sw" style="background:#2b1d14"></span>', dflt("#2563EB", "#2563eb"))
+  .replace('<span class="hex">#B5652B</span><span class="sw" style="background:#b5652b"></span>', dflt("Same as text", "#000"))
+  .replace('<span class="v fld" style="height:30px">Georgia', '<span class="v"><span class="tagd">Default</span><span class="fld" style="height:30px">Same as body').replace('Same as body' + ic("chev", "sm") + '</span>', 'Same as body' + ic("chev", "sm") + '</span></span>')
+  .replace('<div class="typ on" style="margin-top:6px"><span class="s" style="font-size:24px">Heading 1</span><span class="m">32px</span></div>', '<div class="typ" style="margin-top:6px"><span class="s" style="font-size:24px;font-family:Arial">Heading 1</span><span class="m"><span class="tagd">Default</span> 32px</span></div>')
+  .replace('<span class="s" style="font-size:19px">Heading 2</span><span class="m">24px</span>', '<span class="s" style="font-size:19px;font-family:Arial">Heading 2</span><span class="m"><span class="tagd">Default</span> 24px</span>')
+  .replace('<span class="s" style="font-size:16px">Heading 3</span><span class="m">20px</span>', '<span class="s" style="font-size:16px;font-family:Arial">Heading 3</span><span class="m"><span class="tagd">Default</span> 20px</span>')
+  .replace('<span style="font: 15px Arial">Body text</span><span class="m">16px</span>', '<span style="font: 15px Arial">Body text</span><span class="m"><span class="tagd">Default</span> 16px</span>')
+  .replace('<div class="sec"><h3>Buttons</h3><div class="shape"><span><i style="border-radius:2px"></i></span><span><i style="border-radius:5px"></i></span><span class="on"><i style="border-radius:9px"></i></span></div></div>', corners(null));
+// Square 0px, Rounded 8px, Pill 100px. Unset, none is chosen and the head says the built-in 3px.
+function corners(on) {
+  const t = (name, r, i) => `<span class="shp${on === i ? " on" : ""}"><span class="tile"><i style="border-radius:${r}px"></i></span><small>${name}</small></span>`;
+  return `<div class="sec"><h3 class="hrow3">Button corners${on === null ? `<span class="m"><span class="tagd">Default</span> 3px</span>` : `<span class="lnk">Use the default (3px)</span>`}</h3><div class="shape2">${t("Square", 0, 0)}${t("Rounded", 5, 1)}${t("Pill", 9, 2)}</div></div>`;
+}
+const plainEmail = (s = {}) => email(s).replace('<div class="em', '<div class="em fresh');
+F.push({ id: "s10-style-nothing-set", html: () => `<div class="app panel">${topBar({ mode: "style" })}<main class="cv"><div class="stage" style="padding-top:40px">${plainEmail({})}</div></main>${freshSide()}</div>` });
+const sizePop = `<div class="pop sizepop" style="right:16px;top:322px"><div class="hd2">Heading 1 size</div><div class="row-flex" style="gap:8px"><span class="num focus" style="width:96px;height:32px">36<span class="u">px</span></span><span style="color:var(--text-3);font-size:12px">Default is 32px</span></div><div class="def">${ic("x", "sm")}Use the default (32px)</div></div>`;
+F.push({ id: "s11-size-field", html: () => `<div class="app panel">${topBar({ mode: "style" })}<main class="cv"><div class="stage" style="padding-top:40px">${email({ hov: ["h1"], htag: ["h1", "Heading 1 · 36px"] }).replace('<h1 class="h1">', '<h1 class="h1" style="font-size:36px">')}</div></main>${styleCore()
+  .replace('<span class="m">32px</span>', '<span class="m">36px</span>')
+  .replace('<aside class="side" style="overflow:hidden">', '<aside class="side" style="overflow:visible;position:relative">' + sizePop)}</div>` });
+F.push({ id: "s12-corners", html: () => `<div class="app panel">${topBar({ mode: "style" })}<main class="cv"><div class="stage" style="padding-top:40px">${email({ hov: ["btn"], htag: ["btn", "Button corners · Rounded"] }).replace('<span class="ebtn">', '<span class="ebtn" style="border-radius:8px">')}</div></main>${styleCore()
+  .replace(/<div class="sec"><h3>Buttons<\/h3>[\s\S]*?<\/div><\/div>/, corners(1))}</div>` });
+const headFontPop = `<div class="pop fontpop" style="right:16px;top:388px">
+  <div class="search" style="margin:2px 2px 4px">${ic("search", "sm")}<span>Search fonts</span></div>
+  <div class="fo k"><span><span class="nm" style="font-family:Arial">Same as body</span><small>Arial, the body font</small></span></div>
+  <div class="grp">System fonts</div>
+  <div class="fo"><span class="nm" style="font-family:Arial">Arial</span></div>
+  <div class="fo"><span class="nm" style="font-family:'Courier New'">Courier New</span></div>
+  <div class="fo on"><span class="nm" style="font-family:Georgia">Georgia</span>${ic("check", "sm")}</div>
+  <div class="fo"><span class="nm" style="font-family:Tahoma">Tahoma</span></div>
+  <div class="fo"><span class="nm" style="font-family:'Times New Roman'">Times New Roman</span></div>
+  <div class="fo"><span class="nm" style="font-family:Verdana">Verdana</span></div>
+</div>`;
+F.push({ id: "s13-headings-font", html: () => `<div class="app panel">${topBar({ mode: "style" })}<main class="cv"><div class="stage" style="padding-top:40px">${email({ hov: ["h1"], htag: ["h1", "Headings · Georgia"] })}</div></main>${styleCore()
+  .replace('<span class="v fld" style="height:30px">Georgia', '<span class="v fld foc" style="height:30px">Georgia')
+  .replace('<aside class="side" style="overflow:hidden">', '<aside class="side" style="overflow:visible;position:relative">' + headFontPop)}</div>` });
+const ownCallout = (title, why, a, b) => `<div class="callout"><b>${title}</b>${why}<div class="row-flex"><span class="btn sm">${a}</span><span class="btn sm">${b}</span></div></div>`;
+F.push({ id: "s14-own-values", html: () => `<div class="app panel">${topBar({ mode: "style" })}<main class="cv"><div class="stage" style="padding-top:40px">${email({ sel: "h1", grip: false }).replace('<h1 class="h1">', '<h1 class="h1" style="font-size:36px;color:#b5652b">')}</div></main>${styleCore(`<div style="padding:14px 18px 0">${ownCallout("This Heading is 36px", "Every other Heading 1 is 32px.", "Make it 32px", "Make every Heading 1 36px")}${ownCallout("This Heading’s text is #B5652B", "Other text is #2B1D14.", "Make it #2B1D14", "Make all text #B5652B")}</div>`)}</div>` });
+const keepsOwn = (html) => html
+  .replace('<div class="b" style="margin:0 -12px 22px; padding:4px 12px">', '<div class="b keep" style="margin:0 -12px 22px; padding:4px 12px"><span class="tag keep">Keeps its own · #B5652B</span>')
+  .replace('<p class="p">', '<p class="p" style="color:#b5652b">');
+F.push({ id: "s15-hover-keeps-own", html: () => `<div class="app panel">${topBar({ mode: "style" })}<main class="cv"><div class="stage" style="padding-top:40px">${keepsOwn(email({ hov: ["h1", "head"], htag: ["h1", "Text · #2B1D14"] }))}</div></main>${styleCore()
+  .replace('<div class="kv"><span>Text</span>', '<div class="kv" style="background:var(--accent-soft);margin:0 -10px 2px;padding:0 10px;border-radius:var(--r-ctl)"><span>Text</span>')}</div>` });
+F.push({ id: "s16-style-1024", w: 1024, h: 768, html: () => `<div class="app panel p320">${topBar({ mode: "style", compact: true })}<main class="cv"><div class="stage" style="padding-top:40px">${email({})}</div></main>${styleCore()}</div>` });
+F.push({ id: "s17-style-768", w: 768, h: 1024, html: () => `<div class="app plain">${topBar({ mode: "style", compact: true })}<main class="cv" style="position:relative"><div class="stage" style="padding-top:40px">${email({})}</div>${styleCore().replace('<aside class="side" style="overflow:hidden">', '<aside class="side floatp" style="overflow:hidden">')}</main></div>` });
+
 // ---------- 6. Check ----------
 group("c0", "Check: tabs, many Problems, sending a test", "See it as readers will, read the plain text and the HTML, fix what's wrong, and send a test through the host.");
 const PROBLEMS = [

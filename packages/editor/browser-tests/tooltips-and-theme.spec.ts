@@ -397,7 +397,7 @@ test("a pressed button has an edge at 3:1, so it isn't told by color alone", asy
 test("a settings field's edge is at 3:1 against what it's on, in the Selection bar and in More, so an empty one shows", async ({
   page,
 }) => {
-  await openBlocks(page, ["text"]);
+  await openBlocks(page, ["button"]);
   // In the bar, the field's edge is on the label around it, with its name.
   const preheader = canvas(page).getByLabel("Preheader", { exact: true });
   await expect(preheader).toHaveValue("");
@@ -410,8 +410,9 @@ test("a settings field's edge is at 3:1 against what it's on, in the Selection b
   });
   expect(contrast(barEdge ?? "", bar ?? "")).toBeGreaterThanOrEqual(3);
 
-  const background = await setting(page, "Background color");
-  const [edge, panel] = await background.evaluate((field) => [
+  await blockGroup(page, "Button").focus();
+  const label = await setting(page, "Label");
+  const [edge, panel] = await label.evaluate((field) => [
     getComputedStyle(field).borderTopColor,
     getComputedStyle(field).backgroundColor,
   ]);
@@ -443,10 +444,11 @@ test("in forced colors, a dropdown's arrow stands out from its field", async ({
   page,
 }) => {
   await page.emulateMedia({ forcedColors: "active" });
-  await openBlocks(page, ["text"]);
-  const font = await setting(page, "Font");
+  await openBlocks(page, ["social"]);
+  await blockGroup(page, "Social").focus();
+  const networks = await setting(page, "Choose a network");
 
-  const [arrow, field] = await font.evaluate((select) => [
+  const [arrow, field] = await networks.evaluate((select) => [
     // The arrow's icon draws in its text color.
     getComputedStyle(select.parentElement?.querySelector("svg") as Element)
       .color,

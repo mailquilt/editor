@@ -1,7 +1,8 @@
-import type { Block, BlockType } from "@mailquilt/core";
+import type { Block, BlockType, EmailStyle } from "@mailquilt/core";
 import {
   blockStyles,
   EMAIL_LOOK,
+  linkColor,
   MERGE_TAG,
   SOCIAL_NETWORKS,
   socialIcons,
@@ -151,6 +152,8 @@ export interface DrawContext {
   onImageError: (src: string) => void;
   /** The Host app's folder of Social icons, as the export takes it. */
   socialIconsUrl: string | undefined;
+  /** The email's Email style, which a Block's own props win over. */
+  style: EmailStyle;
   /** Whether an image is being uploaded for the Block. */
   uploading: boolean;
 }
@@ -397,8 +400,25 @@ const drawContent = <Type extends BlockType>(
 ) => {
   const view = VIEWS[type];
   return "draw" in view
-    ? view.draw(props, blockStyles({ props, type }), context)
+    ? view.draw(props, blockStyles({ props, type }, context.style), context)
     : nothing;
+};
+
+/**
+ * A Text Block's or Heading's look, as the export writes it: core's styles,
+ * a Heading's font, and the color its links take.
+ */
+export const textBlockLook = (
+  block: Extract<Block, { type: TextBlockType }>,
+  style: EmailStyle
+): Record<string, string | undefined> => {
+  const styles = blockStyles(block, style);
+  return {
+    ...styles,
+    "--_mq-link-color": linkColor(block.props, style, styles.color ?? ""),
+    "font-family":
+      block.type === "heading" ? style.headingFontFamily : undefined,
+  };
 };
 
 /** What a Block without text draws on the canvas. */

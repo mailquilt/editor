@@ -41,12 +41,15 @@ test.describe("the Modes", () => {
 
     await expect(mode(page, "Style")).toHaveAttribute("aria-selected", "true");
     await expect(mode(page, "Edit")).toHaveAttribute("aria-selected", "false");
-    await expect(textOf(page, "A")).toBeHidden();
+    // Style shows the email, beside its Email style.
+    await expect(modePanel(page, "Style")).toBeVisible();
+    await expect(textOf(page, "A")).toBeVisible();
 
     // One stop for Tab, with the arrow keys between the Modes.
     await page.keyboard.press("ArrowRight");
     await expect(mode(page, "Check")).toBeFocused();
     await expect(mode(page, "Check")).toHaveAttribute("aria-selected", "true");
+    await expect(textOf(page, "A")).toBeHidden();
     await page.keyboard.press("Home");
     await expect(mode(page, "Edit")).toBeFocused();
     await expect(textOf(page, "A")).toBeVisible();
