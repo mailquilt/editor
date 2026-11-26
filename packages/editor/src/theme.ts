@@ -6,11 +6,55 @@ import { css, unsafeCSS } from "lit";
  */
 export const BACKDROP = "rgb(16 24 40 / 55%)";
 
+/** What `theme` takes. Without it, or with any other value, the theme is light. */
+export type MailQuiltTheme = "light" | "dark" | "auto";
+
 /**
- * The editor's theme tokens: one light theme. A host overrides any of them on
- * the element itself, which wins over `:host`. The email card doesn't use them,
- * because it shows the email's own settings. A custom property of the editor's
- * own that isn't a token is named `--_mq-…`, so it's kept apart from these.
+ * The built-in dark theme: the color tokens, and the shadows, which a light
+ * theme's would lose on a dark workspace. From the picked 0.4.0 frames
+ * (`docs/design/0.4.0`), apart from the danger color, which stays a red as
+ * the light theme's is, and a field's edge, which is lighter for 3:1.
+ *
+ * The `--_mq-…` values aren't tokens. They're what the dark theme uses a
+ * token differently for: a color swatch's edge, light so a dark color still
+ * shows on a dark field; a Block's keyboard focus, which is on the email,
+ * mostly white, where the light accent-strong would be faint; and a switch
+ * whose chosen one is lighter than its track, as the frames draw it.
+ */
+const darkTheme = css`
+  --mq-color-workspace: #101113;
+  --mq-color-surface: #161719;
+  --mq-color-surface-muted: #212226;
+  --mq-color-surface-hover: #2a2b30;
+  --mq-color-text: #ededef;
+  --mq-color-text-muted: #a8a8b1;
+  --mq-color-border: #26272b;
+  --mq-color-border-strong: #6f7179;
+  --mq-color-accent: #6f86ff;
+  --mq-color-accent-strong: #b0bdff;
+  --mq-color-accent-soft: rgb(125 148 255 / 15%);
+  --mq-color-outline-hover: rgb(125 148 255 / 45%);
+  --mq-color-on-accent: #0d0e10;
+  --mq-color-danger: #ff7a6e;
+  --mq-color-tooltip: #ededef;
+  --mq-color-on-tooltip: #0d0e10;
+  --mq-color-backdrop: rgb(0 0 0 / 65%);
+  --mq-color-scheme: dark;
+  --mq-shadow-small: 0 1px 2px rgb(0 0 0 / 40%);
+  --mq-shadow:
+    0 0 0 1px rgb(255 255 255 / 9%), 0 16px 40px -8px rgb(0 0 0 / 70%);
+  --_mq-swatch-edge: inset 0 0 0 1px rgb(255 255 255 / 22%);
+  --_mq-block-focus: var(--mq-color-accent);
+  --_mq-segments-track: var(--mq-color-surface-muted);
+  --_mq-segment-chosen: var(--mq-color-surface-hover);
+`;
+
+/**
+ * The editor's theme tokens: a light theme, and a dark one with `theme`. A host
+ * overrides any of them on the element itself, which wins over `:host` in
+ * either theme. The email card doesn't use them, because it shows the email's
+ * own settings. A custom property of the editor's own that isn't a token is
+ * named `--_mq-…`, so it's kept apart from these.
  */
 export const themeTokens = css`
   :host {
@@ -51,6 +95,20 @@ export const themeTokens = css`
     --mq-shadow:
       0 0 0 1px rgb(22 24 29 / 4%), 0 2px 4px rgb(22 24 29 / 4%),
       0 12px 32px -8px rgb(22 24 29 / 14%);
+    --_mq-swatch-edge: inset 0 0 0 1px rgb(0 0 0 / 12%);
+    --_mq-block-focus: var(--mq-color-accent-strong);
+    --_mq-segments-track: var(--mq-color-surface-hover);
+    --_mq-segment-chosen: var(--mq-color-surface);
+  }
+
+  :host([theme="dark"]) {
+    ${darkTheme}
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :host([theme="auto"]) {
+      ${darkTheme}
+    }
   }
 `;
 
@@ -238,7 +296,7 @@ export const uiStyles = css`
    * the chosen one is a raised chip in the track.
    */
   .segments {
-    background: var(--mq-color-surface-hover);
+    background: var(--_mq-segments-track);
     border-radius: var(--mq-radius);
     box-shadow: inset 0 0 0 1px var(--mq-color-border);
     display: flex;
@@ -272,7 +330,7 @@ export const uiStyles = css`
 
   /* An edge at 3:1, as a field's, so the chosen one doesn't rest on a shadow. */
   .segment:is([aria-selected="true"], [aria-pressed="true"]) {
-    background: var(--mq-color-surface);
+    background: var(--_mq-segment-chosen);
     box-shadow:
       0 0 0 1px var(--mq-color-border-strong),
       var(--mq-shadow-small);

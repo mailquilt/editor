@@ -456,14 +456,17 @@ test("every page's links and assets resolve", async ({
 
 const collapse = (text: string) => text.replaceAll(/\s+/gu, " ").trim();
 
-test("the theme tokens page lists every token, with its default", async ({
+test("the theme tokens page lists every token, with its default and its dark value", async ({
   browserName,
   page,
 }) => {
   test.skip(browserName !== "chromium", SAME_IN_EVERY_BROWSER);
   await page.goto("/playground");
   await expect(page.getByRole("textbox", { name: "Text Block" })).toBeVisible();
-  /** The editor's own tokens, from its stylesheet: name, then default. */
+  /**
+   * The editor's own tokens, from its stylesheet: name, then default, then the
+   * dark theme's value if it has one.
+   */
   const tokens = await page.locator("mail-quilt").evaluate((host) => {
     const root = host.shadowRoot as ShadowRoot;
     const sheets = [
@@ -472,15 +475,25 @@ test("the theme tokens page lists every token, with its default", async ({
         sheet ? [sheet] : []
       ),
     ];
-    return sheets.flatMap((sheet) =>
-      [...sheet.cssRules].flatMap((rule) =>
-        rule instanceof CSSStyleRule && rule.selectorText === ":host"
-          ? [...rule.style]
-              .filter((name) => name.startsWith("--mq-"))
-              .map((name) => [name, rule.style.getPropertyValue(name)])
-          : []
-      )
+    const rules = sheets.flatMap((sheet) =>
+      [...sheet.cssRules].filter((rule) => rule instanceof CSSStyleRule)
     );
+    const tokensOf = (selector: string) =>
+      new Map(
+        rules
+          .filter((rule) => rule.selectorText === selector)
+          .flatMap((rule) =>
+            [...rule.style]
+              .filter((name) => name.startsWith("--mq-"))
+              .map((name) => [name, rule.style.getPropertyValue(name)] as const)
+          )
+      );
+    const dark = tokensOf(':host([theme="dark"])');
+    return [...tokensOf(":host")].map(([name, value]) => ({
+      dark: dark.get(name),
+      name,
+      value,
+    }));
   });
 
   await page.goto("/docs/theme-tokens");
@@ -488,14 +501,17 @@ test("the theme tokens page lists every token, with its default", async ({
 
   // So a stylesheet the test can't read can't pass.
   expect(tokens.length).toBeGreaterThan(20);
-  for (const [name, value] of tokens) {
+  expect(tokens.filter(({ dark }) => dark).length).toBeGreaterThan(15);
+  for (const { dark, name, value } of tokens) {
     const row = rows.filter({
       has: page.getByRole("cell", { exact: true, name }),
     });
     await expect(row).toHaveCount(1);
-    expect(collapse((await row.textContent()) ?? "")).toContain(
-      collapse(value ?? "")
-    );
+    const text = collapse((await row.textContent()) ?? "");
+    expect(text).toContain(collapse(value));
+    if (dark) {
+      expect(text).toContain(collapse(dark));
+    }
   }
   // And each table's header row.
   await expect(rows).toHaveCount(

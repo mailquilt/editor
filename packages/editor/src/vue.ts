@@ -36,10 +36,18 @@ type VueElement<Element, Props extends keyof Element> = new () => Element & {
 
 declare module "vue" {
   interface GlobalComponents {
-    "mail-quilt": VueElement<MailQuilt, "value" | keyof HostAppProperties>;
+    "mail-quilt": VueElement<
+      MailQuilt,
+      "theme" | "value" | keyof HostAppProperties
+    >;
     "mail-quilt-shell": VueElement<
       MailQuiltShell,
-      "actions" | "heading" | "saveKey" | "value" | keyof HostAppProperties
+      | "actions"
+      | "heading"
+      | "saveKey"
+      | "theme"
+      | "value"
+      | keyof HostAppProperties
     >;
   }
 }

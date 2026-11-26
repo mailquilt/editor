@@ -58,6 +58,7 @@ import { isMergeTagName } from "./text-schema.js";
 import { blockTypeName, createText } from "./text.js";
 import type { Text } from "./text.js";
 import { themeTokens, uiStyles } from "./theme.js";
+import type { MailQuiltTheme } from "./theme.js";
 import { createToolFitting } from "./tool-fitting.js";
 import type { ToolFitting } from "./tool-fitting.js";
 import { createTooltips } from "./tooltips.js";
@@ -285,6 +286,8 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       hasChanged: (next: unknown, previous: unknown) =>
         Boolean(next) !== Boolean(previous),
     },
+    // Reflected, as the theme is drawn from the attribute.
+    theme: { reflect: true },
   };
 
   static override styles = [
@@ -309,6 +312,12 @@ export class MailQuilt extends LitElement implements HostAppProperties {
   declare socialIconsUrl: HostAppProperties["socialIconsUrl"];
   declare strings: HostAppProperties["strings"];
   declare uploadImage: HostAppProperties["uploadImage"];
+  /**
+   * The editor's built-in theme: `light`, the default, `dark`, or `auto`,
+   * which follows the person's system. A theme token set on the element wins
+   * over either. The email keeps its own colors.
+   */
+  declare theme: MailQuiltTheme | undefined;
 
   /** Each of the editor's texts, in the Host app's words where it gives them. */
   readonly #text = createText(() => this.strings);

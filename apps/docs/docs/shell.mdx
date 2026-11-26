@@ -87,7 +87,7 @@ Choose what the Shell offers with `actions`. An app that keeps emails on its own
 
 `export-html` and `export-json` are the Export menu's items, and `import-json` is More's. They keep their own order, whatever order you name them in. Export shows while it has an item, and More while it has Import JSON, so `actions=""` shows neither. Without `export-json`, a failed save says the browser can't save without suggesting it. If you leave out `export-html`, call `exportHtml()` from a control of your own, so people can still get the HTML.
 
-The Shell draws its controls and messages from the same [theme tokens](./theme-tokens) as the editor. Set them on `<mail-quilt-shell>`, and the editor inside uses them too.
+The Shell draws its controls and messages from the same [theme tokens](./theme-tokens) as the editor. Set them on `<mail-quilt-shell>`, and the editor inside uses them too. So does `theme`: `<mail-quilt-shell theme="dark">` gives the Shell and its editor the [dark theme](./theme-the-editor#a-dark-theme).
 
 To restyle the Shell beyond the tokens, its frame and each piece of the header and the message bar are CSS parts. Style them from your own stylesheet with `::part()`:
 

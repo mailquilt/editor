@@ -28,7 +28,7 @@ S="$(git rev-parse --show-toplevel)/.claude/skills/editor-screens/scripts"
 # Every width, the page light and dark, with a contact sheet <name>-matrix.png
 node $S/screens.mjs --out /tmp/shots --name playground --path /playground
 
-# The editor in its default theme and in the documented dark theme too
+# The editor in its default theme and in its built-in dark theme too
 node $S/screens.mjs --out /tmp/shots --name playground --path /playground --editor both
 
 # Steps first, run in order
@@ -57,7 +57,7 @@ node $S/filmstrip.mjs --out /tmp/shots --name preview-open --path /playground \
 - **Targets** are Playwright selectors and reach inside the Shadow DOM: CSS, `text=Label`, or `role=button[name="Preview"]`, which is the surest. A target that matches nothing, or more than one thing, stops the run with a message and saves nothing for that shot, so a wrong screen is never saved as evidence.
 - **Focus:** each line of output names what has focus, looking through the shadow roots. Use it to check focus paths against `keyboard.mdx` and "Keys and focus" in `docs/agents/decisions.md`. Clicks and keys are real input, so focus moves as it does for a person.
 - **Widths** default to 320, 390, 768, 1024, 1440, 1920 and 2560. Below 700 px the page is a touch phone. Below 640 px the editor shows its narrow notice instead of the canvas; shoot it on purpose, it's a real state.
-- **Themes:** `--themes` is what the browser prefers, which the site follows. `--editor dark` (or `both`) also gives every editor on the page the dark theme from `apps/docs/docs/theme-the-editor.mdx`, read from that page, so the shots test what the docs promise. It overrides tokens a page sets inline, such as the Playground's orange accent.
+- **Themes:** `--themes` is what the browser prefers, which the site follows. `--editor dark` (or `both`) also gives every editor on the page the built-in dark theme, `theme="dark"`, as a host app would. It takes off tokens a page sets inline, such as the Playground's orange accent, which would win over the theme, so the shots show the theme itself.
 - **Reduced motion:** set `SCREENS_REDUCED_MOTION=1`.
 - **Failed requests:** `--block '<url glob>'` makes a request fail, for an error state that comes from the network, such as a host's image upload. The site's own chunks have hashed names and the MJML chunk also holds the editor, so blocking it breaks the whole page; for the Preview's error state, use the editor's browser tests (`packages/editor/browser-tests`) instead.
 

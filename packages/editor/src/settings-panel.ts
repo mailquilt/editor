@@ -500,8 +500,6 @@ export const settingsPanelStyles = css`
   }
 
   .settings input[type="color"] {
-    /* An edge on the swatch, over the color it shows. */
-    --_mq-swatch-edge: inset 0 0 0 1px rgb(0 0 0 / 12%);
     background: none;
     border: 0;
     border-radius: var(--mq-radius-small);
@@ -520,7 +518,10 @@ export const settingsPanelStyles = css`
     padding: 0;
   }
 
-  /* Two rules, as one naming a pseudo-element a browser doesn't know is dropped. */
+  /*
+   * An edge on the swatch, over the color it shows, from the theme. Two rules,
+   * as one naming a pseudo-element a browser doesn't know is dropped.
+   */
   .settings input[type="color"]::-webkit-color-swatch {
     border: 0;
     border-radius: var(--mq-radius-small);

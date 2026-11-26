@@ -297,7 +297,7 @@ export const canvasStyles = css`
   /* Stands out from a Block that's only selected, or whose text has focus. */
   .block:focus-visible {
     background-color: var(--mq-color-accent-soft);
-    outline: 3px solid var(--mq-color-accent-strong);
+    outline: 3px solid var(--_mq-block-focus);
     outline-offset: -3px;
   }
 

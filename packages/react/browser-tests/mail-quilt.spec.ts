@@ -136,6 +136,19 @@ test("strings reaches the element", async ({ page }) => {
   }
 });
 
+test("theme reaches the element, and the Shell passes it to its editor", async ({
+  page,
+}) => {
+  for (const [query, editor] of [
+    ["/", page.locator("mail-quilt")],
+    ["/?shell", page.locator("mail-quilt-shell mail-quilt")],
+  ] as const) {
+    await page.goto(query);
+    await expect(textBlock(page)).toHaveText("Hello");
+    await expect(editor).toHaveAttribute("theme", "dark");
+  }
+});
+
 test("socialIconsUrl reaches the element", async ({ page }) => {
   for (const [query, tag] of [
     ["/", "mail-quilt"],

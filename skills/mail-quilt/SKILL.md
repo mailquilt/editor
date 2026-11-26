@@ -49,13 +49,13 @@ Work in this order, and stop as soon as it matches the app:
 
 1. **Layout.** Give `<mail-quilt>` the full width of the content area, in the page's normal flow. The side panel sits beside the email only while the editor is at least the email's width plus 400px, which is 1000px for the usual 600px email: [Fit the editor into your page](https://editor.mailquilt.com/docs/design-your-editor-page.md).
 2. **Font and accent.** Set `--mq-font-family` and the four accent tokens on the `<mail-quilt>` element, or on `<mail-quilt-shell>` for a Shell: [Theme the editor](https://editor.mailquilt.com/docs/theme-the-editor.md), and every token in [Theme tokens](https://editor.mailquilt.com/docs/theme-tokens.md).
-3. **A dark theme, if the app has one.** Set every color token, never a few, or light defaults are left beside dark ones. Start from the complete dark theme in [Theme the editor](https://editor.mailquilt.com/docs/theme-the-editor.md), then change the accent. Keep these pairs readable together, at 4.5:1 for text:
+3. **A dark theme, if the app has one.** Set `theme="dark"` on the element, or `theme="auto"` to follow the person's system, rather than setting color tokens by hand. A color token set on the element wins over the dark theme too, so give the dark theme its own accent with `mail-quilt[theme="dark"] { … }`, and keep these pairs readable together, at 4.5:1 for text: [A dark theme](https://editor.mailquilt.com/docs/theme-the-editor.md#a-dark-theme).
    - `--mq-color-surface` on `--mq-color-text`, the selected Block's tag and toolbar
    - `--mq-color-on-accent` on `--mq-color-accent`. White on a mid-tone accent such as `#8b5cf6` falls short, so use a dark one.
    - `--mq-color-accent-strong` on `--mq-color-accent-soft`, pressed buttons such as Bold. On a dark theme the strong accent is the lighter one.
    - `--mq-color-on-tooltip` on `--mq-color-tooltip`
 
-   Set `--mq-color-scheme: dark` too, or the browser's own dropdown lists and color picker stay light. The page's own `color-scheme` doesn't reach the editor.
+   The page's own `color-scheme` doesn't reach the editor; `theme` is what makes it dark.
 4. **The frame.** Only if tokens aren't enough, style `mail-quilt::part(frame)`, such as `border-radius: 0` for an editor that fills a panel. On a Shell, style `mail-quilt-shell::part(frame)`, as the Shell's frame is the one that shows.
 5. **The Shell's header and messages.** Choose its buttons with `actions`, name it with `heading`, and style its CSS parts, such as `mail-quilt-shell::part(header)`: [Shell](https://editor.mailquilt.com/docs/shell.md).
 
