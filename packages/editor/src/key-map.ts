@@ -82,6 +82,7 @@ export type Action =
   | "previousMergeTag"
   | "redo"
   | "selectBlock"
+  | "tabOutOfStylePopover"
   | "toAddResults"
   | "typeInField"
   | "undo"
@@ -359,6 +360,22 @@ const OPEN_ADD: Entry = {
   waitsForDrag: true,
 };
 
+/**
+ * In a Style popover: Escape closes it, back to its setting, and Tab from its
+ * last control, or Shift+Tab from its first, closes it and goes on to the next
+ * setting, or back to its own, rather than out of the panel.
+ */
+const STYLE_POPOVER: Entry[] = [
+  escape("closeStylePopover"),
+  {
+    action: "tabOutOfStylePopover",
+    anyModifiers: true,
+    keepsDefault: true,
+    keys: ["Tab"],
+    stops: false,
+  },
+];
+
 /** Escape closes the Add panel or the picker, and focus goes back. */
 const CLOSE_ADD = escape("closeAdd");
 
@@ -560,13 +577,13 @@ const KEY_SCOPES = {
    * The Style panel's popovers. Escape closes one, and focus goes back to the
    * setting it's for. Undo and redo are the editor's, as in the Selection bar.
    */
-  stylePopover: { keys: [escape("closeStylePopover")], within: "editor" },
+  stylePopover: { keys: STYLE_POPOVER, within: "editor" },
   /** The arrow keys change a color's shade, and with Shift, ten times as much. */
   colorArea: {
     keys: [
       ...arrows("", { action: "nudgeColor", stops: true }),
       ...arrows("Shift-", { action: "nudgeColor", stops: true }),
-      escape("closeStylePopover"),
+      ...STYLE_POPOVER,
     ],
     within: "editor",
   },
@@ -576,7 +593,7 @@ const KEY_SCOPES = {
       { action: "previousFont", keys: ["ArrowUp"], stops: true },
       { action: "nextFont", keys: ["ArrowDown"], stops: true },
       { action: "pickFont", keys: ["Enter"], stops: true },
-      escape("closeStylePopover"),
+      ...STYLE_POPOVER,
     ],
     within: "editor",
   },

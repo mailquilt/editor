@@ -568,16 +568,30 @@ export const createFocus = ({
 
   /**
    * In the Style panel: a control by its `data-action`, or else the field its
-   * open popover starts in, which the popover marks.
+   * open popover starts in, which the popover marks, with its text selected
+   * to type over, as a pasted color is.
    */
-  const styleControl = (action: string | undefined) =>
-    action === undefined
-      ? findPlace(root(), "stylePopover")?.querySelector<HTMLElement>(
-          "[data-start]"
-        )
-      : findPlace(root(), "stylePanel")?.querySelector<HTMLElement>(
-          `[data-action="${CSS.escape(action)}"]`
-        );
+  const styleControl = (
+    action: string | undefined
+  ): Focusable | null | undefined => {
+    if (action !== undefined) {
+      return findPlace(root(), "stylePanel")?.querySelector<HTMLElement>(
+        `[data-action="${CSS.escape(action)}"]`
+      );
+    }
+    const field = findPlace(
+      root(),
+      "stylePopover"
+    )?.querySelector<HTMLInputElement>("input[data-start]");
+    return (
+      field && {
+        focus: (options) => {
+          field.focus(options);
+          field.select();
+        },
+      }
+    );
+  };
 
   /**
    * What takes focus for a target, or else for the nearest one that's there:

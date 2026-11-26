@@ -82,6 +82,7 @@ interface KeyDispatchHost {
     moveFont: (step: -1 | 1) => void;
     nudgeColor: (direction: Direction, far: boolean) => void;
     pickFont: () => void;
+    tabOut: (event: KeyboardEvent) => void;
   };
 }
 
@@ -212,6 +213,7 @@ export const createKeyDispatch = ({
     previousFont: () => style.moveFont(-1),
     previousMergeTag: (event) => pickerOf(event)?.moveInMergeTagPicker(-1),
     redo: () => stepHistory("redo"),
+    tabOutOfStylePopover: (event) => style.tabOut(event),
     toAddResults: ({ target }) => focusFirstTile(target as Element),
     typeInField: doNothing,
     undo: () => stepHistory("undo"),

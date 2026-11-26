@@ -115,10 +115,15 @@ const SETTINGS: readonly Setting[] = [
 
 /** Button corners, as `s12` draws them: a pill is rounder than any Button is tall. */
 const CORNERS = [
-  { label: "style.square", radius: 0 },
-  { label: "style.rounded", radius: 8 },
-  { label: "style.pill", radius: 100 },
-] as const satisfies readonly { label: StringId; radius: number }[];
+  { drawn: 0, label: "style.square", radius: 0 },
+  { drawn: 4, label: "style.rounded", radius: 8 },
+  { drawn: 8, label: "style.pill", radius: 100 },
+] as const satisfies readonly {
+  /** On its tile's 16px bar, so the three look apart. */
+  drawn: number;
+  label: StringId;
+  radius: number;
+}[];
 
 const settingOf = (key: StyleKey) =>
   SETTINGS.find((setting) => setting.key === key);
@@ -522,10 +527,6 @@ export const stylePanelStyles = css`
     width: 18px;
   }
 
-  .style-swatch[data-default] {
-    opacity: 0.45;
-  }
-
   /* A font's value is a field that opens its list. */
   .style-font {
     background: var(--mq-color-surface);
@@ -660,6 +661,11 @@ export const stylePanelStyles = css`
     margin-block-start: var(--mq-space-2);
   }
 
+  /* Where they don't fit side by side, each fills its line, so they line up. */
+  .style-callout .actions button {
+    flex: 1 1 auto;
+  }
+
   /* A popover from a setting: beside the panel for a color, under it otherwise. */
   .style-popover {
     background: var(--mq-color-surface);
@@ -757,8 +763,12 @@ export const stylePanelStyles = css`
     width: 14px;
   }
 
-  .hue {
+  /* Over the settings' own field styles, which an input in a popover takes. */
+  .settings .hue {
     appearance: none;
+    border: 0;
+    box-shadow: none;
+    padding: 0;
     background: linear-gradient(
       to right,
       #ff0000,
@@ -774,6 +784,11 @@ export const stylePanelStyles = css`
     height: 12px;
     margin: var(--mq-space-3) 0;
     width: 100%;
+  }
+
+  .settings .hue:focus {
+    box-shadow: none;
+    outline-offset: 2px;
   }
 
   .hue::-webkit-slider-thumb {
@@ -979,6 +994,8 @@ export const createStylePanel = ({
   let session = 0;
   /** The last email shown, for what keys do with no update between. */
   let email: BlocksDocument | undefined;
+  /** The settings the selected Block sets its own value over, which are tinted. */
+  let overridden = new Set<StyleKey>();
 
   const close = (returnFocus: boolean) => {
     if (!open) {
@@ -1186,7 +1203,7 @@ export const createStylePanel = ({
         )}
       </div>
       ${
-        isEmailSetting(key)
+        isEmailSetting(key) || valueOf(key, settings) === undefined
           ? nothing
           : html`
               <button
@@ -1266,16 +1283,22 @@ export const createStylePanel = ({
             </p>`
           : nothing
       }
-      <button
-        class="use-default"
-        type="button"
-        @click=${() => {
-          set(key, null);
-          close(true);
-        }}
-      >
-        ${ICONS.close}${text("style.useDefault", { value: builtIn })}
-      </button>
+      ${
+        value === undefined
+          ? nothing
+          : html`
+              <button
+                class="use-default"
+                type="button"
+                @click=${() => {
+                  set(key, null);
+                  close(true);
+                }}
+              >
+                ${ICONS.close}${text("style.useDefault", { value: builtIn })}
+              </button>
+            `
+      }
     `;
   };
 
@@ -1445,7 +1468,7 @@ export const createStylePanel = ({
         aria-haspopup="dialog"
         class=${`style-setting ${setting.kind}`}
         data-action=${`style-${setting.key}`}
-        ?data-marked=${marked === setting.key}
+        ?data-marked=${marked === setting.key || overridden.has(setting.key)}
         type="button"
         @blur=${events.off}
         @click=${({ currentTarget }: MouseEvent) =>
@@ -1480,7 +1503,6 @@ export const createStylePanel = ({
           ${unset}${words}
           <span
             class="style-swatch"
-            ?data-default=${valueOf(setting.key, settings) === undefined}
             style=${styleProperties({
               "background-color": swatchOf(setting.key, settings),
             })}
@@ -1571,7 +1593,7 @@ export const createStylePanel = ({
           @pointerleave=${events.off}
         >
           ${CORNERS.map(
-            ({ label, radius }) => html`
+            ({ drawn, label, radius }) => html`
               <label class="style-corner">
                 <input
                   data-action=${`style-corner-${radius}`}
@@ -1582,7 +1604,7 @@ export const createStylePanel = ({
                 />
                 <span aria-hidden="true" class="tile">
                   <i
-                    style=${styleProperties({ "border-radius": `${Math.min(radius, 8)}px` })}
+                    style=${styleProperties({ "border-radius": `${drawn}px` })}
                   ></i>
                 </span>
                 <span class="name">${text(label)}</span>
@@ -1792,6 +1814,53 @@ export const createStylePanel = ({
       pickColor({ ...hsv, ...change });
     },
 
+    /**
+     * From the key map: Tab from a popover's last control, or Shift+Tab from
+     * its first, closes it, and focus goes on to the setting after its own,
+     * or back to its own. Anywhere else in it, Tab is the browser's.
+     */
+    tabOut(event: KeyboardEvent) {
+      const from = event.target as Element;
+      const popover = closestPlace(from, "stylePopover");
+      const panel = closestPlace(from, "stylePanel");
+      if (!(open && popover && panel)) {
+        return;
+      }
+      const stops = [
+        ...popover.querySelectorAll<HTMLElement>(
+          "input, button, [tabindex='0']"
+        ),
+      ].filter((stop) => stop.getClientRects().length > 0);
+      const edge = event.shiftKey ? stops[0] : stops.at(-1);
+      if (from !== edge) {
+        return;
+      }
+      event.preventDefault();
+      const own = `style-${open.key}`;
+      const controls = [...panel.querySelectorAll<HTMLElement>("[data-action]")]
+        .filter((control) => !popover.contains(control))
+        .map((control) =>
+          // The corners are one stop, at the one that's chosen.
+          control instanceof HTMLInputElement &&
+          control.type === "radio" &&
+          !control.checked &&
+          panel.querySelector("input[type='radio']:checked")
+            ? (panel.querySelector<HTMLElement>(
+                "input[type='radio']:checked"
+              ) ?? control)
+            : control
+        );
+      const after =
+        controls[
+          controls.findIndex(({ dataset }) => dataset.action === own) + 1
+        ];
+      const action = event.shiftKey ? own : (after?.dataset.action ?? own);
+      open = undefined;
+      session += 1;
+      focus.focusWhenRendered({ action, on: "style" });
+      requestUpdate();
+    },
+
     /** From the key map: picks the font the arrow keys are on. */
     pickFont() {
       if (!(open?.kind === "font" && email)) {
@@ -1812,6 +1881,11 @@ export const createStylePanel = ({
     render({ email: shownEmail, floating, selected }: StylePanelView) {
       email = shownEmail;
       const { settings } = shownEmail;
+      overridden = new Set(
+        selected
+          ? ownValuesOf(selected, settings.style ?? {}).map(({ key }) => key)
+          : []
+      );
       return html`
         <section
           aria-labelledby="style-title"

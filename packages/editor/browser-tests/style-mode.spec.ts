@@ -387,6 +387,31 @@ test.describe("the Style Mode", () => {
     expect(await styleOf(page)).toBeUndefined();
   });
 
+  test("opens with a field's text selected to type over, and Tab past a popover's ends goes on to the settings around it", async ({
+    page,
+  }) => {
+    await openStyled(page);
+    await styleSetting(page, "Text").focus();
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("#112233");
+    await page.keyboard.press("Enter");
+    expect(await styleOf(page)).toStrictEqual({ textColor: "#112233" });
+
+    // The Hex field, its swatches, then "Use the default", the last.
+    await stylePanel(page)
+      .getByRole("button", { name: "Use the default (#000000)" })
+      .focus();
+    await page.keyboard.press("Tab");
+    await expect(stylePanel(page).getByRole("dialog")).toHaveCount(0);
+    await expect(styleSetting(page, "Buttons")).toBeFocused();
+
+    await page.keyboard.press("Enter");
+    await stylePanel(page).getByRole("slider", { name: "Buttons shade" }).focus();
+    await page.keyboard.press("Shift+Tab");
+    await expect(stylePanel(page).getByRole("dialog")).toHaveCount(0);
+    await expect(styleSetting(page, "Buttons")).toBeFocused();
+  });
+
   test("offers a saved font that isn't on the list, and closes a list with Escape", async ({
     page,
   }) => {

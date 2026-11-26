@@ -49,6 +49,11 @@ export const canvasStyles = css`
     outline-offset: -1px;
   }
 
+  /* A selected Block that's marked says what the setting does, in its place. */
+  .styling .block[data-style-mark]::after {
+    display: none;
+  }
+
   [data-style-mark="keeps"] {
     outline: 1px dotted var(--mq-color-text-muted);
     outline-offset: -1px;
