@@ -256,10 +256,10 @@ test.describe("a Row's padding", () => {
 
     await page.keyboard.type("24");
     await page.keyboard.press("Enter");
-    await expect.poll(() => rowPadding(page)).toEqual([24, 24, 24, 24]);
+    expect(await rowPadding(page)).toEqual([24, 24, 24, 24]);
 
     await undo(page);
-    await expect.poll(() => rowPadding(page)).toEqual([0, 0, 0, 0]);
+    expect(await rowPadding(page)).toEqual([0, 0, 0, 0]);
   });
 
   test("turned off shows each side and changes nothing, and turned on gives every side Top's, as one undo step", async ({
@@ -282,15 +282,15 @@ test.describe("a Row's padding", () => {
     await expect(same).toBeChecked();
     await expect(same).toBeFocused();
     await expect(field(page, "Every side (px)")).toHaveValue("12");
-    await expect.poll(() => rowPadding(page)).toEqual([12, 12, 12, 12]);
+    expect(await rowPadding(page)).toEqual([12, 12, 12, 12]);
 
     await page.keyboard.press("Space");
     await expect(same).not.toBeChecked();
     await expect(field(page, "Left padding (px)")).toHaveValue("12");
-    await expect.poll(() => rowPadding(page)).toEqual([12, 12, 12, 12]);
+    expect(await rowPadding(page)).toEqual([12, 12, 12, 12]);
 
     await undo(page);
-    await expect.poll(() => rowPadding(page)).toEqual([12, 0, 0, 32]);
+    expect(await rowPadding(page)).toEqual([12, 0, 0, 32]);
     await barButton(page, "Padding").click();
     await expect(sameOnEverySide(page)).not.toBeChecked();
   });
@@ -311,6 +311,36 @@ test.describe("a Row's padding", () => {
     await expect(field(page, "Every side (px)")).toHaveValue("0");
     await sameOnEverySide(page).click();
 
+    await expect(top).toHaveValue("0");
+    await expect(top).toHaveAttribute("aria-invalid", "false");
+  });
+
+  test("set side by side, stays side by side once the sides are the same", async ({
+    page,
+  }) => {
+    await openEmail(page, [[["A"]]]);
+    const email = emailWith([[["A"]]]);
+    Object.assign(email.rows[0] ?? {}, { props: { paddingRight: 12 } });
+    await setValue(page, email);
+    await selectRow(page, 1);
+    await barButton(page, "Padding").click();
+    const top = field(page, "Top padding (px)");
+    await top.fill("999");
+    await top.press("Enter");
+    await expect(top).toHaveAttribute("aria-invalid", "true");
+
+    const right = field(page, "Right padding (px)");
+    await right.fill("0");
+    await right.press("Enter");
+
+    expect(await rowPadding(page)).toEqual([0, 0, 0, 0]);
+    await expect(right).toBeFocused();
+    await expect(sameOnEverySide(page)).not.toBeChecked();
+    await expect(top).toHaveValue("999");
+
+    // Turned on and off again, what was refused is gone.
+    await sameOnEverySide(page).click();
+    await sameOnEverySide(page).click();
     await expect(top).toHaveValue("0");
     await expect(top).toHaveAttribute("aria-invalid", "false");
   });

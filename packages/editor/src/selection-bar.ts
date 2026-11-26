@@ -1442,15 +1442,21 @@ const renderPaddingPopover = (
     fields: [everySide],
     values: { ...section.values, [EVERY_SIDE]: section.values[top.key] },
   };
+  // A side set on its own keeps the sides apart, so the fields don't change
+  // under the person once the sides happen to be the same.
+  const bySideSection: SettingsSection = {
+    ...section,
+    command: (changes) => {
+      api.showPaddingBySide(section.targetId, true);
+      return section.command(changes);
+    },
+  };
   const switchId = `bar-${section.id}-padding-same`;
   const onSame = ({ currentTarget }: Event) => {
     const on = (currentTarget as HTMLInputElement).checked;
-    // What was typed in the fields it hides isn't what the email has.
-    if (on) {
-      drafts.drop(section, sides);
-    } else {
-      drafts.drop(everySection, [everySide]);
-    }
+    // What was typed in a field it hid or hides isn't what the email has.
+    drafts.drop(section, sides);
+    drafts.drop(everySection, [everySide]);
     api.showPaddingBySide(section.targetId, !on);
     if (on && !equal) {
       drafts.onCommit(everySection, everySide, {
@@ -1482,7 +1488,7 @@ const renderPaddingPopover = (
       tabindex="-1"
     >
       ${renderSettingsPanel(
-        same ? { ...everySection, legend } : { ...section, legend },
+        same ? { ...everySection, legend } : { ...bySideSection, legend },
         drafts,
         fieldTags(api),
         text,
