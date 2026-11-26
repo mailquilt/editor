@@ -11,7 +11,9 @@ Before, `to-mjml.ts` was 528 lines, and its regexes were built from strings, so 
 - `text-to-html.ts` turns a Text Block's paragraphs, a Heading and a Button's label into the HTML inside MJML's tags: marks, kept spaces, break points and links to written addresses.
 - `to-mjml.ts` builds the MJML from the email's settings, Rows, Columns and Blocks.
 - `finish-html.ts` is the pass over MJML's HTML: it takes out MJML's layout whitespace and gives shared Columns their width (ADR 0005). Its Column pattern starts at the tag's `<`, which text never has unescaped.
-- `index.ts` runs them in order and loads MJML.
+- `render-email.ts` runs them in order and loads MJML. It was in `index.ts` until `check-email.ts`, which renders the email to measure it, needed it without importing `index.ts`, which exports both (#319).
+- `check-email.ts` finds an email's Problems. It reads text through `text-to-html.ts`, so it sees each piece of text, and each address linked in it, as the email draws them.
+- `index.ts` exports what hosts use, and nothing else.
 
 The exported HTML doesn't change, apart from the fixes made with the split: a Button's label gets break points as text does, and a label or preheader that looks like Column markup is left alone.
 
