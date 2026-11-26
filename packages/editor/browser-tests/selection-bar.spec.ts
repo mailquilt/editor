@@ -279,15 +279,15 @@ test.describe("a Row's padding", () => {
 
     await same.focus();
     await page.keyboard.press("Space");
+    expect(await rowPadding(page)).toEqual([12, 12, 12, 12]);
     await expect(same).toBeChecked();
     await expect(same).toBeFocused();
     await expect(field(page, "Every side (px)")).toHaveValue("12");
-    expect(await rowPadding(page)).toEqual([12, 12, 12, 12]);
 
     await page.keyboard.press("Space");
+    expect(await rowPadding(page)).toEqual([12, 12, 12, 12]);
     await expect(same).not.toBeChecked();
     await expect(field(page, "Left padding (px)")).toHaveValue("12");
-    expect(await rowPadding(page)).toEqual([12, 12, 12, 12]);
 
     await undo(page);
     expect(await rowPadding(page)).toEqual([12, 0, 0, 32]);
