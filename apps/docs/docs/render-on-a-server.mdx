@@ -78,7 +78,7 @@ The promise gives an array of Problems in the email's order: its settings first,
 | `html-too-large` | The HTML is over 102 KB, counted in bytes, so Gmail cuts it off and hides the rest behind a link. | None |
 | `no-unsubscribe-link` | No link in the email goes to a Merge Tag you marked `unsubscribe`. A link counts when the tag is anywhere in its URL, and not when it's on an Image with no image, which is left out of the email. | None |
 
-Contrast is read as the email shows it: a Block's own colors, or else Email style, or else the built-in look, against the Row's color, or else Email style's color behind the Rows, or else the page's. A see-through color is mixed with what's behind it. A Block with no text in it has no contrast to check.
+Contrast is read as the email shows it: a Block's own colors, or else Email style, or else the built-in look, against the Row's color, or else Email style's color behind the Rows, or else the page's. A see-through color is mixed with what's behind it. Each piece of text is checked in the color and weight it's drawn in, so bold text counts as bold, and text that's all links isn't checked in the text color. A Block with no text in it has no contrast to check.
 
 ## When the renderer refuses an email
 

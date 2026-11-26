@@ -107,7 +107,12 @@ const textsIn = (value: unknown): string[] => {
 
 /** Each link's URL in a value, such as a Block's prop. */
 const linksIn = (value: unknown): string[] => {
-  if (typeof value !== "object" || value === null) {
+  // A line break keeps a link open across it, but opens none of its own.
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    ("type" in value && value.type === "hardBreak")
+  ) {
     return [];
   }
   return Object.entries(value).flatMap(([key, inner]) =>
@@ -192,13 +197,11 @@ const contrast = (first: Rgba, second: Rgba) => {
 const isReadable = (
   color: string,
   behind: Rgba,
-  {
-    "font-size": fontSize = "16px",
-    "font-weight": weight = "400",
-  }: Record<string, string>
+  fontSize = "16px",
+  bold = false
 ) => {
   const pixels = Number(fontSize.slice(0, -"px".length));
-  const large = pixels >= 24 || (Number(weight) >= 700 && pixels * 3 >= 56);
+  const large = pixels >= 24 || (bold && pixels * 3 >= 56);
   return contrast(over(color, behind), behind) >= (large ? 3 : 4.5);
 };
 
@@ -237,6 +240,33 @@ const hasWrittenAddress = (paragraph: RichTextParagraph) =>
       groups.www !== undefined
   );
 
+/** How a piece of text the reader sees is drawn. */
+interface Run {
+  bold: boolean;
+  link: boolean;
+}
+
+const marked = (inline: Inline, type: string) =>
+  inline.marks?.some((mark) => mark.type === type) ?? false;
+
+/** Each piece of a paragraph's text that the reader sees, as the renderer draws it. */
+const visibleRuns = (paragraph: RichTextParagraph): Run[] => {
+  const runs = (paragraph.content ?? [])
+    .filter(
+      (inline) =>
+        inline.type === "mergeTag" ||
+        (inline.type === "text" && inline.text.trim() !== "")
+    )
+    .map((inline) => ({
+      bold: marked(inline, "bold"),
+      link: marked(inline, "link"),
+    }));
+  // The renderer links each address written in the text, in the link color.
+  return hasWrittenAddress(paragraph)
+    ? [...runs, { bold: false, link: true }]
+    : runs;
+};
+
 const lowContrast = (
   block: Block,
   behind: Rgba,
@@ -246,43 +276,51 @@ const lowContrast = (
   switch (block.type) {
     case "text":
     case "heading": {
-      const paragraphs = paragraphsIn(block.props.content);
-      // As the renderer's, a Block with only spaces in it has no text to read.
-      if (
-        paragraphs.every((paragraph) => paragraphText(paragraph).trim() === "")
-      ) {
-        return [];
-      }
+      // A Block with only spaces in it has none, so nothing to read.
+      const runs = paragraphsIn(block.props.content).flatMap(visibleRuns);
       const color = css.color as string;
       const links = linkColor(block.props, style, color);
-      const hasLinks =
-        linksIn(block.props).length > 0 || paragraphs.some(hasWrittenAddress);
+      // Links in the text's own color are checked as text.
+      const sameColor = links === color;
+      const isRunReadable = (runColor: string, { bold }: Run) =>
+        isReadable(
+          runColor,
+          behind,
+          css["font-size"],
+          bold || css["font-weight"] === "700"
+        );
+      const textFails = runs.some(
+        (run) => (sameColor || !run.link) && !isRunReadable(color, run)
+      );
+      const linksFail =
+        !sameColor &&
+        runs.some((run) => run.link && !isRunReadable(links, run));
       return [
-        ...(isReadable(color, behind, css)
-          ? []
-          : [
+        ...(textFails
+          ? [
               {
                 code: "low-text-contrast" as const,
                 field: "color",
                 message:
                   "Text has too little contrast with what's behind it for everyone to read it. It needs 4.5:1, or 3:1 for large text.",
               },
-            ]),
-        ...(links === color || !hasLinks || isReadable(links, behind, css)
-          ? []
-          : [
+            ]
+          : []),
+        ...(linksFail
+          ? [
               {
                 code: "low-link-contrast" as const,
                 field: "color",
                 message:
                   "Links have too little contrast with what's behind them for everyone to read them. They need 4.5:1, or 3:1 for large text.",
               },
-            ]),
+            ]
+          : []),
       ];
     }
     case "button": {
       const buttonColor = parseColor(css["background-color"] as string);
-      return isReadable(css.color as string, buttonColor, css)
+      return isReadable(css.color as string, buttonColor, css["font-size"])
         ? []
         : [
             {

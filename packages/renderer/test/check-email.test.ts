@@ -280,6 +280,20 @@ describe(checkEmail, () => {
       }
     );
 
+    // A line break keeps a link open across it, but opens none of its own.
+    it("doesn't count a link on a line break alone", async () => {
+      const email = ready({
+        props: paragraph({
+          marks: [{ attrs: { href: "{{unsubscribe_url}}" }, type: "link" }],
+          type: "hardBreak",
+        }),
+        type: "text",
+      });
+      await expect(
+        codes(email, { mergeTags: MERGE_TAGS })
+      ).resolves.toStrictEqual(["no-unsubscribe-link"]);
+    });
+
     it("finds no unsubscribe link when the tag is only in the text", async () => {
       await expect(
         codes(
@@ -383,6 +397,47 @@ describe(checkEmail, () => {
     });
 
     // The renderer links an address written in text, in the link color.
+    // #949494 is 3.03:1, enough for bold text of 18.67px or more.
+    it.each([
+      [
+        "is quiet about bold text of 20px",
+        [{ marks: [{ type: "bold" }], text: "News", type: "text" }],
+        [],
+      ],
+      [
+        "finds a run that isn't bold beside it",
+        [
+          { marks: [{ type: "bold" }], text: "News ", type: "text" },
+          { text: "today", type: "text" },
+        ],
+        ["low-text-contrast"],
+      ],
+    ])("%s", async (_, content, expected) => {
+      await expect(
+        codes(
+          ready(
+            text({ ...paragraph(...content), color: "#949494", fontSize: 20 })
+          )
+        )
+      ).resolves.toStrictEqual(expected);
+    });
+
+    // All of the text is in the link color, so the text color isn't seen.
+    it("checks the text color only when some text isn't a link", async () => {
+      const email = ready(
+        text(
+          paragraph({
+            marks: [{ attrs: { href: "https://example.com" }, type: "link" }],
+            text: "Menu",
+            type: "text",
+          })
+        )
+      );
+      email.version = 4;
+      email.settings.style = { linkColor: "#000000", textColor: "#ffffff" };
+      await expect(codes(email)).resolves.toStrictEqual([]);
+    });
+
     it("finds a link the renderer makes from an address written in text", async () => {
       const email = ready(
         text({
