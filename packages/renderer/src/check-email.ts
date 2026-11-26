@@ -15,7 +15,7 @@ import {
 import type { RowProps } from "@mailquilt/core/internal";
 
 import { renderEmail } from "./render-email.js";
-import { ADDRESS_IN_TEXT } from "./text-patterns.js";
+import { drawnPieces } from "./text-to-html.js";
 import type { RenderEmailOptions } from "./to-mjml.js";
 
 /** What each Problem is, as a code a host can act on. */
@@ -231,15 +231,6 @@ const paragraphsIn = (value: unknown): RichTextParagraph[] => {
     : Object.values(value).flatMap(paragraphsIn);
 };
 
-/** A paragraph's URLs and email addresses written as text, which the renderer links. */
-const hasWrittenAddress = (paragraph: RichTextParagraph) =>
-  [...paragraphText(paragraph).matchAll(ADDRESS_IN_TEXT)].some(
-    ({ groups = {} }) =>
-      groups.url !== undefined ||
-      groups.email !== undefined ||
-      groups.www !== undefined
-  );
-
 /** How a piece of text the reader sees is drawn. */
 interface Run {
   bold: boolean;
@@ -249,23 +240,17 @@ interface Run {
 const marked = (inline: Inline, type: string) =>
   inline.marks?.some((mark) => mark.type === type) ?? false;
 
-/** Each piece of a paragraph's text that the reader sees, as the renderer draws it. */
-const visibleRuns = (paragraph: RichTextParagraph): Run[] => {
-  const runs = (paragraph.content ?? [])
-    .filter(
-      (inline) =>
-        inline.type === "mergeTag" ||
-        (inline.type === "text" && inline.text.trim() !== "")
-    )
-    .map((inline) => ({
-      bold: marked(inline, "bold"),
-      link: marked(inline, "link"),
+/**
+ * Each piece of a paragraph's text that the reader sees, as the renderer draws
+ * it, with an address written in the text as a link.
+ */
+const visibleRuns = ({ content }: RichTextParagraph): Run[] =>
+  drawnPieces(content)
+    .filter((piece) => piece.type === "text" && piece.text.trim() !== "")
+    .map((piece) => ({
+      bold: marked(piece, "bold"),
+      link: marked(piece, "link"),
     }));
-  // The renderer links each address written in the text, in the link color.
-  return hasWrittenAddress(paragraph)
-    ? [...runs, { bold: false, link: true }]
-    : runs;
-};
 
 const lowContrast = (
   block: Block,

@@ -449,6 +449,28 @@ describe(checkEmail, () => {
       await expect(codes(email)).resolves.toStrictEqual(["low-link-contrast"]);
     });
 
+    // The address is drawn as a link, bold if its text is, and nothing else
+    // is in the text color. #949494 is 3.03:1, enough for bold text of 20px.
+    it.each([
+      [
+        "an address alone, in a readable link color",
+        { linkColor: "#000000", textColor: "#ffffff" },
+        {},
+        { text: "help@example.com", type: "text" },
+      ],
+      [
+        "a bold address of 20px",
+        { linkColor: "#949494" },
+        { fontSize: 20 },
+        { marks: [{ type: "bold" }], text: "help@example.com", type: "text" },
+      ],
+    ])("is quiet about %s", async (_, style, props, run) => {
+      const email = ready(text({ ...paragraph(run), ...props }));
+      email.version = 4;
+      email.settings.style = style;
+      await expect(codes(email)).resolves.toStrictEqual([]);
+    });
+
     it("reads the Email style, and a Block's own color over it", async () => {
       const email = ready(text(), text({ color: "#000000" }));
       email.version = 4;
