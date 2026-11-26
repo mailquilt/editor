@@ -1488,6 +1488,10 @@ const setTheme = (page: Page, theme: string) =>
 
 for (const theme of ["light", "dark"] as const) {
   test.describe(`accessibility in the ${theme} theme`, () => {
+    // The Export menu fades in, and WebKit in CI has stopped a fade partway
+    // until the page was next drawn. Reduced motion turns the fade off.
+    test.use({ reducedMotion: "reduce" });
+
     test("meets WCAG 2.2 AA, with a message showing", async ({ page }) => {
       await page.goto("/shell.html?refused-first");
       await setTheme(page, theme);
