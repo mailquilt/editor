@@ -467,8 +467,15 @@ test.describe("More", () => {
               allowRead: () =>
                 resolve([
                   {
-                    getType: (type: string) =>
-                      Promise.resolve(new Blob(["<p>Pasted</p>"], { type })),
+                    // Says when the editor has read it, after which the
+                    // paste goes on without waiting for anything.
+                    getType: () =>
+                      Promise.resolve({
+                        text: () => {
+                          Object.assign(window, { readDone: true });
+                          return Promise.resolve("<p>Pasted</p>");
+                        },
+                      }),
                     types: ["text/html"],
                   },
                 ]),
@@ -483,9 +490,20 @@ test.describe("More", () => {
     await page.evaluate(() =>
       (window as unknown as { allowRead: () => void }).allowRead()
     );
+    await page.waitForFunction(
+      () => (window as unknown as { readDone?: boolean }).readDone === true
+    );
+    // Once what's left of the paste has run.
+    await page.evaluate(
+      () =>
+        // oxlint-disable-next-line promise/avoid-new -- A task after the paste's.
+        new Promise((resolve) => {
+          setTimeout(resolve, 0);
+        })
+    );
 
     await expect(blockWith(page, "Other")).toBeVisible();
-    await expect.poll(() => structure(page)).toEqual([[["Other"]]]);
+    expect(await structure(page)).toEqual([[["Other"]]]);
   });
 
   test("moves the Block into the next Column, and says why it can't in the only one", async ({
