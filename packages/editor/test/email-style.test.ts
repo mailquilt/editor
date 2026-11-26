@@ -1,4 +1,4 @@
-import type { BlocksDocument, EmailStyle } from "@mailquilt/core";
+import type { Block, BlocksDocument, EmailStyle } from "@mailquilt/core";
 import { describe, expect, it } from "vitest";
 
 import { hexOfHsv, hsvOf, ownValuesOf, reachOf } from "../src/email-style.js";
@@ -163,6 +163,36 @@ describe("what an Email style setting reaches", () => {
     expect(
       reachOf("textColor", email({ linkColor: "#0000ff" })).changes
     ).toStrictEqual(["h1", "h2", "text"]);
+  });
+
+  it("Text color still reaches a List of links, whose markers take it", () => {
+    const value = email({ linkColor: "#0000ff" });
+    value.rows[0]?.columns[0]?.blocks.push({
+      id: "list",
+      props: {
+        content: {
+          content: [
+            {
+              content: [
+                {
+                  content: [
+                    paragraph("F", [
+                      { attrs: { href: "https://a.example" }, type: "link" },
+                    ]).content[0],
+                  ],
+                  type: "listItem",
+                },
+              ],
+              type: "bulletList",
+            },
+          ],
+          type: "doc",
+        },
+      },
+      type: "text",
+    } as Block);
+
+    expect(reachOf("textColor", value).changes).toContain("list");
   });
 
   it("the body font reaches Headings only while they have no font of their own", () => {

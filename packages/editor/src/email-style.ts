@@ -170,11 +170,18 @@ export const reachOf = (key: StyleKey, email: BlocksDocument): Reach => {
 /** MJML's corners for a Button, which the export keeps until Email style sets its own. */
 const MJML_BUTTON_CORNERS = 3;
 
-/** Whether every piece of a Block's text is a link, and it has some. */
+/**
+ * Whether every piece of a Block's text is a link, and it has some, outside a
+ * List, whose markers take the text's color.
+ */
 const isAllLinks = (node: unknown): boolean => {
   const texts: { marks?: { type: string }[] }[] = [];
+  let hasList = false;
   const collect = (part: unknown) => {
     const { content, type } = part as { content?: unknown[]; type?: string };
+    if (type === "bulletList" || type === "orderedList") {
+      hasList = true;
+    }
     if (type === "text" || type === "mergeTag") {
       texts.push(part as { marks?: { type: string }[] });
     }
@@ -184,6 +191,7 @@ const isAllLinks = (node: unknown): boolean => {
   };
   collect(node);
   return (
+    !hasList &&
     texts.length > 0 &&
     texts.every(({ marks }) => marks?.some(({ type }) => type === "link"))
   );
