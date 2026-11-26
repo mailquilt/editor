@@ -146,8 +146,9 @@ export const createEditingActions = ({
   };
 
   /**
-   * From the keyboard, focus goes to the next Row's tools, or else the one
-   * before, as the deleted Row's toolbar had it.
+   * From the keyboard, the next Row is selected, or else the one before, and
+   * focus stays where it is in the Selection bar, which then acts on that
+   * Row, so the next press deletes that one.
    */
   const deleteRow = (
     rowId: string,
@@ -162,10 +163,8 @@ export const createEditingActions = ({
     if (apply({ rowId, type: "removeRow" })?.ok) {
       announcements.say(said);
       if (fromKeyboard && neighbour) {
-        focus.focusWhenRendered({
-          on: "rowTool",
-          rowId: neighbour.id,
-        });
+        selection.select({ rowId: neighbour.id });
+        focus.revealRow(neighbour.id);
       }
     }
   };
@@ -353,8 +352,12 @@ export const createEditingActions = ({
       announcements.blockMoved(blockId, "said.blockDuplicated");
     },
 
-    /** A copy of a Row, with its Blocks, right after it, which is selected. */
-    duplicateRow: (rowId: string, fromKeyboard: boolean) => {
+    /**
+     * A copy of a Row, with its Blocks, right after it, which is selected.
+     * Focus stays where it is, such as on the Selection bar's Duplicate, which
+     * then acts on the copy.
+     */
+    duplicateRow: (rowId: string) => {
       const email = current();
       const position = email && locateRow(email, rowId);
       const layout = position && layoutOf(position.row);
@@ -372,7 +375,8 @@ export const createEditingActions = ({
         type: "insertRow",
       });
       if (result?.ok && result.createdId !== undefined) {
-        selection.selectRow(result.createdId, fromKeyboard);
+        selection.select({ rowId: result.createdId });
+        focus.revealRow(result.createdId);
         announcements.rowMoved(result.createdId, "said.rowDuplicated");
       }
     },

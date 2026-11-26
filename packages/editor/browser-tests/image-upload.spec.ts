@@ -14,11 +14,12 @@ import {
   centerOf,
   change,
   changesSince,
-  deleteBlock,
   dropFileOn,
   dropFilesAt,
   dropIndicator,
   field,
+  selectionBar,
+  setting,
   openBlocks,
   openEmail,
   previewButton,
@@ -73,10 +74,11 @@ const giveUploadImage = (page: Page) =>
       });
   });
 
+/** The Selection bar's Upload, or Replace once the Image has one. */
 const uploadButton = (page: Page) =>
-  canvas(page).getByRole("button", { name: "Upload image" });
+  selectionBar(page).getByRole("button", { name: /^(?:Upload|Replace)$/u });
 
-/** Picks a file with the Upload image button. */
+/** Picks a file with the Selection bar's Upload or Replace. */
 const pickFile = async (
   page: Page,
   name = "photo.png",
@@ -102,17 +104,15 @@ const openImage = async (page: Page) => {
   await blockGroup(page, "Image").focus();
 };
 
-/** The error shown by the Image URL field, which describes the field. */
-const uploadError = (page: Page) =>
-  field(page, "Image URL").evaluate((element) => {
-    const ids = element.getAttribute("aria-describedby")?.split(" ") ?? [];
-    const root = element.getRootNode() as ShadowRoot;
-    return ids
-      .map((id) => root.querySelector(`#${id}`))
-      .filter((each) => each?.classList.contains("error"))
-      .map((each) => each?.textContent?.trim())
-      .join(" ");
-  });
+/** Why the last upload failed, under the Selection bar's Upload, or else "". */
+const uploadError = async (page: Page) => {
+  const error = selectionBar(page).getByTestId("upload-error");
+  if ((await error.count()) === 0) {
+    return "";
+  }
+  const words = await error.textContent();
+  return (words ?? "").trim();
+};
 
 test.describe("uploading an image from the Image settings", () => {
   test("isn't offered until the Host app gives uploadImage", async ({
@@ -120,12 +120,25 @@ test.describe("uploading an image from the Image settings", () => {
   }) => {
     await openImage(page);
 
-    await expect(field(page, "Image URL")).toBeVisible();
+    await expect(await setting(page, "Image URL")).toBeVisible();
     await expect(uploadButton(page)).toHaveCount(0);
 
     await giveUploadImage(page);
 
     await expect(uploadButton(page)).toBeVisible();
+  });
+
+  test("with no image yet, the bar's Image URL says it's the other way, only after Upload", async ({
+    page,
+  }) => {
+    await openEmail(page, [[["A"]]]);
+    await canvas(page).getByRole("button", { name: "Add Image Block" }).click();
+    const url = field(page, "Image URL");
+    await expect(url).toHaveAttribute("placeholder", "Paste an image URL");
+
+    await giveUploadImage(page);
+
+    await expect(url).toHaveAttribute("placeholder", "Or paste an image URL");
   });
 
   test("calls the Host app's latest uploadImage, which a re-render may replace", async ({
@@ -218,7 +231,7 @@ test.describe("uploading an image from the Image settings", () => {
     await expect(image(page)).toHaveAttribute("src", PHOTO);
     await changes(0);
 
-    await change(field(page, "Image URL"), UPLOADED);
+    await change(await setting(page, "Image URL"), UPLOADED);
 
     await expect.poll(() => uploadError(page)).toBe("");
   });
@@ -259,8 +272,8 @@ test.describe("uploading an image from the Image settings", () => {
     await openImage(page);
     await giveUploadImage(page);
     // oxlint-disable-next-line no-script-url -- What's being refused.
-    await change(field(page, "Image URL"), "javascript:alert(1)");
-    await expect(field(page, "Image URL")).toHaveAttribute(
+    await change(await setting(page, "Image URL"), "javascript:alert(1)");
+    await expect(await setting(page, "Image URL")).toHaveAttribute(
       "aria-invalid",
       "true"
     );
@@ -268,8 +281,8 @@ test.describe("uploading an image from the Image settings", () => {
     await pickFile(page);
     await page.evaluate((url) => window.uploads[0]?.resolve({ url }), UPLOADED);
 
-    await expect(field(page, "Image URL")).toHaveValue(UPLOADED);
-    await expect(field(page, "Image URL")).toHaveAttribute(
+    await expect(await setting(page, "Image URL")).toHaveValue(UPLOADED);
+    await expect(await setting(page, "Image URL")).toHaveAttribute(
       "aria-invalid",
       "false"
     );
@@ -283,7 +296,7 @@ test.describe("uploading an image from the Image settings", () => {
     await context.route(missing, (route) => route.abort());
     await openImage(page);
     await giveUploadImage(page);
-    await change(field(page, "Image URL"), missing);
+    await change(await setting(page, "Image URL"), missing);
     await expect(blockGroup(page, "Image")).toContainText(
       `Couldn't load ${missing}`
     );
@@ -304,7 +317,8 @@ test.describe("uploading an image from the Image settings", () => {
     await expect.poll(() => uploadCalls(page)).toHaveLength(1);
     const changes = await changesSince(page);
 
-    await deleteBlock(page).click();
+    await blockGroup(page, "Image").focus();
+    await page.keyboard.press("Delete");
 
     await expect
       .poll(() => page.evaluate(() => window.uploads[0]?.signal.aborted))
@@ -336,8 +350,8 @@ test.describe("uploading an image from the Image settings", () => {
 
     await expect(image(page)).toHaveAttribute("src", UPLOADED);
     await expect(announcement(page)).toHaveText("Image uploaded.");
-    await expect(field(page, "Image URL")).toHaveValue(UPLOADED);
-    await expect(field(page, "Image URL")).toBeEditable();
+    await expect(await setting(page, "Image URL")).toHaveValue(UPLOADED);
+    await expect(await setting(page, "Image URL")).toBeEditable();
     await changes(1);
 
     await undo(page);

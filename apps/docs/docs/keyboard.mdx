@@ -22,13 +22,13 @@ In the Shell, Export and More each open a menu. <kbd>Enter</kbd> or <kbd>Down</k
 <kbd>Tab</kbd> moves into the email and selects a Block. The arrow keys then go
 from Block to Block. The email is one stop for <kbd>Tab</kbd>, at the selected
 Block, so the other Blocks aren't stops: <kbd>Tab</kbd> goes from the selected
-Block to its text and its toolbar, then past the toolbars of the Rows and empty
-Columns after it, to Preview and the side panel, which shows that Block's
-settings.
+Block to its text, then past the toolbars of any empty Columns after it, to the
+Selection bar above the email, which has that Block's settings, and then to
+Preview and the side panel.
 
 | Key | What it does |
 | --- | --- |
-| <kbd>Tab</kbd> | Reaches the selected Block, or with nothing selected the first, and selects it. From there, <kbd>Tab</kbd> goes into its text, if it has any, then to its toolbar, and then on past the other Blocks, stopping only at the toolbars of the Rows and empty Columns after it, to the side panel and the Block's settings. |
+| <kbd>Tab</kbd> | Reaches the selected Block, or with nothing selected the first, and selects it. From there, <kbd>Tab</kbd> goes into its text, if it has any, and then on past the other Blocks, stopping only at the toolbars of empty Columns after it, to the Selection bar and the Block's settings. |
 | <kbd>Up</kbd> <kbd>Down</kbd> | Selects the Block before or after this one, in reading order. This reaches every Block in the email. |
 | <kbd>Left</kbd> <kbd>Right</kbd> | Selects a Block in the next Column that has one, as close as it can get to the same position. |
 | <kbd>Enter</kbd> | Goes into the Block's text to edit it. Held down, it goes in and stops, with no empty paragraphs added. |
@@ -38,7 +38,7 @@ Selecting a Block changes nothing in the email, so it doesn't fire `mq-change`.
 
 ## Moving a Block
 
-Hold <kbd>Alt</kbd> (Option on a Mac) and press an arrow key to move the selected Block. The same keys work while focus is in the Block's toolbar.
+Hold <kbd>Alt</kbd> (Option on a Mac) and press an arrow key to move the selected Block. The same keys work while focus is on a button in the Selection bar.
 
 | Key | What it does |
 | --- | --- |
@@ -51,39 +51,47 @@ Inside a Block's text, the arrow keys move the cursor instead, and <kbd>Alt</kbd
 
 On Windows and Linux, <kbd>Alt</kbd> + <kbd>Left</kbd> and <kbd>Alt</kbd> + <kbd>Right</kbd> also go back and forward a page in the browser. Nowhere in the editor do they do that, so a press meant to move a Block never leaves your page.
 
-## The Block's toolbar
+## The Selection bar
 
-A selected Block has a toolbar with a drag handle, four move buttons, Duplicate Block and Delete Block. It's one stop for <kbd>Tab</kbd>, and the arrow keys go across its buttons. <kbd>Home</kbd> and <kbd>End</kbd> go to its first and last button. <kbd>Escape</kbd> goes back to the Block, once it has closed the tooltip of the button with focus. A tooltip that shows because the pointer is over a button closes with any <kbd>Escape</kbd>, which still does what it would have done.
+Above the email, the Selection bar has what's selected: a Block's main settings and its Move up, Move down, Duplicate and Delete buttons, a Row's, or with nothing selected the email's own settings. It starts with a chip that says what's selected and where, such as "Row 3 / Button", and ends with More, for the rest.
+
+The bar is one stop for <kbd>Tab</kbd>, at its chip, or with nothing selected its first field. The arrow keys go across its controls, and <kbd>Home</kbd> and <kbd>End</kbd> go to its first and last. In a field, such as a Button's link, <kbd>Left</kbd> and <kbd>Right</kbd> move the cursor, and go on to the control before or after the field from either end of its text. <kbd>Escape</kbd> goes back to the selected Block, once it has closed the tooltip of the control with focus. A tooltip that shows because the pointer is over a control closes with any <kbd>Escape</kbd>, which still does what it would have done.
+
+The chip opens a menu of what's around what's selected: the Block's Row, and the email. <kbd>Enter</kbd> opens it with focus on its first item. <kbd>Down</kbd> doesn't, as it goes along the bar. In the menu, the arrow keys go along its items, <kbd>Enter</kbd> chooses one, and <kbd>Escape</kbd> closes it and goes back to the chip. Choosing the Row selects it, and choosing the email selects nothing, so the bar shows the email's settings.
+
+A setting with more than one field, such as a Row's padding or a color, opens a popover under its button, with focus in its first field. <kbd>Escape</kbd> closes it and goes back to its button. <kbd>Tab</kbd> out of it, or a press anywhere else, closes it too.
+
+More opens a panel beside the email where there's room for it, and over the email where there isn't. From the keyboard, focus goes to its first field, or its first action. It has the settings the bar doesn't show, then Copy, Cut and Paste below, and for a Block, Move to the Column before, Move to the next Column and Select its Row. One that can't be done, such as moving into the next Column from the only one, stays reachable and says why in its tooltip. Where the bar is short of room, its Move, Duplicate and Delete buttons are in More instead. <kbd>Escape</kbd> closes More and goes back to its button. It stays open as what's selected changes, and shows that instead.
 
 ## Rows
 
-A Row's toolbar comes just before the Row's Blocks, so <kbd>Shift</kbd> + <kbd>Tab</kbd> from the Row's first Block reaches it. It has a drag handle, Select Row, the two Move Row buttons, Duplicate Row and Delete Row. Like the Block's toolbar, it's one stop for <kbd>Tab</kbd>, the arrow keys go across its buttons, and <kbd>Home</kbd> and <kbd>End</kbd> go to its first and last.
+A Row is selected by its tag, which shows above its end while the pointer is over the Row, or from the keyboard by the Selection bar's chip, whose menu names the Block's Row. A Row whose Columns are all empty has no Block to start from, so focus on one of its Columns' toolbars selects it. With a Row selected, the Selection bar has its layout, its padding and its Move Row, Duplicate Row and Delete Row buttons.
 
-Select Row shows the Row's settings in the side panel. While a Row is selected, no Block is a stop for <kbd>Tab</kbd>, so <kbd>Tab</kbd> goes on past the toolbars of the Rows and empty Columns after it to those settings.
+While a Row is selected, no Block is a stop for <kbd>Tab</kbd>, so <kbd>Tab</kbd> goes on past the toolbars of the empty Columns after it to the Selection bar.
 
 | Key | What it does |
 | --- | --- |
-| <kbd>Alt</kbd> + <kbd>Up</kbd> <kbd>Down</kbd> | In the Row's toolbar, moves the Row up or down with its Blocks, as one step for undo. |
-| <kbd>Escape</kbd> | In a Row's toolbar while a Row is selected, unselects that Row and selects the first Block of this toolbar's Row, with focus on it. If this toolbar's Row has no Blocks, nothing is selected. As in the Block's toolbar, it first closes the tooltip of the button with focus. |
+| <kbd>Alt</kbd> + <kbd>Up</kbd> <kbd>Down</kbd> | In the Selection bar, moves the selected Row up or down with its Blocks, as one step for undo. |
+| <kbd>Escape</kbd> | In the Selection bar, unselects the Row and selects its first Block, with focus on it. If the Row has no Blocks, nothing is selected, and focus stays in the bar, which shows the email's settings. As with a Block, it first closes the tooltip of the control with focus. |
 
 ## Duplicating and deleting
 
 | Key | What it does |
 | --- | --- |
-| <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>D</kbd> | On a Block or in its toolbar, puts a copy of the Block right after it, in the same Column. In a Row's toolbar, puts a copy of the Row, with its Blocks, right after it. The copy is selected, and focus goes to it, or for a Row, to its toolbar. The browser doesn't bookmark the page. |
-| <kbd>Delete</kbd> or <kbd>Backspace</kbd> | On a Block, deletes it. In a Row's toolbar, deletes the Row. Focus moves to the Block after it, or before it if it was the last, and for a Row to the next Row's toolbar, or the previous one's. |
+| <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>D</kbd> | On a Block or in the Selection bar, puts a copy of the selected Block right after it, in the same Column, or with a Row selected, a copy of the Row, with its Blocks, right after it. The copy is selected, and focus goes to it, or for a Row, stays in the bar, which shows the copy. The browser doesn't bookmark the page. |
+| <kbd>Delete</kbd> or <kbd>Backspace</kbd> | On a Block, deletes it. In the Selection bar with a Row selected, deletes the Row. Focus moves to the Block after it, or before it if it was the last. For a Row, the next Row is selected, or the one before if it was the last, and focus stays in the bar. |
 
-These do what the Duplicate and Delete buttons in the toolbars do, and each is one step for undo. In a Block's text or a settings field, the keys edit the text as usual, and <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>D</kbd> is left to the browser. A Row whose Columns aren't one of the layouts' widths, as an email made outside the editor can have, is copied with even Columns, as many as it has.
+These do what the Duplicate and Delete buttons in the Selection bar do, and each is one step for undo. In a Block's text or a settings field, the keys edit the text as usual, and <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>D</kbd> is left to the browser. A Row whose Columns aren't one of the layouts' widths, as an email made outside the editor can have, is copied with even Columns, as many as it has.
 
 ## Copying, cutting and pasting
 
 | Key | What it does |
 | --- | --- |
-| <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>C</kbd> | On a Block, copies it. In a Row's toolbar, copies the Row with its Blocks. |
+| <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>C</kbd> | On a Block, copies it. In the Selection bar with a Row selected, copies the Row with its Blocks. |
 | <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>X</kbd> | Cuts: copies the Block or Row, then deletes it as <kbd>Delete</kbd> does, and focus moves the same way. |
-| <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>V</kbd> | On a Block, in a Row's toolbar, or in the toolbar below the email, pastes. What's pasted is selected, with focus on it, or for a Row on its toolbar. A pasted Block, Row or text is one step for undo, and image files are added as dropped ones are. |
+| <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>V</kbd> | On a Block, in the Selection bar, or in the toolbar below the email, pastes. What's pasted is selected, with focus on it, or for a Row on the Selection bar's chip. A pasted Block, Row or text is one step for undo, and image files are added as dropped ones are. |
 
-The browser's Edit menu does the same. A paste goes where this table says. In a Row's toolbar, that Row counts as selected.
+The browser's Edit menu does the same, and so do More's Copy, Cut and Paste below. Paste below reads the clipboard through the browser, which asks the person first, and if it says no, the editor says why. A paste goes where this table says.
 
 | What's pasted | With a Block selected | With a Row selected | With nothing selected |
 | --- | --- | --- | --- |
@@ -98,11 +106,11 @@ In a Block's text or a settings field, these keys copy, cut and paste text as us
 
 ## Adding a Block
 
-The side panel's tabs, Content, Rows and Settings, are one stop for <kbd>Tab</kbd>. The arrow keys open the next or previous tab, and <kbd>Home</kbd> and <kbd>End</kbd> the first or last.
+The side panel's tabs, Content and Rows, are one stop for <kbd>Tab</kbd>. The arrow keys open the next or previous tab, and <kbd>Home</kbd> and <kbd>End</kbd> the first or last.
 
 In the side panel's Content tab, press <kbd>Enter</kbd> on a Block to add it after the selected Block, in the same Column. With a Row selected instead, it goes to the end of that Row's first Column. With nothing selected, it goes to the end of the email's last Column.
 
-An empty Column has a toolbar named for where it is, such as "Add a Block to Row 1, Column 2", with a button for each type of Block, such as "Add Text Block here". Like the Block's toolbar, it's one stop for <kbd>Tab</kbd>, the arrow keys go across its buttons, and <kbd>Home</kbd> and <kbd>End</kbd> go to its first and last. <kbd>Enter</kbd> adds that Block to the Column.
+An empty Column has a toolbar named for where it is, such as "Add a Block to Row 1, Column 2", with a button for each type of Block, such as "Add Text Block here". Like the Selection bar, it's one stop for <kbd>Tab</kbd>, the arrow keys go across its buttons, and <kbd>Home</kbd> and <kbd>End</kbd> go to its first and last. <kbd>Enter</kbd> adds that Block to the Column.
 
 ## Adding a Row
 
@@ -110,9 +118,9 @@ In the side panel's Rows tab, press <kbd>Enter</kbd> on a layout to add a Row wi
 
 ## Settings
 
-A settings field, such as a Button's link or a Row's padding, changes the email when you press <kbd>Enter</kbd> or leave the field. Until then, <kbd>Escape</kbd> takes back what you typed and shows the email's value again. A value the editor refuses stays in the field with the reason, until you fix it or press <kbd>Escape</kbd>.
+A settings field, such as a Button's link or a Row's padding, changes the email when you press <kbd>Enter</kbd> or leave the field. Until then, <kbd>Escape</kbd> takes back what you typed and shows the email's value again. A value the editor refuses stays in the field with the reason, until you fix it or press <kbd>Escape</kbd>. With nothing typed, <kbd>Escape</kbd> in a popover's field or More's closes it, and in a field in the Selection bar it's left to your page. A choice of a few, such as an alignment, is a row of buttons in the Selection bar, and pressing one sets it.
 
-A Social Block's links are a list in its settings, each with its URL field and a toolbar of Move up, Move down and Remove. The toolbar comes before the URL, and like the Block's toolbar it's one stop for <kbd>Tab</kbd>: the arrow keys go across its buttons, and <kbd>Home</kbd> and <kbd>End</kbd> go to its first and last. After a move, focus stays on the button that moved the link. After a removal, it goes to the Remove button of the next link, or of the one before if it was the last, or to the list of networks if none is left. To add a link, choose a network that isn't in the list yet and press Add, and focus goes to the new link's URL. What's typed in a URL stays with its link when links move or are removed.
+A Social Block's links are a list in its Links popover, each with its URL field and a toolbar of Move up, Move down and Remove. The toolbar comes before the URL, and like the Selection bar it's one stop for <kbd>Tab</kbd>: the arrow keys go across its buttons, and <kbd>Home</kbd> and <kbd>End</kbd> go to its first and last. After a move, focus stays on the button that moved the link. After a removal, it goes to the Remove button of the next link, or of the one before if it was the last, or to the list of networks if none is left. To add a link, choose a network that isn't in the list yet and press Add, and focus goes to the new link's URL. What's typed in a URL stays with its link when links move or are removed.
 
 ## Cancelling a drag
 
@@ -136,7 +144,7 @@ line, and put it back.
 | <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>U</kbd> | Turns underline on or off. <kbd>Shift</kbd> + <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>U</kbd> does the same, so that on Windows and Linux the browser doesn't format the text in its own way. |
 | <kbd>Shift</kbd> + <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>8</kbd> | Makes each selected paragraph an item of a bulleted List, in a Text Block. In a bulleted List already, it makes the selected items paragraphs again, and in a numbered List it makes the whole List bulleted. It's the key with 8 on it, even on a keyboard where Shift with it types something other than `*`. |
 | <kbd>Shift</kbd> + <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>7</kbd> | The same for a numbered List. |
-| <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>K</kbd> | Opens the link field for the selected Block's text, from anywhere in the email or its toolbars, such as the text, the Block or its toolbar. <kbd>Escape</kbd> closes it and leaves the text as it was. With no text to link, such as on a Button, the key is left to your page. |
+| <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>K</kbd> | Opens the link field for the selected Block's text, from the text, the Block or a button in the Selection bar. <kbd>Escape</kbd> closes it and leaves the text as it was. With no text to link, such as on a Button, the key is left to your page. |
 | <kbd>Alt</kbd> + <kbd>F10</kbd> | Goes to the formatting toolbar, for bold, italic, underline, bulleted and numbered Lists, links, line breaks and, when your app gives the editor its Merge Tags, the Merge Tag button. The arrow keys go across its buttons, and <kbd>Home</kbd> and <kbd>End</kbd> go to the first and last. <kbd>Escape</kbd> goes back to the text, once it has closed the tooltip of the button with focus. |
 
 ## Picking a Merge Tag
@@ -188,11 +196,11 @@ Opening Preview moves focus to its Close button. Before Close, Desktop and Phone
 - **Duplicating.** After a Block or Row is duplicated, the editor says where the copy went, such as "Block duplicated, Row 1, Column 1, position 2 of 3".
 - **Copying, cutting and pasting.** The editor says what was copied or cut and where it was, or where what was pasted went, such as "Block pasted, Row 2, Column 1, position 3 of 3". A paste it refuses says why.
 - **A Social Block's links.** After a link is added, moved or removed in the settings, the editor says so, such as "Facebook moved to position 2 of 3".
-- **Deleting.** After a Block or Row is deleted, the editor says so. Focus moves to the Block after it, or before it if it was the last. For a Row, focus moves to the next Row's tools, or the previous Row's.
+- **Deleting.** After a Block or Row is deleted, the editor says so. Focus moves to the Block after it, or before it if it was the last. For a Row, the next Row is selected, or the previous one, and focus stays in the Selection bar.
 - **Messages in the Shell.** The [Shell](./shell) announces each message in its bar, such as an email it couldn't open.
 
 ## How it's tested
 
-The editor's browser tests press these keys in Chromium, Firefox and WebKit. They also run [axe-core](https://github.com/dequelabs/axe-core) with its WCAG 2.2 AA rules against the editor in several states: in each Mode, with the Shell's Export menu open, with Columns and empty Columns, with a Block selected, with the link field showing an error, with the Merge Tag picker open in text and under a settings field, with a Social Block's links showing a refused URL, and with Preview open at each width.
+The editor's browser tests press these keys in Chromium, Firefox and WebKit. They also run [axe-core](https://github.com/dequelabs/axe-core) with its WCAG 2.2 AA rules against the editor in several states: in each Mode, with the Shell's Export menu open, with Columns and empty Columns, with a Block selected, with the Selection bar's popover, its chip's menu and More open, with the link field showing an error, with the Merge Tag picker open in text and under a settings field, with a Social Block's links showing a refused URL, and with Preview open at each width.
 
 Automated checks don't find everything. The [accessibility statement](./accessibility) says which WCAG 2.2 criteria the editor meets, what it doesn't, and how each was checked. If a screen reader or another tool has trouble with the editor, please [open an issue](https://github.com/mailquilt/editor/issues).

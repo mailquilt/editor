@@ -16,13 +16,14 @@ import {
   EXPORT_VIEWPORT,
   layoutOption,
   openBlocks,
+  openMore,
   openExport,
   openTestPage,
   rowTools,
   selectedBlock,
   selectedText,
+  selectionBar,
   selectRow,
-  selectRowButton,
   setValue,
   structure,
   test,
@@ -32,7 +33,7 @@ import {
   undoByKey,
 } from "./helpers.js";
 
-/** Selects the Row, then gives the layout in its side panel. */
+/** Selects the Row, then gives the layout in the Selection bar. */
 const shownLayout = async (page: Page, position: number, layout: string) => {
   await selectRow(page, position);
   return layoutOption(page, layout);
@@ -43,9 +44,6 @@ const deleteRowButton = (page: Page, position: number) =>
 
 const addToColumn = (page: Page) =>
   page.getByRole("button", { name: "Add Text Block here" });
-
-const toolbar = (page: Page) =>
-  page.getByRole("group", { name: "Email tools" });
 
 const widths = async (page: Page, rowIndex = 0) => {
   const { rows } = await currentValue(page);
@@ -127,7 +125,11 @@ test.describe("deleting a Block", () => {
     await page.keyboard.press("Enter");
 
     await expect(textBlock(page)).toHaveCount(0);
-    await expect(toolbar(page)).toBeFocused();
+    // The Selection bar now has the email's settings, and focus is on its
+    // last button, where keyboard undo works.
+    await expect(
+      canvas(page).getByRole("button", { name: "More settings and actions" })
+    ).toBeFocused();
     await page.keyboard.press("Enter");
     expect(await structure(page)).toStrictEqual([[[]]]);
     await undoByKey(page);
@@ -221,40 +223,25 @@ test.describe("adding and deleting Rows", () => {
     ]);
     expect(await widths(page, 1)).toStrictEqual([50, 50]);
     expect(await widths(page, 2)).toStrictEqual([33, 67]);
-    await expect(rowTools(page, 3)).toHaveAttribute("aria-current", "true");
+    await expect(rowTools(page, 3)).toBeVisible();
   });
 
-  test("deleting a Row from the keyboard moves focus to the next Row, or else the one before, and it's announced", async ({
+  test("deleting a Row from the keyboard selects the next Row, or else the one before, and it's announced", async ({
     page,
   }) => {
     await addRow(page);
     await addRow(page);
     await expect(rowTools(page, 3)).toBeVisible();
+    await selectRow(page, 2);
     await deleteRowButton(page, 2).focus();
 
     await page.keyboard.press("Enter");
-    await expect(selectRowButton(page, 2)).toBeFocused();
+    await expect(deleteRowButton(page, 2)).toBeFocused();
     await expect(announcement(page)).toHaveText("Row deleted.");
 
-    await deleteRowButton(page, 2).focus();
     await page.keyboard.press("Enter");
-    await expect(selectRowButton(page, 1)).toBeFocused();
+    await expect(deleteRowButton(page, 1)).toBeFocused();
     expect(await structure(page)).toStrictEqual([[["Hello"]]]);
-  });
-
-  test("deleting another Row from the keyboard leaves the selected Block alone", async ({
-    page,
-  }) => {
-    await addRow(page);
-    await expect(rowTools(page, 2)).toBeVisible();
-    await textBlock(page).click();
-    await deleteRowButton(page, 2).focus();
-
-    await page.keyboard.press("Enter");
-    await expect(rowTools(page, 2)).toHaveCount(0);
-    await page.keyboard.press("Enter");
-
-    await expect(textBlock(page).locator("p")).toHaveCount(1);
   });
 });
 
@@ -289,12 +276,11 @@ test.describe("choosing a layout", () => {
     await expect(addToColumn(page)).toHaveCount(1);
 
     await selectRow(page, 1);
-    const layouts = canvas(page)
-      .getByTestId("side-panel")
-      .getByRole("group", { name: "Layout" });
+    const layouts = selectionBar(page).getByRole("group", { name: "Columns" });
     await expect(layouts).toBeVisible();
     await expect(layouts.locator('[aria-pressed="true"]')).toHaveCount(0);
-    await expect(canvas(page).getByText("Custom layout")).toBeVisible();
+    const more = await openMore(page);
+    await expect(more.getByText("2 Columns")).toBeVisible();
   });
 
   test("keeps the moved Block's editor, and undo puts Blocks back in their Columns, still editable", async ({

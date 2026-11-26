@@ -22,7 +22,10 @@ export const createPresses = ({ focus, selection }: PressesHost) => {
    */
   const commitFocusedField = () => {
     const element = focus.focused();
-    if (element && closestPlace(element, "settings")) {
+    if (
+      element &&
+      closestPlace(element, "settings", "settingsDraft", "barField")
+    ) {
       (element as HTMLElement).blur();
     }
   };
@@ -34,7 +37,8 @@ export const createPresses = ({ focus, selection }: PressesHost) => {
    * inside it. The Preview returns focus there too, when it closes.
    */
   const onControlMousedown = (event: MouseEvent, target: Element) => {
-    if (target instanceof HTMLInputElement) {
+    // A field, or a dropdown, which opens as the press lands.
+    if (target.closest("input, select")) {
       return;
     }
     event.preventDefault();
@@ -79,15 +83,25 @@ export const createPresses = ({ focus, selection }: PressesHost) => {
     /**
      * In Chromium, a focused number field steps with the wheel, though it has no
      * arrows, while the person only meant to scroll the panel. Focus leaves it
-     * for the floating toolbar, which commits it and keeps keyboard undo working.
+     * for the floating toolbar, which commits it and keeps keyboard undo
+     * working, or in a popover from the Selection bar, for the popover, which
+     * stays open.
      */
     onWheel({ target }: WheelEvent) {
       const element = focus.focused();
       if (
-        element === target &&
-        element instanceof HTMLInputElement &&
-        element.type === "number"
+        !(
+          element === target &&
+          element instanceof HTMLInputElement &&
+          element.type === "number"
+        )
       ) {
+        return;
+      }
+      const popover = closestPlace(element, "barPopover");
+      if (popover) {
+        popover.focus({ focusVisible: false, preventScroll: true });
+      } else {
         focus.focus({ on: "emailTools" }, { focusVisible: false });
       }
     },

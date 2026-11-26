@@ -124,6 +124,8 @@ export const uiStyles = css`
 
     /* The top bar's height, which what sticks below it stays clear of. */
     --_mq-top-bar-height: 52px;
+    /* The Selection bar's, which sticks below the top bar. */
+    --_mq-selection-bar-height: 48px;
 
     /* What's in front of what on the canvas, from the back. */
     --_mq-layer-handle: 1;
@@ -132,6 +134,7 @@ export const uiStyles = css`
     --_mq-layer-drop-indicator: 6;
     --_mq-layer-floating-toolbar: 7;
     --_mq-layer-block-tools: 8;
+    --_mq-layer-selection-bar: 9;
     --_mq-layer-top-bar: 10;
     --_mq-layer-tooltip: 20;
   }

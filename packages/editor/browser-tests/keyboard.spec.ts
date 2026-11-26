@@ -5,7 +5,7 @@ import type { MailQuilt } from "../src/index.js";
 import {
   addRow,
   announcement,
-  backButton,
+  barButton,
   blockTool,
   blockWith,
   boxOf,
@@ -18,6 +18,9 @@ import {
   emailWith,
   layoutOption,
   linkUrlField,
+  moreAction,
+  morePanel,
+  moreButton,
   moveCursorToLineStart,
   NARROW_VIEWPORT,
   narrowNotice,
@@ -31,6 +34,8 @@ import {
   previewEmailButton,
   redoByKey,
   selectedText,
+  selectionBar,
+  selectNothing,
   selectRow,
   settle,
   setValue,
@@ -45,13 +50,6 @@ import {
   violations,
   watchPrevented,
 } from "./helpers.js";
-
-/** Back to the side panel's tabs from the keyboard, the Block still selected. */
-const backToTabs = async (page: Page) => {
-  await backButton(page).focus();
-  await page.keyboard.press("Enter");
-  await expect(panelTab(page, "Content")).toBeFocused();
-};
 
 /**
  * The controls that can't show focus, of those that can take it now. A group
@@ -68,7 +66,14 @@ const controlsWithoutRing = (page: Page) =>
     return [...controls]
       .filter((control) => {
         control.focus();
-        const { outlineStyle, outlineWidth } = getComputedStyle(control);
+        // A field in the Selection bar draws its ring around its icon and its
+        // name too, on the label it's in.
+        const label = control.closest("label");
+        const ringed =
+          label && getComputedStyle(label).outlineStyle === "solid"
+            ? label
+            : control;
+        const { outlineStyle, outlineWidth } = getComputedStyle(ringed);
         return (
           root.activeElement === control &&
           (outlineStyle !== "solid" || !["2px", "3px"].includes(outlineWidth))
@@ -80,15 +85,13 @@ const controlsWithoutRing = (page: Page) =>
   });
 
 /**
- * How far below the top of the window a Block and its toolbar start, and so
- * negative if they're cut off there.
+ * How far below the Selection bar a Block starts, and so negative if it's cut
+ * off there, under the bar that sticks over the email.
  */
 const gapBelowTop = async (page: Page, text: string) => {
   const block = await boxOf(blockWith(page, text));
-  const toolbar = await boxOf(
-    blockWith(page, text).getByRole("toolbar", { name: "Block tools" })
-  );
-  return Math.min(block.y, toolbar.y);
+  const bar = await boxOf(selectionBar(page));
+  return block.y - Math.max(bar.y + bar.height, 0);
 };
 
 /** Where the Block "L" is in the only Column of the only Row. */
@@ -117,13 +120,14 @@ const announcementCount = (page: Page) =>
   );
 
 test.describe("selecting a Block", () => {
-  test("Tab reaches a Block and selects it, then its text and toolbar, then leaves the email for its settings", async ({
+  test("Tab reaches a Block and selects it, then its text, then the Selection bar, then leaves the email", async ({
     page,
   }) => {
     await openEmail(page, [[["First"], ["Second"]]]);
     await expect(deleteBlock(page)).toHaveCount(0);
 
-    await canvas(page).getByRole("button", { name: "Delete Row" }).focus();
+    // The top bar's last control, before the email.
+    await canvas(page).getByRole("button", { name: "Phone" }).focus();
     await page.keyboard.press("Tab");
 
     await expect(blockWith(page, "First")).toBeFocused();
@@ -137,16 +141,16 @@ test.describe("selecting a Block", () => {
     await page.keyboard.press("Tab");
     await expect(textOf(page, "First")).toBeFocused();
 
-    // The selected Block's toolbar is one stop.
+    // The Selection bar is one stop, at its chip.
     await page.keyboard.press("Tab");
-    await expect(blockTool(page, "Move Block up")).toBeFocused();
+    await expect(barButton(page, "Row 1 / Text")).toBeFocused();
 
-    // The email is one stop: Tab passes the other Blocks, and the side panel
-    // still shows this one's settings.
+    // The email is one stop: Tab passes the other Blocks, and the bar still
+    // shows this one.
     await page.keyboard.press("Tab");
     await expect(previewButton(page)).toBeFocused();
     await page.keyboard.press("Tab");
-    await expect(backButton(page)).toBeFocused();
+    await expect(panelTab(page, "Content")).toBeFocused();
     await expect(blockWith(page, "First")).toHaveAttribute(
       "aria-current",
       "true"
@@ -155,7 +159,7 @@ test.describe("selecting a Block", () => {
     // And back, to the selected Block's text.
     await page.keyboard.press("Shift+Tab");
     await page.keyboard.press("Shift+Tab");
-    await expect(blockTool(page, "Move Block up")).toBeFocused();
+    await expect(barButton(page, "Row 1 / Text")).toBeFocused();
     await page.keyboard.press("Shift+Tab");
     await expect(textOf(page, "First")).toBeFocused();
   });
@@ -200,19 +204,6 @@ test.describe("moving a Block with Alt+Arrow keys", () => {
     await page.keyboard.press("Alt+ArrowUp");
     await expect(structure(page)).resolves.toEqual([[["B", "A", "C"]]]);
     await expect(blockWith(page, "A")).toBeFocused();
-  });
-
-  test("after Back, keeps the side panel's tabs showing", async ({ page }) => {
-    await openEmail(page, [[["A", "B", "C"]]]);
-    await blockWith(page, "A").focus();
-    // The mouse leaves focus on the Block.
-    await backButton(page).click();
-
-    await page.keyboard.press("Alt+ArrowDown");
-
-    await expect(structure(page)).resolves.toEqual([[["B", "A", "C"]]]);
-    await expect(blockWith(page, "A")).toBeFocused();
-    await expect(panelTab(page, "Content")).toBeVisible();
   });
 
   test("each move is one undo step, and focus stays on the Block", async ({
@@ -304,7 +295,7 @@ test.describe("moving a Block with Alt+Arrow keys", () => {
   });
 });
 
-test.describe("moving a Block with toolbar buttons", () => {
+test.describe("moving a Block with the Selection bar's buttons", () => {
   test("from the keyboard, focus stays on the button for the next press", async ({
     page,
   }) => {
@@ -320,11 +311,15 @@ test.describe("moving a Block with toolbar buttons", () => {
     await expect(structure(page)).resolves.toEqual([[["B", "C", "A"], []]]);
     await expect(blockTool(page, "Move Block down")).toBeFocused();
 
-    await blockTool(page, "Move Block right").focus();
+    // Into the next Column and back, from More.
+    const right = await moreAction(page, "Move to the next Column");
+    await right.focus();
     await page.keyboard.press("Enter");
     await expect(structure(page)).resolves.toEqual([[["B", "C"], ["A"]]]);
+    await expect(right).toBeFocused();
 
-    await blockTool(page, "Move Block left").focus();
+    const left = await moreAction(page, "Move to the Column before");
+    await left.focus();
     await page.keyboard.press("Enter");
     await expect(structure(page)).resolves.toEqual([[["A", "B", "C"], []]]);
 
@@ -618,7 +613,6 @@ test.describe("Enter on a palette item", () => {
   }) => {
     await openEmail(page, [[["A", "B"], ["C"]]]);
     await blockWith(page, "A").focus();
-    await backToTabs(page);
     await palette(page, "Text").focus();
 
     await page.keyboard.press("Enter");
@@ -735,18 +729,29 @@ test.describe("labels and focus states", () => {
 
     await expect(controlsWithoutRing(page)).resolves.toEqual([]);
 
-    // The Email settings, and then the Row's.
-    await openTab(page, "Settings");
-    await page.keyboard.press("Tab");
-    await expect(
-      page.getByRole("group", { exact: true, name: "Email" })
-    ).toBeVisible();
+    // The Block's More, the email's settings, and then the Row's, all from
+    // the keyboard, as a press with the pointer turns the rings off.
+    await moreButton(page).focus();
+    await page.keyboard.press("Enter");
+    await expect(morePanel(page)).toBeVisible();
     await expect(controlsWithoutRing(page)).resolves.toEqual([]);
 
-    await canvas(page).getByRole("button", { name: "Select Row" }).focus();
+    await barButton(page, "Row 1 / Text").focus();
     await page.keyboard.press("Enter");
-    const row = page.getByRole("group", { exact: true, name: "Row" });
-    await expect(row).toBeVisible();
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Enter");
+    await expect(selectionBar(page)).toHaveAccessibleName("Email settings");
+    await expect(controlsWithoutRing(page)).resolves.toEqual([]);
+
+    // Past its text and the empty Column's toolbar, to the bar's chip.
+    await blockWith(page, "A").focus();
+    for (const _ of [1, 2, 3]) {
+      await page.keyboard.press("Tab");
+    }
+    await expect(barButton(page, "Row 1 / Text")).toBeFocused();
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("Enter");
+    await expect(selectionBar(page)).toHaveAccessibleName("Row 1 settings");
     await expect(controlsWithoutRing(page)).resolves.toEqual([]);
   });
 
@@ -783,7 +788,7 @@ test.describe("labels and focus states", () => {
   // 900px wide, the test host's padding leaves the editor too narrow for the
   // side panel beside the canvas, so it goes below.
   for (const width of [1000, 900]) {
-    test(`a selected Block and its toolbar stay in view at ${width}px wide`, async ({
+    test(`a selected Block stays in view below the Selection bar at ${width}px wide`, async ({
       page,
     }) => {
       await page.setViewportSize({ height: 600, width });
@@ -800,7 +805,7 @@ test.describe("labels and focus states", () => {
     });
   }
 
-  test("a Block moved from the keyboard, or by redo, stays in view with its toolbar", async ({
+  test("a Block moved from the keyboard, or by redo, stays in view below the Selection bar", async ({
     page,
   }) => {
     await page.setViewportSize({ height: 500, width: 1000 });
@@ -867,7 +872,9 @@ test.describe("automated accessibility checks", () => {
     expect(await violations(page)).toEqual([]);
 
     await canvas(page).getByRole("group", { name: "Heading Block" }).focus();
-    await expect(page.getByLabel("Level", { exact: true })).toBeVisible();
+    await expect(
+      selectionBar(page).getByRole("group", { name: "Level" })
+    ).toBeVisible();
     expect(await violations(page)).toEqual([]);
 
     await page.setViewportSize(NARROW_VIEWPORT);
@@ -900,7 +907,9 @@ test.describe("automated accessibility checks", () => {
 
     await palette(page, "Heading").click();
     await canvas(page).getByRole("group", { name: "Heading Block" }).focus();
-    await expect(page.getByLabel("Level", { exact: true })).toBeVisible();
+    await expect(
+      selectionBar(page).getByRole("group", { name: "Level" })
+    ).toBeVisible();
     expect(await violations(page)).toEqual([]);
 
     await blockWith(page, "A").focus();
@@ -948,13 +957,11 @@ test.describe("automated accessibility checks", () => {
     await openTab(page, "Rows");
     expect(await violations(page)).toEqual([]);
 
-    // The Settings tab, with a field showing a value it refused.
-    await openTab(page, "Settings");
-    const language = page
-      .getByRole("group", { exact: true, name: "Email" })
-      .getByLabel("Language", { exact: true });
+    // The email's settings, with a field showing a value it refused.
+    await selectNothing(page);
+    const language = canvas(page).getByLabel("Language", { exact: true });
     await language.fill("English");
-    await language.press("Tab");
+    await language.press("Enter");
     await expect(page.getByRole("alert")).toBeVisible();
     expect(await violations(page)).toEqual([]);
 

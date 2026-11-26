@@ -9,7 +9,7 @@ import {
   canvas,
   changesSince,
   contrast,
-  field,
+  setting,
   formatButton,
   latestDocument,
   linkUrlField,
@@ -291,7 +291,7 @@ test.describe("in a field", () => {
     await openBlocks(page, ["button"]);
     await giveMergeTags(page, TAGS);
     await blockGroup(page, "Button").focus();
-    const label = field(page, "Label");
+    const label = await setting(page, "Label");
     await expect(label).toHaveAccessibleDescription(
       "Type {{ to add a Merge Tag."
     );
@@ -345,7 +345,7 @@ test.describe("in a field", () => {
       (element as MailQuilt).strings = { "mergeTags.hint": "" };
     });
     await blockGroup(page, "Button").focus();
-    const label = field(page, "Label");
+    const label = await setting(page, "Label");
     await label.click();
     await page.keyboard.press("ControlOrMeta+a");
     await page.keyboard.type("{{la");
@@ -362,7 +362,7 @@ test.describe("in a field", () => {
     await openBlocks(page, ["button"]);
     await giveMergeTags(page, TAGS);
     await blockGroup(page, "Button").focus();
-    const label = field(page, "Label");
+    const label = await setting(page, "Label");
     await label.fill("{{");
     await expect(picker(page)).toBeVisible();
 
@@ -379,7 +379,7 @@ test.describe("in a field", () => {
     await openBlocks(page, ["button"]);
     await giveMergeTags(page, TAGS);
     await blockGroup(page, "Button").focus();
-    const label = field(page, "Label");
+    const label = await setting(page, "Label");
     await label.fill("{{fi");
     await expect(tagOption(page, "First name")).toBeVisible();
 

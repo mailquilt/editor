@@ -34,33 +34,27 @@ const midpointY = (element: Element) => {
 interface Grab {
   element: HTMLElement;
   source: DragSource;
-  /** The toolbar its handle is in: a Row's, or a selected Block's. */
-  toolbar?: Element;
 }
 
 /**
- * What a press on `target` picks up: a Block by its handle, a Row by its handle
- * or its tag, or an item in the palette or the Rows tab.
+ * What a press on `target` picks up: a Block by its handle, a Row by its tag,
+ * or an item in the palette or the Rows tab.
  */
 const grabAt = (target: Element): Grab | undefined => {
-  const handle = closestPlace(target, "dragHandle");
-  const rowGrip =
-    (handle && closestPlace(handle, "rowToolbar")) ??
-    closestPlace(target, "rowTag");
-  const row = rowGrip && closestPlace(rowGrip, "row");
+  const tag = closestPlace(target, "rowTag");
+  const row = tag && closestPlace(tag, "row");
   if (row) {
     return {
       element: row,
       source: { rowId: row.dataset.rowId as string },
-      toolbar: findPlace(row, "rowToolbar") ?? undefined,
     };
   }
+  const handle = closestPlace(target, "dragHandle");
   const block = handle && closestPlace(handle, "block");
   if (handle && block) {
     return {
       element: block,
       source: { blockId: block.dataset.blockId as string },
-      toolbar: closestPlace(handle, "blockToolbar") ?? undefined,
     };
   }
   const tile = closestPlace(target, "paletteItem");
@@ -171,20 +165,14 @@ export const createDragging = ({
   let press: Press | undefined;
   let drag: Drag | undefined;
   let frame = 0;
-  /**
-   * The selected Block's or Row's toolbar, where its handle is, until the
-   * pointer first leaves it. It's outside the Block, so letting go there after
-   * a short drag would otherwise land somewhere else. Once the drag has gone
-   * further, it lands there like anywhere else.
-   */
-  let startedOn: DOMRect | undefined;
 
   /**
    * Where a drop of `source` would land now, and the line that shows it. Blocks
    * are counted without the `dragged` one, as a move's index is. There's no
    * landing far from the editor, which is how to abandon a drag, or on the side
    * panel, so that letting go of a palette item that barely moved adds nothing,
-   * or on the floating toolbar. Nor is there outside a scroll container the
+   * or on the Selection bar, its More panel or the floating toolbar, which are
+   * over the email or beside it. Nor is there outside a scroll container the
    * editor is in, such as the Shell's, where what's under the pointer is
    * scrolled out of sight.
    */
@@ -198,10 +186,13 @@ export const createDragging = ({
     const controls = [
       ...findPlaces(root, "sidePanel"),
       ...findPlaces(root, "emailTools"),
+      ...findPlaces(root, "blockBar"),
+      ...findPlaces(root, "rowBar"),
+      ...findPlaces(root, "emailBar"),
+      ...findPlaces(root, "morePanel"),
     ];
     if (
       !email ||
-      (startedOn && contains(startedOn, pointer)) ||
       controls.some((control) => contains(control, pointer)) ||
       !contains(root.host, pointer, DROP_MARGIN_PX) ||
       !autoScroll.shows(pointer)
@@ -291,7 +282,6 @@ export const createDragging = ({
             grab.element
           )?.position
         : undefined;
-    startedOn = undefined;
     dragged.ghost.remove();
     delete grab.element.dataset.dragSource;
     dragged.restoreCursor();
@@ -317,9 +307,6 @@ export const createDragging = ({
       release(false);
       return;
     }
-    if (startedOn && !contains(startedOn, pointer)) {
-      startedOn = undefined;
-    }
     ghost.style.translate = `${pointer.x - from.x}px ${pointer.y - from.y}px`;
     autoScroll.frame(pointer, time);
     showIndicator(landing(grab.source, pointer, autoScroll, grab.element));
@@ -334,8 +321,6 @@ export const createDragging = ({
       release(false);
       return;
     }
-    // Before it's hidden along with its Block or Row.
-    startedOn = grab.toolbar?.getBoundingClientRect();
     drag = {
       autoScroll: createAutoScroll(root.host),
       ghost: createDragGhost(grab.element),

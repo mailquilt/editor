@@ -7,11 +7,14 @@ import {
   blockTypes,
   boxOf,
   canvas,
+  choose,
+  chosen,
   change,
   currentValue,
   EXPORT_VIEWPORT,
   exportHtml,
   field,
+  setting,
   openBlocks,
   openExport,
   palette,
@@ -93,7 +96,7 @@ test.describe("the palette", () => {
 
     await expect(blockGroup(page, "Button")).toBeFocused();
     await expect(buttonFace(page)).toHaveText("Button");
-    await expect(field(page, "Label")).toHaveValue("Button");
+    await expect(await setting(page, "Label")).toHaveValue("Button");
     await expect(blockTypes(page)).resolves.toEqual(["text", "button"]);
   });
 });
@@ -104,19 +107,19 @@ test.describe("a Heading", () => {
   }) => {
     await openBlocks(page, ["heading"]);
     await headingText(page).click();
-    await expect(field(page, "Font size (px)")).toHaveValue("24");
-    await expect(field(page, "Level")).toHaveValue("2");
+    await expect(await setting(page, "Font size (px)")).toHaveValue("24");
+    await expect(chosen(page, "Level")).toHaveAccessibleName("H2");
     await expect(blockGroup(page, "Heading")).toHaveCSS("font-size", "24px");
 
-    await field(page, "Level").selectOption({ label: "Heading 1" });
+    await choose(page, "Level", "H1");
 
     await expect(blockProps(page, -1)).resolves.toMatchObject({ level: 1 });
-    await expect(field(page, "Font size (px)")).toHaveValue("32");
+    await expect(await setting(page, "Font size (px)")).toHaveValue("32");
     await expect(blockGroup(page, "Heading")).toHaveCSS("font-size", "32px");
 
-    await field(page, "Alignment").selectOption("right");
-    await change(field(page, "Color"), "#ff0000");
-    await change(field(page, "Font size (px)"), "40");
+    await choose(page, "Alignment", "Right");
+    await change(await setting(page, "Color"), "#ff0000");
+    await change(await setting(page, "Font size (px)"), "40");
 
     const expected = {
       color: "rgb(255, 0, 0)",
@@ -267,7 +270,7 @@ test.describe("a Button", () => {
     await openBlocks(page, ["button"], []);
     await blockGroup(page, "Button").focus();
     await change(
-      field(page, "Label"),
+      await setting(page, "Label"),
       "Buy every single thing you see in the shop today"
     );
 
@@ -285,7 +288,7 @@ test.describe("a Button", () => {
     await openBlocks(page, ["text", "button"]);
     // With a link, which a click could otherwise follow.
     await blockGroup(page, "Button").focus();
-    await change(field(page, "Link"), "https://shop.example");
+    await change(await setting(page, "Link"), "https://shop.example");
     await blockGroup(page, "Text").focus();
     await expect(field(page, "Label")).toHaveCount(0);
     const url = page.url();
@@ -296,7 +299,7 @@ test.describe("a Button", () => {
       "aria-current",
       "true"
     );
-    await expect(field(page, "Label")).toHaveValue("Buy");
+    await expect(await setting(page, "Label")).toHaveValue("Buy");
     await settle(page);
     expect(page.url()).toBe(url);
   });
@@ -315,7 +318,7 @@ test.describe("a Button", () => {
     await openBlocks(page, ["button"]);
     await blockGroup(page, "Button").focus();
 
-    await change(field(page, "Label"), "<img src=x onerror=alert(1)>");
+    await change(await setting(page, "Label"), "<img src=x onerror=alert(1)>");
 
     await expect(buttonFace(page)).toHaveText("<img src=x onerror=alert(1)>");
     await expect(buttonFace(page).locator("img")).toHaveCount(0);
@@ -324,11 +327,11 @@ test.describe("a Button", () => {
   test("looks the same on the canvas and in the export", async ({ page }) => {
     await openBlocks(page, ["button"]);
     await blockGroup(page, "Button").focus();
-    await change(field(page, "Link"), "https://shop.example");
-    await change(field(page, "Label"), "Buy it all today");
-    await change(field(page, "Background color"), "#112233");
-    await change(field(page, "Text color"), "#ddeeff");
-    await field(page, "Alignment").selectOption("right");
+    await change(await setting(page, "Link"), "https://shop.example");
+    await change(await setting(page, "Label"), "Buy it all today");
+    await change(await setting(page, "Background color"), "#112233");
+    await change(await setting(page, "Text color"), "#ddeeff");
+    await choose(page, "Alignment", "Right");
 
     const onCanvas = await buttonLook(buttonFace(page));
     const email = await canvas(page)

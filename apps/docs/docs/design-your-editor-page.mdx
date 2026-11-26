@@ -15,16 +15,18 @@ Put `<mail-quilt>` in a page of your own when the editor sits among other things
 
 ## Width
 
-`<mail-quilt>` takes the width of the space you give it. Inside, the email sits on a workspace, with the side panel docked on its right.
+`<mail-quilt>` takes the width of the space you give it. Inside, the email sits on a workspace, with the Selection bar across its top and the side panel docked on its right.
 
-- **The side panel sits beside the email** while the editor is at least the email's width plus 400px. The email is {{email-width}}px wide unless someone changes it in Settings, so that's 1000px. Any narrower, and the panel moves below the email rather than squeeze it.
+- **The side panel sits beside the email** while the editor is at least the email's width plus 400px. The email is {{email-width}}px wide unless someone changes it in the Selection bar, so that's 1000px. Any narrower, and the panel moves below the email rather than squeeze it.
+- **More, the Selection bar's panel for the rest of a Block's settings, docks beside the email** while the editor is at least the email's width plus 720px, 1320px for the usual email, and otherwise opens over the workspace.
+- **The Selection bar keeps to one line.** Where it's short of room for what's selected, its Move, Duplicate and Delete buttons move into More.
 - **Below {{editor-min-width}}px, there's no room to edit.** The editor shows a notice in its place, which still opens the Preview. It comes back, with the same email, once there's room again.
 
 So give the editor the full width of your content area. Don't put it in a narrow column beside a sidebar of your own.
 
 ## Height
 
-The editor is at least {{editor-min-height}}px tall, and grows with the email. It fills any height you give it, but never shrinks below the email, so the page scrolls rather than the editor. As it does, the top bar, with Undo, Redo and the Modes, stays in view at the top of the window, the side panel below it, and in Edit, the Preview button at the bottom.
+The editor is at least {{editor-min-height}}px tall, and grows with the email. It fills any height you give it, but never shrinks below the email, so the page scrolls rather than the editor. As it does, the top bar, with Undo, Redo and the Modes, stays in view at the top of the window, the Selection bar and the side panel below it, and in Edit, the Preview button at the bottom.
 
 That means:
 

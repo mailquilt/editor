@@ -61,9 +61,9 @@ An email saved by a newer version can't be opened by a package that only knows a
 | --- | --- |
 | `width` | Required. The email's width, a whole number of pixels from 1 to 1200. |
 | `backgroundColor` | Required. The page's [color](#colors), around the email. |
-| `fontFamily` | Required. The body font, for text, Buttons and, unless the [Email style](#email-style) sets one, Headings. A CSS font list, such as `"Arial, Helvetica, sans-serif"`. It can hold only the letters A to Z, digits, spaces, hyphens, underscores, commas and quotes, and each quote has to close. The settings panel offers Arial, Courier New, Georgia, Tahoma, Times New Roman and Verdana. |
+| `fontFamily` | Required. The body font, for text, Buttons and, unless the [Email style](#email-style) sets one, Headings. A CSS font list, such as `"Arial, Helvetica, sans-serif"`. It can hold only the letters A to Z, digits, spaces, hyphens, underscores, commas and quotes, and each quote has to close. The editor offers Arial, Courier New, Georgia, Tahoma, Times New Roman and Verdana. |
 | `preheader` | Optional. The short text inboxes show after the subject. |
-| `language` | Optional. The email's language. A new language has to be a code such as `en` or `pt-BR`, or one [Merge Tag](#merge-tags) such as `{{language}}` that your sending tool fills with each person's code, and `updateEmailSettings` refuses anything else, from the settings panel or your code. A saved document loads with any text here, and sending it back unchanged isn't refused, so an email with a bad value can still be opened and fixed. |
+| `language` | Optional. The email's language. A new language has to be a code such as `en` or `pt-BR`, or one [Merge Tag](#merge-tags) such as `{{language}}` that your sending tool fills with each person's code, and `updateEmailSettings` refuses anything else, from the editor or your code. A saved document loads with any text here, and sending it back unchanged isn't refused, so an email with a bad value can still be opened and fixed. |
 | `style` | Optional. The [Email style](#email-style). |
 
 ## Email style
@@ -112,7 +112,7 @@ The look every Block in the email uses unless it sets its own. A Block takes its
 | Field | Value |
 | --- | --- |
 | `id` | An [ID](#ids). |
-| `width` | A percentage of the Row, from 1 to 100, so a Column is at least 1% wide. The widths of a Row's Columns add up to 100. The editor's layouts use `100`, `50`/`50`, `33`/`67`, `67`/`33`, `33.33`/`33.33`/`33.34` and four Columns of `25`. Other widths load, but the side panel shows none of its layouts as chosen for that Row. |
+| `width` | A percentage of the Row, from 1 to 100, so a Column is at least 1% wide. The widths of a Row's Columns add up to 100. The editor's layouts use `100`, `50`/`50`, `33`/`67`, `67`/`33`, `33.33`/`33.33`/`33.34` and four Columns of `25`. Other widths load, but the Selection bar shows none of its layouts as chosen for that Row. |
 | `props` | Always an empty object, `{}`. |
 | `blocks` | A list of [Blocks](#blocks), top to bottom. It can be empty. |
 

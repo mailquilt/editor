@@ -22,6 +22,7 @@ import {
   renderRows,
 } from "./canvas.js";
 import type { CanvasEvents, CanvasState } from "./canvas.js";
+import { readPasted } from "./clipboard.js";
 import { createDragging } from "./dragging.js";
 import type { Dragging } from "./dragging.js";
 import { createEditingActions } from "./editing-actions.js";
@@ -39,16 +40,19 @@ import {
   showHighlightedTag,
 } from "./merge-tag-picker.js";
 import type { PanelApi } from "./panel-api.js";
-import { blocksIn, locate } from "./positions.js";
+import { blocksIn, locate, locateRow } from "./positions.js";
 import { createPresses } from "./presses.js";
 import { createPreview, previewStyles, renderPreview } from "./preview.js";
-import { createSelection } from "./selection.js";
-import { createSettingsDrafts, settingsPanelStyles } from "./settings-panel.js";
 import {
   blockDraftKey,
-  renderSidePanel,
-  sidePanelStyles,
-} from "./side-panel.js";
+  createBarPanels,
+  renderMoreDock,
+  renderSelectionBar,
+  selectionBarStyles,
+} from "./selection-bar.js";
+import { createSelection } from "./selection.js";
+import { createSettingsDrafts, settingsPanelStyles } from "./settings-panel.js";
+import { renderSidePanel, sidePanelStyles } from "./side-panel.js";
 import type { MailQuiltStrings } from "./strings.js";
 import { styleProperties } from "./style-properties.js";
 import { createTextBlockView, textBlockStyles } from "./text-block-view.js";
@@ -78,6 +82,12 @@ import { takeValueSetEarly } from "./value-set-early.js";
  * WebKit at this element, rather than at the Block or Row with focus.
  */
 const CLIPBOARD_EVENTS = ["copy", "cut", "paste"] as const;
+
+/** Beside the email on the Canvas, each side. */
+const CANVAS_GUTTER_PX = 40;
+
+/** The side panel's width, and More's where it docks. */
+const PANEL_WIDTH_PX = 320;
 
 /** Typing after a gap this long starts a new undo step. */
 const TYPING_PAUSE_MS = 1000;
@@ -142,9 +152,9 @@ const elementStyles = css`
    * sticking. What focus scrolls to stays clear of the top bar.
    */
   .editor {
-    /* Beside the email, room for a Block's tools and a Row's. */
-    --_mq-gutter: 40px;
-    --_mq-panel-width: 320px;
+    /* Beside the email, room for a Block's handle and a Row's tag. */
+    --_mq-gutter: ${unsafeCSS(CANVAS_GUTTER_PX)}px;
+    --_mq-panel-width: ${unsafeCSS(PANEL_WIDTH_PX)}px;
     /* Where the email and the panel stop fitting side by side. */
     --_mq-side-by-side: calc(
       var(--_mq-email-width) + 2 * var(--_mq-gutter) + var(--_mq-panel-width)
@@ -157,6 +167,13 @@ const elementStyles = css`
   }
 
   .editor * {
+    scroll-margin-block-start: calc(
+      var(--_mq-top-bar-height) + var(--_mq-selection-bar-height)
+    );
+  }
+
+  /* The Selection bar itself is shown under the top bar alone. */
+  .editor .bar-dock {
     scroll-margin-block-start: var(--_mq-top-bar-height);
   }
 
@@ -188,8 +205,8 @@ const elementStyles = css`
     /* Room for a selected Block's tools when the panel has gone below. */
     min-height: 480px;
     min-width: 0;
-    /* Room for a Row's toolbar beside the email, and a Block's tag above. */
-    padding: 56px var(--_mq-gutter) var(--mq-space-4);
+    /* The Selection bar spans the top, so the gutters are only at the sides. */
+    padding: 0 var(--_mq-gutter) var(--mq-space-4);
   }
 
   /*
@@ -295,6 +312,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     uiStyles,
     settingsPanelStyles,
     sidePanelStyles,
+    selectionBarStyles,
     blockTypeStyles,
     formatBarStyles,
     mergeTagPickerStyles,
@@ -339,12 +357,17 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     focus: this.#focus,
     onSelect: () => {
       this.#linkForm.close();
+      this.#barPanels.onSelect();
       this.#formats = this.#selection.selectedText?.formats();
       this.#mergeTagPicker = this.#selection.selectedText?.mergeTagPicker();
       this.requestUpdate();
     },
     requestUpdate: () => this.requestUpdate(),
     textOf: (blockId) => this.#views.get(blockId),
+  });
+  readonly #barPanels = createBarPanels({
+    focus: this.#focus,
+    requestUpdate: () => this.requestUpdate(),
   });
   readonly #presses = createPresses({
     focus: this.#focus,
@@ -388,6 +411,10 @@ export class MailQuilt extends LitElement implements HostAppProperties {
   #tooltips: { element: HTMLElement; tooltips: Tooltips } | undefined;
   /** Too narrow to edit in, as on a phone or in a narrow part of a page. */
   #narrow = false;
+  /** The element's width, which More docks beside the email where it fits. */
+  #width = 0;
+  /** What the person last used in the editor: its keys or a pointer. */
+  #lastInput: "keys" | "pointer" = "pointer";
   /** Edit until the person picks another, and with nothing in the email. */
   #mode: Mode = "edit";
   #device: Device = "desktop";
@@ -459,6 +486,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     tags: this.#mergeTagsGiven,
   });
   readonly #keys = createKeyDispatch({
+    bar: this.#barPanels,
     canStep: (step) =>
       step === "undo"
         ? (this.#editor?.canUndo() ?? false)
@@ -466,6 +494,11 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     drafts: this.#drafts,
     editing: this.#editing,
     fieldMergeTags: this.#fieldMergeTags,
+    firstBlockIn: (rowId) => {
+      const email = this.#editor?.getDocument();
+      const position = email && locateRow(email, rowId);
+      return position?.row.columns.flatMap(({ blocks }) => blocks)[0]?.id;
+    },
     focus: this.#focus,
     isDragging: () => this.#dragging?.isDragging() ?? false,
     linkForm: this.#linkForm,
@@ -474,49 +507,83 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     stepHistory: (step) => this.#stepHistory(step),
   });
 
-  /** What the Side panel, its settings and the toolbars do, made once. */
+  /** What the Side panel, the Selection bar and More do, made once. */
   readonly #panelActions = {
     addBlock: (blockType, position) =>
       this.#editing.addBlock(blockType, position),
     addRow: (layout, fromKeyboard) =>
       this.#editing.addRow(layout, fromKeyboard),
     cancelLink: () => this.#linkForm.cancel(),
+    closeMenu: (returnFocus) => this.#barPanels.closeMenu(returnFocus),
+    closeMore: (returnFocus) => this.#barPanels.closeMore(returnFocus),
+    copySelected: () =>
+      this.#keys.runClipboard(
+        this.#selection.rowId === undefined ? "copyBlock" : "copyRow"
+      ),
+    cutSelected: () =>
+      this.#keys.runClipboard(
+        this.#selection.rowId === undefined ? "cutBlock" : "cutRow"
+      ),
     deleteBlock: (fromKeyboard) => this.#editing.deleteBlock(fromKeyboard),
     deleteRow: (rowId, fromKeyboard) =>
       this.#editing.deleteRow(rowId, fromKeyboard),
     drafts: this.#drafts.fields,
     duplicateBlock: (fromKeyboard) =>
       this.#editing.duplicateBlock(fromKeyboard),
-    duplicateRow: (rowId, fromKeyboard) =>
-      this.#editing.duplicateRow(rowId, fromKeyboard),
+    duplicateRow: (rowId) => this.#editing.duplicateRow(rowId),
     insertLineBreak: () => this.#selection.selectedText?.insertLineBreak(),
     moveBlock: (direction) => this.#editing.moveBlock(direction),
     moveRow: (rowId, direction) => this.#editing.moveRow(rowId, direction),
     openLinkField: () => this.#linkForm.open(),
     openPreview: () => this.#preview.open(),
+    pasteBelow: () => {
+      void this.#pasteBelow();
+    },
     pickMergeTag: (index) => this.#selection.selectedText?.pickMergeTag(index),
     removeLink: () => this.#linkForm.remove(),
+    selectEmail: (fromKeyboard) => {
+      this.#selection.select(undefined);
+      this.#focus.focusWhenRendered(
+        { action: "field-preheader", on: "bar" },
+        { focusVisible: fromKeyboard }
+      );
+    },
     selectRow: (rowId, fromKeyboard) =>
       this.#selection.selectRow(rowId, fromKeyboard),
     selectTab: (tab) => this.#selection.selectTab(tab),
     setRowLayout: (rowId, layout) => {
       this.#apply({ layout, rowId, type: "setRowLayout" });
     },
-    showTabs: (fromKeyboard) => this.#selection.showTabs(fromKeyboard),
     stepHistory: (step) => this.#stepHistory(step),
     submitLink: (href) => this.#linkForm.submit(href),
     toggleList: (type) => this.#selection.selectedText?.toggleList(type),
     toggleMark: (mark) => this.#selection.selectedText?.toggleMark(mark),
+    toggleMenu: () => this.#barPanels.toggleMenu(),
+    toggleMore: (fromKeyboard) => this.#barPanels.toggleMore(fromKeyboard),
+    togglePopover: (id) => this.#barPanels.togglePopover(id),
   } satisfies Partial<PanelApi>;
 
   readonly #canvasEvents: CanvasEvents = {
-    onBlockClick: (blockId, target) =>
-      this.#selection.onBlockClick(blockId, target),
     onBlockFocus: (blockId) => {
       this.#linkForm.close();
       this.#selection.onBlockFocus(blockId);
+      // More over the email can cover a narrow Column's Block, so it closes
+      // for a Block reached from the keyboard. A click shows where it went.
+      if (
+        this.#lastInput === "keys" &&
+        this.#barPanels.state.moreOpen &&
+        !this.#docksMore(this.#width)
+      ) {
+        this.#barPanels.closeMore(false);
+      }
     },
     onBlockFocusout: () => this.#selection.onBlockFocusout(),
+    onEmptyRowFocus: (rowId) => {
+      // Not as focus comes back after an update, which changes nothing.
+      if (!this.#focus.restoring) {
+        this.#selection.select({ rowId });
+      }
+    },
     onImageError: (src) => this.#onImageError(src),
   };
 
@@ -528,12 +595,17 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     for (const type of ["click", "input", "keyup"]) {
       root.addEventListener(type, this.#fieldMergeTags.onFieldEvent);
     }
-    root.addEventListener("focusout", (event) =>
-      this.#fieldMergeTags.onFocusout(event as FocusEvent)
-    );
+    root.addEventListener("focusout", (event) => {
+      this.#fieldMergeTags.onFocusout(event as FocusEvent);
+      this.#barPanels.onFocusout(event as FocusEvent);
+    });
     root.addEventListener("mousedown", (event) =>
       this.#presses.onMousedown(event as MouseEvent)
     );
+    root.addEventListener("pointerdown", (event) => {
+      this.#lastInput = "pointer";
+      this.#barPanels.onPointerdown(event as PointerEvent);
+    });
     root.addEventListener(
       "wheel",
       (event) => this.#presses.onWheel(event as WheelEvent),
@@ -548,6 +620,13 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     this.addEventListener("keydown", this.#keys.onKeydownCapture, {
       capture: true,
     });
+    this.addEventListener(
+      "keydown",
+      () => {
+        this.#lastInput = "keys";
+      },
+      { capture: true }
+    );
     takeValueSetEarly(this);
   }
 
@@ -597,9 +676,14 @@ export class MailQuilt extends LitElement implements HostAppProperties {
   override connectedCallback() {
     super.connectedCallback();
     this.#resizeObserver ??= new ResizeObserver(([entry]) => {
-      const narrow = (entry?.contentRect.width ?? 0) < MIN_EDITOR_WIDTH;
-      if (narrow !== this.#narrow) {
-        this.#narrow = narrow;
+      const width = entry?.contentRect.width ?? 0;
+      const narrow = width < MIN_EDITOR_WIDTH;
+      const changed =
+        narrow !== this.#narrow ||
+        this.#docksMore(width) !== this.#docksMore(this.#width);
+      this.#narrow = narrow;
+      this.#width = width;
+      if (changed) {
         // A frame later, as changing size inside this callback is reported as a
         // ResizeObserver loop error.
         requestAnimationFrame(() => this.requestUpdate());
@@ -868,20 +952,84 @@ export class MailQuilt extends LitElement implements HostAppProperties {
               hidden
             ></div>
           </div>
-          ${renderFloatingToolbar(api)}
+          ${renderSelectionBar(api)} ${renderFloatingToolbar(api)}
         </div>
+        ${api.bar.moreOpen && api.bar.docked ? renderMoreDock(api) : nothing}
         ${renderSidePanel(api)}
       </div>
     `;
   }
 
-  /** What the Side panel, its settings and the toolbars show, and what they do. */
+  /** The email's width on the Canvas, and with its gutters. */
+  #canvasWidths() {
+    const settings = this.#editor?.getDocument().settings;
+    if (!settings) {
+      return;
+    }
+    const email =
+      this.#device === "phone"
+        ? Math.min(settings.width, PHONE_WIDTH)
+        : settings.width;
+    return { email, withGutters: email + 2 * CANVAS_GUTTER_PX };
+  }
+
+  /**
+   * Whether More docks beside the email at `width`: where the email, its
+   * gutters, More and the side panel fit side by side. Below that, it floats.
+   */
+  #docksMore(width: number) {
+    const widths = this.#canvasWidths();
+    return (
+      widths !== undefined && width >= widths.withGutters + 2 * PANEL_WIDTH_PX
+    );
+  }
+
+  /**
+   * More's Paste below: what's on the clipboard, once the browser lets the
+   * editor read it, pasted as Ctrl/⌘+V would paste it.
+   */
+  async #pasteBelow() {
+    const data = new DataTransfer();
+    try {
+      const items = await navigator.clipboard.read();
+      // What a paste event's data has: HTML and text, and image files.
+      const formats = await Promise.all(
+        items.flatMap((item) =>
+          item.types.map(async (type) => {
+            const blob = await item.getType(type);
+            return {
+              blob,
+              text: type.startsWith("text/") ? await blob.text() : "",
+              type,
+            };
+          })
+        )
+      );
+      for (const { blob, text, type } of formats) {
+        if (type.startsWith("image/")) {
+          data.items.add(new File([blob], "pasted", { type }));
+        } else if (type === "text/html" || type === "text/plain") {
+          data.setData(type, text);
+        }
+      }
+    } catch {
+      this.#announcements.say(this.#text("paste.notAllowed"));
+      return;
+    }
+    this.#editing.paste(readPasted(data) ?? { refused: "notCopied" });
+  }
+
+  /** What the Side panel, the Selection bar and More show, and what they do. */
   #panelApi(email: BlocksDocument): PanelApi {
     // Only with a tag the picker can offer.
     const offersTags =
       this.mergeTags?.some(({ name }) => isMergeTagName(name)) ?? false;
     return {
       ...this.#panelActions,
+      bar: {
+        ...this.#barPanels.state,
+        docked: this.#docksMore(this.#width),
+      },
       canRedo: this.#editor?.canRedo() ?? false,
       canUndo: this.#editor?.canUndo() ?? false,
       editingText: this.#selection.editingText,
@@ -898,7 +1046,6 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       mergeTagPicker: this.#mergeTagPicker,
       selectedBlock: this.#editing.selectedBlock(email),
       selectedRow: this.#editing.selectedRow(email),
-      showsSettings: this.#selection.showsSettings,
       tab: this.#selection.tab,
       text: this.#text,
       uploadErrorOf: this.#uploads.errorOf,

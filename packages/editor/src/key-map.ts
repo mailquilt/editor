@@ -38,7 +38,10 @@ export type Action =
   | "backToBlock"
   | "backToText"
   | "cancelLink"
+  | "closeMenu"
   | "closeMergeTagPicker"
+  | "closeMore"
+  | "closePopover"
   | "closePreview"
   | "copyBlock"
   | "copyRow"
@@ -59,12 +62,14 @@ export type Action =
   | "moveBlock"
   | "moveRow"
   | "nextButton"
+  | "nextControl"
   | "nextMergeTag"
   | "openLinkField"
   | "paste"
   | "pasteAfterRow"
   | "pickMergeTag"
   | "previousButton"
+  | "previousControl"
   | "previousMergeTag"
   | "redo"
   | "selectBlock"
@@ -222,6 +227,30 @@ const TOOLBAR: Entry[] = [
     keys: ["Tab"],
     stops: false,
   },
+];
+
+/** Tab leaves a toolbar, or the Selection bar, from its one stop. */
+const LEAVE_TOOLBAR = TOOLBAR.filter(({ action }) => action === "leaveToolbar");
+
+/**
+ * In a field in the Selection bar with nothing typed: ← at the start of its
+ * text and → at the end go on to the bar's control before or after it, and
+ * otherwise move the cursor. Tab leaves the bar, as from any of its controls.
+ */
+const BAR_FIELD: Entry[] = [
+  {
+    action: "previousControl",
+    keepsDefault: true,
+    keys: ["ArrowLeft"],
+    stops: false,
+  },
+  {
+    action: "nextControl",
+    keepsDefault: true,
+    keys: ["ArrowRight"],
+    stops: false,
+  },
+  ...LEAVE_TOOLBAR,
 ];
 
 /**
@@ -387,11 +416,18 @@ const KEY_SCOPES = {
     ],
     within: "email",
   },
-  blockToolbar: {
+  /**
+   * The Selection bar is one stop for Tab, and the arrow keys go along its
+   * controls. With a Block selected, its keys are the Block's toolbar's before
+   * it: they move and duplicate the Block, and Escape goes back to it. A paste
+   * goes after the Block, as on the Block.
+   */
+  blockBar: {
     keys: [
       escape("backToBlock"),
       ...MOVE_BLOCK,
       duplicate("duplicateBlock"),
+      PASTE,
       ...TOOLBAR,
     ],
     within: "email",
@@ -402,11 +438,12 @@ const KEY_SCOPES = {
     keys: [escape("cancelLink")],
     within: "field",
   },
-  rowToolbar: {
+  /** With a Row selected, the keys a Row's toolbar had, for that Row. */
+  rowBar: {
     keys: [
       // A selected Row's Blocks aren't stops for Tab, so this is the way back
       // to them.
-      escape("unselectRow", { needs: "selectedRow" }),
+      escape("unselectRow"),
       // A Row moves only up and down, so Alt+← and Alt+→ only keep the page.
       ...arrows("Alt-", {
         action: "moveRow",
@@ -417,13 +454,21 @@ const KEY_SCOPES = {
       remove("deleteRow"),
       clipboard("copy", "copyRow"),
       clipboard("cut", "cutRow"),
-      // After this Row, which a paste counts as selected, as Delete and
-      // Duplicate act on it too.
+      // After this Row, as a paste with a Row selected goes.
       clipboard("paste", "pasteAfterRow"),
       ...TOOLBAR,
     ],
     within: "email",
   },
+  // With nothing selected, a paste goes at the end, as from the floating
+  // toolbar.
+  emailBar: { keys: [PASTE, ...TOOLBAR], within: "editor" },
+  // Undo and redo are the editor's, as in any settings field with nothing
+  // typed, and Delete and Backspace are the field's.
+  barField: { keys: BAR_FIELD, within: "editor" },
+  barPopover: { keys: [escape("closePopover")], within: "editor" },
+  barMenu: { keys: [escape("closeMenu"), ...TOOLBAR], within: "editor" },
+  morePanel: { keys: [escape("closeMore")], within: "editor" },
   addBlocks: { keys: TOOLBAR, within: "email" },
   // Where focus goes with nothing selected, such as after the last Block is
   // deleted, so a paste goes at the end.
@@ -432,7 +477,12 @@ const KEY_SCOPES = {
   email: { keys: [], within: "email" },
   panelTabs: { keys: TOOLBAR, within: "editor" },
   modes: { keys: TOOLBAR, within: "editor" },
-  settingsDraft: { keys: [escape("discardDraft")], within: "field" },
+  // Tab leaves the Selection bar from a field in it, and does nothing more
+  // elsewhere.
+  settingsDraft: {
+    keys: [escape("discardDraft"), ...LEAVE_TOOLBAR],
+    within: "field",
+  },
   listItemTools: { keys: TOOLBAR, within: "editor" },
   // Anywhere else in the editor, such as the top bar or the Side panel.
   editor: { keys: [], within: "editor" },

@@ -332,91 +332,83 @@ describe("in the link field", () => {
   });
 });
 
-describe("in the Block's toolbar", () => {
+describe("in the Selection bar, with a Block selected", () => {
   it("Escape goes back to the Block, and stops there", () => {
-    expect(keyIn("blockToolbar", press("Escape"))).toStrictEqual(
+    expect(keyIn("blockBar", press("Escape"))).toStrictEqual(
       acts("backToBlock", { stops: true })
     );
   });
 
   it("Alt with an arrow key moves the Block", () => {
-    expect(keyIn("blockToolbar", press("Alt-ArrowDown"))).toStrictEqual(
+    expect(keyIn("blockBar", press("Alt-ArrowDown"))).toStrictEqual(
       acts("moveBlock", { direction: "down" })
     );
   });
 
-  it("an arrow key goes along its buttons", () => {
-    expect(keyIn("blockToolbar", press("ArrowUp"))).toStrictEqual(
+  it("an arrow key goes along its controls", () => {
+    expect(keyIn("blockBar", press("ArrowLeft"))).toStrictEqual(
       acts("previousButton")
     );
   });
 
-  it("Home and End go to its first and last buttons", () => {
+  it("Home and End go to its first and last controls", () => {
     expect(
       [press("Home"), press("End")].map(
-        (each) => keyIn("blockToolbar", each)?.action
+        (each) => keyIn("blockBar", each)?.action
       )
     ).toStrictEqual(["firstButton", "lastButton"]);
   });
 
   it("Shift+Tab leaves it, from its one stop", () => {
-    expect(keyIn("blockToolbar", press("Shift-Tab"))).toStrictEqual(
+    expect(keyIn("blockBar", press("Shift-Tab"))).toStrictEqual(
       acts("leaveToolbar", { keepsDefault: true })
     );
   });
 
   it("Ctrl/⌘+D duplicates the Block, as on the Block", () => {
-    expect(keyIn("blockToolbar", press("Mod-d"))?.action).toBe(
-      "duplicateBlock"
-    );
+    expect(keyIn("blockBar", press("Mod-d"))?.action).toBe("duplicateBlock");
   });
 
   it("Delete and Backspace don't delete the Block", () => {
-    expect(keyIn("blockToolbar", press("Delete"))).toBeUndefined();
-    expect(keyIn("blockToolbar", press("Backspace"))).toBeUndefined();
+    expect(keyIn("blockBar", press("Delete"))).toBeUndefined();
+    expect(keyIn("blockBar", press("Backspace"))).toBeUndefined();
   });
 });
 
-describe("in a Row's toolbar", () => {
+describe("in the Selection bar, with a Row selected", () => {
   it("Alt with an arrow key moves the Row", () => {
-    expect(keyIn("rowToolbar", press("Alt-ArrowUp"))).toStrictEqual(
+    expect(keyIn("rowBar", press("Alt-ArrowUp"))).toStrictEqual(
       acts("moveRow", { direction: "up" })
     );
   });
 
   it("Alt+← and Alt+→ don't move it, as a Row moves only up and down", () => {
-    expect(keyIn("rowToolbar", press("Alt-ArrowLeft"))).toStrictEqual(
+    expect(keyIn("rowBar", press("Alt-ArrowLeft"))).toStrictEqual(
       acts("keepPage")
     );
   });
 
-  it("an arrow key goes along its buttons", () => {
-    expect(keyIn("rowToolbar", press("ArrowLeft"))).toStrictEqual(
+  it("an arrow key goes along its controls", () => {
+    expect(keyIn("rowBar", press("ArrowLeft"))).toStrictEqual(
       acts("previousButton")
     );
   });
 
-  it("Escape with no Row selected reaches the host page", () => {
-    expect(keyIn("rowToolbar", press("Escape"))).toBeUndefined();
-  });
-
-  it("Escape with a Row selected unselects it, and stops there", () => {
-    expect(
-      keyIn("rowToolbar", press("Escape"), { selectedRow: true })
-    ).toStrictEqual(acts("unselectRow", { stops: true }));
+  it("Escape unselects the Row, and stops there", () => {
+    expect(keyIn("rowBar", press("Escape"))).toStrictEqual(
+      acts("unselectRow", { stops: true })
+    );
   });
 
   it("Ctrl/⌘+D duplicates the Row, and stops there", () => {
-    expect(keyIn("rowToolbar", press("Mod-d"))).toStrictEqual(
+    expect(keyIn("rowBar", press("Mod-d"))).toStrictEqual(
       acts("duplicateRow", { stops: true })
     );
   });
 
   it("Delete and Backspace delete the Row, and stop there", () => {
     expect(
-      [press("Delete"), press("Backspace")].map((each) =>
-        keyIn("rowToolbar", each)
-      )
+      [press("Delete"), press("Backspace")].map((each) => keyIn("rowBar", each))
     ).toStrictEqual([
       acts("deleteRow", { stops: true }),
       acts("deleteRow", { stops: true }),
@@ -424,14 +416,90 @@ describe("in a Row's toolbar", () => {
   });
 
   it("the browser's clipboard events copy, cut and paste, from Ctrl/⌘+C, X and V", () => {
-    expect(keyIn("rowToolbar", press("Mod-x"))).toStrictEqual(
+    expect(keyIn("rowBar", press("Mod-x"))).toStrictEqual(
       leftToClipboard("cutRow")
     );
     expect(
       (["copy", "cut", "paste"] as const).map((type) =>
-        clipboardFor("rowToolbar", type)
+        clipboardFor("rowBar", type)
       )
     ).toStrictEqual(["copyRow", "cutRow", "pasteAfterRow"]);
+  });
+});
+
+describe("in the Selection bar, with nothing selected", () => {
+  it("an arrow key goes along its controls", () => {
+    expect(keyIn("emailBar", press("ArrowRight"))).toStrictEqual(
+      acts("nextButton")
+    );
+  });
+
+  it("only paste is the editor's, as nothing is selected to copy", () => {
+    expect(clipboardFor("emailBar", "copy")).toBeUndefined();
+    expect(clipboardFor("emailBar", "paste")).toBe("paste");
+  });
+
+  it("Escape reaches the host page", () => {
+    expect(keyIn("emailBar", press("Escape"))).toBeUndefined();
+  });
+});
+
+describe("in a field in the Selection bar", () => {
+  it("← and → go on to the bar's other controls, and move the cursor too", () => {
+    expect(
+      [press("ArrowLeft"), press("ArrowRight")].map((each) =>
+        keyIn("barField", each)
+      )
+    ).toStrictEqual([
+      acts("previousControl", { keepsDefault: true }),
+      acts("nextControl", { keepsDefault: true }),
+    ]);
+  });
+
+  it("Tab leaves the bar, from its one stop, with text typed or not", () => {
+    expect(keyIn("barField", press("Tab"))?.action).toBe("leaveToolbar");
+    expect(keyIn("settingsDraft", press("Shift-Tab"))?.action).toBe(
+      "leaveToolbar"
+    );
+  });
+
+  it("Escape with nothing typed reaches the host page", () => {
+    expect(keyIn("barField", press("Escape"))).toBeUndefined();
+  });
+
+  it("Ctrl/⌘+Z with nothing typed undoes the editor's last change", () => {
+    expect(keyIn("barField", press("Mod-z"))?.action).toBe("undo");
+  });
+
+  // In a Row's bar, these would otherwise delete the Row while typing.
+  it("Delete, Backspace and Ctrl/⌘+D are the field's own", () => {
+    expect(
+      [press("Delete"), press("Backspace"), press("Mod-d")].map((each) =>
+        keyIn("barField", each)
+      )
+    ).toStrictEqual([undefined, undefined, undefined]);
+  });
+
+  it("the browser's clipboard events are the field's own", () => {
+    expect(clipboardFor("barField", "paste")).toBeUndefined();
+  });
+});
+
+describe("in what the Selection bar opens", () => {
+  it("Escape closes a popover, the chip's menu or More, and stops there", () => {
+    expect(
+      (["barPopover", "barMenu", "morePanel"] as const).map((scope) =>
+        keyIn(scope, press("Escape"))
+      )
+    ).toStrictEqual([
+      acts("closePopover", { stops: true }),
+      acts("closeMenu", { stops: true }),
+      acts("closeMore", { stops: true }),
+    ]);
+  });
+
+  it("an arrow key goes along the chip's menu", () => {
+    expect(keyIn("barMenu", press("ArrowDown"))?.action).toBe("nextButton");
   });
 });
 
@@ -517,9 +585,9 @@ describe("while a Block or Row is dragged, which the key would change", () => {
     ["block", "Enter"],
     ["block", "Mod-d"],
     ["block", "Delete"],
-    ["rowToolbar", "Alt-ArrowUp"],
-    ["rowToolbar", "Mod-d"],
-    ["rowToolbar", "Backspace"],
+    ["rowBar", "Alt-ArrowUp"],
+    ["rowBar", "Mod-d"],
+    ["rowBar", "Backspace"],
   ] as const)("on %s, %s does nothing", (scope, name) => {
     expect(keyIn(scope, press(name), { dragging: true })).toBeUndefined();
   });
@@ -681,7 +749,7 @@ describe("how a key is named, for a tooltip and for aria-keyshortcuts", () => {
 
   it("with Alt and an arrow", () => {
     expect(
-      keyLabel("blockToolbar", "moveBlock", { apple: false, direction: "up" })
+      keyLabel("blockBar", "moveBlock", { apple: false, direction: "up" })
     ).toStrictEqual({ keys: "Alt+↑", shortcuts: "Alt+ArrowUp" });
   });
 
@@ -708,7 +776,7 @@ describe("how a key is named, for a tooltip and for aria-keyshortcuts", () => {
 
   it("on Apple devices, names Alt with its symbol too", () => {
     expect(
-      keyLabel("blockToolbar", "moveBlock", { apple: true, direction: "up" })
+      keyLabel("blockBar", "moveBlock", { apple: true, direction: "up" })
     ).toStrictEqual({ keys: "⌥↑", shortcuts: "Alt+ArrowUp" });
   });
 

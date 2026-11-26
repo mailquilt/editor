@@ -4,7 +4,6 @@ import type { Page } from "@playwright/test";
 import {
   announcement,
   blockGroup,
-  blockTools,
   blockWith,
   bottomOf,
   boxOf,
@@ -34,6 +33,8 @@ import {
   previewButton,
   previewEmail,
   serveImages,
+  selectedBlock,
+  selectionBar,
   settle,
   setValue,
   structure,
@@ -297,40 +298,30 @@ test.describe("moving a Block by its handle", () => {
     await expect(handleOf(page, "One")).toHaveAttribute("aria-hidden", "true");
   });
 
-  test("a short drag let go over the toolbar it started from moves nothing", async ({
+  test("a short drag of the selected Block, let go where it started, moves nothing", async ({
     page,
   }) => {
     await openEmail(page, [[["A"], ["B"]]]);
     await blockGroup(page, "Text").last().focus();
-    const handle = await boxOf(blockTools(page).getByTestId("drag-handle"));
+    const handle = await boxOf(selectedBlock(page).getByTestId("drag-handle"));
 
-    await page.mouse.move(handle.x + 10, handle.y + 10);
+    await page.mouse.move(handle.x + 5, handle.y + 5);
     await page.mouse.down();
-    await page.mouse.move(handle.x + 16, handle.y + 18, { steps: 4 });
+    await page.mouse.move(handle.x + 11, handle.y + 13, { steps: 4 });
     await settle(page);
     await letGo(page);
 
     await expect(structure(page)).resolves.toEqual([[["A"], ["B"]]]);
   });
 
-  test("a drag that left the toolbar lands where the toolbar was", async ({
-    page,
-  }) => {
-    await openEmail(page, [[["A"], ["B"]]]);
-    await blockGroup(page, "Text").last().focus();
-    const handle = await boxOf(blockTools(page).getByTestId("drag-handle"));
+  test("letting go over the Selection bar moves nothing", async ({ page }) => {
+    await openEmail(page, [[["One", "Two"]]]);
+    const expectChanges = await changesSince(page);
 
-    // Away from the toolbar, then back over where it was, in the first Column.
-    await page.mouse.move(handle.x + 10, handle.y + 10);
-    await page.mouse.down();
-    await page.mouse.move(handle.x - 120, handle.y + 120, { steps: 8 });
-    await page.mouse.move(handle.x + 10, handle.y + 20, { steps: 8 });
-    await settle(page);
-    await expect(dropIndicator(page)).toBeVisible();
-    await letGo(page);
+    await drag(page, handleOf(page, "Two"), await centerOf(selectionBar(page)));
 
-    // Above A, whose top half the toolbar sat beside.
-    await expect(structure(page)).resolves.toEqual([[["B", "A"], []]]);
+    expect(await structure(page)).toStrictEqual([[["One", "Two"]]]);
+    await expectChanges(0);
   });
 
   test("letting go over the Email tools moves nothing", async ({ page }) => {
@@ -647,18 +638,16 @@ test.describe("dropping outside any Row", () => {
     await expectChanges(1);
   });
 
-  test("on the first Row's controls adds a Row at the start", async ({
+  test("beside the first Row, above its middle, adds a Row at the start", async ({
     page,
   }) => {
     await openEmail(page, [[["One", "Two"]]]);
-    const controls = await boxOf(
-      page.getByRole("toolbar", { exact: true, name: "Row 1" })
-    );
+    const row = await boxOf(canvas(page).getByTestId("row").first());
 
-    // Its top, which is above the middle of the Row.
+    // In the gutter beside the email, near the Row's top.
     await drag(page, handleOf(page, "Two"), {
-      x: controls.x + controls.width / 2,
-      y: controls.y + 4,
+      x: row.x + row.width + 20,
+      y: row.y + 4,
     });
 
     expect(await structure(page)).toStrictEqual([[["Two"]], [["One"]]]);
@@ -931,9 +920,10 @@ test.describe("auto-scrolling", () => {
     const handle = handleOf(page, "Block 10");
     await blockWith(page, "Block 10").scrollIntoViewIfNeeded();
     await handle.hover();
-    // Its handle 100px from the top: near it, but not at it.
+    // Its handle 160px from the top: near it, but not at it, and below the
+    // top bar and the Selection bar, which stick over the page's top.
     const { y } = await centerOf(handle);
-    await page.evaluate((by) => window.scrollBy(0, by), y - 100);
+    await page.evaluate((by) => window.scrollBy(0, by), y - 160);
     await handle.hover();
     const before = await scrollTop(page);
 

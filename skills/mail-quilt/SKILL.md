@@ -50,7 +50,7 @@ Work in this order, and stop as soon as it matches the app:
 1. **Layout.** Give `<mail-quilt>` the full width of the content area, in the page's normal flow. The side panel sits beside the email only while the editor is at least the email's width plus 400px, which is 1000px for the usual 600px email: [Fit the editor into your page](https://editor.mailquilt.com/docs/design-your-editor-page.md).
 2. **Font and accent.** Set `--mq-font-family` and the four accent tokens on the `<mail-quilt>` element, or on `<mail-quilt-shell>` for a Shell: [Theme the editor](https://editor.mailquilt.com/docs/theme-the-editor.md), and every token in [Theme tokens](https://editor.mailquilt.com/docs/theme-tokens.md).
 3. **A dark theme, if the app has one.** Set `theme="dark"` on the element, or `theme="auto"` to follow the person's system, rather than setting color tokens by hand. A color token set on the element wins over the dark theme too, so give the dark theme its own accent with `mail-quilt[theme="dark"] { … }`. With `theme="auto"`, set it for `mail-quilt[theme="auto"]` inside `@media (prefers-color-scheme: dark)`, and on a Shell use `mail-quilt-shell` in place of `mail-quilt`. Set both accents in a stylesheet: one in the element's `style` attribute wins over any stylesheet, so the dark theme can't replace it. Keep these pairs readable together, at 4.5:1 for text: [A dark theme](https://editor.mailquilt.com/docs/theme-the-editor.md#a-dark-theme).
-   - `--mq-color-surface` on `--mq-color-text`, the selected Block's tag and toolbar
+   - `--mq-color-surface` on `--mq-color-text`, the selected Block's tag
    - `--mq-color-on-accent` on `--mq-color-accent`. White on a mid-tone accent such as `#8b5cf6` falls short, so use a dark one.
    - `--mq-color-accent-strong` on `--mq-color-accent-soft`, pressed buttons such as Bold. On a dark theme the strong accent is the lighter one.
    - `--mq-color-on-tooltip` on `--mq-color-tooltip`
@@ -61,9 +61,9 @@ Work in this order, and stop as soon as it matches the app:
 
 Don't:
 
-- **Theme the email.** The tokens never change the email, which keeps its own background, colors and font, so it looks as it will when sent. People change those in the editor's Settings tab.
+- **Theme the email.** The tokens never change the email, which keeps its own background, colors and font, so it looks as it will when sent. People change those in the editor's Selection bar, with nothing selected.
 - **Reach into the editor's Shadow DOM, or style its internal class names.** They aren't part of the API and change between versions. Use tokens and the documented parts.
-- **Rebuild the editor's own controls**, such as the side panel or toolbars. They aren't replaceable in `0.x`. Put the app's own controls around the editor, or use the Shell's header.
+- **Rebuild the editor's own controls**, such as the side panel or the Selection bar. They aren't replaceable in `0.x`. Put the app's own controls around the editor, or use the Shell's header.
 
 Before you finish, check what [Fit the editor into your page](https://editor.mailquilt.com/docs/design-your-editor-page.md) lists:
 

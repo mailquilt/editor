@@ -4,10 +4,12 @@ import type { Locator, Page } from "@playwright/test";
 import {
   addRow,
   addText,
+  barButton,
   blockProps,
-  blockTools,
   boxOf,
   canvas,
+  choose,
+  chosen,
   change,
   changeCount,
   changesSince,
@@ -15,13 +17,15 @@ import {
   countHostEscapes,
   currentValue,
   emailWith,
-  field,
+  setting,
   openExport,
-  openTab,
   openTestPage,
-  panelBlock,
   redoByKey,
+  rowTag,
   rowTools,
+  selectedBlock,
+  selectionBar,
+  selectNothing,
   selectRow,
   setValue,
   structure,
@@ -31,16 +35,21 @@ import {
   violations,
 } from "./helpers.js";
 
-const section = (page: Page, name: string) =>
-  page.getByRole("group", { exact: true, name });
+/** What a refused value says, wherever its field is. */
+const alerts = (page: Page) => canvas(page).getByRole("alert");
 
-const email = (page: Page) => section(page, "Email");
-const row = (page: Page) => section(page, "Row");
+/** One of the email's settings, with nothing selected, so the bar shows them. */
+const emailField = async (page: Page, name: string) => {
+  if (
+    (await selectionBar(page).getAttribute("aria-label")) !== "Email settings"
+  ) {
+    await selectNothing(page);
+  }
+  return await setting(page, name);
+};
 
-const emailField = (page: Page, name: string) =>
-  email(page).getByLabel(name, { exact: true });
-const rowField = (page: Page, name: string) =>
-  row(page).getByLabel(name, { exact: true });
+/** One of the selected Row's settings. */
+const rowField = setting;
 
 const settingsOf = async (page: Page) => {
   const { settings } = await currentValue(page);
@@ -60,7 +69,8 @@ const rowBackground = (locator: Locator) =>
 const typeFontSize = async (page: Page, size: string) => {
   await setValue(page, emailWith([[["One"]]]));
   await canvas(page).getByText("One", { exact: true }).click();
-  await field(page, "Font size (px)").fill(size);
+  const control = await setting(page, "Font size (px)");
+  await control.fill(size);
 };
 
 const inHostOf = async (page: Page, width: number) => {
@@ -71,42 +81,41 @@ const inHostOf = async (page: Page, width: number) => {
 
 test.beforeEach(async ({ page }) => {
   await openTestPage(page);
-  await openTab(page, "Settings");
 });
 
-test.describe("the panel", () => {
-  test("shows the settings of the selected Block alone", async ({ page }) => {
+test.describe("the Selection bar's settings", () => {
+  test("are the selected Block's alone", async ({ page }) => {
     await textBlock(page).click();
 
-    await expect(field(page, "Alignment")).toHaveValue("left");
-    await expect(field(page, "Color")).toHaveValue("#000000");
-    await expect(field(page, "Font size (px)")).toHaveValue("16");
-    await expect(row(page)).toHaveCount(0);
-    await expect(email(page)).toHaveCount(0);
+    await expect(selectionBar(page)).toHaveAccessibleName("Text settings");
+    await expect(chosen(page, "Alignment")).toHaveAccessibleName("Left");
+    await expect(await setting(page, "Font size (px)")).toHaveValue("16");
+    await expect(await setting(page, "Color")).toHaveValue("#000000");
+    await expect(canvas(page).getByLabel("Preheader")).toHaveCount(0);
   });
 
   test("follows the selection", async ({ page }) => {
     await setValue(page, emailWith([[["One", "Two"]]]));
     await canvas(page).getByText("One", { exact: true }).click();
-    await change(field(page, "Font size (px)"), "30");
+    await change(await setting(page, "Font size (px)"), "30");
     // A refused value stays with its own Block too.
-    await change(field(page, "Color"), "red");
+    await change(await setting(page, "Color"), "red");
 
     await canvas(page).getByText("Two", { exact: true }).click();
-    await expect(field(page, "Font size (px)")).toHaveValue("16");
-    await expect(field(page, "Color")).toHaveValue("#000000");
-    await expect(panelBlock(page).getByRole("alert")).toHaveCount(0);
+    await expect(await setting(page, "Font size (px)")).toHaveValue("16");
+    await expect(await setting(page, "Color")).toHaveValue("#000000");
+    await expect(alerts(page)).toHaveCount(0);
 
     await canvas(page).getByText("One", { exact: true }).click();
-    await expect(field(page, "Font size (px)")).toHaveValue("30");
+    await expect(await setting(page, "Font size (px)")).toHaveValue("30");
   });
 
-  test("leaves when its Block is deleted", async ({ page }) => {
+  test("are the email's once its Block is deleted", async ({ page }) => {
     await textBlock(page).click();
-    await page.getByRole("button", { name: "Delete Block" }).click();
+    await barButton(page, "Delete Block").click();
 
-    await expect(panelBlock(page)).toHaveCount(0);
-    await expect(email(page)).toBeVisible();
+    await expect(selectionBar(page)).toHaveAccessibleName("Email settings");
+    await expect(canvas(page).getByLabel("Preheader")).toBeVisible();
   });
 
   test("keeps a saved font that isn't on the list", async ({ page }) => {
@@ -114,9 +123,14 @@ test.describe("the panel", () => {
     value.settings.fontFamily = "Papyrus, fantasy";
     await setValue(page, value);
 
-    await expect(emailField(page, "Font")).toHaveValue("Papyrus, fantasy");
+    await expect(await emailField(page, "Font")).toHaveValue(
+      "Papyrus, fantasy"
+    );
+    const font = await emailField(page, "Font");
     await expect(
-      emailField(page, "Font").getByRole("option", { name: "Papyrus, fantasy" })
+      font.getByRole("option", {
+        name: "Papyrus, fantasy",
+      })
     ).toHaveCount(1);
   });
 
@@ -131,18 +145,18 @@ test.describe("the panel", () => {
     };
     await setValue(page, value);
 
-    await expect(emailField(page, "Width (px)")).toHaveValue("500");
-    await expect(emailField(page, "Background color")).toHaveValue(
+    await expect(await emailField(page, "Width (px)")).toHaveValue("500");
+    await expect(await emailField(page, "Background color")).toHaveValue(
       "rgb(1, 2, 3)"
     );
-    await expect(emailField(page, "Background color picker")).toHaveValue(
+    await expect(await emailField(page, "Background color picker")).toHaveValue(
       "#010203"
     );
-    await expect(emailField(page, "Font")).toHaveValue(
+    await expect(await emailField(page, "Font")).toHaveValue(
       "Georgia, 'Times New Roman', serif"
     );
-    await expect(emailField(page, "Preheader")).toHaveValue("Salut");
-    await expect(emailField(page, "Language")).toHaveValue("fr");
+    await expect(await emailField(page, "Preheader")).toHaveValue("Salut");
+    await expect(await emailField(page, "Language")).toHaveValue("fr");
   });
 });
 
@@ -151,9 +165,9 @@ test.describe("Text settings", () => {
     await setValue(page, emailWith([[["Styled"]]]));
     await canvas(page).getByText("Styled", { exact: true }).click();
 
-    await field(page, "Alignment").selectOption("center");
-    await change(field(page, "Color"), "#ff0000");
-    await change(field(page, "Font size (px)"), "24");
+    await choose(page, "Alignment", "Center");
+    await change(await setting(page, "Color"), "#ff0000");
+    await change(await setting(page, "Font size (px)"), "24");
 
     expect(await blockProps(page)).toMatchObject({
       align: "center",
@@ -178,22 +192,22 @@ test.describe("Text settings", () => {
     await textBlock(page).click();
     const before = await structure(page);
 
-    await change(field(page, "Font size (px)"), "20");
+    await change(await setting(page, "Font size (px)"), "20");
 
     expect(await structure(page)).toStrictEqual(before);
-    await expect(field(page, "Font size (px)")).toBeFocused();
+    await expect(await setting(page, "Font size (px)")).toBeFocused();
   });
 
   test("go back to the default when emptied, even with spaces left", async ({
     page,
   }) => {
     await textBlock(page).click();
-    await change(field(page, "Color"), "#ff0000");
+    await change(await setting(page, "Color"), "#ff0000");
 
-    await change(field(page, "Color"), "  ");
+    await change(await setting(page, "Color"), "  ");
 
     expect(await blockProps(page)).not.toHaveProperty("color");
-    await expect(field(page, "Color")).toHaveValue("#000000");
+    await expect(await setting(page, "Color")).toHaveValue("#000000");
   });
 });
 
@@ -202,7 +216,7 @@ test.describe("Row settings", () => {
     await setValue(page, emailWith([[["In"]], [["Out"]]]));
     await selectRow(page, 1);
 
-    await change(rowField(page, "Background color"), "#00ff00");
+    await change(await rowField(page, "Background color"), "#00ff00");
 
     const { rows } = await currentValue(page);
     expect(rows.map(({ props }) => props)).toStrictEqual([
@@ -221,8 +235,8 @@ test.describe("Row settings", () => {
     await setValue(page, emailWith([[["In"]]]));
     await selectRow(page, 1);
 
-    await expect(rowField(page, "Left padding (px)")).toHaveValue("0");
-    await change(rowField(page, "Left padding (px)"), "40");
+    await expect(await rowField(page, "Left padding (px)")).toHaveValue("0");
+    await change(await rowField(page, "Left padding (px)"), "40");
 
     const { rows } = await currentValue(page);
     expect(rows[0]?.props).toStrictEqual({ paddingLeft: 40 });
@@ -232,17 +246,15 @@ test.describe("Row settings", () => {
     );
   });
 
-  test("hide the Row on phones with a switch, and mark it in its toolbar", async ({
+  test("hide the Row on phones with a switch, and mark it on its tag", async ({
     page,
   }) => {
     await setValue(page, emailWith([[["Left"], ["Right"]]]));
     await selectRow(page, 1);
-    const hide = row(page).getByRole("switch", { name: "Hide on phones" });
-    const stack = row(page).getByRole("switch", {
-      name: "Stack Columns on phones",
-    });
-    await expect(hide).not.toBeChecked();
+    const stack = await rowField(page, "Stack Columns on phones");
     await expect(stack).toBeChecked();
+    const hide = await rowField(page, "Hide on phones");
+    await expect(hide).not.toBeChecked();
 
     await hide.click();
 
@@ -250,8 +262,12 @@ test.describe("Row settings", () => {
     expect(rows[0]?.props).toStrictEqual({ hideOnPhone: true });
     await expect(hide).toBeChecked();
     await expect(
-      rowTools(page, 1).getByRole("img", { name: "Hidden on phones" })
+      rowTag(page, 1).locator('[data-tooltip="Hidden on phones"]')
     ).toBeVisible();
+    // Said too, as the tag isn't read.
+    await expect(rowTools(page, 1)).toHaveAccessibleDescription(
+      "Hidden on phones"
+    );
     expect(await violations(page)).toStrictEqual([]);
   });
 });
@@ -260,11 +276,12 @@ test.describe("Email settings", () => {
   test("look the same on the canvas and in the export", async ({ page }) => {
     const verdana = "Verdana, Geneva, sans-serif";
     await setValue(page, emailWith([[["Styled"]]]));
-    await change(emailField(page, "Width (px)"), "500");
-    await change(emailField(page, "Background color"), "#eeeeee");
-    await emailField(page, "Font").selectOption(verdana);
-    await change(emailField(page, "Preheader"), "Hello {{first_name}}");
-    await change(emailField(page, "Language"), "pt-BR");
+    await change(await emailField(page, "Width (px)"), "500");
+    await change(await emailField(page, "Background color"), "#eeeeee");
+    const font = await emailField(page, "Font");
+    await font.selectOption(verdana);
+    await change(await emailField(page, "Preheader"), "Hello {{first_name}}");
+    await change(await emailField(page, "Language"), "pt-BR");
 
     expect(await settingsOf(page)).toStrictEqual({
       backgroundColor: "#eeeeee",
@@ -309,57 +326,58 @@ test.describe("Email settings", () => {
 test.describe("undo", () => {
   test("takes back one change at a time", async ({ page }) => {
     await textBlock(page).click();
-    await change(field(page, "Color"), "#ff0000");
-    await field(page, "Alignment").selectOption("right");
+    await change(await setting(page, "Color"), "#ff0000");
+    await choose(page, "Alignment", "Right");
     await selectRow(page, 1);
-    await change(rowField(page, "Background color"), "#00ff00");
-    await openTab(page, "Settings");
-    await change(emailField(page, "Width (px)"), "500");
+    await change(await rowField(page, "Background color"), "#00ff00");
+    await change(await emailField(page, "Width (px)"), "500");
 
     await undoByKey(page);
-    await expect(emailField(page, "Width (px)")).toHaveValue("600");
+    await expect(await emailField(page, "Width (px)")).toHaveValue("600");
     await selectRow(page, 1);
     await undoByKey(page);
-    await expect(rowField(page, "Background color")).toHaveValue("");
-    // A click on the Block shows its settings again.
+    await expect(await rowField(page, "Background color")).toHaveValue("");
     await textBlock(page).click();
     await undoByKey(page);
-    await expect(field(page, "Alignment")).toHaveValue("left");
-    await expect(field(page, "Color")).toHaveValue("#ff0000");
+    await expect(chosen(page, "Alignment")).toHaveAccessibleName("Left");
+    await expect(await setting(page, "Color")).toHaveValue("#ff0000");
     await undoByKey(page);
-    await expect(field(page, "Color")).toHaveValue("#000000");
+    await expect(await setting(page, "Color")).toHaveValue("#000000");
     await expect(textBlock(page).locator("p")).toHaveCSS(
       "color",
       "rgb(0, 0, 0)"
     );
 
     await redoByKey(page);
-    await expect(field(page, "Color")).toHaveValue("#ff0000");
+    await expect(await setting(page, "Color")).toHaveValue("#ff0000");
     await expect(textBlock(page).locator("p")).toHaveCSS(
       "color",
       "rgb(255, 0, 0)"
     );
   });
 
-  test("works from a select, and from a Block afterwards", async ({ page }) => {
+  test("works from a choice in the bar, and from a Block afterwards", async ({
+    page,
+  }) => {
     await textBlock(page).click();
-    await field(page, "Alignment").selectOption("right");
+    await choose(page, "Alignment", "Right");
 
-    await field(page, "Alignment").focus();
+    await chosen(page, "Alignment").focus();
     await undoByKey(page);
-    await expect(field(page, "Alignment")).toHaveValue("left");
+    await expect(chosen(page, "Alignment")).toHaveAccessibleName("Left");
 
     await redoByKey(page);
     await textBlock(page).click();
     await undoByKey(page);
-    await expect(field(page, "Alignment")).toHaveValue("left");
+    await expect(chosen(page, "Alignment")).toHaveAccessibleName("Left");
   });
 
   test("leaves what's being typed to the field's own undo", async ({
     page,
   }) => {
-    await change(emailField(page, "Width (px)"), "500");
-    await emailField(page, "Language").click();
+    await change(await emailField(page, "Width (px)"), "500");
+    const language = await emailField(page, "Language");
+    await language.click();
     await page.keyboard.type("en");
 
     await undoByKey(page);
@@ -371,23 +389,24 @@ test.describe("undo", () => {
   test("reports each change once", async ({ page }) => {
     const expectChanges = await changesSince(page);
 
-    await change(emailField(page, "Width (px)"), "500");
+    await change(await emailField(page, "Width (px)"), "500");
     await page.keyboard.press("Tab");
 
     await expectChanges(1);
   });
 
   test("makes no step for the value it already has", async ({ page }) => {
-    await change(emailField(page, "Width (px)"), "500");
+    await change(await emailField(page, "Width (px)"), "500");
     const before = await currentValue(page);
 
-    await change(emailField(page, "Width (px)"), "500");
-    await emailField(page, "Width (px)").fill("0500");
+    await change(await emailField(page, "Width (px)"), "500");
+    const width = await emailField(page, "Width (px)");
+    await width.fill("0500");
     await page.keyboard.press("Tab");
 
     expect(await currentValue(page)).toStrictEqual(before);
     await undoByKey(page);
-    await expect(emailField(page, "Width (px)")).toHaveValue("600");
+    await expect(await emailField(page, "Width (px)")).toHaveValue("600");
   });
 });
 
@@ -396,11 +415,11 @@ test.describe("validation", () => {
     const errors = consoleErrors(page);
     await textBlock(page).click();
     const before = await currentValue(page);
-    const color = field(page, "Color");
+    const color = await setting(page, "Color");
 
     await change(color, "red");
 
-    const error = panelBlock(page).getByRole("alert");
+    const error = alerts(page);
     await expect(error).toHaveText(
       "Use a color such as #ff0000, rgb(255, 0, 0) or rgba(255, 0, 0, 0.5)."
     );
@@ -432,7 +451,7 @@ test.describe("validation", () => {
     page,
   }) => {
     await textBlock(page).click();
-    const size = field(page, "Font size (px)");
+    const size = await setting(page, "Font size (px)");
     await change(size, "30");
     const before = await currentValue(page);
 
@@ -443,7 +462,7 @@ test.describe("validation", () => {
     await page.keyboard.press("Enter");
 
     await expect(size).toHaveAttribute("aria-invalid", "true");
-    await expect(panelBlock(page).getByRole("alert")).toBeVisible();
+    await expect(alerts(page)).toBeVisible();
     expect(await currentValue(page)).toStrictEqual(before);
   });
 
@@ -451,14 +470,14 @@ test.describe("validation", () => {
     page,
   }) => {
     const hostEscapes = await countHostEscapes(page);
-    const language = emailField(page, "Language");
+    const language = await emailField(page, "Language");
     await change(language, "English");
 
     await language.press("Escape");
 
     await expect(language).toHaveValue("");
     await expect(hostEscapes()).resolves.toBe(0);
-    await expect(email(page).getByRole("alert")).toHaveCount(0);
+    await expect(alerts(page)).toHaveCount(0);
     await expect(language).toHaveAttribute("aria-invalid", "false");
 
     // With nothing typed, it's the host's.
@@ -467,26 +486,28 @@ test.describe("validation", () => {
   });
 
   test("undo clears a refused value", async ({ page }) => {
-    await change(emailField(page, "Width (px)"), "500");
-    await change(emailField(page, "Language"), "English");
+    await change(await emailField(page, "Width (px)"), "500");
+    await change(await emailField(page, "Language"), "English");
 
-    await emailField(page, "Width (px)").focus();
+    const width = await emailField(page, "Width (px)");
+    await width.focus();
     await undoByKey(page);
 
-    await expect(emailField(page, "Language")).toHaveValue("");
-    await expect(email(page).getByRole("alert")).toHaveCount(0);
-    await expect(emailField(page, "Width (px)")).toHaveValue("600");
+    await expect(await emailField(page, "Language")).toHaveValue("");
+    await expect(alerts(page)).toHaveCount(0);
+    await expect(await emailField(page, "Width (px)")).toHaveValue("600");
   });
 
   test("the color picker replaces a refused value", async ({ page }) => {
     await textBlock(page).click();
-    const color = field(page, "Color");
+    const color = await setting(page, "Color");
     await change(color, "red");
 
-    await field(page, "Color picker").fill("#00ff00");
+    const picker = await setting(page, "Color picker");
+    await picker.fill("#00ff00");
 
     await expect(color).toHaveValue("#00ff00");
-    await expect(panelBlock(page).getByRole("alert")).toHaveCount(0);
+    await expect(alerts(page)).toHaveCount(0);
     expect(await blockProps(page)).toMatchObject({ color: "#00ff00" });
   });
 });
@@ -496,20 +517,20 @@ test.describe("typing in a field", () => {
     await textBlock(page).click();
     await page.keyboard.type("Hi");
     const before = await structure(page);
-    await openTab(page, "Settings");
 
-    await emailField(page, "Preheader").click();
+    const preheader = await emailField(page, "Preheader");
+    await preheader.click();
     await page.keyboard.type("Typed here");
     await page.keyboard.press("Backspace");
 
     expect(await structure(page)).toStrictEqual(before);
-    await expect(emailField(page, "Preheader")).toHaveValue("Typed her");
+    await expect(await emailField(page, "Preheader")).toHaveValue("Typed her");
   });
 });
 
 test.describe("text that hasn't been committed", () => {
-  // addRow presses Back first, which commits it.
-  test("is committed when Back is pressed, as one undo step apart from the next button's", async ({
+  // addRow presses the Rows tab first, which takes focus, and so commits it.
+  test("is committed when another control is pressed, as one undo step apart from that control's", async ({
     page,
   }) => {
     await typeFontSize(page, "24");
@@ -526,7 +547,7 @@ test.describe("text that hasn't been committed", () => {
   test("is committed when a drag handle is pressed", async ({ page }) => {
     await typeFontSize(page, "24");
     // The selected Block's, which shows. A press keeps focus where it is.
-    const handle = blockTools(page).getByTestId("drag-handle");
+    const handle = selectedBlock(page).getByTestId("drag-handle");
     await expect(handle).toBeVisible();
     const box = await boxOf(handle);
 
@@ -538,13 +559,15 @@ test.describe("text that hasn't been committed", () => {
   });
 
   test("still shows why when a button is pressed", async ({ page }) => {
-    await emailField(page, "Language").fill("English");
+    const language = await emailField(page, "Language");
+    await language.fill("English");
 
     await addRow(page);
-    await openTab(page, "Settings");
+    // The new Row is selected, so the bar shows its settings.
+    await expect(alerts(page)).toHaveCount(0);
 
-    await expect(email(page).getByRole("alert")).toHaveCount(1);
-    await expect(emailField(page, "Language")).toHaveValue("English");
+    await expect(await emailField(page, "Language")).toHaveValue("English");
+    await expect(alerts(page)).toHaveCount(1);
     expect(await structure(page)).toHaveLength(2);
   });
 });
@@ -555,8 +578,7 @@ test.describe("focus", () => {
   }) => {
     await setValue(page, emailWith([[[]]]));
     await addText(page);
-    await openTab(page, "Settings");
-    const language = emailField(page, "Language");
+    const language = await emailField(page, "Language");
     await language.click();
     await undoByKey(page);
     await expect(textBlock(page)).toHaveCount(0);
@@ -583,13 +605,14 @@ test.describe("the color picker", () => {
     await setValue(page, value);
     await selectRow(page, 1);
 
-    await expect(rowField(page, "Background color")).toHaveValue("");
+    await expect(await rowField(page, "Background color")).toHaveValue("");
     // In full, as a color picker only takes six digits.
-    await expect(rowField(page, "Background color picker")).toHaveValue(
+    await expect(await rowField(page, "Background color picker")).toHaveValue(
       "#000000"
     );
 
-    await rowField(page, "Background color picker").fill("#ffffff");
+    const picker = await rowField(page, "Background color picker");
+    await picker.fill("#ffffff");
 
     const { rows } = await currentValue(page);
     expect(rows[0]?.props).toStrictEqual({ backgroundColor: "#ffffff" });
@@ -629,10 +652,9 @@ test.describe("layout", () => {
 test.describe("accessibility", () => {
   test("has no violations while showing a refused value", async ({ page }) => {
     await textBlock(page).click();
-    await change(field(page, "Color"), "red");
+    await change(await setting(page, "Color"), "red");
     expect(await violations(page)).toStrictEqual([]);
-    await openTab(page, "Settings");
-    await change(emailField(page, "Language"), "English");
+    await change(await emailField(page, "Language"), "English");
 
     expect(await violations(page)).toStrictEqual([]);
   });
