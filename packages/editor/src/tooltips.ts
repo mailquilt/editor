@@ -80,8 +80,10 @@ export const createTooltips = ({ root, tooltip }: TooltipsHost): Tooltips => {
       trigger.dataset.tooltipSide === "end" &&
       after + width <= document.documentElement.clientWidth - EDGE_PX
     ) {
+      const middle = box.top + box.height / 2 - height / 2;
+      const lowest = document.documentElement.clientHeight - height - EDGE_PX;
       tooltip.style.left = `${after}px`;
-      tooltip.style.top = `${Math.max(EDGE_PX, box.top + box.height / 2 - height / 2)}px`;
+      tooltip.style.top = `${Math.max(EDGE_PX, Math.min(middle, lowest))}px`;
       return;
     }
     const above = box.top - OFFSET_PX - height;

@@ -121,9 +121,17 @@ const scrollToward = (
 
 export type AutoScroll = ReturnType<typeof createAutoScroll>;
 
-/** For one drag of something in `host`, from the frame it starts. */
-export const createAutoScroll = (host: Element) => {
+/**
+ * For one drag of something in `host`, from the frame it starts. `inner` is a
+ * scroll container of the editor's own, such as the Rows list's, that the drag
+ * scrolls first while the pointer is beside it. What it hides is still in
+ * sight elsewhere, so it doesn't count for `shows`.
+ */
+export const createAutoScroll = (host: Element, inner?: Element) => {
   const containers = scrollContainersOf(host);
+  const scrolled: ScrollContainer[] = inner
+    ? [{ element: inner, sideways: false, upAndDown: true }, ...containers]
+    : containers;
   /** When the last frame ran, so a screen of any refresh rate scrolls as fast. */
   let lastFrame: number | undefined;
 
@@ -137,7 +145,7 @@ export const createAutoScroll = (host: Element) => {
           ? FRAME_SECONDS
           : Math.min(Math.max((time - lastFrame) / 1000, 0), MAX_FRAME_SECONDS);
       lastFrame = time;
-      scrollToward(containers, pointer, seconds);
+      scrollToward(scrolled, pointer, seconds);
     },
 
     /**

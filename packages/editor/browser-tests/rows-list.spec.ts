@@ -204,14 +204,14 @@ test.describe("the Rows list", () => {
     await add.click();
     await expect(layouts).toContainText("Adds below Row 1");
     await layouts.getByRole("button", { name: "Add 50/50 Row" }).click();
-
-    await expect(layouts).toBeHidden();
-    await expect(rowTools(page, 2)).toBeVisible();
-    await expect(listRows(page)).toHaveCount(3);
     const columns = await canvas(page).evaluate(
       (element) => (element as MailQuilt).value?.rows[1]?.columns.length
     );
+
     expect(columns).toBe(2);
+    await expect(layouts).toBeHidden();
+    await expect(rowTools(page, 2)).toBeVisible();
+    await expect(listRows(page)).toHaveCount(3);
   });
 
   test("collapses and expands, and keeps that as the editor's width changes", async ({
@@ -241,6 +241,53 @@ test.describe("the Rows list", () => {
   }) => {
     await open(page, [[["A"]]], 1100);
     await expect(toggle(page, "Expand")).toBeVisible();
+  });
+
+  test("a Row's picture is as tall as its Row, scaled, on a page that scales the editor too", async ({
+    page,
+  }) => {
+    await open(page, [[["A"]]]);
+    await canvas(page).evaluate((element) => {
+      element.style.transform = "scale(0.5)";
+      element.style.transformOrigin = "0 0";
+    });
+    // Drawn while the page scales it.
+    await setValue(page, emailWith([[["B", "C", "D"]]]));
+    await settle(page);
+
+    const [card, expected] = await canvas(page).evaluate((element) => {
+      const picture = element.shadowRoot?.querySelector<HTMLElement>(
+        "[data-place=rowPicture]"
+      );
+      const scale = Number(getComputedStyle(picture as Element).scale);
+      return [
+        picture?.parentElement?.offsetHeight ?? 0,
+        (picture?.offsetHeight ?? 0) * scale,
+      ];
+    });
+    expect(card).toBeGreaterThan(20);
+    expect(Math.abs(card - expected)).toBeLessThan(1);
+  });
+
+  test("a drag near the end of a long list scrolls it", async ({ page }) => {
+    await page.setViewportSize({ height: 700, width: WIDE + 40 });
+    const rows = Array.from({ length: 30 }, (_, index) => [[`Row${index}`]]);
+    await open(page, rows);
+    await canvas(page).evaluate((element) => element.scrollIntoView());
+    await settle(page);
+    const scroller = rowsList(page).getByTestId("rows-items").locator("..");
+    const box = await boxOf(scroller);
+    const visibleBottom = Math.min(box.y + box.height, 700);
+
+    await pickUp(page, listRow(page, "Row 1 of 30: Text"));
+    await moveTo(page, { x: box.x + box.width / 2, y: visibleBottom - 4 });
+    await page.waitForTimeout(300);
+
+    await expect
+      .poll(() => scroller.evaluate((element) => element.scrollTop))
+      .toBeGreaterThan(0);
+    await page.keyboard.press("Escape");
+    await letGo(page);
   });
 
   test("a Row's picture shows what's typed in its text", async ({ page }) => {

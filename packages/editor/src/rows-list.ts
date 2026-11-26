@@ -1,5 +1,5 @@
 import { ROW_LAYOUTS } from "@mailquilt/core";
-import type { Block, RichTextDocument, Row } from "@mailquilt/core";
+import type { Block, Row } from "@mailquilt/core";
 import { blockStyles, EMAIL_LOOK, rowStyles } from "@mailquilt/core/internal";
 import type { RowProps } from "@mailquilt/core/internal";
 import { css, html, nothing, unsafeCSS } from "lit";
@@ -56,10 +56,8 @@ export const createRowsList = ({ focus, requestUpdate }: RowsListHost) => {
    * Each text Block's picture, drawn again only once its text changes, and
    * kept in its place in the list, rather than drawn on every update.
    */
-  const texts = new Map<
-    string,
-    { content: RichTextDocument; element: HTMLElement }
-  >();
+  // By its text as JSON, as each update's email is a new copy.
+  const texts = new Map<string, { content: string; element: HTMLElement }>();
 
   const closeAdd = (returnFocus: boolean) => {
     if (!addOpen) {
@@ -83,11 +81,12 @@ export const createRowsList = ({ focus, requestUpdate }: RowsListHost) => {
 
     textPicture(block: Extract<Block, { type: "heading" | "text" }>) {
       const made = texts.get(block.id);
-      if (made?.content === block.props.content) {
+      const content = JSON.stringify(block.props.content);
+      if (made?.content === content) {
         return made.element;
       }
       const element = drawText(block);
-      texts.set(block.id, { content: block.props.content, element });
+      texts.set(block.id, { content, element });
       return element;
     },
 
@@ -154,11 +153,14 @@ export const createRowsList = ({ focus, requestUpdate }: RowsListHost) => {
 export const createRowPictures = (root: ShadowRoot) => {
   const observed = new Set<Element>();
   let shownRowId: string | undefined;
+  // From the picture's own height and scale, as its box on screen also has
+  // the scale of a Host app page that scales the editor.
   const sizes = new ResizeObserver((entries) => {
     for (const { target } of entries) {
       const card = target.parentElement;
-      if (card) {
-        card.style.height = `${target.getBoundingClientRect().height}px`;
+      const scale = Number(getComputedStyle(target).scale);
+      if (card && target instanceof HTMLElement) {
+        card.style.height = `${target.offsetHeight * (Number.isFinite(scale) ? scale : 1)}px`;
       }
     }
   });

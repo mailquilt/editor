@@ -243,7 +243,8 @@ export const createDragging = ({
     if (
       list?.parentElement &&
       contains(list.parentElement, pointer) &&
-      contains(list, pointer)
+      contains(list, pointer) &&
+      autoScroll.shows(pointer)
     ) {
       return isRowSource(source)
         ? listLanding(list, pointer, source)
@@ -414,7 +415,13 @@ export const createDragging = ({
       return;
     }
     drag = {
-      autoScroll: createAutoScroll(root.host),
+      // A Row's drag scrolls the Rows list too, to land in a long one.
+      autoScroll: createAutoScroll(
+        root.host,
+        isRowSource(grab.source)
+          ? (findPlace(root, "rowsItems")?.parentElement ?? undefined)
+          : undefined
+      ),
       ghost: createDragGhost(grab.ghostOf ?? grab.element),
       pointer: { x: event.clientX, y: event.clientY },
       restoreCursor: showGrabbingCursor(root),
