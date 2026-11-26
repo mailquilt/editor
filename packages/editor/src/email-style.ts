@@ -111,7 +111,16 @@ const REACHES: Record<
     isText(block) && hasLink((block.props as { content: unknown }).content)
       ? { own: "color" }
       : undefined,
-  textColor: (block) => (isText(block) ? { own: "color" } : undefined),
+  // Text that's all links shows the links' color while Email style sets one.
+  textColor: (block, style) =>
+    isText(block) &&
+    !(
+      style.linkColor !== undefined &&
+      (block.props as { color?: string }).color === undefined &&
+      isAllLinks((block.props as { content: unknown }).content)
+    )
+      ? { own: "color" }
+      : undefined,
   textFontSize: ({ type }) => {
     if (type === "button") {
       return {};
@@ -160,6 +169,25 @@ export const reachOf = (key: StyleKey, email: BlocksDocument): Reach => {
 
 /** MJML's corners for a Button, which the export keeps until Email style sets its own. */
 const MJML_BUTTON_CORNERS = 3;
+
+/** Whether every piece of a Block's text is a link, and it has some. */
+const isAllLinks = (node: unknown): boolean => {
+  const texts: { marks?: { type: string }[] }[] = [];
+  const collect = (part: unknown) => {
+    const { content, type } = part as { content?: unknown[]; type?: string };
+    if (type === "text" || type === "mergeTag") {
+      texts.push(part as { marks?: { type: string }[] });
+    }
+    for (const child of content ?? []) {
+      collect(child);
+    }
+  };
+  collect(node);
+  return (
+    texts.length > 0 &&
+    texts.every(({ marks }) => marks?.some(({ type }) => type === "link"))
+  );
+};
 
 const HEADING_LEVELS = {
   heading1FontSize: 1,

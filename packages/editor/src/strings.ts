@@ -218,6 +218,8 @@ export const STRINGS = {
   /** A size's field: "Heading 1 size". */
   "style.size": "{label} size",
   "style.defaultIs": "Default is {value}",
+  /** A size's field, for screen readers: "Heading 1 size (px)". */
+  "style.sizeField": "{size} ({unit})",
   "style.hex": "Hex",
   "style.inThisEmail": "In this email",
   /** The square that picks how saturated and bright a color is. */

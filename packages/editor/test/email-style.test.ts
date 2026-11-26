@@ -159,6 +159,12 @@ describe("what an Email style setting reaches", () => {
     }
   );
 
+  it("Text color leaves out text that's all links while Email style sets the links' color", () => {
+    expect(
+      reachOf("textColor", email({ linkColor: "#0000ff" })).changes
+    ).toStrictEqual(["h1", "h2", "text"]);
+  });
+
   it("the body font reaches Headings only while they have no font of their own", () => {
     const body = ["text", "link", "textOwn", "button", "buttonOwn"];
     expect(reachOf("fontFamily", email()).changes).toStrictEqual([

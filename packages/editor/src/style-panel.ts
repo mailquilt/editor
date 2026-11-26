@@ -989,7 +989,10 @@ export const createStylePanel = ({
 }: StylePanelHost) => {
   let open: Open | undefined;
   /** The setting the pointer or focus is on, which the Canvas marks. */
-  let marked: StyleKey | undefined;
+  let hovered: StyleKey | undefined;
+  let focused: StyleKey | undefined;
+  /** What the pointer is on, or else what focus is on, which the Canvas marks. */
+  const marked = () => hovered ?? focused;
   /** Changes in one go, such as a drag of the shade, are one undo step. */
   let session = 0;
   /** The last email shown, for what keys do with no update between. */
@@ -1195,8 +1198,14 @@ export const createStylePanel = ({
               type="button"
               @click=${() => {
                 session += 1;
-                current.hsv = undefined;
-                set(key, color);
+                const result = set(key, color);
+                // What was typed in Hex, and refused, gives way to the swatch.
+                if (result?.ok || result?.code === "unchanged") {
+                  current.hsv = undefined;
+                  current.typed = undefined;
+                  current.refusals = 0;
+                  requestUpdate();
+                }
               }}
             ></button>
           `
@@ -1245,7 +1254,7 @@ export const createStylePanel = ({
           <input
             aria-describedby=${current.refusals > 0 ? errorId : nothing}
             aria-invalid=${current.refusals > 0 ? "true" : "false"}
-            aria-label=${`${label} ${text("settings.unit", { unit: text("unit.px") })}`}
+            aria-label=${text("style.sizeField", { size: label, unit: text("unit.px") })}
             data-start
             max=${FONT_SIZE_LIMITS.max ?? nothing}
             min=${FONT_SIZE_LIMITS.min}
@@ -1432,24 +1441,31 @@ export const createStylePanel = ({
 
   // ---------- The panel ----------
 
-  const markOn = (key: StyleKey) => () => {
-    if (marked !== key) {
-      marked = key;
-      requestUpdate();
-    }
+  /**
+   * The pointer and focus each mark their setting, and a mark goes only once
+   * neither is on it.
+   */
+  const markEvents = (key: StyleKey) => {
+    const leaving = (current: StyleKey | undefined) =>
+      current === key ? undefined : current;
+    const by = (input: "focus" | "pointer", on: boolean) => () => {
+      const before = marked();
+      if (input === "pointer") {
+        hovered = on ? key : leaving(hovered);
+      } else {
+        focused = on ? key : leaving(focused);
+      }
+      if (marked() !== before) {
+        requestUpdate();
+      }
+    };
+    return {
+      blur: by("focus", false),
+      enter: by("pointer", true),
+      focus: by("focus", true),
+      leave: by("pointer", false),
+    };
   };
-
-  const markOff = (key: StyleKey) => () => {
-    if (marked === key) {
-      marked = undefined;
-      requestUpdate();
-    }
-  };
-
-  const markEvents = (key: StyleKey) => ({
-    off: markOff(key),
-    on: markOn(key),
-  });
 
   const renderSetting = (
     setting: Setting,
@@ -1468,20 +1484,20 @@ export const createStylePanel = ({
         aria-haspopup="dialog"
         class=${`style-setting ${setting.kind}`}
         data-action=${`style-${setting.key}`}
-        ?data-marked=${marked === setting.key || overridden.has(setting.key)}
+        ?data-marked=${marked() === setting.key || overridden.has(setting.key)}
         type="button"
-        @blur=${events.off}
+        @blur=${events.blur}
         @click=${({ currentTarget }: MouseEvent) =>
           toggle(setting, currentTarget as HTMLElement)}
-        @focus=${events.on}
+        @focus=${events.focus}
         @mousedown=${(event: MouseEvent) => {
           // Focus stays in an open popover, so the press toggles it.
           if (open) {
             event.preventDefault();
           }
         }}
-        @pointerenter=${events.on}
-        @pointerleave=${events.off}
+        @pointerenter=${events.enter}
+        @pointerleave=${events.leave}
       >
         ${body(
           html`<span class="words">${words}</span>`,
@@ -1587,10 +1603,10 @@ export const createStylePanel = ({
           aria-labelledby="style-corners"
           class="style-corners"
           role="radiogroup"
-          @focusin=${events.on}
-          @focusout=${events.off}
-          @pointerenter=${events.on}
-          @pointerleave=${events.off}
+          @focusin=${events.focus}
+          @focusout=${events.blur}
+          @pointerenter=${events.enter}
+          @pointerleave=${events.leave}
         >
           ${CORNERS.map(
             ({ drawn, label, radius }) => html`
@@ -1740,7 +1756,8 @@ export const createStylePanel = ({
     /** Forgets what's open, as when the email is replaced or Style is left. */
     forget() {
       open = undefined;
-      marked = undefined;
+      hovered = undefined;
+      focused = undefined;
     },
 
     /**
@@ -1748,7 +1765,7 @@ export const createStylePanel = ({
      * marks on the Canvas, by Row or Block ID.
      */
     marks(shownEmail: BlocksDocument): ReadonlyMap<string, StyleMark> {
-      const key = open?.key ?? marked;
+      const key = open?.key ?? marked();
       const setting = key && settingOf(key);
       const marks = new Map<string, StyleMark>();
       if (!(key && setting)) {

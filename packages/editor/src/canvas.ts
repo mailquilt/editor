@@ -50,7 +50,7 @@ export const canvasStyles = css`
   }
 
   /* A selected Block that's marked says what the setting does, in its place. */
-  .styling .block[data-style-mark]::after {
+  .styling .block[data-style-tagged]::after {
     display: none;
   }
 
@@ -609,6 +609,7 @@ const renderBlock = (
       data-label=${type}
       data-place=${place("block")}
       data-style-mark=${mark?.kind ?? nothing}
+      ?data-style-tagged=${mark?.tag !== undefined}
       role="group"
       style=${styleProperties(rich ? textBlockLook(block, style) : {})}
       tabindex=${isTabStop ? "0" : "-1"}
