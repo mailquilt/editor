@@ -62,7 +62,7 @@ mail-quilt[theme="dark"] {
 }
 ```
 
-With `auto`, set them for `mail-quilt[theme="auto"]` inside `@media (prefers-color-scheme: dark)`. On a Shell, use `mail-quilt-shell` in place of `mail-quilt`. The dark theme changes only colors and shadows, so the font, spacing and corners you set apply in both.
+With `auto`, set them for `mail-quilt[theme="auto"]` inside `@media (prefers-color-scheme: dark)`. On a Shell, use `mail-quilt-shell` in place of `mail-quilt`. Set both accents in a stylesheet, as here: a token in the element's `style` attribute wins over any stylesheet, so a rule for `[theme="dark"]` can't replace it. The dark theme changes only colors and shadows, so the font, spacing and corners you set apply in both.
 
 A few tokens pair with each other, so change them together, and keep text at 4.5:1 and a field's edge at 3:1:
 
