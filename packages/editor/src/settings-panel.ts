@@ -1067,12 +1067,15 @@ export const renderSettingsPanel = (
   drafts: SettingsDrafts,
   tagsOf: (fieldId: string) => FieldTags,
   textOf: Text,
-  shown: readonly SettingsField[] = section.fields
+  shown: readonly SettingsField[] = section.fields,
+  /** A control of its own under the section's name, before its fields. */
+  lead: TemplateResult | typeof nothing = nothing
 ) => html`
   <div class="settings" data-place=${place("settings")}>
     <div class="section">
       <fieldset>
         <legend>${section.legend}</legend>
+        ${lead}
         ${shown.map((field) =>
           renderField(section, field, drafts, tagsOf, textOf)
         )}

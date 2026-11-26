@@ -245,6 +245,14 @@ test.describe("a Row's padding", () => {
     await expect(everySide).toBeFocused();
     await expect(sameOnEverySide(page)).toBeChecked();
     await expect(field(page, "Top padding (px)")).toHaveCount(0);
+    // Above the fields, so it stays put as they change, and before them for
+    // Tab, as it's drawn.
+    const switchBox = await boxOf(sameOnEverySide(page));
+    const fieldBox = await boxOf(everySide);
+    expect(switchBox.y).toBeLessThan(fieldBox.y);
+    await page.keyboard.press("Shift+Tab");
+    await expect(sameOnEverySide(page)).toBeFocused();
+    await page.keyboard.press("Tab");
 
     await page.keyboard.type("24");
     await page.keyboard.press("Enter");

@@ -926,13 +926,13 @@ F.push({ id: "e08-more-menu", html: () => `<div class="app rail">${topBar({ mode
 F.push({ id: "e09-row-padding", html: () => `<div class="app rail">${topBar({ mode: "edit" })}${rail(4)}<main class="cv">${ctxRow.replace('<span class="swb">' + ic("pad", "sm") + "Padding", '<span class="swb" style="background:var(--accent-soft);color:var(--accent-2)">' + ic("pad", "sm") + "Padding")}
   <div class="pop" style="left:calc(50% - 30px); top:58px; width:280px; padding:12px">
     <div style="font-weight:600;margin-bottom:10px">Padding</div>
+    <div class="kv" style="margin:0 0 8px"><span>Same on every side</span><span class="tgl"></span></div>
     <div class="padgrid">
       <span class="num"><span class="lab">Top</span>12<span class="u">px</span></span>
       <span class="num"><span class="lab">Right</span>32<span class="u">px</span></span>
       <span class="num"><span class="lab">Bottom</span>28<span class="u">px</span></span>
       <span class="num"><span class="lab">Left</span>32<span class="u">px</span></span>
     </div>
-    <div class="kv" style="margin:10px 0 0"><span>Same on every side</span><span class="tgl"></span></div>
   </div>
   <div class="stage" style="margin-top:-330px">${email({ row: 4 })}</div></main></div>` });
 F.push({ id: "h01-host-theme-plain-email", noDark: true, html: () => `<div class="app collapsed">${topBar({ mode: "edit" }).replace("Spring roast launch", "March product notes")}${collapsedRail(3)}<main class="cv">${ctxText.replace('<span class="ib on">' + ic("braces") + "</span>", '<span class="ib">' + ic("braces") + "</span>")}<div class="stage"><div class="plainmail">

@@ -458,8 +458,8 @@ const ctxRowPadding = ctxRow.replace('<span class="swb">' + ic("pad", "sm") + "P
 F.push({ id: "g09-padding-same-on-every-side", html: () => `<div class="app rail">${topBar({ mode: "edit" })}${rail(4)}<main class="cv">${ctxRowPadding}
   <div class="pop" style="left:calc(50% - 30px); top:58px; width:280px; padding:12px">
     <div style="font-weight:600;margin-bottom:10px">Padding</div>
+    <div class="kv" style="margin:0 0 8px"><span>Same on every side</span><span class="tgl on"></span></div>
     <span class="num" style="justify-content:space-between;box-shadow:0 0 0 2px var(--accent)"><span class="lab">Every side</span>24<span class="u">px</span></span>
-    <div class="kv" style="margin:10px 0 0"><span>Same on every side</span><span class="tgl on"></span></div>
   </div>
   <div class="stage" style="margin-top:-330px">${email({ row: 4 })}</div></main></div>` });
 

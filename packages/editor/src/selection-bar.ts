@@ -469,16 +469,13 @@ export const selectionBarStyles = css`
   }
 
   .bar-popover.grid legend,
-  .bar-popover.grid fieldset > .field:only-of-type {
+  .bar-popover.grid .same-sides,
+  .bar-popover.grid .same-sides + .field:last-child {
     grid-column: 1 / -1;
   }
 
-  /* Under the fields, the name and the switch on one line. */
-  .bar-popover .same-sides .section {
-    padding-block-start: 0;
-  }
-
-  .bar-popover.grid .same-sides .field.inline {
+  /* The switch's name and the switch on one line. */
+  .bar-popover.grid .field.inline.same-sides {
     align-items: center;
     flex-direction: row;
     justify-content: space-between;
@@ -1462,6 +1459,20 @@ const renderPaddingPopover = (
       });
     }
   };
+  // Under the name and above the fields, so it stays where it was pressed
+  // as they change.
+  const sameSides = html`
+    <div class="field same-sides inline">
+      <label for=${switchId}>${text("bar.sameOnEverySide")}</label>
+      <input
+        id=${switchId}
+        role="switch"
+        type="checkbox"
+        .checked=${live(same)}
+        @change=${onSame}
+      />
+    </div>
+  `;
   return html`
     <div
       aria-label=${legend}
@@ -1470,37 +1481,14 @@ const renderPaddingPopover = (
       role="dialog"
       tabindex="-1"
     >
-      ${
-        same
-          ? renderSettingsPanel(
-              { ...everySection, legend },
-              drafts,
-              fieldTags(api),
-              text,
-              [everySide]
-            )
-          : renderSettingsPanel(
-              { ...section, legend },
-              drafts,
-              fieldTags(api),
-              text,
-              sides
-            )
-      }
-      <div class="settings same-sides">
-        <div class="section">
-          <div class="field inline">
-            <label for=${switchId}>${text("bar.sameOnEverySide")}</label>
-            <input
-              id=${switchId}
-              role="switch"
-              type="checkbox"
-              .checked=${live(same)}
-              @change=${onSame}
-            />
-          </div>
-        </div>
-      </div>
+      ${renderSettingsPanel(
+        same ? { ...everySection, legend } : { ...section, legend },
+        drafts,
+        fieldTags(api),
+        text,
+        same ? [everySide] : sides,
+        sameSides
+      )}
     </div>
   `;
 };
