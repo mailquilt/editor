@@ -302,14 +302,19 @@ test.describe("More", () => {
     await moreButton(page).click();
 
     // Beside the email and before the side panel, once the editor has laid
-    // itself out at its new width.
+    // itself out at its new width. A poll that throws stops, so a box not
+    // there yet, as More moves, is a "not yet".
     await expect
       .poll(async () => {
-        const email = await boxOf(canvas(page).getByTestId("email"));
-        const docked = await boxOf(morePanel(page));
-        const side = await boxOf(canvas(page).getByTestId("side-panel"));
-        return (
-          docked.x >= email.x + email.width && docked.x + docked.width <= side.x
+        const email = await canvas(page).getByTestId("email").boundingBox();
+        const docked = await morePanel(page).boundingBox();
+        const side = await canvas(page).getByTestId("side-panel").boundingBox();
+        return Boolean(
+          email &&
+          docked &&
+          side &&
+          docked.x >= email.x + email.width &&
+          docked.x + docked.width <= side.x
         );
       })
       .toBe(true);
@@ -318,8 +323,11 @@ test.describe("More", () => {
     const workspace = await boxOf(canvas(page).getByTestId("workspace"));
     await expect
       .poll(async () => {
-        const floating = await boxOf(morePanel(page));
-        return floating.x + floating.width <= workspace.x + workspace.width;
+        const floating = await morePanel(page).boundingBox();
+        return Boolean(
+          floating &&
+          floating.x + floating.width <= workspace.x + workspace.width
+        );
       })
       .toBe(true);
   });
