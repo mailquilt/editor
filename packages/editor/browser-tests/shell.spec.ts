@@ -1416,6 +1416,25 @@ test.describe("look", () => {
       shell(page).locator("mail-quilt").getByTestId("side-panel-content")
     ).toHaveCSS("background-color", "rgb(1, 2, 3)");
   });
+
+  test("theme on the Shell darkens its header and the editor inside", async ({
+    page,
+  }) => {
+    await openShell(page);
+    const editor = shell(page).locator("mail-quilt");
+
+    await shell(page).evaluate((element) => {
+      element.setAttribute("theme", "dark");
+    });
+
+    await expect(header(page)).toHaveCSS("background-color", "rgb(22, 23, 25)");
+    await expect(editor.getByTestId("side-panel-content")).toHaveCSS(
+      "background-color",
+      "rgb(22, 23, 25)"
+    );
+    // So what the editor draws from its own theme, not a token, is dark too.
+    await expect(editor).toHaveAttribute("theme", "dark");
+  });
 });
 
 test("shows the dragging cursor over the Shell during a drag", async ({
@@ -1462,25 +1481,38 @@ test("a file dropped on the Shell's name doesn't open in the page, and one on th
   );
 });
 
-test.describe("accessibility", () => {
-  test("meets WCAG 2.2 AA, with a message showing", async ({ page }) => {
-    await page.goto("/shell.html?refused-first");
-    await expect(shell(page).getByRole("alert")).toBeVisible();
+const setTheme = (page: Page, theme: string) =>
+  shell(page).evaluate((element, chosen) => {
+    element.setAttribute("theme", chosen);
+  }, theme);
 
-    expect(await violations(page, "mail-quilt-shell")).toStrictEqual([]);
+for (const theme of ["light", "dark"] as const) {
+  test.describe(`accessibility in the ${theme} theme`, () => {
+    // The Export menu fades in, and WebKit in CI has stopped a fade partway
+    // until the page was next drawn. Reduced motion turns the fade off.
+    test.use({ reducedMotion: "reduce" });
+
+    test("meets WCAG 2.2 AA, with a message showing", async ({ page }) => {
+      await page.goto("/shell.html?refused-first");
+      await setTheme(page, theme);
+      await expect(shell(page).getByRole("alert")).toBeVisible();
+
+      expect(await violations(page, "mail-quilt-shell")).toStrictEqual([]);
+    });
+
+    test("meets WCAG 2.2 AA with the Export menu open and its save status", async ({
+      page,
+    }) => {
+      await openShell(page, "?save-key=test:email");
+      await setTheme(page, theme);
+      const menu = await openMenu(page, "Export");
+      // Once it has grown in, as text that's fading in has less contrast.
+      await expect(menu).toHaveCSS("opacity", "1");
+
+      expect(await violations(page, "mail-quilt-shell")).toStrictEqual([]);
+    });
   });
-
-  test("meets WCAG 2.2 AA with the Export menu open and its save status", async ({
-    page,
-  }) => {
-    await openShell(page, "?save-key=test:email");
-    const menu = await openMenu(page, "Export");
-    // Once it has grown in, as text that's fading in has less contrast.
-    await expect(menu).toHaveCSS("opacity", "1");
-
-    expect(await violations(page, "mail-quilt-shell")).toStrictEqual([]);
-  });
-});
+}
 
 test.describe("too narrow to edit in", () => {
   test("the notice fills the space below the header", async ({ page }) => {

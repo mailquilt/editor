@@ -44,7 +44,6 @@ import {
   undoByKey,
   violations,
   watchPrevented,
-  docsDarkTheme,
 } from "./helpers.js";
 
 /** Back to the side panel's tabs from the keyboard, the Block still selected. */
@@ -885,16 +884,24 @@ test.describe("automated accessibility checks", () => {
     expect(await violations(page)).toEqual([]);
   });
 
-  test("pass in the docs' dark theme, with a tooltip, a pressed button, the link field's error and the Merge Tag picker", async ({
+  test("pass in the dark theme, in each surface and state the light theme's checks cover", async ({
     page,
   }) => {
-    await openEmail(page, [[["A"]]]);
-    const workspace = canvas(page).getByTestId("workspace");
-    const light = await workspace.evaluate(
-      (element) => getComputedStyle(element).backgroundColor
+    // With an empty Column, whose placeholder is drawn on the email.
+    await openEmail(page, [[["A", "B"], []], [["C"]]]);
+    await canvas(page).evaluate((element) => {
+      element.setAttribute("theme", "dark");
+    });
+    await expect(canvas(page).getByTestId("workspace")).toHaveCSS(
+      "background-color",
+      "rgb(16, 17, 19)"
     );
-    await page.addStyleTag({ content: docsDarkTheme() });
-    await expect(workspace).not.toHaveCSS("background-color", light);
+    expect(await violations(page)).toEqual([]);
+
+    await palette(page, "Heading").click();
+    await canvas(page).getByRole("group", { name: "Heading Block" }).focus();
+    await expect(page.getByLabel("Level", { exact: true })).toBeVisible();
+    expect(await violations(page)).toEqual([]);
 
     await blockWith(page, "A").focus();
     await undoButton(page).hover();
@@ -931,6 +938,40 @@ test.describe("automated accessibility checks", () => {
     await expect(
       canvas(page).getByRole("option", { name: "company" })
     ).toHaveAttribute("aria-selected", "true");
+    expect(await violations(page)).toEqual([]);
+    await page.keyboard.press("Escape");
+
+    await selectRow(page, 2);
+    await expect(layoutOption(page, "100")).toBeVisible();
+    expect(await violations(page)).toEqual([]);
+
+    await openTab(page, "Rows");
+    expect(await violations(page)).toEqual([]);
+
+    // The Settings tab, with a field showing a value it refused.
+    await openTab(page, "Settings");
+    const language = page
+      .getByRole("group", { exact: true, name: "Email" })
+      .getByLabel("Language", { exact: true });
+    await language.fill("English");
+    await language.press("Tab");
+    await expect(page.getByRole("alert")).toBeVisible();
+    expect(await violations(page)).toEqual([]);
+
+    for (const name of ["Style", "Check", "Edit"]) {
+      await canvas(page).getByRole("tab", { exact: true, name }).click();
+      expect(await violations(page)).toEqual([]);
+    }
+
+    await previewButton(page).click();
+    await expect(page.getByTitle("Email preview")).toBeVisible();
+    expect(
+      await violations(page, "mail-quilt", { excludeIframe: true })
+    ).toEqual([]);
+    await page.keyboard.press("Escape");
+
+    await page.setViewportSize(NARROW_VIEWPORT);
+    await expect(narrowNotice(page)).toBeVisible();
     expect(await violations(page)).toEqual([]);
   });
 

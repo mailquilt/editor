@@ -109,6 +109,7 @@ const Host = () => {
           mergeTags={mergeTags()}
           socialIconsUrl={SOCIAL_ICONS_URL}
           strings={strings()}
+          theme="dark"
           uploadImage={uploadImage}
           value={document}
         />
@@ -184,6 +185,7 @@ const ShellHost = () => {
         saveKey={saveKey}
         socialIconsUrl={SOCIAL_ICONS_URL}
         strings={strings()}
+        theme="dark"
         uploadImage={uploadImage}
         value={document}
       />

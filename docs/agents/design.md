@@ -30,7 +30,7 @@ This page sets the bar, the process and the checklist every UI change passes bef
    - Use the `frontend-design` skill for visual direction and the `emil-design-eng` skill for interaction polish: press and hover states, where a popover grows from, tooltip timing, transitions.
 5. **Review** against the checklist below. Where a rule is deliberately broken, the code or this page says why. A correctness review is not a design review.
 6. **Make the evidence and look at it, to find faults.** Before calling UI done, produce and inspect:
-   - screenshots at 320, 390, 768, 1024, 1440, 1920 and 2560 px wide, in light and dark, for every state, including errors. For the editor, that's its default theme and the dark theme from `theme-the-editor.mdx`, and below 640px its narrow notice. The wide screens matter: a layout that looks right at 1440 can stretch badly on a wide monitor;
+   - screenshots at 320, 390, 768, 1024, 1440, 1920 and 2560 px wide, in light and dark, for every state, including errors. For the editor, that's its default theme and its built-in dark theme (`theme="dark"`), and below 640px its narrow notice. The wide screens matter: a layout that looks right at 1440 can stretch badly on a wide monitor;
    - every dialog, menu, tooltip and the Preview open, on a phone and on desktop;
    - a frame-by-frame recording of anything that loads, in which nothing already drawn moves or changes;
    - focus and keyboard paths checked in a real browser with real keys, against `keyboard.mdx` and the rules in `docs/agents/decisions.md`, "Keys and focus".
@@ -57,11 +57,11 @@ Run this on every UI change, and explain each finding in plain words: what a use
    - Every control has a name and a label. Errors and refusals are announced.
    - Keyboard focus is visible, and anything a person can do by dragging they can do from the keyboard.
    - When the focused element is removed or disabled, focus moves somewhere on purpose (ADR 0011).
-   - Text contrast is at least 4.5:1; icons and borders at least 3:1, in the default theme and the documented dark theme.
+   - Text contrast is at least 4.5:1; icons and borders at least 3:1, in the default theme and the built-in dark theme.
    - Targets are at least 24 px.
    - Motion respects reduced motion. Decorative graphics are hidden from screen readers.
 3. **Responsive:** the widths above, with no sideways scroll. A one-column page is capped and centred on wide screens, never left-aligned with an empty gap on the right.
-4. **Theming:** the editor uses its tokens only, and a host token set on the element wins. The site uses `theme.css`'s tokens. No hard-coded colours or one-off sizes; add a token instead, and document a new editor token in `theme-tokens.mdx`.
+4. **Theming:** the editor uses its tokens only, and a host token set on the element wins, in either theme. The site uses `theme.css`'s tokens. No hard-coded colours or one-off sizes; add a token instead, with its dark value in `theme.ts`, and document a new editor token in `theme-tokens.mdx`.
 5. **Reuse and structure:** repeated markup or logic becomes one component or module. Each has one job, a small API and no dead code. Names say what things are.
 6. **Lit and types:** no needless casts, listeners cleaned up, and state kept once (ADR 0016).
 7. **Performance:** watch what each font, icon and library adds to the editor's bundle; it ships inside other apps. MJML loads only for Preview and export. Animate `transform` and `opacity` only.

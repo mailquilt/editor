@@ -16,6 +16,7 @@ const uploadImage = (file: File) => Promise.resolve({ url: file.name });
   <mail-quilt
     :merge-tags="[{ label: 'First name', name: 'first_name' }]"
     :upload-image="uploadImage"
+    theme="dark"
     @mq-change="keep($event.detail.document)"
     @mq-error="show($event.detail.reason)"
   />
@@ -23,10 +24,13 @@ const uploadImage = (file: File) => Promise.resolve({ url: file.name });
     actions="export-html"
     heading="Newsletter"
     save-key="my-app:email"
+    theme="auto"
     @mq-change="keep($event.detail.document)"
     @mq-error="show($event.detail.reason)"
   />
 
+  <!-- @vue-expect-error The theme is light, dark or auto. -->
+  <mail-quilt theme="blue" />
   <!-- @vue-expect-error An email isn't a number. -->
   <mail-quilt :value.prop="42" />
   <!-- @vue-expect-error The email is an object, not a number. -->

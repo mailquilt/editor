@@ -15,6 +15,7 @@ import type { StringId } from "./strings.js";
 import { createText } from "./text.js";
 import type { Text } from "./text.js";
 import { themeTokens, uiStyles } from "./theme.js";
+import type { MailQuiltTheme } from "./theme.js";
 import { takeValueSetEarly } from "./value-set-early.js";
 
 /** The Shell's own buttons. */
@@ -35,15 +36,18 @@ interface MenuItem {
   run: () => unknown;
 }
 
-/** Every theme token's name, from the one list that defines them. */
-const TOKEN_NAMES = themeTokens.cssText.match(/--mq-[\w-]+(?=\s*:)/gu) ?? [];
+/**
+ * Every theme token's name, from the one list that defines them, once, as the
+ * dark theme names them again.
+ */
+const TOKEN_NAMES = new Set(themeTokens.cssText.match(/--mq-[\w-]+(?=\s*:)/gu));
 
 /**
  * The editor inside takes the Shell's tokens rather than its own defaults, so
  * a token set on the Shell restyles both.
  */
 const inheritTokens = unsafeCSS(
-  `mail-quilt { ${TOKEN_NAMES.map((name) => `${name}: inherit;`).join(" ")} }`
+  `mail-quilt { ${[...TOKEN_NAMES].map((name) => `${name}: inherit;`).join(" ")} }`
 );
 
 /**
@@ -155,6 +159,8 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
     actions: {},
     heading: {},
     saveKey: { attribute: "save-key" },
+    // Reflected, as the theme is drawn from the attribute.
+    theme: { reflect: true },
     // Passed on to the editor, as properties only.
     ...Object.fromEntries(
       HOST_APP_PROPERTIES.map((name) => [name, { attribute: false }])
@@ -417,6 +423,8 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
   declare heading: string | null | undefined;
   /** Where the email is kept in the browser. Without it, nothing is stored. */
   declare saveKey: string | null | undefined;
+  /** As on `<mail-quilt>`, for the Shell's own parts too. */
+  declare theme: MailQuiltTheme | undefined;
   /** As on `<mail-quilt>`. */
   declare mergeTags: HostAppProperties["mergeTags"];
   /** As on `<mail-quilt>`. */
@@ -547,6 +555,11 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
       if (changed.has(name)) {
         Object.assign(this.#editor, { [name]: this[name] });
       }
+    }
+    // The tokens reach the editor anyway, as it inherits them, but what it
+    // draws from its own theme, such as a color swatch's edge, needs this.
+    if (changed.has("theme")) {
+      this.#editor.theme = this.theme;
     }
     this.#openSaved();
   }

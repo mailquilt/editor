@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 
@@ -28,36 +27,42 @@ export const readArgs = (argv) => {
   return args;
 };
 
-const DARK_THEME_BLOCK =
-  /```css[^\n]*\n(mail-quilt \{[^`]*--mq-color-scheme: dark;[^`]*?\n\})\n```/u;
-
 /**
- * The dark theme exactly as `theme-the-editor.mdx` documents it, so the
- * screenshots and the docs can't drift apart. Each token is `!important`,
- * because a page such as the Playground sets some tokens inline.
+ * Gives every editor on the page the built-in dark theme, as a host app would
+ * with `theme="dark"`, from before it starts. Tokens a page sets inline, such
+ * as the Playground's orange accent, are taken off, as they'd win over the
+ * theme, so the shots show the theme itself, and so are any it sets later,
+ * such as the home page's theme buttons do. The Shell passes it to its editor.
+ * Only `style` is watched, so setting `theme` doesn't start another sweep.
  */
-const editorDarkTheme = () => {
-  const docs = readFileSync(
-    path.join(ROOT, "apps/docs/docs/theme-the-editor.mdx"),
-    "utf8"
-  );
-  const block = DARK_THEME_BLOCK.exec(docs)?.[1];
+const darkenEditors = () => {
+  const darken = (element) => {
+    element.setAttribute("theme", "dark");
+    for (const name of [...element.style]) {
+      if (name.startsWith("--mq-")) {
+        element.style.removeProperty(name);
+      }
+    }
+  };
+  const sweep = () => {
+    for (const element of document.querySelectorAll(
+      "mail-quilt, mail-quilt-shell"
+    )) {
+      darken(element);
+    }
+  };
 
-  if (!block) {
-    throw new Error(
-      "No dark theme found in apps/docs/docs/theme-the-editor.mdx; update DARK_THEME_BLOCK in browser.mjs"
-    );
-  }
-
-  return block
-    .replace("mail-quilt {", "mail-quilt, mail-quilt-shell {")
-    .replaceAll(/;\n/gu, " !important;\n");
+  new MutationObserver(sweep).observe(document, {
+    attributeFilter: ["style"],
+    childList: true,
+    subtree: true,
+  });
 };
 
 /**
  * Opens a page `width` wide. `theme` is what the browser tells the page it
  * prefers, which the site follows. `editorTheme` "dark" also gives every
- * editor on the page the documented dark theme, as a host app would. Below
+ * editor on the page the built-in dark theme, as a host app would. Below
  * `PHONE_BELOW` the page is a touch phone, unless `phone` is false.
  */
 export const openPage = async ({
@@ -78,13 +83,7 @@ export const openPage = async ({
   const page = await context.newPage();
 
   if (editorTheme === "dark") {
-    await page.addInitScript((css) => {
-      document.addEventListener("DOMContentLoaded", () => {
-        const style = document.createElement("style");
-        style.textContent = css;
-        document.head.append(style);
-      });
-    }, editorDarkTheme());
+    await page.addInitScript(darkenEditors);
   }
 
   return { browser, context, page };

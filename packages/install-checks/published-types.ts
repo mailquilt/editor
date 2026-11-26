@@ -8,6 +8,7 @@ import type {
   MailQuiltChangeEvent,
   MailQuiltErrorEvent,
   MailQuiltShell,
+  MailQuiltTheme,
 } from "@mailquilt/editor";
 import type { MailQuiltProps, MailQuiltShellProps } from "@mailquilt/react";
 import { renderEmail } from "@mailquilt/renderer";
@@ -36,6 +37,15 @@ export const elementProps: MailQuiltProps = {
   className: "editor",
   onKeyDown: (event) => event.key,
 };
+
+export const themes: [MailQuiltTheme, MailQuiltProps, MailQuiltShellProps] = [
+  "auto",
+  { theme: "dark" },
+  { theme: "light" },
+];
+
+// @ts-expect-error The theme is light, dark or auto.
+export const unknownTheme: MailQuiltTheme = "blue";
 
 // @ts-expect-error A form field's prop means nothing on the editor.
 export const formFieldProps: MailQuiltProps = { defaultValue: "Hello" };

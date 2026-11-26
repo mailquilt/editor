@@ -3,6 +3,7 @@
 import type {
   BlocksDocument,
   HostAppProperties,
+  MailQuiltTheme,
   MailQuilt as MailQuiltElement,
   MailQuiltShell as MailQuiltShellElement,
   ShellAction,
@@ -30,6 +31,7 @@ export type {
   MailQuilt as MailQuiltElement,
   MailQuiltShell as MailQuiltShellElement,
   MailQuiltStrings,
+  MailQuiltTheme,
   ShellAction,
   StringId,
 } from "@mailquilt/editor";
@@ -44,6 +46,12 @@ interface EditorProps<Host> extends HostAppProperties {
   onError?: (reason: string) => void;
   /** The element, once the editor has loaded in the browser. */
   ref?: Ref<Host>;
+  /**
+   * The editor's built-in theme: `light`, the default, `dark`, or `auto`,
+   * which follows the person's system. An attribute, so it's in the server's
+   * HTML too.
+   */
+  theme?: MailQuiltTheme | undefined;
   value?: BlocksDocument;
 }
 

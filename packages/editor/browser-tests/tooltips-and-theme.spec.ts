@@ -1,6 +1,7 @@
 import { expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
+import type { MailQuilt } from "../src/index.js";
 import {
   blockGroup,
   blockTools,
@@ -216,6 +217,57 @@ test.describe("theme tokens", () => {
     await expect(previewButton(page)).toHaveCSS("color", "rgb(4, 5, 6)");
   });
 
+  test("theme dark is the built-in dark theme, and a host's token still wins over it", async ({
+    page,
+  }) => {
+    await openBlocks(page, ["text"]);
+    const workspace = canvas(page).getByTestId("workspace");
+    const contentIcon = canvas(page)
+      .getByRole("tab", { name: "Content" })
+      .locator("svg");
+    await expect(workspace).toHaveCSS("background-color", "rgb(238, 239, 241)");
+
+    // As a property, which the attribute follows, as the theme is drawn from it.
+    await canvas(page).evaluate((element) => {
+      (element as MailQuilt).theme = "dark";
+    });
+
+    await expect(canvas(page)).toHaveAttribute("theme", "dark");
+    await expect(workspace).toHaveCSS("background-color", "rgb(16, 17, 19)");
+    await expect(contentIcon).toHaveCSS("color", "rgb(111, 134, 255)");
+
+    await canvas(page).evaluate((element) => {
+      element.style.setProperty("--mq-color-accent", "rgb(200, 0, 100)");
+    });
+
+    await expect(contentIcon).toHaveCSS("color", "rgb(200, 0, 100)");
+    await expect(workspace).toHaveCSS("background-color", "rgb(16, 17, 19)");
+    // What the browser draws itself, such as a dropdown's open list, is dark too.
+    await textBlock(page).click();
+    await expect(canvas(page).getByLabel("Alignment")).toHaveCSS(
+      "color-scheme",
+      "dark"
+    );
+  });
+
+  test("theme auto follows the system's color scheme", async ({ page }) => {
+    await page.emulateMedia({ colorScheme: "dark" });
+    await openBlocks(page, ["text"]);
+    const workspace = canvas(page).getByTestId("workspace");
+    // With no theme, the editor stays light on a dark system.
+    await expect(workspace).toHaveCSS("background-color", "rgb(238, 239, 241)");
+
+    await canvas(page).evaluate((element) => {
+      element.setAttribute("theme", "auto");
+    });
+
+    await expect(workspace).toHaveCSS("background-color", "rgb(16, 17, 19)");
+
+    await page.emulateMedia({ colorScheme: "light" });
+
+    await expect(workspace).toHaveCSS("background-color", "rgb(238, 239, 241)");
+  });
+
   test("a dark color scheme reaches the controls the browser draws", async ({
     page,
   }) => {
@@ -290,6 +342,29 @@ test("in forced colors, a selected tab, a pressed button and a palette tile are 
   await expect(bold).toHaveAttribute("aria-pressed", "true");
   await expect(bold).toHaveCSS("outline-style", "solid");
 });
+
+for (const theme of ["light", "dark"] as const) {
+  test(`a Block with keyboard focus has an outline at 3:1 against a white email, in the ${theme} theme`, async ({
+    page,
+  }) => {
+    await openEmail(page, [[["A"]]]);
+    await canvas(page).evaluate((element, chosen) => {
+      element.setAttribute("theme", chosen);
+    }, theme);
+    const block = blockWith(page, "A");
+    await block.focus();
+    await expect(block).toHaveCSS("outline-style", "solid");
+
+    const [outline = "", email = ""] = await block.evaluate((element) => [
+      getComputedStyle(element).outlineColor,
+      getComputedStyle(element.closest('[data-testid="email"]') as Element)
+        .backgroundColor,
+    ]);
+
+    expect(email).toBe("rgb(255, 255, 255)");
+    expect(contrast(outline, email)).toBeGreaterThanOrEqual(3);
+  });
+}
 
 test("a pressed button has an edge at 3:1, so it isn't told by color alone", async ({
   page,

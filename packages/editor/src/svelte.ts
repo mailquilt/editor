@@ -26,10 +26,18 @@ type SvelteElement<
 
 declare module "svelte/elements" {
   interface SvelteHTMLElements {
-    "mail-quilt": SvelteElement<MailQuilt, "value" | keyof HostAppProperties>;
+    "mail-quilt": SvelteElement<
+      MailQuilt,
+      "theme" | "value" | keyof HostAppProperties
+    >;
     "mail-quilt-shell": SvelteElement<
       MailQuiltShell,
-      "actions" | "heading" | "saveKey" | "value" | keyof HostAppProperties
+      | "actions"
+      | "heading"
+      | "saveKey"
+      | "theme"
+      | "value"
+      | keyof HostAppProperties
     >;
   }
 }

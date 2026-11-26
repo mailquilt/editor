@@ -12,6 +12,7 @@ export const editor: SvelteHTMLElements["mail-quilt"] = {
   mergeTags: [{ label: "First name", name: "first_name" }],
   "onmq-change": (event) => keep(event.detail.document),
   "onmq-error": (event) => show(event.detail.reason),
+  theme: "dark",
   uploadImage: (file) => Promise.resolve({ url: file.name }),
 };
 
@@ -21,7 +22,11 @@ export const shell: SvelteHTMLElements["mail-quilt-shell"] = {
   "onmq-change": (event) => keep(event.detail.document),
   "onmq-error": (event) => show(event.detail.reason),
   saveKey: "my-app:email",
+  theme: "auto",
 };
+
+// @ts-expect-error The theme is light, dark or auto.
+export const unknownTheme: SvelteHTMLElements["mail-quilt"] = { theme: "blue" };
 
 // @ts-expect-error An email isn't a number.
 export const notAnEmail: SvelteHTMLElements["mail-quilt"] = { value: 42 };
