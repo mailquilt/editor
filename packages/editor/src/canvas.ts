@@ -551,7 +551,10 @@ const renderColumn = (
           state,
           events
         )}
-        ${renderInsertPoint({ columnId: id, index: blockIndex + 1 }, api)}
+        ${renderInsertPoint(
+          { afterBlockId: block.id, columnId: id, index: blockIndex + 1 },
+          api
+        )}
       `
     )}
     ${

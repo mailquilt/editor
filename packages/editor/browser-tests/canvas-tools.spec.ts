@@ -628,6 +628,9 @@ test.describe("the floating toolbar", () => {
         "main { padding: 0 !important } mail-quilt { width: 680px !important }",
     });
     await blockGroup(page, "Text").first().focus();
+    // Once the editor has laid itself out at its new width, which sets how
+    // far the page scrolls.
+    await settle(page);
 
     const onTop = await canvas(page).evaluate((host) => {
       const root = host.shadowRoot as ShadowRoot;

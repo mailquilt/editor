@@ -1,7 +1,11 @@
 import { closestPlace, findPlace, findPlaces } from "./editor-places.js";
+import type { Place } from "./editor-places.js";
 import { scaleOf } from "./geometry.js";
 import { PICKER_GAP_PX } from "./merge-tag-picker.js";
 import { fitSelectionBar } from "./selection-bar.js";
+
+/** The Selection bar, whichever is showing. */
+const BAR_PLACES: readonly Place[] = ["blockBar", "rowBar", "emailBar"];
 
 /** Space kept between a tool and the canvas's edge, its Block or the other tool. */
 const GAP_PX = 6;
@@ -64,12 +68,24 @@ export const createToolFitting = ({
     if (shift !== 0) {
       picker.style.setProperty("--_mq-picker-shift", `${shift / scaleX}px`);
     }
-    // Below its line, or else above it, where the Canvas ends too soon.
+    // Below its line, or else above it, where the Canvas ends too soon, but
+    // never under the Selection bar, which sticks over the Canvas's top.
     const line = picker.parentElement?.getBoundingClientRect().top ?? box.top;
-    if (box.bottom > canvas.bottom - GAP_PX * scaleY) {
-      // As far above the line as it was below it.
+    const bottom = canvas.bottom - GAP_PX * scaleY;
+    if (box.bottom > bottom) {
+      const selectionBar = BAR_PLACES.map((name) => findPlace(root, name))
+        .find(Boolean)
+        ?.getBoundingClientRect();
+      const top =
+        Math.max(canvas.top, selectionBar?.bottom ?? canvas.top) +
+        GAP_PX * scaleY;
+      // As far above the line as it was below it, or else as far in as it goes.
       const gap = box.top - line;
-      const lift = gap + box.height + gap;
+      const above = gap + box.height + gap;
+      const lift =
+        box.top - above >= top
+          ? above
+          : -shiftInto(box.top, box.bottom, top, bottom);
       picker.style.setProperty("--_mq-picker-lift", `${-lift / scaleY}px`);
     }
   };

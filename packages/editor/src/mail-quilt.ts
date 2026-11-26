@@ -528,13 +528,18 @@ export class MailQuilt extends LitElement implements HostAppProperties {
 
   /** What the Add panel, the Selection bar and More do, made once. */
   readonly #panelActions = {
-    addBlock: (blockType) => this.#editing.addBlock(blockType),
-    addBlockAt: (blockType, at) => {
-      this.#adding.closePicker(false);
-      this.#editing.addBlock(blockType, at);
+    addBlock: (blockType) => {
+      this.#closeFloatingAdd();
+      this.#editing.addBlock(blockType);
     },
-    addRow: (layout, fromKeyboard) =>
-      this.#editing.addRow(layout, fromKeyboard),
+    addBlockAt: (blockType, { columnId, index }) => {
+      this.#adding.closePicker(false);
+      this.#editing.addBlock(blockType, { columnId, index });
+    },
+    addRow: (layout, fromKeyboard) => {
+      this.#closeFloatingAdd();
+      this.#editing.addRow(layout, fromKeyboard);
+    },
     cancelLink: () => this.#linkForm.cancel(),
     closeAddPanel: (returnFocus) => this.#adding.closePanel(returnFocus),
     closeMenu: (returnFocus) => this.#barPanels.closeMenu(returnFocus),
@@ -788,7 +793,10 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       this.#adding.beforeUpdate(
         new Map(
           email.rows.flatMap(({ columns }) =>
-            columns.map((column) => [column.id, column.blocks.length] as const)
+            columns.map(
+              (column) =>
+                [column.id, column.blocks.map(({ id }) => id)] as const
+            )
           )
         )
       );
@@ -1030,6 +1038,16 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       widths !== undefined &&
       width >= widths.withGutters + ADD_WIDTH_PX
     );
+  }
+
+  /**
+   * The Add panel over the Canvas's start closes once it adds, as what it
+   * added could be under it. Docked, it stays open to add another.
+   */
+  #closeFloatingAdd() {
+    if (!this.#docksAdd(this.#width)) {
+      this.#adding.closePanel(false);
+    }
   }
 
   /**

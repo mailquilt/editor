@@ -10,6 +10,7 @@ import {
   blockWith,
   boxOf,
   canvas,
+  currentValue,
   layoutTile,
   openAddPanel,
   openBlocks,
@@ -18,6 +19,7 @@ import {
   selectedBlock,
   selectionBar,
   selectNothing,
+  setValue,
   test,
   violations,
 } from "./helpers.js";
@@ -111,6 +113,22 @@ test.describe("the Add panel", () => {
     expect(await blockTypes(page)).toStrictEqual(["button", "image"]);
   });
 
+  test("over the Canvas's start, closes once it adds, so the new Block is in sight", async ({
+    page,
+  }) => {
+    await openBlocks(page, ["button"]);
+    await page.addStyleTag({
+      content:
+        "main { padding: 0 !important } mail-quilt { width: 900px !important }",
+    });
+    await openAddPanel(page);
+
+    await palette(page, "Text").click();
+
+    await expect(addPanel(page)).toHaveCount(0);
+    await expect(selectedBlock(page).getByRole("textbox")).toBeFocused();
+  });
+
   test("adds an empty Row after what's selected, and Escape goes to the Row's chip", async ({
     page,
   }) => {
@@ -190,6 +208,24 @@ test.describe("the picker", () => {
     await page.keyboard.press("ControlOrMeta+z");
 
     expect(await blockTypes(page, 0, 1)).toStrictEqual([]);
+    await expect(picker(page)).toHaveCount(0);
+  });
+
+  test("closes once the Host app's email no longer has the Block it adds below", async ({
+    page,
+  }) => {
+    await openEmail(page, [[["A", "B", "C"]]]);
+    await pressPlusBelow(page, "Text", "B");
+    await expect(picker(page)).toBeVisible();
+
+    const email = await currentValue(page);
+    const column = email.rows[0]?.columns[0];
+    if (column) {
+      column.blocks = column.blocks.filter((_, index) => index !== 1);
+    }
+    await setValue(page, email);
+
+    // Not moved below C, where it would add in the wrong place.
     await expect(picker(page)).toHaveCount(0);
   });
 

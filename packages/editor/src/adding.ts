@@ -24,6 +24,11 @@ import type { Text } from "./text.js";
 export interface AddPlace {
   columnId: string;
   index: number;
+  /**
+   * The Block it goes after, which it follows if the Block moves, or else
+   * none, in an empty Column.
+   */
+  afterBlockId?: string;
 }
 
 export interface AddingState {
@@ -154,21 +159,29 @@ export const createAdding = ({
     },
 
     /**
-     * Before an update, with each Column's count of Blocks: the picker closes
-     * once its place is gone, as an undo or a new email can take it away. A
-     * place after a Block needs that Block, and an empty Column's needs the
-     * Column still empty.
+     * Before an update, with each Column's Blocks by ID: the picker follows
+     * the Block it adds after, and closes once its place is gone, as an undo
+     * or a new email can take it away. A place after a Block needs that Block
+     * still in the Column, and an empty Column's needs the Column still empty.
      */
-    beforeUpdate(blockCounts: ReadonlyMap<string, number>) {
+    beforeUpdate(blocksByColumn: ReadonlyMap<string, readonly string[]>) {
       if (!picker) {
         return;
       }
-      const { columnId, index } = picker.at;
-      const count = blockCounts.get(columnId);
-      const there =
-        count !== undefined && (index === 0 ? count === 0 : index <= count);
-      if (!there) {
+      const { afterBlockId, columnId } = picker.at;
+      const blockIds = blocksByColumn.get(columnId);
+      if (blockIds === undefined) {
         picker = undefined;
+      } else if (afterBlockId === undefined) {
+        if (blockIds.length > 0) {
+          picker = undefined;
+        }
+      } else {
+        const after = blockIds.indexOf(afterBlockId);
+        picker =
+          after === -1
+            ? undefined
+            : { ...picker, at: { ...picker.at, index: after + 1 } };
       }
     },
   };
