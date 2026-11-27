@@ -54,6 +54,10 @@ Anything else goes in the backlog issue, unless the maintainer asks for it.
 - A PR that reverses anything in `docs/agents/decisions.md` says so, with the reason, and updates that page.
 - Change a test only when the code it checks changes, or when the test is wrong.
 
+## Before the pull request
+
+Run `/code-review` once, when the work is finished. For a change to the editor's interface or the site, run the fresh design review (`docs/agents/design.md`, step 7) at the same time. Run either again only when the fixes changed more than the findings asked. On mailquilt, running the code review again after each round of fixes cost about 10 minutes a ticket.
+
 ## On a pull request
 
 CodeRabbit reviews a pull request once, when it opens, and a later push isn't reviewed again unless someone asks with `@coderabbitai review`. A round of review on each push took about five minutes, and CI another seven, and fixes pushed a few minutes apart cancelled CI before it could finish.
