@@ -883,6 +883,9 @@ test.describe("automated accessibility checks", () => {
   test("pass in the dark theme, in each surface and state the light theme's checks cover", async ({
     page,
   }) => {
+    // About a dozen scans in one test, which ran past the timeout in CI with
+    // four workers sharing the runner.
+    test.slow();
     // With an empty Column, whose placeholder is drawn on the email.
     await openEmail(page, [[["A", "B"], []], [["C"]]]);
     await canvas(page).evaluate((element) => {
