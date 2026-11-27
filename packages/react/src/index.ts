@@ -218,6 +218,7 @@ const Editor = (
     onError,
     mergeTags,
     sender,
+    sendTest,
     socialIconsUrl,
     strings,
     subject,
@@ -233,6 +234,7 @@ const Editor = (
       hostApp: {
         mergeTags,
         sender,
+        sendTest,
         socialIconsUrl,
         strings,
         subject,
@@ -255,6 +257,7 @@ const Shell = (
     onError,
     saveKey,
     sender,
+    sendTest,
     socialIconsUrl,
     strings,
     subject,
@@ -277,6 +280,7 @@ const Shell = (
       hostApp: {
         mergeTags,
         sender,
+        sendTest,
         socialIconsUrl,
         strings,
         subject,

@@ -531,7 +531,7 @@ test.describe("the editor's API", () => {
     await expect(picker).toHaveCount(0);
   });
 
-  test("sender, subject and a Merge Tag's sample reach the editor", async ({
+  test("sender, subject, sendTest and a Merge Tag's sample reach the editor", async ({
     page,
   }) => {
     await openShell(page);
@@ -539,6 +539,7 @@ test.describe("the editor's API", () => {
       Object.assign(element as MailQuiltShell, {
         mergeTags: [{ name: "first_name", sample: "Ana" }],
         sender: "Northbound",
+        sendTest: () => Promise.resolve(),
         subject: "Spring roast",
       });
     });
@@ -547,14 +548,15 @@ test.describe("the editor's API", () => {
     await expect
       .poll(() =>
         editor.evaluate((element) => {
-          const { mergeTags, sender, subject } = element as MailQuilt;
-          return [mergeTags, sender, subject];
+          const { mergeTags, sender, sendTest, subject } = element as MailQuilt;
+          return [mergeTags, sender, subject, typeof sendTest];
         })
       )
       .toEqual([
         [{ name: "first_name", sample: "Ana" }],
         "Northbound",
         "Spring roast",
+        "function",
       ]);
   });
 

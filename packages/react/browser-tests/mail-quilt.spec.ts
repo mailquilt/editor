@@ -104,6 +104,25 @@ test("uploadImage reaches the element", async ({ page }) => {
   }
 });
 
+test("sendTest reaches the element", async ({ page }) => {
+  for (const [query, tag] of [
+    ["/", "mail-quilt"],
+    ["/?shell", "mail-quilt-shell"],
+  ] as const) {
+    await page.goto(query);
+    await expect(textBlock(page)).toHaveText("Hello");
+    const sent = await page.locator(tag).evaluate(
+      async (element: MailQuiltElement | MailQuiltShellElement) =>
+        await element.sendTest?.({
+          html: "<p>Hello</p>",
+          subject: "Spring roast",
+          text: "Hello",
+        })
+    );
+    expect(sent).toBe("Sent Spring roast");
+  }
+});
+
 test("mergeTags reaches the element", async ({ page }) => {
   for (const [query, tag] of [
     ["/", "mail-quilt"],

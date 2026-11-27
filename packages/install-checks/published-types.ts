@@ -75,6 +75,26 @@ export const bareUrl: MailQuiltProps = {
   uploadImage: () => Promise.resolve("https://cdn.example/photo.png"),
 };
 
+/** A Host app's test send, through its own sending service, to whoever it chooses. */
+const sendTest = async (email: {
+  html: string;
+  text: string;
+  subject: string | undefined;
+}) => {
+  const response = await fetch("/tests", {
+    body: JSON.stringify(email),
+    method: "POST",
+  });
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+};
+
+export const sendTestProps: [MailQuiltProps, MailQuiltShellProps] = [
+  { sendTest },
+  { sendTest },
+];
+
 /** A Host app's Merge Tags, with and without a label. */
 const mergeTags = [
   { label: "First name", name: "first_name" },

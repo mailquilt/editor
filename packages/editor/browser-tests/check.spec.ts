@@ -608,3 +608,136 @@ test.describe("the Plain text and HTML tabs", () => {
     await expect(viewTab(page, "Plain text")).toBeFocused();
   });
 });
+
+const sendTestButton = (page: Page) =>
+  checkPanel(page).getByRole("button", { name: "Send a test" });
+
+/**
+ * Gives the element a `sendTest` that keeps what it's given and waits for
+ * `settleTest`, which resolves it, or rejects it with `rejection`.
+ */
+const giveSendTest = (page: Page) =>
+  canvas(page).evaluate((element) => {
+    const held = window as unknown as {
+      sent: unknown[];
+      settleTest: (rejection?: unknown) => void;
+    };
+    held.sent = [];
+    (element as MailQuilt).sendTest = (email) => {
+      held.sent.push(email);
+      // oxlint-disable-next-line promise/avoid-new -- The test settles each send.
+      return new Promise((resolve, reject) => {
+        held.settleTest = (rejection) => {
+          if (rejection === undefined) {
+            resolve(undefined);
+          } else {
+            reject(rejection);
+          }
+        };
+      });
+    };
+  });
+
+const settleTest = (page: Page, rejection?: string | object) =>
+  page.evaluate((given) => {
+    const held = window as unknown as {
+      settleTest: (rejection?: unknown) => void;
+    };
+    held.settleTest(
+      typeof given === "string" ? new Error(given) : (given ?? undefined)
+    );
+  }, rejection ?? null);
+
+test.describe("Send a test", () => {
+  test("without sendTest there's no button", async ({ page }) => {
+    await openCheck(page);
+    await expect(checkPanel(page)).toContainText("things to fix.");
+
+    await expect(sendTestButton(page)).toHaveCount(0);
+  });
+
+  test("it's off until the check ends, then sends the export, the plain text and the subject, and says it's sent", async ({
+    page,
+  }) => {
+    const release = await holdMjml(page);
+    await giveSendTest(page);
+    await giveHost(page, { subject: "Spring roast" });
+    await openCheck(page);
+    await expect(sendTestButton(page)).toHaveAttribute("aria-disabled", "true");
+    await sendTestButton(page).press("Enter");
+    await release();
+    await expect(sendTestButton(page)).not.toHaveAttribute("aria-disabled");
+
+    // From the keyboard, as a press doesn't focus a button in Safari.
+    await sendTestButton(page).press("Enter");
+
+    const sending = checkPanel(page).getByRole("button", { name: "Sending…" });
+    await expect(sending).toBeFocused();
+    await expect(sending).toHaveAttribute("aria-disabled", "true");
+    await sending.press("Enter");
+    await settleTest(page);
+    await expect(checkPanel(page)).toContainText("Test sent.");
+    await expect(announcement(page)).toHaveText("Test sent.");
+    await expect(sendTestButton(page)).toBeFocused();
+    const text = await canvas(page).evaluate((element) =>
+      (element as MailQuilt).exportText()
+    );
+    expect(
+      await page.evaluate(() => (window as unknown as { sent: unknown[] }).sent)
+    ).toEqual([
+      { html: await exportHtml(page), subject: "Spring roast", text },
+    ]);
+  });
+
+  test("a change to the email while a test sends keeps the button off until it ends, and its result is said but not shown", async ({
+    page,
+  }) => {
+    await giveSendTest(page);
+    await openCheck(page);
+    await expect(checkPanel(page)).toContainText("things to fix.");
+    await sendTestButton(page).press("Enter");
+
+    await setValue(page, emailWith([[["Changed"]]]));
+    await expect(inboxEmail(page)).toContainText("Changed");
+    const sending = checkPanel(page).getByRole("button", { name: "Sending…" });
+    await expect(sending).toHaveAttribute("aria-disabled", "true");
+    await sending.press("Enter");
+    await settleTest(page);
+
+    await expect(announcement(page)).toHaveText("Test sent.");
+    await expect(sendTestButton(page)).not.toHaveAttribute("aria-disabled");
+    await expect(checkPanel(page)).not.toContainText("Test sent.");
+    expect(
+      await page.evaluate(
+        () => (window as unknown as { sent: unknown[] }).sent.length
+      )
+    ).toBe(1);
+  });
+
+  test("a rejection shows the host's message, or the default without one, and says it", async ({
+    page,
+  }) => {
+    await giveSendTest(page);
+    await openCheck(page);
+    await expect(checkPanel(page)).toContainText("things to fix.");
+
+    await sendTestButton(page).click();
+    await settleTest(page, "Your plan sends 10 tests a day.");
+    await expect(checkPanel(page)).toContainText(
+      "Your plan sends 10 tests a day."
+    );
+    await expect(announcement(page)).toHaveText(
+      "Your plan sends 10 tests a day."
+    );
+
+    await sendTestButton(page).click();
+    await expect(checkPanel(page)).not.toContainText("Your plan");
+    await settleTest(page, { reason: "not an Error" });
+    await expect(checkPanel(page)).toContainText(
+      "The test wasn't sent. Try again."
+    );
+    await expect(announcement(page)).toHaveText(
+      "The test wasn't sent. Try again."
+    );
+  });
+});

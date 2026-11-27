@@ -110,6 +110,8 @@ export const ICONS = {
   rows: icon(
     svg`<rect height="6" rx="1.5" width="18" x="3" y="4" /><rect height="6" rx="1.5" width="18" x="3" y="14" />`
   ),
+  /** A paper plane, for sending a test. */
+  send: icon(svg`<path d="M21 3 10 14M21 3l-6.5 18-4.5-7-7-4.5z" />`),
   /** A magnifying glass, for a search field. */
   search: icon(
     svg`<circle cx="11" cy="11" r="6.5" /><path d="m20 20-4.2-4.2" />`

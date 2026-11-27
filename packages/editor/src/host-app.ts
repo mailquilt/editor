@@ -29,6 +29,20 @@ export interface HostAppProperties {
    */
   sender?: string | undefined;
   /**
+   * Sends a test of the email through the Host app's own sending service, to
+   * whoever it chooses, with Check's "Send a test" button. It's given the
+   * email as `exportHtml()` and `exportText()` give it, and `subject`. Check
+   * says it's sent once it resolves. Rejecting with an `Error` shows its
+   * message to the person. Without it, there's no button.
+   */
+  sendTest?:
+    | ((email: {
+        html: string;
+        text: string;
+        subject: string | undefined;
+      }) => Promise<unknown>)
+    | undefined;
+  /**
    * The URL of a folder of the Host app's own holding the Social Block's
    * icons, copied from `@mailquilt/renderer`'s `icons`. The Canvas, the Preview
    * and `exportHtml()` load them from there. Without it, they load from
@@ -67,6 +81,7 @@ export interface HostAppProperties {
 export const HOST_APP_PROPERTIES = Object.keys({
   mergeTags: true,
   sender: true,
+  sendTest: true,
   socialIconsUrl: true,
   strings: true,
   subject: true,
