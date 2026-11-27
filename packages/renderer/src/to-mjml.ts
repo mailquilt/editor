@@ -1,17 +1,23 @@
 import { loadDocument } from "@mailquilt/core";
 import type { Block, Column, EmailStyle, Row } from "@mailquilt/core";
 import {
+  blockBoxStyles,
   blockStyles,
+  columnStyles,
   EMAIL_LOOK,
   linkColor,
   rowStyles,
   SOCIAL_NETWORKS,
   socialIcons,
 } from "@mailquilt/core/internal";
-import type { BlockProps, RowProps } from "@mailquilt/core/internal";
+import type {
+  BlockProps,
+  ColumnProps,
+  RowProps,
+} from "@mailquilt/core/internal";
 
 import { escapeAttribute, escapeText } from "./escape.js";
-import { SHARED_COLUMN } from "./finish-html.js";
+import { BOXED_BLOCK, SHARED_COLUMN } from "./finish-html.js";
 import { socialIconUrl } from "./social-icons.js";
 import {
   headingToHtml,
@@ -50,7 +56,40 @@ interface BlockContext {
   headingFontFamily: string;
   socialIconsUrl: string | undefined;
   style: EmailStyle;
+  /**
+   * Each Box's border and corners, in the order MJML writes their Blocks, for
+   * `finishHtml`, as MJML has no attribute for them on a Block.
+   */
+  boxes: string[];
 }
+
+/**
+ * A Block's Box as MJML's attributes: its padding and background. Its border
+ * and corners go to `finishHtml`, with a class that marks where. A Social
+ * Block's padding is its icons'.
+ */
+const boxAttributes = (block: Block, { boxes }: BlockContext) => {
+  const {
+    border,
+    "border-radius": corners,
+    "background-color": background,
+    ...padding
+  } = blockBoxStyles(block);
+  const rest = [
+    border === undefined ? "" : `border:${border};`,
+    corners === undefined ? "" : `border-radius:${corners};`,
+  ].join("");
+  if (rest) {
+    boxes.push(rest);
+  }
+  return mjmlAttributes({
+    ...(block.type === "social" ? {} : padding),
+    ...(background === undefined
+      ? {}
+      : { "container-background-color": background }),
+    ...(rest ? { "css-class": BOXED_BLOCK } : {}),
+  });
+};
 
 /**
  * Each link that has a URL, as an icon with the network's name as its alt text.
@@ -73,17 +112,25 @@ const socialToMjml = (
     const label = SOCIAL_NETWORKS[network];
     return `<mj-social-element alt="${escapeAttribute(label)}" href="${escapeAttribute(url)}" padding="${iconPadding}px" src="${escapeAttribute(socialIconUrl(network, style, socialIconsUrl))}"></mj-social-element>`;
   });
-  return `<mj-social${attributes} icon-size="${size}px" mode="horizontal" padding="${blockPadding}px">${icons.join("")}</mj-social>`;
+  return `<mj-social${attributes} icon-size="${size}px" mode="horizontal" padding="${blockPadding}">${icons.join("")}</mj-social>`;
 };
 
 /**
  * A Block as MJML. The casts are safe, as core's styles for a type always set
- * the same properties.
+ * the same properties. A Block the email leaves out, such as an Image without
+ * a URL, has no Box either.
  */
 const blockToMjml = (block: Block, context: BlockContext) => {
+  if (
+    (block.type === "image" && block.props.src === undefined) ||
+    (block.type === "social" &&
+      block.props.links.every(({ url }) => url === undefined))
+  ) {
+    return "";
+  }
   const { fontFamily, headingFontFamily, style } = context;
   const blockCss = blockStyles(block, style);
-  const attributes = mjmlAttributes(blockCss);
+  const attributes = mjmlAttributes(blockCss) + boxAttributes(block, context);
   switch (block.type) {
     case "text": {
       const textCss = blockCss as TextCss;
@@ -124,11 +171,18 @@ const blockToMjml = (block: Block, context: BlockContext) => {
 };
 
 const columnToMjml = (
-  { blocks, width }: Column,
+  column: Column,
   context: BlockContext,
   shared: boolean
-) =>
-  `<mj-column width="${width}%"${shared ? ` css-class="${SHARED_COLUMN}"` : ""}>${blocks.map((block) => blockToMjml(block, context)).join("")}</mj-column>`;
+) => {
+  const { blocks, props, width } = column;
+  const { verticalAlign } = props as ColumnProps;
+  const attributes = mjmlAttributes({
+    ...columnStyles(column),
+    ...(verticalAlign === undefined ? {} : { "vertical-align": verticalAlign }),
+  });
+  return `<mj-column width="${width}%"${attributes}${shared ? ` css-class="${SHARED_COLUMN}"` : ""}>${blocks.map((block) => blockToMjml(block, context)).join("")}</mj-column>`;
+};
 
 /** Hides a Row below the phone width, where the email keeps its `<style>`. */
 const HIDDEN_ON_PHONES = "mq-hide-phone";
@@ -167,6 +221,7 @@ export const toMjml = (
   const { rows, settings } = loaded.document;
   const style = settings.style ?? {};
   const context: BlockContext = {
+    boxes: [],
     fontFamily: settings.fontFamily,
     headingFontFamily: style.headingFontFamily ?? settings.fontFamily,
     socialIconsUrl,
@@ -217,5 +272,5 @@ export const toMjml = (
   const sharedRowWidths = rows
     .filter(stacksColumns)
     .flatMap((row) => row.columns.map(() => innerWidth(row, settings.width)));
-  return { mjml, sharedRowWidths };
+  return { boxes: context.boxes, mjml, sharedRowWidths };
 };

@@ -49,7 +49,7 @@ export const textBlockStyles = css`
   .ProseMirror {
     font-variant-ligatures: none;
     overflow-wrap: break-word;
-    padding: ${unsafeCSS(EMAIL_LOOK.blockPadding)};
+    padding: var(--_mq-block-padding, ${unsafeCSS(EMAIL_LOOK.blockPadding)});
     position: relative;
     white-space: pre-wrap;
     white-space: break-spaces;

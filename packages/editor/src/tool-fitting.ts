@@ -5,7 +5,12 @@ import { PICKER_GAP_PX } from "./merge-tag-picker.js";
 import { fitSelectionBar } from "./selection-bar.js";
 
 /** The Selection bar, whichever is showing. */
-const BAR_PLACES: readonly Place[] = ["blockBar", "rowBar", "emailBar"];
+const BAR_PLACES: readonly Place[] = [
+  "blockBar",
+  "rowBar",
+  "columnBar",
+  "emailBar",
+];
 
 /** Space kept between a tool and the canvas's edge, its Block or the other tool. */
 const GAP_PX = 6;

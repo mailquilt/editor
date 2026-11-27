@@ -1,6 +1,7 @@
 import * as v from "valibot";
 
 import { blockDefinitions, validateProps } from "./blocks.js";
+import { columnPropsSchema } from "./column-settings.js";
 import { commandSchema } from "./command-schema.js";
 import type { NewColumn } from "./command-schema.js";
 import { createId } from "./document.js";
@@ -111,6 +112,19 @@ const planUpdateRowProps = (
         parseProps(rowPropsSchema, merged, `Row "${rowId}"`)
       )
     : noSuch("Row", rowId);
+};
+
+const planUpdateColumnProps = (
+  document: BlocksDocument,
+  columnId: string,
+  props: Record<string, unknown>
+): CommandPlan => {
+  const column = findColumn(document, columnId);
+  return column
+    ? planProps({ columnId }, column.props, props, (merged) =>
+        parseProps(columnPropsSchema, merged, `Column "${columnId}"`)
+      )
+    : noSuch("Column", columnId);
 };
 
 const planUpdateEmailSettings = (
@@ -284,9 +298,19 @@ const planNewRow = (
   const row: Row = { ...newRow([]), props: validated.props };
   for (const [columnIndex, width] of widths.entries()) {
     const column = newColumn(width);
-    for (const [index, block] of (
-      columns?.[columnIndex]?.blocks ?? []
-    ).entries()) {
+    const given = columns?.[columnIndex];
+    if (given?.props !== undefined) {
+      const checked = parseProps(
+        columnPropsSchema,
+        given.props,
+        `Column ${columnIndex + 1} in the new Row`
+      );
+      if (!checked.ok) {
+        return refused("invalidProps", checked.reason);
+      }
+      column.props = checked.props;
+    }
+    for (const [index, block] of (given?.blocks ?? []).entries()) {
       const made = newBlock(
         block.type,
         block.props,
@@ -496,6 +520,9 @@ export const planCommand = (
     }
     case "updateRowProps": {
       return planUpdateRowProps(document, output.rowId, output.props);
+    }
+    case "updateColumnProps": {
+      return planUpdateColumnProps(document, output.columnId, output.props);
     }
     case "updateEmailSettings": {
       return planUpdateEmailSettings(document, output.settings);

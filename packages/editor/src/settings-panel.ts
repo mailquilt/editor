@@ -846,7 +846,7 @@ const renderListField = (
   `;
 };
 
-const renderField = (
+export const renderField = (
   section: SettingsSection,
   field: SettingsField,
   drafts: SettingsDrafts,

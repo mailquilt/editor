@@ -24,6 +24,7 @@ type Placement =
 export type PropsTarget =
   | { blockId: string }
   | { rowId: string }
+  | { columnId: string }
   | { emailSettings: true };
 
 /**
@@ -199,6 +200,8 @@ export const applyOperation = (
         document.settings = operation.props as unknown as EmailSettings;
       } else if ("rowId" in operation) {
         getRow(document, operation.rowId).props = operation.props;
+      } else if ("columnId" in operation) {
+        getColumn(document, operation.columnId).props = operation.props;
       } else {
         const block = findBlock(document, operation.blockId);
         if (!block) {

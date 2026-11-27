@@ -35,6 +35,14 @@ Classic Outlook draws email with Microsoft Word, which supports less HTML and CS
 
 On screens under 480px wide, a Row's Columns go one under another, and a Row set to hide on phones is hidden. Both come from the email's styles, so a client that drops them on a phone, such as the Gmail app with an account that isn't Google's, still shows a hidden Row, and its Columns keep their desktop width, wrapping onto as many lines as they need, such as two Columns of a four-Column Row on each line. A Row set to keep its Columns side by side on phones has their widths written on each Column, so it looks the same in every client.
 
+## Boxes and Columns
+
+A Block's [Box](./document-format#box) and a [Column](./document-format#column)'s settings are written on the table cell around the Block or Column, which every client above reads, Outlook too. Version 0.4 adds them, and they haven't had an Email on Acid run yet; this says what the HTML asks each client to draw.
+
+- **Padding, background colors, borders and a Column's alignment** are plain cell styles, which classic Outlook for Windows draws as set.
+- **Corners** are `border-radius`, which classic Outlook for Windows doesn't support, so it draws a Block's corners square, and a Button's too. The background and border still show, in a square box.
+- **A Column's background** reaches only as far down as its Blocks, in every client, so two Columns of different heights have backgrounds of different heights. Keep a Column's background for a Column as tall as its Row, or give the Row the color instead.
+
 ## URLs and long words
 
 A URL written as text, starting with `https://`, `http://` or `www.`, is exported as a link to itself, in its text's color, like a link you add in the editor. One starting with `www.` links to `http://` and that address. An email address written as text is exported as a `mailto:` link the same way. The canvas still shows both as text. A URL ends before a closing bracket it didn't open, and before a full stop or comma after it, so `(see https://example.com/a_(b))` links `https://example.com/a_(b)`. A URL or address inside a Merge Tag, such as its default value, stays part of the tag. An address may have letters in any language, as in `müller@example.com`. A language written without spaces between words, such as Japanese, ends a URL or address, so `info@example.comまで` links `info@example.com`. So does its full-width punctuation, such as `，` or `（`. A URL with such letters typed in its path, as in `https://ja.wikipedia.org/wiki/東京`, links only up to them. Paste it as your browser copies it, percent-encoded, or link it yourself. A URL or address whose formatting changes partway, such as a bold word in it, links whole. One that runs into a link you added, or straight into a character an address can't hold, as in `a@b.c_d`, isn't linked.

@@ -240,6 +240,30 @@ describe("merging Commands into one undo step", () => {
     expect(editor.getDocument()).toStrictEqual(before);
   });
 
+  it("keeps merged changes to a Column and to the email's settings apart", () => {
+    const { editor } = setup();
+    const columnId = editor.getDocument().rows[0]?.columns[0]?.id ?? "";
+    const before = editor.getDocument();
+    editor.apply(
+      {
+        columnId,
+        props: { verticalAlign: "middle" },
+        type: "updateColumnProps",
+      },
+      { mergeKey: "typing" }
+    );
+    editor.apply(
+      { settings: { preheader: "Hi" }, type: "updateEmailSettings" },
+      { mergeKey: "typing" }
+    );
+    const after = editor.getDocument();
+
+    editor.undo();
+    expect(editor.getDocument()).toStrictEqual(before);
+    editor.redo();
+    expect(editor.getDocument()).toStrictEqual(after);
+  });
+
   it("leaves no step for changes that end where they started", () => {
     const { blockId, document, editor, setText } = setup();
     const original = document.rows[0]?.columns[0]?.blocks[0]?.props ?? {};

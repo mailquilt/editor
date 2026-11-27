@@ -58,7 +58,7 @@ import {
   showHighlightedTag,
 } from "./merge-tag-picker.js";
 import type { PanelApi } from "./panel-api.js";
-import { blocksIn, locate, locateRow } from "./positions.js";
+import { blocksIn, locate, locateColumn, locateRow } from "./positions.js";
 import { createPresses } from "./presses.js";
 import {
   createRowPictures,
@@ -511,6 +511,8 @@ export class MailQuilt extends LitElement implements HostAppProperties {
   #narrow = false;
   /** The element's width, which More docks beside the email where it fits. */
   #width = 0;
+  /** The element's height, which More floating over the email stays inside. */
+  #height = 0;
   /** What the person last used in the editor: its keys or a pointer. */
   #lastInput: "keys" | "pointer" = "pointer";
   /** Edit until the person picks another, and with nothing in the email. */
@@ -602,6 +604,16 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       const position = email && locateRow(email, rowId);
       return position?.row.columns.flatMap(({ blocks }) => blocks)[0]?.id;
     },
+    firstBlockInColumn: (columnId) => {
+      const email = this.#editor?.getDocument();
+      const position = email && locateColumn(email, columnId);
+      return (
+        position && {
+          blockId: position.column.blocks[0]?.id,
+          rowId: position.row.id,
+        }
+      );
+    },
     focus: this.#focus,
     isDragging: () => this.#dragging?.isDragging() ?? false,
     linkForm: this.#linkForm,
@@ -670,6 +682,8 @@ export class MailQuilt extends LitElement implements HostAppProperties {
         { focusVisible: fromKeyboard }
       );
     },
+    selectColumn: (columnId, fromKeyboard) =>
+      this.#selection.selectColumn(columnId, fromKeyboard),
     selectRow: (rowId, fromKeyboard) =>
       this.#selection.selectRow(rowId, fromKeyboard),
     selectRowInList: (rowId, fromKeyboard) => {
@@ -826,9 +840,11 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     super.connectedCallback();
     this.#resizeObserver ??= new ResizeObserver(([entry]) => {
       const width = entry?.contentRect.width ?? 0;
+      const height = entry?.contentRect.height ?? 0;
       const narrow = width < MIN_EDITOR_WIDTH;
       const changed =
         narrow !== this.#narrow ||
+        height !== this.#height ||
         this.#docksMore(width) !== this.#docksMore(this.#width) ||
         JSON.stringify(this.#rowsListShape(width)) !==
           JSON.stringify(this.#rowsListShape(this.#width)) ||
@@ -838,6 +854,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
         (this.#mode === "check" && width !== this.#width);
       this.#narrow = narrow;
       this.#width = width;
+      this.#height = height;
       if (changed) {
         // A frame later, as changing size inside this callback is reported as a
         // ResizeObserver loop error.
@@ -930,6 +947,9 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       );
       this.#selection.beforeUpdate({
         blockIds,
+        columnIds: new Set(
+          email.rows.flatMap(({ columns }) => columns.map(({ id }) => id))
+        ),
         rowIds: new Set(email.rows.map(({ id }) => id)),
       });
     }
@@ -1105,7 +1125,10 @@ export class MailQuilt extends LitElement implements HostAppProperties {
         role="tabpanel"
         ?data-collapsed=${narrow}
         ?hidden=${this.#mode === "check"}
-        style=${styleProperties({ "--_mq-email-width": `${width}px` })}
+        style=${styleProperties({
+          "--_mq-editor-height": this.#height ? `${this.#height}px` : undefined,
+          "--_mq-email-width": `${width}px`,
+        })}
       >
         ${
           // First, as they're drawn first, so Tab reaches them in that order.
@@ -1457,6 +1480,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       rowsList: this.#rowsList.state,
       mergeTagPicker: this.#mergeTagPicker,
       selectedBlock: this.#editing.selectedBlock(email),
+      selectedColumn: this.#editing.selectedColumn(email),
       selectedRow: this.#editing.selectedRow(email),
       text: this.#text,
       uploadErrorOf: this.#uploads.errorOf,

@@ -1,6 +1,7 @@
 import * as v from "valibot";
 
 import { blockDefinitions } from "./blocks.js";
+import { columnPropsSchema } from "./column-settings.js";
 import { DOCUMENT_VERSION } from "./document.js";
 import type { BlocksDocument } from "./document.js";
 import { emailSettingsSchema } from "./email-settings.js";
@@ -50,7 +51,7 @@ export const documentSchema = v.strictObject({
           v.strictObject({
             blocks: v.array(blockSchema),
             id: idSchema,
-            props: v.pipe(v.unknown(), plainObject, v.strictObject({})),
+            props: v.pipe(v.unknown(), plainObject, columnPropsSchema),
             width: v.pipe(v.number(), v.minValue(1), v.maxValue(100)),
           })
         ),

@@ -2,7 +2,10 @@
 // not documented, and not yet a promise to hosts, so they can change in any
 // release.
 export {
+  blockBoxFields,
+  blockBoxStyles,
   blockLabel,
+  blockPaddingCss,
   blockSettingsFields,
   blockStyles,
   EMAIL_LOOK,
@@ -16,6 +19,8 @@ export { findBlockPosition } from "./operations.js";
 export { isAllowedLinkHref, MERGE_TAG } from "./rich-text.js";
 export { EMAIL_SETTINGS_FIELDS } from "./email-settings.js";
 export { rowSettingsFields, rowStyles } from "./row-settings.js";
+export { COLUMN_SETTINGS_FIELDS, columnStyles } from "./column-settings.js";
+export type { ColumnProps } from "./column-settings.js";
 export { hexColor } from "./value-schemas.js";
 export type { BlockProps } from "./blocks.js";
 export type { RowProps } from "./row-settings.js";

@@ -724,9 +724,17 @@ test.describe("labels and focus states", () => {
     await expect(morePanel(page)).toBeVisible();
     await expect(controlsWithoutRing(page)).resolves.toEqual([]);
 
+    // The Block's Column, from the chip's menu, then the email, its last.
     await barButton(page, "Row 1 / Text").focus();
     await page.keyboard.press("Enter");
     await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Enter");
+    await expect(selectionBar(page)).toHaveAccessibleName("Column 1 settings");
+    await expect(controlsWithoutRing(page)).resolves.toEqual([]);
+
+    await barButton(page, "Row 1 / Text").focus();
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("End");
     await page.keyboard.press("Enter");
     await expect(selectionBar(page)).toHaveAccessibleName("Email settings");
     await expect(controlsWithoutRing(page)).resolves.toEqual([]);

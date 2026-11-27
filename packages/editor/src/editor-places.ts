@@ -37,6 +37,13 @@ const PLACES = {
   /** A Column. Its `data-column-id` names it. */
   column: {},
   /**
+   * A button in More's Box that opens a popover, as the bar's do. A press
+   * keeps focus where it is, as on the bar.
+   */
+  boxOpener: { press: "keepsFocus" },
+  /** The Selection bar while a Column is selected. */
+  columnBar: { press: "keepsFocus" },
+  /**
    * Buttons that act on the email or what's selected, in the top bar or the
    * notice, and aren't in a toolbar or the Selection bar.
    */

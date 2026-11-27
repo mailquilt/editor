@@ -1,13 +1,25 @@
 import { ROW_LAYOUTS } from "@mailquilt/core";
-import type { Block, BlockType, EmailStyle, RowLayout } from "@mailquilt/core";
+import type {
+  Block,
+  BlockType,
+  Column,
+  EmailStyle,
+  RowLayout,
+} from "@mailquilt/core";
 import {
+  blockBoxFields,
   blockStyles,
   blockSettingsFields,
+  COLUMN_SETTINGS_FIELDS,
   EMAIL_SETTINGS_FIELDS,
   rowLayoutOf,
   rowSettingsFields,
 } from "@mailquilt/core/internal";
-import type { RowProps, SettingsField } from "@mailquilt/core/internal";
+import type {
+  ColumnProps,
+  RowProps,
+  SettingsField,
+} from "@mailquilt/core/internal";
 import { css, html, nothing } from "lit";
 import type { TemplateResult } from "lit";
 import { keyed } from "lit/directives/keyed.js";
@@ -24,11 +36,17 @@ import type { Action, KeyScope } from "./key-map.js";
 import { fieldTags, NO_FIELD_TAGS } from "./merge-tag-picker.js";
 import type { PanelApi } from "./panel-api.js";
 import { columnPlace } from "./positions.js";
-import type { BlockPosition, Direction, RowPosition } from "./positions.js";
+import type {
+  BlockPosition,
+  ColumnPosition,
+  Direction,
+  RowPosition,
+} from "./positions.js";
 import {
   draftKey,
   fieldText,
   fieldWords,
+  renderField,
   renderSettingsPanel,
   typedIn,
 } from "./settings-panel.js";
@@ -551,13 +569,21 @@ export const selectionBarStyles = css`
     white-space: normal;
   }
 
+  /*
+   * Inside the window and the element both, as the element clips what's
+   * past its edge: a short email leaves a short element.
+   */
   .more-panel.floating {
     border-radius: var(--mq-radius);
     box-shadow: var(--mq-shadow);
     inset-block-start: calc(100% + var(--mq-space-2));
     inset-inline-end: var(--mq-space-3);
     max-height: calc(
-      min(100dvh, var(--_mq-visible-height, 100dvh)) -
+      min(
+          100dvh,
+          var(--_mq-visible-height, 100dvh),
+          var(--_mq-editor-height, 100dvh)
+        ) -
         var(--_mq-top-bar-height) - var(--_mq-selection-bar-height) -
         var(--mq-space-5)
     );
@@ -609,6 +635,98 @@ export const selectionBarStyles = css`
 
   .more-body > * {
     border-block-start: 1px solid var(--mq-color-border);
+  }
+
+  /* Box's padding and border buttons, with a field's edge and width. */
+  .box .field.inline > .bar-anchor {
+    justify-self: stretch;
+  }
+
+  .box .bar-anchor > .bar-button,
+  .bar-name + .bar-anchor > .bar-button {
+    background-color: var(--mq-color-surface);
+    color: var(--mq-color-text);
+    border: 1px solid var(--mq-color-border-strong);
+    border-radius: var(--mq-radius-small);
+    box-shadow: var(--mq-shadow-small);
+    height: 32px;
+    justify-content: space-between;
+    padding: 0 var(--mq-space-2);
+    width: 100%;
+  }
+
+  .bar-name + .bar-anchor > .bar-button {
+    padding: 0 var(--mq-space-2);
+    width: auto;
+  }
+
+  .box .bar-anchor > .bar-button:hover,
+  .bar-name + .bar-anchor > .bar-button:hover {
+    border-color: var(--mq-color-text-muted);
+  }
+
+  .box .box-label {
+    color: var(--mq-color-text-muted);
+  }
+
+  /*
+   * In More, which reaches the editor's edge, a popover opens to the left,
+   * from its button at the panel's end, as wide as the panel's fields.
+   */
+  .more-panel .bar-popover {
+    inset-inline-end: 0;
+    inset-inline-start: auto;
+    transform-origin: top right;
+    width: calc(var(--_mq-panel-width) - 2 * var(--mq-space-4));
+  }
+
+  /*
+   * A Column's settings are named beside them, so their buttons' words are
+   * their values, which stay where the bar is short of room, and the names
+   * go, as each control's own name says it.
+   */
+  .selection-bar[data-place="columnBar"][data-compact="words"]
+    .bar-content
+    > .bar-name {
+    display: none;
+  }
+
+  .selection-bar[data-place="columnBar"][data-compact="words"]
+    .bar-button[aria-haspopup]
+    > .words {
+    clip-path: none;
+    height: auto;
+    overflow: visible;
+    position: static;
+    width: auto;
+  }
+
+  .box .box-note {
+    align-items: flex-start;
+    display: flex;
+    gap: var(--mq-space-2);
+  }
+
+  .box .box-note .icon {
+    flex: none;
+    height: 14px;
+    margin-block-start: 1px;
+    width: 14px;
+  }
+
+  /* No color: a line across, as a color field shows "None". */
+  .swatch.none {
+    background: linear-gradient(
+      135deg,
+      transparent calc(50% - 1px),
+      var(--mq-color-danger) calc(50% - 1px),
+      var(--mq-color-danger) calc(50% + 1px),
+      transparent calc(50% + 1px)
+    );
+  }
+
+  .words.unset {
+    color: var(--mq-color-text-muted);
   }
 
   .more-actions {
@@ -714,7 +832,10 @@ export const createBarPanels = ({ focus, requestUpdate }: BarPanelsHost) => {
     state.popover = undefined;
     requestUpdate();
     if (returnFocus) {
-      focus.focusWhenRendered({ action: popover, on: "bar" });
+      focus.focusWhenRendered({
+        action: popover,
+        on: popover.startsWith(IN_MORE) ? "more" : "bar",
+      });
     }
   };
 
@@ -827,20 +948,34 @@ export const createBarPanels = ({ focus, requestUpdate }: BarPanelsHost) => {
   };
 };
 
-/** What the bar and More show: the selected Block, Row, or the email. */
+/** What the bar and More show: the selected Block, Row, Column, or the email. */
 type Target =
   | { kind: "block"; position: BlockPosition }
   | { kind: "row"; position: RowPosition }
+  | { kind: "column"; position: ColumnPosition }
   | { kind: "email" };
 
-const targetOf = ({ selectedBlock, selectedRow }: PanelApi): Target => {
+const targetOf = ({
+  selectedBlock,
+  selectedColumn,
+  selectedRow,
+}: PanelApi): Target => {
   if (selectedBlock) {
     return { kind: "block", position: selectedBlock };
+  }
+  if (selectedColumn) {
+    return { kind: "column", position: selectedColumn };
   }
   return selectedRow
     ? { kind: "row", position: selectedRow }
     : { kind: "email" };
 };
+
+/** MJML's corners on a Button, which the Canvas draws too, in px. */
+const BUTTON_CORNERS = "3px";
+
+/** The start of the `data-action` of a popover's button in More. */
+const IN_MORE = "more-";
 
 /** The Block section's ID, which keeps what's typed with the Block it's for. */
 const BLOCK_SECTION_ID = "block";
@@ -969,6 +1104,63 @@ const rowSection = ({ row }: RowPosition, api: PanelApi): SettingsSection => ({
   values: row.props,
 });
 
+/** What's behind a Column without a color of its own: its Row's, or the email's. */
+const behindColumn = ({ row }: ColumnPosition, api: PanelApi) =>
+  (row.props as RowProps).backgroundColor ??
+  api.email.settings.style?.emailBackgroundColor ??
+  api.email.settings.backgroundColor;
+
+const columnSection = (
+  position: ColumnPosition,
+  api: PanelApi
+): SettingsSection => ({
+  command: (props) => ({
+    columnId: position.column.id,
+    props,
+    type: "updateColumnProps",
+  }),
+  fields: COLUMN_SETTINGS_FIELDS,
+  id: "column",
+  legend: api.text("bar.column"),
+  targetId: position.column.id,
+  unsetColor: behindColumn(position, api),
+  values: position.column.props,
+});
+
+/**
+ * A Block's Box, in More: its padding, background, border and corners. Its
+ * own section, so what's typed in it is kept apart from the Block's own.
+ */
+const boxSection = (
+  { block, column, row }: BlockPosition,
+  api: PanelApi
+): SettingsSection => ({
+  command: (props) => ({ blockId: block.id, props, type: "updateBlockProps" }),
+  // A Button's corners are its own shape's, so unset they're what it shows.
+  // Behind a Box without its own color: its Column's, or what's behind that.
+  unsetColor:
+    (column.props as ColumnProps).backgroundColor ??
+    behindColumn({ column, columnIndex: 0, row, rowIndex: 0 }, api),
+  fields: blockBoxFields(block.type).map((field) =>
+    field.key === "borderRadius" && block.type === "button"
+      ? {
+          ...field,
+          default: Number(
+            (
+              blockStyles(block, api.email.settings.style ?? {})[
+                "border-radius"
+              ] ?? BUTTON_CORNERS
+            ).slice(0, -"px".length)
+          ),
+        }
+      : field
+  ),
+  id: "box",
+  legend: api.text("more.box"),
+  targetId: block.id,
+  values: block.props,
+});
+
 /** The email's look, its background and font, which is set in Style. */
 const STYLED_IN_STYLE = new Set(["backgroundColor", "fontFamily"]);
 
@@ -988,6 +1180,9 @@ const sectionOf = (target: Target, api: PanelApi) => {
     }
     case "row": {
       return rowSection(target.position, api);
+    }
+    case "column": {
+      return columnSection(target.position, api);
     }
     default: {
       return emailSection(api);
@@ -1038,6 +1233,60 @@ type Control =
   /** Upload, for an Image, with the Host app's `uploadImage`. */
   | { kind: "upload" };
 
+/** A Column's settings each have their name before them, as frame `f02` draws. */
+type NamedControl = Control & {
+  /** Shown before the control, which is named for it already. */
+  lead?: StringId;
+  /** A color shows its value, or "None", rather than its name. */
+  showValue?: boolean;
+};
+
+const PADDING_KEYS = [
+  "paddingTop",
+  "paddingRight",
+  "paddingBottom",
+  "paddingLeft",
+] as const;
+
+/**
+ * Padding as few numbers as say it: one while every side is the same, two
+ * while top and bottom are, and left and right are, or else all four.
+ */
+const paddingWords = (
+  values: Record<string, unknown>,
+  fallback: number,
+  text: Text
+) => {
+  const [top, right, bottom, left] = PADDING_KEYS.map((key) =>
+    String(values[key] ?? fallback)
+  );
+  let sides = [top, right, bottom, left];
+  if (top === bottom && right === left) {
+    sides = top === right ? [top] : [top, right];
+  }
+  return text("bar.pixels", { value: sides.join(" · ") });
+};
+
+/** A border as its width and style, such as "1px solid", or "None". */
+const borderWords = (values: Record<string, unknown>, text: Text) => {
+  const { borderStyle = "solid", borderWidth } = values;
+  return borderWidth === undefined
+    ? text("settings.none")
+    : text(`bar.border.${borderStyle as "dashed" | "dotted" | "solid"}`, {
+        width: String(borderWidth),
+      });
+};
+
+/** The fields of a border: its width, style and color. */
+const BORDER_KEYS = ["borderWidth", "borderStyle", "borderColor"] as const;
+
+/** A Column's Blocks sit at its top, middle or bottom. */
+const VERTICAL_ALIGN_ICONS = {
+  bottom: ICONS.alignBottom,
+  middle: ICONS.alignMiddle,
+  top: ICONS.alignTop,
+};
+
 const ALIGN_ICONS = {
   center: ICONS.alignCenter,
   left: ICONS.alignLeft,
@@ -1069,9 +1318,42 @@ const keysOf = (control: Control): readonly string[] => {
 const CONTROLS: Readonly<
   Record<BlockType, (values: Record<string, unknown>) => readonly Control[]>
 > & {
+  readonly column: readonly NamedControl[];
   readonly email: readonly Control[];
   readonly row: (columns: number) => readonly Control[];
 } = {
+  column: [
+    {
+      key: "backgroundColor",
+      kind: "color",
+      label: "bar.background",
+      lead: "bar.background",
+      showValue: true,
+    },
+    {
+      grid: true,
+      id: "popover-padding",
+      keys: PADDING_KEYS,
+      kind: "popover",
+      label: (values, text) => paddingWords(values, 0, text),
+      lead: "bar.padding",
+      name: "bar.padding",
+    },
+    {
+      icons: VERTICAL_ALIGN_ICONS,
+      key: "verticalAlign",
+      kind: "choice",
+      lead: "bar.align",
+    },
+    {
+      id: "popover-border",
+      keys: BORDER_KEYS,
+      kind: "popover",
+      label: (values, text) => borderWords(values, text),
+      lead: "bar.border",
+      name: "bar.border",
+    },
+  ],
   button: () => [
     {
       icon: ICONS.link,
@@ -1193,6 +1475,9 @@ const controlsOf = (target: Target) => {
     }
     case "row": {
       return CONTROLS.row(target.position.row.columns.length);
+    }
+    case "column": {
+      return CONTROLS.column;
     }
     default: {
       return CONTROLS.email;
@@ -1577,9 +1862,11 @@ const renderPaddingPopover = (
 
 const renderPopoverControl = (
   section: SettingsSection,
-  control: Extract<Control, { kind: "popover" }>,
+  control: Extract<NamedControl, { kind: "popover" }>,
   api: PanelApi,
-  open: boolean
+  open: boolean,
+  /** In More, where it's a stop for Tab, not one of the bar's controls. */
+  inMore = false
 ) => {
   const fields = section.fields.filter(({ key }) => control.keys.includes(key));
   if (fields.length === 0) {
@@ -1587,8 +1874,16 @@ const renderPopoverControl = (
   }
   const name = api.text(control.name);
   const label = control.label?.(section.values, api.text);
+  // Where its name shows before it, its words are its value.
+  let ariaLabel: string | typeof nothing = name;
+  if (label) {
+    ariaLabel =
+      control.lead || inMore
+        ? api.text("bar.valueOf", { label: name, value: label })
+        : nothing;
+  }
   const popoverOf = () =>
-    control.id === "popover-padding"
+    control.id.endsWith("popover-padding")
       ? renderPaddingPopover(section, fields, name, api)
       : renderPopover(
           section,
@@ -1601,11 +1896,11 @@ const renderPopoverControl = (
       <button
         aria-expanded=${open ? "true" : "false"}
         aria-haspopup="dialog"
-        aria-label=${label ? nothing : name}
+        aria-label=${ariaLabel}
         class=${label ? "bar-button" : "icon-button"}
         data-action=${control.id}
         data-tooltip=${name}
-        tabindex="-1"
+        tabindex=${inMore ? "0" : "-1"}
         type="button"
         @click=${() => api.togglePopover(control.id)}
       >
@@ -1631,14 +1926,17 @@ const renderPopoverControl = (
 const renderColorControl = (
   section: SettingsSection,
   field: SettingsField,
-  control: Extract<Control, { kind: "color" }>,
+  control: Extract<NamedControl, { kind: "color" }>,
   api: PanelApi,
   open: boolean
 ) => {
   const { text } = api;
   const id = `popover-${field.key}`;
   const name = fieldWords(field.labelId, text);
-  const value = shownValue(section, field);
+  // Shown as words, it's the setting's own value, so unset says "None".
+  const value = control.showValue
+    ? fieldText(field, section.values)
+    : shownValue(section, field);
   return html`
     <span class="bar-anchor">
       <button
@@ -1650,16 +1948,22 @@ const renderColorControl = (
         })}
         class="bar-button"
         data-action=${id}
-        data-tooltip=${name}
+        data-tooltip=${control.lead ? text(control.lead) : name}
         tabindex="-1"
         type="button"
         @click=${() => api.togglePopover(id)}
       >
         <span
-          class="swatch"
+          class=${value ? "swatch" : "swatch none"}
           style=${styleProperties({ "background-color": value || undefined })}
         ></span>
-        <span class="words">${text(control.label)}</span>
+        <span class=${control.showValue && !value ? "words unset" : "words"}
+          >${
+            control.showValue
+              ? value.toUpperCase() || text("settings.none")
+              : text(control.label)
+          }</span
+        >
       </button>
       ${open ? renderPopover(section, [field], { legend: name }, api) : nothing}
     </span>
@@ -1751,7 +2055,22 @@ const fieldOf = (section: SettingsSection, key: string) =>
 const renderControl = (
   target: Target,
   section: SettingsSection,
-  control: Control,
+  control: NamedControl,
+  api: PanelApi,
+  isStop: boolean
+) => {
+  const shown = renderOwnControl(target, section, control, api, isStop);
+  return control.lead && shown !== nothing
+    ? html`<span aria-hidden="true" class="bar-name"
+          >${api.text(control.lead)}</span
+        >${shown}`
+    : shown;
+};
+
+const renderOwnControl = (
+  target: Target,
+  section: SettingsSection,
+  control: NamedControl,
   api: PanelApi,
   isStop: boolean
 ) => {
@@ -1823,6 +2142,62 @@ const renderChip = (target: Target, api: PanelApi) => {
       api.closeMenu(false);
       then(detail === 0);
     };
+  /**
+   * The Columns the menu offers: a Block's own, or a Row's every one, so an
+   * empty Column, which has no Block to start from, is reached too.
+   */
+  const { row: owner } = target.position;
+  let offered: readonly Column[] = [];
+  if (target.kind === "block") {
+    offered = [target.position.column];
+  } else if (target.kind === "row") {
+    offered = owner.columns;
+  }
+  const columns = offered.map((each) => ({
+    id: each.id,
+    name: text("canvas.column", { column: owner.columns.indexOf(each) + 1 }),
+  }));
+  const menuItem = (
+    icon: TemplateResult,
+    words: string,
+    then: (fromKeyboard: boolean) => void
+  ) => html`
+    <button role="menuitem" tabindex="-1" type="button" @click=${select(then)}>
+      ${icon}<span>${words}</span>
+    </button>
+  `;
+  const chipIcon = () => {
+    switch (target.kind) {
+      case "block": {
+        return BLOCK_VIEWS[target.position.block.type].icon;
+      }
+      case "column": {
+        return ICONS.column;
+      }
+      default: {
+        return ICONS.rows;
+      }
+    }
+  };
+  const chipWords = () => {
+    switch (target.kind) {
+      case "block": {
+        return html`<span class="chip-path">${text("bar.path", { row })}</span>
+          <span>${blockTypeName(target.position.block.type, text)}</span>`;
+      }
+      case "column": {
+        return html`<span class="chip-path">${text("bar.path", { row })}</span>
+          <span>
+            ${text("canvas.column", {
+              column: target.position.columnIndex + 1,
+            })}
+          </span>`;
+      }
+      default: {
+        return html`<span>${row}</span>`;
+      }
+    }
+  };
   return html`
     <span class="bar-anchor">
       <button
@@ -1834,22 +2209,8 @@ const renderChip = (target: Target, api: PanelApi) => {
         type="button"
         @click=${() => api.toggleMenu()}
       >
-        <span class="chip-icon">
-          ${
-            target.kind === "block"
-              ? BLOCK_VIEWS[target.position.block.type].icon
-              : ICONS.rows
-          }
-        </span>
-        ${
-          target.kind === "block"
-            ? html`<span class="chip-path">${text("bar.path", { row })}</span>
-                <span>
-                  ${blockTypeName(target.position.block.type, text)}
-                </span>`
-            : html`<span>${row}</span>`
-        }
-        ${ICONS.chevronDown}
+        <span class="chip-icon">${chipIcon()}</span>
+        ${chipWords()} ${ICONS.chevronDown}
       </button>
       ${
         api.bar.menuOpen
@@ -1861,31 +2222,20 @@ const renderChip = (target: Target, api: PanelApi) => {
                 role="menu"
               >
                 ${
-                  target.kind === "block"
-                    ? html`
-                        <button
-                          role="menuitem"
-                          tabindex="-1"
-                          type="button"
-                          @click=${select((fromKeyboard) =>
-                            api.selectRow(target.position.row.id, fromKeyboard)
-                          )}
-                        >
-                          ${ICONS.rows}<span>${row}</span>
-                        </button>
-                      `
-                    : nothing
+                  target.kind === "row"
+                    ? nothing
+                    : menuItem(ICONS.rows, row, (fromKeyboard) =>
+                        api.selectRow(target.position.row.id, fromKeyboard)
+                      )
                 }
-                <button
-                  role="menuitem"
-                  tabindex="-1"
-                  type="button"
-                  @click=${select((fromKeyboard) =>
-                    api.selectEmail(fromKeyboard)
-                  )}
-                >
-                  ${ICONS.mail}<span>${text("bar.email")}</span>
-                </button>
+                ${columns.map(({ id, name }) =>
+                  menuItem(ICONS.column, name, (fromKeyboard) =>
+                    api.selectColumn(id, fromKeyboard)
+                  )
+                )}
+                ${menuItem(ICONS.mail, text("bar.email"), (fromKeyboard) =>
+                  api.selectEmail(fromKeyboard)
+                )}
               </div>
             `
           : nothing
@@ -2037,6 +2387,10 @@ const actionsOf = (
   api: PanelApi
 ): ActionButton[] => {
   const { text } = api;
+  // A Column moves, copies and goes only with its Row.
+  if (target.kind === "column") {
+    return [];
+  }
   if (target.kind === "block") {
     return [
       ...BLOCK_MOVES.map(([direction, label]) => ({
@@ -2097,6 +2451,11 @@ const nameOf = (target: Target, text: Text) => {
     case "block": {
       return blockTypeName(target.position.block.type, text);
     }
+    case "column": {
+      return text("canvas.column", {
+        column: target.position.columnIndex + 1,
+      });
+    }
     case "row": {
       return text("canvas.row", { row: target.position.rowIndex + 1 });
     }
@@ -2108,6 +2467,7 @@ const nameOf = (target: Target, text: Text) => {
 
 const BAR_PLACE: Record<Target["kind"], Place> = {
   block: "blockBar",
+  column: "columnBar",
   email: "emailBar",
   row: "rowBar",
 };
@@ -2230,6 +2590,20 @@ const renderMoreActions = (
   api: PanelApi
 ) => {
   const { text } = api;
+  if (target.kind === "column") {
+    const { row, rowIndex } = target.position;
+    return html`
+      <div class="more-actions">
+        <h3>${text("more.actions")}</h3>
+        ${renderMoreAction({
+          action: "select-row",
+          icon: ICONS.rows,
+          label: text("more.selectRow", { row: rowIndex + 1 }),
+          onClick: ({ detail }) => api.selectRow(row.id, detail === 0),
+        })}
+      </div>
+    `;
+  }
   const isBlock = target.kind === "block";
   const scope: KeyScope = isBlock ? "block" : "rowBar";
   return html`
@@ -2303,6 +2677,13 @@ const headingOf = (target: Target, text: Text) => {
         title: blockTypeName(block.type, text),
       };
     }
+    case "column": {
+      const { columnIndex, rowIndex } = target.position;
+      return {
+        subtitle: text("more.columnOf", { row: rowIndex + 1 }),
+        title: text("canvas.column", { column: columnIndex + 1 }),
+      };
+    }
     case "row": {
       const { row, rowIndex } = target.position;
       const count = row.columns.length;
@@ -2330,6 +2711,7 @@ export const fitSelectionBar = (root: ParentNode) => {
   const bar = [
     findPlace(root, "blockBar"),
     findPlace(root, "rowBar"),
+    findPlace(root, "columnBar"),
     findPlace(root, "emailBar"),
   ].find(Boolean);
   const content = bar?.firstElementChild;
@@ -2369,6 +2751,73 @@ export const fitSelectionBar = (root: ParentNode) => {
   ) {
     bar.querySelector<HTMLElement>('[data-action="more"]')?.focus();
   }
+};
+
+/**
+ * A Block's Box, in More: padding and its border each from a button that
+ * opens their fields, as the bar's settings do, and its background and
+ * corners as fields.
+ */
+const renderBox = (position: BlockPosition, api: PanelApi) => {
+  const { text } = api;
+  const section = boxSection(position, api);
+  const field = (key: string) =>
+    section.fields.filter((each) => each.key === key);
+  const opener = (
+    control: Extract<NamedControl, { kind: "popover" }>,
+    label: string
+  ) => html`
+    <div class="field inline" data-place=${place("boxOpener")}>
+      <span aria-hidden="true" class="box-label">${label}</span>
+      ${renderPopoverControl(
+        section,
+        control,
+        api,
+        api.bar.popover === control.id,
+        true
+      )}
+    </div>
+  `;
+  const fallback = Number(field("paddingTop")[0]?.default ?? 0);
+  return html`
+    <div class="settings box" data-place=${place("settings")}>
+      <div class="section">
+        <fieldset>
+          <legend>${section.legend}</legend>
+          ${opener(
+            {
+              grid: true,
+              id: `${IN_MORE}popover-padding`,
+              keys: PADDING_KEYS,
+              kind: "popover",
+              label: (values) => paddingWords(values, fallback, text),
+              name: "bar.padding",
+            },
+            text("bar.padding")
+          )}
+          ${field("boxBackgroundColor").map((each) =>
+            renderField(section, each, api.drafts, fieldTags(api), text)
+          )}
+          ${opener(
+            {
+              id: `${IN_MORE}popover-border`,
+              keys: BORDER_KEYS,
+              kind: "popover",
+              label: (values) => borderWords(values, text),
+              name: "bar.border",
+            },
+            text("bar.border")
+          )}
+          ${field("borderRadius").map((each) =>
+            renderField(section, each, api.drafts, fieldTags(api), text)
+          )}
+          <p class="description box-note">
+            ${ICONS.info}${text("more.squareInOutlook")}
+          </p>
+        </fieldset>
+      </div>
+    </div>
+  `;
 };
 
 /** More where it docks beside the email: a column as tall as the editor. */
@@ -2420,6 +2869,7 @@ const renderMore = (api: PanelApi) => {
               )
             : nothing
         }
+        ${target.kind === "block" ? renderBox(target.position, api) : nothing}
         ${target.kind === "email" ? nothing : renderMoreActions(target, api)}
       </div>
     </section>

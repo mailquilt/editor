@@ -752,12 +752,13 @@ const moveTooltip = (index: number, count: number, api: PanelApi) => {
 /** The Row that what's selected is in, if anything is. */
 const currentRowId = (api: PanelApi) =>
   api.selectedRow?.row.id ??
+  api.selectedColumn?.row.id ??
   (api.selectedBlock && api.email.rows[api.selectedBlock.rowIndex]?.id);
 
 /** The + and its layouts, which add an empty Row after the current one. */
 const renderAdd = (api: PanelApi, open: boolean) => {
   const { text } = api;
-  const current = api.selectedRow ?? api.selectedBlock;
+  const current = api.selectedRow ?? api.selectedColumn ?? api.selectedBlock;
   return html`
     <span class="rows-add-anchor">
       <button

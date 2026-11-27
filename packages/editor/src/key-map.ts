@@ -85,6 +85,7 @@ export type Action =
   | "toAddResults"
   | "typeInField"
   | "undo"
+  | "unselectColumn"
   | "unselectRow";
 
 /** The browser's clipboard events, which its keys and its Edit menu fire. */
@@ -506,6 +507,11 @@ const KEY_SCOPES = {
       OPEN_ADD,
       ...TOOLBAR,
     ],
+    within: "email",
+  },
+  /** With a Column selected: Escape goes back in to its Blocks. */
+  columnBar: {
+    keys: [escape("unselectColumn"), OPEN_ADD, ...TOOLBAR],
     within: "email",
   },
   // With nothing selected, a paste goes at the end, as from the floating

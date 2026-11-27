@@ -2,7 +2,12 @@ import type { BlocksDocument, RowLayout } from "@mailquilt/core";
 
 import type { AddingState, AddPlace } from "./adding.js";
 import type { ShownFieldPicker } from "./field-merge-tags.js";
-import type { BlockPosition, Direction, RowPosition } from "./positions.js";
+import type {
+  BlockPosition,
+  ColumnPosition,
+  Direction,
+  RowPosition,
+} from "./positions.js";
 import type { RowsListState } from "./rows-list.js";
 import type { BarPanelsState } from "./selection-bar.js";
 import type { SettingsDrafts } from "./settings-panel.js";
@@ -37,6 +42,8 @@ export interface EmailPanelApi {
   selectedBlock: BlockPosition | undefined;
   /** The selected Row, and where it is. Unset while a Block is selected. */
   selectedRow: RowPosition | undefined;
+  /** The selected Column, and where it is. Unset unless one is selected. */
+  selectedColumn: ColumnPosition | undefined;
   /** Whether focus is in the selected Block's text or its format bar. */
   editingText: boolean;
   /** Each of the editor's texts, in the Host app's words where it gives them. */
@@ -100,6 +107,8 @@ export interface EmailPanelApi {
    * to the Row in the list, so its keys go on working there.
    */
   selectRowInList: (rowId: string, fromKeyboard: boolean) => void;
+  /** Selects a Column, which the Selection bar then shows. */
+  selectColumn: (columnId: string, fromKeyboard: boolean) => void;
   /** Selects nothing, so the Selection bar shows the email's settings. */
   selectEmail: (fromKeyboard: boolean) => void;
   /** Puts the selected Block or Row on the clipboard, as Ctrl/⌘+C does. */

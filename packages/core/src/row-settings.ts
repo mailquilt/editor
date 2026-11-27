@@ -1,29 +1,19 @@
 import * as v from "valibot";
 
+import {
+  paddingEntries,
+  paddingFields,
+  paddingStyles,
+} from "./box-settings.js";
 import type { Row } from "./document.js";
-import { BACKGROUND_COLOR_FIELD, pixelField } from "./settings-fields.js";
+import { BACKGROUND_COLOR_FIELD } from "./settings-fields.js";
 import type { SettingsField } from "./settings-fields.js";
 import { colorSchema } from "./value-schemas.js";
-
-/** As much room as a Row's padding can take on one side. */
-const MAX_ROW_PADDING = 200;
-
-const paddingSchema = v.optional(
-  v.pipe(
-    v.number(),
-    v.safeInteger(),
-    v.minValue(0),
-    v.maxValue(MAX_ROW_PADDING)
-  )
-);
 
 export const rowPropsSchema = v.strictObject({
   backgroundColor: v.optional(colorSchema),
   hideOnPhone: v.optional(v.boolean()),
-  paddingBottom: paddingSchema,
-  paddingLeft: paddingSchema,
-  paddingRight: paddingSchema,
-  paddingTop: paddingSchema,
+  ...paddingEntries,
   stackOnPhone: v.optional(v.boolean()),
 });
 
@@ -33,15 +23,9 @@ export const rowPropsSchema = v.strictObject({
  */
 export type RowProps = v.InferOutput<typeof rowPropsSchema>;
 
-const paddingField = (key: string, labelId: string) =>
-  pixelField(key, labelId, { fallback: 0, max: MAX_ROW_PADDING, min: 0 });
-
 const ROW_FIELDS: readonly SettingsField[] = [
   BACKGROUND_COLOR_FIELD,
-  paddingField("paddingTop", "field.paddingTop"),
-  paddingField("paddingRight", "field.paddingRight"),
-  paddingField("paddingBottom", "field.paddingBottom"),
-  paddingField("paddingLeft", "field.paddingLeft"),
+  ...paddingFields(0),
   {
     default: false,
     descriptionId: "field.hideOnPhone.description",
@@ -81,15 +65,10 @@ export const rowStyles = ({
   props,
 }: Pick<Row, "props">): Record<string, string> => {
   const { backgroundColor, ...padding } = props as RowProps;
-  const styles: Record<string, string> =
-    backgroundColor === undefined
+  return {
+    ...(backgroundColor === undefined
       ? {}
-      : { "background-color": backgroundColor };
-  for (const side of ["Top", "Right", "Bottom", "Left"] as const) {
-    const pixels = padding[`padding${side}`];
-    if (pixels !== undefined) {
-      styles[`padding-${side.toLowerCase()}`] = `${pixels}px`;
-    }
-  }
-  return styles;
+      : { "background-color": backgroundColor }),
+    ...paddingStyles(padding),
+  };
 };

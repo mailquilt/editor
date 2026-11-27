@@ -69,13 +69,20 @@ interface KeyDispatchHost {
   focus: Pick<EditorFocus, "focus" | "focused" | "focusIsOutsideText">;
   /** The first Block of a Row, if it has any. */
   firstBlockIn: (rowId: string) => string | undefined;
+  /** A Column's first Block, if it has any, and its Row. */
+  firstBlockInColumn: (
+    columnId: string
+  ) => { blockId: string | undefined; rowId: string } | undefined;
   isDragging: () => boolean;
   linkForm: { cancel: () => void; open: () => void };
   /** Whether Check is shown, with the Canvas hidden behind it. */
   checking: () => boolean;
   /** The Rows list's layouts, which Escape closes. */
   rowsList: { closeAdd: (returnFocus: boolean) => void };
-  selection: Pick<EditorSelection, "rowId" | "select" | "selectedText">;
+  selection: Pick<
+    EditorSelection,
+    "columnId" | "rowId" | "select" | "selectedText" | "selectRow"
+  >;
   stepHistory: (step: "redo" | "undo") => void;
   /** The Style panel's popovers. */
   style: {
@@ -122,6 +129,7 @@ export const createKeyDispatch = ({
   editing,
   fieldMergeTags,
   firstBlockIn,
+  firstBlockInColumn,
   focus,
   isDragging,
   linkForm,
@@ -217,6 +225,18 @@ export const createKeyDispatch = ({
     toAddResults: ({ target }) => focusFirstTile(target as Element),
     typeInField: doNothing,
     undo: () => stepHistory("undo"),
+    // To the selected Column's first Block, which focus selects, or with none,
+    // to its Row, which the bar then shows.
+    unselectColumn: () => {
+      const { columnId } = selection;
+      const found =
+        columnId === undefined ? undefined : firstBlockInColumn(columnId);
+      if (found?.blockId !== undefined) {
+        focus.focus({ blockId: found.blockId, on: "block" });
+      } else if (found) {
+        selection.selectRow(found.rowId, true);
+      }
+    },
     // To the selected Row's first Block, which focus selects, or with none,
     // to nothing selected.
     unselectRow: () => {

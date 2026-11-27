@@ -8,8 +8,10 @@ import {
 } from "../src/index.js";
 import type { BlocksDocument, Operation } from "../src/index.js";
 import {
+  blockBoxStyles,
   blockSettingsFields,
   blockStyles,
+  columnStyles,
   EMAIL_SETTINGS_FIELDS,
   hexColor,
   rowSettingsFields,
@@ -246,6 +248,181 @@ describe("Row settings", () => {
   });
 });
 
+// The Box is the same schema on every type, so a Text Block stands for all.
+describe("Box settings", () => {
+  const box = {
+    borderColor: "#b5652b",
+    borderRadius: 8,
+    borderStyle: "dashed",
+    borderWidth: 2,
+    boxBackgroundColor: "#efe6da",
+    paddingBottom: 0,
+    paddingLeft: 20,
+    paddingRight: 20,
+    paddingTop: 200,
+  };
+
+  it("stores padding, background, border and corners as one undo step", () => {
+    const { blockId, editor } = setup();
+    const before = editor.getDocument();
+
+    expect(
+      editor.apply({ blockId, props: box, type: "updateBlockProps" })
+    ).toStrictEqual({ ok: true });
+    expect(blockProps(editor.getDocument())).toMatchObject(box);
+    expect(loadDocument(editor.getDocument())).toMatchObject({ ok: true });
+
+    editor.undo();
+    expect(editor.getDocument()).toStrictEqual(before);
+  });
+
+  it.each([
+    ["a border wider than 20", { borderWidth: 21 }, /borderWidth/u],
+    ["a border of no width", { borderWidth: 0 }, /borderWidth/u],
+    [
+      "a border style it doesn't draw",
+      { borderStyle: "double" },
+      /borderStyle/u,
+    ],
+    ["corners past 100", { borderRadius: 101 }, /borderRadius/u],
+    [
+      "a background that isn't a color",
+      { boxBackgroundColor: "beige" },
+      /boxBackgroundColor/u,
+    ],
+  ])("refuses %s", (_name, props, reason) => {
+    const { blockId, editor } = setup();
+
+    expect(
+      editor.apply({ blockId, props, type: "updateBlockProps" })
+    ).toStrictEqual({
+      code: "invalidProps",
+      ok: false,
+      reason: expect.stringMatching(reason),
+    });
+  });
+});
+
+const columnSetup = () => {
+  const { editor } = setup();
+  const columnId = editor.getDocument().rows[0]?.columns[0]?.id as string;
+  const operations: Operation[][] = [];
+  editor.subscribe((step) => operations.push(step));
+  return { columnId, editor, operations };
+};
+
+const columnProps = (document: BlocksDocument) =>
+  document.rows[0]?.columns[0]?.props;
+
+describe("Column settings", () => {
+  const settings = {
+    backgroundColor: "#ffffff",
+    borderColor: "#b5652b",
+    borderStyle: "solid",
+    borderWidth: 1,
+    paddingBottom: 12,
+    paddingLeft: 12,
+    paddingRight: 12,
+    paddingTop: 12,
+    verticalAlign: "middle",
+  };
+
+  it("stores background, padding, alignment and border as one undo step", () => {
+    const { columnId, editor } = columnSetup();
+    const before = editor.getDocument();
+
+    expect(
+      editor.apply({ columnId, props: settings, type: "updateColumnProps" })
+    ).toStrictEqual({ ok: true });
+    expect(columnProps(editor.getDocument())).toStrictEqual(settings);
+    expect(loadDocument(editor.getDocument())).toMatchObject({ ok: true });
+
+    editor.undo();
+    expect(editor.getDocument()).toStrictEqual(before);
+  });
+
+  it("reports its change as a setProps Operation for the Column", () => {
+    const { columnId, editor, operations } = columnSetup();
+
+    editor.apply({
+      columnId,
+      props: { verticalAlign: "bottom" },
+      type: "updateColumnProps",
+    });
+
+    expect(operations).toStrictEqual([
+      [
+        {
+          columnId,
+          previousProps: {},
+          props: { verticalAlign: "bottom" },
+          type: "setProps",
+        },
+      ],
+    ]);
+  });
+
+  it("refuses an alignment it doesn't know", () => {
+    const { columnId, editor } = columnSetup();
+
+    expect(
+      editor.apply({
+        columnId,
+        props: { verticalAlign: "center" },
+        type: "updateColumnProps",
+      })
+    ).toStrictEqual({
+      code: "invalidProps",
+      ok: false,
+      reason: expect.stringMatching(/verticalAlign/u),
+    });
+  });
+
+  it("refuses a Column that isn't there", () => {
+    const { editor } = columnSetup();
+
+    expect(
+      editor.apply({ columnId: "nope", props: {}, type: "updateColumnProps" })
+    ).toStrictEqual({
+      code: "noSuchColumn",
+      ok: false,
+      reason: 'No Column with ID "nope"',
+    });
+  });
+
+  it("are kept by a new Row's Columns, as a copied Row has them", () => {
+    const { editor } = columnSetup();
+
+    editor.apply({
+      columns: [{ blocks: [], props: { verticalAlign: "bottom" } }],
+      index: 0,
+      layout: "100",
+      type: "insertRow",
+    });
+
+    expect(columnProps(editor.getDocument())).toStrictEqual({
+      verticalAlign: "bottom",
+    });
+  });
+
+  it("are checked in a new Row's Columns", () => {
+    const { editor } = columnSetup();
+
+    expect(
+      editor.apply({
+        columns: [{ blocks: [], props: { verticalAlign: "center" } }],
+        index: 0,
+        layout: "100",
+        type: "insertRow",
+      })
+    ).toStrictEqual({
+      code: "invalidProps",
+      ok: false,
+      reason: expect.stringMatching(/Column 1 in the new Row/u),
+    });
+  });
+});
+
 describe("Email settings", () => {
   const everything = {
     backgroundColor: "#eeeeee",
@@ -383,6 +560,17 @@ const saved = (change: (email: BlocksDocument) => void) => {
 };
 
 describe("saved settings", () => {
+  it("refuses a Column setting it doesn't know", () => {
+    const document = createEmail();
+    const column = document.rows[0]?.columns[0] as { props: object };
+    column.props = { shadow: true };
+
+    expect(loadDocument(document)).toStrictEqual({
+      ok: false,
+      reason: expect.stringMatching(/shadow/u),
+    });
+  });
+
   it("refuses a Row setting it doesn't know", () => {
     expect(
       saved((email) => {
@@ -482,6 +670,35 @@ describe(blockStyles, () => {
       "line-height": "24px",
       "text-align": "left",
     });
+  });
+});
+
+describe(blockBoxStyles, () => {
+  it("writes only the padding a Block sets, and a border solid and black until picked", () => {
+    expect(
+      blockBoxStyles({
+        props: { borderWidth: 2, content: { type: "doc" }, paddingTop: 0 },
+        type: "text",
+      } as never)
+    ).toStrictEqual({ border: "2px solid #000000", "padding-top": "0px" });
+  });
+
+  it("leaves a Button's corners to its own shape, over Email style's", () => {
+    const button = {
+      props: { borderRadius: 100, label: "Shop" },
+      type: "button",
+    } as const;
+
+    expect(blockBoxStyles(button)).toStrictEqual({});
+    expect(
+      blockStyles(button, { buttonBorderRadius: 8 })["border-radius"]
+    ).toBe("100px");
+  });
+});
+
+describe(columnStyles, () => {
+  it("adds nothing for a Column with no settings", () => {
+    expect(columnStyles({ props: {} })).toStrictEqual({});
   });
 });
 

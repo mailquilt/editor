@@ -3,12 +3,16 @@ import type { EditorFocus } from "./focus.js";
 import type { TextBlockView } from "./text-block-view.js";
 
 /**
- * Which Block or Row is selected, and whether its text is being edited. Everything else in the editor asks this module to select
+ * Which Block, Row or Column is selected, and whether its text is being edited. Everything else in the editor asks this module to select
  * something. Focus is the focus module's.
  */
 
-/** A Block, which the Selection bar acts on, a Row, or nothing. */
-type Selected = { blockId: string } | { rowId: string } | undefined;
+/** A Block, which the Selection bar acts on, a Row, a Column, or nothing. */
+type Selected =
+  | { blockId: string }
+  | { rowId: string }
+  | { columnId: string }
+  | undefined;
 
 interface SelectionHost {
   focus: Pick<
@@ -43,17 +47,23 @@ export const createSelection = ({
   const selectedRowId = () =>
     selected && "rowId" in selected ? selected.rowId : undefined;
 
+  const selectedColumnId = () =>
+    selected && "columnId" in selected ? selected.columnId : undefined;
+
   const isSelected = (target: Selected) => {
     if (target === undefined) {
       return selected === undefined;
     }
-    return "blockId" in target
-      ? target.blockId === selectedBlockId()
-      : target.rowId === selectedRowId();
+    if ("blockId" in target) {
+      return target.blockId === selectedBlockId();
+    }
+    return "rowId" in target
+      ? target.rowId === selectedRowId()
+      : target.columnId === selectedColumnId();
   };
 
   /**
-   * Selects a Block, a Row or nothing, which the Selection bar then shows.
+   * Selects a Block, a Row, a Column or nothing, which the Selection bar then shows.
    * Whether a Block's text is being edited is up to where focus is.
    */
   const select = (target: Selected) => {
@@ -83,13 +93,16 @@ export const createSelection = ({
     /** Before an update: drops a selection that the update's email no longer has. */
     beforeUpdate(email: {
       blockIds: ReadonlySet<string>;
+      columnIds: ReadonlySet<string>;
       rowIds: ReadonlySet<string>;
     }) {
       const blockId = selectedBlockId();
       const rowId = selectedRowId();
+      const columnId = selectedColumnId();
       if (
         (blockId !== undefined && !email.blockIds.has(blockId)) ||
-        (rowId !== undefined && !email.rowIds.has(rowId))
+        (rowId !== undefined && !email.rowIds.has(rowId)) ||
+        (columnId !== undefined && !email.columnIds.has(columnId))
       ) {
         select(undefined);
       }
@@ -97,6 +110,10 @@ export const createSelection = ({
 
     get blockId() {
       return selectedBlockId();
+    },
+
+    get columnId() {
+      return selectedColumnId();
     },
 
     get editingText() {
@@ -161,6 +178,18 @@ export const createSelection = ({
      */
     selectRow(rowId: string, fromKeyboard: boolean) {
       select({ rowId });
+      focus.focusWhenRendered(
+        { action: "chip", on: "bar" },
+        { focusVisible: fromKeyboard }
+      );
+    },
+
+    /**
+     * Selects a Column, as `selectRow` selects a Row, and the Selection bar
+     * shows its settings.
+     */
+    selectColumn(columnId: string, fromKeyboard: boolean) {
+      select({ columnId });
       focus.focusWhenRendered(
         { action: "chip", on: "bar" },
         { focusVisible: fromKeyboard }

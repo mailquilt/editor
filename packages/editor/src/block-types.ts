@@ -22,9 +22,9 @@ import type { Text } from "./text.js";
 // and this doesn't handle is a type error. Core's part is in its `blocks.ts`.
 
 export const blockTypeStyles = css`
-  /* The same space as a Text Block's padding, as in the email output. */
+  /* The Block's padding, its own or the built-in, as in the email output. */
   .padded-block {
-    padding: ${unsafeCSS(EMAIL_LOOK.blockPadding)};
+    padding: var(--_mq-block-padding, ${unsafeCSS(EMAIL_LOOK.blockPadding)});
   }
 
   /* Like MJML: it fills the Column, and a width it's given stops at the Column. */
@@ -297,7 +297,7 @@ const drawSocial = (
     <div
       class="padded-block social-icons"
       style=${styleProperties({
-        padding: `${blockPadding}px`,
+        padding: blockPadding,
         "text-align": align,
       })}
     >
@@ -341,7 +341,11 @@ const drawDivider = (
 const drawSpacer = (
   _props: BlockProps["spacer"],
   styles: Record<string, string>
-) => html`<div class="spacer" style=${styleProperties(styles)}></div>`;
+) => html`
+  <div class="padded-block">
+    <div class="spacer" style=${styleProperties(styles)}></div>
+  </div>
+`;
 
 /**
  * Each type of Block's view. Text and Heading each have a text schema of their
