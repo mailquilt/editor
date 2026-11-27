@@ -220,6 +220,16 @@ test.describe("an Image", () => {
     await expect(decorative).toBeChecked();
     await expect(decorative).toHaveAttribute("aria-invalid", "true");
     await expect(page.getByRole("alert")).toContainText("its alt text first");
+
+    // Escape takes it back, as it does what was typed in a field, and the
+    // arrow keys still go along the bar.
+    await page.keyboard.press("Escape");
+    await expect(decorative).not.toBeChecked();
+    await expect(decorative).toHaveAttribute("aria-invalid", "false");
+    await expect(decorative).toBeFocused();
+    await decorative.click();
+    await page.keyboard.press("ArrowRight");
+    await expect(field(page, "Alt text")).toBeFocused();
     await expect(blockProps(page)).resolves.toEqual({
       alt: "A red bicycle",
       src: PHOTO,
