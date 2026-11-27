@@ -248,20 +248,28 @@ export const settingsPanelStyles = css`
   }
 
   /* In a panel, the phone and the ✕ sit inside the field, at either end. */
-  .settings [data-phone-value] input {
+  .settings .unit-field[data-phone-value] input {
     padding-inline: 28px 58px;
   }
 
-  .settings [data-phone-value] .phone-icon {
+  .settings .unit-field[data-phone-value] .unit {
+    inset-inline-end: 32px;
+  }
+
+  .bar-field[data-phone-value] input {
+    text-align: start;
+  }
+
+  .settings .unit-field[data-phone-value] .phone-icon {
     inset-block: 0;
     inset-inline-start: 9px;
     pointer-events: none;
     position: absolute;
   }
 
-  .settings [data-phone-value] .phone-clear {
+  .settings .unit-field[data-phone-value] .phone-clear {
     inset-block-start: 4px;
-    inset-inline-end: 30px;
+    inset-inline-end: 4px;
     position: absolute;
   }
 
@@ -645,15 +653,6 @@ export const settingsPanelStyles = css`
 
 const NO_COLOR = "#ffffff";
 
-/**
- * A number field's mark in the Phone view, where it has a Phone value: the
- * field tinted, a phone before its value, and an ✕ that clears it. In the
- * bar, a card under it while it has focus or the pointer says both values,
- * with a button that clears it from the keyboard, and the ✕ is for a pointer.
- * Elsewhere, where a card would be cut off, the ✕ is that button, and its
- * tooltip says both values. A field without Phone values says that it
- * changes every device.
- */
 /** A field without a mark, as outside the Phone view. */
 const NO_MARK = {
   clear: nothing,
@@ -664,6 +663,15 @@ const NO_MARK = {
   tooltip: undefined,
 } as const;
 
+/**
+ * A number field's mark in the Phone view, where it has a Phone value: the
+ * field tinted, a phone before its value, and an ✕ that clears it. In the
+ * bar, a card under it while it has focus or the pointer says both values,
+ * with a button that clears it from the keyboard, and the ✕ is for a pointer.
+ * Elsewhere, where a card would be cut off, the ✕ is that button, and its
+ * tooltip says both values. A field without Phone values says that it
+ * changes every device.
+ */
 export const phoneMark = (
   section: SettingsSection,
   field: Extract<SettingsField, { type: "number" }>,

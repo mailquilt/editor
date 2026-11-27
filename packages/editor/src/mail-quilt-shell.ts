@@ -400,6 +400,11 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
         display: block;
       }
 
+      /* As wide as its longest help stays on one line. */
+      #more-menu {
+        min-width: 290px;
+      }
+
       .menu-group {
         display: flex;
         flex-direction: column;

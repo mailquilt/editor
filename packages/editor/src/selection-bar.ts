@@ -1077,8 +1077,8 @@ const withSharedDefaults = (block: Block, style: EmailStyle) => {
 /**
  * In the Phone view, `section` as a phone shows it: each field that can have
  * a Phone value shows and changes that, or the setting's own value while it
- * has none. The other fields change the setting on every device. Its drafts
- * are its own, apart from the desktop's.
+ * has none. The other fields change the setting on every device. Its fields
+ * keep their draft keys, as Check's Fix and an upload find them by those.
  */
 const onDevice = (
   section: SettingsSection,
@@ -1109,7 +1109,6 @@ const onDevice = (
         phone: phone.length > 0 ? Object.fromEntries(phone) : null,
       });
     },
-    id: `${section.id}-phone`,
     phone: { desktop: section.values, keys, set },
     values: { ...section.values, ...set },
   };

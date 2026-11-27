@@ -58,6 +58,9 @@ export const STRINGS = {
   // The Canvas.
   "canvas.block":
     "{type} Block, Row {row}, Column {column}, position {position} of {count}",
+  /** A Block that shows on one device: "… position 2 of 3. Phones only". */
+  "canvas.blockShownOn":
+    "{type} Block, Row {row}, Column {column}, position {position} of {count}. {words}",
   "canvas.dragBlock": "Drag Block",
   "canvas.moveBlockUp": "Move Block up",
   "canvas.moveBlockDown": "Move Block down",

@@ -233,6 +233,24 @@ test.describe("showing on a device", () => {
     await expect(selectionBar(page)).toHaveAccessibleName(/Row 2/u);
   });
 
+  test("a selected Block in a Row that folds isn't the email's Tab stop, so Tab still reaches the Canvas", async ({
+    page,
+  }) => {
+    const email = emailWith([[["Shown"]], [["Desk"]]]);
+    await page.goto("/");
+    await setValue(page, {
+      ...email,
+      rows: email.rows.map((row, index) =>
+        index === 1 ? { ...row, props: { showOn: "desktop" } } : row
+      ),
+    });
+    await textOf(page, "Desk").click();
+
+    await view(page, "Phone").click();
+
+    await expect(blockWith(page, "Shown")).toHaveAttribute("tabindex", "0");
+  });
+
   test("faded, it's drawn whole with a tag; hidden, it isn't drawn and the arrow keys pass it", async ({
     page,
   }) => {

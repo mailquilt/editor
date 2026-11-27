@@ -1,6 +1,6 @@
 import { ROW_LAYOUTS } from "@mailquilt/core";
 import type { Block, EmailStyle, Row } from "@mailquilt/core";
-import { EMAIL_LOOK } from "@mailquilt/core/internal";
+import { EMAIL_LOOK, isHiddenOn } from "@mailquilt/core/internal";
 import type { RowProps } from "@mailquilt/core/internal";
 import { css, html, nothing, unsafeCSS } from "lit";
 import { repeat } from "lit/directives/repeat.js";
@@ -12,7 +12,7 @@ import {
   renderBlockContent,
   textBlockLook,
 } from "./block-types.js";
-import { rowLook } from "./canvas.js";
+import { renderAwayStrip, rowLook, SHOWN_ONLY_ON } from "./canvas.js";
 import { closestPlace, findPlaces, place } from "./editor-places.js";
 import type { EditorFocus } from "./focus.js";
 import { ICONS } from "./icons.js";
@@ -656,12 +656,25 @@ const drawText = (block: Extract<Block, { type: "heading" | "text" }>) => {
   return element;
 };
 
+/**
+ * A Block in a Row's picture, or where it isn't on the device being viewed,
+ * its strip, so the list marks it however the Canvas shows it.
+ */
 const renderPictureBlock = (
   block: Block,
   context: PictureContext,
   style: EmailStyle
-) =>
-  hasRichText(block)
+) => {
+  if (isHiddenOn(block, context.api.device)) {
+    return html`<div class="block">
+      ${renderAwayStrip(
+        block,
+        blockTypeName(block.type, context.api.text),
+        context.api
+      )}
+    </div>`;
+  }
+  return hasRichText(block)
     ? html`<div style=${styleProperties(textBlockLook(block, style))}>
         ${context.textPicture(block)}
       </div>`
@@ -678,6 +691,7 @@ const renderPictureBlock = (
           uploading: false,
         })}
       </div>`;
+};
 
 /** A Row as the Canvas draws it, but nothing in it to press or reach. */
 const renderPicture = (row: Row, context: PictureContext) => {
@@ -708,12 +722,6 @@ const renderPicture = (row: Row, context: PictureContext) => {
   `;
 };
 
-/** Where a Row shows, where it isn't every device, and the badge's icon. */
-const SHOWN_ON = {
-  desktop: { icon: ICONS.phoneOff, words: "device.desktopOnly" },
-  phone: { icon: ICONS.phone, words: "device.phonesOnly" },
-} as const;
-
 /** A badge for a Row that shows on one device: "Desktop only" or "Phones only". */
 const renderShownOnBadge = (row: Row, className: string, api: PanelApi) => {
   const { showOn } = row.props as RowProps;
@@ -723,8 +731,8 @@ const renderShownOnBadge = (row: Row, className: string, api: PanelApi) => {
         aria-hidden="true"
         class=${className}
         data-testid="rows-badge"
-        data-tooltip=${api.text(SHOWN_ON[showOn].words)}
-        >${SHOWN_ON[showOn].icon}</span
+        data-tooltip=${api.text(SHOWN_ONLY_ON[showOn].words)}
+        >${SHOWN_ONLY_ON[showOn].icon}</span
       >`;
 };
 
@@ -747,7 +755,7 @@ const rowName = (row: Row, index: number, count: number, api: PanelApi) => {
     ? text("rows.item", values)
     : text("rows.itemShownOn", {
         ...values,
-        words: text(SHOWN_ON[showOn].words),
+        words: text(SHOWN_ONLY_ON[showOn].words),
       });
 };
 

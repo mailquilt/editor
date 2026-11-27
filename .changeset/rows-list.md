@@ -10,7 +10,7 @@ What changes for a host:
 - The list comes before the email for Tab: its collapse button, its Rows as one stop, then its +. A test of your own that tabbed from the top bar straight to a Block now passes these three first.
 - The list's current Row has `aria-current="true"`, as the selected Block or Row does on the email, and the expanded list has a level-2 heading, "Rows". A test that found `[aria-current="true"]` or a level-2 heading anywhere in the editor now finds two. Look inside the email, or use the Shell's `heading` part.
 - `/` on the list's Rows opens the Add panel, so it no longer reaches your page from there.
-- `STRINGS`, `StringId` and `MailQuiltStrings` gain `rows.list`, `rows.item`, `rows.itemDesktopOnly`, `rows.noBlocks`, `rows.desktopOnly`, `rows.moveKeys`, `rows.collapse`, `rows.expand`, `rows.add`, `rows.emptyRow`, `rows.addsBelow`, `rows.addsAtEnd`, `rows.none`, `rows.noneHint`, `canvas.startTitle` and `canvas.startText`. Measured with `tsc`:
+- `STRINGS`, `StringId` and `MailQuiltStrings` gain `rows.list`, `rows.item`, `rows.noBlocks`, `rows.moveKeys`, `rows.collapse`, `rows.expand`, `rows.add`, `rows.emptyRow`, `rows.addsBelow`, `rows.addsAtEnd`, `rows.none`, `rows.noneHint`, `canvas.startTitle` and `canvas.startText`. Measured with `tsc`:
   - Still compiles: a partial translation typed `MailQuiltStrings`, and a full one spread from `STRINGS`.
   - Stops compiling: a full translation typed `Record<StringId, string>` and written out ID by ID. Add the new IDs to it.
 - No theme token is added or changed.

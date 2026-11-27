@@ -421,15 +421,16 @@ export const canvasStyles = css`
    * Folded: what isn't on the device being viewed, as a thin strip that says
    * what it is and where it shows, and that can still be selected.
    */
+  /* In the email, so in the image placeholder's light stripes, in either theme. */
   .away-strip {
     align-items: center;
     background: repeating-linear-gradient(
       -45deg,
-      var(--mq-color-surface-muted) 0 6px,
-      var(--mq-color-surface) 6px 12px
+      #f4f5f7 0 6px,
+      #eef0f3 6px 12px
     );
-    border-block: 1px solid var(--mq-color-border);
-    color: var(--mq-color-text-muted);
+    border-block: 1px solid #e4e6ea;
+    color: #52525b;
     cursor: pointer;
     display: flex;
     font:
@@ -445,6 +446,12 @@ export const canvasStyles = css`
     border-radius: var(--mq-radius-small);
     margin: var(--mq-space-2) var(--_mq-block-padding, 16px);
     min-height: 30px;
+  }
+
+  /* A selected folded Row, ringed as a selected Row is. */
+  .row-frame[data-row-selected] > .away-strip {
+    outline: 2px solid var(--mq-color-accent);
+    outline-offset: -2px;
   }
 
   .away-strip .icon {
@@ -473,6 +480,13 @@ export const canvasStyles = css`
     pointer-events: none;
     position: absolute;
     z-index: var(--_mq-layer-tags);
+  }
+
+  /* On a Block, above its end corner, clear of its content and its own tag. */
+  .block > .away-tag {
+    bottom: 100%;
+    inset-block-start: auto;
+    inset-inline: auto 0;
   }
 
   .away-tag .icon {
@@ -605,9 +619,12 @@ export const canvasStyles = css`
  */
 export type NotOnDevice = "fade" | "fold" | "hide";
 
-/** Where a Block or Row shows, as its mark says it, and the mark's icon. */
-const SHOWN_ONLY_ON = {
-  desktop: { icon: ICONS.monitor, words: "device.desktopOnly" },
+/**
+ * Where a Block or Row shows, as its marks say it on the Canvas and in the
+ * Rows list, and their icon.
+ */
+export const SHOWN_ONLY_ON = {
+  desktop: { icon: ICONS.phoneOff, words: "device.desktopOnly" },
   phone: { icon: ICONS.phone, words: "device.phonesOnly" },
 } as const;
 
@@ -628,7 +645,7 @@ const awayWords = (item: { props: object }, api: PanelApi) => {
 };
 
 /** A strip in place of what isn't on the device: "Row 5 · Phones only". */
-const renderAwayStrip = (
+export const renderAwayStrip = (
   item: { props: object },
   name: string,
   api: PanelApi,
@@ -642,6 +659,26 @@ const renderAwayStrip = (
   >
     ${icon}<span>${api.text("canvas.notHere", { name, words })}</span>
   </div>`;
+};
+
+/**
+ * A Block's name for screen readers, with where it shows when that isn't
+ * every device, as its strip or tag isn't read.
+ */
+const blockName = (
+  block: Block,
+  where: TextValues,
+  type: string,
+  api: PanelApi
+) => {
+  const { showOn } = block.props as { showOn?: ShowOn };
+  return showOn === undefined
+    ? api.text("canvas.block", { ...where, type })
+    : api.text("canvas.blockShownOn", {
+        ...where,
+        type,
+        words: api.text(SHOWN_ONLY_ON[showOn].words),
+      });
 };
 
 /** The tag on what's faded, as it isn't on the device: "Phones only". */
@@ -819,7 +856,7 @@ const renderFoldedBlock = (
     <div
       aria-current=${block.id === api.selectedBlock?.block.id ? "true" : nothing}
       aria-describedby="block-keys-no-text"
-      aria-label=${text("canvas.block", { ...where, type })}
+      aria-label=${blockName(block, where, type, api)}
       class="block"
       data-away="fold"
       data-block-id=${block.id}
@@ -863,7 +900,7 @@ const renderBlock = (
     <div
       aria-current=${selected ? "true" : nothing}
       aria-describedby=${rich ? "block-keys" : "block-keys-no-text"}
-      aria-label=${text("canvas.block", { ...where, type })}
+      aria-label=${blockName(block, where, type, api)}
       class="block"
       data-away=${away ?? nothing}
       data-block-id=${block.id}
@@ -1081,11 +1118,13 @@ export const renderRows = (
   if (rows.length === 0) {
     return renderStartRow(api);
   }
-  const tabStop =
-    api.selectedBlock?.block.id ??
-    (api.selectedRow
-      ? undefined
-      : blocksIn(drawnEmail(api.email, api.device, api.notOnDevice))[0]?.id);
+  const drawn = blocksIn(drawnEmail(api.email, api.device, api.notOnDevice));
+  const selected = api.selectedBlock?.block.id;
+  // The selected Block, unless it isn't drawn, as in a folded Row.
+  let tabStop = api.selectedRow ? undefined : drawn[0]?.id;
+  if (selected !== undefined && drawn.some(({ id }) => id === selected)) {
+    tabStop = selected;
+  }
   return repeat(
     rows,
     (row) => row.id,
