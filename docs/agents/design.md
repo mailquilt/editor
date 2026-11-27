@@ -31,7 +31,7 @@ This page sets the bar, the process and the checklist every UI change passes bef
 5. **Review** against the checklist below. Where a rule is deliberately broken, the code or this page says why. A correctness review is not a design review.
 6. **Make the evidence and look at it, to find faults.** Before calling UI done, produce and inspect:
    - screenshots at 320, 390, 768, 1024, 1440, 1920 and 2560 px wide, in light and dark, for every state, including errors. For the editor, that's its default theme and its built-in dark theme (`theme="dark"`), and below 640px its narrow notice. The wide screens matter: a layout that looks right at 1440 can stretch badly on a wide monitor;
-   - every dialog, menu and tooltip open, on a phone and on desktop, and Check from 640px up, as below that the narrow notice takes its place;
+   - every dialog, menu and tooltip open, on desktop, and on a phone wherever it can open there: below 640px the editor shows only its top bar, with More and Export, and the narrow notice, so Check and the rest are shot from 640px up;
    - a frame-by-frame recording of anything that loads, in which nothing already drawn moves or changes;
    - focus and keyboard paths checked in a real browser with real keys, against `keyboard.mdx` and the rules in `docs/agents/decisions.md`, "Keys and focus".
    While you iterate, shoot only the state you changed, at 390 and 1440 px. Shoot the full set when the build is finished, before the design review in step 7, and again for any state a review fix changes.
