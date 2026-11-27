@@ -59,11 +59,53 @@ const darkenEditors = () => {
   });
 };
 
+// WARNING: a menu or dialog starts its opening animation a frame or two after the click, so settling needs this many frames in a row with nothing animating.
+const CALM_FRAMES = 6;
+
+/**
+ * Waits, in the page, for fonts and for every finite animation to finish,
+ * until `calmFrames` frames in a row have nothing animating, or `timeout` ms
+ * pass. Endless animations, such as a spinner, are not waited for.
+ * `getAnimations` includes those inside the editor's Shadow DOM.
+ */
+const waitForStillness = ({ calmFrames, timeout }) =>
+  Promise.race([
+    new Promise((resolve) => setTimeout(resolve, timeout)),
+    (async () => {
+      await document.fonts.ready;
+
+      const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+      const running = () =>
+        document
+          .getAnimations()
+          .filter(
+            (animation) =>
+              animation.playState === "running" &&
+              Number.isFinite(animation.effect?.getComputedTiming().endTime)
+          );
+
+      for (let calm = 0; calm < calmFrames; ) {
+        await frame();
+
+        const animations = running();
+
+        if (animations.length === 0) {
+          calm += 1;
+        } else {
+          calm = 0;
+          await Promise.all(animations.map((animation) => animation.finished.catch(() => {})));
+        }
+      }
+    })(),
+  ]);
+
 /**
  * Opens a page `width` wide. `theme` is what the browser tells the page it
  * prefers, which the site follows. `editorTheme` "dark" also gives every
  * editor on the page the built-in dark theme, as a host app would. Below
  * `PHONE_BELOW` the page is a touch phone, unless `phone` is false.
+ * `settle()` waits until no request has been in flight for `quiet` ms, fonts
+ * have loaded and opening animations have finished, or `max` ms have passed.
  */
 export const openPage = async ({
   width,
@@ -86,7 +128,39 @@ export const openPage = async ({
     await page.addInitScript(darkenEditors);
   }
 
-  return { browser, context, page };
+  const inFlight = new Set();
+  let lastActivity = Date.now();
+  const done = (request) => {
+    inFlight.delete(request);
+    lastActivity = Date.now();
+  };
+
+  page.on("request", (request) => {
+    inFlight.add(request);
+    lastActivity = Date.now();
+  });
+  page.on("requestfinished", done);
+  page.on("requestfailed", done);
+
+  const settle = async ({ quiet = 400, max = 10_000 } = {}) => {
+    const deadline = Date.now() + max;
+
+    lastActivity = Date.now();
+
+    while (
+      Date.now() < deadline &&
+      (inFlight.size > 0 || Date.now() - lastActivity < quiet)
+    ) {
+      await page.waitForTimeout(50);
+    }
+
+    await page.evaluate(waitForStillness, {
+      calmFrames: CALM_FRAMES,
+      timeout: Math.max(deadline - Date.now(), 0),
+    });
+  };
+
+  return { browser, context, page, settle };
 };
 
 /** Opens `url`, and fails instead of capturing an error page when it can't load. */

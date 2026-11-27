@@ -19,7 +19,7 @@ This page sets the bar, the process and the checklist every UI change passes bef
 ## Process
 
 1. **UX first.** Write down the screen's job, who arrives and in what state, every state it has (loading, empty, error, success, disabled), and its copy, before any styling.
-2. **Mock up anything new, then stop.** Every new screen, panel, toolbar, menu, dialog or site section is shown as rendered mockups before it's built: desktop and phone, light and dark, every state from step 1. Show two or three directions with a recommendation, and wait for the maintainer's pick. This holds on a `ready-for-agent` ticket too. Only copy, spacing and token changes inside an existing component skip this step.
+2. **Mock up anything new, then stop.** Every new screen, panel, toolbar, menu, dialog or site section is shown as rendered mockups before it's built: desktop and phone (1440 and 390 px), light and dark, every state from step 1. The full set of widths in step 6 is for the build, not the mockups. Show two or three directions with a recommendation, and wait for the maintainer's pick. This holds on a `ready-for-agent` ticket too. Only copy, spacing and token changes inside an existing component skip this step.
 3. **Question every default.** For each browser, Lit or Blume default the design leans on, check how it renders on a phone, its type size, its focus and its motion, and keep it only when it's right. Say which you kept. Ones that matter here:
    - The host page's `color-scheme`, fonts and colours don't reach inside the editor's Shadow DOM; only its tokens do (`--mq-color-scheme` for what the browser draws itself, such as a dropdown's open list).
    - Blume's own header, sidebar and docs styles are restyled by selectors in `theme.css`, which a Blume upgrade can break (`apps/docs/README.md`, "Before upgrading Blume").
@@ -34,6 +34,8 @@ This page sets the bar, the process and the checklist every UI change passes bef
    - every dialog, menu, tooltip and the Preview open, on a phone and on desktop;
    - a frame-by-frame recording of anything that loads, in which nothing already drawn moves or changes;
    - focus and keyboard paths checked in a real browser with real keys, against `keyboard.mdx` and the rules in `docs/agents/decisions.md`, "Keys and focus".
+   While you iterate, shoot only the state you changed, at 390 and 1440 px. Shoot the full set once, when the build is finished, before the design review in step 7.
+
    The `editor-screens` skill makes all of these. Tests passing is not evidence of design, and neither are screenshots alone.
 7. **Get a fresh design review.** Give a reviewer agent that hasn't seen your work this page, the brand docs, the `frontend-design` and `emil-design-eng` skills, the code and the evidence, but not your conclusions. Fix each finding or say why it stays.
 8. **Say what was checked in the pull request:** each checklist item with what showed it, what the design review found and what changed. Images go in only when a human reviewer needs to see a visual change, such as a before and after.
