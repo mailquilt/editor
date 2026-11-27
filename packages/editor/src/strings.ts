@@ -434,6 +434,22 @@ export const STRINGS = {
 
   // Check: the email in an inbox, and its Problems.
   "check.samples": "Show sample values",
+  /** Check's tabs, which show the email in an inbox, as plain text or as HTML. */
+  "check.views": "Show the email as",
+  "check.viewInbox": "Inbox",
+  "check.viewText": "Plain text",
+  "check.viewHtml": "HTML",
+  "check.textNote":
+    "What email apps that show only text get. Made from the email; it can't be edited.",
+  "check.htmlNote": "{size} KB · read only",
+  "check.copyText": "Copy text",
+  "check.copyHtml": "Copy HTML",
+  /** On a copy button once it has copied, and said. */
+  "check.copied": "Copied",
+  "check.copiedText": "Plain text copied.",
+  "check.copiedHtml": "HTML copied.",
+  /** Said when the browser makes no copy. */
+  "check.cantCopy": "Couldn't copy. Select the text and copy it instead.",
   "check.desktop": "Desktop, {width}px",
   "check.phone": "Phone, {width}px",
   "check.desktopFrame": "The email on a desktop",

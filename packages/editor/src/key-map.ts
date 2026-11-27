@@ -565,6 +565,7 @@ const KEY_SCOPES = {
   // Elsewhere in the email.
   email: { keys: [], within: "email" },
   modes: { keys: TOOLBAR, within: "editor" },
+  checkViews: { keys: TOOLBAR, within: "editor" },
   // Tab leaves the Selection bar from a field in it, and does nothing more
   // elsewhere.
   settingsDraft: {

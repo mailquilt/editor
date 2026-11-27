@@ -82,6 +82,8 @@ const PLACES = {
   morePanel: { press: "keepsFocus" },
   /** Check's panel of Problems, and what passed. */
   checkPanel: {},
+  /** Check's tabs, Inbox, Plain text and HTML, one Tab stop. */
+  checkViews: {},
   /** The Problem a fix button opened Edit for, under the field to fix. */
   fixNote: {},
   /** The notice shown instead of the editor when there's no room to edit. */

@@ -3,11 +3,14 @@ import { MERGE_TAG } from "@mailquilt/core/internal";
 import { checkEmail } from "@mailquilt/renderer";
 import type { Problem, ProblemCode } from "@mailquilt/renderer";
 import { css, html, nothing, unsafeCSS } from "lit";
+import { guard } from "lit/directives/guard.js";
 import { live } from "lit/directives/live.js";
 
 import { place } from "./editor-places.js";
 import { shadowRootsUpFrom } from "./geometry.js";
 import type { HostAppProperties } from "./host-app.js";
+import { htmlLines } from "./html-lines.js";
+import type { HtmlPart } from "./html-lines.js";
 import { ICONS } from "./icons.js";
 import { claim, keyFor } from "./key-map.js";
 import { locate } from "./positions.js";
@@ -18,8 +21,9 @@ import type { Text, TextValues } from "./text.js";
 import { PHONE_WIDTH } from "./top-bar.js";
 
 // The Check Mode: the email as it's exported, in an inbox at desktop and phone
-// width, beside its Problems, each with what's wrong, why it matters and a fix
-// button. Problems only warn, so nothing here stops an export.
+// width, as plain text or as HTML, beside its Problems, each with what's wrong,
+// why it matters and a fix button. Problems only warn, so nothing here stops an
+// export.
 
 /** How long Check waits to say the email is loading, so a quick render says nothing. */
 const LOADING_SAID_AFTER_MS = 150;
@@ -47,6 +51,25 @@ const PREVIEWS_GAP_PX = 36;
 
 /** The least the two side by side are drawn at before the phone goes below. */
 const LEAST_SIDE_BY_SIDE = 0.8;
+
+/** The HTML tab's widest, which leaves its lines room to read. */
+const CODE_WIDTH_PX = 840;
+
+/** How long a copy button says it copied. */
+const COPIED_SHOWN_MS = 2000;
+
+/** What Check shows the email as, each in a tab of its own. */
+const VIEWS = [
+  { label: "check.viewInbox", view: "inbox" },
+  { label: "check.viewText", view: "text" },
+  { label: "check.viewHtml", view: "html" },
+] as const satisfies readonly { label: StringId; view: string }[];
+
+type CheckViewName = (typeof VIEWS)[number]["view"];
+
+const viewTabId = (view: CheckViewName) => `check-view-${view}`;
+
+const VIEW_PANEL_ID = "check-view-panel";
 
 /**
  * How much smaller the inbox and phone are drawn in `room` px, for an email
@@ -114,6 +137,131 @@ export const checkStyles = css`
     gap: var(--mq-space-2);
     min-height: 34px;
     padding: 0 var(--mq-space-3);
+  }
+
+  /* The tabs, and the sample values switch beside them. */
+  .check-bar {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--mq-space-2);
+    justify-content: center;
+  }
+
+  .check-views > .segment {
+    flex: none;
+    height: 28px;
+    padding: 0 14px;
+  }
+
+  /* The plain text or the HTML, as tall as the inbox. */
+  .check-code {
+    background: var(--mq-color-surface);
+    border: 1px solid var(--mq-color-border);
+    border-radius: var(--mq-radius);
+    box-shadow: var(--mq-shadow-small);
+    display: flex;
+    flex-direction: column;
+    height: var(--_mq-inbox-height);
+    max-width: 100%;
+    overflow: hidden;
+    width: var(--_mq-inbox-width);
+  }
+
+  .check-code.html {
+    width: ${unsafeCSS(CODE_WIDTH_PX)}px;
+  }
+
+  .check-code-head {
+    align-items: center;
+    border-bottom: 1px solid var(--mq-color-border);
+    display: flex;
+    flex: none;
+    gap: var(--mq-space-3);
+    justify-content: space-between;
+    padding: var(--mq-space-2) var(--mq-space-2) var(--mq-space-2)
+      var(--mq-space-4);
+  }
+
+  .check-code-head p {
+    color: var(--mq-color-text-muted);
+    margin: 0;
+  }
+
+  .check-code-head .text-button {
+    align-items: center;
+    display: inline-flex;
+    flex: none;
+    gap: 6px;
+  }
+
+  .check-code-head .text-button .icon {
+    height: 14px;
+    width: 14px;
+  }
+
+  /* Copied, in green on the button's own surface, hovered or not. */
+  .check-code-head .copied,
+  .check-code-head .copied:hover {
+    background: var(--mq-color-surface);
+    color: var(--mq-color-success);
+  }
+
+  .check-code-body {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+  }
+
+  .check-code-body:focus-visible {
+    outline: 2px solid var(--mq-color-accent);
+    outline-offset: -2px;
+  }
+
+  .check-code-body pre {
+    font-family: var(--_mq-font-family-code);
+    font-size: var(--_mq-font-size-code);
+    line-height: 1.7;
+    margin: 0;
+    padding: var(--mq-space-4);
+  }
+
+  /* Plain text wraps, as an email app that shows only text wraps it. */
+  .code-text {
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+  }
+
+  /* HTML doesn't, so each tag keeps its line, and it scrolls sideways. */
+  .code-lines {
+    flex: 1;
+    white-space: pre;
+  }
+
+  /* The line numbers stay as the lines scroll sideways. */
+  .code-gutter {
+    background: var(--mq-color-surface-muted);
+    border-inline-end: 1px solid var(--mq-color-border);
+    color: var(--mq-color-text-muted);
+    flex: none;
+    inset-inline-start: 0;
+    min-height: 100%;
+    position: sticky;
+    text-align: end;
+    user-select: none;
+  }
+
+  .code-name {
+    color: var(--mq-color-accent-strong);
+  }
+
+  .code-value {
+    color: var(--mq-color-success);
+  }
+
+  .code-comment {
+    color: var(--mq-color-text-muted);
   }
 
   .check-previews {
@@ -585,6 +733,8 @@ interface Checked {
   words: string;
   /** With each Merge Tag's sample, once it's been shown so. */
   sampled?: { html: string; words: string };
+  /** The HTML laid out to read, once the HTML tab has shown it. */
+  lines?: HtmlPart[][];
   problems: readonly Problem[];
   /** Whether the Host app gave Merge Tags, and marked one to unsubscribe. */
   ran: { mergeTags: boolean; unsubscribe: boolean };
@@ -592,6 +742,10 @@ interface Checked {
 
 /** One run of the check, for the email as it was then. */
 interface Run {
+  /** The plain text, which needs no MJML, so it's there from the start. */
+  text: string;
+  /** With each Merge Tag's sample, once it's been shown so. */
+  sampledText?: string;
   /** Unset while it renders. */
   result?: Checked | { failure: string };
   /** Set once it's time to say the email is loading. */
@@ -650,6 +804,7 @@ interface CheckHost {
   /** The email as it is now. */
   email: () => BlocksDocument | undefined;
   exportHtml: () => Promise<string>;
+  exportText: () => string;
   mergeTags: () => MergeTags;
   /** Whether Check is shown, so a result that arrives after is still heard. */
   isShown: () => boolean;
@@ -681,6 +836,7 @@ const checksRun = (ran: Checked["ran"]) =>
 export const createCheck = ({
   email,
   exportHtml,
+  exportText,
   isShown,
   mergeTags,
   requestUpdate,
@@ -689,9 +845,13 @@ export const createCheck = ({
 }: CheckHost) => {
   let current: Run | undefined;
   let showSamples = true;
+  let view: CheckViewName = "inbox";
+  /** The view whose copy button says it copied, for a moment. */
+  let copied: CheckViewName | undefined;
+  let copiedTimer: ReturnType<typeof setTimeout> | undefined;
 
   const start = async (document: BlocksDocument) => {
-    const run: Run = {};
+    const run: Run = { text: exportText() };
     current = run;
     setTimeout(() => {
       if (current === run && !run.result) {
@@ -773,6 +933,38 @@ export const createCheck = ({
       return showSamples;
     },
 
+    get view() {
+      return view;
+    },
+
+    get copied() {
+      return copied;
+    },
+
+    selectView: (next: CheckViewName) => {
+      if (next !== view) {
+        view = next;
+        copied = undefined;
+        requestUpdate();
+      }
+    },
+
+    /** Copies what the view shows, and says so on its button and aloud. */
+    copy: (shown: CheckViewName, value: string) => {
+      if (!copyToClipboard(value)) {
+        say(text("check.cantCopy"));
+        return;
+      }
+      copied = shown;
+      clearTimeout(copiedTimer);
+      copiedTimer = setTimeout(() => {
+        copied = undefined;
+        requestUpdate();
+      }, COPIED_SHOWN_MS);
+      say(text(shown === "html" ? "check.copiedHtml" : "check.copiedText"));
+      requestUpdate();
+    },
+
     toggleSamples: (on: boolean) => {
       showSamples = on;
       requestUpdate();
@@ -781,6 +973,33 @@ export const createCheck = ({
 };
 
 export type Check = ReturnType<typeof createCheck>;
+
+/**
+ * Puts `value` on the clipboard as text, through the browser's own copy, as
+ * More's Copy does: the one way a page fires it with its own data in every
+ * browser without asking for a permission, and outside HTTPS too. The editor's
+ * own copy has nothing to do on a Check button, so it leaves the event alone.
+ * Whether it copied is whether the event came with somewhere to put it, as
+ * WebKit's `execCommand` returns false once the event is prevented.
+ */
+const copyToClipboard = (value: string) => {
+  let copied = false;
+  const onCopy = (event: ClipboardEvent) => {
+    if (event.clipboardData) {
+      event.clipboardData.setData("text/plain", value);
+      event.preventDefault();
+      copied = true;
+    }
+  };
+  window.addEventListener("copy", onCopy, { capture: true });
+  try {
+    // oxlint-disable-next-line typescript/no-deprecated -- As More's Copy, the one way without a permission.
+    document.execCommand("copy");
+  } finally {
+    window.removeEventListener("copy", onCopy, { capture: true });
+  }
+  return copied;
+};
 
 /**
  * A key pressed in the email is pressed in the inbox, as the key map has it, so
@@ -1078,11 +1297,220 @@ const renderPanel = (view: CheckView) => {
   `;
 };
 
-/** Check: the inbox at both widths, the sample values switch, and the Problems. */
+/**
+ * The tabs, one Tab stop with arrow keys between them, each chosen as focus
+ * reaches it, as the Modes are.
+ */
+const renderViews = ({ check, text }: CheckView) => html`
+  <div
+    aria-label=${text("check.views")}
+    class="segments check-views"
+    data-place=${place("checkViews")}
+    role="tablist"
+  >
+    ${VIEWS.map(
+      ({ label, view }) => html`
+        <button
+          aria-controls=${VIEW_PANEL_ID}
+          aria-selected=${view === check.view ? "true" : "false"}
+          class="segment"
+          id=${viewTabId(view)}
+          role="tab"
+          tabindex=${view === check.view ? "0" : "-1"}
+          type="button"
+          @click=${() => check.selectView(view)}
+          @focus=${() => check.selectView(view)}
+        >
+          ${text(label)}
+        </button>
+      `
+    )}
+  </div>
+`;
+
+const renderSamples = ({ check, events, text }: CheckView) => html`
+  <label class="check-samples">
+    ${text("check.samples")}
+    <input
+      role="switch"
+      type="checkbox"
+      .checked=${live(check.showSamples)}
+      @change=${({ currentTarget }: Event) =>
+        events.onSamples((currentTarget as HTMLInputElement).checked)}
+    />
+  </label>
+`;
+
+const renderInbox = (
+  view: CheckView,
+  shown: Checked["sampled"],
+  samples: boolean
+) => {
+  const { check, email, text } = view;
+  const { width } = email.settings;
+  return html`
+    <div
+      aria-labelledby=${viewTabId("inbox")}
+      class="check-previews"
+      id=${VIEW_PANEL_ID}
+      role="tabpanel"
+    >
+      <figure class="check-preview">
+        <figcaption>
+          ${ICONS.monitor}${text("check.desktop", { width })}
+        </figcaption>
+        <div class="inbox-slot">
+          <div class="inbox">
+            ${renderInboxHeader(view, shown?.words, samples)}
+            ${renderInboxEmail(
+              check.run,
+              shown?.html,
+              { alerts: true, title: text("check.desktopFrame") },
+              text
+            )}
+          </div>
+        </div>
+      </figure>
+      <figure class="check-preview">
+        <figcaption>
+          ${ICONS.phone}${text("check.phone", { width: PHONE_WIDTH })}
+        </figcaption>
+        <div class="phone-slot">
+          <div class="phone-frame">
+            <div class="phone-screen">
+              <span aria-hidden="true" class="phone-bar">
+                <span class="phone-back">
+                  ${ICONS.chevronLeft}${text("check.inbox")}
+                </span>
+              </span>
+              ${renderInboxEmail(
+                check.run,
+                shown?.html,
+                { alerts: false, title: text("check.phoneFrame") },
+                text
+              )}
+            </div>
+          </div>
+        </div>
+      </figure>
+    </div>
+  `;
+};
+
+/**
+ * The plain text or the HTML, read-only, under a line that says what it is and
+ * a button that copies it. The text or code scrolls in its own box, which takes
+ * focus so the keyboard scrolls it too.
+ */
+const renderCode = (
+  { check, text }: CheckView,
+  shown: Exclude<CheckViewName, "inbox">,
+  {
+    body,
+    copy,
+    note,
+  }: { body: unknown; copy: string | undefined; note: string }
+) => {
+  const copied = check.copied === shown;
+  return html`
+    <div class=${`check-code ${shown}`}>
+      <div class="check-code-head">
+        <p>${note}</p>
+        ${
+          copy === undefined
+            ? nothing
+            : html`<button
+                class=${copied ? "text-button copied" : "text-button"}
+                type="button"
+                @click=${() => check.copy(shown, copy)}
+              >
+                ${copied ? ICONS.check : ICONS.duplicate}${
+                  copied
+                    ? text("check.copied")
+                    : text(
+                        shown === "html" ? "check.copyHtml" : "check.copyText"
+                      )
+                }
+              </button>`
+        }
+      </div>
+      <div
+        aria-labelledby=${viewTabId(shown)}
+        class="check-code-body thin-scrollbar"
+        id=${VIEW_PANEL_ID}
+        role="tabpanel"
+        tabindex="0"
+      >
+        ${body}
+      </div>
+    </div>
+  `;
+};
+
+/** The export's lines, numbered, with their tag names and values colored. */
+const renderHtmlLines = (lines: HtmlPart[][]) =>
+  html`<pre aria-hidden="true" class="code-gutter">
+${lines.map((_, index) => index + 1).join("\n")}</pre>
+    <pre class="code-lines"><code>${lines.map(
+      (parts, index) =>
+        html`${index === 0 ? "" : "\n"}${parts.map(({ kind, text }) =>
+          kind === "text"
+            ? text
+            : html`<span class=${`code-${kind}`}>${text}</span>`
+        )}`
+    )}</code></pre>`;
+
+/**
+ * The plain text, or the HTML once it's rendered, with what's in its place
+ * until then. Each copies as it's exported, with its Merge Tags, so a sample
+ * shown in their place never goes to every reader.
+ */
+const renderShownCode = (
+  view: CheckView,
+  checked: Checked | undefined,
+  samples: boolean
+) => {
+  const { check, text } = view;
+  const { run } = check;
+  if (check.view === "text") {
+    return renderCode(view, "text", {
+      body: html`<pre class="code-text">
+${samples ? run?.sampledText : run?.text}</pre>`,
+      copy: run?.text,
+      note: text("check.textNote"),
+    });
+  }
+  if (checked) {
+    return renderCode(view, "html", {
+      body: guard([checked], () =>
+        renderHtmlLines((checked.lines ??= htmlLines(checked.html)))
+      ),
+      copy: checked.html,
+      note: text("check.htmlNote", { size: checked.size }),
+    });
+  }
+  return html`<div
+    aria-labelledby=${viewTabId("html")}
+    class="check-code html"
+    id=${VIEW_PANEL_ID}
+    role="tabpanel"
+  >
+    ${renderInboxEmail(
+      check.run,
+      undefined,
+      // Said once already, as the check ended.
+      { alerts: false, title: "" },
+      text
+    )}
+  </div>`;
+};
+
+/** Check: the email in its tabs, the sample values switch, and the Problems. */
 export const renderCheck = (view: CheckView) => {
-  const { check, email, events, mergeTags, text, zoom } = view;
+  const { check, email, mergeTags, zoom } = view;
   const samples = check.showSamples && hasSamples(mergeTags);
-  const result = check.run?.result;
+  const { run } = check;
+  const result = run?.result;
   const checked = result && "html" in result ? result : undefined;
   if (checked && samples) {
     // Once a check, as the sample values can't change without a new one.
@@ -1091,8 +1519,15 @@ export const renderCheck = (view: CheckView) => {
       return { html: sampled, words: firstWords(sampled, 16) };
     })();
   }
+  if (run && samples) {
+    run.sampledText ??= withSamples(run.text, mergeTags);
+  }
   const shown = samples ? checked?.sampled : checked;
   const { width } = email.settings;
+  const body =
+    check.view === "inbox"
+      ? renderInbox(view, shown, samples)
+      : renderShownCode(view, checked, samples);
   return html`
     <div
       class="check"
@@ -1102,62 +1537,11 @@ export const renderCheck = (view: CheckView) => {
       })}
     >
       <div class="check-stage">
-        ${
-          hasSamples(mergeTags)
-            ? html`<label class="check-samples">
-                ${text("check.samples")}
-                <input
-                  role="switch"
-                  type="checkbox"
-                  .checked=${live(check.showSamples)}
-                  @change=${({ currentTarget }: Event) =>
-                    events.onSamples(
-                      (currentTarget as HTMLInputElement).checked
-                    )}
-                />
-              </label>`
-            : nothing
-        }
-        <div class="check-previews">
-          <figure class="check-preview">
-            <figcaption>
-              ${ICONS.monitor}${text("check.desktop", { width })}
-            </figcaption>
-            <div class="inbox-slot">
-              <div class="inbox">
-                ${renderInboxHeader(view, shown?.words, samples)}
-                ${renderInboxEmail(
-                  check.run,
-                  shown?.html,
-                  { alerts: true, title: text("check.desktopFrame") },
-                  text
-                )}
-              </div>
-            </div>
-          </figure>
-          <figure class="check-preview">
-            <figcaption>
-              ${ICONS.phone}${text("check.phone", { width: PHONE_WIDTH })}
-            </figcaption>
-            <div class="phone-slot">
-              <div class="phone-frame">
-                <div class="phone-screen">
-                  <span aria-hidden="true" class="phone-bar">
-                    <span class="phone-back">
-                      ${ICONS.chevronLeft}${text("check.inbox")}
-                    </span>
-                  </span>
-                  ${renderInboxEmail(
-                    check.run,
-                    shown?.html,
-                    { alerts: false, title: text("check.phoneFrame") },
-                    text
-                  )}
-                </div>
-              </div>
-            </div>
-          </figure>
+        <div class="check-bar">
+          ${renderViews(view)}
+          ${hasSamples(mergeTags) && check.view !== "html" ? renderSamples(view) : nothing}
         </div>
+        ${body}
       </div>
       ${renderPanel(view)}
     </div>

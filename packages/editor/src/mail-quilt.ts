@@ -8,7 +8,7 @@ import type {
   RichTextDocument,
 } from "@mailquilt/core";
 import { EMAIL_LOOK, editorOfLoaded } from "@mailquilt/core/internal";
-import { renderEmail } from "@mailquilt/renderer";
+import { renderEmail, renderText } from "@mailquilt/renderer";
 import type { Problem } from "@mailquilt/renderer";
 import { css, html, LitElement, nothing, unsafeCSS } from "lit";
 import type { PropertyValues } from "lit";
@@ -480,6 +480,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
   readonly #check = createCheck({
     email: () => this.#editor?.getDocument(),
     exportHtml: () => this.exportHtml(),
+    exportText: () => this.exportText(),
     isShown: () => this.#mode === "check" && !this.#narrow,
     mergeTags: () => this.mergeTags,
     requestUpdate: () => this.requestUpdate(),
@@ -799,6 +800,17 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     return await renderEmail(this.#editor.getDocument(), {
       socialIconsUrl: this.socialIconsUrl,
     });
+  }
+
+  /**
+   * Returns the email as plain text, to send beside its HTML, for email apps
+   * that show only text. It needs no MJML, so it returns at once.
+   */
+  exportText() {
+    if (!this.#editor) {
+      throw new Error("<mail-quilt> has no document to export");
+    }
+    return renderText(this.#editor.getDocument());
   }
 
   override connectedCallback() {

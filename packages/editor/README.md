@@ -25,6 +25,7 @@ editor.addEventListener("mq-error", (event) => {
 editor.value = savedEmail;
 
 const html = await editor.exportHtml();
+const text = editor.exportText();
 ```
 
 For a page with no bundler, load the CDN build by its full path, with the version pinned:

@@ -469,3 +469,142 @@ test("Check's email is the email at both widths: Columns side by side, and stack
   await expect.poll(() => rightBelowLeft(inboxEmail(page))).toBe(0);
   await expect.poll(() => rightBelowLeft(phone)).toBeGreaterThan(0);
 });
+
+const viewTab = (page: Page, name: string) =>
+  canvas(page).getByRole("tab", { exact: true, name });
+
+/** What Check's tab `name` shows. */
+const shown = (page: Page, name: string) =>
+  canvas(page).getByRole("tabpanel", { exact: true, name });
+
+/**
+ * Keeps what the next copy puts on the clipboard as text, read as the copy
+ * event leaves the page, so the system's clipboard isn't used.
+ */
+const keepNextCopy = (page: Page) =>
+  page.evaluate(() => {
+    window.addEventListener(
+      "copy",
+      (event) => {
+        document.documentElement.dataset.copied =
+          event.clipboardData?.getData("text/plain") ?? "";
+      },
+      { once: true }
+    );
+  });
+
+const copiedText = (page: Page) =>
+  page.evaluate(() => document.documentElement.dataset.copied);
+
+test.describe("the Plain text and HTML tabs", () => {
+  test("Plain text shows exportText() with sample values, and Copy text copies it with its Merge Tags and says so", async ({
+    page,
+  }) => {
+    await setValue(page, emailWith([[["Hi {{first_name}}"]]]));
+    await giveHost(page, {
+      mergeTags: [{ name: "first_name", sample: "Ana" }],
+    });
+    await openCheck(page);
+
+    await viewTab(page, "Plain text").click();
+
+    await expect(shown(page, "Plain text")).toHaveText("Hi Ana");
+    expect(
+      await violations(page, "mail-quilt", { excludeIframe: true })
+    ).toEqual([]);
+
+    // As it's sent, so a sample never goes to every reader.
+    await keepNextCopy(page);
+    await canvas(page).getByRole("button", { name: "Copy text" }).click();
+
+    expect(await copiedText(page)).toBe("Hi {{first_name}}");
+    await expect(announcement(page)).toHaveText("Plain text copied.");
+    await expect(
+      canvas(page).getByRole("button", { exact: true, name: "Copied" })
+    ).toBeVisible();
+
+    await canvas(page)
+      .getByRole("switch", { name: "Show sample values" })
+      .click();
+    await expect(shown(page, "Plain text")).toHaveText(
+      await canvas(page).evaluate((element) =>
+        (element as MailQuilt).exportText()
+      )
+    );
+    await expect(shown(page, "Plain text")).toHaveText("Hi {{first_name}}");
+  });
+
+  test("a copy the browser doesn't make is said, and the button doesn't say Copied", async ({
+    page,
+  }) => {
+    await openCheck(page);
+    await viewTab(page, "Plain text").click();
+    // As a browser that refuses the copy fires no copy event.
+    await page.evaluate(() => {
+      document.execCommand = () => false;
+    });
+
+    await canvas(page).getByRole("button", { name: "Copy text" }).click();
+
+    await expect(announcement(page)).toHaveText(
+      "Couldn't copy. Select the text and copy it instead."
+    );
+    await expect(
+      canvas(page).getByRole("button", { name: "Copy text" })
+    ).toBeVisible();
+  });
+
+  test("HTML shows the export read-only with its size, without sample values, and Copy HTML copies the export", async ({
+    page,
+  }) => {
+    await setValue(page, emailWith([[["Hi {{first_name}}"]]]));
+    await giveHost(page, {
+      mergeTags: [{ name: "first_name", sample: "Ana" }],
+    });
+    await openCheck(page);
+    const html = await exportHtml(page);
+
+    await viewTab(page, "HTML").click();
+
+    await expect(shown(page, "HTML")).toContainText("Hi {{first_name}}");
+    await expect(canvas(page)).toContainText(
+      `${Math.round(new TextEncoder().encode(html).length / 1024)} KB · read only`
+    );
+    await expect(
+      canvas(page).getByRole("switch", { name: "Show sample values" })
+    ).toHaveCount(0);
+    expect(
+      await violations(page, "mail-quilt", { excludeIframe: true })
+    ).toEqual([]);
+
+    await keepNextCopy(page);
+    await canvas(page).getByRole("button", { name: "Copy HTML" }).click();
+
+    expect(await copiedText(page)).toBe(html);
+    await expect(announcement(page)).toHaveText("HTML copied.");
+  });
+
+  test("the tabs are one Tab stop, chosen as the arrow keys reach them, with the text's box after them", async ({
+    page,
+  }) => {
+    await openCheck(page);
+    await viewTab(page, "Inbox").focus();
+
+    await page.keyboard.press("ArrowRight");
+
+    await expect(viewTab(page, "Plain text")).toBeFocused();
+    await expect(viewTab(page, "Plain text")).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+    await page.keyboard.press("Tab");
+    await expect(
+      canvas(page).getByRole("button", { name: "Copy text" })
+    ).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(shown(page, "Plain text")).toBeFocused();
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Shift+Tab");
+    await expect(viewTab(page, "Plain text")).toBeFocused();
+  });
+});
