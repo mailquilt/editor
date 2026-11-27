@@ -6,11 +6,14 @@ import { BACKGROUND_COLOR_FIELD, pixelField } from "./settings-fields.js";
 import type { SettingsField } from "./settings-fields.js";
 import {
   colorSchema,
+  fontFamilyNames,
   fontFamilySchema,
   fontSizeSchema,
   pixelSchema,
   plainObject,
   solidColorSchema,
+  webFontNameSchema,
+  webFontUrlSchema,
 } from "./value-schemas.js";
 
 /** Wider than any inbox shows, so a mistyped width is refused. */
@@ -39,14 +42,67 @@ const emailStyleSchema = v.strictObject({
   textFontSize: v.optional(fontSizeSchema),
 }) satisfies v.GenericSchema<unknown, EmailStyle>;
 
+/** Font names are case-insensitive in CSS. */
+const sameFontName = (one: string, other: string) =>
+  one.toLowerCase() === other.toLowerCase();
+
+const webFontSchema = v.strictObject({
+  name: webFontNameSchema,
+  url: webFontUrlSchema,
+});
+
+/**
+ * Whether a font's name and URL are ones the email can store, as the editor
+ * checks the Host app's fonts before offering them.
+ * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
+ */
+export const isWebFont = (font: { name: unknown; url: unknown }) =>
+  v.is(webFontSchema, { name: font.name, url: font.url });
+
+/**
+ * Whether a font family is one the email's settings take.
+ * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
+ */
+export const isFontFamily = (value: unknown) => v.is(fontFamilySchema, value);
+
+const webFontsSchema = v.pipe(
+  v.array(v.pipe(v.unknown(), plainObject, webFontSchema)),
+  v.check(
+    (fonts) =>
+      fonts.every(
+        ({ name }, index) =>
+          fonts.findIndex((font) => sameFontName(font.name, name)) === index
+      ),
+    "An email can have each web font only once"
+  )
+);
+
 export const emailSettingsSchema = v.strictObject({
   backgroundColor: colorSchema,
   fontFamily: fontFamilySchema,
+  fonts: v.optional(webFontsSchema),
   language: v.optional(v.string()),
   preheader: v.optional(v.string()),
   style: v.optional(v.pipe(v.unknown(), plainObject, emailStyleSchema)),
   width: pixelSchema(MAX_EMAIL_WIDTH),
 }) satisfies v.GenericSchema<unknown, EmailSettings>;
+
+/**
+ * The settings with only the web fonts their body or heading font names, and
+ * no `fonts` once none is left, so the email holds, and the export loads, only
+ * the fonts it uses.
+ */
+export const withUsedFonts = (settings: EmailSettings): EmailSettings => {
+  const { fonts, ...rest } = settings;
+  const named = [
+    settings.fontFamily,
+    settings.style?.headingFontFamily ?? "",
+  ].flatMap(fontFamilyNames);
+  const used = fonts?.filter(({ name }) =>
+    named.some((family) => sameFontName(family, name))
+  );
+  return used?.length ? { ...rest, fonts: used } : rest;
+};
 
 /**
  * A language a person sets has to be a code, because a screen reader reads the

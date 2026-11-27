@@ -554,9 +554,17 @@ export const toMjml = (
   const preheader = settings.preheader
     ? `<mj-preview>${escapeText(settings.preheader)}</mj-preview>`
     : "";
+  // MJML loads each only where a font-family in the HTML names it, so a heading
+  // font in an email with no Heading isn't loaded. The URL isn't escaped, as
+  // MJML writes it as it is into an @import's url() too, where &amp; would stay
+  // &amp;. Core checked that it holds nothing to end either, and the name too.
+  const fonts = (settings.fonts ?? [])
+    .map(({ name, url }) => `<mj-font name="${name}" href="${url}" />`)
+    .join("");
   const mjml = `<mjml${language}>
   <mj-head>
     ${preheader}
+    ${fonts}
     ${phoneStyles}
     <mj-attributes>
       <mj-all font-family="${escapeAttribute(settings.fontFamily)}" />

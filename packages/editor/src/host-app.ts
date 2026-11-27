@@ -1,4 +1,5 @@
 import type { MailQuiltStrings } from "./strings.js";
+import type { HostFont } from "./web-fonts.js";
 
 /**
  * What the Host app gives the editor, which it can't do itself, such as storing
@@ -6,6 +7,19 @@ import type { MailQuiltStrings } from "./strings.js";
  * the React components pass on.
  */
 export interface HostAppProperties {
+  /**
+   * The Host app's web fonts, which Style's font lists offer as "Your fonts",
+   * above the system fonts. `name` is the font's family name, as its
+   * stylesheet declares it. `url` is that stylesheet, such as Google Fonts',
+   * and must be `https:`. `fallback` is the fonts a reader sees in an email
+   * client that doesn't load web fonts, such as `Georgia, serif`. A font
+   * picked is stored in the email with its URL, so it exports the same
+   * anywhere, and the export loads only the fonts the email uses. A font whose
+   * name, URL or fallback the editor can't use, or whose name an earlier one
+   * has, is left out, and said on the console. Without the list, the lists
+   * hold only system fonts.
+   */
+  fonts?: readonly HostFont[] | undefined;
   /**
    * The Host app's Merge Tags, which typing `{{` in text, or the format bar's
    * Merge Tag button, offers to pick from. `name` is what goes between the
@@ -79,6 +93,7 @@ export interface HostAppProperties {
  * and this leaves out is a type error.
  */
 export const HOST_APP_PROPERTIES = Object.keys({
+  fonts: true,
   mergeTags: true,
   sender: true,
   sendTest: true,

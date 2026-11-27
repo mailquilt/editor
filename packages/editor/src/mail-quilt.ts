@@ -109,6 +109,8 @@ import {
 import type { Device, Mode, TopBarEvents } from "./top-bar.js";
 import { takeValueSetEarly } from "./value-set-early.js";
 import { createVideos } from "./videos.js";
+import { createWebFonts, usableFonts } from "./web-fonts.js";
+import type { HostFont } from "./web-fonts.js";
 
 /**
  * Heard on the page, on the way in, as Firefox fires them at the body and
@@ -324,6 +326,14 @@ const elementStyles = css`
 
 export class MailQuilt extends LitElement implements HostAppProperties {
   static override properties = {
+    // As mergeTags.
+    fonts: {
+      attribute: false,
+      hasChanged: (
+        next: HostAppProperties["fonts"],
+        previous: HostAppProperties["fonts"]
+      ) => JSON.stringify(next) !== JSON.stringify(previous),
+    },
     // A React host gives a new list at each render, which only a change to
     // one of its tags redraws. No list isn't an empty one, which Check reads
     // as a list that has none of the email's tags.
@@ -382,6 +392,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
   /** Lit's, which is this element's shadow root, as Lit attaches it. */
   declare readonly renderRoot: ShadowRoot;
 
+  declare fonts: HostAppProperties["fonts"];
   declare mergeTags: HostAppProperties["mergeTags"];
   declare sender: HostAppProperties["sender"];
   declare sendTest: HostAppProperties["sendTest"];
@@ -422,6 +433,12 @@ export class MailQuilt extends LitElement implements HostAppProperties {
   #formats: TextFormats | undefined;
   #mergeTagPicker: ShownMergeTagPicker | undefined;
   readonly #mergeTagsGiven = () => this.mergeTags ?? [];
+  /** The Host app's fonts the editor can use, checked once for each list. */
+  #fonts: HostFont[] = [];
+  readonly #webFonts = createWebFonts({
+    offered: () => this.#fonts,
+    requestUpdate: () => this.requestUpdate(),
+  });
   readonly #focus = createFocus({
     requestUpdate: () => this.requestUpdate(),
     root: () => this.renderRoot,
@@ -475,6 +492,8 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     apply: (command, mergeKey) =>
       this.#apply(command, { mergeKey, refusable: true }),
     focus: this.#focus,
+    fonts: () => this.#fonts,
+    webFonts: this.#webFonts,
     requestUpdate: () => this.requestUpdate(),
     text: this.#text,
   });
@@ -953,6 +972,19 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     this.#reset();
   }
 
+  /**
+   * Checks the Host app's fonts once for each list it gives, and loads the
+   * email's web fonts into the page, which the Canvas draws in.
+   */
+  #takeFonts(changed: PropertyValues<this>, email: BlocksDocument | undefined) {
+    if (changed.has("fonts")) {
+      this.#fonts = usableFonts(this.fonts);
+    }
+    for (const font of email?.settings.fonts ?? []) {
+      this.#webFonts.load(font);
+    }
+  }
+
   protected override willUpdate(changed: PropertyValues<this>) {
     if (changed.has("mergeTags")) {
       for (const view of this.#views.values()) {
@@ -976,6 +1008,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       this.#check.ensure();
     }
     const email = this.isConnected ? this.#rendered : undefined;
+    this.#takeFonts(changed, email);
     const blocks = email ? blocksIn(email) : [];
     const blockIds = new Set(blocks.map(({ id }) => id));
     this.#focus.beforeUpdate();

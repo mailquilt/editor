@@ -68,6 +68,15 @@ const strings = () => ({ "topBar.undo": "Annuler" });
 /** Where the Host app serves the Social Block's icons itself. */
 const SOCIAL_ICONS_URL = "https://cdn.example/mail-icons/";
 
+/** A new list each render, as a host writing it inline would give. */
+const fonts = () => [
+  {
+    fallback: "Georgia, serif",
+    name: "Fraunces",
+    url: "https://fonts.googleapis.com/css2?family=Fraunces",
+  },
+];
+
 /** A newer version than this editor can read, so it's refused. */
 const refusedEmail = { ...emailWith("Refused"), version: 999 };
 
@@ -113,6 +122,7 @@ const Host = () => {
               ? undefined
               : (reason) => setErrors((all) => [...all, reason])
           }
+          fonts={fonts()}
           mergeTags={mergeTags()}
           sender="Northbound"
           sendTest={sendTest}
@@ -191,6 +201,7 @@ const ShellHost = () => {
         heading={changed ? "Renamed" : "Campaign"}
         onChange={(next) => setDocument(next)}
         ref={attach}
+        fonts={fonts()}
         mergeTags={mergeTags()}
         sender="Northbound"
         sendTest={sendTest}

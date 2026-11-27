@@ -525,27 +525,6 @@ export const checkStyles = css`
     transform: scale(0.97);
   }
 
-  .spinner {
-    border: 2px solid
-      color-mix(in srgb, var(--mq-color-text-muted) 35%, transparent);
-    border-radius: 50%;
-    border-top-color: var(--mq-color-text-muted);
-    height: 12px;
-    width: 12px;
-  }
-
-  @media (prefers-reduced-motion: no-preference) {
-    .spinner {
-      animation: send-test-spin 800ms linear infinite;
-    }
-  }
-
-  @keyframes send-test-spin {
-    to {
-      transform: rotate(1turn);
-    }
-  }
-
   .check-head .test-result {
     align-items: flex-start;
     display: flex;

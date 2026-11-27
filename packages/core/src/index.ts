@@ -8,6 +8,7 @@ export type {
   EmailSettings,
   EmailStyle,
   Row,
+  WebFont,
 } from "./document.js";
 export type {
   RichTextDocument,

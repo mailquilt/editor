@@ -216,6 +216,7 @@ const Editor = (
   {
     onChange,
     onError,
+    fonts,
     mergeTags,
     sender,
     sendTest,
@@ -232,6 +233,7 @@ const Editor = (
     ...elementAttributes(attributes),
     ref: useEditorElement({
       hostApp: {
+        fonts,
         mergeTags,
         sender,
         sendTest,
@@ -251,6 +253,7 @@ const Editor = (
 const Shell = (
   {
     actions,
+    fonts,
     heading,
     mergeTags,
     onChange,
@@ -278,6 +281,7 @@ const Shell = (
     ...attributes,
     ref: useEditorElement({
       hostApp: {
+        fonts,
         mergeTags,
         sender,
         sendTest,

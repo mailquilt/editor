@@ -18,6 +18,7 @@ const ACROSS_VALUES = new Set([
   "A Social Block can link each network only once",
   "A decorative Image can't have alt text or a link",
   "A linked Image needs alt text",
+  "An email can have each web font only once",
   "Text can't have the same mark twice",
 ]);
 

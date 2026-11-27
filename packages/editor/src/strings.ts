@@ -272,7 +272,16 @@ export const STRINGS = {
   "style.shadeValue": "Saturation {saturation}%, brightness {brightness}%",
   "style.hue": "Hue",
   "style.searchFonts": "Search fonts",
+  /** The Host app's web fonts, above the system fonts. */
+  "style.yourFonts": "Your fonts",
   "style.systemFonts": "System fonts",
+  /** Under a web font in a font list, and the first of its fallbacks. */
+  "style.fallsBackTo": "Falls back to {font}",
+  /** Under a font setting, while its web font loads. */
+  "style.fontLoading": "Loading {font}…",
+  /** Under a font setting whose web font didn't load. */
+  "style.fontFailed":
+    "{font} couldn't be loaded, so you see {fallback}, its fallback. Readers may see {fallback} too.",
   "style.noFont": "No font called “{query}”",
   /** On the email, over the first Block a hovered setting changes: "Heading 1 · 32px". */
   "style.reaches": "{label} · {value}",

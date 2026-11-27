@@ -21,6 +21,7 @@ The schema is made from the checks the editor runs, so a version 4 email the sch
 - A Social Block links each network once.
 - A linked Image has alt text.
 - A decorative Image has neither alt text nor a link.
+- An email has each [web font](#web-fonts) once.
 
 An email can't name its schema in a `$schema` field, because a field the format doesn't know is refused. Tell your code editor which files the schema is for in its settings instead.
 
@@ -52,7 +53,7 @@ Each version of the format, and how a document saved in the one before is upgrad
 | `1` | Mail Quilt 0.1.0 | The first version. |
 | `2` | Mail Quilt 0.2.0 | Stricter colors and URLs. A version 1 email gets a plain space in a color where it has another space after a comma, such as a tab, and `https:` in place of `httpſ:` at the start of a link or image URL. |
 | `3` | Mail Quilt 0.3.0 | The [`mergeTag`](#merge-tags-in-text) node in rich text. Each Merge Tag that sits whole in one piece of text becomes a node, with that text's marks. A tag split across pieces with different marks, such as `{{first` in bold and `_name}}` not, stays text. Bulleted and numbered [Lists](#lists) in a Text Block, a Row's [padding and phone settings](#row), and the [Social](#social) Block, which no older email has. |
-| `4` | Mail Quilt 0.4.0 | The [Email style](#email-style), every Block's [Box](#box), a [Column](#column)'s settings, [showing on a device](#showing-on-a-device), [Phone values](#phone-values), and the [Menu](#menu) and [Video](#video) Blocks, which no older email has. A Row's `hideOnPhone` is gone: a version 3 Row with `hideOnPhone: true` loads with `showOn: "desktop"`, and one with `false` without either. Nothing else changes but the version. |
+| `4` | Mail Quilt 0.4.0 | The [Email style](#email-style), every Block's [Box](#box), a [Column](#column)'s settings, [showing on a device](#showing-on-a-device), [Phone values](#phone-values), [web fonts](#web-fonts), and the [Menu](#menu) and [Video](#video) Blocks, which no older email has. A Row's `hideOnPhone` is gone: a version 3 Row with `hideOnPhone: true` loads with `showOn: "desktop"`, and one with `false` without either. Nothing else changes but the version. |
 
 An email saved by a newer version can't be opened by a package that only knows an older one.
 
@@ -66,8 +67,34 @@ An email saved by a newer version can't be opened by a package that only knows a
 | `preheader` | Optional. The short text inboxes show after the subject. |
 | `language` | Optional. The email's language. A new language has to be a code such as `en` or `pt-BR`, or one [Merge Tag](#merge-tags) such as `{{language}}` that your sending tool fills with each person's code, and `updateEmailSettings` refuses anything else, from the editor or your code. A saved document loads with any text here, and sending it back unchanged isn't refused, so an email with a bad value can still be opened and fixed. |
 | `style` | Optional. The [Email style](#email-style). |
+| `fonts` | Optional. The [web fonts](#web-fonts) the email uses. |
 
 In the editor, `width`, `preheader` and `language` are in the Selection bar with nothing selected. `backgroundColor` and `fontFamily` are Page and Body in Style, beside the Email style.
+
+## Web fonts
+
+`fonts` holds the web fonts the email's body or heading font names, each an object with:
+
+| Field | Value |
+| --- | --- |
+| `name` | Required. The font's family name, as its stylesheet declares it, such as `"Fraunces"`. One name of letters A to Z, digits, underscores, spaces and hyphens, starting and ending with a letter, digit or underscore. No two fonts have the same name, whatever its case. |
+| `url` | Required. A stylesheet that declares the font, which the export loads. It starts with `https://` and a host of letters A to Z, digits, dots and hyphens, with an optional port. Its path, query and fragment hold only letters A to Z, digits and `-._~!#$%&*+,/:;=?@`, so it can't hold quotes, brackets, spaces or backslashes. |
+
+The font that uses it names it first, followed by its fallback, the fonts a reader sees in an email client that doesn't load web fonts:
+
+```json
+{
+  "fontFamily": "'Fraunces', Georgia, 'Times New Roman', serif",
+  "fonts": [
+    {
+      "name": "Fraunces",
+      "url": "https://fonts.googleapis.com/css2?family=Fraunces:wght@400;700&display=swap"
+    }
+  ]
+}
+```
+
+When `updateEmailSettings` or `updateEmailStyle` leaves a font that neither `fontFamily` nor the Email style's `headingFontFamily` names, it drops the font, and drops `fonts` once none is left. A saved email can hold a font that isn't named, and the export doesn't load it. Nor does it load a font only Headings use in an email with no Heading. In the editor, the fonts come from the Host app's [`fonts`](./api#web-fonts), and picking one stores it here.
 
 ## Email style
 

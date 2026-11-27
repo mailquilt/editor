@@ -22,7 +22,8 @@ export const renderEmail = async (
   // until https://github.com/mjmlio/mjml/issues/3158 is fixed.
   const { default: compile } = await import("mjml-browser");
   const { html } = await compile(mjml, {
-    // MJML would otherwise load some fonts, such as Roboto, from Google.
+    // MJML would otherwise load some fonts, such as Roboto, from Google. The
+    // email's own web fonts are its mj-font elements.
     fonts: {},
     validationLevel: "strict",
   });

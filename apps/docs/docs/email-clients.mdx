@@ -52,6 +52,16 @@ A Block's [Box](./document-format#box) and a [Column](./document-format#column)'
 - **Corners** are `border-radius`, which classic Outlook for Windows doesn't support, so it draws a Block's corners square, and a Button's too. The background and border still show, in a square box.
 - **A Column's background** reaches only as far down as its Blocks, in every client, so two Columns of different heights have backgrounds of different heights. Keep a Column's background for a Column as tall as its Row, or give the Row the color instead.
 
+## Web fonts
+
+An email that uses one of your [web fonts](./api#web-fonts) loads it in the email clients that support web fonts, and shows its fallback in the rest. Version 0.4 adds them, and they haven't had an Email on Acid run yet. This is what [Can I email](https://www.caniemail.com/features/css-at-font-face/) found when it last tested them, in December 2023:
+
+- **Loads the web font:** Apple Mail on macOS, iOS Mail, Samsung Email on Android except with a Microsoft account such as Outlook or Hotmail, Thunderbird on macOS, and the GMX and WEB.DE apps on iOS.
+- **Shows the fallback:** Gmail on the web, Android and iPhone, Outlook.com, new Outlook for Windows, Outlook for Mac, iOS and Android, Yahoo Mail and AOL.
+- **Classic Outlook for Windows** never loads a web font. The export hides the font's stylesheet from it, as Can I email says Outlook 2007 to 2016 ignore the font list and use Times New Roman for a font declared in one, so it reads the font list and shows the fallback.
+
+So pick a fallback close to the web font, and check your email with it: most of your readers may see it.
+
 ## URLs and long words
 
 A URL written as text, starting with `https://`, `http://` or `www.`, is exported as a link to itself, in its text's color, like a link you add in the editor. One starting with `www.` links to `http://` and that address. An email address written as text is exported as a `mailto:` link the same way. The canvas still shows both as text. A URL ends before a closing bracket it didn't open, and before a full stop or comma after it, so `(see https://example.com/a_(b))` links `https://example.com/a_(b)`. A URL or address inside a Merge Tag, such as its default value, stays part of the tag. An address may have letters in any language, as in `müller@example.com`. A language written without spaces between words, such as Japanese, ends a URL or address, so `info@example.comまで` links `info@example.com`. So does its full-width punctuation, such as `，` or `（`. A URL with such letters typed in its path, as in `https://ja.wikipedia.org/wiki/東京`, links only up to them. Paste it as your browser copies it, percent-encoded, or link it yourself. A URL or address whose formatting changes partway, such as a bold word in it, links whole. One that runs into a link you added, or straight into a character an address can't hold, as in `a@b.c_d`, isn't linked.

@@ -308,6 +308,29 @@ export const uiStyles = css`
     outline-offset: 1px;
   }
 
+  /* Something under way, such as a test sending or a web font loading. */
+  .spinner {
+    border: 2px solid
+      color-mix(in srgb, var(--mq-color-text-muted) 35%, transparent);
+    border-radius: 50%;
+    border-top-color: var(--mq-color-text-muted);
+    flex: none;
+    height: 12px;
+    width: 12px;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .spinner {
+      animation: spin 800ms linear infinite;
+    }
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(1turn);
+    }
+  }
+
   /* An area that scrolls, with a scrollbar as quiet as its borders. */
   .thin-scrollbar {
     scrollbar-color: var(--mq-color-border) transparent;

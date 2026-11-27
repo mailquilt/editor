@@ -188,6 +188,28 @@ test("theme reaches the element, and the Shell passes it to its editor", async (
   }
 });
 
+test("fonts reaches the element", async ({ page }) => {
+  for (const [query, tag] of [
+    ["/", "mail-quilt"],
+    ["/?shell", "mail-quilt-shell"],
+  ] as const) {
+    await page.goto(query);
+    await expect(textBlock(page)).toHaveText("Hello");
+    const given = await page
+      .locator(tag)
+      .evaluate(
+        (element: MailQuiltElement | MailQuiltShellElement) => element.fonts
+      );
+    expect(given).toEqual([
+      {
+        fallback: "Georgia, serif",
+        name: "Fraunces",
+        url: "https://fonts.googleapis.com/css2?family=Fraunces",
+      },
+    ]);
+  }
+});
+
 test("socialIconsUrl reaches the element", async ({ page }) => {
   for (const [query, tag] of [
     ["/", "mail-quilt"],
