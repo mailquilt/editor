@@ -9,16 +9,16 @@ Makes the evidence `docs/agents/design.md` asks for: the screenshot matrix (ever
 
 ## 1. Run the site
 
-The editor is shot where people meet it: on the site, mostly the Playground (`/playground`), which is the Shell with a starter email. Build, then serve the build, in its own terminal:
+The editor is shot where people meet it: on the site, mostly the Playground (`/playground`), which is the Shell with a starter email. Build, then serve the build in the background:
 
 ```bash
 ./node_modules/.bin/turbo run build --filter=docs --ui=stream   # the packages, then the site
 (cd apps/docs && ./node_modules/.bin/blume preview --port 4180)
 ```
 
-Rebuild after every change you want to see. The scripts read `SCREENS_URL` (default `http://localhost:4180`). Use your own port if another agent may be running one, and stop only the server you started, by its PID.
+Wait for it with one command that ends when it answers, such as `until curl -fs localhost:4180; do sleep 1; done` run in the background, not by sleeping and checking by hand. Rebuild after every change you want to see. The scripts read `SCREENS_URL` (default `http://localhost:4180`). Use your own port if another agent may be running one, and stop only the server you started, by its PID.
 
-Each shot opens a fresh browser, so the Playground starts from its starter email every time.
+Each shot opens a fresh browser, so the Playground starts from its starter email every time. Four shots run at a time (`--parallel`).
 
 ## 2. Take the evidence
 
@@ -56,6 +56,8 @@ node $S/filmstrip.mjs --out /tmp/shots --name preview-open --path /playground \
 - **Steps:** `click=`, `hover=`, `type=<text>`, `press=<key>` (Playwright key names: `Tab`, `Shift+Tab`, `Escape`, `Control+z`, `ArrowDown`), `drag=<from> -> <to>`, `wait=<ms>`.
 - **Targets** are Playwright selectors and reach inside the Shadow DOM: CSS, `text=Label`, or `role=button[name="Preview"]`, which is the surest. A target that matches nothing, or more than one thing, stops the run with a message and saves nothing for that shot, so a wrong screen is never saved as evidence.
 - **Focus:** each line of output names what has focus, looking through the shadow roots. Use it to check focus paths against `keyboard.mdx` and "Keys and focus" in `docs/agents/decisions.md`. Clicks and keys are real input, so focus moves as it does for a person.
+- **Waiting:** a shot is taken once the page has settled: no request in flight, fonts loaded, and no opening animation still running, inside the editor's Shadow DOM too. Each step waits the same way. `--wait <ms>` waits that long instead, for something that appears after a pause with no request or animation; a `wait=<ms>` step does the same between steps.
+- **While you iterate,** shoot only the state you changed with `--widths 390,1440`. Shoot the full matrix once, when the build is finished.
 - **Widths** default to 320, 390, 768, 1024, 1440, 1920 and 2560. Below 700 px the page is a touch phone. Below 640 px the editor shows its narrow notice instead of the canvas; shoot it on purpose, it's a real state.
 - **Themes:** `--themes` is what the browser prefers, which the site follows. `--editor dark` (or `both`) also gives every editor on the page the built-in dark theme, `theme="dark"`, as a host app would. It takes off tokens a page sets inline, such as the Playground's orange accent, which would win over the theme, so the shots show the theme itself.
 - **Reduced motion:** set `SCREENS_REDUCED_MOTION=1`.

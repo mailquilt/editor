@@ -1,4 +1,4 @@
-// oxlint-disable no-await-in-loop -- each screenshot runs in its own browser, one at a time, and steps run in order.
+// oxlint-disable no-await-in-loop -- steps run in order, and each worker takes one screenshot at a time.
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
@@ -15,7 +15,7 @@ import {
 
 const USAGE = `Usage: node screens.mjs --out <dir> [--path /] [--name screen]
   [--widths 320,390,768,1024,1440,1920,2560] [--themes light,dark]
-  [--editor light|dark|both] [--wait 1500] [--block <url glob>]...
+  [--editor light|dark|both] [--wait <ms>] [--parallel 4] [--block <url glob>]...
   [--step click=<target> | hover=<target> | type=<text> | press=<key> | drag=<from> -> <to> | wait=<ms>]...`;
 
 const args = readArgs(process.argv.slice(2));
@@ -35,15 +35,15 @@ const editorThemes =
   args.editor === "both" ? ["light", "dark"] : [args.editor ?? "light"];
 const steps = [args.step ?? []].flat();
 const blocked = [args.block ?? []].flat();
-const wait = Number(args.wait ?? 1500);
+const wait = args.wait === undefined ? undefined : Number(args.wait);
+const parallel = Number(args.parallel ?? 4);
 const SHEET_ROW_HEIGHT = 420;
-const STEP_SETTLE = 400;
 const shots = [];
 
 mkdirSync(out, { recursive: true });
 
 const shoot = async ({ editorTheme, theme, width }) => {
-  const { browser, page } = await openPage({ editorTheme, theme, width });
+  const { browser, page, settle } = await openPage({ editorTheme, theme, width });
   const label = `${width}px, page ${theme}, editor ${editorTheme}`;
 
   try {
@@ -52,7 +52,7 @@ const shoot = async ({ editorTheme, theme, width }) => {
     }
 
     await navigate(page, `${BASE_URL}${args.path ?? "/"}`);
-    await page.waitForTimeout(wait);
+    await (wait === undefined ? settle() : page.waitForTimeout(wait));
 
     for (const step of steps) {
       try {
@@ -63,32 +63,47 @@ const shoot = async ({ editorTheme, theme, width }) => {
         });
       }
 
-      await page.waitForTimeout(STEP_SETTLE);
+      await settle({ quiet: 300 });
     }
 
     const focus = await describeFocus(page);
     const file = `${name}-${width}-${theme}-editor-${editorTheme}.png`;
 
     await page.screenshot({ path: path.join(out, file) });
-    shots.push({ file, label, width });
+    shots.push({ file, key: `${editorTheme} ${theme} ${width}`, label, width });
     console.log(`${file}  focus: ${focus}`);
   } finally {
     await browser.close();
   }
 };
 
-try {
-  for (const editorTheme of editorThemes) {
-    for (const theme of themes) {
-      for (const width of widths) {
-        await shoot({ editorTheme, theme, width });
-      }
+const queue = editorThemes.flatMap((editorTheme) =>
+  themes.flatMap((theme) => widths.map((width) => ({ editorTheme, theme, width })))
+);
+const order = queue.map(({ editorTheme, theme, width }) => `${editorTheme} ${theme} ${width}`);
+
+// WARNING: on a failure, let the other workers finish their shot so every browser is closed.
+let failure;
+
+const worker = async () => {
+  for (let next = queue.shift(); next; next = queue.shift()) {
+    try {
+      await shoot(next);
+    } catch (error) {
+      failure ??= error;
+      queue.length = 0;
     }
   }
-} catch (error) {
-  console.error(error.message);
+};
+
+await Promise.all(Array.from({ length: parallel }, worker));
+
+if (failure) {
+  console.error(failure.message);
   process.exit(1);
 }
+
+shots.sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
 
 const cells = shots
   .map(
