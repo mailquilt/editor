@@ -952,6 +952,7 @@ export const createCheck = ({
     /** Copies what the view shows, and says so on its button and aloud. */
     copy: (shown: CheckViewName, value: string) => {
       if (!copyToClipboard(value)) {
+        say(text("check.cantCopy"));
         return;
       }
       copied = shown;
@@ -1459,17 +1460,23 @@ ${lines.map((_, index) => index + 1).join("\n")}</pre>
         )}`
     )}</code></pre>`;
 
-/** The plain text, or the HTML once it's rendered, with what's in its place until then. */
+/**
+ * The plain text, or the HTML once it's rendered, with what's in its place
+ * until then. Each copies as it's exported, with its Merge Tags, so a sample
+ * shown in their place never goes to every reader.
+ */
 const renderShownCode = (
   view: CheckView,
   checked: Checked | undefined,
-  plainText: string | undefined
+  samples: boolean
 ) => {
   const { check, text } = view;
+  const { run } = check;
   if (check.view === "text") {
     return renderCode(view, "text", {
-      body: html`<pre class="code-text">${plainText}</pre>`,
-      copy: plainText,
+      body: html`<pre class="code-text">
+${samples ? run?.sampledText : run?.text}</pre>`,
+      copy: run?.text,
       note: text("check.textNote"),
     });
   }
@@ -1520,7 +1527,7 @@ export const renderCheck = (view: CheckView) => {
   const body =
     check.view === "inbox"
       ? renderInbox(view, shown, samples)
-      : renderShownCode(view, checked, samples ? run?.sampledText : run?.text);
+      : renderShownCode(view, checked, samples);
   return html`
     <div
       class="check"

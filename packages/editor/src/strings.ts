@@ -448,6 +448,8 @@ export const STRINGS = {
   "check.copied": "Copied",
   "check.copiedText": "Plain text copied.",
   "check.copiedHtml": "HTML copied.",
+  /** Said when the browser makes no copy. */
+  "check.cantCopy": "Couldn't copy. Select the text and copy it instead.",
   "check.desktop": "Desktop, {width}px",
   "check.phone": "Phone, {width}px",
   "check.desktopFrame": "The email on a desktop",

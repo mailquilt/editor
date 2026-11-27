@@ -497,7 +497,7 @@ const copiedText = (page: Page) =>
   page.evaluate(() => document.documentElement.dataset.copied);
 
 test.describe("the Plain text and HTML tabs", () => {
-  test("Plain text shows exportText() with sample values, and Copy text copies it and says so", async ({
+  test("Plain text shows exportText() with sample values, and Copy text copies it with its Merge Tags and says so", async ({
     page,
   }) => {
     await setValue(page, emailWith([[["Hi {{first_name}}"]]]));
@@ -512,6 +512,17 @@ test.describe("the Plain text and HTML tabs", () => {
     expect(
       await violations(page, "mail-quilt", { excludeIframe: true })
     ).toEqual([]);
+
+    // As it's sent, so a sample never goes to every reader.
+    await keepNextCopy(page);
+    await canvas(page).getByRole("button", { name: "Copy text" }).click();
+
+    expect(await copiedText(page)).toBe("Hi {{first_name}}");
+    await expect(announcement(page)).toHaveText("Plain text copied.");
+    await expect(
+      canvas(page).getByRole("button", { exact: true, name: "Copied" })
+    ).toBeVisible();
+
     await canvas(page)
       .getByRole("switch", { name: "Show sample values" })
       .click();
@@ -521,14 +532,25 @@ test.describe("the Plain text and HTML tabs", () => {
       )
     );
     await expect(shown(page, "Plain text")).toHaveText("Hi {{first_name}}");
+  });
 
-    await keepNextCopy(page);
+  test("a copy the browser doesn't make is said, and the button doesn't say Copied", async ({
+    page,
+  }) => {
+    await openCheck(page);
+    await viewTab(page, "Plain text").click();
+    // As a browser that refuses the copy fires no copy event.
+    await page.evaluate(() => {
+      document.execCommand = () => false;
+    });
+
     await canvas(page).getByRole("button", { name: "Copy text" }).click();
 
-    expect(await copiedText(page)).toBe("Hi {{first_name}}");
-    await expect(announcement(page)).toHaveText("Plain text copied.");
+    await expect(announcement(page)).toHaveText(
+      "Couldn't copy. Select the text and copy it instead."
+    );
     await expect(
-      canvas(page).getByRole("button", { exact: true, name: "Copied" })
+      canvas(page).getByRole("button", { name: "Copy text" })
     ).toBeVisible();
   });
 
