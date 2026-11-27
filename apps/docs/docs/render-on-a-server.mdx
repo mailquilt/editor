@@ -53,7 +53,7 @@ for (const { blockId, code, message } of problems) {
 }
 ```
 
-It takes the same document `renderEmail()` does, refuses the same emails, and renders the email to measure its HTML, with `socialIconsUrl` if you give one. Pass `mergeTags`, the list you give the editor, to check each tag's name, read without the spaces around it, so `{{ first_name }}` is `first_name`, and mark your unsubscribe tag to check that the email links to it. Without the list, neither rule runs.
+It takes the same document `renderEmail()` does, refuses the same emails, and renders the email to measure its HTML, with `socialIconsUrl` if you give one. If you've rendered it already, pass that HTML as `html`, and it's measured instead of rendering the email again. Pass `mergeTags`, the list you give the editor, to check each tag's name, read without the spaces around it, so `{{ first_name }}` is `first_name`, and mark your unsubscribe tag to check that the email links to it. Without the list, neither rule runs.
 
 The promise gives an array of Problems in the email's order: its settings first, then each Block, then the email as a whole. Each Problem has:
 
@@ -62,6 +62,8 @@ The promise gives an array of Problems in the email's order: its settings first,
 - `rowId`, `columnId` and `blockId`, for a Problem in a Block.
 - `field`, the setting that fixes it, such as `alt` on an Image, or `preheader` in the email's settings. A Problem about the email as a whole has none.
 - `mergeTag`, for `unknown-merge-tag`, the tag's name, which goes between the braces.
+- `contrast`, for the three contrast codes, the first text found too hard to read: its `color` and the `background` behind it, each as `#rrggbb` as it's drawn, the `ratio` between them, and the ratio WCAG AA asks of text its size, `required`, which is 4.5 or 3. The `Contrast` type describes it.
+- `linkText`, for `vague-link-text`, what the link says, such as `Click here`.
 
 | Code | What it means | `field` |
 | --- | --- | --- |

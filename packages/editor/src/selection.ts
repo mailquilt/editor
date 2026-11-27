@@ -123,10 +123,7 @@ export const createSelection = ({
         if (
           editingText &&
           document.hasFocus() &&
-          !(
-            element &&
-            (closestPlace(element, "text", "preview") || isOfText(element))
-          )
+          !(element && (closestPlace(element, "text") || isOfText(element)))
         ) {
           editingText = false;
           requestUpdate();

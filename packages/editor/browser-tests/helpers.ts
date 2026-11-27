@@ -36,11 +36,7 @@ export const NARROW_VIEWPORT = { height: 800, width: 390 };
 
 /** What the editor shows in place of itself when it's too narrow to edit in. */
 export const narrowNotice = (page: Page) =>
-  canvas(page).getByText("Editing needs more room");
-
-/** The narrow notice's way to the Preview. */
-export const previewEmailButton = (page: Page) =>
-  canvas(page).getByRole("button", { name: "Preview email" });
+  canvas(page).getByRole("region", { name: "Editing needs more room" });
 
 /** The test host's page, with its first email showing. */
 export const openTestPage = async (page: Page) => {
@@ -60,15 +56,31 @@ export const pretendPlatform = (page: Page, platform: "MacIntel" | "Win32") =>
 export const linkUrlField = (page: Page) =>
   page.getByRole("textbox", { name: "Link URL" });
 
-export const previewButton = (page: Page) =>
-  page.getByRole("button", { exact: true, name: "Preview" });
+/** The floating toolbar's button, which opens Check. */
+export const checkButton = (page: Page) =>
+  canvas(page).getByRole("button", { exact: true, name: "Check the email" });
 
-export const previewDialog = (page: Page) =>
-  page.getByRole("dialog", { name: "Preview" });
+/** The Check Mode's tab, which after a check is named with its count too. */
+export const checkTab = (page: Page) =>
+  canvas(page).getByRole("tab", { name: /^Check\b/u });
 
-/** The email in the open Preview. */
-export const previewEmail = (page: Page) =>
-  page.getByTitle("Email preview").contentFrame().locator("body");
+/** Check's panel of Problems. */
+export const checkPanel = (page: Page) =>
+  canvas(page).getByRole("region", { name: "Before you export" });
+
+/** Chooses the Check Mode, and waits for its panel. */
+export const openCheck = async (page: Page) => {
+  await checkTab(page).click();
+  await expect(checkPanel(page)).toBeVisible();
+};
+
+/** The frame of Check's desktop inbox, where the email is. */
+export const inboxFrame = (page: Page) =>
+  canvas(page).getByTitle("The email on a desktop");
+
+/** The email in Check's desktop inbox. */
+export const inboxEmail = (page: Page) =>
+  inboxFrame(page).contentFrame().locator("body");
 
 export const undoButton = (page: Page) =>
   canvas(page).getByRole("button", { exact: true, name: "Undo" });
@@ -930,7 +942,7 @@ export const serveImages = (context: BrowserContext) =>
 
 /**
  * Legacy mode, because the default mode opens a new page to finish, which
- * hangs in Chromium and WebKit while the Preview's sandboxed iframe is showing.
+ * hangs in Chromium and WebKit while Check's sandboxed iframes are showing.
  * The iframe itself, the email, can be left out too, and so can rules.
  */
 export const violations = async (

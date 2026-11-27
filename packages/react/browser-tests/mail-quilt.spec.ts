@@ -116,7 +116,27 @@ test("mergeTags reaches the element", async ({ page }) => {
       .evaluate(
         (element: MailQuiltElement | MailQuiltShellElement) => element.mergeTags
       );
-    expect(given).toEqual([{ label: "First name", name: "first_name" }]);
+    expect(given).toEqual([
+      { label: "First name", name: "first_name", sample: "Ana" },
+      { name: "unsubscribe_url", unsubscribe: true },
+    ]);
+  }
+});
+
+test("sender and subject reach the element", async ({ page }) => {
+  for (const [query, tag] of [
+    ["/", "mail-quilt"],
+    ["/?shell", "mail-quilt-shell"],
+  ] as const) {
+    await page.goto(query);
+    await expect(textBlock(page)).toHaveText("Hello");
+    const given = await page
+      .locator(tag)
+      .evaluate((element: MailQuiltElement | MailQuiltShellElement) => [
+        element.sender,
+        element.subject,
+      ]);
+    expect(given).toEqual(["Northbound", "Spring roast"]);
   }
 });
 

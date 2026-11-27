@@ -48,10 +48,31 @@ export interface Problem {
   field?: string;
   /** For `unknown-merge-tag`, the tag's name, which goes between the braces. */
   mergeTag?: string;
+  /** For the contrast codes, the first text found too hard to read. */
+  contrast?: Contrast;
+  /** For `vague-link-text`, what the link says. */
+  linkText?: string;
+}
+
+/**
+ * Text's contrast with what's behind it, each color as `#rrggbb` as it's
+ * drawn, with a see-through one over what's behind it, and the ratio WCAG AA
+ * asks of text its size.
+ */
+export interface Contrast {
+  color: string;
+  background: string;
+  ratio: number;
+  required: number;
 }
 
 /** What the Host app tells the check, and how the email is rendered. */
 export interface CheckEmailOptions extends RenderEmailOptions {
+  /**
+   * The email's HTML, if it has been rendered already, which is measured
+   * instead of rendering it again.
+   */
+  html?: string | undefined;
   /**
    * The Host app's Merge Tags, as given to the editor. With them, a tag not in
    * the list is a Problem. A tag with `unsubscribe` is the unsubscribe link, and
@@ -60,7 +81,10 @@ export interface CheckEmailOptions extends RenderEmailOptions {
   mergeTags?: readonly { name: string; unsubscribe?: boolean }[] | undefined;
 }
 
-type BlockProblem = Pick<Problem, "code" | "field" | "mergeTag" | "message">;
+type BlockProblem = Pick<
+  Problem,
+  "code" | "contrast" | "field" | "linkText" | "mergeTag" | "message"
+>;
 
 const MERGE_TAGS = new RegExp(MERGE_TAG.source, "gu");
 
@@ -190,20 +214,38 @@ const contrast = (first: Rgba, second: Rgba) => {
   return (light + 0.05) / (dark + 0.05);
 };
 
+const hexOf = (rgba: Rgba) =>
+  `#${rgba
+    .slice(0, 3)
+    .map((channel) =>
+      Math.round(channel * 255)
+        .toString(16)
+        .padStart(2, "0")
+    )
+    .join("")}`;
+
 /**
- * Whether text has enough contrast for WCAG AA: 4.5:1, or 3:1 for large text,
- * which is 24px, or 18.67px (14pt) when bold.
+ * Text's contrast, and what WCAG AA asks: 4.5:1, or 3:1 for large text, which
+ * is 24px, or 18.67px (14pt) when bold.
  */
-const isReadable = (
+const contrastOf = (
   color: string,
   behind: Rgba,
   fontSize = "16px",
   bold = false
-) => {
+): Contrast => {
   const pixels = Number(fontSize.slice(0, -"px".length));
   const large = pixels >= 24 || (bold && pixels * 3 >= 56);
-  return contrast(over(color, behind), behind) >= (large ? 3 : 4.5);
+  const drawn = over(color, behind);
+  return {
+    background: hexOf(behind),
+    color: hexOf(drawn),
+    ratio: contrast(drawn, behind),
+    required: large ? 3 : 4.5,
+  };
 };
+
+const isReadable = ({ ratio, required }: Contrast) => ratio >= required;
 
 /**
  * What's behind a Row's Blocks: the Row's own color, or else the Email style's
@@ -267,24 +309,34 @@ const lowContrast = (
       const links = linkColor(block.props, style, color);
       // Links in the text's own color are checked as text.
       const sameColor = links === color;
-      const isRunReadable = (runColor: string, { bold }: Run) =>
-        isReadable(
-          runColor,
-          behind,
-          css["font-size"],
-          bold || css["font-weight"] === "700"
-        );
-      const textFails = runs.some(
-        (run) => (sameColor || !run.link) && !isRunReadable(color, run)
+      /** The first of `inRuns` too hard to read in `runColor`. */
+      const unreadable = (runColor: string, inRuns: Run[]) =>
+        inRuns
+          .map(({ bold }) =>
+            contrastOf(
+              runColor,
+              behind,
+              css["font-size"],
+              bold || css["font-weight"] === "700"
+            )
+          )
+          .find((found) => !isReadable(found));
+      const textFails = unreadable(
+        color,
+        runs.filter((run) => sameColor || !run.link)
       );
-      const linksFail =
-        !sameColor &&
-        runs.some((run) => run.link && !isRunReadable(links, run));
+      const linksFail = sameColor
+        ? undefined
+        : unreadable(
+            links,
+            runs.filter((run) => run.link)
+          );
       return [
         ...(textFails
           ? [
               {
                 code: "low-text-contrast" as const,
+                contrast: textFails,
                 field: "color",
                 message:
                   "Text has too little contrast with what's behind it for everyone to read it. It needs 4.5:1, or 3:1 for large text.",
@@ -295,6 +347,7 @@ const lowContrast = (
           ? [
               {
                 code: "low-link-contrast" as const,
+                contrast: linksFail,
                 field: "color",
                 message:
                   "Links have too little contrast with what's behind them for everyone to read them. They need 4.5:1, or 3:1 for large text.",
@@ -304,12 +357,17 @@ const lowContrast = (
       ];
     }
     case "button": {
-      const buttonColor = parseColor(css["background-color"] as string);
-      return isReadable(css.color as string, buttonColor, css["font-size"])
+      const label = contrastOf(
+        css.color as string,
+        parseColor(css["background-color"] as string),
+        css["font-size"]
+      );
+      return isReadable(label)
         ? []
         : [
             {
               code: "low-button-contrast",
+              contrast: label,
               field: "color",
               message:
                 "A Button's label has too little contrast with the Button's color for everyone to read it. It needs 4.5:1, or 3:1 for large text.",
@@ -375,16 +433,18 @@ const linkTextsOf = (block: Block): [field: string, texts: string[]] => {
 
 const vagueLinks = (block: Block): BlockProblem[] => {
   const [field, texts] = linkTextsOf(block);
-  return texts.some(isVague)
-    ? [
+  const vague = texts.find(isVague);
+  return vague === undefined
+    ? []
+    : [
         {
           code: "vague-link-text",
           field,
+          linkText: vague.trim(),
           message:
             "A link says only something like “click here”, which doesn't say where it goes to someone who hears or scans the email's links on their own.",
         },
-      ]
-    : [];
+      ];
 };
 
 const blockProblems = (
@@ -484,11 +544,11 @@ const utf8Bytes = (text: string) => {
  * Lists an email's Problems: first the email's settings, then each Block in
  * order, then the email as a whole. `document` is checked as `renderEmail`
  * checks it, and the promise rejects with the reason if it isn't an email Mail
- * Quilt accepts. It renders the email, to measure its HTML.
+ * Quilt accepts. It renders the email to measure its HTML, unless `html` is given.
  */
 export const checkEmail = async (
   document: unknown,
-  { mergeTags, ...renderOptions }: CheckEmailOptions = {}
+  { html, mergeTags, ...renderOptions }: CheckEmailOptions = {}
 ) => {
   const loaded = loadDocument(document);
   if (!loaded.ok) {
@@ -519,7 +579,8 @@ export const checkEmail = async (
     }
   }
   if (
-    utf8Bytes(await renderEmail(document, renderOptions)) > GMAIL_CLIP_BYTES
+    utf8Bytes(html ?? (await renderEmail(document, renderOptions))) >
+    GMAIL_CLIP_BYTES
   ) {
     problems.push({
       code: "html-too-large",

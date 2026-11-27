@@ -111,7 +111,8 @@ export interface EmailPanelApi {
    * does, once the browser lets the editor read it.
    */
   pasteBelow: () => void;
-  openPreview: () => void;
+  /** Opens Check, where the email is shown as it's exported. */
+  openCheck: () => void;
 }
 
 /**

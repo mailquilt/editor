@@ -679,15 +679,9 @@ describe("anywhere in the editor but a field or the Preview", () => {
   });
 });
 
-describe("in the Preview", () => {
-  it("Escape closes it, as the browser closes a dialog, and stops there", () => {
-    expect(keyIn("preview", press("Escape"))).toStrictEqual(
-      acts("closePreview", { keepsDefault: true, stops: true })
-    );
-  });
-
-  it("Ctrl/⌘+Z doesn't undo behind it", () => {
-    expect(keyIn("preview", press("Mod-z"))).toBeUndefined();
+describe("in the email in Check", () => {
+  it("Ctrl/⌘+Z doesn't undo the email behind it", () => {
+    expect(keyIn("inbox", press("Mod-z"))).toBeUndefined();
   });
 });
 

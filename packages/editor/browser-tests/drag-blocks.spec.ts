@@ -31,8 +31,8 @@ import {
   openAddPanel,
   palette,
   pickUp,
-  previewButton,
-  previewEmail,
+  inboxEmail,
+  openCheck,
   serveImages,
   selectedBlock,
   selectionBar,
@@ -685,14 +685,14 @@ test.describe("a file dropped doesn't open in the page", () => {
     await expect(dropFileOn(blockGroup(page, "Text"))).resolves.toBe("refused");
   });
 
-  test("on the email in the open Preview", async ({ browserName, page }) => {
+  test("on the email in Check", async ({ browserName, page }) => {
     test.skip(
       browserName === "webkit",
       "WebKit runs no listener in a document whose scripts are off"
     );
     await page.goto("/");
-    await previewButton(page).click();
-    const email = previewEmail(page);
+    await openCheck(page);
+    const email = inboxEmail(page);
     await expect(email).toContainText("Hello");
 
     // From inside the email's own document, where a real drop over it goes.

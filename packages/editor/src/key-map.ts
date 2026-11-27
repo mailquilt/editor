@@ -44,7 +44,6 @@ export type Action =
   | "closeMergeTagPicker"
   | "closeMore"
   | "closePopover"
-  | "closePreview"
   | "closeRowsAdd"
   | "closeStylePopover"
   | "copyBlock"
@@ -599,12 +598,8 @@ const KEY_SCOPES = {
   },
   // Anywhere else in the editor, such as the top bar.
   editor: { keys: [], within: "editor" },
-  // The browser closes the dialog. Stopping the press keeps a host's own
-  // dialog around the editor open.
-  preview: {
-    keys: [escape("closePreview", { keepsDefault: true })],
-    within: "outside",
-  },
+  // The email in Check, whose own keys the editor never hears.
+  inbox: { keys: [], within: "outside" },
   notice: { keys: [], within: "outside" },
 } satisfies Partial<Record<Place | "pickerOpen", ScopeKeys>>;
 

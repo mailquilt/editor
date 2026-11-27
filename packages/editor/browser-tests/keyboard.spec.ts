@@ -31,8 +31,10 @@ import {
   palette,
   addPanel,
   pretendPlatform,
-  previewButton,
-  previewEmailButton,
+  checkButton,
+  checkPanel,
+  inboxFrame,
+  openCheck,
   redoByKey,
   selectedText,
   selectionBar,
@@ -104,7 +106,7 @@ const positionOfL = async (page: Page) => {
 /** Counts every change a screen reader could be told about in the live region. */
 const countAnnouncements = (page: Page) =>
   canvas(page).evaluate((host) => {
-    // The editor's own, not the Preview's, which is in its dialog.
+    // The editor's own live region, a child of its shadow root.
     const status = [...(host.shadowRoot?.children ?? [])].find(
       (element) => element.getAttribute("role") === "status"
     ) as Element;
@@ -149,7 +151,7 @@ test.describe("selecting a Block", () => {
     // The email is one stop: Tab passes the other Blocks, and the bar still
     // shows this one.
     await page.keyboard.press("Tab");
-    await expect(previewButton(page)).toBeFocused();
+    await expect(checkButton(page)).toBeFocused();
     await expect(blockWith(page, "First")).toHaveAttribute(
       "aria-current",
       "true"
@@ -258,14 +260,14 @@ test.describe("moving a Block with Alt+Arrow keys", () => {
   }) => {
     await openNarrowNotice(page);
     const leftPrevented = await watchPrevented(page, "ArrowLeft");
-    await previewEmailButton(page).focus();
+    await narrowNotice(page).focus();
 
     await page.keyboard.press("Alt+ArrowLeft");
 
     await expect.poll(leftPrevented).toBe(true);
   });
 
-  test("Alt+← doesn't go back a page from the email in the Preview", async ({
+  test("Alt+← doesn't go back a page from the email in Check", async ({
     browserName,
     page,
   }) => {
@@ -273,10 +275,10 @@ test.describe("moving a Block with Alt+Arrow keys", () => {
       browserName === "webkit",
       "WebKit runs no listener in a document whose scripts are off"
     );
-    await openNarrowNotice(page);
-    await previewEmailButton(page).focus();
-    await page.keyboard.press("Enter");
-    const email = page.getByTitle("Email preview");
+    await pretendPlatform(page, "Win32");
+    await page.goto("/");
+    await openCheck(page);
+    const email = inboxFrame(page);
     await expect(email.contentFrame().locator("body")).toContainText("Hello");
     // The email's keys don't reach the host page, so this listens in it.
     await email.evaluate((frame) => {
@@ -741,15 +743,20 @@ test.describe("labels and focus states", () => {
     await expect(controlsWithoutRing(page)).resolves.toEqual([]);
   });
 
-  test("the Preview's Close button shows where focus is", async ({ page }) => {
+  test("Check's fix buttons and switch show where focus is", async ({
+    page,
+  }) => {
     await openEmail(page, [[["A"]]]);
-    await previewButton(page).focus();
-    await page.keyboard.press("Enter");
-    const close = page.getByRole("button", { name: "Close" });
-    await expect(close).toBeFocused();
+    await canvas(page).evaluate((element) => {
+      Object.assign(element, { mergeTags: [{ name: "a", sample: "b" }] });
+    });
+    // From the keyboard, as only focus from the keys shows its ring.
+    await canvas(page).getByRole("tab", { name: "Edit" }).focus();
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("ArrowRight");
+    await expect(checkPanel(page)).toContainText("2 things to fix.");
 
     await expect(controlsWithoutRing(page)).resolves.toEqual([]);
-    await expect(close).toBeFocused();
   });
 
   test("the Block with focus looks different from one only selected", async ({
@@ -955,36 +962,31 @@ test.describe("automated accessibility checks", () => {
     await expect(page.getByRole("alert")).toBeVisible();
     expect(await violations(page)).toEqual([]);
 
-    for (const name of ["Style", "Check", "Edit"]) {
+    for (const name of ["Style", "Edit"]) {
       await canvas(page).getByRole("tab", { exact: true, name }).click();
       expect(await violations(page)).toEqual([]);
     }
-
-    await previewButton(page).click();
-    await expect(page.getByTitle("Email preview")).toBeVisible();
-    expect(
-      await violations(page, "mail-quilt", { excludeIframe: true })
-    ).toEqual([]);
-    await page.keyboard.press("Escape");
 
     await page.setViewportSize(NARROW_VIEWPORT);
     await expect(narrowNotice(page)).toBeVisible();
     expect(await violations(page)).toEqual([]);
   });
 
-  test("pass with the Preview open at each width", async ({ page }) => {
+  test("pass in Check with nothing to fix", async ({ page }) => {
     await openEmail(page, [[["A"]]]);
-    await previewButton(page).click();
-    await expect(page.getByTitle("Email preview")).toBeVisible();
-    const scan = () => violations(page, "mail-quilt", { excludeIframe: true });
-    expect(await scan()).toEqual([]);
+    await canvas(page).evaluate((element) => {
+      const quilt = element as MailQuilt;
+      const email = structuredClone(quilt.value);
+      if (email) {
+        email.settings = { ...email.settings, language: "en", preheader: "Hi" };
+        quilt.value = email;
+      }
+    });
+    await openCheck(page);
+    await expect(checkPanel(page)).toContainText("Ready to export");
 
-    const phone = page
-      .getByRole("dialog", { name: "Preview" })
-      .getByRole("button", { exact: true, name: "Phone" });
-    await phone.click();
-    await expect(phone).toHaveAttribute("aria-pressed", "true");
-
-    expect(await scan()).toEqual([]);
+    expect(
+      await violations(page, "mail-quilt", { excludeIframe: true })
+    ).toEqual([]);
   });
 });

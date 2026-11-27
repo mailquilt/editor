@@ -75,7 +75,7 @@ export const STRINGS = {
   "canvas.addToColumn":
     "Add a Block, or drop one here, in Row {row}, Column {column}",
   "canvas.emailTools": "Email tools",
-  "canvas.preview": "Preview",
+  "canvas.check": "Check the email",
   "canvas.textOf": "{type} Block",
   "canvas.blockKeys":
     "Press {editText} to edit the text, and {backToBlock} to come back. In the text, press {formatBar} to reach its formatting. Press {selectBlock} to select another Block, and {moveBlock} to move this one.",
@@ -83,8 +83,7 @@ export const STRINGS = {
     "Press {selectBlock} to select another Block, and {moveBlock} to move this one.",
   "canvas.narrowTitle": "Editing needs more room",
   "canvas.narrowText":
-    "Make the editor at least {width}px wide, such as by widening the window, to change this email. You can still preview it here.",
-  "canvas.narrowPreview": "Preview email",
+    "Make the editor at least {width}px wide, such as by widening the window, to change or check this email.",
 
   // What Blocks show on the Canvas before they have content.
   "image.uploading": "Uploading…",
@@ -433,15 +432,87 @@ export const STRINGS = {
   "upload.started": "Uploading image.",
   "upload.done": "Image uploaded.",
 
-  // The Preview.
-  "preview.title": "Preview",
-  "preview.close": "Close",
-  "preview.width": "Width",
-  "preview.desktop": "Desktop",
-  "preview.phone": "Phone",
-  "preview.frame": "Email preview",
-  "preview.loading": "Loading preview…",
-  "preview.failed": "The preview couldn't be loaded: {reason}",
+  // Check: the email in an inbox, and its Problems.
+  "check.samples": "Show sample values",
+  "check.desktop": "Desktop, {width}px",
+  "check.phone": "Phone, {width}px",
+  "check.desktopFrame": "The email on a desktop",
+  "check.phoneFrame": "The email on a phone",
+  /** The phone's link back to its inbox, drawn above the email. */
+  "check.inbox": "Inbox",
+  "check.loading": "Loading preview…",
+  "check.failed": "The preview couldn't be loaded: {reason}",
+  "check.title": "Before you export",
+  "check.checking": "Checking the email…",
+  "check.toFixOne": "1 thing to fix.",
+  "check.toFixMany": "{count} things to fix.",
+  "check.allPassed": "{count} checks passed.",
+  "check.cantCheck": "The email couldn't be checked.",
+  "check.ready": "Ready to export",
+  "check.readyText":
+    "Nothing to fix. The layout is built to work in Gmail, Apple Mail, Outlook and Yahoo.",
+  "check.toFix": "To fix",
+  "check.passed": "Passed",
+  /** Where a Problem is, beside its fix button. */
+  "check.inEmail": "Email",
+  "check.inRow": "Row {row}",
+  "check.inColumn": "Row {row}, Column {column}",
+  /** Said as a fix button moves focus to the field, which shows the Problem under it. */
+  "check.fixSaid": "{title}. {why}",
+  /** The Check tab's count, after its name, for screen readers. */
+  "check.tabCount": "{count} to fix",
+
+  // Each check that passed, in Check's list.
+  "passed.imageAlt": "Every Image has alt text",
+  "passed.links": "Every Button and link goes somewhere",
+  "passed.imageSrc": "Every Image has an image",
+  "passed.preheader": "Preheader is set",
+  "passed.mergeTags": "Every Merge Tag will be filled in",
+  "passed.size": "{size} KB, under Gmail's 102 KB cut-off",
+  "passed.language": "Language is set",
+  "passed.contrast": "Text is easy to read",
+  "passed.linkText": "Every link says where it goes",
+  "passed.unsubscribe": "There's an unsubscribe link",
+
+  // Each kind of Problem: what's wrong, why it matters, and its fix button.
+  "problem.imageSrc": "Image has no image",
+  "problem.imageSrcWhy": "Readers see nothing in its place in Row {row}.",
+  "problem.imageSrcFix": "Add an image",
+  "problem.imageAlt": "Image has no alt text",
+  "problem.imageAltWhy":
+    "If images are blocked, or for screen readers, Row {row} says nothing.",
+  "problem.imageAltFix": "Add alt text",
+  "problem.buttonLink": "“{label}” has no link",
+  "problem.buttonLinkWhy": "Readers who click it go nowhere.",
+  "problem.buttonLinkFix": "Add link",
+  "problem.mergeTag": "{name} isn't one of your Merge Tags",
+  /** `{tag}` is the Merge Tag as it's written, in its braces. */
+  "problem.mergeTagWhy": "Readers would see {tag} where its value should be.",
+  "problem.mergeTagFix": "Fix the Merge Tag",
+  "problem.preheader": "No preheader",
+  "problem.preheaderWhy":
+    "Inboxes show the email's first words instead: “{words}”.",
+  "problem.preheaderFix": "Add a preheader",
+  "problem.size": "{size} KB, over Gmail's 102 KB cut-off",
+  "problem.sizeWhy":
+    "Gmail hides the end of the email, unsubscribe link included, behind “View entire message”.",
+  "problem.language": "No language",
+  "problem.languageWhy": "Screen readers may read it in the wrong voice.",
+  "problem.languageFix": "Set the language",
+  "problem.textContrast": "Text is hard to read",
+  "problem.linkContrast": "Links are hard to read",
+  "problem.buttonContrast": "“{label}” is hard to read",
+  "problem.contrastWhy":
+    "{color} on {background} is {ratio} to 1. Text this size needs {required} to 1.",
+  "problem.contrastFix": "Change the color",
+  "problem.linkText": "“{text}” doesn't say where it goes",
+  "problem.linkTextWhy":
+    "Screen reader users often jump from link to link and hear only this.",
+  "problem.linkTextFix": "Change the text",
+  "problem.unsubscribe": "No unsubscribe link",
+  "problem.unsubscribeWhy":
+    "Your sending service, or the law where your readers live, may require one.",
+  "problem.unsubscribeFix": "Add the link",
 
   // The Shell.
   "shell.email": "Email",

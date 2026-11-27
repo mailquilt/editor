@@ -80,6 +80,10 @@ const PLACES = {
    * the less common actions.
    */
   morePanel: { press: "keepsFocus" },
+  /** Check's panel of Problems, and what passed. */
+  checkPanel: {},
+  /** The Problem a fix button opened Edit for, under the field to fix. */
+  fixNote: {},
   /** The notice shown instead of the editor when there's no room to edit. */
   notice: {},
   /** A + between two Blocks, which opens the picker there. */
@@ -89,8 +93,8 @@ const PLACES = {
    * `data-row-layout` names it.
    */
   paletteItem: {},
-  /** The Preview dialog. */
-  preview: {},
+  /** The email in Check's inbox, at desktop or phone width. */
+  inbox: {},
   /** A Row with its tag. Its `data-row-id` names it. */
   row: {},
   /** The Selection bar while a Row is selected. */

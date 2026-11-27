@@ -21,14 +21,15 @@ Put `<mail-quilt>` in a page of your own when the editor sits among other things
 - **The Add panel, of Blocks and empty Rows, docks before the email** in the Rows list's place while it's open and the editor is at least the email's width plus 368px, 968px for the usual email. Any narrower, and the panel opens over the workspace's start rather than squeeze the email.
 - **More, the Selection bar's panel for the rest of a Block's settings, docks beside the email** while the editor is at least the email's width plus 400px and the Rows list's width: 1232px for the usual email with the list expanded, 1052px with it collapsed, or 1288px with the Add panel docked. Otherwise it opens over the workspace.
 - **In Style, the Email style panel, 320px wide, docks beside the email** while the editor is at least the email's width plus 400px, 1000px for the usual email. Otherwise it opens over the workspace's end, and the email stays its width.
+- **In Check, the email is shown at its own width and at a phone's 375px, beside a 352px panel of Problems.** Where they don't quite fit side by side, both are drawn up to a fifth smaller to stay so. With less room, the phone goes below, and where the desktop inbox doesn't fit either, both are drawn smaller together.
 - **The Selection bar keeps to one line.** Where it's short of room for what's selected, its Move, Duplicate and Delete buttons move into More.
-- **Below {{editor-min-width}}px, there's no room to edit.** The editor shows a notice in its place, which still opens the Preview. It comes back, with the same email, once there's room again.
+- **Below {{editor-min-width}}px, there's no room to edit.** The editor shows a notice in its place, whichever Mode it's in. It comes back, with the same email, once there's room again.
 
 So give the editor the full width of your content area. Don't put it in a narrow column beside a sidebar of your own.
 
 ## Height
 
-The editor is at least {{editor-min-height}}px tall, and grows with the email. It fills any height you give it, but never shrinks below the email, so the page scrolls rather than the editor. As it does, the top bar, with Undo, Redo and the Modes, stays in view at the top of the window, the Selection bar, the Rows list and the Add panel below it, and in Edit, the Preview button at the bottom.
+The editor is at least {{editor-min-height}}px tall, and grows with the email. It fills any height you give it, but never shrinks below the email, so the page scrolls rather than the editor. As it does, the top bar, with Undo, Redo and the Modes, stays in view at the top of the window, the Selection bar, the Rows list and the Add panel below it, in Edit, the button that opens Check at the bottom, and in Check, its panel of Problems.
 
 That means:
 
@@ -69,4 +70,4 @@ The [quick start](./quick-start) shows how to open an email in it, save it and e
 - **Narrow the window** below {{editor-min-width}}px and back. The notice should show, then the editor with the same email.
 - **Use it from the keyboard.** Tab into the editor, select a Block, move it with Alt and the arrow keys, and edit its text. The [keyboard page](./keyboard) lists every key.
 - **With your own colors, check contrast**: text against the surface and workspace, the selected Block's tag, focus rings and the tooltip.
-- **Open the Preview**, and export the HTML once. If your page has a Content Security Policy, [Content Security Policy](./api#content-security-policy) says what Preview needs.
+- **Open Check**, and export the HTML once. If your page has a Content Security Policy, [Content Security Policy](./api#content-security-policy) says what Check needs.

@@ -15,8 +15,6 @@ import {
   linkUrlField,
   openBlocks,
   openTestPage,
-  previewButton,
-  previewEmail,
   settle,
   test,
   textBlock,
@@ -270,7 +268,7 @@ test.describe("a tag on the Canvas", () => {
     await changed(0);
   });
 
-  test("the Preview and the export show {{name}}", async ({ page }) => {
+  test("the export shows {{name}}", async ({ page }) => {
     await typeInText(page, "Hi {{first_name}}");
 
     const html = await canvas(page).evaluate((element) =>
@@ -278,9 +276,6 @@ test.describe("a tag on the Canvas", () => {
     );
     expect(html).toContain("Hi {{first_name}}");
     expect(html).not.toContain("First name");
-
-    await previewButton(page).click();
-    await expect(previewEmail(page)).toContainText("Hi {{first_name}}");
   });
 });
 

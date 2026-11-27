@@ -11,7 +11,7 @@ Anything a person can do in the editor by dragging, they can also do from the ke
 
 The top bar is above the email in every Mode. It holds Undo and Redo, the three Modes, Edit, Style and Check, and the Desktop and Phone views. In the [Shell](./shell), it also holds the email's name, whether it's saved, More and Export.
 
-The Modes are one stop for <kbd>Tab</kbd>, at the Mode you're in. The arrow keys go to the next or previous Mode and open it, and <kbd>Home</kbd> and <kbd>End</kbd> the first or last. With nothing in the email, Style and Check are off. The arrow keys still reach them, and their tooltip says why. Check is still being built and shows nothing yet, so use Preview in Edit to see the email. Check will show the email at desktop and phone width together, so it has no Desktop and Phone buttons.
+The Modes are one stop for <kbd>Tab</kbd>, at the Mode you're in. The arrow keys go to the next or previous Mode and open it, and <kbd>Home</kbd> and <kbd>End</kbd> the first or last. With nothing in the email, Style and Check are off. The arrow keys still reach them, and their tooltip says why. Check shows the email at desktop and phone width together, so it has no Desktop and Phone buttons.
 
 When Undo or Redo has nothing left to do, focus goes to the other one, or if neither works, to the toolbar below the email, or in Style and Check to the Mode you're in.
 
@@ -23,8 +23,8 @@ In the Shell, Export and More each open a menu. <kbd>Enter</kbd> or <kbd>Down</k
 from Block to Block. The email is one stop for <kbd>Tab</kbd>, at the selected
 Block, so the other Blocks aren't stops: <kbd>Tab</kbd> goes from the selected
 Block to its text, then past the buttons of any empty Columns after it, to the
-Selection bar above the email, which has that Block's settings, and then to
-Preview.
+Selection bar above the email, which has that Block's settings, and then to the
+button that opens Check.
 
 | Key | What it does |
 | --- | --- |
@@ -243,9 +243,14 @@ document.addEventListener("keydown", (event) => {
 });
 ```
 
-## Preview
+## Check
 
-Opening Preview moves focus to its Close button. Before Close, Desktop and Phone choose the width the email is shown at, and the choice stays while the editor is open. <kbd>Escape</kbd> closes it, and focus returns to where it was. In Safari, <kbd>Escape</kbd> does nothing once focus is inside the email, so press <kbd>Shift</kbd> + <kbd>Tab</kbd> to get back to Close.
+Check is a Mode, reached like the others from the Modes in the top bar, or from the button below the email in Edit. Focus stays on its tab. From there, <kbd>Tab</kbd> goes to Show sample values, when your Merge Tags have samples, then through the email at each width, which is a page of its own with its links, and then to the fix button of each Problem in Before you export. A fix button opens Edit with what the Problem is about selected, and moves focus to the field that fixes it, opening the popover or More it's in, with the Problem shown under the field.
+
+<kbd>Escape</kbd> does nothing of Check's own, so it reaches your page. The
+editor hears no key pressed inside the email, but <kbd>Alt</kbd> +
+<kbd>Left</kbd> there still doesn't go back a page, except in Safari, which runs
+no listener inside the email.
 
 ## What a screen reader announces
 
@@ -260,6 +265,6 @@ Opening Preview moves focus to its Close button. Before Close, Desktop and Phone
 
 ## How it's tested
 
-The editor's browser tests press these keys in Chromium, Firefox and WebKit. They also run [axe-core](https://github.com/dequelabs/axe-core) with its WCAG 2.2 AA rules against the editor in several states: in each Mode, with the Shell's Export menu open, with Columns and empty Columns, with a Block selected, with the Selection bar's popover, its chip's menu and More open, with the link field showing an error, with the Merge Tag picker open in text and under a settings field, with a Social Block's links showing a refused URL, and with Preview open at each width.
+The editor's browser tests press these keys in Chromium, Firefox and WebKit. They also run [axe-core](https://github.com/dequelabs/axe-core) with its WCAG 2.2 AA rules against the editor in several states: in each Mode, with the Shell's Export menu open, with Columns and empty Columns, with a Block selected, with the Selection bar's popover, its chip's menu and More open, with the link field showing an error, with the Merge Tag picker open in text and under a settings field, with a Social Block's links showing a refused URL, and in Check, with Problems to fix and with none.
 
 Automated checks don't find everything. The [accessibility statement](./accessibility) says which WCAG 2.2 criteria the editor meets, what it doesn't, and how each was checked. If a screen reader or another tool has trouble with the editor, please [open an issue](https://github.com/mailquilt/editor/issues).

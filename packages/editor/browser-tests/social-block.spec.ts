@@ -18,9 +18,8 @@ import {
   setting,
   holdMjml,
   openPopover,
-  previewButton,
-  previewDialog,
-  previewEmail,
+  inboxEmail,
+  openCheck,
   setValue,
   test,
   violations,
@@ -179,8 +178,8 @@ test("icons that wrap have the gap between icons between their lines too, on the
 
   // Ten 48px icons and their 24px gaps are wider than the email.
   expect(await spaceBetweenLines(icons(page))).toBe(24);
-  await previewButton(page).click();
-  const exported = previewEmail(page).getByRole("img");
+  await openCheck(page);
+  const exported = inboxEmail(page).getByRole("img");
   await expect(exported).toHaveCount(10);
   for (const icon of await exported.all()) {
     await expect(icon).toHaveJSProperty("complete", true);
@@ -232,8 +231,8 @@ for (const align of ["right", "center"] as const) {
 
     expect(await lineEdges(icons(page))).toHaveLength(2);
     expect(await places(icons(page))).toBe(1);
-    await previewButton(page).click();
-    const exported = previewEmail(page).getByRole("img");
+    await openCheck(page);
+    const exported = inboxEmail(page).getByRole("img");
     await expect(exported).toHaveCount(10);
     for (const icon of await exported.all()) {
       await expect(icon).toHaveJSProperty("complete", true);
@@ -252,8 +251,11 @@ test("one line of icons is no taller than the icons and the Block's padding, on 
     bottom: 16,
     top: 16,
   });
-  await previewButton(page).click();
-  const exported = previewEmail(page).getByRole("img");
+  await openCheck(page);
+  // Reaching for the image while its frame first loads crashed Firefox's page
+  // here, which the email showing first doesn't.
+  await expect(inboxEmail(page)).toBeVisible();
+  const exported = inboxEmail(page).getByRole("img");
   await expect(exported).toHaveJSProperty("complete", true);
   // The Row's own table, the outermost around the icon.
   expect(
@@ -261,49 +263,39 @@ test("one line of icons is no taller than the icons and the Block's padding, on 
   ).toEqual({ bottom: 16, top: 16 });
 });
 
-test("the Preview loads the icons from the folder the Host app gives now, not the one it rendered with", async ({
+test("Check loads the icons from the folder the Host app gives now, not the one it rendered with", async ({
   page,
 }) => {
   await openSocial(page, [{ network: "x", url: "https://x.com/shop" }]);
-  await previewButton(page).click();
-  await expect(previewEmail(page).getByRole("img")).toHaveAttribute(
+  await openCheck(page);
+  await expect(inboxEmail(page).getByRole("img")).toHaveAttribute(
     "src",
     `${ICONS}x-color.png`
   );
-  await page.keyboard.press("Escape");
-  await expect(previewDialog(page)).toBeHidden();
 
   await canvas(page).evaluate((element) => {
     (element as MailQuilt).socialIconsUrl = "https://icons.example/other/";
   });
-  await previewButton(page).click();
 
-  await expect(previewEmail(page).getByRole("img")).toHaveAttribute(
+  await expect(inboxEmail(page).getByRole("img")).toHaveAttribute(
     "src",
     "https://icons.example/other/x-color.png"
   );
 });
 
-test("a Preview rendered with the old folder isn't kept once the folder changes during it", async ({
+test("a check rendered with the old folder isn't kept once the folder changes during it", async ({
   page,
 }) => {
   await openSocial(page, [{ network: "x", url: "https://x.com/shop" }]);
   const release = await holdMjml(page);
-  await previewButton(page).click();
+  await openCheck(page);
   await canvas(page).evaluate((element) => {
     (element as MailQuilt).socialIconsUrl = "https://icons.example/other/";
   });
+
   await release();
-  await expect(previewEmail(page).getByRole("img")).toHaveAttribute(
-    "src",
-    `${ICONS}x-color.png`
-  );
-  await page.keyboard.press("Escape");
-  await expect(previewDialog(page)).toBeHidden();
 
-  await previewButton(page).click();
-
-  await expect(previewEmail(page).getByRole("img")).toHaveAttribute(
+  await expect(inboxEmail(page).getByRole("img")).toHaveAttribute(
     "src",
     "https://icons.example/other/x-color.png"
   );

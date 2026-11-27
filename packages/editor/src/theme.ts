@@ -1,10 +1,4 @@
-import { css, unsafeCSS } from "lit";
-
-/**
- * What covers the page behind the Preview, unless a host sets
- * `--mq-color-backdrop`.
- */
-export const BACKDROP = "rgb(16 24 40 / 55%)";
+import { css } from "lit";
 
 /** What `theme` takes. Without it, or with any other value, the theme is light. */
 export type MailQuiltTheme = "light" | "dark" | "auto";
@@ -38,7 +32,9 @@ const darkTheme = css`
   --mq-color-danger: #ff7a6e;
   --mq-color-tooltip: #ededef;
   --mq-color-on-tooltip: #0d0e10;
-  --mq-color-backdrop: rgb(0 0 0 / 65%);
+  --mq-color-warning: #ff9b5e;
+  --mq-color-on-warning: #101113;
+  --mq-color-success: #4ade80;
   --mq-color-scheme: dark;
   --mq-shadow-small: 0 1px 2px rgb(0 0 0 / 40%);
   --mq-shadow:
@@ -79,7 +75,9 @@ export const themeTokens = css`
     --mq-color-danger: #c42b1c;
     --mq-color-tooltip: #16181d;
     --mq-color-on-tooltip: #f7f7f8;
-    --mq-color-backdrop: ${unsafeCSS(BACKDROP)};
+    --mq-color-warning: #c2410c;
+    --mq-color-on-warning: #ffffff;
+    --mq-color-success: #15803d;
     /* For what the browser draws itself, such as a dropdown's open list. */
     --mq-color-scheme: light;
 

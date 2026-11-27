@@ -24,8 +24,8 @@ import {
   openBlocks,
   openEmail,
   openPopover,
-  previewButton,
-  previewDialog,
+  checkPanel,
+  openCheck,
   redo,
   serveImages,
   TALL_VIEWPORT,
@@ -570,16 +570,13 @@ test.describe("dropping image files", () => {
     await expect(uploadCalls(page)).resolves.toHaveLength(1);
   });
 
-  test("a file dropped on the open Preview is still refused", async ({
-    page,
-  }) => {
+  test("a file dropped on Check is still refused", async ({ page }) => {
     await openEmail(page, [[["One"]]]);
     await giveUploadImage(page);
-    const overEmail = await centerOf(canvas(page).getByTestId("email"));
-    await previewButton(page).click();
+    await openCheck(page);
 
-    await expect(dropFileOn(previewDialog(page), overEmail)).resolves.toBe(
-      "refused"
-    );
+    await expect(
+      dropFileOn(checkPanel(page), await centerOf(checkPanel(page)))
+    ).resolves.toBe("refused");
   });
 });

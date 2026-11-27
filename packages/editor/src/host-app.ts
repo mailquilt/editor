@@ -10,9 +10,24 @@ export interface HostAppProperties {
    * The Host app's Merge Tags, which typing `{{` in text, or the format bar's
    * Merge Tag button, offers to pick from. `name` is what goes between the
    * braces, and `label`, if given, is what the picker and the Canvas show.
-   * Without it, there's no picker, and a typed tag still becomes one unit.
+   * `sample` is what Check shows in its place with "Show sample values" on.
+   * `unsubscribe` marks the tag that's the unsubscribe link, which Check then
+   * looks for. Without the list, there's no picker, a typed tag still becomes
+   * one unit, and Check doesn't look at Merge Tags.
    */
-  mergeTags?: readonly { name: string; label?: string }[] | undefined;
+  mergeTags?:
+    | readonly {
+        name: string;
+        label?: string;
+        sample?: string;
+        unsubscribe?: boolean;
+      }[]
+    | undefined;
+  /**
+   * Who the email is from, as Check's inbox shows it, such as the Host app's
+   * name for the sender. Without it, the inbox shows no sender.
+   */
+  sender?: string | undefined;
   /**
    * The URL of a folder of the Host app's own holding the Social Block's
    * icons, copied from `@mailquilt/renderer`'s `icons`. The Canvas, the Preview
@@ -20,6 +35,11 @@ export interface HostAppProperties {
    * jsDelivr, at the renderer's exact version.
    */
   socialIconsUrl?: string | undefined;
+  /**
+   * The email's subject, as Check's inbox shows it before the preheader.
+   * Without it, the inbox shows the preheader alone.
+   */
+  subject?: string | undefined;
   /**
    * Texts that replace the editor's English, by ID, as `STRINGS` lists them,
    * with their placeholders such as `{row}`. Any left out keep their English.
@@ -46,8 +66,10 @@ export interface HostAppProperties {
  */
 export const HOST_APP_PROPERTIES = Object.keys({
   mergeTags: true,
+  sender: true,
   socialIconsUrl: true,
   strings: true,
+  subject: true,
   uploadImage: true,
 } satisfies {
   [Name in keyof HostAppProperties]-?: true;

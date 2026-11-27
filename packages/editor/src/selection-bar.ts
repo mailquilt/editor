@@ -1200,6 +1200,33 @@ const controlsOf = (target: Target) => {
   }
 };
 
+/**
+ * Where the bar shows a Block's field, or the email's: in the bar itself, in
+ * a popover from the button with `data-action` `id`, or in More.
+ */
+export const fieldShownIn = (
+  of: { type: BlockType; props: Record<string, unknown> } | "email",
+  key: string
+): { in: "bar" } | { in: "more" } | { in: "popover"; id: string } => {
+  const controls =
+    of === "email" ? CONTROLS.email : CONTROLS[of.type](of.props);
+  const control = controls.find((each) => keysOf(each).includes(key));
+  switch (control?.kind) {
+    case undefined: {
+      return { in: "more" };
+    }
+    case "popover": {
+      return { id: control.id, in: "popover" };
+    }
+    case "color": {
+      return { id: `popover-${key}`, in: "popover" };
+    }
+    default: {
+      return { in: "bar" };
+    }
+  }
+};
+
 /** The fields of what's selected that the bar doesn't show, for More. */
 const moreFieldsOf = (target: Target, section: SettingsSection) => {
   const shown = new Set(controlsOf(target).flatMap(keysOf));

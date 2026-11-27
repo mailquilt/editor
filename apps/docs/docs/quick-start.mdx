@@ -19,7 +19,7 @@ npm install @mailquilt/editor
   ./_quick-start/starter-email.js
 </include>
 
-Importing `@mailquilt/editor` registers the `<mail-quilt>` element. MJML, the library that turns an email into HTML, is large, so it only loads the first time someone opens Preview or you call `exportHtml()`.
+Importing `@mailquilt/editor` registers the `<mail-quilt>` element. MJML, the library that turns an email into HTML, is large, so it only loads the first time someone opens Check or you call `exportHtml()`.
 
 The page opens an email, saves every change in the browser, shows the reason if the editor refuses an email, and exports the email as HTML. `starterEmail` is the email to open when nothing is saved yet. Your app can open one it already has, or the [example email](./document-format#example), which has a Block of each type. In your app, save each email to your server instead, as [Save emails to your server](./save-emails) shows.
 

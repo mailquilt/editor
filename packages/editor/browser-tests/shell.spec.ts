@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { expect } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 
-import type { MailQuiltShell } from "../src/index.js";
+import type { MailQuilt, MailQuiltShell } from "../src/index.js";
 import {
   palette,
   addPanel,
@@ -522,6 +522,33 @@ test.describe("the editor's API", () => {
     });
 
     await expect(picker).toHaveCount(0);
+  });
+
+  test("sender, subject and a Merge Tag's sample reach the editor", async ({
+    page,
+  }) => {
+    await openShell(page);
+    await shell(page).evaluate((element) => {
+      Object.assign(element as MailQuiltShell, {
+        mergeTags: [{ name: "first_name", sample: "Ana" }],
+        sender: "Northbound",
+        subject: "Spring roast",
+      });
+    });
+
+    const editor = shell(page).locator("mail-quilt");
+    await expect
+      .poll(() =>
+        editor.evaluate((element) => {
+          const { mergeTags, sender, subject } = element as MailQuilt;
+          return [mergeTags, sender, subject];
+        })
+      )
+      .toEqual([
+        [{ name: "first_name", sample: "Ana" }],
+        "Northbound",
+        "Spring roast",
+      ]);
   });
 
   test("strings reaches the editor, and names the Shell's own buttons", async ({

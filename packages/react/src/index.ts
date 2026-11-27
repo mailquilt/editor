@@ -217,8 +217,10 @@ const Editor = (
     onChange,
     onError,
     mergeTags,
+    sender,
     socialIconsUrl,
     strings,
+    subject,
     uploadImage,
     value,
     ...attributes
@@ -228,7 +230,14 @@ const Editor = (
   createElement("mail-quilt", {
     ...elementAttributes(attributes),
     ref: useEditorElement({
-      hostApp: { mergeTags, socialIconsUrl, strings, uploadImage },
+      hostApp: {
+        mergeTags,
+        sender,
+        socialIconsUrl,
+        strings,
+        subject,
+        uploadImage,
+      },
       onChange,
       onError,
       ref,
@@ -245,8 +254,10 @@ const Shell = (
     onChange,
     onError,
     saveKey,
+    sender,
     socialIconsUrl,
     strings,
+    subject,
     uploadImage,
     value,
     ...rest
@@ -263,7 +274,14 @@ const Shell = (
   return createElement("mail-quilt-shell", {
     ...attributes,
     ref: useEditorElement({
-      hostApp: { mergeTags, socialIconsUrl, strings, uploadImage },
+      hostApp: {
+        mergeTags,
+        sender,
+        socialIconsUrl,
+        strings,
+        subject,
+        uploadImage,
+      },
       onChange,
       onError,
       ref,
