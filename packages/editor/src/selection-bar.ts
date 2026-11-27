@@ -56,6 +56,7 @@ import {
   typedIn,
 } from "./settings-panel.js";
 import type { ListPart, SettingsSection } from "./settings-panel.js";
+import { renderSheet, renderSheetHead } from "./sheet.js";
 import type { StringId } from "./strings.js";
 import { styleProperties } from "./style-properties.js";
 import { blockTypeName } from "./text.js";
@@ -970,6 +971,169 @@ export const selectionBarStyles = css`
       opacity: 0;
       transform: scale(0.97);
     }
+  }
+
+  /*
+   * On a phone, the bar is docked at the bottom, over the email, as frames
+   * 8-phone and p08 draw it, and its controls are as tall as a fingertip.
+   * What doesn't fit scrolls along it, as at 320px.
+   */
+  .app[data-phone] .bar-dock {
+    bottom: var(--mq-space-2);
+    margin: auto var(--mq-space-2) var(--mq-space-2);
+    order: 1;
+    top: auto;
+  }
+
+  .app[data-phone] .selection-bar {
+    border: 0;
+    border-radius: var(--mq-radius-large);
+    box-shadow: var(--mq-shadow);
+    gap: var(--mq-space-1);
+    justify-content: flex-start;
+    min-height: var(--_mq-phone-bar-height);
+    overflow-x: auto;
+    padding: 0 var(--mq-space-2);
+    scrollbar-width: none;
+  }
+
+  /* As wide as what's in it, so More stays at the end as the rest scrolls. */
+  .app[data-phone] .selection-bar .bar-content {
+    margin-inline: 0;
+    max-width: none;
+  }
+
+  /*
+   * What doesn't fit scrolls under More, which stays at the end, over the
+   * bar's own padding there too, so nothing shows past it.
+   */
+  .app[data-phone] .selection-bar:has([data-action="more"]:last-child) {
+    padding-inline-end: 0;
+  }
+
+  .app[data-phone] .selection-bar [data-action="more"]:last-child {
+    background: var(--mq-color-surface);
+    border-radius: 0;
+    box-shadow: -8px 0 8px var(--mq-color-surface);
+    box-sizing: content-box;
+    inset-inline-end: 0;
+    padding-inline-end: var(--mq-space-2);
+    position: sticky;
+  }
+
+  .app[data-phone] .selection-bar :is(.icon-button, .bar-button, .bar-chip) {
+    height: 44px;
+    min-width: 44px;
+  }
+
+  .app[data-phone] .selection-bar .bar-field {
+    height: 44px;
+  }
+
+  /* Inputs under 16px make Safari on a phone zoom the page. */
+  .app[data-phone] :is(input, select, textarea) {
+    font-size: max(16px, 1em);
+  }
+
+  /* What's selected is its icon, in the accent, and a Row or Column its name. */
+  .app[data-phone] .bar-chip {
+    padding: 0 var(--mq-space-2) 0 0;
+  }
+
+  .app[data-phone] .bar-chip .chip-icon {
+    background: var(--mq-color-accent-soft);
+    border-radius: var(--mq-radius-small);
+    color: var(--mq-color-accent-strong);
+    height: 44px;
+    width: 44px;
+  }
+
+  .app[data-phone] .bar-chip .chip-icon .icon {
+    height: 18px;
+    width: 18px;
+  }
+
+  .app[data-phone] .bar-chip:has(.chip-name) {
+    padding: 0;
+  }
+
+  .app[data-phone] .bar-chip > .icon,
+  .app[data-phone] .bar-chip :is(.chip-path, .chip-name) {
+    clip-path: inset(50%);
+    height: 1px;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+  }
+
+  /* The chip's menu opens up, as the bar is at the bottom. */
+  .app[data-phone] .bar-menu {
+    inset-block: auto calc(100% + var(--mq-space-2));
+    transform-origin: bottom left;
+  }
+
+  /* With nothing selected: what to do, then More and Add. Frame p08. */
+  .bar-hint {
+    color: var(--mq-color-text-muted);
+    flex: 1;
+    font-size: var(--_mq-font-size-bar-title);
+    overflow: hidden;
+    padding-inline-start: var(--mq-space-2);
+    text-overflow: ellipsis;
+  }
+
+  .app[data-phone] .bar-content:has(> .bar-hint) {
+    width: 100%;
+  }
+
+  .app[data-phone] .bar-button.primary {
+    background: var(--mq-color-accent);
+    border-radius: var(--mq-radius);
+    color: var(--mq-color-on-accent);
+    padding-inline: var(--mq-space-3) var(--mq-space-4);
+  }
+
+  .app[data-phone] .bar-button.primary .icon {
+    color: inherit;
+  }
+
+  .app[data-phone] .bar-button.primary kbd {
+    display: none;
+  }
+
+  /* More and the bar's popovers, as sheets. */
+  dialog.sheet.more-panel .more-body {
+    margin-inline: calc(-1 * var(--mq-space-4));
+  }
+
+  /* Over the room and the place tool-fitting.ts gives a popover under its button. */
+  dialog.sheet.bar-popover,
+  dialog.sheet.bar-popover.wide {
+    max-height: calc(
+      min(100dvh, var(--_mq-visible-height, 100dvh)) - var(--_mq-top-bar-height)
+    );
+    max-width: none !important;
+    translate: none !important;
+    width: 100%;
+  }
+
+  dialog.sheet.bar-popover legend {
+    clip-path: inset(50%);
+    height: 1px;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+  }
+
+  dialog.sheet :is(.more-action, .bar-menu > button) {
+    min-height: 44px;
+  }
+
+  /* In a sheet, a button that opens another sheet points on, not down. */
+  dialog.sheet .bar-button[aria-haspopup] > .words ~ .icon:last-child {
+    rotate: -90deg;
   }
 `;
 
@@ -1904,8 +2068,17 @@ export const fieldShownIn = (
 };
 
 /** The fields of what's selected that the bar doesn't show, for More. */
-const moreFieldsOf = (target: Target, section: SettingsSection) => {
-  const shown = new Set(controlsOf(target).flatMap(keysOf));
+const moreFieldsOf = (
+  target: Target,
+  section: SettingsSection,
+  api: PanelApi
+) => {
+  // On a phone, the email's bar has no room for its settings, so More has them.
+  const shown = new Set(
+    api.phone && target.kind === "email"
+      ? []
+      : controlsOf(target).flatMap(keysOf)
+  );
   return section.fields.filter(({ key }) => !shown.has(key));
 };
 
@@ -2206,6 +2379,47 @@ const renderChoiceControl = (
   `;
 };
 
+/**
+ * A popover from the bar, under its button, or on a phone, a sheet, with a
+ * back arrow where it's from More, which is a sheet too.
+ */
+const renderPopoverBox = (
+  api: PanelApi,
+  { className, legend }: { className: string; legend: string },
+  content: unknown
+) => {
+  if (!api.phone) {
+    return html`
+      <div
+        aria-label=${legend}
+        class=${`ui bar-popover ${className}`}
+        data-place=${place("barPopover")}
+        role="dialog"
+        tabindex="-1"
+      >
+        ${content}
+      </div>
+    `;
+  }
+  const close = () => api.closePopover(true);
+  return renderSheet({
+    body: content,
+    className: `bar-popover ${className}`,
+    head: renderSheetHead(
+      {
+        back: api.bar.popover?.startsWith(IN_MORE) ? close : undefined,
+        done: close,
+        title: legend,
+        titleId: "bar-popover-title",
+      },
+      api.text
+    ),
+    labelledBy: "bar-popover-title",
+    onClose: close,
+    sheetPlace: "barPopover",
+  });
+};
+
 /** The settings in a popover, under its button, titled `legend`. */
 const renderPopover = (
   section: SettingsSection,
@@ -2216,23 +2430,23 @@ const renderPopover = (
     wide = false,
   }: { grid?: boolean; legend: string; wide?: boolean },
   api: PanelApi
-) => html`
-  <div
-    aria-label=${legend}
-    class=${["ui bar-popover", grid ? "grid" : "", wide ? "wide" : ""].filter(Boolean).join(" ")}
-    data-place=${place("barPopover")}
-    role="dialog"
-    tabindex="-1"
-  >
-    ${renderSettingsPanel(
+) =>
+  renderPopoverBox(
+    api,
+    {
+      className: [grid ? "grid" : "", wide ? "wide" : ""]
+        .filter(Boolean)
+        .join(" "),
+      legend,
+    },
+    renderSettingsPanel(
       { ...section, legend },
       api.drafts,
       fieldTags(api),
       api.text,
       fields
-    )}
-  </div>
-`;
+    )
+  );
 
 /** The one field a Row's padding is while it's the same on every side. */
 const EVERY_SIDE = "paddingEverySide";
@@ -2321,24 +2535,18 @@ const renderPaddingPopover = (
       />
     </div>
   `;
-  return html`
-    <div
-      aria-label=${legend}
-      class="ui bar-popover grid"
-      data-place=${place("barPopover")}
-      role="dialog"
-      tabindex="-1"
-    >
-      ${renderSettingsPanel(
-        same ? { ...everySection, legend } : { ...bySideSection, legend },
-        drafts,
-        fieldTags(api),
-        text,
-        same ? [everySide] : sides,
-        sameSides
-      )}
-    </div>
-  `;
+  return renderPopoverBox(
+    api,
+    { className: "grid", legend },
+    renderSettingsPanel(
+      same ? { ...everySection, legend } : { ...bySideSection, legend },
+      drafts,
+      fieldTags(api),
+      text,
+      same ? [everySide] : sides,
+      sameSides
+    )
+  );
 };
 
 /**
@@ -2652,14 +2860,10 @@ const renderPlayControl = (
   const words = choice ? fieldWords(choice.labelId, text) : chosen;
   const failure = videos.failureOf(block.id);
   const failureId = `bar-${section.id}-play-failed`;
-  const choices = html`
-    <div
-      aria-label=${name}
-      class="ui bar-popover play-choices"
-      data-place=${place("barPopover")}
-      role="dialog"
-      tabindex="-1"
-    >
+  const choices = renderPopoverBox(
+    api,
+    { className: "play-choices", legend: name },
+    html`
       <fieldset>
         <legend>${name}</legend>
         ${field.options.map(({ descriptionId, labelId, value }) => {
@@ -2701,8 +2905,8 @@ const renderPlayControl = (
           `;
         })}
       </fieldset>
-    </div>
-  `;
+    `
+  );
   // Its name shows before it, as a Column's settings' do, and is in its own.
   return html`
     <span aria-hidden="true" class="bar-name">${name}</span>
@@ -2894,7 +3098,9 @@ const renderChip = (target: Target, api: PanelApi) => {
     switch (target.kind) {
       case "block": {
         return html`<span class="chip-path">${text("bar.path", { row })}</span>
-          <span>${blockTypeName(target.position.block.type, text)}</span>`;
+          <span class="chip-name"
+            >${blockTypeName(target.position.block.type, text)}</span
+          >`;
       }
       case "column": {
         return html`<span class="chip-path">${text("bar.path", { row })}</span>
@@ -3002,7 +3208,7 @@ const renderAddButton = (api: PanelApi) => {
     <button
       aria-expanded=${api.adding.panel ? "true" : "false"}
       aria-keyshortcuts=${keys.shortcuts}
-      class="bar-button"
+      class=${api.phone ? "bar-button primary" : "bar-button"}
       data-action="add"
       data-tooltip=${withKeys(text("add.add"), keys.keys, text)}
       tabindex="-1"
@@ -3025,16 +3231,18 @@ const renderActions = (target: Target, api: PanelApi) => {
       class="icon-button"
       data-action="more"
       data-tooltip=${text("bar.more")}
-      tabindex="-1"
+      tabindex=${api.phone && target.kind === "email" ? "0" : "-1"}
       type="button"
       @click=${({ detail }: MouseEvent) => api.toggleMore(detail === 0)}
     >
       ${ICONS.more}
     </button>
   `;
-  // The email's settings all fit the bar, so it has no More.
+  // The email's settings all fit the bar, so it has no More, but on a phone.
   if (target.kind === "email") {
-    return renderAddButton(api);
+    return api.phone
+      ? html`${more} ${renderAddButton(api)}`
+      : renderAddButton(api);
   }
   const own = actionsOf(target, api);
   return html`
@@ -3214,17 +3422,24 @@ export const renderSelectionBar = (api: PanelApi) => {
         role="toolbar"
       >
         <div class="bar-content">
-          ${renderChip(target, api)} ${renderSeparator()}
-          ${controls.map((control, index) =>
-            renderControl(
-              target,
-              section,
-              control,
-              api,
-              target.kind === "email" && index === 0
-            )
-          )}
-          ${renderSeparator()} ${renderActions(target, api)}
+          ${
+            api.phone && target.kind === "email"
+              ? html`<span class="bar-hint">${text("canvas.tapBlock")}</span>`
+              : html`
+                  ${renderChip(target, api)} ${renderSeparator()}
+                  ${controls.map((control, index) =>
+                    renderControl(
+                      target,
+                      section,
+                      control,
+                      api,
+                      target.kind === "email" && index === 0
+                    )
+                  )}
+                  ${renderSeparator()}
+                `
+          }
+          ${renderActions(target, api)}
         </div>
         ${
           showOn
@@ -3608,8 +3823,41 @@ const renderMore = (api: PanelApi) => {
   const { text } = api;
   const target = targetOf(api);
   const section = sectionOf(target, api);
-  const fields = moreFieldsOf(target, section);
+  const fields = moreFieldsOf(target, section, api);
   const { subtitle, title } = headingOf(target, text);
+  const body = html`
+    ${
+      fields.length > 0
+        ? renderSettingsPanel(section, api.drafts, fieldTags(api), text, fields)
+        : nothing
+    }
+    ${target.kind === "block" ? renderBox(target.position, api) : nothing}
+    ${
+      target.kind === "block" || target.kind === "row"
+        ? renderShowOn(target, api)
+        : nothing
+    }
+    ${target.kind === "email" ? nothing : renderMoreActions(target, api)}
+  `;
+  if (api.phone) {
+    return renderSheet({
+      body: html`<div class="more-body">${body}</div>`,
+      className: "more-panel",
+      head: renderSheetHead(
+        {
+          done: () => api.closeMore(true),
+          subtitle,
+          title,
+          titleId: "more-title",
+        },
+        text
+      ),
+      labelledBy: "more-title",
+      onClose: () => api.closeMore(true),
+      sheetPlace: "morePanel",
+      testId: "more-panel",
+    });
+  }
   return html`
     <section
       aria-label=${title}
@@ -3633,26 +3881,7 @@ const renderMore = (api: PanelApi) => {
           ${ICONS.close}
         </button>
       </div>
-      <div class="more-body thin-scrollbar">
-        ${
-          fields.length > 0
-            ? renderSettingsPanel(
-                section,
-                api.drafts,
-                fieldTags(api),
-                text,
-                fields
-              )
-            : nothing
-        }
-        ${target.kind === "block" ? renderBox(target.position, api) : nothing}
-        ${
-          target.kind === "block" || target.kind === "row"
-            ? renderShowOn(target, api)
-            : nothing
-        }
-        ${target.kind === "email" ? nothing : renderMoreActions(target, api)}
-      </div>
+      <div class="more-body thin-scrollbar">${body}</div>
     </section>
   `;
 };

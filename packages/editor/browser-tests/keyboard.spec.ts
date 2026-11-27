@@ -23,8 +23,9 @@ import {
   morePanel,
   moreButton,
   moveCursorToLineStart,
-  NARROW_VIEWPORT,
-  narrowNotice,
+  PHONE_VIEWPORT,
+  sheet,
+  topMenuButton,
   openBlocks,
   openEmail,
   openAddPanel,
@@ -177,13 +178,16 @@ test.describe("selecting a Block", () => {
 });
 
 /**
- * Opens the narrow notice, as on Windows and Linux, where Alt+← goes back a
- * page. WebKit is only on Apple devices, so this pretends to be on Windows.
+ * Opens the top bar's menu on a phone, as on Windows and Linux, where Alt+←
+ * goes back a page. WebKit is only on Apple devices, so this pretends to be
+ * on Windows.
  */
-const openNarrowNotice = async (page: Page) => {
+const openPhoneMenu = async (page: Page) => {
   await pretendPlatform(page, "Win32");
-  await page.setViewportSize(NARROW_VIEWPORT);
+  await page.setViewportSize(PHONE_VIEWPORT);
   await page.goto("/");
+  await topMenuButton(page).click();
+  return sheet(page, "More");
 };
 
 test.describe("moving a Block with Alt+Arrow keys", () => {
@@ -255,12 +259,12 @@ test.describe("moving a Block with Alt+Arrow keys", () => {
     }
   });
 
-  test("Alt+← doesn't go back a page from the narrow notice", async ({
+  test("Alt+← doesn't go back a page from a sheet on a phone", async ({
     page,
   }) => {
-    await openNarrowNotice(page);
+    const menu = await openPhoneMenu(page);
     const leftPrevented = await watchPrevented(page, "ArrowLeft");
-    await narrowNotice(page).focus();
+    await menu.getByRole("button", { exact: true, name: "Done" }).focus();
 
     await page.keyboard.press("Alt+ArrowLeft");
 
@@ -856,7 +860,7 @@ test.describe("automated accessibility checks", () => {
     expect(await violations(page)).toEqual([]);
   });
 
-  test("pass with a Row, the Add panel, a Heading and the narrow notice showing", async ({
+  test("pass with a Row, the Add panel, a Heading, and on a phone", async ({
     page,
   }) => {
     await openBlocks(page, ["heading", "text"]);
@@ -874,8 +878,8 @@ test.describe("automated accessibility checks", () => {
     ).toBeVisible();
     expect(await violations(page)).toEqual([]);
 
-    await page.setViewportSize(NARROW_VIEWPORT);
-    await expect(narrowNotice(page)).toBeVisible();
+    await page.setViewportSize(PHONE_VIEWPORT);
+    await expect(topMenuButton(page)).toBeVisible();
     expect(await violations(page)).toEqual([]);
   });
 
@@ -978,8 +982,9 @@ test.describe("automated accessibility checks", () => {
       expect(await violations(page)).toEqual([]);
     }
 
-    await page.setViewportSize(NARROW_VIEWPORT);
-    await expect(narrowNotice(page)).toBeVisible();
+    // The Add panel, still open, is a sheet there.
+    await page.setViewportSize(PHONE_VIEWPORT);
+    await expect(sheet(page, "Add")).toBeVisible();
     expect(await violations(page)).toEqual([]);
   });
 

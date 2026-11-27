@@ -44,8 +44,8 @@ const PLACES = {
   /** The Selection bar while a Column is selected. */
   columnBar: { press: "keepsFocus" },
   /**
-   * Buttons that act on the email or what's selected, in the top bar or the
-   * notice, and aren't in a toolbar or the Selection bar.
+   * Buttons that act on the email or what's selected, in the top bar or its
+   * menu on a phone, and aren't in a toolbar or the Selection bar.
    */
   controls: { press: "keepsFocus" },
   /** A drag handle, on a Block. */
@@ -93,8 +93,6 @@ const PLACES = {
   checkViews: {},
   /** The Problem a fix button opened Edit for, under the field to fix. */
   fixNote: {},
-  /** The notice shown instead of the editor when there's no room to edit. */
-  notice: {},
   /** A + between two Blocks, which opens the picker there. */
   insertPoint: { press: "keepsFocus" },
   /**
@@ -120,6 +118,12 @@ const PLACES = {
    * `data-row-id`, and drags it. One stop for Tab, with arrow keys between them.
    */
   rowsItems: {},
+  /** On a phone, the Rows list as a sheet, from the top bar's menu. */
+  rowsSheet: {},
+  /** On a phone, the top bar's menu, a sheet of what the top bar has no room for. */
+  topMenu: {},
+  /** On a phone, the top bar's button that opens its menu. */
+  topMenuButton: {},
   /** The layouts from the Rows list's +, which add an empty Row. */
   rowsAdd: {},
   /** The layouts on an email with no Rows, which add its first. */

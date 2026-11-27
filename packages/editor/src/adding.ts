@@ -11,6 +11,7 @@ import { keyLabel } from "./key-map.js";
 import type { PanelApi } from "./panel-api.js";
 import { locate } from "./positions.js";
 import { renderThumbnail } from "./selection-bar.js";
+import { renderSheet, renderSheetHead } from "./sheet.js";
 import { blockTypeName } from "./text.js";
 import type { Text } from "./text.js";
 
@@ -116,8 +117,11 @@ export const createAdding = ({
       }
     },
 
-    /** Opens the panel, or with it open, goes back to its search. */
-    openPanel(fromKeyboard: boolean) {
+    /**
+     * Opens the panel, or with it open, goes back to its search. On a phone,
+     * a touch leaves the search alone, or the keyboard would cover the sheet.
+     */
+    openPanel(fromKeyboard: boolean, toSearch = true) {
       if (!panel) {
         const from = focus.current();
         // From the picker, which closes, back where the picker came from.
@@ -128,10 +132,13 @@ export const createAdding = ({
         panel = { query: "" };
       }
       closePicker(false);
-      focus.focusWhenRendered(
-        { in: "addPanel", on: "adding" },
-        { focusVisible: fromKeyboard }
-      );
+      requestUpdate();
+      if (toSearch) {
+        focus.focusWhenRendered(
+          { in: "addPanel", on: "adding" },
+          { focusVisible: fromKeyboard }
+        );
+      }
     },
 
     /** Opens the picker at a place, with focus in it. */
@@ -670,6 +677,80 @@ export const renderAddPanel = (api: PanelApi, docked: boolean) => {
   const query = api.adding.panel?.query ?? "";
   const blocks = blocksMatching(query, text);
   const layouts = layoutsMatching(query, text);
+  const body = html`
+    ${renderSearch("panel", query, api)}
+    ${
+      blocks.length > 0
+        ? html`
+            <h3 class="add-section-title">${text("add.blocks")}</h3>
+            ${renderBlockTiles(
+              blocks,
+              true,
+              (type) => api.addBlock(type),
+              text
+            )}
+          `
+        : nothing
+    }
+    ${
+      layouts.length > 0
+        ? html`
+            <h3 class="add-section-title">${text("add.emptyRows")}</h3>
+            <div
+              aria-label=${text("add.emptyRows")}
+              class="add-tiles layouts"
+              data-place=${place("addTiles")}
+              role="group"
+            >
+              ${layouts.map(
+                (layout: RowLayout, index) => html`
+                  <button
+                    aria-label=${text("add.addLayout", { layout })}
+                    class="add-tile"
+                    data-place=${place("paletteItem")}
+                    data-row-layout=${layout}
+                    tabindex=${index === 0 ? "0" : "-1"}
+                    type="button"
+                    @click=${({ detail }: MouseEvent) =>
+                      api.addRow(layout, detail === 0)}
+                  >
+                    ${renderThumbnail(layout)}
+                  </button>
+                `
+              )}
+            </div>
+          `
+        : nothing
+    }
+    ${
+      blocks.length === 0 && layouts.length === 0
+        ? renderNoMatch(query, "add.nothing", text)
+        : nothing
+    }
+    ${renderSaid(
+      blocks.length === 0 && layouts.length === 0
+        ? noMatchWords(query, "add.nothing", text)
+        : ""
+    )}
+  `;
+  if (api.phone) {
+    return renderSheet({
+      body,
+      className: "add-sheet",
+      head: renderSheetHead(
+        {
+          done: () => api.closeAddPanel(true),
+          title: text("add.panel"),
+          titleId: "add-title",
+        },
+        text
+      ),
+      labelledBy: "add-title",
+      onClose: () => api.closeAddPanel(true),
+      sheetPlace: "addPanel",
+      testId: "add-panel",
+    });
+  }
   return html`
     <div class=${docked ? "add-dock" : "add-dock floating"}>
       <section
@@ -690,62 +771,7 @@ export const renderAddPanel = (api: PanelApi, docked: boolean) => {
             ${ICONS.close}
           </button>
         </div>
-        <div class="add-body thin-scrollbar">
-          ${renderSearch("panel", query, api)}
-          ${
-            blocks.length > 0
-              ? html`
-                  <h3 class="add-section-title">${text("add.blocks")}</h3>
-                  ${renderBlockTiles(
-                    blocks,
-                    true,
-                    (type) => api.addBlock(type),
-                    text
-                  )}
-                `
-              : nothing
-          }
-          ${
-            layouts.length > 0
-              ? html`
-                  <h3 class="add-section-title">${text("add.emptyRows")}</h3>
-                  <div
-                    aria-label=${text("add.emptyRows")}
-                    class="add-tiles layouts"
-                    data-place=${place("addTiles")}
-                    role="group"
-                  >
-                    ${layouts.map(
-                      (layout: RowLayout, index) => html`
-                        <button
-                          aria-label=${text("add.addLayout", { layout })}
-                          class="add-tile"
-                          data-place=${place("paletteItem")}
-                          data-row-layout=${layout}
-                          tabindex=${index === 0 ? "0" : "-1"}
-                          type="button"
-                          @click=${({ detail }: MouseEvent) =>
-                            api.addRow(layout, detail === 0)}
-                        >
-                          ${renderThumbnail(layout)}
-                        </button>
-                      `
-                    )}
-                  </div>
-                `
-              : nothing
-          }
-          ${
-            blocks.length === 0 && layouts.length === 0
-              ? renderNoMatch(query, "add.nothing", text)
-              : nothing
-          }
-          ${renderSaid(
-            blocks.length === 0 && layouts.length === 0
-              ? noMatchWords(query, "add.nothing", text)
-              : ""
-          )}
-        </div>
+        <div class="add-body thin-scrollbar">${body}</div>
       </section>
     </div>
   `;

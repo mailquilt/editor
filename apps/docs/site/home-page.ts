@@ -3,7 +3,7 @@
 
 import type { MailQuilt } from "@mailquilt/editor";
 
-import { accentTokens, EDITOR_MIN_WIDTH } from "./editor-facts";
+import { accentTokens, EDITOR_PHONE_WIDTH } from "./editor-facts";
 import { homeEmail } from "./home-email";
 import { emailShape, htmlSize } from "./measure";
 import { paintHtml, paintJson } from "./paint";
@@ -201,10 +201,11 @@ const start = () => {
   if (html) {
     showFirstMergeTag(html);
   }
-  // A scrollbar can take the stage under the editor's width at the breakpoint.
+  // The home page's editor is the desktop one, beside its code. A scrollbar
+  // can take the stage under that width at the breakpoint.
   if (
     matchMedia(WIDE_ENOUGH).matches &&
-    stage.clientWidth >= EDITOR_MIN_WIDTH
+    stage.clientWidth >= EDITOR_PHONE_WIDTH
   ) {
     // oxlint-disable-next-line promise/prefer-await-to-then -- Nothing here waits on the editor.
     startEditor(stage).catch(() => {

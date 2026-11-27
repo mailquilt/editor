@@ -1606,18 +1606,24 @@ for (const theme of ["light", "dark"] as const) {
   });
 }
 
-test.describe("too narrow to edit in", () => {
-  test("the notice fills the space below the header", async ({ page }) => {
+test.describe("laid out for a phone", () => {
+  test("keeps the Selection bar at the bottom of the space it's given", async ({
+    page,
+  }) => {
     await page.goto("/shell.html?narrow");
-    const notice = shell(page).locator('[data-place="notice"]');
-    await expect(notice).toBeVisible();
+    // A long email, which scrolls in the Shell under the top bar.
+    await setShellValue(
+      page,
+      emailWith(Array.from({ length: 12 }, (_, index) => [[`Block ${index}`]]))
+    );
+    const bar = shell(page).getByTestId("selection-bar");
+    await expect(bar).toContainText("Tap a Block to change it");
 
-    const noticeBox = await boxWithEdges(notice);
+    const barBox = await boxWithEdges(bar);
     const frameBox = await boxWithEdges(page.getByTestId("frame"));
-    const headerBox = await boxWithEdges(header(page));
 
-    expect(noticeBox.top).toBe(headerBox.bottom);
-    expect(noticeBox.bottom).toBe(frameBox.bottom);
+    expect(barBox.bottom).toBeLessThanOrEqual(frameBox.bottom);
+    expect(barBox.bottom).toBeGreaterThan(frameBox.bottom - 24);
   });
 });
 

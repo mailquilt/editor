@@ -39,6 +39,7 @@ const darkTheme = css`
   --mq-color-stand-in: #e8eaee;
   --mq-color-on-stand-in: #52525b;
   --mq-color-scheme: dark;
+  --mq-color-scrim: rgb(0 0 0 / 60%);
   --mq-shadow-small: 0 1px 2px rgb(0 0 0 / 40%);
   --mq-shadow:
     0 0 0 1px rgb(255 255 255 / 9%), 0 16px 40px -8px rgb(0 0 0 / 70%);
@@ -83,6 +84,8 @@ export const themeTokens = css`
     --mq-color-success: #15803d;
     --mq-color-stand-in: #e8eaee;
     --mq-color-on-stand-in: #52525b;
+    /* Over the email behind a sheet on a phone. */
+    --mq-color-scrim: rgb(0 0 0 / 45%);
     /* For what the browser draws itself, such as a dropdown's open list. */
     --mq-color-scheme: light;
 
@@ -94,6 +97,7 @@ export const themeTokens = css`
 
     --mq-radius-small: 6px;
     --mq-radius: 10px;
+    --mq-radius-large: 14px;
     --mq-shadow-small: 0 1px 2px rgb(22 24 29 / 8%);
     --mq-shadow:
       0 0 0 1px rgb(22 24 29 / 4%), 0 2px 4px rgb(22 24 29 / 4%),
@@ -123,7 +127,7 @@ export const uiStyles = css`
     --_mq-font-size-tag: 11px;
     --_mq-font-size-bar-title: 14px;
     --_mq-font-size-panel-title: 15px;
-    --_mq-font-size-notice-title: 17px;
+    --_mq-font-size-sheet-title: 16px;
     /* Check's plain text and HTML, in the system's fixed-width font. */
     --_mq-font-size-code: 13px;
     --_mq-font-family-code:
@@ -134,6 +138,8 @@ export const uiStyles = css`
     --_mq-top-bar-height: 52px;
     /* The Selection bar's, which sticks below the top bar. */
     --_mq-selection-bar-height: 48px;
+    /* On a phone, the Selection bar's, docked at the bottom. */
+    --_mq-phone-bar-height: 60px;
 
     /* What's in front of what on the canvas, from the back. */
     --_mq-layer-handle: 1;
@@ -177,7 +183,7 @@ export const uiStyles = css`
   }
 
   /*
-   * Around the editor, the Shell and the narrow notice, so each reads as one
+   * Around the editor and the Shell, so each reads as one
    * component on the host's page. A ring rather than a border, so it takes no
    * room from what's inside.
    */
@@ -413,6 +419,43 @@ export const uiStyles = css`
     flex: none;
     margin: 4px 2px;
     width: 1px;
+  }
+
+  /*
+   * On a phone, in a sheet's menu, the editor's and the Shell's: a line with
+   * its icon and name, as tall as a fingertip, and a choice of a few.
+   */
+  .sheet-item {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    border-radius: var(--mq-radius-small);
+    cursor: pointer;
+    display: flex;
+    font-size: var(--_mq-font-size-sheet-title);
+    gap: var(--mq-space-3);
+    height: 44px;
+    margin-inline: calc(-1 * var(--mq-space-2));
+    padding: 0 var(--mq-space-2);
+    text-align: start;
+    width: calc(100% + 2 * var(--mq-space-2));
+  }
+
+  .sheet-item:hover:not(:disabled, [aria-disabled="true"]) {
+    background: var(--mq-color-surface-hover);
+  }
+
+  .sheet-item:is(:disabled, [aria-disabled="true"]) {
+    color: var(--mq-color-text-muted);
+    cursor: default;
+  }
+
+  .sheet-item > span {
+    flex: 1;
+  }
+
+  .sheet-choices > .segment {
+    height: 34px;
   }
 
   /* Over a popover's own styles too. See tooltips.ts. */

@@ -38,8 +38,8 @@ import type { TextValues } from "./text.js";
 import type { Device } from "./top-bar.js";
 
 /**
- * The Rows, Columns and Blocks on the canvas, their tags and handles, the
- * floating toolbar and the narrow notice.
+ * The Rows, Columns and Blocks on the canvas, their tags and handles,
+ * and the floating toolbar.
  */
 export const canvasStyles = css`
   .row-frame {
@@ -159,6 +159,16 @@ export const canvasStyles = css`
       opacity: 1;
       pointer-events: auto;
     }
+  }
+
+  /*
+   * On a phone, a Block moves from More, and a Row is chosen from the chip's
+   * menu or the Rows sheet, so only what's selected has its tag, as frames
+   * 8-phone and p15 draw it, and the email keeps the whole width.
+   */
+  .app[data-phone] .drag-handle,
+  .app[data-phone] .row-frame:not([data-row-selected]) > .row-tag {
+    display: none;
   }
 
   /* What's opened in the Column, the picker, hangs from it. */
@@ -566,50 +576,6 @@ export const canvasStyles = css`
     min-height: 40px;
     width: 64px;
   }
-
-  /* Standing in for the Modes, so it fills any height the host gives too. */
-  .narrow-notice {
-    align-items: center;
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-    gap: var(--mq-space-3);
-    justify-content: center;
-    min-height: 360px;
-    padding: 40px var(--mq-space-5);
-    text-align: center;
-  }
-
-  .narrow-notice .notice-icon {
-    align-items: center;
-    background: var(--mq-color-surface);
-    border-radius: var(--mq-radius);
-    box-shadow: var(--mq-shadow);
-    display: flex;
-    height: 56px;
-    justify-content: center;
-    margin-block-end: var(--mq-space-2);
-    width: 56px;
-  }
-
-  .narrow-notice .notice-icon .icon {
-    height: 24px;
-    width: 24px;
-  }
-
-  .narrow-notice .notice-title {
-    font-size: var(--_mq-font-size-notice-title);
-    font-weight: 600;
-    letter-spacing: -0.01em;
-    margin: 0;
-  }
-
-  .narrow-notice .notice-body {
-    color: var(--mq-color-text-muted);
-    line-height: 1.5;
-    margin: 0;
-    max-width: 34ch;
-  }
 `;
 
 /**
@@ -736,9 +702,6 @@ export const drawnEmail = (
   };
 };
 
-/** Narrower than this, there's no room to edit, and a notice shows instead. */
-export const MIN_EDITOR_WIDTH = 640;
-
 /**
  * What the Canvas shows of its own, besides what the panel API gives it. Its
  * format bar uses only the panel API.
@@ -781,28 +744,6 @@ const renderDragHandle = (tooltip: string) => html`
     data-tooltip=${tooltip}
   >
     ${ICONS.grip}
-  </div>
-`;
-
-/**
- * On a phone there's no room for the canvas and its panels. The editor
- * stays as it is, below the top bar, so nothing is lost. The notice takes
- * focus where nothing else in the editor is left to, so keys still reach it.
- */
-export const renderNarrowNotice = ({ text }: PanelApi) => html`
-  <div
-    aria-labelledby="narrow-title"
-    class="ui narrow-notice"
-    data-place=${place("notice")}
-    lang=${text("language")}
-    role="region"
-    tabindex="-1"
-  >
-    <span class="notice-icon">${ICONS.monitor}</span>
-    <p class="notice-title" id="narrow-title">${text("canvas.narrowTitle")}</p>
-    <p class="notice-body">
-      ${text("canvas.narrowText", { width: MIN_EDITOR_WIDTH })}
-    </p>
   </div>
 `;
 

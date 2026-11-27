@@ -239,6 +239,43 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
         box-shadow: none;
       }
 
+      /*
+       * On a phone, the editor's top bar has no room for these, so they're in
+       * its menu, as frame p09 draws it: the name and status as its title,
+       * the choice of how what's not on this device shows, Export and Import.
+       */
+      .phone-title {
+        display: flex;
+        flex-direction: column;
+        font-size: var(--_mq-font-size-sheet-title);
+        font-weight: 600;
+        min-width: 0;
+      }
+
+      .phone-title .status {
+        font-size: var(--mq-font-size);
+        font-weight: 400;
+      }
+
+      .phone-view {
+        display: block;
+      }
+
+      .phone-view .phone-heading {
+        font-weight: 600;
+        margin: var(--mq-space-2) 0;
+      }
+
+      .phone-actions {
+        display: block;
+      }
+
+      .phone-actions hr {
+        border: 0;
+        border-block-start: 1px solid var(--mq-color-border);
+        margin: var(--mq-space-2) 0;
+      }
+
       /* In the editor's top bar: the email's name and whether it's saved. */
       .bar-start {
         align-items: center;
@@ -829,6 +866,7 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
             : nothing
         }
       </div>
+      ${this.#renderPhoneMenu(exports, shows("import-json"), isEmpty)}
       <div class="ui messages" lang=${language} part="messages" slot="messages">
         ${
           this.#cantSave
@@ -864,6 +902,95 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
           `
         )}
       </div>
+    `;
+  }
+
+  /**
+   * On a phone, the Shell's pieces of the editor's menu, which the editor
+   * shows only there: the name and save status, how what's not on this
+   * device shows, and Export and Import.
+   */
+  #renderPhoneMenu(exports: MenuItem[], imports: boolean, isEmpty: boolean) {
+    const text = this.#text;
+    const language = text("language");
+    return html`
+      <span class="ui phone-title" lang=${language} slot="phone-menu-title">
+        <span dir=${this.heading ? "auto" : nothing}
+          >${this.heading || text("shell.email")}</span
+        >
+        ${
+          this.saveKey && (this.#cantSave || this.#saved)
+            ? html`<span class="status" ?data-failed=${this.#cantSave}>
+                ${text(this.#cantSave ? "shell.notSaved" : "shell.saved")}
+              </span>`
+            : nothing
+        }
+      </span>
+      <div class="ui phone-view" lang=${language} slot="phone-menu-view">
+        <p class="phone-heading" id="phone-not-on-device">
+          ${text("shell.notOnDevice")}
+        </p>
+        <div
+          aria-labelledby="phone-not-on-device"
+          class="segments sheet-choices"
+          role="group"
+        >
+          ${NOT_ON_DEVICE.map(
+            (choice) => html`
+              <button
+                aria-pressed=${this.#notOnDevice === choice ? "true" : "false"}
+                class="segment"
+                type="button"
+                @click=${() => this.#chooseNotOnDevice(choice)}
+              >
+                ${text(`shell.${choice}`)}
+              </button>
+            `
+          )}
+        </div>
+      </div>
+      ${
+        exports.length > 0 || imports
+          ? html`<div
+              class="ui phone-actions"
+              lang=${language}
+              slot="phone-menu-actions"
+            >
+              <hr />
+              ${exports.map(
+                ({ action, label, run }) => html`
+                  <button
+                    aria-disabled=${isEmpty ? "true" : nothing}
+                    class="sheet-item"
+                    data-action=${`phone-${action}`}
+                    type="button"
+                    @click=${() => {
+                      if (!isEmpty) {
+                        void run();
+                      }
+                    }}
+                  >
+                    ${ICONS.export}<span
+                      >${text("shell.exportFile", { file: label })}</span
+                    >
+                  </button>
+                `
+              )}
+              ${
+                imports
+                  ? html`<button
+                      class="sheet-item"
+                      data-action="phone-import-json"
+                      type="button"
+                      @click=${this.#chooseFile}
+                    >
+                      ${ICONS.import}<span>${text("shell.importJson")}</span>
+                    </button>`
+                  : nothing
+              }
+            </div>`
+          : nothing
+      }
     `;
   }
 

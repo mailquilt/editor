@@ -612,7 +612,6 @@ const KEY_SCOPES = {
   editor: { keys: [], within: "editor" },
   // The email in Check, whose own keys the editor never hears.
   inbox: { keys: [], within: "outside" },
-  notice: { keys: [], within: "outside" },
 } satisfies Partial<Record<Place | "pickerOpen", ScopeKeys>>;
 
 /** In a field that keeps every key, a key with no rule there. */

@@ -156,6 +156,11 @@ export interface OwnPanelsApi {
   /** How the Canvas shows what isn't on `device`. */
   notOnDevice: NotOnDevice;
   /**
+   * Whether the editor is laid out for a phone, where the Selection bar is at
+   * the bottom, and More, the Add panel and the bar's popovers are sheets.
+   */
+  phone: boolean;
+  /**
    * What the Selection bar has open, and whether More is docked beside the
    * email, where it fits, rather than floating over it.
    */
@@ -205,6 +210,8 @@ export interface OwnPanelsApi {
   toggleMore: (fromKeyboard: boolean) => void;
   /** Closes More, with focus back on its button if `returnFocus`. */
   closeMore: (returnFocus: boolean) => void;
+  /** Closes the bar's popover, with focus back on its button if `returnFocus`. */
+  closePopover: (returnFocus: boolean) => void;
   /** Opens the link field for the selected Block's text. */
   openLinkField: () => void;
   /** Links the text, unless the URL isn't allowed, which the field then says. */

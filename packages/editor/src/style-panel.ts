@@ -27,6 +27,7 @@ import type { Hsv, OwnValue, StyleKey } from "./email-style.js";
 import type { EditorFocus } from "./focus.js";
 import { ICONS } from "./icons.js";
 import type { Direction } from "./positions.js";
+import { renderSheet, renderSheetHead } from "./sheet.js";
 import type { StringId } from "./strings.js";
 import { styleProperties } from "./style-properties.js";
 import type { Text } from "./text.js";
@@ -451,6 +452,43 @@ export const stylePanelStyles = css`
     pointer-events: auto;
     position: sticky;
     top: var(--_mq-top-bar-height);
+  }
+
+  /*
+   * On a phone, at the bottom of the screen with the email above it, as
+   * frame p03 draws it, and as tall as half the screen at most.
+   */
+  .app[data-phone] .editor.styling {
+    flex-direction: column;
+  }
+
+  .app[data-phone] .editor.styling > .canvas-area {
+    flex: 1 0 auto;
+  }
+
+  .style-panel.phone {
+    flex: none;
+    border-radius: var(--mq-radius-large) var(--mq-radius-large) 0 0;
+    bottom: 0;
+    box-shadow: var(--mq-shadow);
+    max-height: 50dvh;
+    padding-block-start: var(--mq-space-2);
+    top: auto;
+    z-index: var(--_mq-layer-selection-bar);
+  }
+
+  /* Its popovers are sheets, over the room and place a popover has. */
+  dialog.sheet.style-popover:is(.color, .font, .size) {
+    inset: auto 0 0;
+    max-height: calc(
+      min(100dvh, var(--_mq-visible-height, 100dvh)) - var(--_mq-top-bar-height)
+    );
+    padding: var(--mq-space-2) 0 env(safe-area-inset-bottom);
+    width: 100%;
+  }
+
+  .style-panel.phone .style-body {
+    padding-block-end: env(safe-area-inset-bottom);
   }
 
   .style-panel.floating {
@@ -1032,6 +1070,11 @@ export interface StylePanelView {
   /** The Block selected on the Canvas, whose own values the panel says. */
   selected: Block | undefined;
   floating: boolean;
+  /**
+   * On a phone, the panel is at the bottom, as frame p03 draws it, with
+   * Done, which goes back to Edit, and its popovers are sheets.
+   */
+  phone: { done: () => void } | undefined;
 }
 
 export type StylePanel = ReturnType<typeof createStylePanel>;
@@ -1056,6 +1099,8 @@ export const createStylePanel = ({
   let email: BlocksDocument | undefined;
   /** The settings the selected Block sets its own value over, which are tinted. */
   let overridden = new Set<StyleKey>();
+  /** Whether the panel was last drawn for a phone, where popovers are sheets. */
+  let phone = false;
 
   const close = (returnFocus: boolean) => {
     if (!open) {
@@ -1859,6 +1904,24 @@ export const createStylePanel = ({
       font: renderFont,
       size: renderSize,
     };
+    const content =
+      open.kind === "corners"
+        ? nothing
+        : renderers[open.kind](open, shownEmail, label);
+    if (phone) {
+      const back = () => close(true);
+      return renderSheet({
+        body: content,
+        className: `settings style-popover ${open.kind}`,
+        head: renderSheetHead(
+          { back, done: back, title: label, titleId: "style-popover-title" },
+          text
+        ),
+        labelledBy: "style-popover-title",
+        onClose: back,
+        sheetPlace: "stylePopover",
+      });
+    }
     return html`
       <div
         aria-label=${label}
@@ -1888,7 +1951,7 @@ export const createStylePanel = ({
           }, 0);
         }}
       >
-        ${open.kind === "corners" ? nothing : renderers[open.kind](open, shownEmail, label)}
+        ${content}
       </div>
     `;
   };
@@ -2038,8 +2101,14 @@ export const createStylePanel = ({
       }
     },
 
-    render({ email: shownEmail, floating, selected }: StylePanelView) {
+    render({
+      email: shownEmail,
+      floating,
+      phone: onPhone,
+      selected,
+    }: StylePanelView) {
       email = shownEmail;
+      phone = onPhone !== undefined;
       const { settings } = shownEmail;
       overridden = new Set(
         selected
@@ -2049,15 +2118,42 @@ export const createStylePanel = ({
       return html`
         <section
           aria-labelledby="style-title"
-          class=${floating ? "ui style-panel floating" : "ui style-panel"}
+          class=${[
+            "ui style-panel",
+            onPhone ? "phone" : "",
+            floating && !onPhone ? "floating" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
           data-place=${place("stylePanel")}
           data-testid="style-panel"
         >
-          <div class="style-head">
-            <h2 id="style-title">${text("style.title")}</h2>
-            <p>${text("style.lead")}</p>
-          </div>
-          <div class="style-body thin-scrollbar" @scroll=${() => close(false)}>
+          ${
+            onPhone
+              ? html`<span aria-hidden="true" class="sheet-grab"></span>
+                  ${renderSheetHead(
+                    {
+                      done: onPhone.done,
+                      title: text("style.title"),
+                      titleId: "style-title",
+                    },
+                    text
+                  )}`
+              : html`<div class="style-head">
+                  <h2 id="style-title">${text("style.title")}</h2>
+                  <p>${text("style.lead")}</p>
+                </div>`
+          }
+          <div
+            class="style-body thin-scrollbar"
+            @scroll=${() => {
+              // A popover floats where its setting was. On a phone it's a
+              // sheet, which stays.
+              if (!onPhone) {
+                close(false);
+              }
+            }}
+          >
             ${renderCallouts(selected, settings)}
             <section class="style-section">
               <h3>${text("style.colors")}</h3>

@@ -8,7 +8,7 @@ import type { Page } from "@playwright/test";
 import {
   DEFAULT_ACCENT,
   EDITOR_MIN_HEIGHT,
-  EDITOR_MIN_WIDTH,
+  EDITOR_PHONE_WIDTH,
 } from "../site/editor-facts";
 import { examples } from "../site/examples";
 
@@ -681,18 +681,17 @@ test("the sizes and accent the site states are the editor's own", async ({
     document.body.append(bare);
   });
   const bare = page.getByTestId("bare-editor");
-  const notice = bare.locator('[part="frame"]', {
-    hasText: "Editing needs more room",
-  });
+  // Only the desktop top bar has Redo, which the phone's has in its menu.
+  const redo = bare.getByRole("button", { exact: true, name: "Redo" });
   const setWidth = (width: number) =>
     bare.evaluate((element, px) => {
       (element as HTMLElement).style.width = `${px}px`;
     }, width);
 
-  await setWidth(EDITOR_MIN_WIDTH - 1);
-  await expect(notice).toBeVisible();
-  await setWidth(EDITOR_MIN_WIDTH);
-  await expect(notice).toBeHidden();
+  await setWidth(EDITOR_PHONE_WIDTH - 1);
+  await expect(redo).toBeHidden();
+  await setWidth(EDITOR_PHONE_WIDTH);
+  await expect(redo).toBeVisible();
 
   // Wide enough for the side panel beside the email, so nothing is below it.
   await setWidth(1200);

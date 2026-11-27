@@ -16,7 +16,7 @@ if (saveKey) {
   shell.setAttribute("save-key", saveKey);
 }
 const frame = document.querySelector<HTMLElement>('[data-testid="frame"]');
-// Narrower than the editor needs, as on a phone.
+// Narrower than 640px, where the editor is laid out for a phone.
 if (params.has("narrow")) {
   frame?.style.setProperty("width", "500px");
 }

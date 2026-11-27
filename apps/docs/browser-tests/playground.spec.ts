@@ -84,36 +84,26 @@ test("the starter email fits without scrolling, even in a short window", async (
   expect(scrollHeight).toBe(clientHeight);
 });
 
-test("on a phone, the Shell is only as tall as its notice", async ({
+test("on a phone, the Shell fits the window too, with the Selection bar at its bottom", async ({
   page,
 }) => {
   await page.setViewportSize({ height: 900, width: 420 });
   await page.goto(PLAYGROUND);
   const shell = page.locator("mail-quilt-shell");
-  const notice = shell
-    .locator("mail-quilt")
-    .locator('[part="frame"]', { hasText: "Editing needs more room" });
-  await expect(notice).toBeVisible();
+  const bar = shell.getByTestId("selection-bar");
+  await expect(bar).toContainText("Tap a Block to change it");
 
-  /** How far the notice's bottom is below the Shell's. */
-  const pastShell = async () => {
-    const shellBox = await shell.boundingBox();
-    const noticeBox = await notice.boundingBox();
-    return (
-      (noticeBox?.y ?? 0) +
-      (noticeBox?.height ?? 0) -
-      ((shellBox?.y ?? 0) + (shellBox?.height ?? 0))
-    );
-  };
+  const shellBox = await shell.boundingBox();
+  const barBox = await bar.boundingBox();
+  const shellBottom = (shellBox?.y ?? 0) + (shellBox?.height ?? 0);
+  const barBottom = (barBox?.y ?? 0) + (barBox?.height ?? 0);
 
-  // The Shell takes the notice's height once the editor has found it's narrow.
-  await expect.poll(pastShell).toBeCloseTo(0, 0);
-  // The notice's own height, well short of the window's worth the Shell
-  // takes where there's room to edit.
-  const noticeBox = await notice.boundingBox();
-  expect(noticeBox?.height).toBeLessThan(
-    (page.viewportSize()?.height ?? 0) / 2
+  // So the whole editor fits the window once scrolled to, as on a laptop.
+  expect(shellBox?.height).toBeLessThanOrEqual(
+    page.viewportSize()?.height ?? 0
   );
+  expect(barBottom).toBeLessThanOrEqual(shellBottom);
+  expect(barBottom).toBeGreaterThan(shellBottom - 24);
 });
 
 test("a slash typed in the editor's fields stays there, and doesn't open search", async ({
