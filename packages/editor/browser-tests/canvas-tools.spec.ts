@@ -20,7 +20,7 @@ import {
   openAddPanel,
   openBlocks,
   openEmail,
-  previewButton,
+  checkButton,
   rowTag,
   rowTools,
   selectedBlock,
@@ -110,7 +110,7 @@ test.describe("a Row on the canvas", () => {
     await expect(barButton(page, "Row 1")).toBeFocused();
 
     await page.keyboard.press("Tab");
-    await expect(previewButton(page)).toBeFocused();
+    await expect(checkButton(page)).toBeFocused();
     await expect(rowTools(page, 1)).toBeVisible();
 
     await page.keyboard.press("Shift+Tab");

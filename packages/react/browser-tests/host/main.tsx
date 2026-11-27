@@ -53,7 +53,10 @@ const uploadImage = (file: File) =>
   Promise.resolve({ url: `https://cdn.example/${file.name}` });
 
 /** The Host app's Merge Tags. Each render gives a new list, as a host's often does. */
-const mergeTags = () => [{ label: "First name", name: "first_name" }];
+const mergeTags = () => [
+  { label: "First name", name: "first_name", sample: "Ana" },
+  { name: "unsubscribe_url", unsubscribe: true },
+];
 
 /** Texts in the Host app's words. Each render gives a new object, as a host's often does. */
 const strings = () => ({ "topBar.undo": "Annuler" });
@@ -107,8 +110,10 @@ const Host = () => {
               : (reason) => setErrors((all) => [...all, reason])
           }
           mergeTags={mergeTags()}
+          sender="Northbound"
           socialIconsUrl={SOCIAL_ICONS_URL}
           strings={strings()}
+          subject="Spring roast"
           theme="dark"
           uploadImage={uploadImage}
           value={document}
@@ -182,9 +187,11 @@ const ShellHost = () => {
         onChange={(next) => setDocument(next)}
         ref={attach}
         mergeTags={mergeTags()}
+        sender="Northbound"
         saveKey={saveKey}
         socialIconsUrl={SOCIAL_ICONS_URL}
         strings={strings()}
+        subject="Spring roast"
         theme="dark"
         uploadImage={uploadImage}
         value={document}

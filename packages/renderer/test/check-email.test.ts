@@ -105,6 +105,13 @@ describe(checkEmail, () => {
     }
   );
 
+  it("measures the HTML it's given instead of rendering the email", async () => {
+    const html = "x".repeat(102 * 1024 + 1);
+    await expect(codes(ready(text()), { html })).resolves.toStrictEqual([
+      "html-too-large",
+    ]);
+  });
+
   it.each([
     [
       "no alt text",
@@ -358,6 +365,19 @@ describe(checkEmail, () => {
       ]);
     });
 
+    // Half-black over white is drawn #808080, and is 3.98:1 before rounding.
+    it("names the colors as they're drawn, their contrast and what's needed", async () => {
+      const [problem] = await checkEmail(
+        ready(text({ color: "rgba(0, 0, 0, 0.5)" }))
+      );
+      expect(problem?.contrast).toStrictEqual({
+        background: "#ffffff",
+        color: "#808080",
+        ratio: expect.closeTo(3.98, 2),
+        required: 4.5,
+      });
+    });
+
     it.each([
       ["4.5:1 for normal text", text({ color: "#767676" })],
       ["3:1 for text of 24px", text({ color: "#949494", fontSize: 24 })],
@@ -576,6 +596,7 @@ describe(checkEmail, () => {
           { marks: LINK, text: "Click here.", type: "text" }
         ),
         "content",
+        "Click here.",
       ],
       // Runs with other marks are still one link.
       [
@@ -585,6 +606,7 @@ describe(checkEmail, () => {
           { marks: [...LINK, { type: "bold" }], text: "more", type: "text" }
         ),
         "content",
+        "Read more",
       ],
       [
         "a Button that says only “Here”",
@@ -593,13 +615,15 @@ describe(checkEmail, () => {
           type: "button",
         }),
         "label",
+        "Here",
       ],
-    ])("finds %s", async (_, email, field) => {
+    ])("finds %s", async (_, email, field, linkText) => {
       await expect(checkEmail(email)).resolves.toStrictEqual([
         expect.objectContaining({
           blockId: "block-0",
           code: "vague-link-text",
           field,
+          linkText,
         }),
       ]);
     });

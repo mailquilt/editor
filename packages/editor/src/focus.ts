@@ -68,6 +68,11 @@ export type FocusTarget =
   /** A part of a list field in the settings, by the list's `id`. */
   | { on: "list"; listId: string; at: ListFocus }
   /**
+   * A settings field, by its `data-draft-key`, wherever it's shown: in the
+   * Selection bar, a popover from it, or More.
+   */
+  | { on: "field"; draftKey: string }
+  /**
    * The floating toolbar, which keeps keyboard undo working, or in Style and
    * Check, where it isn't shown, the Mode's tab.
    */
@@ -450,7 +455,7 @@ export const createFocus = ({
 
   /**
    * The floating toolbar, or in Style or Check, where it isn't shown, the
-   * Mode's tab, or the narrow notice's button where the Modes aren't shown.
+   * Mode's tab, or the narrow notice where the Modes aren't shown.
    */
   const emailTools = (): Focusable | null | undefined => {
     const toolbar = findPlace(root(), "emailTools");
@@ -459,7 +464,7 @@ export const createFocus = ({
       return (
         findPlace(root(), "modes")?.querySelector<HTMLElement>(
           '[aria-selected="true"]'
-        ) ?? findPlace(root(), "notice")?.querySelector("button")
+        ) ?? findPlace(root(), "notice")
       );
     }
     // Without scrolling the page to it: in a Shell whose bottom is below the
@@ -560,6 +565,7 @@ export const createFocus = ({
       case "emailTools": {
         return emailTools();
       }
+
       default: {
         return undefined;
       }
@@ -606,6 +612,12 @@ export const createFocus = ({
       found = rowsListControl(target);
     } else if (target.on === "style") {
       found = styleControl(target.action);
+    } else if (target.on === "field") {
+      // A list field's items are keyed after it, so its first item.
+      const key = CSS.escape(target.draftKey);
+      found = root().querySelector<HTMLElement>(
+        `[data-draft-key="${key}"], [data-draft-key^="${key}:"]`
+      );
     } else {
       found = focusableFor(target);
     }

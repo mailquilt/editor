@@ -71,7 +71,8 @@ interface KeyDispatchHost {
   firstBlockIn: (rowId: string) => string | undefined;
   isDragging: () => boolean;
   linkForm: { cancel: () => void; open: () => void };
-  previewIsOpen: () => boolean;
+  /** Whether Check is shown, with the Canvas hidden behind it. */
+  checking: () => boolean;
   /** The Rows list's layouts, which Escape closes. */
   rowsList: { closeAdd: (returnFocus: boolean) => void };
   selection: Pick<EditorSelection, "rowId" | "select" | "selectedText">;
@@ -124,7 +125,7 @@ export const createKeyDispatch = ({
   focus,
   isDragging,
   linkForm,
-  previewIsOpen,
+  checking,
   rowsList,
   selection,
   stepHistory,
@@ -170,7 +171,6 @@ export const createKeyDispatch = ({
     closeMore: () => bar.closeMore(true),
     closePopover: () => bar.closePopover(true),
     // The browser closes the dialog.
-    closePreview: doNothing,
     closeRowsAdd: () => rowsList.closeAdd(true),
     closeStylePopover: () => style.closePopover(true),
     copyBlock: onClipboardEvent,
@@ -318,8 +318,8 @@ export const createKeyDispatch = ({
         return;
       }
       // WebKit types into a Block's selection, and undoes there too, even with
-      // focus on the dialog, a control, the link field or the Block itself.
-      if (previewIsOpen() || focus.focusIsOutsideText) {
+      // focus in Check, a control, the link field or the Block itself.
+      if (checking() || focus.focusIsOutsideText) {
         event.preventDefault();
         return;
       }

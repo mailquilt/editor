@@ -1,5 +1,5 @@
 ---
-// What people do in the editor: its layouts, its keys, its text and its preview.
+// What people do in the editor: its layouts, its keys, its text and Check.
 import { ROW_LAYOUTS } from "@mailquilt/core";
 import { withBase } from "blume/components/islands/base-path.ts";
 
@@ -110,18 +110,15 @@ const widthsOf = (layout: string) => layout.split("/");
             ><path d="m15 14 5-5-5-5"></path><path
               d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"></path></svg
           >
-          <svg viewBox="0 0 24 24"
-            ><path
-              d="M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0"
-            ></path><circle cx="12" cy="12" r="3"></circle></svg
-          >
+          <svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"></path></svg>
         </span>
       </p>
-      <h3 class="site-h3">A preview of what will be sent</h3>
+      <h3 class="site-h3">A check of what will be sent</h3>
       <p class="site-small">
-        Preview shows the exported HTML itself, in a sandboxed frame, at a
-        desktop's width or a phone's, so nobody is guessing from the canvas.
-        Every change can be undone and redone.
+        Check shows the exported HTML itself, in sandboxed frames, at a
+        desktop's width and a phone's, so nobody is guessing from the canvas.
+        Beside it is what to fix before export, each with a button that goes
+        to the setting. Every change can be undone and redone.
       </p>
     </div>
   </div>

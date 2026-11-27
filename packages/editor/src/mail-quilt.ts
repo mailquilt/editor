@@ -9,6 +9,7 @@ import type {
 } from "@mailquilt/core";
 import { EMAIL_LOOK, editorOfLoaded } from "@mailquilt/core/internal";
 import { renderEmail } from "@mailquilt/renderer";
+import type { Problem } from "@mailquilt/renderer";
 import { css, html, LitElement, nothing, unsafeCSS } from "lit";
 import type { PropertyValues } from "lit";
 
@@ -28,6 +29,16 @@ import {
   renderRows,
 } from "./canvas.js";
 import type { CanvasEvents, CanvasState } from "./canvas.js";
+import {
+  CHECK_PANEL_WIDTH_PX,
+  CHECK_STAGE_PADDING_PX,
+  checkStyles,
+  createCheck,
+  createFixNote,
+  checkZoom,
+  renderCheck,
+} from "./check-mode.js";
+import type { FixNote } from "./check-mode.js";
 import { readPasted } from "./clipboard.js";
 import { createDragging } from "./dragging.js";
 import type { Dragging } from "./dragging.js";
@@ -35,6 +46,7 @@ import { createEditingActions } from "./editing-actions.js";
 import { findPlace, findPlaces, place } from "./editor-places.js";
 import { createFieldMergeTags } from "./field-merge-tags.js";
 import { createFocus } from "./focus.js";
+import type { FocusTarget } from "./focus.js";
 import { createLinkForm, formatBarStyles } from "./format-bar.js";
 import type { HostAppProperties } from "./host-app.js";
 import { createImageUploads } from "./image-uploads.js";
@@ -48,7 +60,6 @@ import {
 import type { PanelApi } from "./panel-api.js";
 import { blocksIn, locate, locateRow } from "./positions.js";
 import { createPresses } from "./presses.js";
-import { createPreview, previewStyles, renderPreview } from "./preview.js";
 import {
   createRowPictures,
   createRowsList,
@@ -60,12 +71,17 @@ import {
 import {
   blockDraftKey,
   createBarPanels,
+  fieldShownIn,
   renderMoreDock,
   renderSelectionBar,
   selectionBarStyles,
 } from "./selection-bar.js";
 import { createSelection } from "./selection.js";
-import { createSettingsDrafts, settingsPanelStyles } from "./settings-panel.js";
+import {
+  createSettingsDrafts,
+  draftKey,
+  settingsPanelStyles,
+} from "./settings-panel.js";
 import type { MailQuiltStrings } from "./strings.js";
 import { createStylePanel, stylePanelStyles } from "./style-panel.js";
 import type { StyleMark } from "./style-panel.js";
@@ -164,9 +180,11 @@ const elementStyles = css`
     min-height: 0;
   }
 
-  /* Style and Check, until they have panels of their own. */
+  /* A Mode's panel other than the Canvas, which fills it: Check. */
   .mode-panel {
+    display: flex;
     flex: 1 0 auto;
+    flex-direction: column;
   }
 
   /*
@@ -313,6 +331,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
         previous: HostAppProperties["mergeTags"]
       ) => JSON.stringify(next ?? []) !== JSON.stringify(previous ?? []),
     },
+    sender: { attribute: false },
     socialIconsUrl: { attribute: false },
     // A React host gives a new object at each render.
     strings: {
@@ -327,6 +346,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       hasChanged: (next: unknown, previous: unknown) =>
         Boolean(next) !== Boolean(previous),
     },
+    subject: { attribute: false },
     // Reflected, as the theme is drawn from the attribute.
     theme: { reflect: true },
   };
@@ -342,7 +362,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     blockTypeStyles,
     formatBarStyles,
     mergeTagPickerStyles,
-    previewStyles,
+    checkStyles,
     topBarStyles,
     elementStyles,
     canvasStyles,
@@ -353,8 +373,10 @@ export class MailQuilt extends LitElement implements HostAppProperties {
   declare readonly renderRoot: ShadowRoot;
 
   declare mergeTags: HostAppProperties["mergeTags"];
+  declare sender: HostAppProperties["sender"];
   declare socialIconsUrl: HostAppProperties["socialIconsUrl"];
   declare strings: HostAppProperties["strings"];
+  declare subject: HostAppProperties["subject"];
   declare uploadImage: HostAppProperties["uploadImage"];
   /**
    * The editor's built-in theme: `light`, the default, `dark`, or `auto`,
@@ -454,11 +476,18 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     requestUpdate: () => this.requestUpdate(),
     view: () => this.#selection.selectedText,
   });
-  readonly #preview = createPreview({
-    dialog: () =>
-      findPlace(this.renderRoot, "preview") as HTMLDialogElement | null,
+  readonly #check = createCheck({
+    email: () => this.#editor?.getDocument(),
     exportHtml: () => this.exportHtml(),
+    isShown: () => this.#mode === "check" && !this.#narrow,
+    mergeTags: () => this.mergeTags,
     requestUpdate: () => this.requestUpdate(),
+    say: (words) => this.#announcements.say(words),
+    text: this.#text,
+  });
+  readonly #fixNote = createFixNote({
+    requestUpdate: () => this.requestUpdate(),
+    root: () => this.shadowRoot,
   });
   /** Set while the element is connected. */
   #dragging: Dragging | undefined;
@@ -483,6 +512,9 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     },
     selectMode: (mode) => {
       if (mode !== this.#mode) {
+        if (this.#mode === "check") {
+          this.#check.leave();
+        }
         this.#mode = mode;
         this.#stylePanel.forget();
         this.requestUpdate();
@@ -562,7 +594,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     focus: this.#focus,
     isDragging: () => this.#dragging?.isDragging() ?? false,
     linkForm: this.#linkForm,
-    previewIsOpen: () => this.#preview.isOpen,
+    checking: () => this.#mode === "check",
     rowsList: this.#rowsList,
     selection: this.#selection,
     stepHistory: (step) => this.#stepHistory(step),
@@ -609,7 +641,11 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     openAddPanel: (fromKeyboard) => this.#adding.openPanel(fromKeyboard),
     openLinkField: () => this.#linkForm.open(),
     openPicker: (at, fromKeyboard) => this.#adding.openPicker(at, fromKeyboard),
-    openPreview: () => this.#preview.open(),
+    openCheck: () => {
+      this.#topBarEvents.selectMode("check");
+      // The button is hidden with the Canvas, so focus goes to Check's tab.
+      this.#focus.focusWhenRendered({ on: "emailTools" });
+    },
     pasteBelow: () => {
       void this.#pasteBelow();
     },
@@ -775,7 +811,9 @@ export class MailQuilt extends LitElement implements HostAppProperties {
         JSON.stringify(this.#rowsListShape(width)) !==
           JSON.stringify(this.#rowsListShape(this.#width)) ||
         this.#docksAdd(width) !== this.#docksAdd(this.#width) ||
-        this.#docksStyle(width) !== this.#docksStyle(this.#width);
+        this.#docksStyle(width) !== this.#docksStyle(this.#width) ||
+        // Check draws its inbox smaller to fit.
+        (this.#mode === "check" && width !== this.#width);
       this.#narrow = narrow;
       this.#width = width;
       if (changed) {
@@ -839,15 +877,19 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       this.#fieldMergeTags.showMergeTags();
       this.#syncFormats();
     }
-    // The Preview's HTML names the icons' folder, as the export does.
-    if (changed.has("socialIconsUrl")) {
-      this.#preview.forget();
+    // The export names the icons' folder, and the check reads the Merge Tags.
+    if (changed.has("socialIconsUrl") || changed.has("mergeTags")) {
+      this.#check.forget();
     }
     this.#rendered = this.value;
     // There's nothing to style or check, and the Modes for them are off.
     if (!this.#rendered?.rows.length) {
       this.#mode = "edit";
       this.#stylePanel.forget();
+    }
+    // Not behind the narrow notice, where it isn't drawn.
+    if (this.#mode === "check" && this.isConnected && !this.#narrow) {
+      this.#check.ensure();
     }
     const email = this.isConnected ? this.#rendered : undefined;
     const blocks = email ? blocksIn(email) : [];
@@ -918,6 +960,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     this.#toolFitting?.sync();
     this.#rowPictures?.sync();
     this.#focus.afterUpdate();
+    this.#fixNote.sync();
     if (this.isConnected && this.shadowRoot) {
       this.#stylePanel.sync(this.shadowRoot);
       this.#syncTooltips(this.shadowRoot);
@@ -945,13 +988,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       ${
         email
           ? html`
-              ${renderPreview(
-                this.#preview.shown,
-                this.#preview.width,
-                this.#preview.events,
-                text
-              )}
-              ${this.#announcements.render()}
+              ${this.#announcements.render()} ${this.#fixNote.render()}
               <p hidden id="block-keys" lang=${language}>
                 ${text("canvas.blockKeys", keys)}
               </p>
@@ -972,6 +1009,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
           {
             canRedo: this.#editor?.canRedo() ?? false,
             canUndo: this.#editor?.canUndo() ?? false,
+            checkCount: this.#check.count,
             device: this.#device,
             isEmpty: !email?.rows.length,
             mode,
@@ -992,7 +1030,13 @@ export class MailQuilt extends LitElement implements HostAppProperties {
                 id=${modePanelId(panel)}
                 role="tabpanel"
                 ?hidden=${narrow || mode !== panel}
-              ></div>
+              >
+                ${
+                  email && panel === "check" && mode === "check" && !narrow
+                    ? this.#renderCheck(email)
+                    : nothing
+                }
+              </div>
             `
           )}
         <div
@@ -1113,6 +1157,86 @@ export class MailQuilt extends LitElement implements HostAppProperties {
         ${styling ? this.#renderStylePanel(email, api) : nothing}
       </div>
     `;
+  }
+
+  #renderCheck(email: BlocksDocument) {
+    const room =
+      this.#width - CHECK_PANEL_WIDTH_PX - 2 * CHECK_STAGE_PADDING_PX;
+    return renderCheck({
+      check: this.#check,
+      email,
+      events: this.#checkEvents,
+      mergeTags: this.mergeTags,
+      sender: this.sender,
+      subject: this.subject,
+      text: this.#text,
+      zoom: checkZoom(room, email.settings.width),
+    });
+  }
+
+  readonly #checkEvents = {
+    onFix: (problem: Problem, note: FixNote) => this.#fix(problem, note),
+    onSamples: (on: boolean) => this.#check.toggleSamples(on),
+  };
+
+  /**
+   * Opens Edit with what a Problem is about selected and focus in the field
+   * that fixes it, opening the popover or More it's in, with the Problem
+   * under it. An unsubscribe link has no field, so it selects the last Row,
+   * where an email's footer is.
+   */
+  #fix(problem: Problem, note: FixNote) {
+    const email = this.#editor?.getDocument();
+    if (!email) {
+      return;
+    }
+    this.#topBarEvents.selectMode("edit");
+    const { blockId, field } = problem;
+    const position = blockId === undefined ? undefined : locate(email, blockId);
+    let target: FocusTarget | undefined;
+    if (position && field === "content") {
+      this.#selection.select({ blockId: position.block.id });
+      target = { blockId: position.block.id, on: "text" };
+    } else if (position && field) {
+      this.#selection.select({ blockId: position.block.id });
+      this.#openFieldIn(fieldShownIn(position.block, field));
+      target = {
+        draftKey: blockDraftKey(position.block.id, field),
+        on: "field",
+      };
+    } else if (field && blockId === undefined) {
+      this.#selection.select(undefined);
+      this.#openFieldIn(fieldShownIn("email", field));
+      target = {
+        draftKey: draftKey({ id: "email", targetId: "" }, { key: field }),
+        on: "field",
+      };
+    } else if (problem.code === "no-unsubscribe-link") {
+      const last = email.rows.at(-1);
+      if (last) {
+        this.#selection.selectRow(last.id, true);
+        this.#focus.revealRow(last.id);
+      }
+    }
+    if (position) {
+      this.#focus.revealBlock(position.block.id);
+    }
+    if (target) {
+      this.#focus.focusWhenRendered(target, { focusVisible: true });
+    }
+    this.#fixNote.open(note);
+    // The field's own name is heard as focus reaches it, and this after.
+    this.#announcements.say(this.#text("check.fixSaid", { ...note }));
+  }
+
+  /** Opens the popover or More a field is shown in, if it's in one. */
+  #openFieldIn(shownIn: ReturnType<typeof fieldShownIn>) {
+    const { state } = this.#barPanels;
+    if (shownIn.in === "popover" && state.popover !== shownIn.id) {
+      this.#barPanels.togglePopover(shownIn.id);
+    } else if (shownIn.in === "more" && !state.moreOpen) {
+      this.#barPanels.toggleMore(true);
+    }
   }
 
   /** Docked beside the email where both fit, and otherwise over the Canvas's edge. */
@@ -1469,7 +1593,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
   /** Opens an email that `loadDocument` accepted, or none. */
   #show(loaded: Extract<LoadResult, { ok: true }> | undefined) {
     const hadFocus = Boolean(this.shadowRoot?.activeElement);
-    this.#preview.forget();
+    this.#check.forget();
     this.#announcements.clear();
     this.#drafts.clear();
     // A URL that failed before may load now, as its image may have been
@@ -1494,7 +1618,8 @@ export class MailQuilt extends LitElement implements HostAppProperties {
 
   /** With a copy of the email, which the host owns and may change. */
   #emitChange(email: BlocksDocument) {
-    this.#preview.forget();
+    this.#check.forget();
+    this.#fixNote.close();
     this.dispatchEvent(
       new CustomEvent("mq-change", {
         bubbles: true,
@@ -1527,7 +1652,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     }
   }
 
-  /** Destroys the text views, and the selection and Preview that describe them. */
+  /** Destroys the text views, and the selection that describes them. */
   #reset() {
     for (const view of this.#views.values()) {
       view.destroy();
@@ -1535,7 +1660,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     this.#views.clear();
     // The toolbar's state describes those views and their selections.
     this.#selection.select(undefined);
-    this.#preview.end();
+    this.#fixNote.close();
   }
 }
 

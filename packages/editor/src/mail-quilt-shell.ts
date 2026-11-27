@@ -428,9 +428,11 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
   /** As on `<mail-quilt>`. */
   declare mergeTags: HostAppProperties["mergeTags"];
   /** As on `<mail-quilt>`. */
+  declare sender: HostAppProperties["sender"];
   declare socialIconsUrl: HostAppProperties["socialIconsUrl"];
   /** As on `<mail-quilt>`, and for the Shell's own words too. */
   declare strings: HostAppProperties["strings"];
+  declare subject: HostAppProperties["subject"];
   /** As on `<mail-quilt>`. */
   declare uploadImage: HostAppProperties["uploadImage"];
 

@@ -1,0 +1,442 @@
+import { expect } from "@playwright/test";
+import type { Page } from "@playwright/test";
+
+import type { MailQuilt } from "../src/index.js";
+import {
+  announcement,
+  canvas,
+  checkPanel,
+  checkTab,
+  emailWith,
+  emailWithLink,
+  exportHtml,
+  focusStartOfTextBlock,
+  holdMjml,
+  hostEvents,
+  inboxEmail,
+  inboxFrame,
+  openBlocks,
+  openCheck,
+  openEmail,
+  openTestPage,
+  serveImages,
+  setValue,
+  stopClock,
+  test,
+  textBlock,
+  undoButton,
+  violations,
+} from "./helpers.js";
+
+/** Counts the times `exportHtml` runs, which is what Check renders with. */
+const countExports = (page: Page) =>
+  canvas(page).evaluate((element) => {
+    const mailQuilt = element as MailQuilt;
+    const original = mailQuilt.exportHtml.bind(mailQuilt);
+    window.document.documentElement.dataset.exports = "0";
+    mailQuilt.exportHtml = () => {
+      const { dataset } = window.document.documentElement;
+      dataset.exports = String(Number(dataset.exports) + 1);
+      return original();
+    };
+  });
+
+const exportCount = (page: Page) =>
+  page.evaluate(() => window.document.documentElement.dataset.exports);
+
+/** Gives the element what a Host app would, as properties. */
+const giveHost = (page: Page, properties: Partial<MailQuilt>) =>
+  canvas(page).evaluate((element, given) => {
+    Object.assign(element, given);
+  }, properties);
+
+const editTab = (page: Page) =>
+  canvas(page).getByRole("tab", { exact: true, name: "Edit" });
+
+/**
+ * Tries to reach the page around it, under the name it reports with. Its text
+ * comes after the script, so once it shows, the script has had its turn.
+ */
+const hostileEmail = (name: string) => `<!doctype html>
+  <body>
+    <script>
+      parent.postMessage("${name}", "*");
+      parent.document.documentElement.dataset.${name} = "reached";
+    </script>
+    <p>${name} loaded</p>
+  </body>`;
+
+test.beforeEach(async ({ page }) => {
+  await openTestPage(page);
+});
+
+test("a slow MJML says it's checking, then shows the email at both widths and announces the count", async ({
+  page,
+}) => {
+  const release = await holdMjml(page);
+  await stopClock(page);
+
+  await openCheck(page);
+  await expect(checkPanel(page)).toContainText("Checking the email…");
+  await page.clock.runFor(200);
+  await expect(canvas(page).getByText("Loading preview…")).toHaveCount(2);
+
+  await release();
+  await expect(inboxEmail(page)).toContainText("Hello");
+  await expect(
+    canvas(page)
+      .getByTitle("The email on a phone")
+      .contentFrame()
+      .locator("body")
+  ).toContainText("Hello");
+  // The test email has no preheader and no language.
+  await expect(announcement(page)).toHaveText("2 things to fix.");
+  await expect(checkTab(page)).toHaveAccessibleName("Check 2 to fix");
+});
+
+test("an email with no Problems says so, and that it's ready", async ({
+  page,
+}) => {
+  const email = emailWith([[["Hello"]]]);
+  email.settings.preheader = "This week's news";
+  email.settings.language = "en";
+  await setValue(page, email);
+
+  await openCheck(page);
+
+  await expect(announcement(page)).toHaveText("8 checks passed.");
+  await expect(checkPanel(page)).toContainText("Ready to export");
+  await expect(checkPanel(page).getByRole("listitem")).toHaveCount(8);
+  await expect(checkTab(page)).toHaveAccessibleName("Check");
+});
+
+test("MJML failing to load shows the reason, Edit keeps working, and coming back to Check retries", async ({
+  page,
+}) => {
+  await page.route("**/*mjml-browser*", (route) => route.abort());
+
+  await openCheck(page);
+
+  await expect(canvas(page).getByRole("alert").first()).toContainText(
+    "The preview couldn't be loaded:"
+  );
+  await expect(announcement(page)).toHaveText("The email couldn't be checked.");
+  await editTab(page).click();
+  await focusStartOfTextBlock(page);
+  await page.keyboard.type("a");
+  await expect(textBlock(page)).toHaveText("aHello");
+  await openCheck(page);
+  await expect(canvas(page).getByRole("alert").first()).toBeVisible();
+  await editTab(page).click();
+
+  // With no change to the email since, as the Preview tried again.
+  await page.unroute("**/*mjml-browser*");
+  await openCheck(page);
+
+  await expect(inboxEmail(page)).toContainText("aHello");
+  await expect(canvas(page).getByRole("alert")).toHaveCount(0);
+});
+
+test.describe("reflecting the latest edits", () => {
+  test("an unchanged email isn't rendered again, and any change is, undo in Check too", async ({
+    page,
+  }) => {
+    await countExports(page);
+
+    await openCheck(page);
+    await expect(inboxEmail(page)).toContainText("Hello");
+    await editTab(page).click();
+    await openCheck(page);
+    await expect(inboxEmail(page)).toContainText("Hello");
+    expect(await exportCount(page)).toBe("1");
+
+    await editTab(page).click();
+    await focusStartOfTextBlock(page);
+    await page.keyboard.type("x");
+    // The count was for the email before the change.
+    await expect(checkTab(page)).toHaveAccessibleName("Check");
+    await openCheck(page);
+    await expect(inboxEmail(page)).toContainText("xHello");
+    expect(await exportCount(page)).toBe("2");
+
+    await undoButton(page).click();
+
+    await expect(inboxEmail(page)).not.toContainText("xHello");
+    await expect(inboxEmail(page)).toContainText("Hello");
+    expect(await exportCount(page)).toBe("3");
+  });
+
+  test("leaving during a render, editing and coming back shows the edit", async ({
+    page,
+  }) => {
+    const release = await holdMjml(page);
+    await openCheck(page);
+    await editTab(page).click();
+
+    await focusStartOfTextBlock(page);
+    await page.keyboard.type("x");
+    await openCheck(page);
+    await release();
+
+    await expect(inboxEmail(page)).toContainText("xHello");
+    expect(await inboxFrame(page).getAttribute("srcdoc")).toBe(
+      await exportHtml(page)
+    );
+  });
+
+  test("a different document from the host is checked in its place", async ({
+    page,
+  }) => {
+    await openCheck(page);
+    await expect(inboxEmail(page)).toContainText("Hello");
+
+    await setValue(page, emailWith([[["Another email"]]]));
+
+    await expect(inboxEmail(page)).toContainText("Another email");
+  });
+
+  test("moving the element keeps Check working", async ({ page }) => {
+    await openCheck(page);
+    await expect(inboxEmail(page)).toContainText("Hello");
+
+    await canvas(page).evaluate((element) => {
+      document.body.append(element);
+    });
+
+    await expect(inboxEmail(page)).toContainText("Hello");
+  });
+});
+
+// WebKit types into a Block's selection even with focus outside the text.
+test("the email can't be typed into behind Check", async ({ page }) => {
+  await focusStartOfTextBlock(page);
+  await openCheck(page);
+  await expect(inboxEmail(page)).toContainText("Hello");
+
+  await page.keyboard.type("x");
+
+  await editTab(page).click();
+  await expect(textBlock(page)).toHaveText("Hello");
+});
+
+test.describe("the sandbox", () => {
+  test("scripts in the email can't run or reach the host page", async ({
+    page,
+  }) => {
+    const posted = await hostEvents(page, "message", ["data"]);
+    await openCheck(page);
+    await expect(inboxEmail(page)).toContainText("Hello");
+
+    await inboxFrame(page).evaluate((frame, email) => {
+      (frame as HTMLIFrameElement).srcdoc = email;
+    }, hostileEmail("check"));
+    await expect(inboxEmail(page)).toContainText("check loaded");
+
+    // The same script in an ordinary frame proves it would have been caught.
+    await page.evaluate((email) => {
+      const control = document.createElement("iframe");
+      control.srcdoc = email;
+      document.body.append(control);
+    }, hostileEmail("control"));
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-control",
+      "reached"
+    );
+    // A message arrives a task after it's sent, and the email's would have
+    // been sent first, so once the control's is here, any from the email is.
+    const messages = async () => {
+      const heard = await posted();
+      return heard.map(({ data }) => data);
+    };
+    await expect.poll(messages).toContain("control");
+    expect(await messages()).not.toContain("check");
+    await expect(page.locator("html")).not.toHaveAttribute("data-check");
+  });
+
+  test("a link in the email opens nothing and leaves the host page", async ({
+    context,
+    page,
+  }) => {
+    const opened: string[] = [];
+    await context.route("https://example.com/**", async (route) => {
+      opened.push(route.request().url());
+      await route.fulfill({ body: "Opened" });
+    });
+    const url = page.url();
+    await setValue(page, emailWithLink("Go there", "https://example.com/"));
+    await expect(textBlock(page)).toHaveText("Go there");
+
+    await openCheck(page);
+    await inboxEmail(page).getByRole("link", { name: "Go there" }).click();
+
+    // The same email outside Check opens the link. Check's click came
+    // first, so once this one has loaded, any from it would have too.
+    const control = await context.newPage();
+    await control.setContent(await exportHtml(page));
+    const popup = control.waitForEvent("popup");
+    await control.getByRole("link", { name: "Go there" }).click();
+    const opening = await popup;
+    await opening.waitForLoadState();
+    expect(opened).toEqual(["https://example.com/"]);
+    // No token lets the frame run a script, open a popup or move the page. Its
+    // origin is the host page's only so the editor can refuse a file dropped
+    // on it, and keep Alt+← from going back a page.
+    expect(
+      await inboxFrame(page).evaluate((frame) => [
+        ...(frame as HTMLIFrameElement).sandbox,
+      ])
+    ).toEqual(["allow-same-origin"]);
+    expect(page.url()).toBe(url);
+    await expect(inboxEmail(page)).toContainText("Go there");
+  });
+});
+
+test("a fix button opens Edit with focus in the field to fix, and the Problem under it", async ({
+  context,
+  page,
+}) => {
+  await serveImages(context);
+  // An Image with an image and no alt text.
+  await openBlocks(page, ["image"]);
+  await openCheck(page);
+  await expect(checkPanel(page)).toContainText("3 things to fix.");
+  expect(await violations(page, "mail-quilt", { excludeIframe: true })).toEqual(
+    []
+  );
+  const problem = checkPanel(page).getByRole("listitem").filter({
+    hasText: "Image has no alt text",
+  });
+  await expect(problem).toContainText("Row 1");
+
+  await problem.getByRole("button", { name: "Add alt text" }).click();
+
+  await expect(editTab(page)).toHaveAttribute("aria-selected", "true");
+  await expect(
+    canvas(page).getByRole("textbox", { name: "Alt text" })
+  ).toBeFocused();
+  await expect(
+    canvas(page).getByText("Image has no alt text", { exact: true })
+  ).toBeVisible();
+  await expect(announcement(page)).toContainText(
+    "Image has no alt text. If images are blocked"
+  );
+
+  await page.keyboard.type("A cup of coffee");
+  await page.keyboard.press("Enter");
+  await openCheck(page);
+  await expect(checkPanel(page)).toContainText("Every Image has alt text");
+});
+
+test("the button below the email opens Check from the keyboard, with focus on Check's tab", async ({
+  page,
+}) => {
+  const button = canvas(page).getByRole("button", {
+    exact: true,
+    name: "Check the email",
+  });
+  await button.focus();
+
+  await page.keyboard.press("Enter");
+
+  await expect(checkPanel(page)).toBeVisible();
+  await expect(checkTab(page)).toBeFocused();
+});
+
+test.describe("Merge Tags", () => {
+  test("Show sample values fills each tag with its sample, and off shows it as written", async ({
+    page,
+  }) => {
+    await setValue(page, emailWith([[["Hi {{first_name}}, {{city}}"]]]));
+    await giveHost(page, {
+      mergeTags: [{ name: "first_name", sample: "Ana" }, { name: "city" }],
+    });
+    await openCheck(page);
+    const samples = canvas(page).getByRole("switch", {
+      name: "Show sample values",
+    });
+
+    await expect(samples).toBeChecked();
+    await expect(inboxEmail(page)).toContainText("Hi Ana, {{city}}");
+
+    await samples.click();
+
+    await expect(inboxEmail(page)).toContainText("Hi {{first_name}}, {{city}}");
+  });
+
+  test("with no samples, there's no switch and the email shows tags as written", async ({
+    page,
+  }) => {
+    await setValue(page, emailWith([[["Hi {{first_name}}"]]]));
+    await giveHost(page, { mergeTags: [{ name: "first_name" }] });
+
+    await openCheck(page);
+
+    await expect(inboxEmail(page)).toContainText("Hi {{first_name}}");
+    await expect(canvas(page).getByRole("switch")).toHaveCount(0);
+  });
+
+  test("a sample with HTML in it shows as text", async ({ page }) => {
+    await setValue(page, emailWith([[["Hi {{first_name}}"]]]));
+    await giveHost(page, {
+      mergeTags: [{ name: "first_name", sample: "<b>Ana</b>" }],
+    });
+
+    await openCheck(page);
+
+    await expect(inboxEmail(page)).toContainText("Hi <b>Ana</b>");
+    await expect(inboxEmail(page).locator("b")).toHaveCount(0);
+  });
+});
+
+test("the inbox shows the host's sender and subject, or else the preheader alone", async ({
+  page,
+}) => {
+  const email = emailWith([[["Hello"]]]);
+  email.settings.preheader = "This week's news";
+  await setValue(page, email);
+  await openCheck(page);
+  await expect(canvas(page).getByText("This week's news")).toBeVisible();
+  await expect(canvas(page).getByText("—")).toHaveCount(0);
+
+  await giveHost(page, { sender: "Northbound", subject: "Spring roast" });
+
+  await expect(canvas(page).getByText("Northbound")).toBeVisible();
+  await expect(
+    canvas(page).getByText("Spring roast — This week's news")
+  ).toBeVisible();
+});
+
+test("a Problem's words are the host's, through strings", async ({ page }) => {
+  await giveHost(page, {
+    strings: {
+      "problem.preheader": "Pas de pré-en-tête",
+      "problem.preheaderWhy": "Les boîtes montrent « {words} ».",
+    },
+  });
+
+  await openCheck(page);
+
+  await expect(checkPanel(page)).toContainText("Pas de pré-en-tête");
+  await expect(checkPanel(page)).toContainText(
+    "Les boîtes montrent « Hello »."
+  );
+});
+
+test("Check's email is the email at both widths: Columns side by side, and stacked on a phone", async ({
+  page,
+}) => {
+  await openEmail(page, [[["Left"], ["Right"]]]);
+  await openCheck(page);
+  const phone = canvas(page)
+    .getByTitle("The email on a phone")
+    .contentFrame()
+    .locator("body");
+  const rightBelowLeft = async (email: typeof phone) => {
+    const left = await email.getByText("Left").boundingBox();
+    const right = await email.getByText("Right").boundingBox();
+    return (right?.y ?? 0) - (left?.y ?? 0);
+  };
+
+  await expect.poll(() => rightBelowLeft(inboxEmail(page))).toBe(0);
+  await expect.poll(() => rightBelowLeft(phone)).toBeGreaterThan(0);
+});

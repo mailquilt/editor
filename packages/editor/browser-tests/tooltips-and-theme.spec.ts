@@ -20,7 +20,7 @@ import {
   openBlocks,
   openEmail,
   pickUp,
-  previewButton,
+  checkButton,
   settle,
   TALL_VIEWPORT,
   setting,
@@ -154,12 +154,8 @@ test.describe("a tooltip", () => {
     page,
   }) => {
     await openBlocks(page, ["text"]);
-    const preview = canvas(page).getByRole("button", {
-      exact: true,
-      name: "Preview",
-    });
-    await preview.hover();
-    await expect(tooltip(page)).toHaveText("Preview");
+    await checkButton(page).hover();
+    await expect(tooltip(page)).toHaveText("Check the email");
 
     await page.mouse.down();
     await expect(tooltip(page)).toBeHidden();
@@ -220,7 +216,7 @@ test.describe("theme tokens", () => {
       "color",
       "rgb(4, 5, 6)"
     );
-    await expect(previewButton(page)).toHaveCSS("color", "rgb(4, 5, 6)");
+    await expect(checkButton(page)).toHaveCSS("color", "rgb(4, 5, 6)");
   });
 
   test("theme dark is the built-in dark theme, and a host's token still wins over it", async ({

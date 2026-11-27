@@ -17,7 +17,7 @@ The icons are files in `@mailquilt/renderer`, in its `icons` folder, and by defa
 https://cdn.jsdelivr.net/npm/@mailquilt/renderer@0.3.0/icons/facebook-color.png
 ```
 
-A URL with an exact version always names the same file, so a later release can't change an email you've already sent. The canvas and Preview load the same URLs as the export, so what you see is what's sent.
+A URL with an exact version always names the same file, so a later release can't change an email you've already sent. The canvas and Check load the same URLs as the export, so what you see is what's sent.
 
 That means a sent email loads its icons from jsDelivr, a third party, for as long as anyone opens it. Neither npm nor jsDelivr promises to serve a file forever. If your emails need that, or should load nothing from a third party, serve the icons yourself.
 
@@ -31,7 +31,7 @@ const html = await renderEmail(email, {
   socialIconsUrl: "https://cdn.example.com/mail-icons/",
 });
 
-// In the browser, for the canvas, Preview and exportHtml()
+// In the browser, for the canvas, Check and exportHtml()
 editor.socialIconsUrl = "https://cdn.example.com/mail-icons/";
 ```
 
@@ -49,13 +49,13 @@ The folder is in `node_modules/@mailquilt/renderer/icons`. Copy it again when yo
 
 ## Content Security Policy
 
-The canvas and Preview show the icons from their URLs. If your page's policy has `img-src`, or a `default-src` without one, allow jsDelivr, or set `socialIconsUrl` and allow your own storage instead:
+The canvas and Check show the icons from their URLs. If your page's policy has `img-src`, or a `default-src` without one, allow jsDelivr, or set `socialIconsUrl` and allow your own storage instead:
 
 ```text
 Content-Security-Policy: img-src 'self' https://cdn.jsdelivr.net
 ```
 
-An icon the policy blocks doesn't show on the canvas or in Preview. The exported HTML is the same either way.
+An icon the policy blocks doesn't show on the canvas or in Check. The exported HTML is the same either way.
 
 ## Trademarks and brand guidelines
 

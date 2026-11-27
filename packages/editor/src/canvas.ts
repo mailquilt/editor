@@ -488,15 +488,6 @@ export const canvasStyles = css`
     margin: 0;
     max-width: 34ch;
   }
-
-  .narrow-notice .text-button {
-    align-items: center;
-    display: inline-flex;
-    gap: var(--mq-space-2);
-    height: 40px;
-    margin-block-start: var(--mq-space-2);
-    padding: 0 var(--mq-space-4);
-  }
 `;
 
 /** Narrower than this, there's no room to edit, and a notice shows instead. */
@@ -547,28 +538,23 @@ const renderDragHandle = (tooltip: string) => html`
 
 /**
  * On a phone there's no room for the canvas and its panels. The editor
- * stays as it is, below the top bar, so nothing is lost, and the email can
- * still be previewed.
+ * stays as it is, below the top bar, so nothing is lost. The notice takes
+ * focus where nothing else in the editor is left to, so keys still reach it.
  */
-export const renderNarrowNotice = ({ openPreview, text }: PanelApi) => html`
+export const renderNarrowNotice = ({ text }: PanelApi) => html`
   <div
+    aria-labelledby="narrow-title"
     class="ui narrow-notice"
     data-place=${place("notice")}
     lang=${text("language")}
+    role="region"
+    tabindex="-1"
   >
     <span class="notice-icon">${ICONS.monitor}</span>
-    <p class="notice-title">${text("canvas.narrowTitle")}</p>
+    <p class="notice-title" id="narrow-title">${text("canvas.narrowTitle")}</p>
     <p class="notice-body">
       ${text("canvas.narrowText", { width: MIN_EDITOR_WIDTH })}
     </p>
-    <button
-      class="text-button primary"
-      data-place=${place("controls")}
-      type="button"
-      @click=${openPreview}
-    >
-      ${ICONS.preview}<span>${text("canvas.narrowPreview")}</span>
-    </button>
   </div>
 `;
 
@@ -844,10 +830,10 @@ export const renderRows = (
 
 /**
  * Away from the Selection bar and the Add panel, so it never covers them.
- * Undo and redo are in the top bar; the Preview stays here until Check takes
- * its place.
+ * Undo and redo are in the top bar. It also holds focus after a press on the
+ * Workspace, so keyboard undo and paste still work.
  */
-export const renderFloatingToolbar = ({ openPreview, text }: PanelApi) => html`
+export const renderFloatingToolbar = ({ openCheck, text }: PanelApi) => html`
   <div
     aria-label=${text("canvas.emailTools")}
     class="ui bar floating-toolbar"
@@ -856,13 +842,13 @@ export const renderFloatingToolbar = ({ openPreview, text }: PanelApi) => html`
     tabindex="-1"
   >
     <button
-      aria-label=${text("canvas.preview")}
+      aria-label=${text("canvas.check")}
       class="icon-button"
-      data-tooltip=${text("canvas.preview")}
+      data-tooltip=${text("canvas.check")}
       type="button"
-      @click=${openPreview}
+      @click=${openCheck}
     >
-      ${ICONS.preview}
+      ${ICONS.check}
     </button>
   </div>
 `;

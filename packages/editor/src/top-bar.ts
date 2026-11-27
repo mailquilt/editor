@@ -84,6 +84,21 @@ export const topBarStyles = css`
     padding: 0 14px;
   }
 
+  /* How many Problems the email has, once it has been checked as it is. */
+  .top-bar .modes .count {
+    background: var(--mq-color-warning);
+    border-radius: 8px;
+    color: var(--mq-color-on-warning);
+    display: inline-grid;
+    font-size: var(--_mq-font-size-tag);
+    font-weight: 600;
+    height: 16px;
+    margin-inline: 6px -4px;
+    min-width: 16px;
+    padding: 0 4px;
+    place-items: center;
+  }
+
   .top-bar .device > .segment {
     flex: none;
     height: 26px;
@@ -117,6 +132,11 @@ export const topBarStyles = css`
 export interface TopBarState {
   canRedo: boolean;
   canUndo: boolean;
+  /**
+   * The email's Problems, once it has been checked as it is. A change clears
+   * it, as the check renders the email, which only Check and export load.
+   */
+  checkCount: number | undefined;
   device: Device;
   /** With nothing in the email, there's nothing to style or check. */
   isEmpty: boolean;
@@ -138,7 +158,7 @@ export interface TopBarEvents {
  * focus, so its tooltip can say why.
  */
 const renderModes = (
-  { isEmpty, mode: current, text }: TopBarState,
+  { checkCount, isEmpty, mode: current, text }: TopBarState,
   { selectMode }: TopBarEvents
 ) => html`
   <div
@@ -172,7 +192,14 @@ const renderModes = (
           @click=${select}
           @focus=${select}
         >
-          ${text(label)}
+          ${text(label)}${
+            mode === "check" && checkCount
+              ? html`<span aria-hidden="true" class="count">${checkCount}</span
+                  ><span class="visually-hidden">
+                    ${text("check.tabCount", { count: checkCount })}</span
+                  >`
+              : nothing
+          }
         </button>
       `;
     })}

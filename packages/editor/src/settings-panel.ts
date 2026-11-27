@@ -399,8 +399,8 @@ export const settingsPanelStyles = css`
     outline-offset: -1px;
   }
 
-  /* A switch: a track, with a knob at its end while it's on. */
-  .settings input[role="switch"] {
+  /* A switch: a track, with a knob at its end while it's on, in the settings or Check. */
+  :is(.settings, .check-samples) input[role="switch"] {
     appearance: none;
     background-color: var(--mq-color-border-strong);
     border: 0;
@@ -416,7 +416,7 @@ export const settingsPanelStyles = css`
     width: 36px;
   }
 
-  .settings input[role="switch"]::before {
+  :is(.settings, .check-samples) input[role="switch"]::before {
     background-color: var(--mq-color-on-accent);
     border-radius: 50%;
     box-shadow: var(--mq-shadow-small);
@@ -429,15 +429,15 @@ export const settingsPanelStyles = css`
     width: 16px;
   }
 
-  .settings input[role="switch"]:checked {
+  :is(.settings, .check-samples) input[role="switch"]:checked {
     background-color: var(--mq-color-accent);
   }
 
-  .settings input[role="switch"]:checked::before {
+  :is(.settings, .check-samples) input[role="switch"]:checked::before {
     transform: translateX(16px);
   }
 
-  .settings input[role="switch"]:focus {
+  :is(.settings, .check-samples) input[role="switch"]:focus {
     outline-offset: 2px;
   }
 
@@ -446,23 +446,23 @@ export const settingsPanelStyles = css`
    * the knob are drawn in the system's colors, which stay where it is.
    */
   @media (forced-colors: active) {
-    .settings input[role="switch"] {
+    :is(.settings, .check-samples) input[role="switch"] {
       border: 1px solid CanvasText;
     }
 
-    .settings input[role="switch"]::before {
+    :is(.settings, .check-samples) input[role="switch"]::before {
       background-color: CanvasText;
       forced-color-adjust: none;
       inset-block-start: 1px;
       inset-inline-start: 1px;
     }
 
-    .settings input[role="switch"]:checked {
+    :is(.settings, .check-samples) input[role="switch"]:checked {
       background-color: Highlight;
       forced-color-adjust: none;
     }
 
-    .settings input[role="switch"]:checked::before {
+    :is(.settings, .check-samples) input[role="switch"]:checked::before {
       background-color: HighlightText;
     }
   }
