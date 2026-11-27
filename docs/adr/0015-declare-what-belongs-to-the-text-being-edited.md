@@ -8,7 +8,7 @@ Before, the format bar and the link field were named in four lists in the select
 
 - A place in `editor-places.ts` can be `ofText`. The format bar and the link field are. `isOfText()` says whether an element is in one.
 - Focus in a place that's `ofText` is on the text, so when the place closes, focus goes back to the text, with no mapping after the fact.
-- The text goes on being edited while focus is in the text, in a place that's `ofText`, or in the Preview.
+- The text goes on being edited while focus is in the text or in a place that's `ofText`. Until 0.4.0 it did in the Preview too, which opened over the text; Check, which replaced it, hides the Canvas, so no text is being edited there (#320).
 - A press in a place that's `ofText`, or on the Block's toolbar, leaves the Side panel as it is.
 - Whether focus is outside the text asks only for the text itself, as the link field is outside it.
 

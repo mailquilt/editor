@@ -1,6 +1,6 @@
 # Set the canvas's styles through the CSSOM
 
-The editor works on a page whose Content Security Policy has no `'unsafe-inline'` in `style-src`, as many apps that embed an editor have one. Only Preview still needs it, because the email it shows relies on inline styles (#180).
+The editor works on a page whose Content Security Policy has no `'unsafe-inline'` in `style-src`, as many apps that embed an editor have one. Only Check, which replaced the Preview in 0.4.0, still needs it, because the email it shows relies on inline styles (#180, #320).
 
 Such a policy blocks every `style` attribute the browser parses or a script sets with `setAttribute`. It allows styles set through an element's `style` object, such as `style.setProperty`, and constructed style sheets. The canvas gives each element what comes from the email, such as the email's width, background and font, a Row's background, a Column's width and a Block's settings, as inline styles, because they differ for each email and each element. Lit's `styleMap` set them as a `style` attribute on the first render and through `style` only after that. Under a strict policy the canvas lost them, and some came back after an edit (#159).
 
@@ -24,4 +24,4 @@ Such a policy blocks every `style` attribute the browser parses or a script sets
 
 - The canvas's styles can't be written into the HTML Lit renders on a server. The editor doesn't render on a server.
 - A drag's copy is a clone of the dragged element, and it keeps the copied element's inline styles under the policy in Chromium, Firefox and WebKit. The browser test checks one.
-- Preview still needs `'unsafe-inline'` in `style-src`. The email in it is the exported HTML, which relies on inline styles in every email client.
+- Check still needs `'unsafe-inline'` in `style-src`, as the Preview did. The email in it is the exported HTML, which relies on inline styles in every email client.
