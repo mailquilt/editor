@@ -38,6 +38,19 @@ export const locateRow = (email: BlocksDocument, rowId: string) => {
 
 export type RowPosition = NonNullable<ReturnType<typeof locateRow>>;
 
+/** A Column, and its Row with their indexes. */
+export const locateColumn = (email: BlocksDocument, columnId: string) => {
+  for (const [rowIndex, row] of email.rows.entries()) {
+    const columnIndex = row.columns.findIndex(({ id }) => id === columnId);
+    const column = row.columns[columnIndex];
+    if (column) {
+      return { column, columnIndex, row, rowIndex };
+    }
+  }
+};
+
+export type ColumnPosition = NonNullable<ReturnType<typeof locateColumn>>;
+
 /**
  * What a drag brings: a Block or Row on the canvas, or a new Block or Row from
  * the Add panel.

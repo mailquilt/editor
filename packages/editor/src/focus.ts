@@ -109,6 +109,7 @@ export type ToolbarStep = "first" | "last" | "leave" | "next" | "previous";
 const BAR_PLACES = [
   "blockBar",
   "rowBar",
+  "columnBar",
   "emailBar",
 ] as const satisfies Place[];
 

@@ -1,7 +1,12 @@
 import { ROW_LAYOUTS } from "@mailquilt/core";
 import type { Block, Column, EmailStyle, Row } from "@mailquilt/core";
-import { rowStyles } from "@mailquilt/core/internal";
-import type { RowProps } from "@mailquilt/core/internal";
+import {
+  blockBoxStyles,
+  blockPaddingCss,
+  columnStyles,
+  rowStyles,
+} from "@mailquilt/core/internal";
+import type { ColumnProps, RowProps } from "@mailquilt/core/internal";
 import { css, html, nothing } from "lit";
 import { repeat } from "lit/directives/repeat.js";
 
@@ -95,7 +100,8 @@ export const canvasStyles = css`
    */
   .row-tag,
   .block:hover::after,
-  .block[aria-current="true"]::after {
+  .block[aria-current="true"]::after,
+  .column[data-column-selected] > .column-box::after {
     background: var(--mq-color-accent);
     border-radius: var(--mq-radius-small) var(--mq-radius-small) 0 0;
     bottom: 100%;
@@ -108,7 +114,8 @@ export const canvasStyles = css`
   }
 
   .row-frame[data-row-selected] > .row-tag,
-  .block[aria-current="true"]::after {
+  .block[aria-current="true"]::after,
+  .column[data-column-selected] > .column-box::after {
     background: var(--mq-color-text);
     color: var(--mq-color-surface);
   }
@@ -146,7 +153,14 @@ export const canvasStyles = css`
   }
 
   /* What's opened in the Column, the picker, hangs from it. */
+  /*
+   * As tall as its Row, so a drop anywhere in it lands there. What the email
+   * shows of it, its background, padding and border, is only as tall as its
+   * Blocks, at the top, middle or bottom, as MJML draws it.
+   */
   .column {
+    display: flex;
+    flex-direction: column;
     min-width: 0;
     position: relative;
     transition: background-color 120ms;
@@ -178,9 +192,19 @@ export const canvasStyles = css`
   }
 
   .column.empty {
-    display: flex;
     min-height: 112px;
     padding: var(--mq-space-2);
+  }
+
+  .column-box {
+    box-sizing: border-box;
+    min-width: 0;
+    position: relative;
+  }
+
+  .column.empty > .column-box {
+    display: flex;
+    flex: 1;
   }
 
   /*
@@ -263,7 +287,8 @@ export const canvasStyles = css`
    * background.
    */
   .row-frame[data-row-selected] > .row,
-  .block[aria-current="true"] {
+  .block[aria-current="true"],
+  .column[data-column-selected] > .column-box {
     box-shadow: inset 0 0 0 3px rgb(255 255 255 / 55%);
     outline: 2px solid var(--mq-color-accent);
     outline-offset: -2px;
@@ -281,7 +306,8 @@ export const canvasStyles = css`
    * the Block above.
    */
   .block:hover::after,
-  .block[aria-current="true"]::after {
+  .block[aria-current="true"]::after,
+  .column[data-column-selected] > .column-box::after {
     content: attr(data-label);
     inset-inline-start: 0;
     letter-spacing: 0.01em;
@@ -367,7 +393,8 @@ export const canvasStyles = css`
    * leaves that space alone. While it shows, it's on top, to be pressed.
    */
   @media (hover: hover) {
-    .block:has(> .spacer):not(:hover, [aria-current="true"]) .drag-handle {
+    .block:has(> .padded-block > .spacer):not(:hover, [aria-current="true"])
+      .drag-handle {
       pointer-events: none;
     }
   }
@@ -569,6 +596,29 @@ const renderStyleTag = (mark: StyleMark | undefined) =>
       >`
     : nothing;
 
+/**
+ * A Block's Box, as the export draws it: its background, border and corners
+ * on the Block, and its padding on what's inside, which a Social Block's
+ * icons take their own share of.
+ */
+const boxLook = (block: Block) => {
+  const {
+    "padding-top": _top,
+    "padding-right": _right,
+    "padding-bottom": _bottom,
+    "padding-left": _left,
+    ...box
+  } = blockBoxStyles(block);
+  return { ...box, "--_mq-block-padding": blockPaddingCss(block) };
+};
+
+/** Where a Column's Blocks sit, as its `verticalAlign` says. */
+const COLUMN_ALIGN = {
+  bottom: "flex-end",
+  middle: "center",
+  top: "flex-start",
+} as const;
+
 const renderBlock = (
   block: Block,
   /** Where the Block is, as `blockPlace` gives it. */
@@ -597,7 +647,10 @@ const renderBlock = (
       data-style-mark=${mark?.kind ?? nothing}
       ?data-style-tagged=${mark?.tag !== undefined}
       role="group"
-      style=${styleProperties(rich ? textBlockLook(block, style) : {})}
+      style=${styleProperties({
+        ...(rich ? textBlockLook(block, style) : {}),
+        ...boxLook(block),
+      })}
       tabindex=${isTabStop ? "0" : "-1"}
       @focus=${() => events.onBlockFocus(block.id)}
       @focusout=${events.onBlockFocusout}
@@ -626,7 +679,7 @@ const renderBlock = (
  * Selection bar with its settings.
  */
 const renderColumn = (
-  { blocks, id, width }: Column,
+  column: Column,
   /** Where the Column is, as `columnPlace` gives it. */
   where: TextValues,
   /** The Block that's the email's one stop for Tab, if any. */
@@ -636,69 +689,92 @@ const renderColumn = (
   api: PanelApi,
   state: CanvasState,
   events: CanvasEvents
-) => html`
-  <div
-    class=${blocks.length === 0 ? "column empty" : "column"}
-    data-column-id=${id}
-    data-place=${place("column")}
-    data-testid="column"
-    style=${styleProperties({ width: `${width}%` })}
-  >
-    ${repeat(
-      blocks,
-      (block) => block.id,
-      (block, blockIndex) => html`
-        ${renderBlock(
-          block,
-          { ...where, ...placeIn(blockIndex, blocks.length) },
-          block.id === tabStop,
-          api,
-          state,
-          events
-        )}
-        ${renderInsertPoint(
-          { afterBlockId: block.id, columnId: id, index: blockIndex + 1 },
-          api
-        )}
-      `
-    )}
-    ${
-      blocks.length === 0
-        ? html`
-            <div class="ui placeholder" data-testid="placeholder">
-              ${
-                api.adding.picker?.at.columnId === id
-                  ? renderAddPicker(api, true)
-                  : html`<button
-                      aria-haspopup="dialog"
-                      aria-label=${api.text("canvas.addToColumn", where)}
-                      class="placeholder-button"
-                      data-place=${place("addBlocks")}
-                      data-testid="add-blocks"
-                      type="button"
-                      @click=${({ detail }: MouseEvent) =>
-                        api.openPicker(
-                          { columnId: id, index: 0 },
-                          detail === 0
-                        )}
-                      @focusin=${() => {
-                        if (emptyRowId !== undefined) {
-                          events.onEmptyRowFocus(emptyRowId);
-                        }
-                      }}
-                    >
-                      <span class="placeholder-icon">${ICONS.plus}</span>
-                      <span data-testid="placeholder-label"
-                        >${api.text("canvas.dropHere")}</span
-                      >
-                    </button>`
-              }
-            </div>
-          `
-        : nothing
+) => {
+  const { blocks, id, width } = column;
+  const { verticalAlign = "top" } = column.props as ColumnProps;
+  /** A press on the Column itself, not on what's in it, selects it. */
+  const onClick = (event: MouseEvent) => {
+    if (event.target === event.currentTarget) {
+      api.selectColumn(id, false);
     }
-  </div>
-`;
+  };
+  return html`
+    <div
+      class=${blocks.length === 0 ? "column empty" : "column"}
+      data-column-id=${id}
+      data-place=${place("column")}
+      ?data-column-selected=${id === api.selectedColumn?.column.id}
+      data-testid="column"
+      style=${styleProperties({
+        "justify-content": COLUMN_ALIGN[verticalAlign],
+        width: `${width}%`,
+      })}
+      @click=${onClick}
+    >
+      <div
+        class="column-box"
+        data-testid="column-box"
+        data-label=${api.text("canvas.column", { column: where.column })}
+        style=${styleProperties(columnStyles(column))}
+        @click=${onClick}
+      >
+        ${repeat(
+          blocks,
+          (block) => block.id,
+          (block, blockIndex) => html`
+            ${renderBlock(
+              block,
+              { ...where, ...placeIn(blockIndex, blocks.length) },
+              block.id === tabStop,
+              api,
+              state,
+              events
+            )}
+            ${renderInsertPoint(
+              { afterBlockId: block.id, columnId: id, index: blockIndex + 1 },
+              api
+            )}
+          `
+        )}
+        ${
+          blocks.length === 0
+            ? html`
+                <div class="ui placeholder" data-testid="placeholder">
+                  ${
+                    api.adding.picker?.at.columnId === id
+                      ? renderAddPicker(api, true)
+                      : html`<button
+                          aria-haspopup="dialog"
+                          aria-label=${api.text("canvas.addToColumn", where)}
+                          class="placeholder-button"
+                          data-place=${place("addBlocks")}
+                          data-testid="add-blocks"
+                          type="button"
+                          @click=${({ detail }: MouseEvent) =>
+                            api.openPicker(
+                              { columnId: id, index: 0 },
+                              detail === 0
+                            )}
+                          @focusin=${() => {
+                            if (emptyRowId !== undefined) {
+                              events.onEmptyRowFocus(emptyRowId);
+                            }
+                          }}
+                        >
+                          <span class="placeholder-icon">${ICONS.plus}</span>
+                          <span data-testid="placeholder-label"
+                            >${api.text("canvas.dropHere")}</span
+                          >
+                        </button>`
+                  }
+                </div>
+              `
+            : nothing
+        }
+      </div>
+    </div>
+  `;
+};
 
 /**
  * As in the export, where a Row without a color of its own takes the Email

@@ -9,7 +9,7 @@ import type { EditorSelection } from "./selection.js";
 
 interface PressesHost {
   focus: Pick<EditorFocus, "focus" | "focused">;
-  selection: Pick<EditorSelection, "blockId" | "rowId" | "select">;
+  selection: Pick<EditorSelection, "blockId" | "columnId" | "rowId" | "select">;
 }
 
 export const createPresses = ({ focus, selection }: PressesHost) => {
@@ -114,7 +114,9 @@ export const createPresses = ({ focus, selection }: PressesHost) => {
       if (
         target !== currentTarget ||
         !pressedOnWorkspace ||
-        (selection.blockId === undefined && selection.rowId === undefined)
+        (selection.blockId === undefined &&
+          selection.rowId === undefined &&
+          selection.columnId === undefined)
       ) {
         return;
       }

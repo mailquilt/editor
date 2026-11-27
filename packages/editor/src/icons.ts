@@ -105,6 +105,26 @@ export const ICONS = {
     svg`<rect height="18" rx="2.5" width="12" x="6" y="3" /><path d="M11 17.5h2M3 3l18 18" />`
   ),
   plus: icon(svg`<path d="M12 5v14M5 12h14" />`),
+  /** A box under a line, for what sits at the top. */
+  alignTop: icon(
+    svg`<path d="M4 4h16" /><rect height="9" rx="1.5" width="8" x="8" y="7" />`
+  ),
+  /** A box between two lines, for what sits in the middle. */
+  alignMiddle: icon(
+    svg`<path d="M3 12h4M17 12h4" /><rect height="10" rx="1.5" width="8" x="8" y="7" />`
+  ),
+  /** A box on a line, for what sits at the bottom. */
+  alignBottom: icon(
+    svg`<path d="M4 20h16" /><rect height="9" rx="1.5" width="8" x="8" y="8" />`
+  ),
+  /** An i in a circle, for a note. */
+  info: icon(
+    svg`<circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" />`
+  ),
+  /** A square split down the middle, for a Column. */
+  column: icon(
+    svg`<rect height="18" rx="2" width="18" x="3" y="3" /><path d="M12 3v18" />`
+  ),
   redo: icon(svg`<path d="m15 14 5-5-5-5M20 9H9.5a5.5 5.5 0 0 0 0 11H13" />`),
   right: icon(svg`<path d="M5 12h14M13 6l6 6-6 6" />`),
   rows: icon(

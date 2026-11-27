@@ -70,6 +70,9 @@ const isSameTarget = (a: PropsTarget, b: PropsTarget) => {
   if ("rowId" in a) {
     return "rowId" in b && a.rowId === b.rowId;
   }
+  if ("columnId" in a) {
+    return "columnId" in b && a.columnId === b.columnId;
+  }
   return "emailSettings" in b;
 };
 

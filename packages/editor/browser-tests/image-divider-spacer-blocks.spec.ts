@@ -534,6 +534,20 @@ test.describe("a Spacer", () => {
     ).resolves.toBeTruthy();
   });
 
+  test("leaves the space its hidden handle reaches over alone, as thin as it gets", async ({
+    page,
+  }) => {
+    await openBlocks(page, ["spacer", "text"]);
+    await makeThin(page);
+    // Neither selected nor under the pointer, so its handle is hidden.
+    await blockGroup(page, "Text").focus();
+    await page.mouse.move(0, 0);
+
+    // Where the next Block's own handle doesn't cover it, such as at the end
+    // of a Column, a press there would otherwise grab the Spacer.
+    await expect(spacerHandle(page)).toHaveCSS("pointer-events", "none");
+  });
+
   test.describe("as thin as it gets", () => {
     // Its handle fades in, and WebKit in CI has been seen to stop a fade partway
     // until the page is next drawn. Reduced motion turns the fade off.

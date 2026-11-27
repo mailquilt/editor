@@ -513,17 +513,35 @@ describe(checkEmail, () => {
         { style: { emailBackgroundColor: "#000000" } },
       ],
       ["the page around the email", { page: "#000000" }],
+      ["the Column's own color", { columnColor: "#000000" }],
+      ["the Block's own Box", { boxColor: "#000000" }],
     ])(
       "reads what's behind the text: %s",
       async (
         _,
         {
+          boxColor,
+          columnColor,
           page,
           rowColor,
           style,
-        }: { page?: string; rowColor?: string; style?: Record<string, string> }
+        }: {
+          boxColor?: string;
+          columnColor?: string;
+          page?: string;
+          rowColor?: string;
+          style?: Record<string, string>;
+        }
       ) => {
-        const email = ready(text());
+        const email = ready(
+          text(boxColor ? { boxBackgroundColor: boxColor } : {})
+        );
+        if (columnColor) {
+          const column = email.rows[0]?.columns[0] as {
+            props: Record<string, unknown>;
+          };
+          column.props = { backgroundColor: columnColor };
+        }
         email.version = 4;
         email.settings.style = style;
         email.settings.backgroundColor = page ?? "#ffffff";

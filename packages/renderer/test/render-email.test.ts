@@ -149,6 +149,87 @@ describe(renderEmail, () => {
     ).resolves.toMatchFileSnapshot("expected/row-settings.html");
   });
 
+  it("matches the saved HTML for Blocks' Boxes and Columns' settings", async () => {
+    const email = emailWithColumns(
+      { texts: ["Callout"], width: 50 },
+      { texts: [], width: 50 }
+    );
+    const [callout, card] = email.rows[0]?.columns ?? [];
+    const text = callout?.blocks[0] as Block;
+    text.props = {
+      ...text.props,
+      borderColor: "#b5652b",
+      borderRadius: 8,
+      borderStyle: "dashed",
+      borderWidth: 2,
+      boxBackgroundColor: "#efe6da",
+      paddingLeft: 20,
+      paddingRight: 20,
+      paddingTop: 0,
+    };
+    (callout as { props: object }).props = { verticalAlign: "middle" };
+    (card as { props: object }).props = {
+      backgroundColor: "#ffffff",
+      borderWidth: 1,
+      paddingBottom: 12,
+      paddingLeft: 12,
+      paddingRight: 12,
+      paddingTop: 12,
+    };
+    card?.blocks.push(
+      {
+        id: "button",
+        props: { borderRadius: 100, borderWidth: 1, label: "Shop" },
+        type: "button",
+      },
+      {
+        id: "image",
+        props: { borderRadius: 12, src: "https://example.com/beans.png" },
+        type: "image",
+      },
+      {
+        id: "social",
+        props: {
+          links: [{ network: "x", url: "https://x.com/mq" }],
+          paddingLeft: 0,
+        },
+        type: "social",
+      },
+      {
+        id: "spacer",
+        props: { borderWidth: 1, boxBackgroundColor: "#eeeeee" },
+        type: "spacer",
+      }
+    );
+
+    await expect(
+      renderEmail(email).then(readable)
+    ).resolves.toMatchFileSnapshot("expected/box-and-column-settings.html");
+  });
+
+  it("adds no border to a label that reads like a Block's Box markup", async () => {
+    const markup = '<td align="left" class="mq-box" style="';
+    const email = emailWith(
+      { props: { label: markup }, type: "button" },
+      {
+        props: {
+          borderWidth: 3,
+          content: { content: [{ type: "paragraph" }], type: "doc" },
+        },
+        type: "text",
+      }
+    );
+
+    const html = await renderEmail(email);
+
+    expect(html.match(/border:3px solid #000000;/gu)).toHaveLength(1);
+    // The label as typed, and the border on the Text Block's own cell.
+    expect(html).toContain('class="mq-box" style=" </p>');
+    expect(html).toContain(
+      '<td align="left" class="mq-box" style="border:3px solid #000000;font-size:0px;'
+    );
+  });
+
   it("adds no width to a preheader or Button label that reads like MJML's Column markup", async () => {
     const markup =
       'class="mj-column-per-50 mj-outlook-group-fix mq-column" style="width:100%;';

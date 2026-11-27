@@ -1,5 +1,13 @@
 import * as v from "valibot";
 
+import {
+  BORDER_FIELDS,
+  blockBoxEntries,
+  borderStyles,
+  MAX_CORNERS,
+  paddingFields,
+  paddingStyles,
+} from "./box-settings.js";
 import type { Block, EmailStyle } from "./document.js";
 import {
   imageSrcSchema,
@@ -78,6 +86,7 @@ const lineHeightFor = (fontSize: number) =>
 const TEXT_LOOK = { align: "left", color: "#000000", fontSize: 16 } as const;
 
 const textBlockSchema = v.strictObject({
+  ...blockBoxEntries,
   align: v.optional(alignSchema),
   color: v.optional(colorSchema),
   content: richTextSchema,
@@ -127,6 +136,7 @@ const LEVEL_OPTIONS = [
 ] as const;
 
 const headingBlockSchema = v.strictObject({
+  ...blockBoxEntries,
   align: v.optional(alignSchema),
   color: v.optional(colorSchema),
   content: headingTextSchema,
@@ -192,6 +202,7 @@ const BUTTON_LOOK = {
 } as const;
 
 const buttonBlockSchema = v.strictObject({
+  ...blockBoxEntries,
   align: v.optional(alignSchema),
   backgroundColor: v.optional(solidColorSchema),
   color: v.optional(colorSchema),
@@ -233,7 +244,9 @@ const buttonBlock = {
         BUTTON_LOOK.backgroundColor,
       color = BUTTON_LOOK.color,
     } = props;
-    const { buttonBorderRadius, textFontSize } = style;
+    const { textFontSize } = style;
+    // Corners in its Box shape the Button itself, over Email style's.
+    const buttonBorderRadius = props.borderRadius ?? style.buttonBorderRadius;
     return {
       "background-color": backgroundColor,
       color,
@@ -255,6 +268,7 @@ const hasAltText = (alt: unknown) =>
 
 const imageBlockSchema = v.pipe(
   v.strictObject({
+    ...blockBoxEntries,
     alt: v.optional(v.string()),
     href: v.optional(linkHrefSchema),
     // Optional, because a new Image has no URL until a person gives it one.
@@ -317,6 +331,7 @@ const DIVIDER_LOOK = { color: "#d4d4d8", thickness: 1 } as const;
 const MAX_DIVIDER_THICKNESS = 100;
 
 const dividerBlockSchema = v.strictObject({
+  ...blockBoxEntries,
   color: v.optional(colorSchema),
   thickness: v.optional(pixelSchema(MAX_DIVIDER_THICKNESS)),
 });
@@ -350,6 +365,7 @@ const DEFAULT_SPACER_HEIGHT = 24;
 const MAX_SPACER_HEIGHT = 1000;
 
 const spacerBlockSchema = v.strictObject({
+  ...blockBoxEntries,
   height: v.optional(pixelSchema(MAX_SPACER_HEIGHT)),
 });
 
@@ -409,6 +425,7 @@ const ICON_SIZE_OPTIONS = [
 ] as const;
 
 const socialBlockSchema = v.strictObject({
+  ...blockBoxEntries,
   align: v.optional(alignSchema),
   iconSize: v.optional(v.picklist(ICON_SIZE_OPTIONS.map(({ value }) => value))),
   iconStyle: v.optional(
@@ -483,24 +500,50 @@ const socialBlock = {
   styles: ({ align = SOCIAL_LOOK.align }) => ({ "text-align": align }),
 } satisfies BlockDefinition<SocialBlockProps>;
 
-/** The space around a Block's content, in px. */
+/** The space around a Block's content, in px, on each side it doesn't set. */
 const BLOCK_PADDING = 16;
+
+const BLOCK_SIDES = ["Top", "Right", "Bottom", "Left"] as const;
+
+/** What a Block's padding is on a side it doesn't set: none for a Spacer. */
+const paddingFallback = (type: string) =>
+  type === "spacer" ? 0 : BLOCK_PADDING;
+
+type Side = (typeof BLOCK_SIDES)[number];
+
+/** A Block's padding on each side, in px, its own or the built-in. */
+const blockPadding = (
+  props: Partial<Record<`padding${Side}`, number>>,
+  type: string
+) =>
+  Object.fromEntries(
+    BLOCK_SIDES.map((side) => [
+      side,
+      props[`padding${side}`] ?? paddingFallback(type),
+    ])
+  ) as Record<Side, number>;
 
 /**
  * A Social Block's icons, with each one's size and the gap between them, which
  * is half that size. Half the gap is on every side of each icon, so lines that
  * wrap have the gap between them and each line ends at the same place, whatever
- * the alignment. The Block's own padding is that much less on every side, so the
- * icons are as far from its edges as a Block's content always is.
+ * the alignment. The Block's padding is that much less on every side, so the
+ * icons are as far from its edges as a Block's content is. Each icon keeps
+ * half the gap on every side, so a padding less than that leaves the icons
+ * that far in, never further out.
  * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
  */
-export const socialIcons = ({
-  iconSize = SOCIAL_LOOK.iconSize,
-  iconStyle = SOCIAL_LOOK.iconStyle,
-}: SocialBlockProps) => {
+export const socialIcons = (props: SocialBlockProps) => {
+  const { iconSize = SOCIAL_LOOK.iconSize, iconStyle = SOCIAL_LOOK.iconStyle } =
+    props;
   const gap = iconSize / 2;
+  const padding = blockPadding(props, "social");
+  const sides = BLOCK_SIDES.map(
+    (side) => `${Math.max(padding[side] - gap / 2, 0)}px`
+  );
   return {
-    blockPadding: BLOCK_PADDING - gap / 2,
+    // One value while every side is the same, as most are.
+    blockPadding: new Set(sides).size === 1 ? sides[0] : sides.join(" "),
     iconPadding: gap / 2,
     size: iconSize,
     style: iconStyle,
@@ -587,6 +630,64 @@ export const blockStyles = (
   { props, type }: Pick<Block, "props" | "type">,
   style: EmailStyle = {}
 ) => blockDefinitions.get(type)?.styles(props, style) ?? {};
+
+/**
+ * A Block's padding on every side as one CSS value, its own or the built-in,
+ * for the canvas, which draws every side.
+ * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
+ */
+export const blockPaddingCss = ({
+  props,
+  type,
+}: Pick<Block, "props" | "type">) => {
+  const padding = blockPadding(props as BlockProps["text"], type);
+  const sides = BLOCK_SIDES.map((side) => `${padding[side]}px`);
+  return new Set(sides).size === 1 ? (sides[0] as string) : sides.join(" ");
+};
+
+/**
+ * The fields of a Block's Box: its padding, background, border and
+ * corners. A Block's own fields are `blockSettingsFields`'.
+ * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
+ */
+export const blockBoxFields = (type: string): readonly SettingsField[] => [
+  ...paddingFields(paddingFallback(type)),
+  colorField({
+    key: "boxBackgroundColor",
+    labelId: "field.boxBackgroundColor",
+  }),
+  ...BORDER_FIELDS,
+  pixelField("borderRadius", "field.borderRadius", {
+    fallback: 0,
+    max: MAX_CORNERS,
+    min: 0,
+  }),
+];
+
+/**
+ * A Block's Box as CSS, for both the canvas and the email output: the padding
+ * of each side it sets, which is otherwise the built-in, and its background,
+ * border and corners. A Button's corners are its own shape's, in
+ * `blockStyles`, so they aren't the Box's.
+ * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
+ */
+export const blockBoxStyles = ({
+  props,
+  type,
+}: Pick<Block, "props" | "type">): Record<string, string> => {
+  const box = props as BlockProps["text"];
+  const { boxBackgroundColor, borderRadius } = box;
+  return {
+    ...paddingStyles(box),
+    ...(boxBackgroundColor === undefined
+      ? {}
+      : { "background-color": boxBackgroundColor }),
+    ...borderStyles(box),
+    ...(borderRadius === undefined || type === "button"
+      ? {}
+      : { "border-radius": `${borderRadius}px` }),
+  };
+};
 
 /**
  * The color of the links in a Text Block or Heading whose text is `textColor`.

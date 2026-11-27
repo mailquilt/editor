@@ -17,6 +17,7 @@ import {
   blockPlace,
   dropCommand,
   locate,
+  locateColumn,
   locateRow,
   moveCommand,
   moveRowCommand,
@@ -24,6 +25,7 @@ import {
   placeIn,
 } from "./positions.js";
 import type {
+  ColumnPosition,
   Direction,
   DragSource,
   DropPosition,
@@ -60,7 +62,7 @@ interface EditingHost {
   >;
   selection: Pick<
     EditorSelection,
-    "blockId" | "rowId" | "select" | "selectLanded" | "selectRow"
+    "blockId" | "columnId" | "rowId" | "select" | "selectLanded" | "selectRow"
   >;
   text: Text;
 }
@@ -105,9 +107,16 @@ export const createEditingActions = ({
     return rowId === undefined ? undefined : locateRow(email, rowId);
   };
 
+  const selectedColumn = (
+    email: BlocksDocument
+  ): ColumnPosition | undefined => {
+    const { columnId } = selection;
+    return columnId === undefined ? undefined : locateColumn(email, columnId);
+  };
+
   /**
-   * After the selected Block, at the end of the selected Row's first Column, or
-   * else at the end of the email.
+   * After the selected Block, at the end of the selected Column or the
+   * selected Row's first Column, or else at the end of the email.
    */
   const defaultBlockPosition = (email: BlocksDocument) => {
     const selected = selectedBlock(email);
@@ -115,7 +124,9 @@ export const createEditingActions = ({
       return { columnId: selected.columnId, index: selected.index + 1 };
     }
     const column =
-      selectedRow(email)?.row.columns[0] ?? email.rows.at(-1)?.columns.at(-1);
+      selectedColumn(email)?.column ??
+      selectedRow(email)?.row.columns[0] ??
+      email.rows.at(-1)?.columns.at(-1);
     return column && { columnId: column.id, index: column.blocks.length };
   };
 
@@ -256,8 +267,8 @@ export const createEditingActions = ({
     },
 
     /**
-     * After the selected Row or the selected Block's Row, or else at the end, and
-     * selects it.
+     * After the selected Row, or the selected Column's or Block's Row, or else
+     * at the end, and selects it.
      */
     addRow: (layout: RowLayout, fromKeyboard: boolean) => {
       const email = current();
@@ -265,7 +276,9 @@ export const createEditingActions = ({
         return;
       }
       const rowIndex =
-        selectedRow(email)?.rowIndex ?? selectedBlock(email)?.rowIndex;
+        selectedRow(email)?.rowIndex ??
+        selectedColumn(email)?.rowIndex ??
+        selectedBlock(email)?.rowIndex;
       const result = apply({
         index: rowIndex === undefined ? email.rows.length : rowIndex + 1,
         layout,
@@ -384,8 +397,12 @@ export const createEditingActions = ({
       }
       const { row, rowIndex } = position;
       const result = apply({
-        columns: row.columns.map(({ blocks }) => ({
-          blocks: blocks.map(({ props, type }) => ({ props, type })),
+        columns: row.columns.map(({ blocks, props }) => ({
+          blocks: blocks.map((block) => ({
+            props: block.props,
+            type: block.type,
+          })),
+          props,
         })),
         index: rowIndex + 1,
         layout,
@@ -510,8 +527,12 @@ export const createEditingActions = ({
         const result =
           layout &&
           apply({
-            columns: copied.columns.map(({ blocks }) => ({
-              blocks: blocks.map(({ props, type }) => ({ props, type })),
+            columns: copied.columns.map(({ blocks, props }) => ({
+              blocks: blocks.map((each) => ({
+                props: each.props,
+                type: each.type,
+              })),
+              props,
             })),
             index: nextRowIndex,
             layout,
@@ -553,6 +574,9 @@ export const createEditingActions = ({
 
     /** The selected Block, and where it is. */
     selectedBlock,
+
+    /** The selected Column, and where it is. */
+    selectedColumn,
 
     /** The selected Row, and where it is. */
     selectedRow,

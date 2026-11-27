@@ -261,6 +261,7 @@ export const createDragging = ({
       ...findPlaces(root, "emailTools"),
       ...findPlaces(root, "blockBar"),
       ...findPlaces(root, "rowBar"),
+      ...findPlaces(root, "columnBar"),
       ...findPlaces(root, "emailBar"),
       // Hanging from the bar over the email, outside the bar's own box.
       ...findPlaces(root, "barPopover"),

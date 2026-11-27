@@ -36,6 +36,8 @@ export interface NewBlock {
 /** A new Column's content, for `insertRow`. Its width comes from the layout. */
 export interface NewColumn {
   blocks: NewBlock[];
+  /** Its props, or else none. */
+  props?: Record<string, unknown>;
 }
 
 /** A request to change an email. It can be refused. */
@@ -46,6 +48,11 @@ export type Command =
       props: Record<string, unknown>;
     }
   | { type: "updateRowProps"; rowId: string; props: Record<string, unknown> }
+  | {
+      type: "updateColumnProps";
+      columnId: string;
+      props: Record<string, unknown>;
+    }
   | { type: "updateEmailSettings"; settings: Record<string, unknown> }
   /** Changes the fields of the email's Email style that `style` names. */
   | { type: "updateEmailStyle"; style: Record<string, unknown> }
@@ -105,6 +112,11 @@ export const commandSchema = v.variant("type", [
     type: v.literal("updateRowProps"),
   }),
   v.strictObject({
+    columnId: v.string(),
+    props: changesSchema,
+    type: v.literal("updateColumnProps"),
+  }),
+  v.strictObject({
     settings: changesSchema,
     type: v.literal("updateEmailSettings"),
   }),
@@ -150,6 +162,7 @@ export const commandSchema = v.variant("type", [
               type: v.string(),
             })
           ),
+          props: v.optional(changesSchema),
         })
       )
     ),

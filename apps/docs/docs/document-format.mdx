@@ -51,7 +51,7 @@ Each version of the format, and how a document saved in the one before is upgrad
 | `1` | Mail Quilt 0.1.0 | The first version. |
 | `2` | Mail Quilt 0.2.0 | Stricter colors and URLs. A version 1 email gets a plain space in a color where it has another space after a comma, such as a tab, and `https:` in place of `httpſ:` at the start of a link or image URL. |
 | `3` | Mail Quilt 0.3.0 | The [`mergeTag`](#merge-tags-in-text) node in rich text. Each Merge Tag that sits whole in one piece of text becomes a node, with that text's marks. A tag split across pieces with different marks, such as `{{first` in bold and `_name}}` not, stays text. Bulleted and numbered [Lists](#lists) in a Text Block, a Row's [padding and phone settings](#row), and the [Social](#social) Block, which no older email has. |
-| `4` | Mail Quilt 0.4.0 | The [Email style](#email-style), which no older email has, so a version 3 email loads with nothing changed but its version. |
+| `4` | Mail Quilt 0.4.0 | The [Email style](#email-style), every Block's [Box](#box), and a [Column](#column)'s settings, which no older email has, so a version 3 email loads with nothing changed but its version. |
 
 An email saved by a newer version can't be opened by a package that only knows an older one.
 
@@ -115,12 +115,30 @@ In the editor, every field is in Style, where each can be set, or cleared back t
 | --- | --- |
 | `id` | An [ID](#ids). |
 | `width` | A percentage of the Row, from 1 to 100, so a Column is at least 1% wide. The widths of a Row's Columns add up to 100. The editor's layouts use `100`, `50`/`50`, `33`/`67`, `67`/`33`, `33.33`/`33.33`/`33.34` and four Columns of `25`. Other widths load, but the Selection bar shows none of its layouts as chosen for that Row. |
-| `props` | Always an empty object, `{}`. |
+| `props` | The Column's settings, below. Each is optional. |
 | `blocks` | A list of [Blocks](#blocks), top to bottom. It can be empty. |
+
+| Prop | Value |
+| --- | --- |
+| `backgroundColor` | Optional. A [color](#colors). It fills the Column only as far down as its Blocks reach, as email clients draw it. Without it, the Row's color shows through. |
+| `paddingTop`, `paddingRight`, `paddingBottom`, `paddingLeft` | Optional. The space inside the Column on that side, a whole number of pixels from 0 to 200. Defaults to `0`. |
+| `verticalAlign` | Optional. Where the Column sits in its Row when it's shorter than the Row: `"top"`, `"middle"` or `"bottom"`. Defaults to `"top"`. |
+| `borderWidth`, `borderStyle`, `borderColor` | Optional. A [border](#borders) around the Column. |
 
 ## Blocks
 
-Every Block has an `id`, which is an [ID](#ids), a `type` from the list below, and `props` for that type. A field marked optional can be left out, and the default is what the email shows without it.
+Every Block has an `id`, which is an [ID](#ids), a `type` from the list below, and `props` for that type and its [Box](#box). A field marked optional can be left out, and the default is what the email shows without it.
+
+### Box
+
+Every type of Block also takes these props, which set the box around its content. Each is optional.
+
+| Prop | Value |
+| --- | --- |
+| `paddingTop`, `paddingRight`, `paddingBottom`, `paddingLeft` | The space between the Block's edge and its content on that side, a whole number of pixels from 0 to 200. Defaults to `16`, or `0` for a [Spacer](#spacer). A [Social](#social) Block's icons keep half the space between them from its edge, so a padding less than that, `0` too, leaves them that far in. |
+| `boxBackgroundColor` | A [color](#colors) behind the Block's content and padding. It's named apart from a Button's `backgroundColor`, which is the Button's own color. |
+| `borderWidth`, `borderStyle`, `borderColor` | A [border](#borders) around the Block. |
+| `borderRadius` | The Block's corners, a whole number of pixels from 0 to 100. On a [Button](#button), it shapes the Button itself, over the Email style's `buttonBorderRadius`. Outlook on Windows draws corners square, as [Tested email clients](./email-clients#boxes-and-columns) says. |
 
 ### Text
 
@@ -304,6 +322,10 @@ A color is written as `#rgb`, `#rrggbb`, `rgb()` or `rgba()`, such as `#f00`, `#
 ### Links
 
 A link starts with `https:`, `http:`, `mailto:` or `tel:`, or with a [Merge Tag](#merge-tags) such as `{{cta_url}}`. Other schemes, such as `javascript:`, and relative URLs are refused.
+
+### Borders
+
+A border is drawn once it has a `borderWidth`, a whole number of pixels from 1 to 20. `borderStyle` is `"solid"`, `"dashed"` or `"dotted"`, and defaults to `"solid"`. `borderColor` is a [color](#colors), and defaults to `#000000`.
 
 ### Merge Tags
 

@@ -12,7 +12,7 @@ import {
   linkColor,
   MERGE_TAG,
 } from "@mailquilt/core/internal";
-import type { RowProps } from "@mailquilt/core/internal";
+import type { ColumnProps, RowProps } from "@mailquilt/core/internal";
 
 import { renderEmail } from "./render-email.js";
 import { drawnPieces } from "./text-to-html.js";
@@ -191,7 +191,11 @@ const parseColor = (color: string): Rgba => {
 };
 
 /** `color` painted over a solid `behind`, as a solid color. */
-const over = (color: string, behind: Rgba): Rgba => {
+/** `color` drawn over `behind`, or `behind` alone where there's no color. */
+const over = (color: string | undefined, behind: Rgba): Rgba => {
+  if (color === undefined) {
+    return behind;
+  }
   const [red, green, blue, alpha] = parseColor(color);
   const mix = (channel: number, under: number) =>
     channel * alpha + under * (1 - alpha);
@@ -560,9 +564,18 @@ export const checkEmail = async (
   const problems = settingsProblems(settings, knownTags);
   const links: string[] = [];
   for (const row of rows) {
-    const behind = behindRow(row, settings, style);
+    const behindColumns = behindRow(row, settings, style);
     for (const column of row.columns) {
+      const behindBlocks = over(
+        (column.props as ColumnProps).backgroundColor,
+        behindColumns
+      );
       for (const block of column.blocks) {
+        // A Block's own Box background, over its Column's.
+        const behind = over(
+          (block.props as { boxBackgroundColor?: string }).boxBackgroundColor,
+          behindBlocks
+        );
         // An Image with no image is left out, with its link.
         if (block.type !== "image" || block.props.src !== undefined) {
           links.push(...linksIn(block.props));
