@@ -16,6 +16,7 @@ import type { ShownMergeTagPicker } from "./text-block-view.js";
 import type { ListType, TextFormats, ToggleableMark } from "./text-commands.js";
 import type { Text } from "./text.js";
 import type { Device } from "./top-bar.js";
+import type { Videos } from "./videos.js";
 
 /**
  * How the Add panel and picker, the Rows list, the Selection bar and its More
@@ -102,6 +103,19 @@ export interface EmailPanelApi {
   uploadImage: ((blockId: string, file: File) => void) | undefined;
   /** Why an Image Block's last upload failed, until its next one or a new URL. */
   uploadErrorOf: (blockId: string) => string | undefined;
+  /**
+   * A Video's play button, a thumbnail a YouTube link fills in, and what a
+   * new thumbnail changes.
+   */
+  videos: Pick<
+    Videos,
+    | "changes"
+    | "choosePlay"
+    | "failureOf"
+    | "fillThumbnail"
+    | "isAdding"
+    | "wantPlay"
+  >;
   /** Selects a Row instead of any Block, which the Selection bar then shows. */
   selectRow: (rowId: string, fromKeyboard: boolean) => void;
   /**

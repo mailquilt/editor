@@ -71,7 +71,12 @@ export type SettingsField = FieldBase &
     | { type: "number"; max?: number; min: number; unit: "px" }
     | {
         type: "select";
-        options: readonly { labelId: string; value: number | string }[];
+        /** Each with what it means, where the choice needs saying. */
+        options: readonly {
+          labelId: string;
+          value: number | string;
+          descriptionId?: string;
+        }[];
       }
     | { type: "text" }
     /** Yes or no, shown as a switch. */

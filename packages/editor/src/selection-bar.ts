@@ -2,6 +2,7 @@ import { ROW_LAYOUTS } from "@mailquilt/core";
 import type {
   Block,
   BlockType,
+  Command,
   Column,
   EmailStyle,
   RowLayout,
@@ -335,6 +336,120 @@ export const selectionBarStyles = css`
     min-width: 220px;
   }
 
+  /*
+   * Why a play button couldn't be added, with a way to upload a thumbnail,
+   * from the button's end, as it's near the bar's, so it stays on screen.
+   */
+  .bar-anchor > .bar-error.play-failed {
+    inset-inline-end: 0;
+    inset-inline-start: auto;
+  }
+
+  .bar-error.play-failed {
+    color: var(--mq-color-text);
+    display: grid;
+    gap: var(--mq-space-1);
+    justify-items: start;
+    width: 300px;
+  }
+
+  .play-failed b {
+    font-weight: 600;
+  }
+
+  .play-failed .text-button {
+    margin-block-start: var(--mq-space-1);
+  }
+
+  /* A Video's play button choices, each a line with what it means. */
+  .play-choices {
+    padding: var(--mq-space-1);
+    width: 310px;
+  }
+
+  .play-choices fieldset {
+    border: 0;
+    margin: 0;
+    padding: 0;
+  }
+
+  .play-choices legend {
+    block-size: 1px;
+    clip-path: inset(50%);
+    inline-size: 1px;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+  }
+
+  .play-choice {
+    align-items: start;
+    border-radius: var(--mq-radius-small);
+    cursor: pointer;
+    display: grid;
+    gap: var(--mq-space-2);
+    grid-template-columns: 16px 1fr;
+    padding: var(--mq-space-2);
+    position: relative;
+  }
+
+  .play-choice:hover:not(.off),
+  .play-choice:has(input:checked) {
+    background: var(--mq-color-surface-hover);
+  }
+
+  /* The line shows the ring, inside the popover's edge, and the radio none. */
+  .play-choice:has(input:focus-visible) {
+    outline: 2px solid var(--mq-color-accent);
+    outline-offset: -2px;
+  }
+
+  .play-choices .play-choice input:focus-visible {
+    outline: none;
+  }
+
+  .play-choice.off {
+    cursor: default;
+  }
+
+  .play-choice.off .words > span:first-child {
+    color: var(--mq-color-text-muted);
+  }
+
+  /* The radio is the choice's whole line, so only its check mark shows. */
+  .play-choice input {
+    appearance: none;
+    inset: 0;
+    margin: 0;
+    position: absolute;
+  }
+
+  .play-choice .mark {
+    color: var(--mq-color-text);
+    margin-block-start: 2px;
+    visibility: hidden;
+  }
+
+  .play-choice .mark .icon {
+    height: 16px;
+    width: 16px;
+  }
+
+  .play-choice:has(input:checked) .mark {
+    visibility: visible;
+  }
+
+  .play-choice .words {
+    display: grid;
+    gap: 2px;
+  }
+
+  .play-choice .meaning {
+    color: var(--mq-color-text-muted);
+    font-size: var(--mq-font-size-small);
+    line-height: 1.4;
+  }
+
   .bar-error {
     background: var(--mq-color-surface);
     border-radius: var(--mq-radius-small);
@@ -364,9 +479,22 @@ export const selectionBarStyles = css`
     padding: 0 var(--mq-space-2);
   }
 
-  .bar-button:hover {
+  .bar-button:hover:not([aria-disabled="true"]) {
     background: var(--mq-color-surface-hover);
     color: var(--mq-color-text);
+  }
+
+  /*
+   * Off until something else is set, such as a Video's thumbnail before its
+   * link. As an icon button's, its words fade, so its focus ring stays at
+   * full strength.
+   */
+  .bar-button[aria-disabled="true"] {
+    cursor: default;
+  }
+
+  .bar-button[aria-disabled="true"] > * {
+    opacity: 0.45;
   }
 
   .bar-button[aria-expanded="true"] {
@@ -688,7 +816,7 @@ export const selectionBarStyles = css`
   }
 
   .box .bar-anchor > .bar-button,
-  .bar-name + .bar-anchor > .bar-button {
+  .bar-name + .bar-anchor:not(.play) > .bar-button {
     background-color: var(--mq-color-surface);
     color: var(--mq-color-text);
     border: 1px solid var(--mq-color-border-strong);
@@ -706,7 +834,7 @@ export const selectionBarStyles = css`
   }
 
   .box .bar-anchor > .bar-button:hover,
-  .bar-name + .bar-anchor > .bar-button:hover {
+  .bar-name + .bar-anchor:not(.play) > .bar-button:hover {
     border-color: var(--mq-color-text-muted);
   }
 
@@ -739,6 +867,19 @@ export const selectionBarStyles = css`
   .selection-bar[data-place="columnBar"][data-compact="words"]
     .bar-button[aria-haspopup]
     > .words {
+    clip-path: none;
+    height: auto;
+    overflow: visible;
+    position: static;
+    width: auto;
+  }
+
+  /* As a Column's: a Video's Play button keeps its value, and its name goes. */
+  .selection-bar[data-compact="words"] .bar-name:has(+ .bar-anchor.play) {
+    display: none;
+  }
+
+  .selection-bar[data-compact="words"] .bar-anchor.play > .bar-button > .words {
     clip-path: none;
     height: auto;
     overflow: visible;
@@ -1186,27 +1327,50 @@ const blockSection = (position: BlockPosition, api: PanelApi) =>
     api
   );
 
+/**
+ * Upload beside an Image's URL or a Video's thumbnail, and why its last
+ * upload failed.
+ */
+const uploadExtra = (blockId: string, api: PanelApi) => ({
+  control: api.uploadImage
+    ? renderUpload(blockId, api.uploadImage, api.text("bar.uploadImage"), {
+        className: "text-button",
+      })
+    : undefined,
+  error: api.uploadErrorOf(blockId),
+});
+
+/**
+ * A Video's Command from the bar: a new thumbnail forgets the copy drawn on
+ * the old one, and a YouTube link fills in a thumbnail it doesn't have.
+ */
+const videoCommand = (
+  blockId: string,
+  props: Record<string, unknown>,
+  api: PanelApi
+): Command => {
+  if (typeof props.url === "string") {
+    api.videos.fillThumbnail(blockId, props.url);
+  }
+  return {
+    blockId,
+    props: api.videos.changes(blockId, props),
+    type: "updateBlockProps",
+  };
+};
+
 const desktopBlockSection = (
   { block }: BlockPosition,
   api: PanelApi
 ): SettingsSection => ({
-  command: (props) => ({ blockId: block.id, props, type: "updateBlockProps" }),
-  extras:
-    block.type === "image"
-      ? {
-          src: {
-            control: api.uploadImage
-              ? renderUpload(
-                  block.id,
-                  api.uploadImage,
-                  api.text("bar.uploadImage"),
-                  { className: "text-button" }
-                )
-              : undefined,
-            error: api.uploadErrorOf(block.id),
-          },
-        }
-      : undefined,
+  command: (props) =>
+    block.type === "video"
+      ? videoCommand(block.id, props, api)
+      : { blockId: block.id, props, type: "updateBlockProps" },
+  extras: {
+    image: { src: uploadExtra(block.id, api) },
+    video: { thumbnail: uploadExtra(block.id, api) },
+  }[block.type as string],
   fields: [
     ...withSharedDefaults(block, api.email.settings.style ?? {}),
     ...(block.type === "button" && api.device === "phone"
@@ -1400,7 +1564,9 @@ type Control =
   /** A Row's layout, as its Columns. */
   | { kind: "layout" }
   /** Upload, for an Image, with the Host app's `uploadImage`. */
-  | { kind: "upload" };
+  | { kind: "upload" }
+  /** A Video's play button: its choices, each with what it means. */
+  | { kind: "play" };
 
 /** A Column's settings each have their name before them, as frame `f02` draws. */
 type NamedControl = Control & {
@@ -1473,6 +1639,9 @@ const keysOf = (control: Control): readonly string[] => {
     case "layout":
     case "upload": {
       return [];
+    }
+    case "play": {
+      return ["play"];
     }
     default: {
       return [control.key];
@@ -1654,6 +1823,40 @@ const CONTROLS: Readonly<
     { key: "color", kind: "color", label: "bar.color" },
     ALIGN,
   ],
+  // As frames k04 and k05 draw it. A thumbnail waits for the link, which a
+  // YouTube one fills it in from.
+  video: ({ thumbnail, url }) => [
+    {
+      icon: ICONS.link,
+      key: "url",
+      kind: "text",
+      placeholder: "bar.videoUrl",
+      width: 220,
+    },
+    {
+      icon: BLOCK_VIEWS.image.icon,
+      id: "popover-thumbnail",
+      keys: ["thumbnail"],
+      kind: "popover",
+      label: (values, text) =>
+        text(
+          values.thumbnail === undefined ? "bar.addThumbnail" : "bar.thumbnail"
+        ),
+      name: "field.thumbnail",
+      offWhy:
+        url === undefined && thumbnail === undefined
+          ? "bar.thumbnailWaits"
+          : undefined,
+    },
+    {
+      key: "alt",
+      kind: "text",
+      label: "bar.alt",
+      placeholder: "bar.describeThumbnail",
+      width: 230,
+    },
+    { kind: "play" },
+  ],
 };
 
 const controlsOf = (target: Target) => {
@@ -1692,7 +1895,8 @@ export const fieldShownIn = (
     case "popover": {
       return { id: control.id, in: "popover" };
     }
-    case "color": {
+    case "color":
+    case "play": {
       return { id: `popover-${key}`, in: "popover" };
     }
     default: {
@@ -2187,6 +2391,41 @@ const renderAddFirst = (
   </span>
 `;
 
+/**
+ * A popover's button while it can't open, which stays reachable so its tooltip
+ * can say why. It's named by its words where it has them, as a button with
+ * words is.
+ */
+const renderOffPopoverControl = (
+  section: SettingsSection,
+  control: Extract<NamedControl, { kind: "popover" }> & { offWhy: StringId },
+  { inMore, label, name }: { inMore: boolean; label?: string; name: string },
+  api: PanelApi
+) => {
+  const whyId = `bar-${section.id}-${control.id}-off`;
+  return html`
+    <span class="bar-anchor">
+      <button
+        aria-describedby=${whyId}
+        aria-disabled="true"
+        aria-label=${label ? nothing : name}
+        class=${label ? "bar-button" : "icon-button"}
+        data-action=${control.id}
+        data-tooltip=${api.text(control.offWhy)}
+        tabindex=${inMore ? "0" : "-1"}
+        type="button"
+      >
+        ${control.icon ?? nothing}${
+          label ? html`<span class="words">${label}</span>` : nothing
+        }
+      </button>
+      <span class="visually-hidden" id=${whyId}>
+        ${api.text(control.offWhy)}
+      </span>
+    </span>
+  `;
+};
+
 const renderPopoverControl = (
   section: SettingsSection,
   control: Extract<NamedControl, { kind: "popover" }>,
@@ -2210,26 +2449,12 @@ const renderPopoverControl = (
         : nothing;
   }
   if (control.offWhy) {
-    const whyId = `bar-${section.id}-${control.id}-off`;
-    return html`
-      <span class="bar-anchor">
-        <button
-          aria-describedby=${whyId}
-          aria-disabled="true"
-          aria-label=${name}
-          class="icon-button"
-          data-action=${control.id}
-          data-tooltip=${api.text(control.offWhy)}
-          tabindex=${inMore ? "0" : "-1"}
-          type="button"
-        >
-          ${control.icon ?? nothing}
-        </button>
-        <span class="visually-hidden" id=${whyId}>
-          ${api.text(control.offWhy)}
-        </span>
-      </span>
-    `;
+    return renderOffPopoverControl(
+      section,
+      { ...control, offWhy: control.offWhy },
+      { inMore, label, name },
+      api
+    );
   }
   const popoverOf = () =>
     control.id.endsWith("popover-padding")
@@ -2401,6 +2626,131 @@ const renderUploadControl = ({ block }: BlockPosition, api: PanelApi) => {
   `;
 };
 
+/**
+ * A Video's play button: its name and choice, which opens the choices, each
+ * with what it means, as frame k07 draws them. "On the picture" needs the
+ * Host app's `uploadImage`, and says so without it, as frame k10 does. While
+ * the play button is drawn, it shows as chosen. Why it couldn't be added stays
+ * under the button, with a way to upload a thumbnail, as frame k11 draws it.
+ */
+const renderPlayControl = (
+  target: Target,
+  section: SettingsSection,
+  api: PanelApi,
+  open: boolean
+) => {
+  const field = fieldOf(section, "play");
+  if (target.kind !== "block" || field?.type !== "select") {
+    return nothing;
+  }
+  const { block } = target.position;
+  const { text, uploadImage, videos } = api;
+  const id = "popover-play";
+  const name = text("bar.playButton");
+  const chosen = videos.isAdding(block.id)
+    ? "on"
+    : String(section.values.play ?? field.default);
+  const choice = field.options.find(({ value }) => value === chosen);
+  const words = choice ? fieldWords(choice.labelId, text) : chosen;
+  const failure = videos.failureOf(block.id);
+  const failureId = `bar-${section.id}-play-failed`;
+  const choices = html`
+    <div
+      aria-label=${name}
+      class="ui bar-popover play-choices"
+      data-place=${place("barPopover")}
+      role="dialog"
+      tabindex="-1"
+    >
+      <fieldset>
+        <legend>${name}</legend>
+        ${field.options.map(({ descriptionId, labelId, value }) => {
+          const optionId = `bar-play-${value}`;
+          const off = value === "on" && !uploadImage;
+          const meaning = off ? "play.on.noUploads" : descriptionId;
+          return html`
+            <label
+              class=${off ? "play-choice off" : "play-choice"}
+              for=${optionId}
+            >
+              <input
+                aria-describedby=${meaning ? `${optionId}-meaning` : nothing}
+                ?disabled=${off}
+                id=${optionId}
+                name="bar-play"
+                type="radio"
+                .checked=${live(value === chosen)}
+                .value=${String(value)}
+                @change=${() =>
+                  videos.choosePlay(block.id, value as "below" | "none" | "on")}
+              />
+              <span aria-hidden="true" class="mark">${ICONS.check}</span>
+              <span class="words">
+                <span>${fieldWords(labelId, text)}</span>
+                ${
+                  meaning
+                    ? html`<span class="meaning" id=${`${optionId}-meaning`}
+                        >${fieldWords(meaning, text)}</span
+                      >`
+                    : nothing
+                }
+              </span>
+            </label>
+          `;
+        })}
+      </fieldset>
+    </div>
+  `;
+  // Its name shows before it, as a Column's settings' do, and is in its own.
+  return html`
+    <span aria-hidden="true" class="bar-name">${name}</span>
+    <span class="bar-anchor play">
+      <button
+        aria-describedby=${failure ? failureId : nothing}
+        aria-expanded=${open ? "true" : "false"}
+        aria-haspopup="dialog"
+        aria-label=${text("bar.valueOf", { label: name, value: words })}
+        class="bar-button"
+        data-action=${id}
+        data-tooltip=${name}
+        tabindex="-1"
+        type="button"
+        @click=${() => api.togglePopover(id)}
+      >
+        <span class="words">${words}</span>${ICONS.chevronDown}
+      </button>
+      ${open ? choices : nothing}
+      ${
+        failure && !open
+          ? html`<div
+              class="bar-error play-failed"
+              data-testid="play-failed"
+              id=${failureId}
+              role="alert"
+            >
+              <b>${text("play.failed")}</b>
+              <span>${failure}</span>
+              ${
+                uploadImage
+                  ? renderUpload(
+                      block.id,
+                      (blockId, file) => {
+                        // So the play button is drawn on the new one.
+                        videos.wantPlay(blockId);
+                        uploadImage(blockId, file);
+                      },
+                      text("bar.uploadThumbnail"),
+                      { className: "text-button" }
+                    )
+                  : nothing
+              }
+            </div>`
+          : nothing
+      }
+    </span>
+  `;
+};
+
 /** A field by its key, if what's selected has it. */
 const fieldOf = (section: SettingsSection, key: string) =>
   section.fields.find((field) => field.key === key);
@@ -2438,6 +2788,9 @@ const renderOwnControl = (
       return target.kind === "block"
         ? renderUploadControl(target.position, api)
         : nothing;
+    }
+    case "play": {
+      return renderPlayControl(target, section, api, open("popover-play"));
     }
     case "popover": {
       return renderPopoverControl(section, control, api, open(control.id));

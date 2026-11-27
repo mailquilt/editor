@@ -33,6 +33,12 @@ editor.uploadImage = uploadImage;
 
 Without it, there's no Upload image button, a file dropped or pasted on the editor is refused, and the editor is as it was.
 
+## A Video's play button
+
+A Video's thumbnail can be uploaded too, from the Thumbnail popover. Its "On the picture" play button also goes through your function: the editor draws a play button onto a copy of the thumbnail in the browser, and uploads the copy as a PNG or JPEG named `video.png` or `video.jpg`, which the Video then shows. Without `uploadImage`, that choice is off and says why, and the line under the picture or no play button still work.
+
+To draw on it, the editor reads the thumbnail with CORS, so its site has to send `Access-Control-Allow-Origin`. YouTube's thumbnails do, and so does an image your function uploaded, if your storage allows it. Where a site doesn't, the editor says so and offers to upload the thumbnail instead.
+
 ## A pre-signed upload
 
 With a pre-signed URL, the browser sends the file straight to your storage, and your server only signs the request. The file never passes through your server, and your storage keys never reach the browser. S3, Google Cloud Storage, Azure Blob Storage, Cloudflare R2 and most other storage services offer one.

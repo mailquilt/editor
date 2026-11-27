@@ -698,6 +698,11 @@ export const openBlocks = async (page: Page, ...columns: BlockType[][]) => {
           type: "doc",
         },
       },
+      video: {
+        alt: "A cup",
+        thumbnail: "https://cdn.example/photo.png",
+        url: "https://video.example/watch",
+      },
     };
     row.columns = columns.map((types, columnIndex) => ({
       blocks: types.map(

@@ -14,7 +14,10 @@ export const renderEmail = async (
   options: RenderEmailOptions = {}
 ) => {
   // First, so that a refused document never loads MJML.
-  const { boxes, mjml, sharedRowWidths } = toMjml(document, options);
+  const { boxes, mjml, sharedRowWidths, videoLines } = toMjml(
+    document,
+    options
+  );
   // `mjml-browser` requires `cheerio` but doesn't list it, so this package does,
   // until https://github.com/mjmlio/mjml/issues/3158 is fixed.
   const { default: compile } = await import("mjml-browser");
@@ -23,5 +26,5 @@ export const renderEmail = async (
     fonts: {},
     validationLevel: "strict",
   });
-  return finishHtml(html, sharedRowWidths, boxes);
+  return finishHtml(html, sharedRowWidths, boxes, videoLines);
 };

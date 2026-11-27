@@ -1,6 +1,11 @@
 import { loadDocument } from "@mailquilt/core";
 import type { Block, RichTextParagraph } from "@mailquilt/core";
-import { menuLinks, SOCIAL_NETWORKS } from "@mailquilt/core/internal";
+import {
+  menuLinks,
+  SOCIAL_NETWORKS,
+  videoLabel,
+  videoShown,
+} from "@mailquilt/core/internal";
 
 import { ADDRESS_IN_TEXT } from "./text-patterns.js";
 
@@ -127,6 +132,20 @@ const blockToText = (block: Block, capitals: Capitals) => {
       return menuLinks(block.props)
         .shown.map(({ label, url }) => `${label}: ${url}`)
         .join("\n");
+    }
+    case "video": {
+      const shown = videoShown(block.props);
+      // Until it has a link and a thumbnail, it's left out, as in the HTML.
+      if (!shown) {
+        return "";
+      }
+      const alt = block.props.alt?.trim() ? `[${block.props.alt}]` : "";
+      if (shown.line) {
+        return [alt, `${videoLabel(block.props)}: ${shown.url}`]
+          .filter(Boolean)
+          .join("\n");
+      }
+      return alt ? `${alt} (${shown.url})` : shown.url;
     }
     case "divider":
     case "spacer": {

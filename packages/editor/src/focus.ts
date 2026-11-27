@@ -156,9 +156,12 @@ const barControls = (bar: Element) =>
  * first control, such as a switch.
  */
 const popoverStart = (popover: Element | null | undefined) =>
+  // Of choices, the one chosen, as Tab reaches a group of them there.
+  popover?.querySelector<HTMLElement>('input[type="radio"]:checked') ??
   popover?.querySelector<HTMLElement>(
-    'input:not([type="color"], [type="checkbox"]), select'
-  ) ?? popover?.querySelector<HTMLElement>('input:not([type="color"]), button');
+    'input:not([type="color"], [type="checkbox"], [type="radio"]), select'
+  ) ??
+  popover?.querySelector<HTMLElement>('input:not([type="color"]), button');
 
 /**
  * Goes along the Selection bar's controls from `from`. In a field, only from

@@ -12,6 +12,8 @@ import {
   linkColor,
   menuLinks,
   MERGE_TAG,
+  videoLabel,
+  videoShown,
 } from "@mailquilt/core/internal";
 import type { ColumnProps, RowProps } from "@mailquilt/core/internal";
 
@@ -32,7 +34,8 @@ export type ProblemCode =
   | "no-language"
   | "no-unsubscribe-link"
   | "unknown-merge-tag"
-  | "vague-link-text";
+  | "vague-link-text"
+  | "video-without-link";
 
 /**
  * Something in an email that would go wrong for its readers. It never stops an
@@ -361,9 +364,15 @@ const lowContrast = (
           : []),
       ];
     }
-    case "menu": {
-      // Only the links the email shows, which are all links.
-      if (menuLinks(block.props).shown.length === 0) {
+    case "menu":
+    case "video": {
+      // Only the links the email shows, which are all links: a Menu's, and a
+      // Video's line.
+      if (
+        block.type === "menu"
+          ? menuLinks(block.props).shown.length === 0
+          : !videoShown(block.props)?.line
+      ) {
         return [];
       }
       const links = contrastOf(css.color as string, behind, css["font-size"]);
@@ -451,6 +460,11 @@ const linkTextsOf = (block: Block): [field: string, texts: string[]] => {
     case "menu": {
       return ["links", menuLinks(block.props).shown.map(({ label }) => label)];
     }
+    case "video": {
+      return videoShown(block.props)?.line
+        ? ["label", [videoLabel(block.props)]]
+        : ["", []];
+    }
     default: {
       return ["", []];
     }
@@ -471,6 +485,31 @@ const vagueLinks = (block: Block): BlockProblem[] => {
             "A link says only something like “click here”, which doesn't say where it goes to someone who hears or scans the email's links on their own.",
         },
       ];
+};
+
+/**
+ * A Block's props that are in the email: a Menu's links with a label and a
+ * URL, and a Video's link, alt text, the picture it shows and its line's
+ * words while it shows one, or nothing for a Video the email leaves out.
+ */
+const shownProps = (block: Block): Record<string, unknown> => {
+  if (block.type === "menu") {
+    return { ...block.props, links: menuLinks(block.props).shown };
+  }
+  if (block.type !== "video") {
+    return block.props;
+  }
+  const shown = videoShown(block.props);
+  if (!shown) {
+    return {};
+  }
+  const { alt, playThumbnail, thumbnail } = block.props;
+  return {
+    alt,
+    url: shown.url,
+    ...(shown.picture === thumbnail ? { thumbnail } : { playThumbnail }),
+    ...(shown.line ? { label: videoLabel(block.props) } : {}),
+  };
 };
 
 const blockProblems = (
@@ -501,6 +540,31 @@ const blockProblems = (
       }
       break;
     }
+    case "video": {
+      const { alt = "", thumbnail, url } = block.props;
+      // Left out until it has both, so its alt text doesn't matter yet.
+      if (url === undefined) {
+        problems.push({
+          code: "video-without-link",
+          field: "url",
+          message: "A Video has no link, so it's left out of the email.",
+        });
+      } else if (thumbnail === undefined) {
+        problems.push({
+          code: "image-without-src",
+          field: "thumbnail",
+          message: "A Video has no thumbnail, so it's left out of the email.",
+        });
+      } else if (alt.trim() === "") {
+        problems.push({
+          code: "image-without-alt",
+          field: "alt",
+          message:
+            "A Video's thumbnail has no alt text, so readers who can't see it, or whose email client blocks images, don't know what the link is.",
+        });
+      }
+      break;
+    }
     case "button": {
       if (block.props.href === undefined) {
         problems.push({
@@ -516,13 +580,9 @@ const blockProblems = (
   problems.push(
     ...lowContrast(block, behind, style),
     ...vagueLinks(block),
-    // A Menu's link without a label or a URL isn't in the email.
-    ...unknownMergeTags(
-      block.type === "menu"
-        ? { ...block.props, links: menuLinks(block.props).shown }
-        : block.props,
-      knownTags
-    )
+    // A Menu's link without a label or a URL isn't in the email, nor what a
+    // Video doesn't show.
+    ...unknownMergeTags(shownProps(block), knownTags)
   );
   return problems;
 };
@@ -606,9 +666,11 @@ export const checkEmail = async (
           behindBlocks
         );
         // An Image with no image is left out, with its link, as is a Menu's
-        // link without a label.
+        // link without a label and a Video without a thumbnail.
         if (block.type === "menu") {
           links.push(...linksIn(menuLinks(block.props).shown));
+        } else if (block.type === "video") {
+          links.push(...linksIn({ url: videoShown(block.props)?.url }));
         } else if (block.type !== "image" || block.props.src !== undefined) {
           links.push(...linksIn(block.props));
         }

@@ -4,6 +4,8 @@ import {
   loadCopied,
   menuLinks,
   SOCIAL_NETWORKS,
+  videoLabel,
+  videoShown,
 } from "@mailquilt/core/internal";
 import type { BlockProps, PasteRefusalCode } from "@mailquilt/core/internal";
 import { DOMSerializer } from "prosemirror-model";
@@ -50,6 +52,13 @@ const textOf = (block: Block) => {
     return linksOf(block)
       .map(({ label, url }) => `${label}: ${url}`)
       .join("\n");
+  }
+  if (block.type === "video") {
+    // As the export has it: its line's words and its link, once it shows.
+    const shown = videoShown(block.props);
+    return shown?.line
+      ? `${videoLabel(block.props)}: ${shown.url}`
+      : (shown?.url ?? "");
   }
   return block.type === "image" ? (block.props.alt ?? "") : "";
 };
@@ -102,6 +111,21 @@ const htmlOf = (doc: Document, block: Block): Node[] => {
         image.width = width;
       }
       return [linked(doc, href, image)];
+    }
+    case "video": {
+      // Its picture, linked to it, and its line, as the export has them.
+      const shown = videoShown(block.props);
+      if (!shown) {
+        return [];
+      }
+      const image = doc.createElement("img");
+      image.src = shown.picture;
+      image.alt = block.props.alt ?? "";
+      const line = doc.createElement("p");
+      line.append(
+        linked(doc, shown.url, doc.createTextNode(videoLabel(block.props)))
+      );
+      return [linked(doc, shown.url, image), ...(shown.line ? [line] : [])];
     }
     case "divider": {
       return [doc.createElement("hr")];

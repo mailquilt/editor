@@ -723,7 +723,10 @@ const CHECKS: readonly {
   needs?: "mergeTags" | "unsubscribe";
 }[] = [
   { codes: ["image-without-alt"], passed: "passed.imageAlt" },
-  { codes: ["button-without-link"], passed: "passed.links" },
+  {
+    codes: ["button-without-link", "video-without-link"],
+    passed: "passed.links",
+  },
   { codes: ["image-without-src"], passed: "passed.imageSrc" },
   { codes: ["empty-preheader"], passed: "passed.preheader" },
   {
@@ -804,6 +807,25 @@ const WORDS: Readonly<
     fix: "problem.linkTextFix",
     title: "problem.linkText",
     why: "problem.linkTextWhy",
+  },
+  "video-without-link": {
+    fix: "problem.videoLinkFix",
+    title: "problem.videoLink",
+    why: "problem.videoLinkWhy",
+  },
+};
+
+/** A Video's words for the Problems it shares with an Image, as its picture is a thumbnail. */
+const VIDEO_WORDS: Partial<typeof WORDS> = {
+  "image-without-alt": {
+    fix: "problem.imageAltFix",
+    title: "problem.videoAlt",
+    why: "problem.videoAltWhy",
+  },
+  "image-without-src": {
+    fix: "problem.videoThumbnailFix",
+    title: "problem.videoThumbnail",
+    why: "problem.videoThumbnailWhy",
   },
 };
 
@@ -1323,7 +1345,13 @@ const valuesOf = (
 /** A Problem's title and why, for the note beside the field its fix focuses. */
 const problemWords = (problem: Problem, view: CheckView, checked: Checked) => {
   const { text, email } = view;
-  const words = WORDS[problem.code];
+  const block =
+    problem.blockId === undefined
+      ? undefined
+      : locate(email, problem.blockId)?.block;
+  const words =
+    (block?.type === "video" ? VIDEO_WORDS[problem.code] : undefined) ??
+    WORDS[problem.code];
   const where = whereOf(problem, email, text);
   const values = valuesOf(problem, view, checked, where.values);
   return {

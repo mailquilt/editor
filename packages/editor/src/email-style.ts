@@ -1,5 +1,5 @@
 import type { Block, BlocksDocument, EmailStyle } from "@mailquilt/core";
-import { blockStyles, hexColor } from "@mailquilt/core/internal";
+import { blockStyles, hexColor, videoLook } from "@mailquilt/core/internal";
 
 import { blocksIn } from "./positions.js";
 
@@ -79,6 +79,10 @@ type Reached = { own?: string } | undefined;
 
 const isText = ({ type }: Block) => type === "text" || type === "heading";
 
+/** A Video whose line under its picture shows. */
+const hasVideoLine = (block: Block) =>
+  block.type === "video" && videoLook(block.props).line;
+
 const headingSize =
   (level: 1 | 2 | 3) =>
   (block: Block): Reached =>
@@ -97,11 +101,12 @@ const REACHES: Record<
   buttonBackgroundColor: ({ type }) =>
     type === "button" ? { own: "backgroundColor" } : undefined,
   buttonBorderRadius: ({ type }) => (type === "button" ? {} : undefined),
-  fontFamily: ({ type }, style) =>
-    type === "text" ||
-    type === "button" ||
-    type === "menu" ||
-    (type === "heading" && style.headingFontFamily === undefined)
+  fontFamily: (block, style) =>
+    block.type === "text" ||
+    block.type === "button" ||
+    block.type === "menu" ||
+    hasVideoLine(block) ||
+    (block.type === "heading" && style.headingFontFamily === undefined)
       ? {}
       : undefined,
   heading1FontSize: headingSize(1),
@@ -109,13 +114,16 @@ const REACHES: Record<
   heading3FontSize: headingSize(3),
   headingFontFamily: ({ type }) => (type === "heading" ? {} : undefined),
   linkColor: (block) =>
-    isText(block) && hasLink((block.props as { content: unknown }).content)
+    hasVideoLine(block) ||
+    (isText(block) && hasLink((block.props as { content: unknown }).content))
       ? { own: "color" }
       : undefined,
   // Text that's all links shows the links' color while Email style sets one.
   // A Menu's links are in the text's color, not the links'.
+  // A Video's line is a link, in the text's color while there's no links' color.
   textColor: (block, style) =>
     block.type === "menu" ||
+    (hasVideoLine(block) && style.linkColor === undefined) ||
     (isText(block) &&
       !(
         style.linkColor !== undefined &&
@@ -124,11 +132,13 @@ const REACHES: Record<
       ))
       ? { own: "color" }
       : undefined,
-  textFontSize: ({ type }) => {
-    if (type === "button") {
+  textFontSize: (block) => {
+    if (block.type === "button" || hasVideoLine(block)) {
       return {};
     }
-    return type === "text" || type === "menu" ? { own: "fontSize" } : undefined;
+    return block.type === "text" || block.type === "menu"
+      ? { own: "fontSize" }
+      : undefined;
   },
 };
 

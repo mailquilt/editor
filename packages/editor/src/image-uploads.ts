@@ -16,7 +16,7 @@ type Why = StringId | { message: string };
 
 /**
  * Uploads through the Host app's `uploadImage`, each for one Image Block, from
- * the Image settings or a drop, and why a Block's last one failed. A Block
+ * the Image settings or a drop, or for a Video's thumbnail, from its settings, and why a Block's last one failed. A Block
  * shows "Uploading…" while its upload runs, and takes the URL in one Command
  * when it's done. An upload is aborted only when its Block is gone, so an abort
  * never leaves an empty Block.
@@ -31,7 +31,10 @@ interface UploadsHost {
   /** Selects a Block that's taken a dropped file. */
   select: (blockId: string) => void;
   uploadImage: () => HostAppProperties["uploadImage"];
-  /** Sets an Image Block's URL, which the Image URL's check can refuse. */
+  /**
+   * Sets an Image Block's URL, or a Video's thumbnail, which the URL's check
+   * can refuse.
+   */
   setImage: (blockId: string, url: string) => ApplyResult | undefined;
   /** The email as it is now. */
   email: () => BlocksDocument | undefined;
@@ -60,10 +63,13 @@ export const createImageUploads = ({
   const messageOf = (why: Why) =>
     typeof why === "string" ? text(why) : why.message;
 
-  /** The Image Block's URL, if it has one. */
+  /** The Image Block's URL, or a Video's thumbnail, if it has one. */
   const srcOf = (blockId: string) => {
     const email = current();
     const block = email && locate(email, blockId)?.block;
+    if (block?.type === "video") {
+      return block.props.thumbnail;
+    }
     return block?.type === "image" ? block.props.src : undefined;
   };
 

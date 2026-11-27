@@ -22,6 +22,7 @@ export const STRINGS = {
   "block.social": "Social",
   "block.spacer": "Spacer",
   "block.text": "Text",
+  "block.video": "Video",
 
   // Key names in tooltips and in what a screen reader is told to press.
   "key.alt": "Alt",
@@ -99,6 +100,11 @@ export const STRINGS = {
   "social.noUrls": "No social link has a URL yet",
   "social.iconWithoutUrl": "{network}, no URL yet",
   "menu.noLinks": "Add the links this menu shows",
+  "video.empty": "Add a video",
+  "video.emptyWhy":
+    "Paste its link in the bar above, then add a thumbnail. Readers click the thumbnail to watch it, since email can’t play video.",
+  "video.noThumbnail": "Add a thumbnail",
+  "video.addingPlay": "Adding the play button…",
 
   // The format bar and its link field.
   "format.bar": "Text formatting",
@@ -160,6 +166,13 @@ export const STRINGS = {
   "bar.thickness": "Thickness",
   "bar.height": "Height",
   "bar.links": "Links",
+  "bar.videoUrl": "Paste a link to the video",
+  "bar.thumbnail": "Thumbnail",
+  "bar.addThumbnail": "Add a thumbnail",
+  "bar.thumbnailWaits": "Paste the video’s link first",
+  "bar.describeThumbnail": "Describe the thumbnail",
+  "bar.playButton": "Play button",
+  "bar.uploadThumbnail": "Upload a thumbnail",
   "bar.columns": "Columns",
   "bar.layout": "{layout} layout",
   "bar.padding": "Padding",
@@ -342,7 +355,34 @@ export const STRINGS = {
   "field.language.description":
     "A language code, such as en or pt-BR, or one Merge Tag.",
   "field.level": "Level",
+  "field.lineColor": "Line color",
   "field.link": "Link",
+  "field.play": "Play button",
+  "field.thumbnail": "Thumbnail URL",
+  "field.thumbnail.description":
+    "A URL, or a Merge Tag such as {{video_thumbnail}}. A YouTube link fills it in.",
+  "field.videoAlt.description":
+    "What the thumbnail shows. A screen reader says it for the link to the video.",
+  "field.videoLabel": "Line text",
+  "field.videoUrl": "Video link",
+  "field.videoUrl.description":
+    "Where readers watch it, or a Merge Tag such as {{video_url}}.",
+  "play.below": "Below the picture",
+  "play.below.description":
+    "A line under it, with a play mark and its words. Works in every email app.",
+  "play.on": "On the picture",
+  "play.on.description":
+    "A play button drawn into a copy of the thumbnail, uploaded for you.",
+  "play.on.noUploads": "Needs image uploads, which this app doesn’t offer.",
+  "play.none": "None",
+  "play.none.description":
+    "Just the picture. Some readers won’t know it’s a video.",
+  "play.failed": "The play button couldn’t be added",
+  "play.cantDraw":
+    "{site} doesn’t let the editor draw on its pictures. Upload the thumbnail instead, or keep the line below it.",
+  "play.cantDrawThis":
+    "The editor can’t draw on this picture. Upload the thumbnail instead, or keep the line below it.",
+  "play.added": "Play button added.",
   "field.link.description": "A URL, or a Merge Tag such as {{cta_url}}.",
   "field.link.needsAltText":
     "Add alt text first, as a screen reader says it for the link.",
@@ -397,6 +437,8 @@ export const STRINGS = {
     "Use a URL that starts with https:, http:, mailto: or tel:, such as https://example.com, or a Merge Tag such as {{cta_url}}.",
   "invalid.menuLabel": "Enter the words the link shows.",
   "invalid.menuLinks": "Give each link words to show, and a URL.",
+  "invalid.play": "Choose a play button from the list.",
+  "invalid.videoLabel": "Enter the words the line shows.",
   "invalid.pixelsAtLeast": "Use a whole number of pixels, {min} or more.",
   "invalid.pixelsBetween": "Use a whole number from {min} to {max}.",
   "invalid.preheader": "Use plain text.",
@@ -546,9 +588,9 @@ export const STRINGS = {
   "check.testFailed": "The test wasn't sent. Try again.",
 
   // Each check that passed, in Check's list.
-  "passed.imageAlt": "Every Image has alt text or is decorative",
-  "passed.links": "Every Button and link goes somewhere",
-  "passed.imageSrc": "Every Image has an image",
+  "passed.imageAlt": "Every Image and thumbnail has alt text or is decorative",
+  "passed.links": "Every Button, Video and link goes somewhere",
+  "passed.imageSrc": "Every Image has an image, and every Video a thumbnail",
   "passed.preheader": "Preheader is set",
   "passed.mergeTags": "Every Merge Tag will be filled in",
   "passed.size": "{size} KB, under Gmail's 102 KB cut-off",
@@ -565,6 +607,17 @@ export const STRINGS = {
   "problem.imageAltWhy":
     "If images are blocked, or for screen readers, Row {row} says nothing.",
   "problem.imageAltFix": "Add alt text",
+  "problem.videoThumbnail": "Video has no thumbnail",
+  "problem.videoThumbnailWhy":
+    "It’s left out of the email, so readers don’t see Row {row}’s video.",
+  "problem.videoThumbnailFix": "Add a thumbnail",
+  "problem.videoAlt": "Video’s thumbnail has no alt text",
+  "problem.videoAltWhy":
+    "If images are blocked, or for screen readers, the link to the video in Row {row} says nothing.",
+  "problem.videoLink": "Video has no link",
+  "problem.videoLinkWhy":
+    "It’s left out of the email until it has one, so readers don’t see Row {row}’s video.",
+  "problem.videoLinkFix": "Add the link",
   "problem.buttonLink": "“{label}” has no link",
   "problem.buttonLinkWhy": "Readers who click it go nowhere.",
   "problem.buttonLinkFix": "Add link",
