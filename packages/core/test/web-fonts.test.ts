@@ -231,6 +231,8 @@ describe(fontFamilyNames, () => {
     [`"Brand, Sans",Arial`, ["Brand, Sans", "Arial"]],
     [`Arial, 'Brand, Sans', serif`, ["Arial", "Brand, Sans", "serif"]],
     ["  Open Sans  ", ["Open Sans"]],
+    // CSS reads an unquoted name's spaces as one, but not a quoted name's.
+    ["Open   Sans, 'Brand  Sans'", ["Open Sans", "Brand  Sans"]],
   ])("reads %s as its families", (stack, names) => {
     expect(fontFamilyNames(stack)).toStrictEqual(names);
   });

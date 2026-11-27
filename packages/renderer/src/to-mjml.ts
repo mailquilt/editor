@@ -5,6 +5,7 @@ import {
   blockStyles,
   columnStyles,
   EMAIL_LOOK,
+  fontFamilyNames,
   linkColor,
   menuLinks,
   onPhone,
@@ -554,11 +555,23 @@ export const toMjml = (
   const preheader = settings.preheader
     ? `<mj-preview>${escapeText(settings.preheader)}</mj-preview>`
     : "";
-  // MJML loads each only where a font-family in the HTML names it, so a heading
-  // font in an email with no Heading isn't loaded. The URL isn't escaped, as
-  // MJML writes it as it is into an @import's url() too, where &amp; would stay
-  // &amp;. Core checked that it holds nothing to end either, and the name too.
+  // Only the fonts the email is drawn in, by whole name, as MJML would load
+  // Inter for a font-family naming Inter Tight. The heading font draws only
+  // Headings. The URL isn't escaped, as MJML writes it as it is into an
+  // @import's url() too, where &amp; would stay &amp;. Core checked that it
+  // holds nothing to end either, and the name too.
+  const drawnIn = new Set(
+    [
+      settings.fontFamily,
+      ...(things.some((thing) => "type" in thing && thing.type === "heading")
+        ? [context.headingFontFamily]
+        : []),
+    ]
+      .flatMap(fontFamilyNames)
+      .map((name) => name.toLowerCase())
+  );
   const fonts = (settings.fonts ?? [])
+    .filter(({ name }) => drawnIn.has(name.toLowerCase()))
     .map(({ name, url }) => `<mj-font name="${name}" href="${url}" />`)
     .join("");
   const mjml = `<mjml${language}>

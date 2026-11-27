@@ -34,11 +34,15 @@ export const fontFamilySchema = v.pipe(
 /**
  * The families a font family names, in order, without their quotes, which
  * `fontFamilySchema` has checked close. A comma inside quotes is part of a name.
+ * An unquoted name's spaces are one, as CSS reads them.
  * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
  */
 export const fontFamilyNames = (fontFamily: string) =>
   (fontFamily.match(/\s*(?:'[^']*'|"[^"]*"|[^,]+)/gu) ?? [])
-    .map((name) => name.trim().replaceAll(/^["']|["']$/gu, ""))
+    .map((name) => name.trim())
+    .map((name) =>
+      /^["']/u.test(name) ? name.slice(1, -1) : name.replaceAll(/\s+/gu, " ")
+    )
     .filter(Boolean);
 
 /**

@@ -60,6 +60,23 @@ describe("an email with web fonts", () => {
     expect(html).not.toContain("brand.css");
   });
 
+  // MJML would find Inter in a font-family naming Inter Tight.
+  it("doesn't load a heading font in an email with no Heading, though its name is part of the body font's", async () => {
+    const email = withFonts({ props: text("Hello"), type: "text" });
+    const tight = {
+      name: "Inter Tight",
+      url: "https://fonts.googleapis.com/css2?family=Inter+Tight",
+    };
+    email.settings.fontFamily = "'Inter Tight', Arial, sans-serif";
+    email.settings.style = { headingFontFamily: "'Inter', Arial, sans-serif" };
+    email.settings.fonts = [INTER, tight];
+
+    const html = await renderEmail(email);
+
+    expect(html).toContain(tight.url);
+    expect(html).not.toContain(INTER.url);
+  });
+
   it("loads no font from anywhere when it has none", async () => {
     const html = await renderEmail(
       emailWith({ props: text("Hello"), type: "text" })

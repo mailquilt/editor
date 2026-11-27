@@ -98,8 +98,9 @@ const loads = new Map<string, { done: Promise<void>; state: FontLoad }>();
 const keyOf = ({ name, url }: WebFont) => `${url} ${name}`;
 
 /**
- * Whether the font loaded: its stylesheet did, and no face of it that the page
- * asks for failed. A face for other letters only, such as a subset for one
+ * Whether the font loaded: its stylesheet did, and its regular face, which
+ * load() asks for, didn't fail. A face asked for later, such as its bold, isn't
+ * watched. A face for other letters only, such as a subset for one
  * script, isn't asked for until they're drawn, so it counts as loaded, and so
  * does a name the stylesheet doesn't declare, which shows the fallback.
  */
