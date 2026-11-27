@@ -52,9 +52,45 @@ jobs:
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
+  # A pull request that changes only files no check reads, such as the agent
+  # docs, ADRs and changesets, is linted and has its changesets checked, and the
+  # rest is skipped. The jobs still run, as their names are required checks, and
+  # their steps are what is skipped. A push to main is always checked in full.
+  changes:
+    name: Files to check
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      tested: ${{ steps.files.outputs.tested }}
+    steps:
+      # A pull request's checkout merges it into main, so the merge's first
+      # parent is main and the diff between them is the pull request's.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - id: files
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" != "pull_request" ]; then
+            echo "tested=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed=$(git diff --name-only HEAD^1 HEAD)
+          # README.md and PROJECT.md aren't here, as the install checks read their CDN URLs.
+          tested=$(echo "$changed" | grep -vE '^(docs/|\.changeset/[^/]+\.md$|(AGENTS|CLAUDE|CONTRIBUTING|GLOSSARY|SECURITY)\.md$|\.coderabbit\.yaml$)' || true)
+          if [ -z "$changed" ] || [ -n "$tested" ]; then
+            echo "tested=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Only files no check reads changed, so the build and tests are skipped."
+            echo "tested=false" >> "$GITHUB_OUTPUT"
+          fi
+
   check:
     name: Lint, types, unit tests and install checks
-    needs: playwright
+    needs: [playwright, changes]
     runs-on: ubuntu-latest
     container:
       image: mcr.microsoft.com/playwright:v${{ needs.playwright.outputs.version }}-noble
@@ -84,21 +120,17 @@ jobs:
             pnpm changeset status --since=origin/main
           fi
       - run: pnpm lint
-      - run: pnpm build
-      - run: pnpm check-types
-      - run: pnpm turbo run test --filter=@mailquilt/core --filter=@mailquilt/renderer --filter=@repo/install-checks
+      - if: ${{ needs.changes.outputs.tested == 'true' }}
+        run: pnpm build
+      - if: ${{ needs.changes.outputs.tested == 'true' }}
+        run: pnpm check-types
+      - if: ${{ needs.changes.outputs.tested == 'true' }}
+        run: pnpm turbo run test --filter=@mailquilt/core --filter=@mailquilt/renderer --filter=@repo/install-checks
         env:
           CI: true
       # The editor's code that needs no page. Its other tests run in the browsers below.
-      - run: pnpm turbo run test:unit --filter=@mailquilt/editor
-      # core and renderer support Node 22 too, so what runs in Node runs there
-      # again. Turbo's cache doesn't know the Node version, hence --force.
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: 22
-      - run: pnpm turbo run test --force --filter=@mailquilt/core --filter=@mailquilt/renderer --filter=@repo/install-checks
-        env:
-          CI: true
+      - if: ${{ needs.changes.outputs.tested == 'true' }}
+        run: pnpm turbo run test:unit --filter=@mailquilt/editor
       # A failed install check leaves its screenshot, error snapshot and trace.
       - if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -108,9 +140,46 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  # core and renderer support Node 22 too, so what runs in Node runs there
+  # again, in a job of its own so it runs beside the one above. The install is
+  # on Node 24, which the repo's own tools need, and the build and tests on 22.
+  node-22:
+    name: Node 22 tests
+    needs: [playwright, changes]
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v${{ needs.playwright.outputs.version }}-noble
+      options: --user 1001
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - if: ${{ needs.changes.outputs.tested == 'true' }}
+        run: pnpm install --frozen-lockfile
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - if: ${{ needs.changes.outputs.tested == 'true' }}
+        run: pnpm turbo run test --filter=@mailquilt/core --filter=@mailquilt/renderer --filter=@repo/install-checks
+        env:
+          CI: true
+      - if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: install-check-results-node-22
+          path: packages/install-checks/test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+
   browsers:
     name: Browser tests (${{ matrix.browser }} ${{ matrix.shard }}/2)
-    needs: playwright
+    needs: [playwright, changes]
     runs-on: ubuntu-latest
     container:
       image: mcr.microsoft.com/playwright:v${{ needs.playwright.outputs.version }}-noble
@@ -128,9 +197,11 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      - if: ${{ needs.changes.outputs.tested == 'true' }}
+        run: pnpm install --frozen-lockfile
       # One suite at a time, as each builds and serves its own page first.
-      - run: >-
+      - if: ${{ needs.changes.outputs.tested == 'true' }}
+        run: >-
           pnpm turbo run test --concurrency=1 --filter=@mailquilt/editor --filter=@mailquilt/react --filter=docs -- --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/2
         env:
           CI: true
@@ -146,13 +217,13 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-  # A commit on main that both jobs above passed publishes any package whose
+  # A commit on main that every job above passed publishes any package whose
   # version isn't on npm yet, so only the version pull request's merge publishes
   # anything. npm trusts this workflow as the packages' publisher, so no token is
   # kept, and each package gets provenance that names the commit it came from.
   release:
     name: Publish to npm
-    needs: [check, browsers]
+    needs: [check, node-22, browsers]
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15

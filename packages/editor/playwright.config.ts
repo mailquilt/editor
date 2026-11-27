@@ -15,6 +15,9 @@ export default defineConfig({
   ],
   retries: process.env.CI ? 2 : 0,
   testDir: "browser-tests",
+  // CI's runners have four cores, and Playwright's default of half of them made
+  // the browser jobs the slowest in CI. Locally it keeps the default.
+  workers: process.env.CI ? 4 : undefined,
   use: {
     baseURL: `http://localhost:${port}`,
     // Kept for a test that fails, even when a retry then passes, as CI keeps them.
