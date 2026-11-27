@@ -277,7 +277,7 @@ const menuToMjml = (
   const cell = `padding:0px ${linkPadding}px;`;
   const links = shown.map(
     ({ label, url }) =>
-      `<a href="${escapeAttribute(url)}" style="${escapeAttribute(`display:inline-block;color:${color};font-family:${fontFamily};font-size:${fontSize};line-height:${lineHeight};text-decoration:none;${cell}`)}">${plainTextToHtml(label)}</a>`
+      `<a href="${escapeAttribute(url)}" style="${escapeAttribute(`display:inline-block;color:${color};font-family:${fontFamily};font-size:${fontSize};line-height:${lineHeight};text-decoration:none;word-break:break-word;overflow-wrap:anywhere;${cell}`)}">${plainTextToHtml(label)}</a>`
   );
   return `<mj-text${attributes} padding="${blockPadding}"><div style="font-size:0px !important;line-height:0px !important;"><!--[if mso | IE]><table role="presentation" border="0" cellpadding="0" cellspacing="0" align="${align}"><tr><td style="${cell}"><![endif]-->${links.join(` <!--[if mso | IE]></td><td style="${cell}"><![endif]-->`)}<!--[if mso | IE]></td></tr></table><![endif]--></div></mj-text>`;
 };

@@ -250,6 +250,18 @@ describe(checkEmail, () => {
       ).resolves.toStrictEqual(["image-without-src", "no-unsubscribe-link"]);
     });
 
+    it("doesn't read the tags of a Menu's link the email leaves out", async () => {
+      await expect(
+        codes(
+          ready({
+            props: { links: [{ url: "{{orders_ur}}" }] },
+            type: "menu",
+          }),
+          { mergeTags: [{ name: "first_name" }] }
+        )
+      ).resolves.toStrictEqual([]);
+    });
+
     // A Menu's link without a label is left out of the email.
     it("doesn't count a Menu's link without a label", async () => {
       await expect(

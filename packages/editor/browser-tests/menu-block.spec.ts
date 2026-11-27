@@ -10,6 +10,7 @@ import {
   blocks,
   canvas,
   change,
+  checkPanel,
   exportHtml,
   inboxEmail,
   openCheck,
@@ -61,6 +62,7 @@ test("a new Menu says what goes in it, and the bar's Add link adds a link whose 
   await page.goto("/");
   await addBlock(page, "Menu");
   await expect(menu(page)).toContainText("Add the links this menu shows");
+  expect(await violations(page)).toStrictEqual([]);
 
   await selectionBar(page)
     .getByRole("button", { exact: true, name: "Add link" })
@@ -138,6 +140,23 @@ test("the space between links is set in the Selection bar", async ({
   );
 
   expect(await blockProps(page)).toMatchObject({ gap: 30 });
+});
+
+test("Check's fix for a link that says too little opens the Links with focus in that link's label", async ({
+  page,
+}) => {
+  await openMenu(page, {
+    links: [SHOP, { label: "Learn more", url: "https://northbound.co/about" }],
+  });
+  await openCheck(page);
+
+  await checkPanel(page)
+    .getByRole("listitem")
+    .filter({ hasText: "“Learn more” doesn't say where it goes" })
+    .getByRole("button", { name: "Change the text" })
+    .click();
+
+  await expect(linkField(page, "Learn more Label")).toBeFocused();
 });
 
 test.describe("the links in the Links popover", () => {

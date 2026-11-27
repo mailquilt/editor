@@ -89,7 +89,7 @@ The promise gives an array of Problems in the email's order: its settings first,
 | `low-link-contrast` | The links in a Text Block or Heading are in a color of their own, from Email style, with less contrast than that. A URL or email address written in the text counts, as the renderer links it. A Menu's links, which are all links, are checked in its color. | `color` |
 | `low-button-contrast` | A Button's label has less contrast than that with the Button's color. | `color` |
 | `vague-link-text` | A link, a Button or a Menu's link says only "click here", "here", "read more", "learn more", "link" or "this link", in any case and with any punctuation. It checks these English phrases only. | `content`, `label` or `links` |
-| `unknown-merge-tag` | A Merge Tag isn't in your `mergeTags`, such as a typo like `{{frist_name}}`. One for each tag in each place it's found. | Where the tag is, such as `content`, `href` or `preheader` |
+| `unknown-merge-tag` | A Merge Tag isn't in your `mergeTags`, such as a typo like `{{frist_name}}`. One for each tag in each place it's found. A Menu's link without a label or a URL is left out of the email, so its tags aren't checked. | Where the tag is, such as `content`, `href` or `preheader` |
 | `html-too-large` | The HTML is over 102 KB, counted in bytes, so Gmail cuts it off and hides the rest behind a link. | None |
 | `no-unsubscribe-link` | No link in the email goes to a Merge Tag you marked `unsubscribe`. A link counts when the tag is anywhere in its URL, and not when it's on an Image with no image, or a Menu's link with no label, which are left out of the email. | None |
 

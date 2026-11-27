@@ -54,7 +54,7 @@ import {
   renderSettingsPanel,
   typedIn,
 } from "./settings-panel.js";
-import type { SettingsSection } from "./settings-panel.js";
+import type { ListPart, SettingsSection } from "./settings-panel.js";
 import type { StringId } from "./strings.js";
 import { styleProperties } from "./style-properties.js";
 import { blockTypeName } from "./text.js";
@@ -1029,9 +1029,20 @@ const IN_MORE = "more-";
 /** The Block section's ID, which keeps what's typed with the Block it's for. */
 const BLOCK_SECTION_ID = "block";
 
-/** Where what's typed in a selected Block's field is kept. */
-export const blockDraftKey = (blockId: string, fieldKey: string) =>
-  draftKey({ id: BLOCK_SECTION_ID, targetId: blockId }, { key: fieldKey });
+/**
+ * Where what's typed in a selected Block's field is kept, or in a list
+ * field, in one of an item's fields.
+ */
+export const blockDraftKey = (
+  blockId: string,
+  fieldKey: string,
+  part?: ListPart
+) =>
+  draftKey(
+    { id: BLOCK_SECTION_ID, targetId: blockId },
+    { key: fieldKey },
+    part
+  );
 
 /**
  * Opens the file picker, with only the types an upload takes. The picker is
@@ -2160,6 +2171,8 @@ const renderAddFirst = (
 ) => html`
   <span class="bar-anchor">
     <button
+      aria-expanded="false"
+      aria-haspopup="dialog"
       class="text-button primary add-first"
       data-action=${control.id}
       tabindex=${inMore ? "0" : "-1"}

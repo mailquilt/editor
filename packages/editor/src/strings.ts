@@ -275,6 +275,8 @@ export const STRINGS = {
   "style.own.textSizeWhy": "Other body text is {shared}.",
   "style.own.textSizeShare": "Make all body text {own}",
   "style.own.textColor": "This Text’s color is {own}",
+  "style.own.menuSize": "This Menu is {own}",
+  "style.own.menuColor": "This Menu’s links are {own}",
   "style.own.colorWhy": "Other text is {shared}.",
   "style.own.colorShare": "Make all text {own}",
   "style.own.button": "This Button is {own}",

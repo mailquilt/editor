@@ -516,7 +516,13 @@ const blockProblems = (
   problems.push(
     ...lowContrast(block, behind, style),
     ...vagueLinks(block),
-    ...unknownMergeTags(block.props, knownTags)
+    // A Menu's link without a label or a URL isn't in the email.
+    ...unknownMergeTags(
+      block.type === "menu"
+        ? { ...block.props, links: menuLinks(block.props).shown }
+        : block.props,
+      knownTags
+    )
   );
   return problems;
 };

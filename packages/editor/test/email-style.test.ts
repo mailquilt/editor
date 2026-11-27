@@ -213,6 +213,49 @@ describe("what an Email style setting reaches", () => {
   });
 });
 
+/** The email above, with a Menu and one with a color and size of its own. */
+const withMenus = () => {
+  const value = email();
+  value.rows[0]?.columns[0]?.blocks.push(
+    { id: "menu", props: { links: [] }, type: "menu" },
+    {
+      id: "menuOwn",
+      props: { color: "#3b2a20", fontSize: 13, links: [] },
+      type: "menu",
+    }
+  );
+  return value;
+};
+
+describe("what an Email style setting reaches in a Menu", () => {
+  it.each(["textColor", "textFontSize", "fontFamily"] as const)(
+    "%s changes a Menu without a value of its own",
+    (key) => {
+      expect(reachOf(key, withMenus()).changes).toContain("menu");
+    }
+  );
+
+  it("its own color and size win, as the Style panel says", () => {
+    expect(reachOf("textColor", withMenus()).keeps).toContainEqual({
+      id: "menuOwn",
+      value: "#3b2a20",
+    });
+    expect(
+      ownValuesOf(
+        {
+          id: "m",
+          props: { color: "#3b2a20", fontSize: 13, links: [] },
+          type: "menu",
+        },
+        {}
+      )
+    ).toStrictEqual([
+      { key: "textFontSize", own: 13, prop: "fontSize", shared: 16 },
+      { key: "textColor", own: "#3b2a20", prop: "color", shared: "#000000" },
+    ]);
+  });
+});
+
 /** A Block of the email above, by its ID. */
 const blockOf = (id: string) => {
   const found = email().rows[0]?.columns[0]?.blocks.find(

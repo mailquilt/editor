@@ -116,9 +116,13 @@ export const blockTypeStyles = css`
     opacity: 0.35;
   }
 
-  /* Only on the canvas: the slot a new Menu's links go in. */
+  /*
+   * Only on the canvas: the slot a new Menu's links go in, on a light fill of
+   * its own, as the other stand-ins have, so it reads on a dark Row too.
+   */
   .menu-placeholder {
     align-items: center;
+    background: #f4f5f7;
     border: 1px dashed #a1a1aa;
     border-radius: 4px;
     color: #52525b;
