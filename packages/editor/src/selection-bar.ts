@@ -298,6 +298,22 @@ export const selectionBarStyles = css`
     margin-inline: var(--mq-space-1);
   }
 
+  /* A switch, its name, and while it's on, what that means. */
+  .bar-switch {
+    align-items: center;
+    gap: var(--mq-space-2);
+    margin-inline: var(--mq-space-1);
+  }
+
+  .bar-switch label {
+    cursor: pointer;
+    font-weight: 500;
+  }
+
+  .bar-switch .means {
+    color: var(--mq-color-text-muted);
+  }
+
   /*
    * Under a field, what's wrong with what was typed, or the Merge Tags it
    * takes. Over the email, as the bar's popovers are.
@@ -743,8 +759,9 @@ export const selectionBarStyles = css`
 
   /*
    * Where the bar is short of room, its own actions are in More instead, and
-   * only there, and then a button with words shows its icon, its words kept
-   * for screen readers. fitSelectionBar says which.
+   * only there, then a switch's meaning goes, and then a button with words
+   * shows its icon. Each is kept for screen readers. fitSelectionBar says
+   * which.
    */
   .more-action.narrow-only {
     display: none;
@@ -758,6 +775,9 @@ export const selectionBarStyles = css`
     display: grid;
   }
 
+  .selection-bar:is([data-compact="means"], [data-compact="words"])
+    .bar-switch
+    > .means,
   .selection-bar[data-compact="words"] .bar-button[aria-haspopup] > .words {
     clip-path: inset(50%);
     height: 1px;
@@ -1210,6 +1230,8 @@ type Control =
   | { kind: "number"; key: string; label?: StringId }
   /** A color's swatch and name, which opens its field. */
   | { kind: "color"; key: string; label: StringId }
+  /** A switch with its name, and while it's on, what that means. */
+  | { kind: "toggle"; key: string; whenOn?: StringId }
   /** One of a few, as a track of buttons, each its icon or a short name. */
   | {
       kind: "choice";
@@ -1227,6 +1249,8 @@ type Control =
       label?: (values: Record<string, unknown>, text: Text) => string;
       name: StringId;
       grid?: boolean;
+      /** Why it can't open, which its tooltip says, as it stays reachable. */
+      offWhy?: StringId;
     }
   /** A Row's layout, as its Columns. */
   | { kind: "layout" }
@@ -1385,7 +1409,7 @@ const CONTROLS: Readonly<
     { key: "color", kind: "color", label: "bar.color" },
     ALIGN,
   ],
-  image: ({ src }) =>
+  image: ({ decorative, src }) =>
     src === undefined
       ? [
           { kind: "upload" },
@@ -1401,6 +1425,9 @@ const CONTROLS: Readonly<
         ]
       : [
           { kind: "upload" },
+          // While it's on, what it means takes the place of the alt text,
+          // which a decorative Image doesn't have, as frame `d01` draws it.
+          { key: "decorative", kind: "toggle", whenOn: "bar.decorative" },
           { key: "alt", kind: "text", label: "bar.alt", width: 230 },
           {
             icon: ICONS.width,
@@ -1419,6 +1446,7 @@ const CONTROLS: Readonly<
             keys: ["href"],
             kind: "popover",
             name: "field.link",
+            offWhy: decorative ? "field.link.decorative" : undefined,
           },
         ],
   row: (columns) => [
@@ -1700,6 +1728,61 @@ const renderNumberControl = (
 };
 
 /**
+ * A switch with its name beside it, and while it's on, what that means. A
+ * change that's refused stays shown, with why under it, as what's typed in a
+ * field does, and is made once what it was refused for is fixed.
+ */
+const renderToggleControl = (
+  section: SettingsSection,
+  field: SettingsField,
+  control: Extract<Control, { kind: "toggle" }>,
+  api: PanelApi
+) => {
+  const { drafts, text } = api;
+  const id = `bar-${section.id}-${field.key}`;
+  const meansId = `${id}-means`;
+  const errorId = `${id}-error`;
+  const draft = drafts.draftOf(draftKey(section, field));
+  const refusals = draft?.refusals ?? 0;
+  const on = fieldText(field, section.values) === "true";
+  const means = on && control.whenOn ? text(control.whenOn) : undefined;
+  const describedBy = [means ? meansId : "", refusals ? errorId : ""]
+    .filter(Boolean)
+    .join(" ");
+  return html`
+    <span class="bar-anchor bar-switch">
+      <input
+        aria-describedby=${describedBy || nothing}
+        aria-invalid=${refusals ? "true" : "false"}
+        data-action=${`field-${field.key}`}
+        id=${id}
+        role="switch"
+        tabindex="-1"
+        type="checkbox"
+        .checked=${live((draft?.text ?? String(on)) === "true")}
+        @change=${({ currentTarget }: Event) =>
+          drafts.onCommit(section, field, {
+            badInput: false,
+            text: String((currentTarget as HTMLInputElement).checked),
+          })}
+      />
+      <label for=${id}>${fieldWords(field.labelId, text)}</label>
+      ${means ? html`<span class="means" id=${meansId}>${means}</span>` : nothing}
+      ${
+        refusals
+          ? keyed(
+              refusals,
+              html`<p class="bar-error" id=${errorId} role="alert">
+                ${fieldWords(field.invalidMessageId, text)}
+              </p>`
+            )
+          : nothing
+      }
+    </span>
+  `;
+};
+
+/**
  * A choice of a few, each a button that's pressed while it's the value, in
  * a group named for the setting. Each is one of the bar's controls.
  */
@@ -1881,6 +1964,28 @@ const renderPopoverControl = (
       control.lead || inMore
         ? api.text("bar.valueOf", { label: name, value: label })
         : nothing;
+  }
+  if (control.offWhy) {
+    const whyId = `bar-${section.id}-${control.id}-off`;
+    return html`
+      <span class="bar-anchor">
+        <button
+          aria-describedby=${whyId}
+          aria-disabled="true"
+          aria-label=${name}
+          class="icon-button"
+          data-action=${control.id}
+          data-tooltip=${api.text(control.offWhy)}
+          tabindex=${inMore ? "0" : "-1"}
+          type="button"
+        >
+          ${control.icon ?? nothing}
+        </button>
+        <span class="visually-hidden" id=${whyId}>
+          ${api.text(control.offWhy)}
+        </span>
+      </span>
+    `;
   }
   const popoverOf = () =>
     control.id.endsWith("popover-padding")
@@ -2105,6 +2210,9 @@ const renderOwnControl = (
       return field.type === "number"
         ? renderNumberControl(section, field, control, api)
         : nothing;
+    }
+    case "toggle": {
+      return renderToggleControl(section, field, control, api);
     }
     case "color": {
       return renderColorControl(
@@ -2703,9 +2811,10 @@ const headingOf = (target: Target, text: Text) => {
 
 /**
  * Where the Selection bar is short of room for what it shows, it puts its own
- * actions in More, and then, if it's still short, shows its buttons' icons
- * without their words. Measured after each update and as the Canvas changes
- * size, before the page is drawn, so the bar never shows a step on the way.
+ * actions in More, and then, if it's still short, leaves out what a switch
+ * that's on means, and then shows its buttons' icons without their words.
+ * Measured after each update and as the Canvas changes size, before the page
+ * is drawn, so the bar never shows a step on the way.
  */
 export const fitSelectionBar = (root: ParentNode) => {
   const bar = [
@@ -2727,7 +2836,7 @@ export const fitSelectionBar = (root: ParentNode) => {
   content.dataset.measuring = "";
   let compact: string | undefined;
   delete bar.dataset.compact;
-  for (const step of ["actions", "words"]) {
+  for (const step of ["actions", "means", "words"]) {
     if (content.getBoundingClientRect().width <= room) {
       break;
     }

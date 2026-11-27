@@ -270,6 +270,8 @@ const imageBlockSchema = v.pipe(
   v.strictObject({
     ...blockBoxEntries,
     alt: v.optional(v.string()),
+    /** Adds nothing to what the email says, so a screen reader skips it. */
+    decorative: v.optional(v.boolean()),
     href: v.optional(linkHrefSchema),
     // Optional, because a new Image has no URL until a person gives it one.
     src: v.optional(imageSrcSchema),
@@ -280,12 +282,30 @@ const imageBlockSchema = v.pipe(
   v.check(
     ({ alt, href }) => href === undefined || hasAltText(alt),
     "A linked Image needs alt text"
+  ),
+  // Exported with empty alt text, so nothing would name a link around it.
+  v.check(
+    ({ alt, decorative, href }) =>
+      !decorative || (alt === undefined && href === undefined),
+    "A decorative Image can't have alt text or a link"
   )
 );
 
 type ImageBlockProps = v.InferOutput<typeof imageBlockSchema>;
 
-const imageFields = (link: SettingsField): readonly SettingsField[] => [
+const ALT_TEXT_FIELD: SettingsField = {
+  descriptionId: "field.altText.description",
+  invalidMessageId: "invalid.altText",
+  key: "alt",
+  labelId: "field.altText",
+  type: "text",
+};
+
+/** A decorative Image has no alt text field, as it can't have any. */
+const imageFields = (
+  link: SettingsField,
+  { decorative = false } = {}
+): readonly SettingsField[] => [
   {
     descriptionId: "field.imageUrl.description",
     invalidMessageId: "invalid.imageUrl",
@@ -294,12 +314,13 @@ const imageFields = (link: SettingsField): readonly SettingsField[] => [
     type: "text",
   },
   {
-    descriptionId: "field.altText.description",
-    invalidMessageId: "invalid.altText",
-    key: "alt",
-    labelId: "field.altText",
-    type: "text",
+    default: false,
+    invalidMessageId: "invalid.decorative",
+    key: "decorative",
+    labelId: "field.decorative",
+    type: "toggle",
   },
+  ...(decorative ? [] : [ALT_TEXT_FIELD]),
   {
     ...pixelField("width", "field.width"),
     descriptionId: "field.imageWidth.description",
@@ -315,10 +336,19 @@ const IMAGE_FIELDS_WITHOUT_ALT = imageFields({
   disabled: true,
 });
 
+const DECORATIVE_IMAGE_FIELDS = imageFields(
+  { ...LINK_FIELD, descriptionId: "field.link.decorative", disabled: true },
+  { decorative: true }
+);
+
 const imageBlock = {
   defaults: {} satisfies ImageBlockProps,
-  fields: ({ alt }) =>
-    hasAltText(alt) ? IMAGE_FIELDS : IMAGE_FIELDS_WITHOUT_ALT,
+  fields: ({ alt, decorative }) => {
+    if (decorative) {
+      return DECORATIVE_IMAGE_FIELDS;
+    }
+    return hasAltText(alt) ? IMAGE_FIELDS : IMAGE_FIELDS_WITHOUT_ALT;
+  },
   label: "Image",
   schema: imageBlockSchema,
   styles: ({ width }): Record<string, string> =>

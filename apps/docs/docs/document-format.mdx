@@ -20,6 +20,7 @@ The schema is made from the checks the editor runs, so a version 4 email the sch
 - Text has each mark at most once.
 - A Social Block links each network once.
 - A linked Image has alt text.
+- A decorative Image has neither alt text nor a link.
 
 An email can't name its schema in a `$schema` field, because a field the format doesn't know is refused. Tell your code editor which files the schema is for in its settings instead.
 
@@ -173,6 +174,7 @@ Every type of Block also takes these props, which set the box around its content
 | `alt` | Optional. What a screen reader says, and what shows if images are off. |
 | `width` | Optional. A whole number of pixels, 1 or more. Without it, the image fills the Column, and it never grows wider than the Column. |
 | `href` | Optional. A [link](#links). A linked Image needs `alt` text that isn't blank, because the alt text is all that names the link. |
+| `decorative` | Optional. `true` for an image that adds nothing to what the email says, such as a divider graphic, so a screen reader skips it. It exports with `alt=""`, can have neither `alt` nor `href`, and [`checkEmail`](./render-on-a-server#check-an-email-before-you-send) doesn't ask for its alt text. Defaults to `false`. |
 
 ### Button
 

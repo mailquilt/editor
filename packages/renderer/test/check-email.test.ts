@@ -124,6 +124,11 @@ describe(checkEmail, () => {
       ["image-without-alt"],
     ],
     ["alt text", { alt: "Our team", src: "https://example.com/a.png" }, []],
+    [
+      "no alt text, marked decorative",
+      { decorative: true, src: "https://example.com/a.png" },
+      [],
+    ],
   ])("finds an Image with %s", async (_, props, expected) => {
     await expect(codes(ready({ props, type: "image" }))).resolves.toStrictEqual(
       expected

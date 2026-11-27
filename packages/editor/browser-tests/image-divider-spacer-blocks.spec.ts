@@ -5,6 +5,7 @@ import type { MailQuilt } from "../src/index.js";
 import {
   addBlock,
   addRow,
+  barButton,
   blockGroup,
   blockProps,
   blockTypes,
@@ -14,11 +15,13 @@ import {
   change,
   drag,
   EXPORT_VIEWPORT,
+  field,
   setting,
   hostEvents,
   openBlocks,
   openExport,
   rowTag,
+  selectionBar,
   serveImages,
   TALL_VIEWPORT,
   test,
@@ -199,6 +202,61 @@ test.describe("an Image", () => {
       alt: "A red bicycle",
       src: PHOTO,
     });
+  });
+
+  test("is marked decorative in the bar once its alt text is gone, and has no link then", async ({
+    page,
+  }) => {
+    await openBlocks(page, ["image"]);
+    await blockGroup(page, "Image").focus();
+    await change(await setting(page, "Alt text"), "A red bicycle");
+    const decorative = selectionBar(page).getByRole("switch", {
+      name: "Decorative",
+    });
+
+    await decorative.click();
+
+    // Shown as asked, with why it can't be yet, as a refused field is.
+    await expect(decorative).toBeChecked();
+    await expect(decorative).toHaveAttribute("aria-invalid", "true");
+    await expect(page.getByRole("alert")).toContainText("its alt text first");
+    await expect(blockProps(page)).resolves.toEqual({
+      alt: "A red bicycle",
+      src: PHOTO,
+    });
+
+    // What was refused is fine once the alt text goes.
+    await change(await setting(page, "Alt text"), "");
+
+    await expect(blockProps(page)).resolves.toEqual({
+      decorative: true,
+      src: PHOTO,
+    });
+    await expect(decorative).toBeChecked();
+    await expect(decorative).toHaveAccessibleDescription(
+      "Screen readers skip it."
+    );
+    await expect(field(page, "Alt text")).toHaveCount(0);
+    await expect(image(page)).toHaveAttribute("alt", "");
+    const link = barButton(page, "Link");
+    await expect(link).toHaveAttribute("aria-disabled", "true");
+    await expect(link).toHaveAccessibleDescription(
+      "A decorative image can't have a link"
+    );
+    // Playwright waits for a button off with aria-disabled to be on.
+    await link.click({ force: true });
+    await expect(selectionBar(page).getByRole("dialog")).toHaveCount(0);
+    expect(await violations(page)).toEqual([]);
+
+    await decorative.focus();
+    await page.keyboard.press("Space");
+
+    await expect(blockProps(page)).resolves.toEqual({
+      decorative: false,
+      src: PHOTO,
+    });
+    await expect(decorative).toBeFocused();
+    await expect(field(page, "Alt text")).toBeVisible();
   });
 
   test("says so when its URL can't be loaded, and recovers with a new one", async ({

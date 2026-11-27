@@ -83,6 +83,14 @@ describe("an Image Block", () => {
     expect(imageTag(html)).toContain('alt=""');
     expect(html).not.toMatch(/<a\s[^>]*>\s*<img/u);
   });
+
+  it("matches the saved HTML when it's decorative", async () => {
+    await expect(
+      renderEmail(
+        emailWith(image({ decorative: true, src: LOGO, width: 240 }))
+      ).then(readable)
+    ).resolves.toMatchFileSnapshot("expected/image-decorative.html");
+  });
 });
 
 describe("a Divider Block", () => {
