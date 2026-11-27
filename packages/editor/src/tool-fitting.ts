@@ -107,8 +107,10 @@ export const createToolFitting = ({
     }
     popover.style.removeProperty("translate");
     const canvas = workspace.getBoundingClientRect();
-    const box = popover.getBoundingClientRect();
     const scaleX = scaleOf(canvas.width, workspace.offsetWidth);
+    // No wider than the Canvas, which a docked panel beside it can narrow.
+    popover.style.maxWidth = `${workspace.offsetWidth - 2 * GAP_PX}px`;
+    const box = popover.getBoundingClientRect();
     // Its own width, as it may still be growing in from its start.
     const shift = shiftInto(
       box.left,

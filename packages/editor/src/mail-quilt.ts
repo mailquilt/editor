@@ -1266,12 +1266,14 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     } else if (position && field) {
       this.#selection.select({ blockId: position.block.id });
       this.#openFieldIn(fieldShownIn(position.block, field));
-      // A Menu's link that says too little is the one with those words.
+      // A Menu's link that says too little is the one with those words, of
+      // those the email shows, as only they're checked.
       const { block } = position;
       const item =
-        block.type === "menu"
+        block.type === "menu" && problem.linkText !== undefined
           ? block.props.links.findIndex(
-              ({ label }) => label?.trim() === problem.linkText
+              ({ label, url }) =>
+                url !== undefined && label?.trim() === problem.linkText
             )
           : -1;
       target = {

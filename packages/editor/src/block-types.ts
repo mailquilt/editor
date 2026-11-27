@@ -382,7 +382,7 @@ const PLUS_ICON = icon(svg`<path d="M12 5v14M5 12h14" />`);
 const drawMenu = (
   props: BlockProps["menu"],
   { "text-align": align, ...text }: Record<string, string>,
-  { text: textOf }: DrawContext
+  { lang, text: textOf }: DrawContext
 ) => {
   if (props.links.length === 0) {
     return html`
@@ -406,6 +406,8 @@ const drawMenu = (
         ({ label, url }, index) =>
           html`<span
             class=${label === undefined || url === undefined ? "unlinked" : ""}
+            data-testid="menu-link"
+            lang=${label === undefined ? nothing : lang}
             style=${styleProperties({ padding: `0 ${linkPadding}px` })}
             >${
               label ??

@@ -108,10 +108,7 @@ test("the links and the gap between them sit where the export puts them", async 
   page,
 }) => {
   await openMenu(page, { align: "right", gap: 40, links: [SHOP, JOURNAL] });
-  const drawn = await edges(
-    menu(page).locator(".menu-links > span"),
-    menu(page)
-  );
+  const drawn = await edges(menu(page).getByTestId("menu-link"), menu(page));
 
   await openCheck(page);
   const exported = inboxEmail(page).getByRole("link");
@@ -142,11 +139,15 @@ test("the space between links is set in the Selection bar", async ({
   expect(await blockProps(page)).toMatchObject({ gap: 30 });
 });
 
-test("Check's fix for a link that says too little opens the Links with focus in that link's label", async ({
+test("Check's fix for a link that says too little opens the Links with focus in that link's label, of those the email shows", async ({
   page,
 }) => {
   await openMenu(page, {
-    links: [SHOP, { label: "Learn more", url: "https://northbound.co/about" }],
+    links: [
+      { label: "Learn more" },
+      SHOP,
+      { label: "Learn more", url: "https://northbound.co/about" },
+    ],
   });
   await openCheck(page);
 
@@ -156,7 +157,25 @@ test("Check's fix for a link that says too little opens the Links with focus in 
     .getByRole("button", { name: "Change the text" })
     .click();
 
-  await expect(linkField(page, "Learn more Label")).toBeFocused();
+  await expect(linkField(page, "Learn more Label").nth(1)).toBeFocused();
+});
+
+test("Check's fix for the links' color goes to the color, not a link without a label", async ({
+  page,
+}) => {
+  await openMenu(page, { color: "#999999", links: [{}, SHOP] });
+  await openCheck(page);
+
+  await checkPanel(page)
+    .getByRole("listitem")
+    .filter({ hasText: "Links are hard to read" })
+    .getByRole("button", { name: "Change the color" })
+    .click();
+
+  await expect(linkField(page, "Link 1 Label")).toHaveCount(0);
+  await expect(
+    canvas(page).getByRole("textbox", { exact: true, name: "Text color" })
+  ).toBeFocused();
 });
 
 test.describe("the links in the Links popover", () => {
