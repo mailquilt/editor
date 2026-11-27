@@ -52,6 +52,10 @@ const emailWith = (text: string): Document => ({
 const uploadImage = (file: File) =>
   Promise.resolve({ url: `https://cdn.example/${file.name}` });
 
+/** Says what it was given to send, so a test can see it arrived. */
+const sendTest = ({ subject }: { subject: string | undefined }) =>
+  Promise.resolve(`Sent ${subject}`);
+
 /** The Host app's Merge Tags. Each render gives a new list, as a host's often does. */
 const mergeTags = () => [
   { label: "First name", name: "first_name", sample: "Ana" },
@@ -111,6 +115,7 @@ const Host = () => {
           }
           mergeTags={mergeTags()}
           sender="Northbound"
+          sendTest={sendTest}
           socialIconsUrl={SOCIAL_ICONS_URL}
           strings={strings()}
           subject="Spring roast"
@@ -188,6 +193,7 @@ const ShellHost = () => {
         ref={attach}
         mergeTags={mergeTags()}
         sender="Northbound"
+        sendTest={sendTest}
         saveKey={saveKey}
         socialIconsUrl={SOCIAL_ICONS_URL}
         strings={strings()}

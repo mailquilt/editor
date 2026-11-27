@@ -348,6 +348,12 @@ export class MailQuilt extends LitElement implements HostAppProperties {
         Boolean(next) !== Boolean(previous),
     },
     subject: { attribute: false },
+    // As uploadImage.
+    sendTest: {
+      attribute: false,
+      hasChanged: (next: unknown, previous: unknown) =>
+        Boolean(next) !== Boolean(previous),
+    },
     // Reflected, as the theme is drawn from the attribute.
     theme: { reflect: true },
   };
@@ -375,6 +381,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
 
   declare mergeTags: HostAppProperties["mergeTags"];
   declare sender: HostAppProperties["sender"];
+  declare sendTest: HostAppProperties["sendTest"];
   declare socialIconsUrl: HostAppProperties["socialIconsUrl"];
   declare strings: HostAppProperties["strings"];
   declare subject: HostAppProperties["subject"];
@@ -485,6 +492,8 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     mergeTags: () => this.mergeTags,
     requestUpdate: () => this.requestUpdate(),
     say: (words) => this.#announcements.say(words),
+    sendTest: () => this.sendTest,
+    subject: () => this.subject,
     text: this.#text,
   });
   readonly #fixNote = createFixNote({
@@ -1181,6 +1190,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       events: this.#checkEvents,
       mergeTags: this.mergeTags,
       sender: this.sender,
+      sendsTests: Boolean(this.sendTest),
       subject: this.subject,
       text: this.#text,
       zoom: checkZoom(room, email.settings.width),

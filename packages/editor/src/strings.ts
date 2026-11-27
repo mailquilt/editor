@@ -477,6 +477,14 @@ export const STRINGS = {
   "check.fixSaid": "{title}. {why}",
   /** The Check tab's count, after its name, for screen readers. */
   "check.tabCount": "{count} to fix",
+  /** Sending a test through the Host app's `sendTest`. */
+  "check.sendTest": "Send a test",
+  "check.sendingTest": "Sending…",
+  /** Why Send a test is off while the email is checked. */
+  "check.testWaits": "Wait for the check to finish",
+  "check.testSent": "Test sent.",
+  /** When the Host app's rejection has no message of its own. */
+  "check.testFailed": "The test wasn't sent. Try again.",
 
   // Each check that passed, in Check's list.
   "passed.imageAlt": "Every Image has alt text",

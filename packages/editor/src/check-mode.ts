@@ -488,6 +488,91 @@ export const checkStyles = css`
     margin: 3px 0 0;
   }
 
+  /* The title, with Send a test at the panel's end. */
+  .check-title {
+    align-items: center;
+    display: flex;
+    gap: var(--mq-space-2);
+    justify-content: space-between;
+    min-height: 28px;
+  }
+
+  .send-test {
+    align-items: center;
+    display: inline-flex;
+    flex: none;
+    gap: 6px;
+  }
+
+  .send-test .icon {
+    height: 14px;
+    width: 14px;
+  }
+
+  .send-test[aria-disabled="true"],
+  .send-test[aria-disabled="true"]:hover {
+    background: var(--mq-color-surface);
+    color: var(--mq-color-text-muted);
+    cursor: default;
+  }
+
+  /* Off until the check ends, it's faded, as the Modes are when off. */
+  .send-test.waiting {
+    opacity: 0.45;
+  }
+
+  .send-test:active:not([aria-disabled="true"]) {
+    transform: scale(0.97);
+  }
+
+  .spinner {
+    border: 2px solid
+      color-mix(in srgb, var(--mq-color-text-muted) 35%, transparent);
+    border-radius: 50%;
+    border-top-color: var(--mq-color-text-muted);
+    height: 12px;
+    width: 12px;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .spinner {
+      animation: send-test-spin 800ms linear infinite;
+    }
+  }
+
+  @keyframes send-test-spin {
+    to {
+      transform: rotate(1turn);
+    }
+  }
+
+  .check-head .test-result {
+    align-items: flex-start;
+    display: flex;
+    font-size: var(--mq-font-size-small);
+    gap: 6px;
+    margin: var(--mq-space-2) 0 0;
+  }
+
+  .test-result .icon {
+    flex: none;
+    height: 14px;
+    margin-top: 1px;
+    width: 14px;
+  }
+
+  .check-head .test-result.sent {
+    color: var(--mq-color-success);
+  }
+
+  .check-head .test-result.failed {
+    color: var(--mq-color-text);
+  }
+
+  .test-result.failed .icon {
+    color: var(--mq-color-warning);
+  }
+
   .check-section {
     border-bottom: 1px solid var(--mq-color-border);
     padding: var(--mq-space-4) var(--mq-space-4) var(--mq-space-2);
@@ -750,6 +835,11 @@ interface Run {
   result?: Checked | { failure: string };
   /** Set once it's time to say the email is loading. */
   saysLoading?: boolean;
+  /**
+   * How the last test of this email sent through the Host app went. A failure
+   * has the host's message, if it gave one.
+   */
+  test?: { state: "sent" } | { state: "failed"; message?: string };
 }
 
 /** Bytes in KB, as Gmail counts them. */
@@ -806,6 +896,8 @@ interface CheckHost {
   exportHtml: () => Promise<string>;
   exportText: () => string;
   mergeTags: () => MergeTags;
+  sendTest: () => HostAppProperties["sendTest"];
+  subject: () => string | undefined;
   /** Whether Check is shown, so a result that arrives after is still heard. */
   isShown: () => boolean;
   requestUpdate: () => void;
@@ -841,6 +933,8 @@ export const createCheck = ({
   mergeTags,
   requestUpdate,
   say,
+  sendTest: hostSendTest,
+  subject,
   text,
 }: CheckHost) => {
   let current: Run | undefined;
@@ -849,6 +943,8 @@ export const createCheck = ({
   /** The view whose copy button says it copied, for a moment. */
   let copied: CheckViewName | undefined;
   let copiedTimer: ReturnType<typeof setTimeout> | undefined;
+  /** Whether a test is sending, of this email or one before a change. */
+  let sending = false;
 
   const start = async (document: BlocksDocument) => {
     const run: Run = { text: exportText() };
@@ -937,6 +1033,10 @@ export const createCheck = ({
       return view;
     },
 
+    get sending() {
+      return sending;
+    },
+
     get copied() {
       return copied;
     },
@@ -962,6 +1062,42 @@ export const createCheck = ({
         requestUpdate();
       }, COPIED_SHOWN_MS);
       say(text(shown === "html" ? "check.copiedHtml" : "check.copiedText"));
+      requestUpdate();
+    },
+
+    /**
+     * Sends a test of the email as it's checked through the Host app, once at
+     * a time, and says how it went. A change to the email meanwhile gives a
+     * new run, which doesn't show it, but it's still said.
+     */
+    sendTest: async () => {
+      const send = hostSendTest();
+      const run = current;
+      const result = run?.result;
+      if (!send || !result || !("html" in result) || sending) {
+        return;
+      }
+      sending = true;
+      run.test = undefined;
+      requestUpdate();
+      try {
+        await send({ html: result.html, subject: subject(), text: run.text });
+        run.test = { state: "sent" };
+      } catch (error) {
+        // A JavaScript Host app can reject with anything.
+        run.test =
+          error instanceof Error && error.message
+            ? { message: error.message, state: "failed" }
+            : { state: "failed" };
+      }
+      sending = false;
+      say(
+        "message" in run.test && run.test.message
+          ? run.test.message
+          : text(
+              run.test.state === "sent" ? "check.testSent" : "check.testFailed"
+            )
+      );
       requestUpdate();
     },
 
@@ -1075,6 +1211,8 @@ export interface CheckView {
   events: CheckEvents;
   mergeTags: MergeTags;
   sender: string | undefined;
+  /** Whether the Host app sends tests, so there's a button to. */
+  sendsTests: boolean;
   subject: string | undefined;
   text: Text;
   /** How much smaller the inbox is drawn, where the Workspace is too narrow. */
@@ -1230,6 +1368,54 @@ const renderProblem = (
   `;
 };
 
+/**
+ * Off until the email is checked, as it sends the HTML the check renders, and
+ * while a test sends. Off with `aria-disabled`, so focus stays on it as it
+ * says it's sending.
+ */
+const renderSendTest = ({ check, text }: CheckView) => {
+  const result = check.run?.result;
+  const { sending } = check;
+  let why: string | undefined;
+  if (!result) {
+    why = text("check.testWaits");
+  } else if ("failure" in result) {
+    why = text("check.cantCheck");
+  }
+  const off = sending || why !== undefined;
+  return html`<button
+    aria-disabled=${off ? "true" : nothing}
+    class=${why === undefined ? "text-button send-test" : "text-button send-test waiting"}
+    data-tooltip=${why ?? nothing}
+    type="button"
+    @click=${check.sendTest}
+  >
+    ${
+      sending
+        ? html`<span aria-hidden="true" class="spinner"></span>${text(
+              "check.sendingTest"
+            )}`
+        : html`${ICONS.send}${text("check.sendTest")}`
+    }
+  </button>`;
+};
+
+/** How the last test of this email went, which the status region also says. */
+const renderTestResult = ({ check, text }: CheckView) => {
+  const test = check.run?.test;
+  if (test?.state === "sent") {
+    return html`<p class="test-result sent">
+      ${ICONS.check}<span>${text("check.testSent")}</span>
+    </p>`;
+  }
+  if (test?.state === "failed") {
+    return html`<p class="test-result failed">
+      ${ICONS.alert}<span>${test.message ?? text("check.testFailed")}</span>
+    </p>`;
+  }
+  return nothing;
+};
+
 const renderPanel = (view: CheckView) => {
   const { check, text } = view;
   const result = check.run?.result;
@@ -1288,8 +1474,12 @@ const renderPanel = (view: CheckView) => {
         role="region"
       >
         <div class="check-head">
-          <h2 id="check-title">${text("check.title")}</h2>
+          <div class="check-title">
+            <h2 id="check-title">${text("check.title")}</h2>
+            ${view.sendsTests ? renderSendTest(view) : nothing}
+          </div>
           <p>${summary}</p>
+          ${view.sendsTests ? renderTestResult(view) : nothing}
         </div>
         ${body}
       </div>

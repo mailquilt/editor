@@ -9,7 +9,7 @@ The editor is the `<mail-quilt>` element, and the [Shell](./shell) is `<mail-qui
 
 ## The editor
 
-`<mail-quilt>` has eight properties, two events and one method:
+`<mail-quilt>` has nine properties, two events and two methods:
 
 | Name | What it does |
 | --- | --- |
@@ -17,6 +17,7 @@ The editor is the `<mail-quilt>` element, and the [Shell](./shell) is `<mail-qui
 | `uploadImage` | A function that uploads an image to your storage and returns a promise of `{ url }`. With it, the Image settings have an Upload image button, and image files can be dropped or pasted on the email. [Upload images](./upload-images) shows one, and what the editor does with it. |
 | `mergeTags` | Your app's Merge Tags, as an array of `{ name, label, sample, unsubscribe }`, such as `[{ name: "first_name", label: "First name", sample: "Ana" }]`. `name` is what goes between the braces, and the rest are optional. With it, typing `{{` in text, or in any setting that holds text or a URL, opens a list of them to pick from, and the format bar has a Merge Tag button. A tag in text shows its label, or its name without one, but the export always has `{{name}}`. `sample` is what Check shows in the tag's place with Show sample values on, and `unsubscribe: true` marks your unsubscribe link's tag, which Check then looks for. [Merge Tags](#merge-tags) says more. |
 | `sender` | Who the email is from, such as your customer's business name, which Check's inbox shows above the subject. Without it, the inbox shows no sender. |
+| `sendTest` | A function that sends a test of the email through your own sending service, to whoever you choose, such as the person signed in, and returns a promise. It gets `{ html, text, subject }`: the email as `exportHtml()` and `exportText()` give it, with its Merge Tags as written for your service to fill, and your `subject`. With it, Check has a Send a test button, which is off until the email is checked and while a test sends. When the promise resolves, Check says "Test sent." When it rejects with an `Error`, Check shows its message, so write it for the person, such as how many tests their plan has left, or "The test wasn't sent. Try again." when it has none. |
 | `socialIconsUrl` | The URL of a folder in your storage holding the Social Block's icons, copied from `@mailquilt/renderer`'s `icons`. The canvas, Check and `exportHtml()` load the icons from there. Without it, they load from jsDelivr, at the renderer's exact version. [Social icons](./social-icons) says why you might set it. |
 | `strings` | Your own words for any of the editor's, by ID, such as `{ "topBar.undo": "Annuler" }`. Any you leave out stay in English. [Text in your words](#text-in-your-words) says how to find the IDs. |
 | `subject` | The email's subject, which Check's inbox shows before the preheader. Without it, the inbox shows the preheader alone, or the email's first words when it has no preheader. |
@@ -94,6 +95,7 @@ editor.strings = {
 | `uploadImage` | As on `<mail-quilt>`. The Shell passes it to the editor inside. |
 | `mergeTags` | As on `<mail-quilt>`. The Shell passes it to the editor inside. |
 | `sender` | As on `<mail-quilt>`. The Shell passes it to the editor inside. |
+| `sendTest` | As on `<mail-quilt>`. The Shell passes it to the editor inside. |
 | `socialIconsUrl` | As on `<mail-quilt>`. The Shell passes it to the editor inside. |
 | `strings` | As on `<mail-quilt>`. The Shell passes it to the editor inside, and its own words have IDs starting `shell.`. |
 | `subject` | As on `<mail-quilt>`. The Shell passes it to the editor inside. |
@@ -112,11 +114,11 @@ editor.strings = {
 
 | Component | Props |
 | --- | --- |
-| `MailQuilt` | `value`, `onChange`, `onError`, `uploadImage`, `mergeTags`, `sender`, `socialIconsUrl`, `strings`, `subject`, `theme` and `ref`. |
+| `MailQuilt` | `value`, `onChange`, `onError`, `uploadImage`, `mergeTags`, `sender`, `sendTest`, `socialIconsUrl`, `strings`, `subject`, `theme` and `ref`. |
 | `MailQuiltShell` | The same, and `heading`, `actions` and `saveKey`. `actions` is an array of names, such as `["export-html"]`. |
 
 - `value` is the email to open. `onChange` gets the new email after every change, and `onError` gets the reason when the editor refuses one, or when the editor's code can't load. `onError` is always listening in time.
-- `uploadImage`, `mergeTags`, `sender`, `socialIconsUrl`, `strings` and `subject` are the editor's properties, which the component sets on the element once the editor has loaded. A new `mergeTags` array or `strings` object at each render redraws nothing unless something in it changed.
+- `uploadImage`, `mergeTags`, `sender`, `sendTest`, `socialIconsUrl`, `strings` and `subject` are the editor's properties, which the component sets on the element once the editor has loaded. A new `mergeTags` array or `strings` object at each render redraws nothing unless something in it changed.
 - `theme` is the element's attribute, so it's in the server's HTML too.
 - `ref` gives you the element once the editor has loaded, so you can call `exportHtml()`.
 - Other props go to the element: `aria-*` attributes, React's events such as `onKeyDown`, and `className`, `hidden`, `id`, `inert`, `lang`, `role`, `slot`, `style`, `suppressHydrationWarning` and `title`.
