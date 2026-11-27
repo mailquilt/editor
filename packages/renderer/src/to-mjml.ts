@@ -8,9 +8,12 @@ import {
   linkColor,
   menuLinks,
   onPhone,
+  playMarkColor,
   rowStyles,
   SOCIAL_NETWORKS,
   socialIcons,
+  videoLabel,
+  videoShown,
 } from "@mailquilt/core/internal";
 import type {
   BlockProps,
@@ -28,6 +31,7 @@ import {
   SHARED_COLUMN,
   SHOWN_ON_PHONES,
   SHOWN_ON_PHONES_BLOCK,
+  VIDEO_LINE,
 } from "./finish-html.js";
 import { socialIconUrl } from "./social-icons.js";
 import {
@@ -72,6 +76,11 @@ interface BlockContext {
    * `finishHtml`, as MJML has no attribute for them on a Block.
    */
   boxes: string[];
+  /**
+   * Each Video's line under its picture, in the order MJML writes their
+   * Blocks, for `finishHtml`, as MJML's image has nothing under it.
+   */
+  videoLines: string[];
   /** The email's Phone values, as CSS rules for its phone media query. */
   phoneRules: string[];
 }
@@ -198,7 +207,12 @@ const classAttribute = (...classes: (string | false | undefined)[]) => {
  * and corners go to `finishHtml`, with a class that marks where. A Social
  * or Menu Block's padding is its own, as its icons or links take part of it.
  */
-const boxAttributes = (block: Block, context: BlockContext) => {
+const boxAttributes = (
+  block: Block,
+  context: BlockContext,
+  /** One more class, after the Box's, for `finishHtml`. */
+  marker?: string
+) => {
   const { boxes, style } = context;
   const {
     border,
@@ -216,6 +230,7 @@ const boxAttributes = (block: Block, context: BlockContext) => {
   // The Box's class first, as `finishHtml` finds it by its start.
   const classes = classAttribute(
     rest && BOXED_BLOCK,
+    marker,
     (block.props as { showOn?: string }).showOn === "desktop" &&
       HIDDEN_ON_PHONES,
     "phone" in block.props && phoneClass(context, blockPhoneRules(block, style))
@@ -283,6 +298,51 @@ const menuToMjml = (
 };
 
 /**
+ * A Video's line under its picture: a play mark, which screen readers skip,
+ * and its words, in one link to the video. The mark is text, a ▶ kept from
+ * becoming an emoji, in white or black on a round cell of the line's color,
+ * which Outlook on Windows draws square.
+ */
+const videoLine = (
+  props: BlockProps["video"],
+  url: string,
+  {
+    color,
+    "font-size": fontSize,
+    "line-height": lineHeight,
+  }: Record<string, string>,
+  fontFamily: string
+) =>
+  `<tr><td align="center" style="padding:12px 0px 0px 0px;"><a href="${escapeAttribute(url)}" style="${escapeAttribute(`color:${color};font-family:${fontFamily};font-size:${fontSize};line-height:${lineHeight};text-decoration:none;`)}" target="_blank"><span aria-hidden="true" style="${escapeAttribute(`display:inline-block;width:24px;height:24px;border-radius:12px;background-color:${color};color:${playMarkColor(color as string)};font-size:10px;line-height:24px;text-align:center;vertical-align:middle;`)}">&#9654;&#65038;</span>&nbsp;&nbsp;<span style="text-decoration:underline;vertical-align:middle;word-break:break-word;overflow-wrap:anywhere;">${plainTextToHtml(videoLabel(props))}</span></a></td></tr>`;
+
+/**
+ * A Video as an image linked to it, the drawn copy while the play button is on
+ * the picture, with its line under it, which `finishHtml` adds from
+ * `videoLines`, marked by its class.
+ */
+const videoToMjml = (
+  block: Extract<Block, { type: "video" }>,
+  context: BlockContext,
+  blockCss: Record<string, string>
+) => {
+  const shown = videoShown(block.props);
+  if (!shown) {
+    return "";
+  }
+  if (shown.line) {
+    context.videoLines.push(
+      videoLine(block.props, shown.url, blockCss, context.fontFamily)
+    );
+  }
+  const attributes = boxAttributes(
+    block,
+    context,
+    shown.line ? VIDEO_LINE : undefined
+  );
+  return `<mj-image${attributes} alt="${escapeAttribute(block.props.alt ?? "")}" href="${escapeAttribute(shown.url)}" src="${escapeAttribute(shown.picture)}"></mj-image>`;
+};
+
+/**
  * A Block as MJML. The casts are safe, as core's styles for a type always set
  * the same properties. A Block the email leaves out, such as an Image without
  * a URL, has no Box either.
@@ -294,19 +354,43 @@ const blockToMjml = (block: Block, context: BlockContext) => {
     : mjml;
 };
 
+/**
+ * Whether the email leaves a Block out until it has what it shows: an Image
+ * its image, a Social or Menu Block a link, and a Video its link and thumbnail.
+ */
+const isLeftOut = (block: Block) => {
+  switch (block.type) {
+    case "image": {
+      return block.props.src === undefined;
+    }
+    case "social": {
+      return block.props.links.every(({ url }) => url === undefined);
+    }
+    case "menu": {
+      return menuLinks(block.props).shown.length === 0;
+    }
+    case "video": {
+      return !videoShown(block.props);
+    }
+    default: {
+      return false;
+    }
+  }
+};
+
 /** A Block as MJML, wherever it shows. */
 const blockMjml = (block: Block, context: BlockContext) => {
-  if (
-    (block.type === "image" && block.props.src === undefined) ||
-    (block.type === "social" &&
-      block.props.links.every(({ url }) => url === undefined)) ||
-    (block.type === "menu" && menuLinks(block.props).shown.length === 0)
-  ) {
+  if (isLeftOut(block)) {
     return "";
   }
   const { fontFamily, headingFontFamily, style } = context;
   const blockCss = blockStyles(block, style);
-  const attributes = mjmlAttributes(blockCss) + boxAttributes(block, context);
+  // A Video's styles are its line's, which MJML's image doesn't take, and its
+  // Box has the class that marks its line.
+  const attributes =
+    block.type === "video"
+      ? ""
+      : mjmlAttributes(blockCss) + boxAttributes(block, context);
   switch (block.type) {
     case "text": {
       const textCss = blockCss as TextCss;
@@ -339,6 +423,9 @@ const blockMjml = (block: Block, context: BlockContext) => {
     }
     case "menu": {
       return menuToMjml(block.props, attributes, blockCss, fontFamily);
+    }
+    case "video": {
+      return videoToMjml(block, context, blockCss);
     }
     // Never reached, as core checked each Block's type. A type this doesn't
     // handle fails to compile here.
@@ -426,6 +513,7 @@ export const toMjml = (
   const context: BlockContext = {
     boxes: [],
     phoneRules: [],
+    videoLines: [],
     fontFamily: settings.fontFamily,
     headingFontFamily: style.headingFontFamily ?? settings.fontFamily,
     socialIconsUrl,
@@ -489,5 +577,10 @@ export const toMjml = (
   const sharedRowWidths = rows
     .filter(stacksColumns)
     .flatMap((row) => row.columns.map(() => innerWidth(row, settings.width)));
-  return { boxes: context.boxes, mjml, sharedRowWidths };
+  return {
+    boxes: context.boxes,
+    mjml,
+    sharedRowWidths,
+    videoLines: context.videoLines,
+  };
 };

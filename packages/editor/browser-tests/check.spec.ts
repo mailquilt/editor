@@ -348,7 +348,7 @@ test("a fix button opens Edit with focus in the field to fix, and the Problem un
   await page.keyboard.press("Enter");
   await openCheck(page);
   await expect(checkPanel(page)).toContainText(
-    "Every Image has alt text or is decorative"
+    "Every Image and thumbnail has alt text or is decorative"
   );
 });
 

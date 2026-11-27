@@ -256,6 +256,38 @@ describe("what an Email style setting reaches in a Menu", () => {
   });
 });
 
+/** The email above, with a Video whose line shows, one with a color of its own, and one with no line. */
+const withVideos = (style: EmailStyle = {}) => {
+  const value = email(style);
+  value.rows[0]?.columns[0]?.blocks.push(
+    { id: "video", props: {}, type: "video" },
+    { id: "videoOwn", props: { color: "#9a4a1c" }, type: "video" },
+    { id: "videoNoLine", props: { play: "none" }, type: "video" }
+  );
+  return value;
+};
+
+describe("what an Email style setting reaches in a Video", () => {
+  it.each(["linkColor", "textColor", "textFontSize", "fontFamily"] as const)(
+    "%s changes the line of a Video without a color of its own, and no Video without a line",
+    (key) => {
+      const { changes } = reachOf(key, withVideos());
+      expect(changes).toContain("video");
+      expect(changes).not.toContain("videoNoLine");
+    }
+  );
+
+  it("the links' color keeps a Video's own color, and takes the text's place", () => {
+    expect(reachOf("linkColor", withVideos()).keeps).toContainEqual({
+      id: "videoOwn",
+      value: "#9a4a1c",
+    });
+    expect(
+      reachOf("textColor", withVideos({ linkColor: "#0000ff" })).changes
+    ).not.toContain("video");
+  });
+});
+
 /** A Block of the email above, by its ID. */
 const blockOf = (id: string) => {
   const found = email().rows[0]?.columns[0]?.blocks.find(

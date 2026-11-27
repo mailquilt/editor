@@ -90,7 +90,7 @@ describe(loadCopied, () => {
     [
       "an unknown Block type",
       JSON.stringify({
-        block: { id: "x", props: {}, type: "video" },
+        block: { id: "x", props: {}, type: "carousel" },
         version: 3,
       }),
       "block.type: Invalid type",

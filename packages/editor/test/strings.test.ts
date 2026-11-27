@@ -80,7 +80,9 @@ const textIdsOf = (field: SettingsField): string[] => [
   ...(field.descriptionId === undefined ? [] : [field.descriptionId]),
   ...(field.type === "number" ? [`unit.${field.unit}`] : []),
   ...(field.type === "select"
-    ? field.options.map(({ labelId }) => labelId)
+    ? field.options.flatMap(({ descriptionId, labelId }) =>
+        descriptionId === undefined ? [labelId] : [labelId, descriptionId]
+      )
     : []),
   ...(field.type === "list" ? field.itemFields.flatMap(textIdsOf) : []),
   ...(field.type === "list" && field.itemKey !== undefined
@@ -95,11 +97,12 @@ const textIdsOf = (field: SettingsField): string[] => [
     : []),
 ];
 
-// Each type's fields can depend on its props: a Heading's on its level, and an
-// Image's on whether it has alt text.
+// Each type's fields can depend on its props: a Heading's on its level, an
+// Image's on whether it has alt text, and a Video's on whether its line shows.
 const PROPS_OF: Partial<Record<BlockType, Record<string, unknown>[]>> = {
   heading: [{ level: 1 }, { level: 2 }, { level: 3 }],
   image: [{}, { alt: "A cup" }],
+  video: [{}, { play: "none" }],
 };
 
 describe("the texts core's settings fields name", () => {

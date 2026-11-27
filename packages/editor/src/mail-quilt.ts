@@ -108,6 +108,7 @@ import {
 } from "./top-bar.js";
 import type { Device, Mode, TopBarEvents } from "./top-bar.js";
 import { takeValueSetEarly } from "./value-set-early.js";
+import { createVideos } from "./videos.js";
 
 /**
  * Heard on the page, on the way in, as Firefox fires them at the body and
@@ -584,20 +585,44 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     email: () => this.#editor?.getDocument(),
     select: (blockId) => this.#selection.selectLanded(blockId),
     setImage: (blockId, src) => {
+      // A Video's image is its thumbnail.
+      const email = this.#editor?.getDocument();
+      const isVideo =
+        email !== undefined && locate(email, blockId)?.block.type === "video";
+      const key = isVideo ? "thumbnail" : "src";
+      if (isVideo) {
+        this.#videos.willChange(blockId, { thumbnail: src });
+      }
       const result = this.#apply(
-        { blockId, props: { src }, type: "updateBlockProps" },
+        {
+          blockId,
+          props: { [key]: src },
+          type: "updateBlockProps",
+        },
         { refusable: true }
       );
       // The field shows the new URL, rather than what was typed and refused,
       // and the canvas tries it again, as it may not have been there before.
       if (result?.ok || result?.code === "unchanged") {
-        this.#drafts.forget(blockDraftKey(blockId, "src"));
+        this.#drafts.forget(blockDraftKey(blockId, key));
         if (this.#failedImages.delete(src)) {
           this.requestUpdate();
         }
       }
       return result;
     },
+    text: this.#text,
+    uploadImage: () => this.uploadImage,
+  });
+  readonly #videos = createVideos({
+    announcements: this.#announcements,
+    apply: (blockId, props) =>
+      this.#apply(
+        { blockId, props, type: "updateBlockProps" },
+        { refusable: true }
+      ),
+    email: () => this.#editor?.getDocument(),
+    requestUpdate: () => this.requestUpdate(),
     text: this.#text,
     uploadImage: () => this.uploadImage,
   });
@@ -1521,6 +1546,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       text: this.#text,
       uploadErrorOf: this.#uploads.errorOf,
       uploadImage: this.uploadImage ? this.#uploadImage : undefined,
+      videos: this.#videos,
     };
   }
 
@@ -1534,6 +1560,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
           : NO_MARKS,
       failedImages: this.#failedImages,
       isUploading: this.#uploads.isUploading,
+      isAddingPlay: this.#videos.isAdding,
       socialIconsUrl: this.socialIconsUrl,
       textOf: (blockId) => this.#views.get(blockId)?.element,
     };
@@ -1684,6 +1711,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     this.#failedImages.clear();
     // Their Blocks are gone with the email they were in.
     this.#uploads.clear();
+    this.#videos.clear();
     this.#rowsList.forget();
     this.#stylePanel.forget();
     this.#reset();
@@ -1691,6 +1719,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     this.#editor = loaded && editorOfLoaded(loaded);
     this.#editor?.subscribe(this.#editing.onOperations);
     this.#editor?.subscribe(this.#uploads.onChange);
+    this.#editor?.subscribe(this.#videos.onChange);
     this.requestUpdate();
     // Taking down the text views took focus out of the editor if it was in
     // one, before the update could see where it was.

@@ -12,8 +12,12 @@ export {
   linkColor,
   menuLinks,
   phoneValueKeys,
+  playMarkColor,
   SOCIAL_NETWORKS,
   socialIcons,
+  videoLabel,
+  videoLook,
+  videoShown,
 } from "./blocks.js";
 export { isHiddenOn, onPhone, SHOW_ON } from "./device-settings.js";
 export type { ShowOn } from "./device-settings.js";

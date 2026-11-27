@@ -689,6 +689,7 @@ const renderPictureBlock = (
           style,
           text: context.api.text,
           uploading: false,
+          addingPlay: false,
         })}
       </div>`;
 };

@@ -136,6 +136,16 @@
                 "color": "#ffffff",
                 "align": "center"
               }
+            },
+            {
+              "id": "video",
+              "type": "video",
+              "props": {
+                "url": "https://www.youtube.com/watch?v=q8Ln2kXa_-9",
+                "thumbnail": "https://i.ytimg.com/vi/q8Ln2kXa_-9/maxresdefault.jpg",
+                "alt": "How we pack your order",
+                "label": "Watch how we pack it"
+              }
             }
           ]
         }

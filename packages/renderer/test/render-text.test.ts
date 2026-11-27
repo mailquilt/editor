@@ -212,6 +212,28 @@ describe("the plain text", () => {
     ).toBe("Shop: https://northbound.co/shop\nPlans: {{plans_url}}");
   });
 
+  it("writes a Video as its alt text and link, its line's words where it shows one, and leaves out one with no thumbnail", () => {
+    const linked = {
+      thumbnail: "https://i.ytimg.com/vi/q8Ln2kXa/maxresdefault.jpg",
+      url: "https://youtu.be/q8Ln2kXa",
+    };
+    expect(
+      renderText(
+        emailWith(
+          { props: { ...linked, alt: "Roaster tipping beans" }, type: "video" },
+          {
+            props: { ...linked, alt: "Roaster tipping beans", play: "none" },
+            type: "video",
+          },
+          { props: { ...linked, play: "none" }, type: "video" },
+          { props: { url: linked.url }, type: "video" }
+        )
+      )
+    ).toBe(
+      "[Roaster tipping beans]\nWatch the video: https://youtu.be/q8Ln2kXa\n\n[Roaster tipping beans] (https://youtu.be/q8Ln2kXa)\n\nhttps://youtu.be/q8Ln2kXa"
+    );
+  });
+
   it("writes a bulleted List's items with a dash and a numbered List's from 1", () => {
     const list = (type: string, ...items: string[]) => ({
       content: items.map((item) => ({

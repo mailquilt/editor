@@ -5,8 +5,11 @@ import {
   linkColor,
   menuLinks,
   MERGE_TAG,
+  playMarkColor,
   SOCIAL_NETWORKS,
   socialIcons,
+  videoLabel,
+  videoLook,
 } from "@mailquilt/core/internal";
 import type { BlockProps } from "@mailquilt/core/internal";
 import { socialIconUrl } from "@mailquilt/renderer/internal";
@@ -144,6 +147,120 @@ export const blockTypeStyles = css`
     width: 16px;
   }
 
+  /* A Video's picture, as an Image's, with room for the pill over it. */
+  .video-picture {
+    position: relative;
+  }
+
+  /* While a play button is drawn on a copy, the picture waits behind the pill. */
+  .video-picture.adding img {
+    opacity: 0.5;
+  }
+
+  .video-adding {
+    align-items: center;
+    background: rgb(24 24 27 / 88%);
+    border-radius: 999px;
+    color: #ffffff;
+    display: inline-flex;
+    font:
+      500 13px/1.4 system-ui,
+      sans-serif;
+    gap: 8px;
+    left: 50%;
+    padding: 6px 14px;
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    white-space: nowrap;
+  }
+
+  .video-adding .spinner {
+    border: 2px solid rgb(255 255 255 / 35%);
+    border-radius: 50%;
+    border-top-color: #ffffff;
+    height: 12px;
+    width: 12px;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .video-adding .spinner {
+      animation: video-spin 800ms linear infinite;
+    }
+  }
+
+  @keyframes video-spin {
+    to {
+      transform: rotate(1turn);
+    }
+  }
+
+  /* As the export writes it: centred under the picture, 12px below it. */
+  .video-line {
+    overflow-wrap: anywhere;
+    padding-top: 12px;
+    text-align: center;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  .video-line .play {
+    border-radius: 12px;
+    display: inline-block;
+    font-size: 10px;
+    height: 24px;
+    line-height: 24px;
+    margin-inline-end: 8px;
+    text-align: center;
+    vertical-align: middle;
+    width: 24px;
+  }
+
+  .video-line .words {
+    text-decoration: underline;
+    vertical-align: middle;
+  }
+
+  /*
+   * Only on the canvas: the slot a new Video goes in, 16:9 as most videos
+   * are, on a light fill of its own, as the other stand-ins have.
+   */
+  .video-placeholder {
+    align-items: center;
+    aspect-ratio: 16 / 9;
+    background: #f4f5f7;
+    border: 1px dashed #a1a1aa;
+    border-radius: 4px;
+    color: #52525b;
+    display: flex;
+    flex-direction: column;
+    font:
+      400 13px/1.5 system-ui,
+      sans-serif;
+    gap: 6px;
+    justify-content: center;
+    padding: 16px 24px;
+    text-align: center;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  .video-placeholder b {
+    color: #27272a;
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .video-placeholder span {
+    max-width: 40ch;
+  }
+
+  .video-placeholder .icon {
+    color: #71717a;
+    height: 28px;
+    width: 28px;
+  }
+
   /* The color and width come from the Block, for the top border alone. */
   .divider {
     border-style: solid none none;
@@ -198,6 +315,8 @@ export interface DrawContext {
   style: EmailStyle;
   /** Whether an image is being uploaded for the Block. */
   uploading: boolean;
+  /** Whether a play button is being drawn on a Video's thumbnail and uploaded. */
+  addingPlay: boolean;
 }
 
 /** The editor's part of one type of Block. */
@@ -297,6 +416,120 @@ const drawImage = (
                 @error=${() => context.onImageError(src)}
               />
             `
+      }
+    </div>
+  `;
+};
+
+/** A ▶ kept from becoming an emoji, as the export writes it. */
+const PLAY_MARK = "\u25B6\uFE0E";
+
+const VIDEO_ICON = icon(
+  svg`<rect height="16" rx="2" width="18" x="3" y="4" /><path d="m10 9 5 3-5 3z" />`
+);
+
+/** What a Video without a thumbnail to show says in its place. */
+const thumbnailStandIn = (
+  picture: string | undefined,
+  { failedImages, text, uploading }: DrawContext
+) => {
+  if (uploading) {
+    return text("image.uploading");
+  }
+  if (picture === undefined) {
+    return text("video.noThumbnail");
+  }
+  if (failedImages.has(picture)) {
+    return text("image.failed", { url: picture });
+  }
+  return MERGE_TAG.test(picture) ? picture : undefined;
+};
+
+/**
+ * A Video as the export draws it: its picture, the copy with the play button
+ * on it once there is one, and the line under it, with no link, because a
+ * click on the canvas selects it. A new Video, with no link or thumbnail,
+ * shows a slot that says what goes there. While a play button is drawn, the
+ * thumbnail waits behind a pill that says so, and the line goes, as it will.
+ */
+const drawVideo = (
+  props: BlockProps["video"],
+  {
+    color,
+    "font-size": fontSize,
+    "line-height": lineHeight,
+  }: Record<string, string>,
+  context: DrawContext
+) => {
+  const { alt = "", thumbnail, url } = props;
+  const { addingPlay, lang, text } = context;
+  if (url === undefined && thumbnail === undefined && !context.uploading) {
+    return html`
+      <div class="padded-block">
+        <div class="video-placeholder" data-testid="video-slot">
+          ${VIDEO_ICON}<b>${text("video.empty")}</b
+          ><span>${text("video.emptyWhy")}</span>
+        </div>
+      </div>
+    `;
+  }
+  const look = videoLook(props);
+  const picture = addingPlay ? thumbnail : look.picture;
+  const standIn = thumbnailStandIn(picture, context);
+  return html`
+    <div class="padded-block image-block">
+      ${
+        standIn !== undefined || picture === undefined
+          ? html`
+              <div class="image-placeholder">
+                ${VIDEO_ICON}
+                <span>${standIn}</span>
+              </div>
+            `
+          : html`
+              <div
+                class=${addingPlay ? "video-picture adding" : "video-picture"}
+              >
+                <img
+                  alt=${alt}
+                  draggable="false"
+                  lang=${lang}
+                  src=${picture}
+                  @error=${() => context.onImageError(picture)}
+                />
+                ${
+                  addingPlay
+                    ? html`<span class="video-adding" data-testid="adding-play"
+                        ><span aria-hidden="true" class="spinner"></span
+                        >${text("video.addingPlay")}</span
+                      >`
+                    : nothing
+                }
+              </div>
+            `
+      }
+      ${
+        look.line && !addingPlay
+          ? html`<div
+              class="video-line"
+              data-testid="video-line"
+              style=${styleProperties({
+                color,
+                "font-size": fontSize,
+                "line-height": lineHeight,
+              })}
+            >
+              <span
+                aria-hidden="true"
+                class="play"
+                style=${styleProperties({
+                  "background-color": color,
+                  color: color && playMarkColor(color),
+                })}
+                >${PLAY_MARK}</span
+              ><span class="words" lang=${lang}>${videoLabel(props)}</span>
+            </div>`
+          : nothing
       }
     </div>
   `;
@@ -475,6 +708,7 @@ export const BLOCK_VIEWS = {
     icon: icon(svg`<path d="M4 7V5h16v2M9 19h6M12 5v14" />`),
     text: { canBold: true, schema: createTextSchema({ lists: true }) },
   },
+  video: { draw: drawVideo, icon: VIDEO_ICON },
 } satisfies { [Type in BlockType]: BlockTypeView<Type> };
 
 /** The same table, typed so that a Block's own type picks what draws it. */

@@ -750,6 +750,8 @@ export interface CanvasState {
   failedImages: ReadonlySet<string>;
   /** Whether an image is being uploaded for the Block. */
   isUploading: (blockId: string) => boolean;
+  /** Whether a play button is being drawn on a Video's thumbnail and uploaded. */
+  isAddingPlay: (blockId: string) => boolean;
   /** The Host app's folder of Social icons, as the export takes it. */
   socialIconsUrl: string | undefined;
   /** A Block's text, once its editor has been made. */
@@ -928,6 +930,7 @@ const renderBlock = (
         style,
         text,
         uploading: state.isUploading(block.id),
+        addingPlay: state.isAddingPlay(block.id),
       })}
       ${selected && rich && api.editingText ? renderFormatBar(api) : nothing}
       ${selected && rich ? renderMergeTagPicker(api) : nothing}

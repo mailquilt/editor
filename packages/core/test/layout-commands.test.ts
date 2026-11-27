@@ -917,13 +917,13 @@ describe("refusing a Row Command", () => {
     [
       "a new Row with a Block of an unknown type",
       {
-        columns: [{ blocks: [{ type: "video" }] }],
+        columns: [{ blocks: [{ type: "carousel" }] }],
         index: 0,
         layout: "100",
         type: "insertRow",
       },
       "unknownBlockType",
-      /video/u,
+      /carousel/u,
     ],
     [
       "a new Row with a Block that has props it can't have",

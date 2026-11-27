@@ -135,6 +135,57 @@ describe(checkEmail, () => {
     );
   });
 
+  it.each([
+    ["no link", {}, [["video-without-link", "url"]]],
+    [
+      "no thumbnail",
+      { url: "https://youtu.be/a" },
+      [["image-without-src", "thumbnail"]],
+    ],
+    [
+      "no alt text",
+      { thumbnail: "https://example.com/a.png", url: "https://youtu.be/a" },
+      [["image-without-alt", "alt"]],
+    ],
+    [
+      "a line that says only “Here”",
+      {
+        alt: "Our team",
+        label: "Here",
+        thumbnail: "https://example.com/a.png",
+        url: "https://youtu.be/a",
+      },
+      [["vague-link-text", "label"]],
+    ],
+    [
+      "a line too hard to read",
+      {
+        alt: "Our team",
+        color: "#777777",
+        thumbnail: "https://example.com/a.png",
+        url: "https://youtu.be/a",
+      },
+      [["low-link-contrast", "color"]],
+    ],
+    [
+      "no line, which isn't read",
+      {
+        alt: "Our team",
+        color: "#777777",
+        label: "Here",
+        play: "none",
+        thumbnail: "https://example.com/a.png",
+        url: "https://youtu.be/a",
+      },
+      [],
+    ],
+  ])("finds a Video with %s, and the field to fix", async (_, props, found) => {
+    const problems = await checkEmail(ready({ props, type: "video" }));
+    expect(problems.map(({ code, field }) => [code, field])).toStrictEqual(
+      found
+    );
+  });
+
   it("finds a Button with no link, and is quiet once it has one", async () => {
     const [problem] = await checkEmail(
       ready({ props: { label: "Order" }, type: "button" })
@@ -275,6 +326,32 @@ describe(checkEmail, () => {
       ).resolves.toStrictEqual(["no-unsubscribe-link"]);
     });
 
+    it("doesn't read the tags of a Video's line the email doesn't show", async () => {
+      await expect(
+        codes(
+          ready({
+            props: {
+              alt: "A cup",
+              label: "Watch {{promo}}",
+              play: "none",
+              thumbnail: "https://example.com/a.png",
+              url: "https://youtu.be/a",
+            },
+            type: "video",
+          }),
+          { mergeTags: [{ name: "first_name" }] }
+        )
+      ).resolves.toStrictEqual([]);
+    });
+
+    it("doesn't count the link of a Video without a thumbnail", async () => {
+      await expect(
+        codes(ready({ props: { url: "{{unsubscribe_url}}" }, type: "video" }), {
+          mergeTags: MERGE_TAGS,
+        })
+      ).resolves.toStrictEqual(["image-without-src", "no-unsubscribe-link"]);
+    });
+
     it("leaves tags alone without the host's list", async () => {
       await expect(
         codes(
@@ -315,6 +392,17 @@ describe(checkEmail, () => {
             links: [{ label: "Unsubscribe", url: "{{unsubscribe_url}}" }],
           },
           type: "menu" as const,
+        },
+      ],
+      [
+        "a Video",
+        {
+          props: {
+            alt: "Unsubscribe",
+            thumbnail: "https://example.com/a.png",
+            url: "{{unsubscribe_url}}",
+          },
+          type: "video" as const,
         },
       ],
     ])(

@@ -23,6 +23,7 @@ import { parseProps } from "./validation.js";
 import {
   colorSchema,
   fontSizeSchema,
+  hexColor,
   MAX_FONT_SIZE,
   pixelSchema,
   solidColorSchema,
@@ -72,6 +73,14 @@ interface BlockDefinition<
    * props, then the Email style, then the built-in look.
    */
   styles: (props: Props, style: EmailStyle) => Record<string, string>;
+  /**
+   * What a change to its props sets, where one prop follows another, before
+   * it's checked. Without it, the change as it's given.
+   */
+  changes?: (
+    props: Props,
+    changes: Record<string, unknown>
+  ) => Record<string, unknown>;
 }
 
 /** Text's line height, as a multiple of its font size. */
@@ -628,6 +637,187 @@ const menuBlock = {
   },
 } satisfies BlockDefinition<MenuBlockProps>;
 
+/** What a Video's line under its picture looks like until a person changes it. */
+const VIDEO_LOOK = { color: "#000000", label: "Watch the video" } as const;
+
+/** The play button's choices, each with what it means, as the bar shows them. */
+const PLAY_OPTIONS = [
+  {
+    descriptionId: "play.below.description",
+    labelId: "play.below",
+    value: "below",
+  },
+  { descriptionId: "play.on.description", labelId: "play.on", value: "on" },
+  {
+    descriptionId: "play.none.description",
+    labelId: "play.none",
+    value: "none",
+  },
+] as const;
+
+const videoBlockSchema = v.strictObject({
+  ...blockBoxEntries,
+  ...deviceEntries(),
+  alt: v.optional(v.string()),
+  /** The line's color. */
+  color: v.optional(colorSchema),
+  /** The line's words. Plain text, as the whole line is the link. Not blank. */
+  label: v.optional(
+    v.pipe(v.string(), v.regex(/\S/u, "A Video's line can't be blank"))
+  ),
+  play: v.optional(v.picklist(PLAY_OPTIONS.map(({ value }) => value))),
+  /**
+   * A copy of the thumbnail with a play button drawn on it, which the editor
+   * uploads. Shown in its place while `play` is `"on"`.
+   */
+  playThumbnail: v.optional(imageSrcSchema),
+  // Optional, as a new Video has neither until a person gives them.
+  thumbnail: v.optional(imageSrcSchema),
+  url: v.optional(linkHrefSchema),
+});
+
+type VideoBlockProps = v.InferOutput<typeof videoBlockSchema>;
+
+/** The line's fields are there only while the line shows. */
+const videoFields = (line: boolean): readonly SettingsField[] => [
+  {
+    descriptionId: "field.videoUrl.description",
+    invalidMessageId: "invalid.link",
+    key: "url",
+    labelId: "field.videoUrl",
+    type: "text",
+  },
+  {
+    descriptionId: "field.thumbnail.description",
+    invalidMessageId: "invalid.imageUrl",
+    key: "thumbnail",
+    labelId: "field.thumbnail",
+    type: "text",
+  },
+  { ...ALT_TEXT_FIELD, descriptionId: "field.videoAlt.description" },
+  {
+    default: "below",
+    invalidMessageId: "invalid.play",
+    key: "play",
+    labelId: "field.play",
+    options: PLAY_OPTIONS,
+    type: "select",
+  },
+  ...(line
+    ? [
+        {
+          default: VIDEO_LOOK.label,
+          invalidMessageId: "invalid.videoLabel",
+          key: "label",
+          labelId: "field.videoLabel",
+          type: "text",
+        } satisfies SettingsField,
+        colorField({ fallback: VIDEO_LOOK.color, labelId: "field.lineColor" }),
+      ]
+    : []),
+];
+
+const VIDEO_FIELDS = { line: videoFields(true), noLine: videoFields(false) };
+
+const videoBlock = {
+  // A new thumbnail forgets the copy drawn on the old one, unless a copy comes
+  // with it. While the play button was on the picture, the line shows until
+  // one is drawn on the new thumbnail, so the email never shows the old
+  // picture, nor a video with no sign it's one.
+  changes: (props, changes) =>
+    !("thumbnail" in changes) ||
+    changes.thumbnail === props.thumbnail ||
+    "playThumbnail" in changes
+      ? changes
+      : {
+          ...changes,
+          ...(props.play === "on" && !("play" in changes)
+            ? { play: "below" }
+            : {}),
+          playThumbnail: null,
+        },
+  defaults: {} satisfies VideoBlockProps,
+  fields: (props) =>
+    videoLook(props).line ? VIDEO_FIELDS.line : VIDEO_FIELDS.noLine,
+  label: "Video",
+  schema: videoBlockSchema,
+  // The line's look: its own color, or else the email's links', and the
+  // email's text size.
+  styles: (props, style) => {
+    const fontSize = style.textFontSize ?? TEXT_LOOK.fontSize;
+    return {
+      color: linkColor(
+        props,
+        style,
+        props.color ?? style.textColor ?? VIDEO_LOOK.color
+      ),
+      "font-size": `${fontSize}px`,
+      "line-height": lineHeightFor(fontSize),
+    };
+  },
+} satisfies BlockDefinition<VideoBlockProps>;
+
+/**
+ * Which picture a Video shows, and whether the line shows under it, whether
+ * or not it has a link yet, as the canvas draws it.
+ * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
+ */
+export const videoLook = ({
+  play,
+  playThumbnail,
+  thumbnail,
+}: VideoBlockProps) => {
+  const drawn = play === "on" && playThumbnail !== undefined;
+  return {
+    line: play !== "none" && !drawn,
+    picture: drawn ? playThumbnail : thumbnail,
+  };
+};
+
+/**
+ * What the email shows of a Video: its picture, the drawn copy if it has one
+ * and the play button is on the picture, and whether the line shows under it,
+ * which it does too while the play button is meant to be on the picture but
+ * no copy is drawn. Nothing for a Video without a link or a thumbnail, which
+ * the email leaves out.
+ * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
+ */
+export const videoShown = (props: VideoBlockProps) => {
+  const { url } = props;
+  const { line, picture } = videoLook(props);
+  return url === undefined || props.thumbnail === undefined
+    ? undefined
+    : { line, picture: picture as string, url };
+};
+
+/** WCAG 2.2's relative luminance of a `#rrggbb` color. */
+const luminanceOf = (hex: string) => {
+  const [red = 0, green = 0, blue = 0] = [1, 3, 5].map((start) => {
+    const channel = Number.parseInt(hex.slice(start, start + 2), 16) / 255;
+    return channel <= 0.04045
+      ? channel / 12.92
+      : ((channel + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+};
+
+/**
+ * The color of the ▶ on a Video's line, white or black, whichever has more
+ * contrast with the circle it's on, which is the line's color.
+ * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
+ */
+export const playMarkColor = (lineColor: string) => {
+  const light = luminanceOf(hexColor(lineColor) ?? VIDEO_LOOK.color);
+  return 1.05 / (light + 0.05) >= (light + 0.05) / 0.05 ? "#ffffff" : "#000000";
+};
+
+/**
+ * The words of a Video's line.
+ * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
+ */
+export const videoLabel = ({ label = VIDEO_LOOK.label }: VideoBlockProps) =>
+  label;
+
 /** The space around a Block's content, in px, on each side it doesn't set. */
 const BLOCK_PADDING = 16;
 
@@ -716,6 +906,7 @@ const BLOCKS = [
   ["spacer", spacerBlock],
   ["social", socialBlock],
   ["menu", menuBlock],
+  ["video", videoBlock],
 ] as const;
 
 /**
@@ -772,6 +963,15 @@ export const phoneValueKeys = (type?: string): readonly string[] => {
     ? Object.keys(entriesOf((phone as { wrapped: v.GenericSchema }).wrapped))
     : [];
 };
+
+/**
+ * What a change to a Block's props sets, with the props that follow it, such
+ * as a Video's drawn copy, which a new thumbnail drops.
+ */
+export const blockChanges = (
+  { props, type }: Pick<Block, "props" | "type">,
+  changes: Record<string, unknown>
+) => blockDefinitions.get(type)?.changes?.(props, changes) ?? changes;
 
 export const validateProps = (
   block: Pick<Block, "id" | "type">,

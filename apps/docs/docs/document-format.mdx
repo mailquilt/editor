@@ -52,7 +52,7 @@ Each version of the format, and how a document saved in the one before is upgrad
 | `1` | Mail Quilt 0.1.0 | The first version. |
 | `2` | Mail Quilt 0.2.0 | Stricter colors and URLs. A version 1 email gets a plain space in a color where it has another space after a comma, such as a tab, and `https:` in place of `httpſ:` at the start of a link or image URL. |
 | `3` | Mail Quilt 0.3.0 | The [`mergeTag`](#merge-tags-in-text) node in rich text. Each Merge Tag that sits whole in one piece of text becomes a node, with that text's marks. A tag split across pieces with different marks, such as `{{first` in bold and `_name}}` not, stays text. Bulleted and numbered [Lists](#lists) in a Text Block, a Row's [padding and phone settings](#row), and the [Social](#social) Block, which no older email has. |
-| `4` | Mail Quilt 0.4.0 | The [Email style](#email-style), every Block's [Box](#box), a [Column](#column)'s settings, [showing on a device](#showing-on-a-device), [Phone values](#phone-values) and the [Menu](#menu) Block, which no older email has. A Row's `hideOnPhone` is gone: a version 3 Row with `hideOnPhone: true` loads with `showOn: "desktop"`, and one with `false` without either. Nothing else changes but the version. |
+| `4` | Mail Quilt 0.4.0 | The [Email style](#email-style), every Block's [Box](#box), a [Column](#column)'s settings, [showing on a device](#showing-on-a-device), [Phone values](#phone-values), and the [Menu](#menu) and [Video](#video) Blocks, which no older email has. A Row's `hideOnPhone` is gone: a version 3 Row with `hideOnPhone: true` loads with `showOn: "desktop"`, and one with `false` without either. Nothing else changes but the version. |
 
 An email saved by a newer version can't be opened by a package that only knows an older one.
 
@@ -287,6 +287,33 @@ A link without a `label` or a `url` stays in the list, faded on the canvas, and 
   "align": "right",
   "fontSize": 13,
   "gap": 20
+}
+```
+
+### Video
+
+`"type": "video"`
+
+A picture that links to a video, since email can't play one. Readers click it to watch the video where it is, such as on YouTube.
+
+| Prop | Value |
+| --- | --- |
+| `url` | Optional. The video's [link](#links). |
+| `thumbnail` | Optional. The picture's URL, starting with `https:` or `http:`, or a [Merge Tag](#merge-tags), as an [Image](#image)'s `src` is. In the editor, a YouTube link fills it in from YouTube's own thumbnail for the video, which someone can replace. |
+| `alt` | Optional. What the picture shows. A screen reader says it for the link to the video, and it shows if images are off. |
+| `play` | Optional. How the email shows it's a video: `"below"`, a line under the picture with a play mark and `label`; `"on"`, a play button on the picture, which is `playThumbnail`; or `"none"`, the picture alone. Defaults to `"below"`. |
+| `playThumbnail` | Optional. A copy of the thumbnail with a play button drawn on it, as an image URL, which shows in its place while `play` is `"on"`. The editor draws it in the browser and uploads it through [`uploadImage`](./upload-images#a-videos-play-button). While `play` is `"on"` without one, the line shows instead. A Command that gives a new `thumbnail` without a new `playThumbnail` removes the old copy, and turns `play` from `"on"` to `"below"`, so the email never shows the old picture. |
+| `label` | Optional. The line's words, as plain text that isn't blank. Defaults to `"Watch the video"`. |
+| `color` | Optional. The line's [color](#colors). Defaults to the [Email style](#email-style)'s `linkColor`, or else its `textColor`, or else `#000000`. The line's size and font are the Email style's text size and body font. |
+
+A Video without both a `url` and a `thumbnail` is left out of the exported HTML, as an Image without a `src` is. The picture fills the Column, and the line sits centred under it. The play mark is a ▶ in a circle of the line's color, which Outlook on Windows draws square. A button laid over the picture would need either CSS that Outlook.com and Yahoo Mail drop, or a background image, which Mail Quilt doesn't write yet, so a play button on the picture is drawn into a copy of it instead.
+
+```json
+{
+  "url": "https://www.youtube.com/watch?v=q8Ln2kXa_-9",
+  "thumbnail": "https://i.ytimg.com/vi/q8Ln2kXa_-9/maxresdefault.jpg",
+  "alt": "Our roaster tipping a batch of beans",
+  "label": "Watch the roast"
 }
 ```
 

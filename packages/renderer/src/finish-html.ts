@@ -104,6 +104,33 @@ const addBoxes = (html: string, boxes: readonly string[]) => {
   });
 };
 
+/** Marks a Video with a line under its picture, for `addVideoLines`. */
+export const VIDEO_LINE = "mq-video";
+
+/**
+ * A marked Video's cell, up to the end of its picture's row of MJML's image
+ * table. Like `SHARED_COLUMN_WIDTH`, it starts at the `<`, so text that reads
+ * the same is left alone, and the picture's link is the first `</a>` in it.
+ */
+const VIDEO_PICTURE = new RegExp(
+  String.raw`<td align="center" class="(?:${BOXED_BLOCK} )?${VIDEO_LINE}(?: mq-[\w-]+)*" style="[^"]*" >.*?</a></td></tr>`,
+  "gsu"
+);
+
+/**
+ * Each Video's line goes under its picture, in a row of its own in MJML's
+ * image table, which is the picture's width, so the line is centred under
+ * it. They're given in the order MJML writes the marked Blocks.
+ */
+const addVideoLines = (html: string, lines: readonly string[]) => {
+  let index = 0;
+  return html.replaceAll(VIDEO_PICTURE, (picture: string) => {
+    const line = lines[index] as string;
+    index += 1;
+    return `${picture}${line}`;
+  });
+};
+
 /** What's between the markers around something only phones show. */
 const PHONE_ONLY_MARKED = new RegExp(
   String.raw`<!--${PHONE_ONLY}(?<kind>row|block)-->(?<inside>.*?)<!--/${PHONE_ONLY}\k<kind>-->`,
@@ -155,16 +182,23 @@ const withoutLayout = (html: string) =>
   });
 
 /**
- * MJML's HTML, made small, with each shared Column's desktop width and each
- * Block's border and corners.
+ * MJML's HTML, made small, with each shared Column's desktop width, each
+ * Video's line and each Block's border and corners.
  */
 export const finishHtml = (
   html: string,
   sharedRowWidths: readonly number[],
-  boxes: readonly string[] = []
+  boxes: readonly string[] = [],
+  videoLines: readonly string[] = []
 ) =>
   showOnPhonesOnly(
     roundBoxes(
-      addBoxes(limitColumnWidths(withoutLayout(html), sharedRowWidths), boxes)
+      addBoxes(
+        addVideoLines(
+          limitColumnWidths(withoutLayout(html), sharedRowWidths),
+          videoLines
+        ),
+        boxes
+      )
     )
   );

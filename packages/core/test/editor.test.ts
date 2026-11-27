@@ -99,13 +99,13 @@ describe("refusing a Command", () => {
     [
       "a Block type that doesn't exist",
       (email) => ({
-        blockType: "video",
+        blockType: "carousel",
         columnId: email.rows[0]?.columns[0]?.id,
         index: 0,
         type: "insertBlock",
       }),
       "unknownBlockType",
-      /video/iu,
+      /carousel/iu,
     ],
     [
       "an index past the end",

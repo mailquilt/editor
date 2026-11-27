@@ -1,6 +1,6 @@
 import * as v from "valibot";
 
-import { blockDefinitions, validateProps } from "./blocks.js";
+import { blockChanges, blockDefinitions, validateProps } from "./blocks.js";
 import { columnPropsSchema } from "./column-settings.js";
 import { commandSchema } from "./command-schema.js";
 import type { NewColumn } from "./command-schema.js";
@@ -95,8 +95,11 @@ const planUpdateBlockProps = (
 ): CommandPlan => {
   const block = findBlock(document, blockId);
   return block
-    ? planProps({ blockId }, block.props, props, (merged) =>
-        validateProps(block, merged)
+    ? planProps(
+        { blockId },
+        block.props,
+        blockChanges(block, props),
+        (merged) => validateProps(block, merged)
       )
     : noSuch("Block", blockId);
 };
