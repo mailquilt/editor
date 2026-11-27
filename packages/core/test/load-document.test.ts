@@ -466,6 +466,36 @@ describe("opening an email saved with version 3", () => {
   });
 });
 
+/** The version 3 fixture with its first Row's `hideOnPhone` set to `value`. */
+const withHiding = (hideOnPhone: unknown) => {
+  const email = readFixture("version-3");
+  email.rows[0].props = { backgroundColor: "#ffffff", hideOnPhone };
+  return email;
+};
+
+describe("a Row hidden on phones in version 3", () => {
+  it("shows on desktop only in version 4", () => {
+    const loaded = loadDocument(withHiding(true));
+
+    expect(loaded.ok && loaded.document.rows[0]?.props).toStrictEqual({
+      backgroundColor: "#ffffff",
+      showOn: "desktop",
+    });
+  });
+
+  it("shows on all devices once its hiding is off", () => {
+    const loaded = loadDocument(withHiding(false));
+
+    expect(loaded.ok && loaded.document.rows[0]?.props).toStrictEqual({
+      backgroundColor: "#ffffff",
+    });
+  });
+
+  it("is refused when its hiding isn't yes or no, rather than dropped", () => {
+    expect(loadDocument(withHiding("yes"))).toMatchObject({ ok: false });
+  });
+});
+
 describe("opening an email saved with 0.1.0", () => {
   it("writes each color and URL that 0.1.0 accepted as the current checks take it", () => {
     const email = upgraded("version-3");

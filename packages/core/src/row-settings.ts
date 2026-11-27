@@ -5,6 +5,7 @@ import {
   paddingFields,
   paddingStyles,
 } from "./box-settings.js";
+import { deviceEntries } from "./device-settings.js";
 import type { Row } from "./document.js";
 import { BACKGROUND_COLOR_FIELD } from "./settings-fields.js";
 import type { SettingsField } from "./settings-fields.js";
@@ -12,8 +13,8 @@ import { colorSchema } from "./value-schemas.js";
 
 export const rowPropsSchema = v.strictObject({
   backgroundColor: v.optional(colorSchema),
-  hideOnPhone: v.optional(v.boolean()),
   ...paddingEntries,
+  ...deviceEntries(),
   stackOnPhone: v.optional(v.boolean()),
 });
 
@@ -26,14 +27,6 @@ export type RowProps = v.InferOutput<typeof rowPropsSchema>;
 const ROW_FIELDS: readonly SettingsField[] = [
   BACKGROUND_COLOR_FIELD,
   ...paddingFields(0),
-  {
-    default: false,
-    descriptionId: "field.hideOnPhone.description",
-    invalidMessageId: "invalid.toggle",
-    key: "hideOnPhone",
-    labelId: "field.hideOnPhone",
-    type: "toggle",
-  },
 ];
 
 /** Columns only stack when there's more than one. */

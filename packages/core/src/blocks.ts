@@ -8,6 +8,7 @@ import {
   paddingFields,
   paddingStyles,
 } from "./box-settings.js";
+import { deviceEntries } from "./device-settings.js";
 import type { Block, EmailStyle } from "./document.js";
 import {
   imageSrcSchema,
@@ -87,6 +88,7 @@ const TEXT_LOOK = { align: "left", color: "#000000", fontSize: 16 } as const;
 
 const textBlockSchema = v.strictObject({
   ...blockBoxEntries,
+  ...deviceEntries({ fontSize: v.optional(fontSizeSchema) }),
   align: v.optional(alignSchema),
   color: v.optional(colorSchema),
   content: richTextSchema,
@@ -137,6 +139,7 @@ const LEVEL_OPTIONS = [
 
 const headingBlockSchema = v.strictObject({
   ...blockBoxEntries,
+  ...deviceEntries({ fontSize: v.optional(fontSizeSchema) }),
   align: v.optional(alignSchema),
   color: v.optional(colorSchema),
   content: headingTextSchema,
@@ -203,6 +206,7 @@ const BUTTON_LOOK = {
 
 const buttonBlockSchema = v.strictObject({
   ...blockBoxEntries,
+  ...deviceEntries({ fontSize: v.optional(fontSizeSchema) }),
   align: v.optional(alignSchema),
   backgroundColor: v.optional(solidColorSchema),
   color: v.optional(colorSchema),
@@ -244,7 +248,9 @@ const buttonBlock = {
         BUTTON_LOOK.backgroundColor,
       color = BUTTON_LOOK.color,
     } = props;
-    const { textFontSize } = style;
+    // Only a Phone value gives a Button a font size of its own.
+    const textFontSize =
+      (props as { fontSize?: number }).fontSize ?? style.textFontSize;
     // Corners in its Box shape the Button itself, over Email style's.
     const buttonBorderRadius = props.borderRadius ?? style.buttonBorderRadius;
     return {
@@ -269,6 +275,7 @@ const hasAltText = (alt: unknown) =>
 const imageBlockSchema = v.pipe(
   v.strictObject({
     ...blockBoxEntries,
+    ...deviceEntries({ width: v.optional(wholePixelsSchema) }),
     alt: v.optional(v.string()),
     href: v.optional(linkHrefSchema),
     // Optional, because a new Image has no URL until a person gives it one.
@@ -332,6 +339,7 @@ const MAX_DIVIDER_THICKNESS = 100;
 
 const dividerBlockSchema = v.strictObject({
   ...blockBoxEntries,
+  ...deviceEntries(),
   color: v.optional(colorSchema),
   thickness: v.optional(pixelSchema(MAX_DIVIDER_THICKNESS)),
 });
@@ -366,6 +374,7 @@ const MAX_SPACER_HEIGHT = 1000;
 
 const spacerBlockSchema = v.strictObject({
   ...blockBoxEntries,
+  ...deviceEntries(),
   height: v.optional(pixelSchema(MAX_SPACER_HEIGHT)),
 });
 
@@ -426,6 +435,7 @@ const ICON_SIZE_OPTIONS = [
 
 const socialBlockSchema = v.strictObject({
   ...blockBoxEntries,
+  ...deviceEntries(),
   align: v.optional(alignSchema),
   iconSize: v.optional(v.picklist(ICON_SIZE_OPTIONS.map(({ value }) => value))),
   iconStyle: v.optional(
@@ -543,7 +553,8 @@ export const socialIcons = (props: SocialBlockProps) => {
   );
   return {
     // One value while every side is the same, as most are.
-    blockPadding: new Set(sides).size === 1 ? sides[0] : sides.join(" "),
+    blockPadding:
+      new Set(sides).size === 1 ? (sides[0] as string) : sides.join(" "),
     iconPadding: gap / 2,
     size: iconSize,
     style: iconStyle,

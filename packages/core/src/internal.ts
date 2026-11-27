@@ -13,6 +13,8 @@ export {
   SOCIAL_NETWORKS,
   socialIcons,
 } from "./blocks.js";
+export { isHiddenOn, onPhone, SHOW_ON } from "./device-settings.js";
+export type { ShowOn } from "./device-settings.js";
 export { NEW_EMAIL_WIDTH } from "./create-email.js";
 export { rowLayoutOf } from "./row-layouts.js";
 export { findBlockPosition } from "./operations.js";

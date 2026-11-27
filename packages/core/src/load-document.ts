@@ -286,9 +286,28 @@ const fromVersion2 = (document: Record<string, unknown>) => {
 
 /**
  * Version 4 adds Email style, and other optional fields, which no version 3
- * email has, so a version 3 email is already a version 4 one.
+ * email has. Its one rewrite is a Row's `hideOnPhone`, which `showOn` replaces:
+ * `true` shows the Row on desktop only, and `false` on every device, as unset
+ * does. Any other value stays, for the schema to refuse.
  */
-const fromVersion3 = (document: Record<string, unknown>) => document;
+const fromVersion3 = (document: Record<string, unknown>) => {
+  const { rows } = document;
+  if (!Array.isArray(rows)) {
+    return document;
+  }
+  for (const row of rows as unknown[]) {
+    const props = (row as { props?: unknown } | null)?.props;
+    if (isPlainObject(props) && "hideOnPhone" in (props as object)) {
+      const { hideOnPhone, ...rest } = props as Record<string, unknown>;
+      if (hideOnPhone === true) {
+        (row as { props: object }).props = { ...rest, showOn: "desktop" };
+      } else if (hideOnPhone === false) {
+        (row as { props: object }).props = rest;
+      }
+    }
+  }
+  return document;
+};
 
 /**
  * Checks a saved email and migrates it if it's an older version, without
