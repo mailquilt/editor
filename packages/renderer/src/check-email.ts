@@ -460,15 +460,16 @@ const blockProblems = (
   const problems: BlockProblem[] = [];
   switch (block.type) {
     case "image": {
-      const { alt = "", src } = block.props;
+      const { alt = "", decorative, src } = block.props;
       // Without an image, it's left out, so its alt text doesn't matter yet.
+      // A decorative one is skipped by screen readers, so it needs none.
       if (src === undefined) {
         problems.push({
           code: "image-without-src",
           field: "src",
           message: "An Image has no image, so it's left out of the email.",
         });
-      } else if (alt.trim() === "") {
+      } else if (!decorative && alt.trim() === "") {
         problems.push({
           code: "image-without-alt",
           field: "alt",

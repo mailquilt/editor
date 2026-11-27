@@ -16,6 +16,7 @@ import type * as Core from "./src/internal.js";
  */
 const ACROSS_VALUES = new Set([
   "A Social Block can link each network only once",
+  "A decorative Image can't have alt text or a link",
   "A linked Image needs alt text",
   "Text can't have the same mark twice",
 ]);

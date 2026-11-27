@@ -146,6 +146,7 @@ export const STRINGS = {
   "bar.color": "Color",
   "bar.addLink": "Add a link",
   "bar.alt": "Alt",
+  "bar.decorative": "Screen readers skip it.",
   "bar.upload": "Upload",
   "bar.replace": "Replace",
   "bar.uploadImage": "Upload image",
@@ -319,6 +320,7 @@ export const STRINGS = {
   "field.borderRadius": "Corners",
   "field.borderStyle": "Border style",
   "field.borderWidth": "Border width",
+  "field.decorative": "Decorative",
   "field.boxBackgroundColor": "Background",
   "field.buttonLabel": "Label",
   "field.color": "Color",
@@ -340,6 +342,7 @@ export const STRINGS = {
   "field.link.description": "A URL, or a Merge Tag such as {{cta_url}}.",
   "field.link.needsAltText":
     "Add alt text first, as a screen reader says it for the link.",
+  "field.link.decorative": "A decorative image can't have a link",
   "field.paddingBottom": "Bottom padding",
   "field.paddingLeft": "Left padding",
   "field.paddingRight": "Right padding",
@@ -367,6 +370,8 @@ export const STRINGS = {
     "A linked Image needs alt text. To leave this empty, remove the link first.",
   "invalid.borderStyle": "Choose a style from the list.",
   "invalid.buttonLabel": "Enter the text the Button shows.",
+  "invalid.decorative":
+    "A decorative image can't have alt text or a link. Remove its link, if it has one, and its alt text first.",
   "invalid.color":
     "Use a color such as #ff0000, rgb(255, 0, 0) or rgba(255, 0, 0, 0.5).",
   "invalid.font": "Choose a font from the list.",
@@ -528,7 +533,7 @@ export const STRINGS = {
   "check.testFailed": "The test wasn't sent. Try again.",
 
   // Each check that passed, in Check's list.
-  "passed.imageAlt": "Every Image has alt text",
+  "passed.imageAlt": "Every Image has alt text or is decorative",
   "passed.links": "Every Button and link goes somewhere",
   "passed.imageSrc": "Every Image has an image",
   "passed.preheader": "Preheader is set",

@@ -227,7 +227,7 @@ export const uiStyles = css`
     width: 28px;
   }
 
-  .icon-button:hover:not(:disabled) {
+  .icon-button:hover:not(:disabled, [aria-disabled="true"]) {
     background: var(--mq-color-surface-hover);
     color: var(--mq-color-text);
   }
@@ -243,6 +243,18 @@ export const uiStyles = css`
 
   .icon-button:disabled {
     cursor: default;
+    opacity: 0.45;
+  }
+
+  /*
+   * Off with aria-disabled, it stays reachable, so its tooltip says why. Only
+   * its icon fades, so its focus ring stays at full strength.
+   */
+  .icon-button[aria-disabled="true"] {
+    cursor: default;
+  }
+
+  .icon-button[aria-disabled="true"] > .icon {
     opacity: 0.45;
   }
 

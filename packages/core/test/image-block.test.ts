@@ -26,6 +26,17 @@ const setProps = (props: Record<string, unknown>) => {
   return { document: editor.getDocument(), result };
 };
 
+/** Marks an Image with these props as decorative. */
+const markDecorative = (props: Record<string, unknown>) => {
+  const editor = createEditor({ document: withImage(props) });
+  const result = editor.apply({
+    blockId: "image-1",
+    props: { decorative: true },
+    type: "updateBlockProps",
+  });
+  return { document: editor.getDocument(), result };
+};
+
 const linkField = (props: Record<string, unknown>) =>
   blockSettingsFields({ props, type: "image" }).find(
     ({ key }) => key === "href"
@@ -149,5 +160,60 @@ describe("Image Block", () => {
     expect(linkField({})).toMatchObject({ disabled: true });
     expect(linkField({ alt: "   " })).toMatchObject({ disabled: true });
     expect(linkField({ alt: "Logo" })).not.toHaveProperty("disabled");
+  });
+
+  describe("marked as decorative", () => {
+    it("is stored on an Image with neither alt text nor a link", () => {
+      const { document, result } = markDecorative({
+        src: "https://cdn.example/a.png",
+      });
+
+      expect(result).toStrictEqual({ ok: true });
+      expect(propsOf(document)).toStrictEqual({
+        decorative: true,
+        src: "https://cdn.example/a.png",
+      });
+    });
+
+    it.each([
+      ["alt text", { alt: "A line of beans" }],
+      ["a link", { alt: "Shop", href: "https://shop.example" }],
+    ])("refuses an Image with %s, unchanged", (_name, props) => {
+      const { document, result } = markDecorative(props);
+
+      expect(result).toStrictEqual({
+        code: "invalidProps",
+        ok: false,
+        reason: expect.stringMatching(/decorative/u),
+      });
+      expect(propsOf(document)).toStrictEqual(props);
+    });
+
+    it("refuses alt text once it's decorative", () => {
+      const editor = createEditor({
+        document: withImage({ decorative: true }),
+      });
+
+      expect(
+        editor.apply({
+          blockId: "image-1",
+          props: { alt: "A line of beans" },
+          type: "updateBlockProps",
+        })
+      ).toMatchObject({ code: "invalidProps", ok: false });
+    });
+
+    it("has no alt text field, and no link to add", () => {
+      const fields = blockSettingsFields({
+        props: { decorative: true },
+        type: "image",
+      });
+
+      expect(fields.map(({ key }) => key)).not.toContain("alt");
+      expect(linkField({ decorative: true })).toMatchObject({
+        descriptionId: "field.link.decorative",
+        disabled: true,
+      });
+    });
   });
 });

@@ -520,6 +520,11 @@ const KEY_SCOPES = {
   // Undo and redo are the editor's, as in any settings field with nothing
   // typed, and Delete and Backspace are the field's.
   barField: { keys: BAR_FIELD, within: "editor" },
+  // Escape takes back a refused change, and the arrow keys stay the bar's.
+  barSwitchDraft: {
+    keys: [escape("discardDraft"), ...TOOLBAR],
+    within: "editor",
+  },
   barPopover: { keys: [escape("closePopover")], within: "editor" },
   barMenu: { keys: [escape("closeMenu"), ...TOOLBAR], within: "editor" },
   morePanel: { keys: [escape("closeMore")], within: "editor" },

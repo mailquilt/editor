@@ -134,6 +134,8 @@ const PLACES = {
   settings: {},
   /** A settings field holding typed text that isn't applied yet. */
   settingsDraft: {},
+  /** A switch in the Selection bar holding a change that was refused. */
+  barSwitchDraft: {},
   /** A Block's text, made by ProseMirror. */
   text: {},
   /** The Style Mode's panel, of the email's Email style. */

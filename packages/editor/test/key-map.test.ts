@@ -576,6 +576,20 @@ describe("in a settings field with typed text that isn't applied", () => {
   });
 });
 
+describe("on a switch in the Selection bar whose change was refused", () => {
+  it("Escape takes the change back, and stops there", () => {
+    expect(keyIn("barSwitchDraft", press("Escape"))).toStrictEqual(
+      acts("discardDraft", { stops: true })
+    );
+  });
+
+  it("the arrow keys still go along the bar", () => {
+    expect(keyIn("barSwitchDraft", press("ArrowRight"))?.action).toBe(
+      "nextButton"
+    );
+  });
+});
+
 describe("Ctrl/⌘+K", () => {
   it.each(scopesWithin("email"))(
     "from %s, opens the link field in the selected Block's text, and stops there",

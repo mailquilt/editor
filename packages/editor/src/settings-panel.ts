@@ -513,8 +513,11 @@ export const settingsPanelStyles = css`
     outline-offset: -1px;
   }
 
-  /* A switch: a track, with a knob at its end while it's on, in the settings or Check. */
-  :is(.settings, .check-samples) input[role="switch"] {
+  /*
+   * A switch: a track, with a knob at its end while it's on, in the settings,
+   * the Selection bar or Check.
+   */
+  :is(.settings, .check-samples, .bar-switch) input[role="switch"] {
     appearance: none;
     background-color: var(--mq-color-border-strong);
     border: 0;
@@ -530,7 +533,7 @@ export const settingsPanelStyles = css`
     width: 36px;
   }
 
-  :is(.settings, .check-samples) input[role="switch"]::before {
+  :is(.settings, .check-samples, .bar-switch) input[role="switch"]::before {
     background-color: var(--mq-color-on-accent);
     border-radius: 50%;
     box-shadow: var(--mq-shadow-small);
@@ -543,15 +546,16 @@ export const settingsPanelStyles = css`
     width: 16px;
   }
 
-  :is(.settings, .check-samples) input[role="switch"]:checked {
+  :is(.settings, .check-samples, .bar-switch) input[role="switch"]:checked {
     background-color: var(--mq-color-accent);
   }
 
-  :is(.settings, .check-samples) input[role="switch"]:checked::before {
+  :is(.settings, .check-samples, .bar-switch)
+    input[role="switch"]:checked::before {
     transform: translateX(16px);
   }
 
-  :is(.settings, .check-samples) input[role="switch"]:focus {
+  :is(.settings, .check-samples, .bar-switch) input[role="switch"]:focus {
     outline-offset: 2px;
   }
 
@@ -560,23 +564,24 @@ export const settingsPanelStyles = css`
    * the knob are drawn in the system's colors, which stay where it is.
    */
   @media (forced-colors: active) {
-    :is(.settings, .check-samples) input[role="switch"] {
+    :is(.settings, .check-samples, .bar-switch) input[role="switch"] {
       border: 1px solid CanvasText;
     }
 
-    :is(.settings, .check-samples) input[role="switch"]::before {
+    :is(.settings, .check-samples, .bar-switch) input[role="switch"]::before {
       background-color: CanvasText;
       forced-color-adjust: none;
       inset-block-start: 1px;
       inset-inline-start: 1px;
     }
 
-    :is(.settings, .check-samples) input[role="switch"]:checked {
+    :is(.settings, .check-samples, .bar-switch) input[role="switch"]:checked {
       background-color: Highlight;
       forced-color-adjust: none;
     }
 
-    :is(.settings, .check-samples) input[role="switch"]:checked::before {
+    :is(.settings, .check-samples, .bar-switch)
+      input[role="switch"]:checked::before {
       background-color: HighlightText;
     }
   }
@@ -1218,7 +1223,8 @@ export const renderField = (
           </div>
         `;
       }
-      // Its text is "true" or "false", as `fieldText` gives for a yes or no.
+      // Its text is "true" or "false", as `fieldText` gives for a yes or no. A
+      // change that's refused stays shown, as what's typed in a field does.
       case "toggle": {
         return html`
           <input
@@ -1227,7 +1233,7 @@ export const renderField = (
             id=${id}
             role="switch"
             type="checkbox"
-            .checked=${live(text === "true")}
+            .checked=${live((draft?.text ?? text) === "true")}
             @change=${({ currentTarget }: Event) =>
               drafts.onCommit(section, field, {
                 badInput: false,

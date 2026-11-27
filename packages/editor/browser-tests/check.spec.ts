@@ -347,7 +347,9 @@ test("a fix button opens Edit with focus in the field to fix, and the Problem un
   await page.keyboard.type("A cup of coffee");
   await page.keyboard.press("Enter");
   await openCheck(page);
-  await expect(checkPanel(page)).toContainText("Every Image has alt text");
+  await expect(checkPanel(page)).toContainText(
+    "Every Image has alt text or is decorative"
+  );
 });
 
 test("the button below the email opens Check from the keyboard, with focus on Check's tab", async ({
