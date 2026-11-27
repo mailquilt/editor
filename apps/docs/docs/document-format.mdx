@@ -52,7 +52,7 @@ Each version of the format, and how a document saved in the one before is upgrad
 | `1` | Mail Quilt 0.1.0 | The first version. |
 | `2` | Mail Quilt 0.2.0 | Stricter colors and URLs. A version 1 email gets a plain space in a color where it has another space after a comma, such as a tab, and `https:` in place of `httpſ:` at the start of a link or image URL. |
 | `3` | Mail Quilt 0.3.0 | The [`mergeTag`](#merge-tags-in-text) node in rich text. Each Merge Tag that sits whole in one piece of text becomes a node, with that text's marks. A tag split across pieces with different marks, such as `{{first` in bold and `_name}}` not, stays text. Bulleted and numbered [Lists](#lists) in a Text Block, a Row's [padding and phone settings](#row), and the [Social](#social) Block, which no older email has. |
-| `4` | Mail Quilt 0.4.0 | The [Email style](#email-style), every Block's [Box](#box), a [Column](#column)'s settings, [showing on a device](#showing-on-a-device) and [Phone values](#phone-values), which no older email has. A Row's `hideOnPhone` is gone: a version 3 Row with `hideOnPhone: true` loads with `showOn: "desktop"`, and one with `false` without either. Nothing else changes but the version. |
+| `4` | Mail Quilt 0.4.0 | The [Email style](#email-style), every Block's [Box](#box), a [Column](#column)'s settings, [showing on a device](#showing-on-a-device), [Phone values](#phone-values) and the [Menu](#menu) Block, which no older email has. A Row's `hideOnPhone` is gone: a version 3 Row with `hideOnPhone: true` loads with `showOn: "desktop"`, and one with `false` without either. Nothing else changes but the version. |
 
 An email saved by a newer version can't be opened by a package that only knows an older one.
 
@@ -142,7 +142,7 @@ A Block's, Row's or Column's `phone` holds a second value for some of its settin
 | In `phone` | On |
 | --- | --- |
 | `paddingTop`, `paddingRight`, `paddingBottom`, `paddingLeft` | Every Block, Row and Column, as each one's padding. |
-| `fontSize` | A [Text](#text) Block, a [Heading](#heading) and a [Button](#button), a whole number of pixels from 1 to 200. A Button has a font size only on phones. |
+| `fontSize` | A [Text](#text) Block, a [Heading](#heading), a [Button](#button) and a [Menu](#menu), a whole number of pixels from 1 to 200. A Button has a font size only on phones. |
 | `width` | An [Image](#image), a whole number of pixels from 1. It stops at its Column's width, as on a desktop. |
 
 ```json
@@ -159,7 +159,7 @@ Every type of Block also takes these props, which set the box around its content
 
 | Prop | Value |
 | --- | --- |
-| `paddingTop`, `paddingRight`, `paddingBottom`, `paddingLeft` | The space between the Block's edge and its content on that side, a whole number of pixels from 0 to 200. Defaults to `16`, or `0` for a [Spacer](#spacer). A [Social](#social) Block's icons keep half the space between them from its edge, so a padding less than that, `0` too, leaves them that far in. |
+| `paddingTop`, `paddingRight`, `paddingBottom`, `paddingLeft` | The space between the Block's edge and its content on that side, a whole number of pixels from 0 to 200. Defaults to `16`, or `0` for a [Spacer](#spacer). A [Social](#social) Block's icons keep half the space between them from its edge, so a padding less than that, `0` too, leaves them that far in. A [Menu](#menu)'s links do the same on its left and right. |
 | `boxBackgroundColor` | A [color](#colors) behind the Block's content and padding. It's named apart from a Button's `backgroundColor`, which is the Button's own color. |
 | `borderWidth`, `borderStyle`, `borderColor` | A [border](#borders) around the Block. |
 | `borderRadius` | The Block's corners, a whole number of pixels from 0 to 100. On a [Button](#button), it shapes the Button itself, over the Email style's `buttonBorderRadius`. Outlook on Windows draws corners square, as [Tested email clients](./email-clients#boxes-and-columns) says. |
@@ -256,6 +256,39 @@ Every type of Block also takes these props, which set the box around its content
 ```
 
 Each icon is an image, with the network's name as its alt text. [Social icons](./social-icons) says where the images load from.
+
+### Menu
+
+`"type": "menu"`
+
+A row of links, such as a website's main pages in a header or footer.
+
+| Prop | Value |
+| --- | --- |
+| `links` | Required. The links, in the order they show, each with its `label` and `url`, below. A new Menu has none. |
+| `align` | Optional. `"left"`, `"center"` or `"right"`. Defaults to `"left"`. |
+| `color` | Optional. The links' [color](#colors). Defaults to the [Email style](#email-style)'s `textColor`, or else `#000000`. |
+| `fontSize` | Optional. A whole number of pixels from 1 to 200. Defaults to the Email style's `textFontSize`, or else `16`. |
+| `gap` | Optional. The space between links, a whole number of pixels from 1 to 100. Defaults to `24`. |
+
+| Link field | Value |
+| --- | --- |
+| `label` | Optional. The words the link shows, as plain text that isn't blank. |
+| `url` | Optional. A [link](#links). |
+
+A link without a `label` or a `url` stays in the list, faded on the canvas, and is left out of the exported HTML. A Menu none of whose links has both is left out too, as an Image without a `src` is. The links sit on one line and wrap onto the next where they don't fit, as on a phone, without underlines.
+
+```json
+{
+  "links": [
+    { "label": "Shop", "url": "https://example.com/shop" },
+    { "label": "Your orders", "url": "{{orders_url}}" }
+  ],
+  "align": "right",
+  "fontSize": 13,
+  "gap": 20
+}
+```
 
 ## Rich text
 

@@ -2,6 +2,7 @@ import type { Block, NewBlock, Row } from "@mailquilt/core";
 import {
   copiedJson,
   loadCopied,
+  menuLinks,
   SOCIAL_NETWORKS,
 } from "@mailquilt/core/internal";
 import type { BlockProps, PasteRefusalCode } from "@mailquilt/core/internal";
@@ -27,6 +28,14 @@ const linkedNetworks = (links: BlockProps["social"]["links"]) =>
     url === undefined ? [] : [{ label: SOCIAL_NETWORKS[network], url }]
   );
 
+/** A Social or Menu Block's links as the export has them, each with its words. */
+const linksOf = (block: Block) => {
+  if (block.type === "social") {
+    return linkedNetworks(block.props.links);
+  }
+  return block.type === "menu" ? menuLinks(block.props).shown : [];
+};
+
 /** A Block's text, with each Merge Tag as `{{name}}` and a blank line between paragraphs. */
 const textOf = (block: Block) => {
   if (hasRichText(block)) {
@@ -37,8 +46,8 @@ const textOf = (block: Block) => {
   if (block.type === "button") {
     return block.props.label;
   }
-  if (block.type === "social") {
-    return linkedNetworks(block.props.links)
+  if (block.type === "social" || block.type === "menu") {
+    return linksOf(block)
       .map(({ label, url }) => `${label}: ${url}`)
       .join("\n");
   }
@@ -97,8 +106,9 @@ const htmlOf = (doc: Document, block: Block): Node[] => {
     case "divider": {
       return [doc.createElement("hr")];
     }
-    case "social": {
-      const links = linkedNetworks(block.props.links);
+    case "social":
+    case "menu": {
+      const links = linksOf(block);
       if (links.length === 0) {
         return [];
       }

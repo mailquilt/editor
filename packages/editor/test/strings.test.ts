@@ -79,11 +79,19 @@ const textIdsOf = (field: SettingsField): string[] => [
   field.invalidMessageId,
   ...(field.descriptionId === undefined ? [] : [field.descriptionId]),
   ...(field.type === "number" ? [`unit.${field.unit}`] : []),
-  ...(field.type === "select" || field.type === "list"
+  ...(field.type === "select"
     ? field.options.map(({ labelId }) => labelId)
     : []),
-  ...(field.type === "list"
-    ? [field.chooseLabelId, field.allAddedId, ...textIdsOf(field.itemField)]
+  ...(field.type === "list" ? field.itemFields.flatMap(textIdsOf) : []),
+  ...(field.type === "list" && field.itemKey !== undefined
+    ? [
+        field.chooseLabelId,
+        field.allAddedId,
+        ...field.options.map(({ labelId }) => labelId),
+      ]
+    : []),
+  ...(field.type === "list" && field.itemKey === undefined
+    ? [field.addLabelId, field.itemNameId]
     : []),
 ];
 

@@ -1266,8 +1266,22 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     } else if (position && field) {
       this.#selection.select({ blockId: position.block.id });
       this.#openFieldIn(fieldShownIn(position.block, field));
+      // A Menu's link that says too little is the one with those words, of
+      // those the email shows, as only they're checked.
+      const { block } = position;
+      const item =
+        block.type === "menu" && problem.linkText !== undefined
+          ? block.props.links.findIndex(
+              ({ label, url }) =>
+                url !== undefined && label?.trim() === problem.linkText
+            )
+          : -1;
       target = {
-        draftKey: blockDraftKey(position.block.id, field),
+        draftKey: blockDraftKey(
+          block.id,
+          field,
+          item === -1 ? undefined : { item: String(item), key: "label" }
+        ),
         on: "field",
       };
     } else if (field && blockId === undefined) {

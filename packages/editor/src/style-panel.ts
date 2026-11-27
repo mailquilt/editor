@@ -343,6 +343,12 @@ const colorsIn = (email: BlocksDocument) => {
 };
 
 /** The copy of a callout for a Block's own value, by the Block's type and prop. */
+/** The title of a Block's own color, by its type, where it isn't Text's. */
+const COLOR_TITLES: Partial<Record<Block["type"], StringId>> = {
+  heading: "style.own.headingColor",
+  menu: "style.own.menuColor",
+};
+
 const calloutCopy = (
   block: Block,
   { own, prop, shared }: OwnValue,
@@ -361,6 +367,13 @@ const calloutCopy = (
       why: text("style.own.buttonWhy", values),
     };
   }
+  if (prop === "fontSize" && block.type === "menu") {
+    return {
+      share: text("style.own.textSizeShare", values),
+      title: text("style.own.menuSize", values),
+      why: text("style.own.textSizeWhy", values),
+    };
+  }
   if (prop === "fontSize") {
     return block.type === "heading"
       ? {
@@ -376,12 +389,7 @@ const calloutCopy = (
   }
   return {
     share: text("style.own.colorShare", values),
-    title: text(
-      block.type === "heading"
-        ? "style.own.headingColor"
-        : "style.own.textColor",
-      values
-    ),
+    title: text(COLOR_TITLES[block.type] ?? "style.own.textColor", values),
     why: text("style.own.colorWhy", values),
   };
 };

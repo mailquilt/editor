@@ -194,6 +194,24 @@ describe("the plain text", () => {
     ).toBe("Instagram: https://instagram.com/shop\nWebsite: {{site_url}}");
   });
 
+  it("writes a Menu's links that have a label and a URL, each as its label and URL", () => {
+    expect(
+      renderText(
+        emailWith({
+          props: {
+            links: [
+              { label: "Shop", url: "https://northbound.co/shop" },
+              { label: "Journal" },
+              { url: "https://northbound.co/about" },
+              { label: "Plans", url: "{{plans_url}}" },
+            ],
+          },
+          type: "menu",
+        })
+      )
+    ).toBe("Shop: https://northbound.co/shop\nPlans: {{plans_url}}");
+  });
+
   it("writes a bulleted List's items with a dash and a numbered List's from 1", () => {
     const list = (type: string, ...items: string[]) => ({
       content: items.map((item) => ({

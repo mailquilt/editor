@@ -372,7 +372,7 @@ const targetOf = (element: Element): FocusTarget => {
 const inList = (root: ShadowRoot, listId: string, at: ListFocus) => {
   const list = root.querySelector(`#${CSS.escape(listId)}`);
   if (at.control === "add") {
-    return list?.querySelector("select");
+    return list?.querySelector<HTMLElement>('select, [data-action="add-item"]');
   }
   const item = list?.querySelector(`[data-item-key="${CSS.escape(at.item)}"]`);
   if (at.control === "text") {

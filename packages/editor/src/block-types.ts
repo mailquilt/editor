@@ -3,6 +3,7 @@ import {
   blockStyles,
   EMAIL_LOOK,
   linkColor,
+  menuLinks,
   MERGE_TAG,
   SOCIAL_NETWORKS,
   socialIcons,
@@ -100,6 +101,47 @@ export const blockTypeStyles = css`
   /* Left out of the email until it has a URL. */
   .social-icons img.unlinked {
     opacity: 0.35;
+  }
+
+  /* As the export writes them: a row that wraps, half the gap beside each. */
+  .menu-links span {
+    display: inline-block;
+    overflow-wrap: anywhere;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* Left out of the email until it has a label and a URL. */
+  .menu-links .unlinked {
+    opacity: 0.35;
+  }
+
+  /*
+   * Only on the canvas: the slot a new Menu's links go in, on a light fill of
+   * its own, as the other stand-ins have, so it reads on a dark Row too.
+   */
+  .menu-placeholder {
+    align-items: center;
+    background: #f4f5f7;
+    border: 1px dashed #a1a1aa;
+    border-radius: 4px;
+    color: #52525b;
+    display: inline-flex;
+    font:
+      500 13px/1.4 system-ui,
+      sans-serif;
+    gap: 8px;
+    max-width: 100%;
+    padding: 6px 12px;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  .menu-placeholder .icon {
+    color: #71717a;
+    flex: none;
+    height: 16px;
+    width: 16px;
   }
 
   /* The color and width come from the Block, for the top border alone. */
@@ -325,6 +367,58 @@ const drawSocial = (
   `;
 };
 
+const MENU_ICON = icon(
+  svg`<rect height="9" rx="2" width="19" x="2.5" y="7.5" /><path d="M6.5 12h2.5M10.8 12h2.5M15 12h2.5" />`
+);
+
+const PLUS_ICON = icon(svg`<path d="M12 5v14M5 12h14" />`);
+
+/**
+ * Each link's label, as the export writes it, and no link, because a click on
+ * the canvas selects the Block. A link without a label or a URL is faded, as
+ * the email leaves it out, and one without a label shows its name. With no
+ * links, a slot says what goes there.
+ */
+const drawMenu = (
+  props: BlockProps["menu"],
+  { "text-align": align, ...text }: Record<string, string>,
+  { lang, text: textOf }: DrawContext
+) => {
+  if (props.links.length === 0) {
+    return html`
+      <div
+        class="padded-block"
+        style=${styleProperties({ "text-align": align })}
+      >
+        <span class="menu-placeholder">
+          ${PLUS_ICON}<span>${textOf("menu.noLinks")}</span>
+        </span>
+      </div>
+    `;
+  }
+  const { blockPadding, linkPadding } = menuLinks(props);
+  return html`
+    <div
+      class="padded-block menu-links"
+      style=${styleProperties({ ...text, padding: blockPadding, "text-align": align })}
+    >
+      ${props.links.map(
+        ({ label, url }, index) =>
+          html`<span
+            class=${label === undefined || url === undefined ? "unlinked" : ""}
+            data-testid="menu-link"
+            lang=${label === undefined ? nothing : lang}
+            style=${styleProperties({ padding: `0 ${linkPadding}px` })}
+            >${
+              label ??
+              textOf("field.menuLinks.item", { position: String(index + 1) })
+            }</span
+          >`
+      )}
+    </div>
+  `;
+};
+
 const drawDivider = (
   _props: BlockProps["divider"],
   styles: Record<string, string>
@@ -371,6 +465,7 @@ export const BLOCK_VIEWS = {
     text: { canBold: false, schema: createTextSchema({ lists: false }) },
   },
   image: { draw: drawImage, icon: IMAGE_ICON },
+  menu: { draw: drawMenu, icon: MENU_ICON },
   social: { draw: drawSocial, icon: SOCIAL_ICON },
   spacer: {
     draw: drawSpacer,

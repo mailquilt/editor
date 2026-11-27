@@ -95,10 +95,39 @@ export const createToolFitting = ({
     }
   };
 
+  /**
+   * A popover from the Selection bar starts under its button, so a wide one,
+   * such as a Menu's links, can reach past the Canvas's end, where it would be
+   * clipped. One in More is where More puts it.
+   */
+  const fitBarPopover = (workspace: HTMLElement) => {
+    const popover = findPlace(root, "barPopover");
+    if (!(popover && BAR_PLACES.some((name) => closestPlace(popover, name)))) {
+      return;
+    }
+    popover.style.removeProperty("translate");
+    const canvas = workspace.getBoundingClientRect();
+    const scaleX = scaleOf(canvas.width, workspace.offsetWidth);
+    // No wider than the Canvas, which a docked panel beside it can narrow.
+    popover.style.maxWidth = `${workspace.offsetWidth - 2 * GAP_PX}px`;
+    const box = popover.getBoundingClientRect();
+    // Its own width, as it may still be growing in from its start.
+    const shift = shiftInto(
+      box.left,
+      box.left + popover.offsetWidth * scaleX,
+      canvas.left + GAP_PX * scaleX,
+      canvas.right - GAP_PX * scaleX
+    );
+    if (shift !== 0) {
+      popover.style.translate = `${shift / scaleX}px 0`;
+    }
+  };
+
   const fit = () => {
     const workspace = findPlace(root, "workspace");
     if (workspace) {
       fitAddPicker(workspace);
+      fitBarPopover(workspace);
     }
     const bar = findPlace(root, "formatBar");
     const picker = findPlace(root, "mergeTagPicker");

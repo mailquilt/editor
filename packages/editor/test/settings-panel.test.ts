@@ -71,7 +71,7 @@ const links: Extract<SettingsField, { type: "list" }> = {
   allAddedId: "",
   chooseLabelId: "",
   invalidMessageId: "",
-  itemField: { invalidMessageId: "", key: "url", labelId: "", type: "text" },
+  itemFields: [{ invalidMessageId: "", key: "url", labelId: "", type: "text" }],
   itemKey: "network",
   key: "links",
   labelId: "",
@@ -96,6 +96,7 @@ describe("a change to a list field's items", () => {
     ).toStrictEqual({
       focus: { control: "text", item: "instagram" },
       items: [facebook, { network: "instagram" }],
+      renamed: [],
       said: "Instagram added, position 2 of 2.",
     });
   });
@@ -111,6 +112,7 @@ describe("a change to a list field's items", () => {
     ).toStrictEqual({
       focus: { control: "moveUp", item: "x" },
       items: [x, facebook],
+      renamed: [],
       said: "X moved to position 1 of 2.",
     });
   });
@@ -126,6 +128,7 @@ describe("a change to a list field's items", () => {
     ).toStrictEqual({
       focus: { control: "remove", item: "x" },
       items: [x],
+      renamed: [],
       said: "Facebook removed.",
     });
   });
@@ -141,5 +144,70 @@ describe("a change to a list field's items", () => {
     expect(
       changeList(links, [x], { item: "x", type: "remove" }, text).focus
     ).toStrictEqual({ control: "add" });
+  });
+});
+
+const menuLinks: Extract<SettingsField, { type: "list" }> = {
+  addLabelId: "field.menuLinks.add",
+  invalidMessageId: "",
+  itemFields: [
+    { invalidMessageId: "", key: "label", labelId: "", type: "text" },
+    { invalidMessageId: "", key: "url", labelId: "", type: "text" },
+  ],
+  itemNameId: "field.menuLinks.item",
+  key: "links",
+  labelId: "",
+  type: "list",
+};
+
+const shop = { label: "Shop", url: "https://a.co/shop" };
+const journal = { label: "Journal" };
+const unnamed = { url: "https://a.co/about" };
+
+describe("a change to the items of a list without options", () => {
+  it("adds an empty item, named by its position, and focus goes to its first field", () => {
+    expect(
+      changeList(menuLinks, [shop, journal], { type: "add" }, text)
+    ).toStrictEqual({
+      focus: { control: "text", item: "2" },
+      items: [shop, journal, {}],
+      renamed: [],
+      said: "Link 3 added, position 3 of 3.",
+    });
+  });
+
+  it("moves an item, named by its first field, and what's typed in the two swaps keys", () => {
+    expect(
+      changeList(
+        menuLinks,
+        [shop, journal, unnamed],
+        { item: "1", step: -1, type: "move" },
+        text
+      )
+    ).toStrictEqual({
+      focus: { control: "moveUp", item: "0" },
+      items: [journal, shop, unnamed],
+      renamed: [
+        ["1", "0"],
+        ["0", "1"],
+      ],
+      said: "Journal moved to position 1 of 3.",
+    });
+  });
+
+  it("removes an item, and what's typed in each item after it moves up a key", () => {
+    expect(
+      changeList(
+        menuLinks,
+        [shop, unnamed, journal],
+        { item: "1", type: "remove" },
+        text
+      )
+    ).toStrictEqual({
+      focus: { control: "remove", item: "1" },
+      items: [shop, journal],
+      renamed: [["2", "1"]],
+      said: "Link 2 removed.",
+    });
   });
 });

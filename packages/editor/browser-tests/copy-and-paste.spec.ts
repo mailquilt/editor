@@ -236,6 +236,16 @@ test.describe("copying", () => {
               },
               type: "social",
             },
+            {
+              id: "menu",
+              props: {
+                links: [
+                  { label: "Shop", url: "https://example.com/shop" },
+                  { label: "Journal" },
+                ],
+              },
+              type: "menu",
+            },
           ],
           id: "column-1",
           props: {},
@@ -259,7 +269,7 @@ test.describe("copying", () => {
     const copied = await copyFrom(await rowChip(page, 1));
 
     expect(copied["text/plain"]).toBe(
-      "Hi {{first_name}}\n\nOne\n\nLogo\n\nBuy\n\nFacebook: https://facebook.com/shop"
+      "Hi {{first_name}}\n\nOne\n\nLogo\n\nBuy\n\nFacebook: https://facebook.com/shop\n\nShop: https://example.com/shop"
     );
     const html = copied["text/html"];
     expect(html).toContain("<strong>Hi</strong>");
@@ -270,6 +280,9 @@ test.describe("copying", () => {
     expect(html).toContain('<a href="https://example.com/buy">Buy</a>');
     expect(html).toContain(
       '<p><a href="https://facebook.com/shop">Facebook</a></p>'
+    );
+    expect(html).toContain(
+      '<p><a href="https://example.com/shop">Shop</a></p>'
     );
     expect(await copiedJson(page, html)).toStrictEqual({ row, version: 4 });
     await expect(announcement(page)).toHaveText("Row copied, position 1 of 1.");

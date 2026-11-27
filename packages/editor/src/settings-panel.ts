@@ -75,19 +75,19 @@ export interface SettingsDrafts {
   drop: (section: SettingsSection, fields: readonly SettingsField[]) => void;
   /**
    * Each change to what's typed, before it's committed. In a list field, it's
-   * typed in the text of the item whose key is `item`.
+   * typed in `part`, one of an item's fields.
    */
   onInput: (
     section: SettingsSection,
     field: SettingsField,
     typed: Typed,
-    item?: string
+    part?: ListPart
   ) => void;
   onCommit: (
     section: SettingsSection,
     field: SettingsField,
     typed: Typed,
-    item?: string
+    part?: ListPart
   ) => void;
   /**
    * Adds, moves or removes an item of a list field. With `followFocus`, as from
@@ -107,9 +107,18 @@ export type ListField = Extract<SettingsField, { type: "list" }>;
 
 type ListItem = Readonly<Record<string, unknown>>;
 
-/** What a person does to a list field's items, each found by its key. */
+/** One of a list field's items, by its key, and one of its fields, by its key. */
+export interface ListPart {
+  item: string;
+  key: string;
+}
+
+/**
+ * What a person does to a list field's items, each found by its key. An item
+ * added to a list with options is for the option `item`.
+ */
 export type ListChange =
-  | { type: "add"; item: string }
+  | { type: "add"; item?: string }
   | { type: "move"; item: string; step: -1 | 1 }
   | { type: "remove"; item: string };
 
@@ -126,6 +135,18 @@ const fieldId = (
 
 const itemsOf = (field: ListField, values: Record<string, unknown>) =>
   (values[field.key] as readonly ListItem[] | undefined) ?? [];
+
+/** An item's key: its option, or in a list without options, its position. */
+const keyOf = (field: ListField, entry: ListItem | undefined, index: number) =>
+  field.itemKey === undefined
+    ? String(index)
+    : String(entry?.[field.itemKey] ?? "");
+
+/** Where the item with the key `item` is in `items`. */
+const indexOf = (field: ListField, items: readonly ListItem[], item: string) =>
+  field.itemKey === undefined
+    ? Number(item)
+    : items.findIndex((entry, index) => keyOf(field, entry, index) === item);
 
 /**
  * One of a field's texts, which core names by ID. Each ID core gives is one of
@@ -144,61 +165,114 @@ const descriptionOf = (
     .filter(Boolean)
     .join(" ");
 
-/** What a person calls an item, by its key. */
-const itemLabel = (field: ListField, item: string, textOf: Text) => {
-  const option = field.options.find(({ value }) => value === item);
-  return option ? fieldWords(option.labelId, textOf) : item;
+/**
+ * What a person calls the item at `index`: its option, or in a list without
+ * options, its first field's text, or else its position, such as "Link 2".
+ */
+const itemLabel = (
+  field: ListField,
+  items: readonly ListItem[],
+  index: number,
+  textOf: Text
+) => {
+  const entry = items[index];
+  if (field.itemKey !== undefined) {
+    const value = entry?.[field.itemKey];
+    const option = field.options.find((each) => each.value === value);
+    return option ? fieldWords(option.labelId, textOf) : String(value);
+  }
+  const [first] = field.itemFields;
+  const words = first && entry?.[first.key];
+  return typeof words === "string"
+    ? words
+    : fieldWords(field.itemNameId, textOf, { position: String(index + 1) });
 };
 
 /**
  * A list field's items after a change, what a screen reader is told of it, and
  * where focus goes: to a new item's text, with the item that moved, or after a
  * removal to the Remove button that took its place, else the way to add one.
+ * In a list without options an item's key is its position, so `renamed` says
+ * which keys the change gave to which, for what's typed to go with its item.
  */
 export const changeList = (
   field: ListField,
   items: readonly ListItem[],
   change: ListChange,
   textOf: Text
-): { focus: ListFocus; items: readonly ListItem[]; said: string } => {
-  const index = items.findIndex(
-    (entry) => entry[field.itemKey] === change.item
-  );
-  const name = itemLabel(field, change.item, textOf);
+): {
+  focus: ListFocus;
+  items: readonly ListItem[];
+  renamed: readonly (readonly [from: string, to: string])[];
+  said: string;
+} => {
+  const byPosition = field.itemKey === undefined;
   switch (change.type) {
     case "add": {
-      const next = [...items, { [field.itemKey]: change.item }];
+      const next = [
+        ...items,
+        byPosition ? {} : { [field.itemKey]: change.item },
+      ];
+      const index = next.length - 1;
       return {
-        focus: { control: "text", item: change.item },
+        focus: { control: "text", item: keyOf(field, next[index], index) },
         items: next,
+        renamed: [],
         said: textOf("said.itemAdded", {
-          name,
-          ...placeIn(next.length - 1, next.length),
+          name: itemLabel(field, next, index, textOf),
+          ...placeIn(index, next.length),
         }),
       };
     }
     case "move": {
+      const index = indexOf(field, items, change.item);
       const to = index + change.step;
+      const next = items
+        .toSpliced(index, 1)
+        .toSpliced(to, 0, items[index] ?? {});
       return {
         focus: {
           control: change.step < 0 ? "moveUp" : "moveDown",
-          item: change.item,
+          item: keyOf(field, next[to], to),
         },
-        items: items.toSpliced(index, 1).toSpliced(to, 0, items[index] ?? {}),
+        items: next,
+        renamed: byPosition
+          ? [
+              [String(index), String(to)],
+              [String(to), String(index)],
+            ]
+          : [],
         said: textOf("said.itemMoved", {
-          name,
+          name: itemLabel(field, next, to, textOf),
           ...placeIn(to, items.length),
         }),
       };
     }
     default: {
-      const neighbour = items[index + 1] ?? items[index - 1];
+      const index = indexOf(field, items, change.item);
+      const next = items.toSpliced(index, 1);
+      // The item after it took its place, or else it was the last.
+      const neighbour = index < next.length ? index : index - 1;
       return {
-        focus: neighbour
-          ? { control: "remove", item: String(neighbour[field.itemKey]) }
-          : { control: "add" },
-        items: items.toSpliced(index, 1),
-        said: textOf("said.itemRemoved", { name }),
+        focus:
+          neighbour >= 0
+            ? {
+                control: "remove",
+                item: keyOf(field, next[neighbour], neighbour),
+              }
+            : { control: "add" },
+        items: next,
+        renamed: byPosition
+          ? next
+              .slice(index)
+              .map((_, offset) => [
+                String(index + offset + 1),
+                String(index + offset),
+              ])
+          : [],
+        said: textOf("said.itemRemoved", {
+          name: itemLabel(field, items, index, textOf),
+        }),
       };
     }
   }
@@ -419,6 +493,56 @@ export const settingsPanelStyles = css`
   .settings .list-item-tools {
     display: flex;
     gap: 2px;
+  }
+
+  /*
+   * An item with several fields, in a list without options, is one line: its
+   * fields, then its tools, as frame k02 draws a Menu's links.
+   */
+  .settings .list-item.in-line {
+    border: 0;
+    gap: var(--mq-space-1);
+    padding: 0;
+  }
+
+  .settings .list-item-line {
+    align-items: center;
+    display: grid;
+    gap: var(--mq-space-2);
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) auto;
+  }
+
+  .settings .list-part {
+    min-width: 0;
+    position: relative;
+  }
+
+  /* A link field's icon, inside its start. */
+  .settings .list-part > .icon {
+    color: var(--mq-color-text-muted);
+    height: 14px;
+    inset-block: 0;
+    inset-inline-start: 10px;
+    margin-block: auto;
+    pointer-events: none;
+    position: absolute;
+    width: 14px;
+  }
+
+  .settings .list-part > .icon + input {
+    padding-inline-start: 30px;
+  }
+
+  .settings .add-item {
+    align-items: center;
+    align-self: start;
+    display: inline-flex;
+    gap: var(--mq-space-1);
+  }
+
+  .settings .add-item .icon {
+    height: 14px;
+    width: 14px;
   }
 
   /* A field with a control beside it, which takes what room is left. */
@@ -774,30 +898,39 @@ const INLINE_TYPES = new Set<string>(["color", "number", "select", "toggle"]);
 export const draftKey = (
   { id, targetId }: Pick<SettingsSection, "id" | "targetId">,
   { key }: Pick<SettingsField, "key">,
-  item?: string
+  part?: ListPart
 ) =>
-  item === undefined
+  part === undefined
     ? `${id}:${targetId}:${key}`
-    : `${id}:${targetId}:${key}:${item}`;
+    : `${id}:${targetId}:${key}:${part.item}:${part.key}`;
 
 /** A list field's item, by its key. */
 const itemOf = (
   field: ListField,
   values: Record<string, unknown>,
   item: string
-) => itemsOf(field, values).find((entry) => entry[field.itemKey] === item);
+) =>
+  itemsOf(field, values).find(
+    (entry, index) => keyOf(field, entry, index) === item
+  );
+
+/** The field that's typed in: one of a list item's, or else the field itself. */
+const typedField = (field: SettingsField, part?: ListPart): SettingsField =>
+  (field.type === "list" &&
+    field.itemFields.find(({ key }) => key === part?.key)) ||
+  field;
 
 /**
  * What a field shows when nothing different has been typed into it, or in a
- * list field, an item's text.
+ * list field, the text of one of an item's fields.
  */
 export const fieldText = (
   field: SettingsField,
   values: Record<string, unknown>,
-  item?: string
+  part?: ListPart
 ) =>
   field.type === "list"
-    ? String(itemOf(field, values, item ?? "")?.[field.itemField.key] ?? "")
+    ? String(itemOf(field, values, part?.item ?? "")?.[part?.key ?? ""] ?? "")
     : String(values[field.key] ?? field.default ?? "");
 
 /** What a control holds. */
@@ -838,16 +971,16 @@ const changeOf = (
   field: SettingsField,
   values: Record<string, unknown>,
   typed: Typed,
-  item?: string
+  part?: ListPart
 ) => {
-  if (field.type !== "list") {
+  if (field.type !== "list" || part === undefined) {
     return { [field.key]: fieldValue(field, typed) };
   }
-  const text = fieldValue(field.itemField, typed);
-  const { key } = field.itemField;
+  const text = fieldValue(typedField(field, part), typed);
+  const { key } = part;
   return {
-    [field.key]: itemsOf(field, values).map((entry) => {
-      if (entry[field.itemKey] !== item) {
+    [field.key]: itemsOf(field, values).map((entry, index) => {
+      if (keyOf(field, entry, index) !== part.item) {
         return entry;
       }
       const rest = Object.fromEntries(
@@ -880,11 +1013,17 @@ const ITEM_TOOLS = [
   },
 ] as const;
 
+/** The fields that hold a link, which show the link icon in a list's line. */
+const LINK_KEYS = new Set(["href", "url"]);
+
 /**
- * A list field: its items in order, each with its text and a toolbar to move or
- * remove it, then a way to add an item for an option not yet used. Each item's
- * parts are kept by its key, so what's typed in one stays with it through a
- * move, or the removal of another.
+ * A list field: its items in order, each with its fields and a toolbar to move
+ * or remove it, then a way to add an item: for an option not yet used, or an
+ * empty one. An item with options is a card, named by its option, with its
+ * toolbar before its field. One without is a line, its fields then its
+ * toolbar, as frame k02 draws a Menu's links. Each item's parts are kept by
+ * its key, so what's typed in one stays with it through a move, or the
+ * removal of another.
  */
 const renderListField = (
   section: SettingsSection,
@@ -896,11 +1035,13 @@ const renderListField = (
   const id = fieldId(section, field);
   const descriptionId = `${id}-description`;
   const items = itemsOf(field, section.values);
-  const used = new Set(items.map((entry) => entry[field.itemKey]));
-  const unused = field.options.filter(({ value }) => !used.has(value));
+  const inLine = field.itemKey === undefined;
   const { hint } = tagsOf(id);
   const description = descriptionOf(
-    [field.descriptionId, field.itemField.descriptionId],
+    [
+      field.descriptionId,
+      ...field.itemFields.map((itemField) => itemField.descriptionId),
+    ],
     hint,
     textOf
   );
@@ -916,14 +1057,8 @@ const renderListField = (
     );
 
   const renderItem = (entry: ListItem, index: number) => {
-    const item = String(entry[field.itemKey]);
-    const name = itemLabel(field, item, textOf);
-    const inputId = `${id}-${item}`;
-    const errorId = `${inputId}-error`;
-    const tags = tagsOf(inputId);
-    const key = draftKey(section, field, item);
-    const draft = drafts.draftOf(key);
-    const refusals = draft?.refusals ?? 0;
+    const item = keyOf(field, entry, index);
+    const name = itemLabel(field, items, index, textOf);
     const enabled = {
       moveDown: index < items.length - 1,
       moveUp: index > 0,
@@ -931,86 +1066,167 @@ const renderListField = (
     };
     // The toolbar's one Tab stop is its first button that works.
     const stop = ITEM_TOOLS.find(({ action }) => enabled[action])?.action;
-    return html`
-      <li class="list-item" data-item-key=${item}>
-        <div class="list-item-head">
-          <label for=${inputId}>${name}</label>
-          <div
-            aria-label=${name}
-            class="list-item-tools"
-            data-place=${place("listItemTools")}
-            role="toolbar"
-          >
-            ${ITEM_TOOLS.map(
-              ({ action, icon, label: toolLabel, step }) => html`
-                <button
-                  aria-label=${textOf(toolLabel, { name })}
-                  class=${action === "remove" ? "icon-button danger" : "icon-button"}
-                  data-action=${action}
-                  data-tooltip=${textOf(toolLabel, { name })}
-                  ?disabled=${!enabled[action]}
-                  tabindex=${action === stop ? "0" : "-1"}
-                  type="button"
-                  @click=${change(
-                    step === 0
-                      ? { item, type: "remove" }
-                      : { item, step, type: "move" }
-                  )}
-                >
-                  ${icon}
-                </button>
-              `
-            )}
-          </div>
-        </div>
-        <!-- Named as one text, so a translation can put the item's name where
-          its language needs it. -->
+    const tools = html`
+      <div
+        aria-label=${name}
+        class="list-item-tools"
+        data-place=${place("listItemTools")}
+        role="toolbar"
+      >
+        ${ITEM_TOOLS.map(
+          ({ action, icon, label: toolLabel, step }) => html`
+            <button
+              aria-label=${textOf(toolLabel, { name })}
+              class=${action === "remove" ? "icon-button danger" : "icon-button"}
+              data-action=${action}
+              data-tooltip=${textOf(toolLabel, { name })}
+              ?disabled=${!enabled[action]}
+              tabindex=${action === stop ? "0" : "-1"}
+              type="button"
+              @click=${change(
+                step === 0
+                  ? { item, type: "remove" }
+                  : { item, step, type: "move" }
+              )}
+            >
+              ${icon}
+            </button>
+          `
+        )}
+      </div>
+    `;
+    const parts = field.itemFields.map((itemField) => {
+      const part = { item, key: itemField.key };
+      const inputId = `${id}-${item}-${itemField.key}`;
+      const errorId = `${inputId}-error`;
+      const tags = tagsOf(inputId);
+      const key = draftKey(section, field, part);
+      const draft = drafts.draftOf(key);
+      const refusals = draft?.refusals ?? 0;
+      const fieldName = fieldWords(itemField.labelId, textOf);
+      // Named as one text, so a translation can put the item's name where
+      // its language needs it.
+      const input = html`
         <input
           aria-activedescendant=${tags.activeDescendant}
           aria-controls=${tags.controls}
           aria-describedby=${[description ? descriptionId : "", refusals ? errorId : ""].filter(Boolean).join(" ") || nothing}
           aria-invalid=${refusals ? "true" : "false"}
-          aria-label=${textOf("settings.listItem", {
-            label: fieldWords(field.itemField.labelId, textOf),
-            name,
-          })}
+          aria-label=${textOf("settings.listItem", { label: fieldName, name })}
           autocomplete="off"
           data-draft-key=${key}
           ?data-merge-tags=${tags.takesTags}
           data-place=${draft ? place("settingsDraft") : nothing}
           id=${inputId}
+          placeholder=${inLine ? fieldName : nothing}
           spellcheck="false"
           type="text"
-          .value=${live(draft?.text ?? fieldText(field, section.values, item))}
+          .value=${live(draft?.text ?? fieldText(field, section.values, part))}
           @change=${({ currentTarget }: Event) =>
             drafts.onCommit(
               section,
               field,
               typedIn(currentTarget as HTMLInputElement),
-              item
+              part
             )}
           @input=${({ currentTarget }: Event) =>
             drafts.onInput(
               section,
               field,
               typedIn(currentTarget as HTMLInputElement),
-              item
+              part
             )}
         />
-        ${tags.list}
-        ${
-          refusals
-            ? keyed(
-                refusals,
-                html`
-                  <p class="error" id=${errorId} role="alert">
-                    ${fieldWords(field.itemField.invalidMessageId, textOf)}
-                  </p>
-                `
-              )
-            : nothing
-        }
+      `;
+      return {
+        control: html`<span class="list-part">
+          ${inLine && LINK_KEYS.has(itemField.key) ? ICONS.link : nothing}${input}
+          ${tags.list}
+        </span>`,
+        error: refusals
+          ? keyed(
+              refusals,
+              html`
+                <p class="error" id=${errorId} role="alert">
+                  ${fieldWords(itemField.invalidMessageId, textOf)}
+                </p>
+              `
+            )
+          : nothing,
+        inputId,
+      };
+    });
+    if (inLine) {
+      return html`
+        <li class="in-line list-item" data-item-key=${item}>
+          <div class="list-item-line">
+            ${parts.map(({ control }) => control)} ${tools}
+          </div>
+          ${parts.map(({ error }) => error)}
+        </li>
+      `;
+    }
+    return html`
+      <li class="list-item" data-item-key=${item}>
+        <div class="list-item-head">
+          <label for=${parts[0]?.inputId ?? nothing}>${name}</label>
+          ${tools}
+        </div>
+        ${parts.map(({ control, error }) => html`${control}${error}`)}
       </li>
+    `;
+  };
+
+  const renderAdd = () => {
+    if (field.itemKey === undefined) {
+      return html`
+        <button
+          class="text-button add-item"
+          data-action="add-item"
+          data-place=${place("controls")}
+          type="button"
+          @click=${change({ type: "add" })}
+        >
+          ${ICONS.plus}${fieldWords(field.addLabelId, textOf)}
+        </button>
+      `;
+    }
+    const used = new Set(items.map((entry) => entry[field.itemKey]));
+    const unused = field.options.filter(({ value }) => !used.has(value));
+    if (unused.length === 0) {
+      return html`<p class="description">
+        ${fieldWords(field.allAddedId, textOf)}
+      </p>`;
+    }
+    return html`
+      <div class="with-control">
+        <div class="select-field">
+          <select aria-label=${fieldWords(field.chooseLabelId, textOf)}>
+            ${unused.map(
+              ({ labelId, value }) =>
+                html`<option .value=${value}>
+                  ${fieldWords(labelId, textOf)}
+                </option>`
+            )}
+          </select>
+          ${ICONS.chevronDown}
+        </div>
+        <button
+          class="text-button"
+          data-place=${place("controls")}
+          type="button"
+          @click=${(event: MouseEvent) => {
+            const select = (
+              event.currentTarget as Element
+            ).previousElementSibling?.querySelector("select");
+            if (select) {
+              change({ item: select.value, type: "add" })(event);
+            }
+          }}
+        >
+          ${textOf("settings.add")}
+        </button>
+      </div>
     `;
   };
 
@@ -1029,47 +1245,16 @@ const renderListField = (
         items.length > 0
           ? html`
               <ul class="list-items">
-                ${repeat(items, (entry) => entry[field.itemKey], renderItem)}
+                ${repeat(
+                  items,
+                  (entry, index) => keyOf(field, entry, index),
+                  renderItem
+                )}
               </ul>
             `
           : nothing
       }
-      ${
-        unused.length > 0
-          ? html`
-              <div class="with-control">
-                <div class="select-field">
-                  <select aria-label=${fieldWords(field.chooseLabelId, textOf)}>
-                    ${unused.map(
-                      ({ labelId, value }) =>
-                        html`<option .value=${value}>
-                          ${fieldWords(labelId, textOf)}
-                        </option>`
-                    )}
-                  </select>
-                  ${ICONS.chevronDown}
-                </div>
-                <button
-                  class="text-button"
-                  data-place=${place("controls")}
-                  type="button"
-                  @click=${(event: MouseEvent) => {
-                    const select = (
-                      event.currentTarget as Element
-                    ).previousElementSibling?.querySelector("select");
-                    if (select) {
-                      change({ item: select.value, type: "add" })(event);
-                    }
-                  }}
-                >
-                  ${textOf("settings.add")}
-                </button>
-              </div>
-            `
-          : html`<p class="description">
-              ${fieldWords(field.allAddedId, textOf)}
-            </p>`
-      }
+      ${renderAdd()}
     </div>
   `;
 };
@@ -1365,12 +1550,12 @@ export const createSettingsDrafts = ({
     field: SettingsField,
     typed: Typed,
     retry: boolean,
-    item?: string
+    part?: ListPart
   ) => {
-    const key = draftKey(section, field, item);
-    onEnter(fieldValue(field.type === "list" ? field.itemField : field, typed));
+    const key = draftKey(section, field, part);
+    onEnter(fieldValue(typedField(field, part), typed));
     const result = apply(
-      section.command(changeOf(field, section.values, typed, item))
+      section.command(changeOf(field, section.values, typed, part))
     );
     if (result?.ok || result?.code === "unchanged") {
       drafts.delete(key);
@@ -1396,7 +1581,7 @@ export const createSettingsDrafts = ({
 
   const fields: SettingsDrafts = {
     changeList: (section, field, change, followFocus) => {
-      const { focus, items, said } = changeList(
+      const { focus, items, renamed, said } = changeList(
         field,
         itemsOf(field, section.values),
         change,
@@ -1405,8 +1590,27 @@ export const createSettingsDrafts = ({
       if (!apply(section.command({ [field.key]: items }))?.ok) {
         return;
       }
+      const keysOf = (item: string) =>
+        field.itemFields.map(({ key }) =>
+          draftKey(section, field, { item, key })
+        );
       if (change.type === "remove") {
-        drafts.delete(draftKey(section, field, change.item));
+        for (const key of keysOf(change.item)) {
+          drafts.delete(key);
+        }
+      }
+      // What's typed goes with its item to the key it now has.
+      const moved = renamed.flatMap(([from, to]) =>
+        keysOf(from).map((key, index) => {
+          const draft = drafts.get(key);
+          drafts.delete(key);
+          return [keysOf(to)[index] ?? "", draft] as const;
+        })
+      );
+      for (const [key, draft] of moved) {
+        if (draft) {
+          drafts.set(key, draft);
+        }
       }
       if (followFocus || change.type === "add") {
         focusInList(fieldId(section, field), focus);
@@ -1419,23 +1623,21 @@ export const createSettingsDrafts = ({
         drafts.delete(draftKey(section, field));
       }
     },
-    onCommit: (section, field, typed, item) =>
-      commit(section, field, typed, false, item),
-    onInput: (section, field, typed, item) => {
-      const key = draftKey(section, field, item);
+    onCommit: (section, field, typed, part) =>
+      commit(section, field, typed, false, part),
+    onInput: (section, field, typed, part) => {
+      const key = draftKey(section, field, part);
       const held = drafts.has(key);
       const refusals = drafts.get(key)?.refusals ?? 0;
       // What isn't a number reads as empty, as if an empty field were unchanged.
       if (
-        typed.text === fieldText(field, section.values, item) &&
+        typed.text === fieldText(field, section.values, part) &&
         !refusals &&
         !typed.badInput
       ) {
         drafts.delete(key);
         // Typed again, which the browser doesn't report as a change.
-        onEnter(
-          fieldValue(field.type === "list" ? field.itemField : field, typed)
-        );
+        onEnter(fieldValue(typedField(field, part), typed));
       } else {
         drafts.set(key, { ...typed, refusals });
       }

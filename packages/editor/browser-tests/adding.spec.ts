@@ -61,6 +61,7 @@ test.describe("the Add panel", () => {
     await page.keyboard.press("End");
     await page.keyboard.press("ArrowLeft");
     await page.keyboard.press("ArrowLeft");
+    await page.keyboard.press("ArrowLeft");
     await expect(palette(page, "Divider")).toBeFocused();
     await page.keyboard.press("Enter");
 

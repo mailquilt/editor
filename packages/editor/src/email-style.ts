@@ -100,6 +100,7 @@ const REACHES: Record<
   fontFamily: ({ type }, style) =>
     type === "text" ||
     type === "button" ||
+    type === "menu" ||
     (type === "heading" && style.headingFontFamily === undefined)
       ? {}
       : undefined,
@@ -112,20 +113,22 @@ const REACHES: Record<
       ? { own: "color" }
       : undefined,
   // Text that's all links shows the links' color while Email style sets one.
+  // A Menu's links are in the text's color, not the links'.
   textColor: (block, style) =>
-    isText(block) &&
-    !(
-      style.linkColor !== undefined &&
-      (block.props as { color?: string }).color === undefined &&
-      isAllLinks((block.props as { content: unknown }).content)
-    )
+    block.type === "menu" ||
+    (isText(block) &&
+      !(
+        style.linkColor !== undefined &&
+        (block.props as { color?: string }).color === undefined &&
+        isAllLinks((block.props as { content: unknown }).content)
+      ))
       ? { own: "color" }
       : undefined,
   textFontSize: ({ type }) => {
     if (type === "button") {
       return {};
     }
-    return type === "text" ? { own: "fontSize" } : undefined;
+    return type === "text" || type === "menu" ? { own: "fontSize" } : undefined;
   },
 };
 
@@ -266,6 +269,10 @@ const OWN_KEYS = {
   button: [["buttonBackgroundColor", "backgroundColor"]],
   heading: [
     ["heading", "fontSize"],
+    ["textColor", "color"],
+  ],
+  menu: [
+    ["textFontSize", "fontSize"],
     ["textColor", "color"],
   ],
   text: [

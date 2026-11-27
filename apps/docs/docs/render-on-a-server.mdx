@@ -34,7 +34,7 @@ const html = await renderEmail(email);
 const text = renderText(email);
 ```
 
-It needs no MJML, so it returns the text rather than a promise. Each Block is a paragraph of its own: a Heading in capitals, a Text Block's lines and Lists, a link as its text with its URL after it in brackets, a Button as its label and URL, an Image as its alt text in square brackets, and a Social Block's links as the network's name and URL. Merge Tags stay as written, as in the HTML. It refuses the same emails `renderEmail()` does, by throwing with the reason.
+It needs no MJML, so it returns the text rather than a promise. Each Block is a paragraph of its own: a Heading in capitals, a Text Block's lines and Lists, a link as its text with its URL after it in brackets, a Button as its label and URL, an Image as its alt text in square brackets, a Social Block's links as the network's name and URL, and a Menu's links as each label and URL. Merge Tags stay as written, as in the HTML. It refuses the same emails `renderEmail()` does, by throwing with the reason.
 
 ## Social icons
 
@@ -86,12 +86,12 @@ The promise gives an array of Problems in the email's order: its settings first,
 | `image-without-alt` | An Image that isn't [decorative](./document-format#image) has an image but no alt text, so readers who can't see it, or whose email client blocks images, don't know what it shows. | `alt` |
 | `button-without-link` | A Button has no link, so pressing it does nothing. | `href` |
 | `low-text-contrast` | A Text Block's or Heading's text has less contrast with what's behind it than WCAG AA asks: 4.5:1, or 3:1 for text of 24px, or 18.67px and bold. | `color` |
-| `low-link-contrast` | The links in a Text Block or Heading are in a color of their own, from Email style, with less contrast than that. A URL or email address written in the text counts, as the renderer links it. | `color` |
+| `low-link-contrast` | The links in a Text Block or Heading are in a color of their own, from Email style, with less contrast than that. A URL or email address written in the text counts, as the renderer links it. A Menu's links, which are all links, are checked in its color. | `color` |
 | `low-button-contrast` | A Button's label has less contrast than that with the Button's color. | `color` |
-| `vague-link-text` | A link or Button says only "click here", "here", "read more", "learn more", "link" or "this link", in any case and with any punctuation. It checks these English phrases only. | `content` or `label` |
-| `unknown-merge-tag` | A Merge Tag isn't in your `mergeTags`, such as a typo like `{{frist_name}}`. One for each tag in each place it's found. | Where the tag is, such as `content`, `href` or `preheader` |
+| `vague-link-text` | A link, a Button or a Menu's link says only "click here", "here", "read more", "learn more", "link" or "this link", in any case and with any punctuation. It checks these English phrases only. | `content`, `label` or `links` |
+| `unknown-merge-tag` | A Merge Tag isn't in your `mergeTags`, such as a typo like `{{frist_name}}`. One for each tag in each place it's found. A Menu's link without a label or a URL is left out of the email, so its tags aren't checked. | Where the tag is, such as `content`, `href` or `preheader` |
 | `html-too-large` | The HTML is over 102 KB, counted in bytes, so Gmail cuts it off and hides the rest behind a link. | None |
-| `no-unsubscribe-link` | No link in the email goes to a Merge Tag you marked `unsubscribe`. A link counts when the tag is anywhere in its URL, and not when it's on an Image with no image, which is left out of the email. | None |
+| `no-unsubscribe-link` | No link in the email goes to a Merge Tag you marked `unsubscribe`. A link counts when the tag is anywhere in its URL, and not when it's on an Image with no image, or a Menu's link with no label, which are left out of the email. | None |
 
 Contrast is read as the email shows it: a Block's own colors, or else Email style, or else the built-in look, against the Row's color, or else Email style's color behind the Rows, or else the page's. A see-through color is mixed with what's behind it. Each piece of text is checked in the color and weight it's drawn in, so bold text counts as bold, and text that's all links isn't checked in the text color. A Block with no text in it has no contrast to check.
 

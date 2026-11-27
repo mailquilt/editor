@@ -498,12 +498,14 @@ const SOCIAL_FIELDS: readonly SettingsField[] = [
     chooseLabelId: "field.socialLinks.choose",
     descriptionId: "field.socialLinks.description",
     invalidMessageId: "invalid.socialLinks",
-    itemField: {
-      invalidMessageId: "invalid.link",
-      key: "url",
-      labelId: "field.socialUrl",
-      type: "text",
-    },
+    itemFields: [
+      {
+        invalidMessageId: "invalid.link",
+        key: "url",
+        labelId: "field.socialUrl",
+        type: "text",
+      },
+    ],
     itemKey: "network",
     key: "links",
     labelId: "field.socialLinks",
@@ -540,6 +542,91 @@ const socialBlock = {
   schema: socialBlockSchema,
   styles: ({ align = SOCIAL_LOOK.align }) => ({ "text-align": align }),
 } satisfies BlockDefinition<SocialBlockProps>;
+
+/** What a Menu looks like until a person changes it. */
+const MENU_LOOK = {
+  align: "left",
+  color: "#000000",
+  fontSize: 16,
+  gap: 24,
+} as const;
+
+const MAX_MENU_GAP = 100;
+
+const menuBlockSchema = v.strictObject({
+  ...blockBoxEntries,
+  ...deviceEntries({ fontSize: v.optional(fontSizeSchema) }),
+  align: v.optional(alignSchema),
+  color: v.optional(colorSchema),
+  fontSize: v.optional(fontSizeSchema),
+  gap: v.optional(pixelSchema(MAX_MENU_GAP)),
+  // In the person's order. A link without a label or a URL is kept, and left
+  // out of the email.
+  links: v.array(
+    v.strictObject({
+      // Plain text, as the whole label is the link. Not blank.
+      label: v.optional(
+        v.pipe(v.string(), v.regex(/\S/u, "A Menu link's label can't be blank"))
+      ),
+      url: v.optional(linkHrefSchema),
+    })
+  ),
+});
+
+type MenuBlockProps = v.InferOutput<typeof menuBlockSchema>;
+
+const MENU_FIELDS: readonly SettingsField[] = [
+  {
+    addLabelId: "field.menuLinks.add",
+    descriptionId: "field.menuLinks.description",
+    invalidMessageId: "invalid.menuLinks",
+    itemFields: [
+      {
+        invalidMessageId: "invalid.menuLabel",
+        key: "label",
+        labelId: "field.menuLabel",
+        type: "text",
+      },
+      {
+        invalidMessageId: "invalid.link",
+        key: "url",
+        labelId: "field.link",
+        type: "text",
+      },
+    ],
+    itemNameId: "field.menuLinks.item",
+    key: "links",
+    labelId: "field.menuLinks",
+    type: "list",
+  },
+  alignField(MENU_LOOK.align),
+  colorField({ fallback: MENU_LOOK.color, labelId: "field.textColor" }),
+  fontSizeField(MENU_LOOK.fontSize),
+  pixelField("gap", "field.menuGap", {
+    fallback: MENU_LOOK.gap,
+    max: MAX_MENU_GAP,
+  }),
+];
+
+const menuBlock = {
+  defaults: { links: [] } satisfies MenuBlockProps,
+  fields: () => MENU_FIELDS,
+  label: "Menu",
+  schema: menuBlockSchema,
+  styles: (props, { textColor, textFontSize }) => {
+    const {
+      align = MENU_LOOK.align,
+      color = textColor ?? MENU_LOOK.color,
+      fontSize = textFontSize ?? MENU_LOOK.fontSize,
+    } = props;
+    return {
+      color,
+      "font-size": `${fontSize}px`,
+      "line-height": lineHeightFor(fontSize),
+      "text-align": align,
+    };
+  },
+} satisfies BlockDefinition<MenuBlockProps>;
 
 /** The space around a Block's content, in px, on each side it doesn't set. */
 const BLOCK_PADDING = 16;
@@ -592,6 +679,33 @@ export const socialIcons = (props: SocialBlockProps) => {
   };
 };
 
+/**
+ * A Menu's links that the email shows, those with a label and a URL, with half
+ * the gap between links on either side of each. Lines that wrap then end at
+ * the same place, whatever the alignment. The Block's padding on its left and
+ * right is that much less, so the links are as far from its edges as a
+ * Block's content is, and never further out.
+ * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
+ */
+export const menuLinks = (props: MenuBlockProps) => {
+  const half = (props.gap ?? MENU_LOOK.gap) / 2;
+  const padding = blockPadding(props, "menu");
+  const sides = BLOCK_SIDES.map((side) =>
+    side === "Top" || side === "Bottom"
+      ? `${padding[side]}px`
+      : `${Math.max(padding[side] - half, 0)}px`
+  );
+  return {
+    blockPadding:
+      new Set(sides).size === 1 ? (sides[0] as string) : sides.join(" "),
+    linkPadding: half,
+    shown: props.links.filter(
+      (link): link is { label: string; url: string } =>
+        link.label !== undefined && link.url !== undefined
+    ),
+  };
+};
+
 /** Each type of Block, in the order the palette shows them. */
 const BLOCKS = [
   ["text", textBlock],
@@ -601,6 +715,7 @@ const BLOCKS = [
   ["divider", dividerBlock],
   ["spacer", spacerBlock],
   ["social", socialBlock],
+  ["menu", menuBlock],
 ] as const;
 
 /**

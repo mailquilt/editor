@@ -18,6 +18,7 @@ export const STRINGS = {
   "block.divider": "Divider",
   "block.heading": "Heading",
   "block.image": "Image",
+  "block.menu": "Menu",
   "block.social": "Social",
   "block.spacer": "Spacer",
   "block.text": "Text",
@@ -97,6 +98,7 @@ export const STRINGS = {
   "social.noLinks": "No social links yet",
   "social.noUrls": "No social link has a URL yet",
   "social.iconWithoutUrl": "{network}, no URL yet",
+  "menu.noLinks": "Add the links this menu shows",
 
   // The format bar and its link field.
   "format.bar": "Text formatting",
@@ -273,6 +275,8 @@ export const STRINGS = {
   "style.own.textSizeWhy": "Other body text is {shared}.",
   "style.own.textSizeShare": "Make all body text {own}",
   "style.own.textColor": "This Text’s color is {own}",
+  "style.own.menuSize": "This Menu is {own}",
+  "style.own.menuColor": "This Menu’s links are {own}",
   "style.own.colorWhy": "Other text is {shared}.",
   "style.own.colorShare": "Make all text {own}",
   "style.own.button": "This Button is {own}",
@@ -343,6 +347,13 @@ export const STRINGS = {
   "field.link.needsAltText":
     "Add alt text first, as a screen reader says it for the link.",
   "field.link.decorative": "A decorative image can't have a link",
+  "field.menuGap": "Space between links",
+  "field.menuLabel": "Label",
+  "field.menuLinks": "Links",
+  "field.menuLinks.add": "Add link",
+  "field.menuLinks.description":
+    "In the order they show. Each can be a Merge Tag, such as {{shop_url}}. A link without a label or a URL shows faded, and isn't sent.",
+  "field.menuLinks.item": "Link {position}",
   "field.paddingBottom": "Bottom padding",
   "field.paddingLeft": "Left padding",
   "field.paddingRight": "Right padding",
@@ -384,6 +395,8 @@ export const STRINGS = {
   "invalid.level": "Choose a level from the list.",
   "invalid.link":
     "Use a URL that starts with https:, http:, mailto: or tel:, such as https://example.com, or a Merge Tag such as {{cta_url}}.",
+  "invalid.menuLabel": "Enter the words the link shows.",
+  "invalid.menuLinks": "Give each link words to show, and a URL.",
   "invalid.pixelsAtLeast": "Use a whole number of pixels, {min} or more.",
   "invalid.pixelsBetween": "Use a whole number from {min} to {max}.",
   "invalid.preheader": "Use plain text.",
