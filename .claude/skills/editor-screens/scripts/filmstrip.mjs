@@ -16,7 +16,7 @@ const USAGE = `Usage: node filmstrip.mjs --out <dir> [--path /] [--name load] [-
   [--step <as in screens.mjs>]...
 
 Records every frame painted while the page loads. With steps, the page loads
-first and the recording covers the last step, such as opening the Preview.`;
+first and the recording covers the last step, such as opening Check.`;
 
 const args = readArgs(process.argv.slice(2));
 

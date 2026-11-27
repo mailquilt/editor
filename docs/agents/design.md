@@ -2,7 +2,7 @@
 
 Mail Quilt has two kinds of UI, and they're designed differently:
 
-- **The editor** (`<mail-quilt>`, `<mail-quilt-shell>`, the panels, toolbars, format bar and Preview, in `packages/editor`) runs inside other people's apps. It's a Lit Web Component in Shadow DOM (ADR 0002), styled only through its theme tokens (`packages/editor/src/theme.ts`, documented in `apps/docs/docs/theme-tokens.mdx`). Its default theme is neutral, not Mail Quilt's brand, so it sits well in any host app, and a host restyles it by setting tokens.
+- **The editor** (`<mail-quilt>`, `<mail-quilt-shell>`, the panels, toolbars, format bar and Check, in `packages/editor`) runs inside other people's apps. It's a Lit Web Component in Shadow DOM (ADR 0002), styled only through its theme tokens (`packages/editor/src/theme.ts`, documented in `apps/docs/docs/theme-tokens.mdx`). Its default theme is neutral, not Mail Quilt's brand, so it sits well in any host app, and a host restyles it by setting tokens.
 - **The site** (`apps/docs`: the landing page, the docs, Examples, Compare and the Playground) is Mail Quilt's own face, built with Blume and styled in `theme.css` and `styles/` from the logo's language.
 
 This page sets the bar, the process and the checklist every UI change passes before it's called done, on either.
@@ -31,7 +31,7 @@ This page sets the bar, the process and the checklist every UI change passes bef
 5. **Review** against the checklist below. Where a rule is deliberately broken, the code or this page says why. A correctness review is not a design review.
 6. **Make the evidence and look at it, to find faults.** Before calling UI done, produce and inspect:
    - screenshots at 320, 390, 768, 1024, 1440, 1920 and 2560 px wide, in light and dark, for every state, including errors. For the editor, that's its default theme and its built-in dark theme (`theme="dark"`), and below 640px its narrow notice. The wide screens matter: a layout that looks right at 1440 can stretch badly on a wide monitor;
-   - every dialog, menu, tooltip and the Preview open, on a phone and on desktop;
+   - every dialog, menu and tooltip open, on desktop, and on a phone wherever it can open there: below 640px the editor shows only its top bar, with More and Export, and the narrow notice, so Check and the rest are shot from 640px up;
    - a frame-by-frame recording of anything that loads, in which nothing already drawn moves or changes;
    - focus and keyboard paths checked in a real browser with real keys, against `keyboard.mdx` and the rules in `docs/agents/decisions.md`, "Keys and focus".
    While you iterate, shoot only the state you changed, at 390 and 1440 px. Shoot the full set when the build is finished, before the design review in step 7, and again for any state a review fix changes.
@@ -66,7 +66,7 @@ Run this on every UI change, and explain each finding in plain words: what a use
 4. **Theming:** the editor uses its tokens only, and a host token set on the element wins, in either theme. The site uses `theme.css`'s tokens. No hard-coded colours or one-off sizes; add a token instead, with its dark value in `theme.ts`, and document a new editor token in `theme-tokens.mdx`.
 5. **Reuse and structure:** repeated markup or logic becomes one component or module. Each has one job, a small API and no dead code. Names say what things are.
 6. **Lit and types:** no needless casts, listeners cleaned up, and state kept once (ADR 0016).
-7. **Performance:** watch what each font, icon and library adds to the editor's bundle; it ships inside other apps. MJML loads only for Preview and export. Animate `transform` and `opacity` only.
+7. **Performance:** watch what each font, icon and library adds to the editor's bundle; it ships inside other apps. MJML loads only for Check and export. Animate `transform` and `opacity` only.
 8. **Privacy and security:** no personal data in URLs or logs. External links use `rel="noopener noreferrer"`.
 9. **Copy:** plain and true, with the same name for an action everywhere it appears. Nothing on screen promises a feature that doesn't exist.
 10. **Tests:** behaviour tests at the right level (`docs/agents/testing.md`), with the automated accessibility check in the browser tests, each seen failing without its code.

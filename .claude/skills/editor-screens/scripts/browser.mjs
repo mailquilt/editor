@@ -185,7 +185,7 @@ const STEP_TIMEOUT = 5000;
  * Runs one step, as a person would: real mouse and keyboard input, so focus
  * moves as it does for them. Targets are Playwright selectors, which reach
  * inside the editor's Shadow DOM: CSS, `text=Label`, or
- * `role=button[name="Preview"]`. A target that matches nothing, or more than
+ * `role=tab[name=/^Check/]`. A target that matches nothing, or more than
  * one thing, stops the run.
  */
 export const runStep = async (page, step) => {
