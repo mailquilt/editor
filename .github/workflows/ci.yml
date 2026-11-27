@@ -78,7 +78,8 @@ jobs:
             echo "tested=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          changed=$(git diff --name-only HEAD^1 HEAD)
+          # Without renames, a file moved into docs/ shows where it came from too.
+          changed=$(git diff --name-only --no-renames HEAD^1 HEAD)
           # README.md and PROJECT.md aren't here, as the install checks read their CDN URLs.
           tested=$(echo "$changed" | grep -vE '^(docs/|\.changeset/[^/]+\.md$|(AGENTS|CLAUDE|CONTRIBUTING|GLOSSARY|SECURITY)\.md$|\.coderabbit\.yaml$)' || true)
           if [ -z "$changed" ] || [ -n "$tested" ]; then
@@ -178,7 +179,7 @@ jobs:
           retention-days: 14
 
   browsers:
-    name: Browser tests (${{ matrix.browser }} ${{ matrix.shard }}/2)
+    name: Browser tests (${{ matrix.browser }} ${{ matrix.shard }}/${{ matrix.shards }})
     needs: [playwright, changes]
     runs-on: ubuntu-latest
     container:
@@ -187,9 +188,18 @@ jobs:
     timeout-minutes: 20
     strategy:
       fail-fast: false
+      # WebKit runs on two workers where the others run on four, as the
+      # editor's Playwright config says, so it has twice the shards.
       matrix:
-        browser: [chromium, firefox, webkit]
-        shard: [1, 2]
+        include:
+          - { browser: chromium, shard: 1, shards: 2 }
+          - { browser: chromium, shard: 2, shards: 2 }
+          - { browser: firefox, shard: 1, shards: 2 }
+          - { browser: firefox, shard: 2, shards: 2 }
+          - { browser: webkit, shard: 1, shards: 4 }
+          - { browser: webkit, shard: 2, shards: 4 }
+          - { browser: webkit, shard: 3, shards: 4 }
+          - { browser: webkit, shard: 4, shards: 4 }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
@@ -202,7 +212,7 @@ jobs:
       # One suite at a time, as each builds and serves its own page first.
       - if: ${{ needs.changes.outputs.tested == 'true' }}
         run: >-
-          pnpm turbo run test --concurrency=1 --filter=@mailquilt/editor --filter=@mailquilt/react --filter=docs -- --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/2
+          pnpm turbo run test --concurrency=1 --filter=@mailquilt/editor --filter=@mailquilt/react --filter=docs -- --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/${{ matrix.shards }}
         env:
           CI: true
       # A failed first try leaves its screenshot, error snapshot and trace, even

@@ -11,7 +11,14 @@ export default defineConfig({
   projects: [
     { name: "chromium", use: devices["Desktop Chrome"] },
     { name: "firefox", use: devices["Desktop Firefox"] },
-    { name: "webkit", use: devices["Desktop Safari"] },
+    // WebKit uses more of a core than the others, and on four workers in CI
+    // its jobs ran slower and a test timed out, so it keeps two and has more
+    // shards instead.
+    {
+      name: "webkit",
+      use: devices["Desktop Safari"],
+      workers: process.env.CI ? 2 : undefined,
+    },
   ],
   retries: process.env.CI ? 2 : 0,
   testDir: "browser-tests",
