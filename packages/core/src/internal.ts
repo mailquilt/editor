@@ -10,6 +10,7 @@ export {
   blockStyles,
   EMAIL_LOOK,
   linkColor,
+  menuLinks,
   phoneValueKeys,
   SOCIAL_NETWORKS,
   socialIcons,

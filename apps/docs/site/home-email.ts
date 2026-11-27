@@ -69,7 +69,7 @@ export const homeEmail: BlocksDocument = {
               id: "home-columns",
               props: {
                 content: paragraph(
-                  "Each Column holds Blocks: Text, Heading, Image, Button, Divider, Spacer and Social."
+                  "Each Column holds Blocks: Text, Heading, Image, Button, Divider, Spacer, Social and Menu."
                 ),
                 fontSize: 14,
               },

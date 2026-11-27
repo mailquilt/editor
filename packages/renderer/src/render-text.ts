@@ -1,6 +1,6 @@
 import { loadDocument } from "@mailquilt/core";
 import type { Block, RichTextParagraph } from "@mailquilt/core";
-import { SOCIAL_NETWORKS } from "@mailquilt/core/internal";
+import { menuLinks, SOCIAL_NETWORKS } from "@mailquilt/core/internal";
 
 import { ADDRESS_IN_TEXT } from "./text-patterns.js";
 
@@ -121,6 +121,11 @@ const blockToText = (block: Block, capitals: Capitals) => {
         .flatMap(({ network, url }) =>
           url === undefined ? [] : [`${SOCIAL_NETWORKS[network]}: ${url}`]
         )
+        .join("\n");
+    }
+    case "menu": {
+      return menuLinks(block.props)
+        .shown.map(({ label, url }) => `${label}: ${url}`)
         .join("\n");
     }
     case "divider":

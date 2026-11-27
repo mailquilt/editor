@@ -491,6 +491,24 @@ export const selectionBarStyles = css`
     z-index: 1;
   }
 
+  /* A list whose items are lines, as frame k02 draws a Menu's links. */
+  .bar-popover.wide {
+    width: min(520px, calc(100vw - 2 * var(--mq-space-4)));
+  }
+
+  /* The way to add a list's first item, in the accent, as frame k03 draws it. */
+  .add-first {
+    align-items: center;
+    display: inline-flex;
+    gap: var(--mq-space-1);
+    white-space: nowrap;
+  }
+
+  .add-first .icon {
+    height: 14px;
+    width: 14px;
+  }
+
   .bar-popover {
     max-height: calc(
       min(100dvh, var(--_mq-visible-height, 100dvh)) -
@@ -1332,8 +1350,11 @@ type Control =
       placeholderAfterUpload?: StringId;
       width: number;
     }
-  /** A number in px, with its name before it where the field doesn't say. */
-  | { kind: "number"; key: string; label?: StringId }
+  /**
+   * A number in px, with its name before it where the field doesn't say, or
+   * an icon inside it, with its name as its tooltip.
+   */
+  | { kind: "number"; key: string; label?: StringId; icon?: TemplateResult }
   /** A color's swatch and name, which opens its field. */
   | { kind: "color"; key: string; label: StringId }
   /** A switch with its name, and while it's on, what that means. */
@@ -1355,6 +1376,13 @@ type Control =
       label?: (values: Record<string, unknown>, text: Text) => string;
       name: StringId;
       grid?: boolean;
+      /** Wider than a popover of one field, for a list whose items are lines. */
+      wide?: boolean;
+      /**
+       * While its list field, its one key, has no items, the button says
+       * this and adds the first, opening the popover with it.
+       */
+      addFirst?: StringId;
       /** Why it can't open, which its tooltip says, as it stays reachable. */
       offWhy?: StringId;
     }
@@ -1514,6 +1542,22 @@ const CONTROLS: Readonly<
     { key: "fontSize", kind: "number" },
     { key: "color", kind: "color", label: "bar.color" },
     ALIGN,
+  ],
+  menu: () => [
+    {
+      addFirst: "field.menuLinks.add",
+      icon: ICONS.link,
+      id: "popover-links",
+      keys: ["links"],
+      kind: "popover",
+      label: (_values, text) => text("bar.links"),
+      name: "field.menuLinks",
+      wide: true,
+    },
+    ALIGN,
+    { key: "color", kind: "color", label: "bar.textColor" },
+    { key: "fontSize", kind: "number" },
+    { icon: ICONS.width, key: "gap", kind: "number" },
   ],
   image: ({ decorative, src }) =>
     src === undefined
@@ -1794,9 +1838,9 @@ const renderNumberControl = (
       class="bar-field number"
       ?data-invalid=${refusals > 0}
       ?data-phone-value=${mark.marked}
-      data-tooltip=${mark.tooltip ?? nothing}
+      data-tooltip=${mark.tooltip ?? (control.icon ? fieldWords(field.labelId, text) : nothing)}
     >
-      ${mark.icon}
+      ${control.icon ?? nothing}${mark.icon}
       <input
         aria-describedby=${describedBy || nothing}
         aria-invalid=${refusals ? "true" : "false"}
@@ -1953,12 +1997,16 @@ const renderChoiceControl = (
 const renderPopover = (
   section: SettingsSection,
   fields: readonly SettingsField[],
-  { grid = false, legend }: { grid?: boolean; legend: string },
+  {
+    grid = false,
+    legend,
+    wide = false,
+  }: { grid?: boolean; legend: string; wide?: boolean },
   api: PanelApi
 ) => html`
   <div
     aria-label=${legend}
-    class=${grid ? "ui bar-popover grid" : "ui bar-popover"}
+    class=${["ui bar-popover", grid ? "grid" : "", wide ? "wide" : ""].filter(Boolean).join(" ")}
     data-place=${place("barPopover")}
     role="dialog"
     tabindex="-1"
@@ -2080,6 +2128,52 @@ const renderPaddingPopover = (
   `;
 };
 
+/**
+ * The list field of a popover that adds its first item, while it has none and
+ * the popover is closed. Once open, it stays as it is, so removing the last
+ * item leaves the popover and its own way to add one.
+ */
+const emptyListOf = (
+  section: SettingsSection,
+  control: Extract<NamedControl, { kind: "popover" }>,
+  [field]: readonly SettingsField[],
+  open: boolean
+) =>
+  control.addFirst &&
+  !open &&
+  field?.type === "list" &&
+  ((section.values[field.key] as unknown[] | undefined)?.length ?? 0) === 0
+    ? field
+    : undefined;
+
+/**
+ * In place of a list's popover button while it has no items, the way to add
+ * the first, in the accent, as frame k03 draws it. It opens the popover with
+ * the new item, whose first field takes focus, as the popover's own Add does.
+ */
+const renderAddFirst = (
+  section: SettingsSection,
+  control: Extract<NamedControl, { kind: "popover" }>,
+  list: Extract<SettingsField, { type: "list" }>,
+  api: PanelApi,
+  inMore: boolean
+) => html`
+  <span class="bar-anchor">
+    <button
+      class="text-button primary add-first"
+      data-action=${control.id}
+      tabindex=${inMore ? "0" : "-1"}
+      type="button"
+      @click=${() => {
+        api.togglePopover(control.id);
+        api.drafts.changeList(section, list, { type: "add" }, true);
+      }}
+    >
+      ${ICONS.plus}${control.addFirst ? api.text(control.addFirst) : nothing}
+    </button>
+  </span>
+`;
+
 const renderPopoverControl = (
   section: SettingsSection,
   control: Extract<NamedControl, { kind: "popover" }>,
@@ -2130,9 +2224,13 @@ const renderPopoverControl = (
       : renderPopover(
           section,
           fields,
-          { grid: control.grid, legend: name },
+          { grid: control.grid, legend: name, wide: control.wide },
           api
         );
+  const empty = emptyListOf(section, control, fields, open);
+  if (empty) {
+    return renderAddFirst(section, control, empty, api, inMore);
+  }
   return html`
     <span class="bar-anchor">
       <button

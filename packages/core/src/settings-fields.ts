@@ -32,22 +32,42 @@ type TextField = FieldBase & { type: "text" };
 export type SettingsField = FieldBase &
   (
     | { type: "color" }
-    | {
+    | ({
         /**
-         * Items in the person's order, each an object keyed by its `itemKey`
-         * property, whose value no two items share. A person adds an item for
-         * one of `options` not yet used, removes one or moves one, and types
-         * each item's `itemField`. A change sets the whole list.
+         * Items in the person's order, each an object with the text of each
+         * of its `itemFields`. A person adds, removes or moves an item, and
+         * types in its fields. A change sets the whole list.
          */
         type: "list";
-        itemKey: string;
-        itemField: TextField;
-        /** The menu of options not yet used. */
-        chooseLabelId: string;
-        /** Shown in place of that menu once every option is used. */
-        allAddedId: string;
-        options: readonly { labelId: string; value: string }[];
-      }
+        itemFields: readonly TextField[];
+      } & (
+        | {
+            /**
+             * Each item is for one of `options`, in its `itemKey` property,
+             * which no two items share. A person adds an item for an option
+             * not yet used.
+             */
+            itemKey: string;
+            /** The menu of options not yet used. */
+            chooseLabelId: string;
+            /** Shown in place of that menu once every option is used. */
+            allAddedId: string;
+            options: readonly { labelId: string; value: string }[];
+          }
+        | {
+            /**
+             * Items are told apart by their position, and a person adds an
+             * empty one with the button `addLabelId` names.
+             */
+            itemKey?: undefined;
+            addLabelId: string;
+            /**
+             * An item's name until its first field has text, with its
+             * `{position}`, such as "Link 2".
+             */
+            itemNameId: string;
+          }
+      ))
     | { type: "number"; max?: number; min: number; unit: "px" }
     | {
         type: "select";

@@ -30,6 +30,18 @@
               }
             },
             {
+              "id": "menu",
+              "type": "menu",
+              "props": {
+                "align": "center",
+                "fontSize": 14,
+                "links": [
+                  { "label": "Shop", "url": "https://example.com/shop" },
+                  { "label": "Your orders", "url": "{{orders_url}}" }
+                ]
+              }
+            },
+            {
               "id": "title",
               "type": "heading",
               "props": {

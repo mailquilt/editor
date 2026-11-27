@@ -250,6 +250,19 @@ describe(checkEmail, () => {
       ).resolves.toStrictEqual(["image-without-src", "no-unsubscribe-link"]);
     });
 
+    // A Menu's link without a label is left out of the email.
+    it("doesn't count a Menu's link without a label", async () => {
+      await expect(
+        codes(
+          ready({
+            props: { links: [{ url: "{{unsubscribe_url}}" }] },
+            type: "menu",
+          }),
+          { mergeTags: MERGE_TAGS }
+        )
+      ).resolves.toStrictEqual(["no-unsubscribe-link"]);
+    });
+
     it("leaves tags alone without the host's list", async () => {
       await expect(
         codes(
@@ -281,6 +294,15 @@ describe(checkEmail, () => {
             label: "Unsubscribe",
           },
           type: "button" as const,
+        },
+      ],
+      [
+        "a Menu's link",
+        {
+          props: {
+            links: [{ label: "Unsubscribe", url: "{{unsubscribe_url}}" }],
+          },
+          type: "menu" as const,
         },
       ],
     ])(
@@ -351,6 +373,17 @@ describe(checkEmail, () => {
           type: "button" as const,
         },
         "low-button-contrast",
+      ],
+      [
+        "a Menu's links",
+        {
+          props: {
+            color: "#777777",
+            links: [{ label: "Shop", url: "https://example.com" }],
+          },
+          type: "menu" as const,
+        },
+        "low-link-contrast",
       ],
       [
         "a Heading under 18.67px, though it's bold",
@@ -630,6 +663,20 @@ describe(checkEmail, () => {
         ),
         "content",
         "Read more",
+      ],
+      [
+        "a Menu link that says only “Learn more”",
+        ready({
+          props: {
+            links: [
+              { label: "Shop", url: "https://example.com/shop" },
+              { label: "Learn more", url: "https://example.com/about" },
+            ],
+          },
+          type: "menu",
+        }),
+        "links",
+        "Learn more",
       ],
       [
         "a Button that says only “Here”",

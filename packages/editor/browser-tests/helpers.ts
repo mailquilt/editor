@@ -687,6 +687,7 @@ export const openBlocks = async (page: Page, ...columns: BlockType[][]) => {
         level: 2,
       },
       image: { src: "https://cdn.example/photo.png" },
+      menu: { links: [{ label: "Shop", url: "https://shop.example" }] },
       social: { links: [] },
       spacer: {},
       text: {

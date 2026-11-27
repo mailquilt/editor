@@ -10,6 +10,7 @@ import {
   blockStyles,
   hexColor,
   linkColor,
+  menuLinks,
   MERGE_TAG,
 } from "@mailquilt/core/internal";
 import type { ColumnProps, RowProps } from "@mailquilt/core/internal";
@@ -360,6 +361,24 @@ const lowContrast = (
           : []),
       ];
     }
+    case "menu": {
+      // Only the links the email shows, which are all links.
+      if (menuLinks(block.props).shown.length === 0) {
+        return [];
+      }
+      const links = contrastOf(css.color as string, behind, css["font-size"]);
+      return isReadable(links)
+        ? []
+        : [
+            {
+              code: "low-link-contrast",
+              contrast: links,
+              field: "color",
+              message:
+                "Links have too little contrast with what's behind them for everyone to read them. They need 4.5:1, or 3:1 for large text.",
+            },
+          ];
+    }
     case "button": {
       const label = contrastOf(
         css.color as string,
@@ -428,6 +447,9 @@ const linkTextsOf = (block: Block): [field: string, texts: string[]] => {
     case "text":
     case "heading": {
       return ["content", paragraphsIn(block.props.content).flatMap(linkTexts)];
+    }
+    case "menu": {
+      return ["links", menuLinks(block.props).shown.map(({ label }) => label)];
     }
     default: {
       return ["", []];
@@ -577,8 +599,11 @@ export const checkEmail = async (
           (block.props as { boxBackgroundColor?: string }).boxBackgroundColor,
           behindBlocks
         );
-        // An Image with no image is left out, with its link.
-        if (block.type !== "image" || block.props.src !== undefined) {
+        // An Image with no image is left out, with its link, as is a Menu's
+        // link without a label.
+        if (block.type === "menu") {
+          links.push(...linksIn(menuLinks(block.props).shown));
+        } else if (block.type !== "image" || block.props.src !== undefined) {
           links.push(...linksIn(block.props));
         }
         for (const problem of blockProblems(block, knownTags, behind, style)) {

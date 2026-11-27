@@ -6,6 +6,7 @@ import {
   columnStyles,
   EMAIL_LOOK,
   linkColor,
+  menuLinks,
   onPhone,
   rowStyles,
   SOCIAL_NETWORKS,
@@ -115,29 +116,40 @@ const phoneClass = (
   return name;
 };
 
+/**
+ * The padding a Social or Menu Block's cell has, less what its icons or links
+ * keep around them, or none for a Block whose cell has its Box's padding.
+ */
+const ownPadding = ({ props, type }: Pick<Block, "props" | "type">) => {
+  if (type === "social") {
+    return socialIcons(props as BlockProps["social"]).blockPadding;
+  }
+  return type === "menu"
+    ? menuLinks(props as BlockProps["menu"]).blockPadding
+    : undefined;
+};
+
 /** A rule, or none while it has nothing to set. */
 const rule = (selector: string, declarations: string) =>
   declarations ? [`${selector} { ${declarations} }`] : [];
 
 /**
- * A Block's Phone values as rules: its padding on its cell, a Social Block's
- * as its icons take it; its font size and line height on what's inside; and
+ * A Block's Phone values as rules: its padding on its cell, a Social or Menu
+ * Block's as its icons or links take it; its font size and line height on what's inside; and
  * an Image's width, which stops at its Column's as on a desktop.
  */
 const blockPhoneRules = (block: Block, style: EmailStyle) => {
   const phone = onPhone(block);
   return (selector: string) => {
+    const own = ownPadding(block);
     const padding =
-      block.type === "social"
-        ? changedOnPhone(
-            { padding: socialIcons(block.props).blockPadding },
-            {
-              padding: socialIcons(phone.props as BlockProps["social"])
-                .blockPadding,
-            },
+      own === undefined
+        ? changedOnPhone(blockBoxStyles(block), blockBoxStyles(phone), PADDING)
+        : changedOnPhone(
+            { padding: own },
+            { padding: ownPadding(phone) as string },
             ["padding"]
-          )
-        : changedOnPhone(blockBoxStyles(block), blockBoxStyles(phone), PADDING);
+          );
     const desktopLook = blockStyles(block, style);
     const phoneLook = blockStyles(phone, style);
     const { width } = phone.props as { width?: number };
@@ -184,7 +196,7 @@ const classAttribute = (...classes: (string | false | undefined)[]) => {
 /**
  * A Block's Box as MJML's attributes: its padding and background. Its border
  * and corners go to `finishHtml`, with a class that marks where. A Social
- * Block's padding is its icons'.
+ * or Menu Block's padding is its own, as its icons or links take part of it.
  */
 const boxAttributes = (block: Block, context: BlockContext) => {
   const { boxes, style } = context;
@@ -210,7 +222,7 @@ const boxAttributes = (block: Block, context: BlockContext) => {
   );
   return (
     mjmlAttributes({
-      ...(block.type === "social" ? {} : padding),
+      ...(ownPadding(block) === undefined ? padding : {}),
       ...(background === undefined
         ? {}
         : { "container-background-color": background }),
@@ -243,6 +255,34 @@ const socialToMjml = (
 };
 
 /**
+ * Each link that has a label and a URL, in a row that wraps, with half the gap
+ * on either side of each. A space between links keeps their words apart where
+ * an inbox shows the email's first words, and the row's font size of 0, which
+ * a phone's font size can't change, keeps it from widening the gap. Outlook on
+ * Windows ignores an inline link's padding, so there, as in MJML's navbar,
+ * each link is a cell of a table.
+ */
+const menuToMjml = (
+  props: BlockProps["menu"],
+  attributes: string,
+  {
+    color,
+    "font-size": fontSize,
+    "line-height": lineHeight,
+    "text-align": align,
+  }: Record<string, string>,
+  fontFamily: string
+) => {
+  const { blockPadding, linkPadding, shown } = menuLinks(props);
+  const cell = `padding:0px ${linkPadding}px;`;
+  const links = shown.map(
+    ({ label, url }) =>
+      `<a href="${escapeAttribute(url)}" style="${escapeAttribute(`display:inline-block;color:${color};font-family:${fontFamily};font-size:${fontSize};line-height:${lineHeight};text-decoration:none;${cell}`)}">${plainTextToHtml(label)}</a>`
+  );
+  return `<mj-text${attributes} padding="${blockPadding}"><div style="font-size:0px !important;line-height:0px !important;"><!--[if mso | IE]><table role="presentation" border="0" cellpadding="0" cellspacing="0" align="${align}"><tr><td style="${cell}"><![endif]-->${links.join(` <!--[if mso | IE]></td><td style="${cell}"><![endif]-->`)}<!--[if mso | IE]></td></tr></table><![endif]--></div></mj-text>`;
+};
+
+/**
  * A Block as MJML. The casts are safe, as core's styles for a type always set
  * the same properties. A Block the email leaves out, such as an Image without
  * a URL, has no Box either.
@@ -259,7 +299,8 @@ const blockMjml = (block: Block, context: BlockContext) => {
   if (
     (block.type === "image" && block.props.src === undefined) ||
     (block.type === "social" &&
-      block.props.links.every(({ url }) => url === undefined))
+      block.props.links.every(({ url }) => url === undefined)) ||
+    (block.type === "menu" && menuLinks(block.props).shown.length === 0)
   ) {
     return "";
   }
@@ -295,6 +336,9 @@ const blockMjml = (block: Block, context: BlockContext) => {
     }
     case "social": {
       return socialToMjml(block.props, attributes, context);
+    }
+    case "menu": {
+      return menuToMjml(block.props, attributes, blockCss, fontFamily);
     }
     // Never reached, as core checked each Block's type. A type this doesn't
     // handle fails to compile here.

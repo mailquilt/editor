@@ -828,7 +828,7 @@ const holdsText = ({ type }: SettingsField) =>
 
 /**
  * What each field of `fields` that holds text gave for a Merge Tag, by its key.
- * A list's is its item's text, in a list of one item.
+ * A list's are each of its item's texts, in a list of one item.
  */
 const acceptedTags = (
   fields: () => readonly SettingsField[],
@@ -844,10 +844,15 @@ const acceptedTags = (
       return results;
     }
     if (field.type === "list") {
-      const [option] = field.options;
-      results[`${field.key}.${field.itemField.key}`] = apply(field.key, [
-        { [field.itemKey]: option?.value, [field.itemField.key]: tag },
-      ]);
+      const keyed =
+        field.itemKey === undefined
+          ? {}
+          : { [field.itemKey]: field.options[0]?.value };
+      for (const { key } of field.itemFields) {
+        results[`${field.key}.${key}`] = apply(field.key, [
+          { ...keyed, [key]: tag },
+        ]);
+      }
     } else {
       results[field.key] = field.disabled ? "disabled" : apply(field.key, tag);
     }
