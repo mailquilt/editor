@@ -11,7 +11,9 @@ import {
   blockStyles,
   blockSettingsFields,
   COLUMN_SETTINGS_FIELDS,
+  EMAIL_LOOK,
   EMAIL_SETTINGS_FIELDS,
+  phoneValueKeys,
   rowLayoutOf,
   rowSettingsFields,
 } from "@mailquilt/core/internal";
@@ -19,6 +21,7 @@ import type {
   ColumnProps,
   RowProps,
   SettingsField,
+  ShowOn,
 } from "@mailquilt/core/internal";
 import { css, html, nothing } from "lit";
 import type { TemplateResult } from "lit";
@@ -46,6 +49,7 @@ import {
   draftKey,
   fieldText,
   fieldWords,
+  phoneMark,
   renderField,
   renderSettingsPanel,
   typedIn,
@@ -392,6 +396,13 @@ export const selectionBarStyles = css`
 
   .selection-bar .segment:has(> .icon:only-child) {
     padding: 0;
+  }
+
+  /* Show on's three choices, each on one line, sharing More's width. */
+  .show-on .segment {
+    flex: auto;
+    padding-inline: var(--mq-space-2);
+    white-space: nowrap;
   }
 
   /* A layout as its Column widths, in the bar, the Add panel and the Rows list. */
@@ -1063,7 +1074,70 @@ const withSharedDefaults = (block: Block, style: EmailStyle) => {
   });
 };
 
-const blockSection = (
+/**
+ * In the Phone view, `section` as a phone shows it: each field that can have
+ * a Phone value shows and changes that, or the setting's own value while it
+ * has none. The other fields change the setting on every device. Its fields
+ * keep their draft keys, as Check's Fix and an upload find them by those.
+ */
+const onDevice = (
+  section: SettingsSection,
+  props: Record<string, unknown>,
+  type: string | undefined,
+  api: PanelApi
+): SettingsSection => {
+  if (api.device !== "phone") {
+    return section;
+  }
+  const keys = new Set(phoneValueKeys(type));
+  const set = (props.phone ?? {}) as Record<string, unknown>;
+  return {
+    ...section,
+    command: (changes) => {
+      const entries = Object.entries(changes);
+      const own = entries.filter(([key]) => !keys.has(key));
+      if (own.length === entries.length) {
+        return section.command(changes);
+      }
+      // A null takes the Phone value away, as it does a setting.
+      const phone = Object.entries({
+        ...set,
+        ...Object.fromEntries(entries.filter(([key]) => keys.has(key))),
+      }).filter(([, value]) => value !== null);
+      return section.command({
+        ...Object.fromEntries(own),
+        phone: phone.length > 0 ? Object.fromEntries(phone) : null,
+      });
+    },
+    phone: { desktop: section.values, keys, set },
+    values: { ...section.values, ...set },
+  };
+};
+
+/**
+ * A Button's font size, which only a Phone value sets, so its field is
+ * only in the Phone view. Unset, it's the size every Block shares.
+ */
+const buttonFontSizeOnPhones = (style: EmailStyle): SettingsField => ({
+  default: style.textFontSize ?? Number(EMAIL_LOOK.fontSize.slice(0, -2)),
+  invalidMessageId: "invalid.pixelsBetween",
+  key: "fontSize",
+  labelId: "field.fontSize",
+  max: 200,
+  min: 1,
+  type: "number",
+  unit: "px",
+});
+
+const blockSection = (position: BlockPosition, api: PanelApi) =>
+  onDevice(
+    desktopBlockSection(position, api),
+    position.block.props as Record<string, unknown>,
+    position.block.type,
+    api
+  );
+
+const desktopBlockSection = (
   { block }: BlockPosition,
   api: PanelApi
 ): SettingsSection => ({
@@ -1084,14 +1158,30 @@ const blockSection = (
           },
         }
       : undefined,
-  fields: withSharedDefaults(block, api.email.settings.style ?? {}),
+  fields: [
+    ...withSharedDefaults(block, api.email.settings.style ?? {}),
+    ...(block.type === "button" && api.device === "phone"
+      ? [buttonFontSizeOnPhones(api.email.settings.style ?? {})]
+      : []),
+  ],
   id: BLOCK_SECTION_ID,
   legend: blockTypeName(block.type, api.text),
   targetId: block.id,
   values: block.props,
 });
 
-const rowSection = ({ row }: RowPosition, api: PanelApi): SettingsSection => ({
+const rowSection = (position: RowPosition, api: PanelApi) =>
+  onDevice(
+    desktopRowSection(position, api),
+    position.row.props as Record<string, unknown>,
+    undefined,
+    api
+  );
+
+const desktopRowSection = (
+  { row }: RowPosition,
+  api: PanelApi
+): SettingsSection => ({
   command: (props) => ({ props, rowId: row.id, type: "updateRowProps" }),
   fields: rowSettingsFields(row),
   id: "row",
@@ -1110,7 +1200,15 @@ const behindColumn = ({ row }: ColumnPosition, api: PanelApi) =>
   api.email.settings.style?.emailBackgroundColor ??
   api.email.settings.backgroundColor;
 
-const columnSection = (
+const columnSection = (position: ColumnPosition, api: PanelApi) =>
+  onDevice(
+    desktopColumnSection(position, api),
+    position.column.props as Record<string, unknown>,
+    undefined,
+    api
+  );
+
+const desktopColumnSection = (
   position: ColumnPosition,
   api: PanelApi
 ): SettingsSection => ({
@@ -1131,7 +1229,15 @@ const columnSection = (
  * A Block's Box, in More: its padding, background, border and corners. Its
  * own section, so what's typed in it is kept apart from the Block's own.
  */
-const boxSection = (
+const boxSection = (position: BlockPosition, api: PanelApi) =>
+  onDevice(
+    desktopBoxSection(position, api),
+    position.block.props as Record<string, unknown>,
+    position.block.type,
+    api
+  );
+
+const desktopBoxSection = (
   { block, column, row }: BlockPosition,
   api: PanelApi
 ): SettingsSection => ({
@@ -1644,6 +1750,10 @@ const renderNumberControl = (
   const draft = drafts.draftOf(key);
   const refusals = draft?.refusals ?? 0;
   const unit = text(`unit.${field.unit}`);
+  const mark = phoneMark(section, field, drafts, text, { id, inBar: true });
+  const describedBy = [refusals ? errorId : "", mark.descriptionId]
+    .filter(Boolean)
+    .join(" ");
   return html`
     ${
       control.label
@@ -1652,9 +1762,15 @@ const renderNumberControl = (
           </span>`
         : nothing
     }
-    <label class="bar-field number" ?data-invalid=${refusals > 0}>
+    <label
+      class="bar-field number"
+      ?data-invalid=${refusals > 0}
+      ?data-phone-value=${mark.marked}
+      data-tooltip=${mark.tooltip ?? nothing}
+    >
+      ${mark.icon}
       <input
-        aria-describedby=${refusals ? errorId : nothing}
+        aria-describedby=${describedBy || nothing}
         aria-invalid=${refusals ? "true" : "false"}
         aria-label=${`${fieldWords(field.labelId, text)} ${text("settings.unit", { unit })}`}
         autocomplete="off"
@@ -1682,6 +1798,7 @@ const renderNumberControl = (
           )}
       />
       <span aria-hidden="true" class="unit">${unit}</span>
+      ${mark.clear} ${mark.description}
       ${
         refusals
           ? keyed(
@@ -1791,7 +1908,15 @@ const renderPaddingPopover = (
     return nothing;
   }
   const texts = sides.map((side) => fieldText(side, section.values));
-  const equal = texts.every((value) => value === texts[0]);
+  // In the Phone view, the sides are one field only while each has a Phone
+  // value or none does, so the field's mark holds for all four.
+  const set = section.phone?.set;
+  const equal =
+    texts.every((value) => value === texts[0]) &&
+    (set === undefined ||
+      sides.every(
+        ({ key }) => (set[key] === undefined) === (set[top.key] === undefined)
+      ));
   const same = equal && !api.bar.paddingBySide.has(section.targetId);
   const everySide = { ...top, key: EVERY_SIDE, labelId: "bar.everySide" };
   const everySection: SettingsSection = {
@@ -1801,6 +1926,15 @@ const renderPaddingPopover = (
         Object.fromEntries(sides.map(({ key }) => [key, changes[EVERY_SIDE]]))
       ),
     fields: [everySide],
+    // In the Phone view, it's every side's Phone value, as one.
+    phone: section.phone && {
+      desktop: {
+        ...section.phone.desktop,
+        [EVERY_SIDE]: section.phone.desktop[top.key],
+      },
+      keys: new Set([...section.phone.keys, EVERY_SIDE]),
+      set: { ...section.phone.set, [EVERY_SIDE]: section.phone.set[top.key] },
+    },
     values: { ...section.values, [EVERY_SIDE]: section.values[top.key] },
   };
   // A side set on its own keeps the sides apart, so the fields don't change
@@ -2483,14 +2617,19 @@ export const renderSelectionBar = (api: PanelApi) => {
   const target = targetOf(api);
   const section = sectionOf(target, api);
   const controls = controlsOf(target);
-  // Said, as the mark on the Row's tag isn't read.
-  const hiddenOnPhones =
-    target.kind === "row" &&
-    (target.position.row.props as RowProps).hideOnPhone === true;
+  // Said, as the marks on the Canvas aren't read.
+  const showOn =
+    target.kind === "row" || target.kind === "block"
+      ? (
+          (target.kind === "row"
+            ? target.position.row.props
+            : target.position.block.props) as { showOn?: ShowOn }
+        ).showOn
+      : undefined;
   return html`
     <div class="bar-dock">
       <div
-        aria-describedby=${hiddenOnPhones ? "bar-hidden-on-phones" : nothing}
+        aria-describedby=${showOn ? "bar-shown-on" : nothing}
         aria-label=${text("bar.of", { name: nameOf(target, text) })}
         class="ui selection-bar"
         data-place=${place(BAR_PLACE[target.kind])}
@@ -2511,9 +2650,9 @@ export const renderSelectionBar = (api: PanelApi) => {
           ${renderSeparator()} ${renderActions(target, api)}
         </div>
         ${
-          hiddenOnPhones
-            ? html`<span class="visually-hidden" id="bar-hidden-on-phones">
-                ${text("canvas.hiddenOnPhones")}
+          showOn
+            ? html`<span class="visually-hidden" id="bar-shown-on">
+                ${text(showOn === "phone" ? "device.phonesOnly" : "device.desktopOnly")}
               </span>`
             : nothing
         }
@@ -2820,6 +2959,65 @@ const renderBox = (position: BlockPosition, api: PanelApi) => {
   `;
 };
 
+/** The devices a Block or Row can show on, as More offers them. Unset is all. */
+const SHOW_ON_FIELD = {
+  default: "",
+  invalidMessageId: "invalid.showOn",
+  key: "showOn",
+  labelId: "more.showOn",
+  options: [
+    { labelId: "showOn.all", value: "" },
+    { labelId: "device.desktopOnly", value: "desktop" },
+    { labelId: "device.phonesOnly", value: "phone" },
+  ],
+  type: "select",
+} as const satisfies SettingsField;
+
+/**
+ * Where a Block or Row shows, in More: a choice of all devices, desktop only
+ * or phones only, each a button that's pressed while it's the choice.
+ */
+const renderShowOn = (
+  target: Extract<Target, { kind: "block" | "row" }>,
+  api: PanelApi
+) => {
+  const { drafts, text } = api;
+  const section =
+    target.kind === "block"
+      ? blockSection(target.position, api)
+      : rowSection(target.position, api);
+  const current = fieldText(SHOW_ON_FIELD, section.values);
+  const legend = text("more.showOn");
+  return html`
+    <div class="settings show-on" data-place=${place("settings")}>
+      <div class="section">
+        <fieldset>
+          <legend>${legend}</legend>
+          <span aria-label=${legend} class="segments" role="group">
+            ${SHOW_ON_FIELD.options.map(
+              ({ labelId, value }) => html`
+                <button
+                  aria-pressed=${value === current ? "true" : "false"}
+                  class="segment"
+                  data-action=${`show-on-${value || "all"}`}
+                  type="button"
+                  @click=${() =>
+                    drafts.onCommit(section, SHOW_ON_FIELD, {
+                      badInput: false,
+                      text: value,
+                    })}
+                >
+                  ${text(labelId)}
+                </button>
+              `
+            )}
+          </span>
+        </fieldset>
+      </div>
+    </div>
+  `;
+};
+
 /** More where it docks beside the email: a column as tall as the editor. */
 export const renderMoreDock = (api: PanelApi) =>
   html`<div class="more-dock">${renderMore(api)}</div>`;
@@ -2870,6 +3068,11 @@ const renderMore = (api: PanelApi) => {
             : nothing
         }
         ${target.kind === "block" ? renderBox(target.position, api) : nothing}
+        ${
+          target.kind === "block" || target.kind === "row"
+            ? renderShowOn(target, api)
+            : nothing
+        }
         ${target.kind === "email" ? nothing : renderMoreActions(target, api)}
       </div>
     </section>

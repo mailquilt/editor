@@ -33,7 +33,15 @@ Classic Outlook draws email with Microsoft Word, which supports less HTML and CS
 
 ## Rows on phones
 
-On screens under 480px wide, a Row's Columns go one under another, and a Row set to hide on phones is hidden. Both come from the email's styles, so a client that drops them on a phone, such as the Gmail app with an account that isn't Google's, still shows a hidden Row, and its Columns keep their desktop width, wrapping onto as many lines as they need, such as two Columns of a four-Column Row on each line. A Row set to keep its Columns side by side on phones has their widths written on each Column, so it looks the same in every client.
+On screens under 480px wide, a Row's Columns go one under another. That comes from the email's styles, so a client that drops them on a phone, such as the Gmail app with an account that isn't Google's, keeps its Columns at their desktop width, wrapping onto as many lines as they need, such as two Columns of a four-Column Row on each line. A Row set to keep its Columns side by side on phones has their widths written on each Column, so it looks the same in every client.
+
+## Showing on a device and Phone values
+
+[Showing a Block or Row on one device](./document-format#showing-on-a-device) and [Phone values](./document-format#phone-values) are rules in the email's styles for screens under 480px wide, as hiding a Row on phones was in version 0.3. Version 0.4 adds them, and they haven't had an Email on Acid run yet; this says what the HTML asks each client to do.
+
+- **Desktop only** is shown, and hidden on a phone by the email's styles. A client that drops them on a phone shows it there too.
+- **Phones only** is hidden in the HTML itself, and shown on a phone by the email's styles. A client that drops them leaves it out on a phone too, so put nothing there that a reader must see. Classic Outlook for Windows reads no media query, so the HTML leaves it out for Outlook altogether.
+- **Phone values** for font size, padding and an Image's width take the place of the desktop's on a phone, from the email's styles. A client that drops them shows the desktop's values on a phone.
 
 ## Boxes and Columns
 

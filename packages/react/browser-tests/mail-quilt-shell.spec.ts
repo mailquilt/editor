@@ -15,7 +15,7 @@ test("shows the email in value, with the heading", async ({ page }) => {
   ).toBeVisible();
 });
 
-test("actions picks the Shell's buttons, and an empty list shows none", async ({
+test("actions picks the Shell's exports, and an empty list shows none", async ({
   page,
 }) => {
   for (const [query, menuItems] of [
@@ -25,7 +25,7 @@ test("actions picks the Shell's buttons, and an empty list shows none", async ({
     await page.goto(query);
     await expect(textBlock(page)).toHaveText("Hello");
     await expect(
-      shell(page).locator('[part="actions"]').getByRole("button")
+      shell(page).getByRole("button", { exact: true, name: "Export" })
     ).toHaveCount(menuItems.length);
     if (menuItems.length > 0) {
       await shell(page).getByRole("button", { name: "Export" }).click();

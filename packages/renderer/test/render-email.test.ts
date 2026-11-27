@@ -207,6 +207,98 @@ describe(renderEmail, () => {
     ).resolves.toMatchFileSnapshot("expected/box-and-column-settings.html");
   });
 
+  /** Showing on a device and Phone values for each kind of thing that has them. */
+  const emailForDevices = () => {
+    const email = emailWithColumns(
+      { texts: ["Every device", "Desktop only", "Phones only"], width: 50 },
+      { texts: [], width: 50 }
+    );
+    email.version = 4;
+    const [first, second] = email.rows[0]?.columns ?? [];
+    const [every, desktop, phones] = (first?.blocks ?? []) as Block[];
+    Object.assign(every?.props ?? {}, {
+      fontSize: 18,
+      phone: { fontSize: 14, paddingLeft: 8, paddingRight: 8 },
+    });
+    Object.assign(desktop?.props ?? {}, { showOn: "desktop" });
+    Object.assign(phones?.props ?? {}, { showOn: "phone" });
+    (second as { props: object }).props = { phone: { paddingLeft: 0 } };
+    second?.blocks.push(
+      ...([
+        {
+          id: "heading",
+          props: {
+            content: {
+              content: [{ content: [plain("Heading")], type: "paragraph" }],
+              type: "doc",
+            },
+            level: 1,
+            phone: { fontSize: 24 },
+          },
+          type: "heading",
+        },
+        {
+          id: "button",
+          props: { label: "Shop", phone: { fontSize: 20, paddingTop: 0 } },
+          type: "button",
+        },
+        {
+          id: "image",
+          props: {
+            phone: { width: 120 },
+            src: "https://example.com/beans.png",
+            width: 240,
+          },
+          type: "image",
+        },
+        {
+          id: "social",
+          props: {
+            links: [{ network: "x", url: "https://x.com/mq" }],
+            phone: { paddingLeft: 0 },
+          },
+          type: "social",
+        },
+      ] as Block[])
+    );
+    email.rows[0] = {
+      ...(email.rows[0] as BlocksDocument["rows"][0]),
+      props: { paddingTop: 24, phone: { paddingTop: 8 } },
+    };
+    email.rows.push(
+      rowWith(
+        "phones",
+        { showOn: "phone" },
+        { texts: ["Row on phones"], width: 100 }
+      )
+    );
+    return email;
+  };
+
+  it("matches the saved HTML for showing on a device and Phone values", async () => {
+    await expect(
+      renderEmail(emailForDevices()).then(readable)
+    ).resolves.toMatchFileSnapshot("expected/devices-and-phone-values.html");
+  });
+
+  it("leaves what shows on phones only out of Outlook on Windows, with none of MJML's Outlook markup inside", async () => {
+    const html = await renderEmail(emailForDevices());
+    const body = html.slice(html.indexOf("<body"));
+    const forOthers = [
+      ...body.matchAll(
+        /<!--\[if !mso\]><!-->(?<inside>.*?)<!--<!\[endif\]-->/gsu
+      ),
+    ].map(({ groups }) => groups?.inside ?? "");
+
+    expect(forOthers).toHaveLength(2);
+    expect(forOthers[0]).toContain("Phones only");
+    expect(forOthers[1]).toContain("Row on phones");
+    for (const inside of forOthers) {
+      expect(inside).not.toContain("<!--[if");
+    }
+    expect(html.match(/Row on phones|Phones only/gu)).toHaveLength(2);
+  });
+
   it("adds no border to a label that reads like a Block's Box markup", async () => {
     const markup = '<td align="left" class="mq-box" style="';
     const email = emailWith(

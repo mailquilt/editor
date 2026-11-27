@@ -14,6 +14,7 @@ import {
   columnStyles,
   EMAIL_SETTINGS_FIELDS,
   hexColor,
+  phoneValueKeys,
   rowSettingsFields,
   rowStyles,
 } from "../src/internal.js";
@@ -163,10 +164,10 @@ describe("Row settings", () => {
     });
   });
 
-  it("stores padding on each side, hiding on phones and stacking on phones", () => {
+  it("stores padding on each side, the devices it shows on and stacking on phones", () => {
     const { editor, rowId } = setup();
     const props = {
-      hideOnPhone: true,
+      showOn: "desktop",
       paddingBottom: 200,
       paddingLeft: 0,
       paddingRight: 24,
@@ -189,7 +190,8 @@ describe("Row settings", () => {
       { paddingRight: 1.5 },
       /paddingRight/u,
     ],
-    ["a choice that isn't yes or no", { hideOnPhone: "true" }, /hideOnPhone/u],
+    ["a device it doesn't know", { showOn: "tablet" }, /showOn/u],
+    ["the hiding version 3 had", { hideOnPhone: true }, /hideOnPhone/u],
   ])("refuses %s", (_name, props, reason) => {
     const { editor, rowId } = setup();
 
@@ -300,6 +302,108 @@ describe("Box settings", () => {
       ok: false,
       reason: expect.stringMatching(reason),
     });
+  });
+});
+
+/** Inserts a new Block of a type with `props`, as the first in the email. */
+const insert = (blockType: string, props: Record<string, unknown>) => {
+  const editor = createEditor({ document: createEmail() });
+  const columnId = editor.getDocument().rows[0]?.columns[0]?.id as string;
+  return editor.apply({
+    blockType,
+    columnId,
+    index: 0,
+    props,
+    type: "insertBlock",
+  });
+};
+
+/** A type's settings that can have a Phone value, in order. */
+const sorted = (type?: string) => [...phoneValueKeys(type)].toSorted();
+
+describe(phoneValueKeys, () => {
+  it("names the settings each kind of thing can have a Phone value for", () => {
+    const padding = [
+      "paddingBottom",
+      "paddingLeft",
+      "paddingRight",
+      "paddingTop",
+    ];
+
+    expect(sorted("heading")).toStrictEqual(["fontSize", ...padding]);
+    expect(sorted("image")).toStrictEqual([...padding, "width"]);
+    expect(sorted("divider")).toStrictEqual(padding);
+    expect(sorted()).toStrictEqual(padding);
+  });
+});
+
+describe("showing on a device, and Phone values", () => {
+  it("stores the devices a Block shows on, and its Phone values for font size and padding", () => {
+    const { blockId, editor } = setup();
+    const before = editor.getDocument();
+    const props = {
+      phone: { fontSize: 14, paddingLeft: 8, paddingRight: 8 },
+      showOn: "phone",
+    };
+
+    expect(
+      editor.apply({ blockId, props, type: "updateBlockProps" })
+    ).toStrictEqual({ ok: true });
+    expect(blockProps(editor.getDocument())).toMatchObject(props);
+    expect(loadDocument(editor.getDocument())).toMatchObject({ ok: true });
+
+    editor.undo();
+    expect(editor.getDocument()).toStrictEqual(before);
+  });
+
+  it("stores an Image's Phone width", () => {
+    expect(
+      insert("image", {
+        phone: { width: 120 },
+        src: "https://example.com/a.png",
+      })
+    ).toMatchObject({ ok: true });
+  });
+
+  it.each([
+    ["a Phone value for a setting that has none", "spacer", { height: 8 }],
+    ["a Phone width on a Button", "button", { width: 120 }],
+    ["a Phone font size on a Divider", "divider", { fontSize: 14 }],
+    ["a Phone font size past the limit", "button", { fontSize: 201 }],
+    ["Phone padding past 200", "spacer", { paddingTop: 201 }],
+  ])("refuses %s", (_name, blockType, phone) => {
+    expect(
+      insert(blockType, {
+        ...(blockType === "button" ? { label: "Go" } : {}),
+        phone,
+      })
+    ).toStrictEqual({
+      code: "invalidProps",
+      ok: false,
+      reason: expect.stringMatching(/phone/u),
+    });
+  });
+
+  it("stores a Row's and a Column's Phone padding, and refuses a Column's device", () => {
+    const { editor, rowId } = setup();
+    const columnId = editor.getDocument().rows[0]?.columns[0]?.id as string;
+    const phone = { paddingTop: 0 };
+
+    expect(
+      editor.apply({ props: { phone }, rowId, type: "updateRowProps" })
+    ).toStrictEqual({ ok: true });
+    expect(
+      editor.apply({ columnId, props: { phone }, type: "updateColumnProps" })
+    ).toStrictEqual({ ok: true });
+    expect(editor.getDocument().rows[0]?.props).toStrictEqual({ phone });
+    expect(columnProps(editor.getDocument())).toStrictEqual({ phone });
+    expect(
+      editor.apply({
+        columnId,
+        props: { showOn: "phone" },
+        type: "updateColumnProps",
+      })
+    ).toMatchObject({ code: "invalidProps", ok: false });
   });
 });
 

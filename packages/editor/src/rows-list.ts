@@ -1,6 +1,6 @@
 import { ROW_LAYOUTS } from "@mailquilt/core";
 import type { Block, EmailStyle, Row } from "@mailquilt/core";
-import { EMAIL_LOOK } from "@mailquilt/core/internal";
+import { EMAIL_LOOK, isHiddenOn } from "@mailquilt/core/internal";
 import type { RowProps } from "@mailquilt/core/internal";
 import { css, html, nothing, unsafeCSS } from "lit";
 import { repeat } from "lit/directives/repeat.js";
@@ -12,7 +12,7 @@ import {
   renderBlockContent,
   textBlockLook,
 } from "./block-types.js";
-import { rowLook } from "./canvas.js";
+import { renderAwayStrip, rowLook, SHOWN_ONLY_ON } from "./canvas.js";
 import { closestPlace, findPlaces, place } from "./editor-places.js";
 import type { EditorFocus } from "./focus.js";
 import { ICONS } from "./icons.js";
@@ -456,7 +456,7 @@ export const rowsListStyles = css`
     box-shadow: var(--mq-shadow);
   }
 
-  /* That it isn't on phones, on its picture, or beside its number. */
+  /* That it shows on one device only, on its picture, or beside its number. */
   .rows-badge {
     align-items: center;
     background: var(--mq-color-text);
@@ -656,12 +656,25 @@ const drawText = (block: Extract<Block, { type: "heading" | "text" }>) => {
   return element;
 };
 
+/**
+ * A Block in a Row's picture, or where it isn't on the device being viewed,
+ * its strip, so the list marks it however the Canvas shows it.
+ */
 const renderPictureBlock = (
   block: Block,
   context: PictureContext,
   style: EmailStyle
-) =>
-  hasRichText(block)
+) => {
+  if (isHiddenOn(block, context.api.device)) {
+    return html`<div class="block">
+      ${renderAwayStrip(
+        block,
+        blockTypeName(block.type, context.api.text),
+        context.api
+      )}
+    </div>`;
+  }
+  return hasRichText(block)
     ? html`<div style=${styleProperties(textBlockLook(block, style))}>
         ${context.textPicture(block)}
       </div>`
@@ -678,6 +691,7 @@ const renderPictureBlock = (
           uploading: false,
         })}
       </div>`;
+};
 
 /** A Row as the Canvas draws it, but nothing in it to press or reach. */
 const renderPicture = (row: Row, context: PictureContext) => {
@@ -703,21 +717,26 @@ const renderPicture = (row: Row, context: PictureContext) => {
           )}
         </span>
       </span>
-      ${
-        (row.props as RowProps).hideOnPhone === true
-          ? html`<span
-              aria-hidden="true"
-              class="rows-badge"
-              data-tooltip=${context.api.text("rows.desktopOnly")}
-              >${ICONS.phoneOff}</span
-            >`
-          : nothing
-      }
+      ${renderShownOnBadge(row, "rows-badge", context.api)}
     </span>
   `;
 };
 
-/** "Row 3 of 6: Heading, Text, Button", and that it's desktop only. */
+/** A badge for a Row that shows on one device: "Desktop only" or "Phones only". */
+const renderShownOnBadge = (row: Row, className: string, api: PanelApi) => {
+  const { showOn } = row.props as RowProps;
+  return showOn === undefined
+    ? nothing
+    : html`<span
+        aria-hidden="true"
+        class=${className}
+        data-testid="rows-badge"
+        data-tooltip=${api.text(SHOWN_ONLY_ON[showOn].words)}
+        >${SHOWN_ONLY_ON[showOn].icon}</span
+      >`;
+};
+
+/** "Row 3 of 6: Heading, Text, Button", and where it shows if not everywhere. */
 const rowName = (row: Row, index: number, count: number, api: PanelApi) => {
   const { text } = api;
   const types = row.columns.flatMap(({ blocks }) =>
@@ -731,9 +750,13 @@ const rowName = (row: Row, index: number, count: number, api: PanelApi) => {
           type: "unit",
         }).format(types);
   const values = { blocks, count, position: index + 1 };
-  return (row.props as RowProps).hideOnPhone === true
-    ? text("rows.itemDesktopOnly", values)
-    : text("rows.item", values);
+  const { showOn } = row.props as RowProps;
+  return showOn === undefined
+    ? text("rows.item", values)
+    : text("rows.itemShownOn", {
+        ...values,
+        words: text(SHOWN_ONLY_ON[showOn].words),
+      });
 };
 
 /** "Row 3 of 6 (Alt+↑ or Alt+↓ to move)", for keyboard focus. */
@@ -908,16 +931,8 @@ const renderItems = (
                     api.selectRowInList(row.id, detail === 0)}
                 >
                   <span class="visually-hidden">${name}</span>
-                  <span aria-hidden="true">${index + 1}</span>${
-                    (row.props as RowProps).hideOnPhone === true
-                      ? html`<span
-                          aria-hidden="true"
-                          class="rows-number-badge"
-                          data-tooltip=${api.text("rows.desktopOnly")}
-                          >${ICONS.phoneOff}</span
-                        >`
-                      : nothing
-                  }
+                  <span aria-hidden="true">${index + 1}</span
+                  >${renderShownOnBadge(row, "rows-number-badge", api)}
                 </button>
               `;
         }

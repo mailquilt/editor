@@ -1,12 +1,20 @@
 import { ROW_LAYOUTS } from "@mailquilt/core";
-import type { Block, Column, EmailStyle, Row } from "@mailquilt/core";
+import type {
+  Block,
+  BlocksDocument,
+  Column,
+  EmailStyle,
+  Row,
+} from "@mailquilt/core";
 import {
   blockBoxStyles,
   blockPaddingCss,
   columnStyles,
+  isHiddenOn,
+  onPhone,
   rowStyles,
 } from "@mailquilt/core/internal";
-import type { ColumnProps, RowProps } from "@mailquilt/core/internal";
+import type { ColumnProps, RowProps, ShowOn } from "@mailquilt/core/internal";
 import { css, html, nothing } from "lit";
 import { repeat } from "lit/directives/repeat.js";
 
@@ -27,6 +35,7 @@ import type { StyleMark } from "./style-panel.js";
 import { styleProperties } from "./style-properties.js";
 import { blockTypeName } from "./text.js";
 import type { TextValues } from "./text.js";
+import type { Device } from "./top-bar.js";
 
 /**
  * The Rows, Columns and Blocks on the canvas, their tags and handles, the
@@ -399,7 +408,93 @@ export const canvasStyles = css`
     }
   }
 
-  /* Beside "Row" on its tag, that it's hidden on phones. */
+  /* In the Phone view, a Row's Columns one under another, as on a phone. */
+  .row[data-stacked] {
+    flex-direction: column;
+  }
+
+  .row[data-stacked] > .column {
+    width: 100% !important;
+  }
+
+  /*
+   * Folded: what isn't on the device being viewed, as a thin strip that says
+   * what it is and where it shows, and that can still be selected.
+   */
+  /* On the email, in stripes of the stand-in color over its background. */
+  .away-strip {
+    align-items: center;
+    background: repeating-linear-gradient(
+      -45deg,
+      var(--mq-color-stand-in) 0 6px,
+      transparent 6px 12px
+    );
+    border-block: 1px solid var(--mq-color-stand-in);
+    color: var(--mq-color-on-stand-in);
+    cursor: pointer;
+    display: flex;
+    font:
+      500 var(--mq-font-size-small) / 1 var(--mq-font-family),
+      sans-serif;
+    gap: var(--mq-space-2);
+    justify-content: center;
+    min-height: 38px;
+  }
+
+  .block > .away-strip {
+    border: 0;
+    border-radius: var(--mq-radius-small);
+    margin: var(--mq-space-2) var(--_mq-block-padding, 16px);
+    min-height: 30px;
+  }
+
+  /* A selected folded Row, ringed as a selected Row is. */
+  .row-frame[data-row-selected] > .away-strip {
+    outline: 2px solid var(--mq-color-accent);
+    outline-offset: -2px;
+  }
+
+  .away-strip .icon {
+    height: 14px;
+    width: 14px;
+  }
+
+  /* Faded: full size, with a tag that says where it shows. */
+  [data-away="fade"] > :not(.away-tag, .row-tag, .drag-handle) {
+    opacity: 0.38;
+  }
+
+  .away-tag {
+    align-items: center;
+    background: var(--mq-color-text);
+    border-radius: var(--mq-radius-small);
+    color: var(--mq-color-surface);
+    display: flex;
+    font:
+      500 var(--_mq-font-size-tag) / 20px var(--mq-font-family),
+      sans-serif;
+    gap: var(--mq-space-1);
+    inset-block-start: var(--mq-space-2);
+    inset-inline-start: var(--mq-space-2);
+    padding: 0 6px;
+    pointer-events: none;
+    position: absolute;
+    z-index: var(--_mq-layer-tags);
+  }
+
+  /* On a Block, above its end corner, clear of its content and its own tag. */
+  .block > .away-tag {
+    bottom: 100%;
+    inset-block-start: auto;
+    inset-inline: auto 0;
+  }
+
+  .away-tag .icon {
+    height: 12px;
+    width: 12px;
+  }
+
+  /* Beside "Row" on its tag, the devices it shows on alone. */
   .row-tag .icon {
     display: inline-block;
     height: 12px;
@@ -517,6 +612,130 @@ export const canvasStyles = css`
   }
 `;
 
+/**
+ * How the Canvas shows a Block or Row that isn't on the device being viewed:
+ * as a thin strip, full size and faded, or not at all. The person picks it,
+ * and the Shell remembers it.
+ */
+export type NotOnDevice = "fade" | "fold" | "hide";
+
+/**
+ * Where a Block or Row shows, as its marks say it on the Canvas and in the
+ * Rows list, and their icon.
+ */
+export const SHOWN_ONLY_ON = {
+  desktop: { icon: ICONS.phoneOff, words: "device.desktopOnly" },
+  phone: { icon: ICONS.phone, words: "device.phonesOnly" },
+} as const;
+
+/**
+ * Whether a Block or Row is on the device being viewed, or else how it shows:
+ * as a strip, faded, or not at all.
+ */
+const awayOf = (
+  item: { props: object },
+  { device, notOnDevice }: Pick<PanelApi, "device" | "notOnDevice">
+) => (isHiddenOn(item, device) ? notOnDevice : undefined);
+
+/** What a Block or Row isn't on the device being viewed says, and its icon. */
+const awayWords = (item: { props: object }, api: PanelApi) => {
+  const { icon, words } =
+    SHOWN_ONLY_ON[(item.props as { showOn: ShowOn }).showOn];
+  return { icon, words: api.text(words) };
+};
+
+/** A strip in place of what isn't on the device: "Row 5 · Phones only". */
+export const renderAwayStrip = (
+  item: { props: object },
+  name: string,
+  api: PanelApi,
+  onClick?: () => void
+) => {
+  const { icon, words } = awayWords(item, api);
+  return html`<div
+    class="ui away-strip"
+    data-testid="away-strip"
+    @click=${onClick}
+  >
+    ${icon}<span>${api.text("canvas.notHere", { name, words })}</span>
+  </div>`;
+};
+
+/**
+ * A Block's name for screen readers, with where it shows when that isn't
+ * every device, as its strip or tag isn't read.
+ */
+const blockName = (
+  block: Block,
+  where: TextValues,
+  type: string,
+  api: PanelApi
+) => {
+  const { showOn } = block.props as { showOn?: ShowOn };
+  return showOn === undefined
+    ? api.text("canvas.block", { ...where, type })
+    : api.text("canvas.blockShownOn", {
+        ...where,
+        type,
+        words: api.text(SHOWN_ONLY_ON[showOn].words),
+      });
+};
+
+/** The tag on what's faded, as it isn't on the device: "Phones only". */
+const renderAwayTag = (item: { props: object }, api: PanelApi) => {
+  const { icon, words } = awayWords(item, api);
+  return html`<span
+    aria-hidden="true"
+    class="ui away-tag"
+    data-testid="away-tag"
+    >${icon}${words}</span
+  >`;
+};
+
+/**
+ * The email as the Canvas draws it on a device: without what's hidden there,
+ * and without the Blocks of a folded Row, which only its strip stands for. A
+ * folded Block is drawn as its strip, and a faded one in full. The arrow keys
+ * go only to what it draws.
+ */
+export const drawnEmail = (
+  email: BlocksDocument,
+  device: Device,
+  notOnDevice: NotOnDevice
+): BlocksDocument => {
+  if (notOnDevice === "fade") {
+    return email;
+  }
+  return {
+    ...email,
+    rows: email.rows.flatMap((row) => {
+      if (!isHiddenOn(row, device)) {
+        return [
+          notOnDevice === "hide"
+            ? {
+                ...row,
+                columns: row.columns.map((column) => ({
+                  ...column,
+                  blocks: column.blocks.filter(
+                    (block) => !isHiddenOn(block, device)
+                  ),
+                })),
+              }
+            : row,
+        ];
+      }
+      return notOnDevice === "hide"
+        ? []
+        : [
+            {
+              ...row,
+              columns: row.columns.map((column) => ({ ...column, blocks: [] })),
+            },
+          ];
+    }),
+  };
+};
+
 /** Narrower than this, there's no room to edit, and a notice shows instead. */
 export const MIN_EDITOR_WIDTH = 640;
 
@@ -619,6 +838,42 @@ const COLUMN_ALIGN = {
   top: "flex-start",
 } as const;
 
+/**
+ * A Block that isn't on the device being viewed, folded: a strip in its
+ * place, which is selected, reached and moved as the Block is.
+ */
+const renderFoldedBlock = (
+  block: Block,
+  where: TextValues,
+  isTabStop: boolean,
+  api: PanelApi,
+  events: CanvasEvents
+) => {
+  const { text } = api;
+  const type = blockTypeName(block.type, text);
+  const drawn = api.device === "phone" ? onPhone(block) : block;
+  return html`
+    <div
+      aria-current=${block.id === api.selectedBlock?.block.id ? "true" : nothing}
+      aria-describedby="block-keys-no-text"
+      aria-label=${blockName(block, where, type, api)}
+      class="block"
+      data-away="fold"
+      data-block-id=${block.id}
+      data-label=${type}
+      data-place=${place("block")}
+      role="group"
+      style=${styleProperties({ "--_mq-block-padding": blockPaddingCss(drawn) })}
+      tabindex=${isTabStop ? "0" : "-1"}
+      @focus=${() => events.onBlockFocus(block.id)}
+      @focusout=${events.onBlockFocusout}
+    >
+      ${renderDragHandle(text("canvas.dragBlock"))}
+      ${renderAwayStrip(block, type, api)}
+    </div>
+  `;
+};
+
 const renderBlock = (
   block: Block,
   /** Where the Block is, as `blockPlace` gives it. */
@@ -635,12 +890,19 @@ const renderBlock = (
   const selected = block.id === api.selectedBlock?.block.id;
   const rich = hasRichText(block);
   const type = blockTypeName(block.type, text);
+  // As the device being viewed shows it.
+  const drawn = api.device === "phone" ? onPhone(block) : block;
+  const away = awayOf(block, api);
+  if (away === "fold") {
+    return renderFoldedBlock(block, where, isTabStop, api, events);
+  }
   return html`
     <div
       aria-current=${selected ? "true" : nothing}
       aria-describedby=${rich ? "block-keys" : "block-keys-no-text"}
-      aria-label=${text("canvas.block", { ...where, type })}
+      aria-label=${blockName(block, where, type, api)}
       class="block"
+      data-away=${away ?? nothing}
       data-block-id=${block.id}
       data-label=${type}
       data-place=${place("block")}
@@ -648,16 +910,17 @@ const renderBlock = (
       ?data-style-tagged=${mark?.tag !== undefined}
       role="group"
       style=${styleProperties({
-        ...(rich ? textBlockLook(block, style) : {}),
-        ...boxLook(block),
+        ...(hasRichText(drawn) ? textBlockLook(drawn, style) : {}),
+        ...boxLook(drawn),
       })}
       tabindex=${isTabStop ? "0" : "-1"}
       @focus=${() => events.onBlockFocus(block.id)}
       @focusout=${events.onBlockFocusout}
     >
       ${renderDragHandle(text("canvas.dragBlock"))} ${renderStyleTag(mark)}
+      ${away === "fade" ? renderAwayTag(block, api) : nothing}
       ${rich ? state.textOf(block.id) : nothing}
-      ${renderBlockContent(block, {
+      ${renderBlockContent(drawn, {
         failedImages: state.failedImages,
         lang: state.emailLang,
         onImageError: events.onImageError,
@@ -715,26 +978,35 @@ const renderColumn = (
         class="column-box"
         data-testid="column-box"
         data-label=${api.text("canvas.column", { column: where.column })}
-        style=${styleProperties(columnStyles(column))}
+        style=${styleProperties(
+          columnStyles(api.device === "phone" ? onPhone(column) : column)
+        )}
         @click=${onClick}
       >
         ${repeat(
           blocks,
           (block) => block.id,
-          (block, blockIndex) => html`
-            ${renderBlock(
-              block,
-              { ...where, ...placeIn(blockIndex, blocks.length) },
-              block.id === tabStop,
-              api,
-              state,
-              events
-            )}
-            ${renderInsertPoint(
-              { afterBlockId: block.id, columnId: id, index: blockIndex + 1 },
-              api
-            )}
-          `
+          (block, blockIndex) =>
+            awayOf(block, api) === "hide"
+              ? nothing
+              : html`
+                  ${renderBlock(
+                    block,
+                    { ...where, ...placeIn(blockIndex, blocks.length) },
+                    block.id === tabStop,
+                    api,
+                    state,
+                    events
+                  )}
+                  ${renderInsertPoint(
+                    {
+                      afterBlockId: block.id,
+                      columnId: id,
+                      index: blockIndex + 1,
+                    },
+                    api
+                  )}
+                `
         )}
         ${
           blocks.length === 0
@@ -846,62 +1118,114 @@ export const renderRows = (
   if (rows.length === 0) {
     return renderStartRow(api);
   }
-  const tabStop =
-    api.selectedBlock?.block.id ??
-    (api.selectedRow ? undefined : blocksIn(api.email)[0]?.id);
+  const drawn = blocksIn(drawnEmail(api.email, api.device, api.notOnDevice));
+  const selected = api.selectedBlock?.block.id;
+  // The selected Block, unless it isn't drawn, as in a folded Row.
+  let tabStop = api.selectedRow ? undefined : drawn[0]?.id;
+  if (selected !== undefined && drawn.some(({ id }) => id === selected)) {
+    tabStop = selected;
+  }
   return repeat(
     rows,
     (row) => row.id,
-    (row, rowIndex) => html`
+    (row, rowIndex) => renderRow(row, rowIndex, tabStop, api, state, events)
+  );
+};
+
+/**
+ * A Row, with its tag, its Columns and their Blocks, as the device being
+ * viewed shows it, or its strip or nothing where it isn't on that device.
+ */
+const renderRow = (
+  row: Row,
+  rowIndex: number,
+  tabStop: string | undefined,
+  api: PanelApi,
+  state: CanvasState,
+  events: CanvasEvents
+) => {
+  const away = awayOf(row, api);
+  if (away === "hide") {
+    return nothing;
+  }
+  const selected = row.id === api.selectedRow?.row.id;
+  if (away === "fold") {
+    return html`
       <div
         class="row-frame"
+        data-away="fold"
         data-place=${place("row")}
         data-row-id=${row.id}
         data-testid="row-frame"
-        ?data-row-selected=${row.id === api.selectedRow?.row.id}
+        ?data-row-selected=${selected}
       >
-        <div
-          aria-hidden="true"
-          class="ui row-tag"
-          data-place=${place("rowTag")}
-          data-testid="row-tag"
-          @click=${() => api.selectRow(row.id, false)}
-        >
-          ${api.text("canvas.rowTag")}${
-            (row.props as RowProps).hideOnPhone === true
-              ? html`<span data-tooltip=${api.text("canvas.hiddenOnPhones")}
-                  >${ICONS.phoneOff}</span
-                >`
-              : nothing
-          }
-        </div>
-        ${renderStyleTag(state.styleMarks.get(row.id))}
-        <div
-          class="row"
-          data-style-mark=${state.styleMarks.get(row.id)?.kind ?? nothing}
-          data-testid="row"
-          style=${styleProperties(rowLook(row, api.email.settings.style ?? {}))}
-        >
-          ${repeat(
-            row.columns,
-            (column) => column.id,
-            (column, columnIndex) =>
-              renderColumn(
-                column,
-                columnPlace(rowIndex, columnIndex),
-                tabStop,
-                row.columns.every(({ blocks }) => blocks.length === 0)
-                  ? row.id
-                  : undefined,
-                api,
-                state,
-                events
-              )
-          )}
-        </div>
+        ${renderAwayStrip(
+          row,
+          api.text("canvas.row", { row: rowIndex + 1 }),
+          api,
+          () => api.selectRow(row.id, false)
+        )}
       </div>
-    `
-  );
+    `;
+  }
+  const drawn = api.device === "phone" ? onPhone(row) : row;
+  const { showOn, stackOnPhone } = row.props as RowProps;
+  return html`
+    <div
+      class="row-frame"
+      data-away=${away ?? nothing}
+      data-place=${place("row")}
+      data-row-id=${row.id}
+      data-testid="row-frame"
+      ?data-row-selected=${selected}
+    >
+      <div
+        aria-hidden="true"
+        class="ui row-tag"
+        data-place=${place("rowTag")}
+        data-testid="row-tag"
+        @click=${() => api.selectRow(row.id, false)}
+      >
+        ${api.text("canvas.rowTag")}${
+          showOn === undefined
+            ? nothing
+            : html`<span data-tooltip=${api.text(SHOWN_ONLY_ON[showOn].words)}
+                >${SHOWN_ONLY_ON[showOn].icon}</span
+              >`
+        }
+      </div>
+      ${renderStyleTag(state.styleMarks.get(row.id))}
+      ${away === "fade" ? renderAwayTag(row, api) : nothing}
+      <div
+        class="row"
+        data-style-mark=${state.styleMarks.get(row.id)?.kind ?? nothing}
+        ?data-stacked=${
+          api.device === "phone" &&
+          row.columns.length > 1 &&
+          stackOnPhone !== false
+        }
+        data-testid="row"
+        style=${styleProperties(rowLook(drawn, api.email.settings.style ?? {}))}
+      >
+        ${repeat(
+          row.columns,
+          (column) => column.id,
+          (column, columnIndex) =>
+            renderColumn(
+              column,
+              columnPlace(rowIndex, columnIndex),
+              tabStop,
+              row.columns.every(({ blocks }) => blocks.length === 0)
+                ? row.id
+                : undefined,
+              api,
+              state,
+              events
+            )
+        )}
+      </div>
+    </div>
+  `;
 };
 
 /**

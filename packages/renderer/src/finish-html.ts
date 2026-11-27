@@ -6,13 +6,32 @@ export const SHARED_COLUMN = "mq-column";
 /** Marks a Column holding a Block with rounded corners, for `roundBoxes`. */
 export const ROUNDED_COLUMN = "mq-round";
 
+/** Hides a Row or Block below the phone width, where the email keeps its `<style>`. */
+export const HIDDEN_ON_PHONES = "mq-hide-phone";
+
+/** What shows a Row, or a Block's row of the table, only below the phone width. */
+export const SHOWN_ON_PHONES = "mq-show-phone";
+export const SHOWN_ON_PHONES_BLOCK = "mq-show-phone-block";
+
+/**
+ * The start of each class that gives something its Phone values, numbered in
+ * the order they're written.
+ */
+export const PHONE_VALUES = "mq-phone-";
+
+/** The start of the markers around what only phones show, for `showOnPhonesOnly`. */
+export const PHONE_ONLY = "mq-phone-only-";
+
+/** A Column's classes after `mq-column`, which the passes below don't need. */
+const PHONE_CLASS = String.raw`(?: ${PHONE_VALUES}\d+)?`;
+
 /**
  * The start of a marked Column's tag, up to its `width:100%`. It starts at the
  * `<`, which text never has unescaped, so a label or preheader that reads the
  * same is left alone.
  */
 const SHARED_COLUMN_WIDTH = new RegExp(
-  String.raw`(<div class="mj-column-per-(\d+)(?:-(\d+))? mj-outlook-group-fix (?:${ROUNDED_COLUMN} )?${SHARED_COLUMN}" style="[^"]*)width:100%;`,
+  String.raw`(<div class="mj-column-per-(\d+)(?:-(\d+))? mj-outlook-group-fix (?:${ROUNDED_COLUMN} )?${SHARED_COLUMN}${PHONE_CLASS}" style="[^"]*)width:100%;`,
   "gu"
 );
 
@@ -47,7 +66,7 @@ export const BOXED_BLOCK = "mq-box";
  * cell its padding or border adds, up to its style's first property.
  */
 const ROUNDED_COLUMN_TABLE = new RegExp(
-  String.raw`(<div class="mj-column-per-[\d-]+ mj-outlook-group-fix ${ROUNDED_COLUMN}(?: ${SHARED_COLUMN})?" style="[^"]*" >(?:<table border="0" cellpadding="0" cellspacing="0" role="presentation" width="100%" ><tbody><tr><td  style="[^"]*">)?<table border="0" cellpadding="0" cellspacing="0" role="presentation" style=")`,
+  String.raw`(<div class="mj-column-per-[\d-]+ mj-outlook-group-fix ${ROUNDED_COLUMN}(?: ${SHARED_COLUMN})?${PHONE_CLASS}" style="[^"]*" >(?:<table border="0" cellpadding="0" cellspacing="0" role="presentation" width="100%" ><tbody><tr><td  style="[^"]*">)?<table border="0" cellpadding="0" cellspacing="0" role="presentation" style=")`,
   "gu"
 );
 
@@ -67,7 +86,7 @@ const roundBoxes = (html: string) =>
  */
 const BOXED_BLOCK_STYLE = new RegExp(
   // A Spacer's cell has no align.
-  String.raw`(<td(?: align="(?:left|center|right)")? class="${BOXED_BLOCK}" style=")`,
+  String.raw`(<td(?: align="(?:left|center|right)")? class="${BOXED_BLOCK}(?: mq-[\w-]+)*" style=")`,
   "gu"
 );
 
@@ -84,6 +103,39 @@ const addBoxes = (html: string, boxes: readonly string[]) => {
     return `${start}${box}`;
   });
 };
+
+/** What's between the markers around something only phones show. */
+const PHONE_ONLY_MARKED = new RegExp(
+  String.raw`<!--${PHONE_ONLY}(?<kind>row|block)-->(?<inside>.*?)<!--/${PHONE_ONLY}\k<kind>-->`,
+  "gsu"
+);
+
+/** Each of MJML's parts for Outlook on Windows. */
+const FOR_OUTLOOK = /<!--\[if mso \| IE\]>.*?<!\[endif\]-->/gsu;
+
+/**
+ * What only phones show is hidden inline, and shown by the phone media query.
+ * Outlook on Windows reads no media query, so it's left out there by a
+ * conditional comment, which can't hold another, so MJML's parts for Outlook
+ * inside it go. A Row is wrapped in a `<div>` of its own; a Block's row of
+ * its Column's table is hidden itself. A Block that's in a Row only phones
+ * show is already left out of Outlook. Like `SHARED_COLUMN_WIDTH`, the
+ * markers start at `<`, so text that reads the same is left alone.
+ */
+const showOnPhonesOnly = (html: string, inOutlook = true): string =>
+  html.replaceAll(PHONE_ONLY_MARKED, (...match) => {
+    const { inside, kind } = match.at(-1) as { inside: string; kind: string };
+    const shown =
+      kind === "row"
+        ? `<div class="${SHOWN_ON_PHONES}" style="display:none;max-height:0;overflow:hidden;">${showOnPhonesOnly(inside.replaceAll(FOR_OUTLOOK, ""), false)}</div>`
+        : inside
+            .replaceAll(FOR_OUTLOOK, "")
+            .replace(
+              /^<tr>/u,
+              `<tr class="${SHOWN_ON_PHONES_BLOCK}" style="display:none;">`
+            );
+    return inOutlook ? `<!--[if !mso]><!-->${shown}<!--<![endif]-->` : shown;
+  });
 
 /**
  * MJML indents its HTML, which is over a quarter of an email's size. Gmail
@@ -111,6 +163,8 @@ export const finishHtml = (
   sharedRowWidths: readonly number[],
   boxes: readonly string[] = []
 ) =>
-  roundBoxes(
-    addBoxes(limitColumnWidths(withoutLayout(html), sharedRowWidths), boxes)
+  showOnPhonesOnly(
+    roundBoxes(
+      addBoxes(limitColumnWidths(withoutLayout(html), sharedRowWidths), boxes)
+    )
   );

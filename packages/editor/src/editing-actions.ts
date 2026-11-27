@@ -49,6 +49,11 @@ interface EditingHost {
   apply: (command: Command) => ApplyResult | undefined;
   /** The email as it is now. */
   email: () => BlocksDocument | undefined;
+  /**
+   * The email as the Canvas draws it on the device being viewed, which the
+   * arrow keys and focus after a delete go through.
+   */
+  drawnEmail: () => BlocksDocument | undefined;
   announcements: Pick<Announcements, "blockMoved" | "rowMoved" | "say">;
   /**
    * Adds an Image Block for each pasted image where a paste lands, and uploads
@@ -88,6 +93,7 @@ export type EditingActions = ReturnType<typeof createEditingActions>;
 export const createEditingActions = ({
   announcements,
   apply,
+  drawnEmail,
   email: current,
   focus,
   pasteFiles,
@@ -143,9 +149,10 @@ export const createEditingActions = ({
     if (!email || blockId === undefined) {
       return;
     }
+    const drawn = drawnEmail() ?? email;
     const neighbour =
-      neighbourBlockId(email, blockId, "down") ??
-      neighbourBlockId(email, blockId, "up");
+      neighbourBlockId(drawn, blockId, "down") ??
+      neighbourBlockId(drawn, blockId, "up");
     if (apply({ blockId, type: "removeBlock" })?.ok) {
       announcements.say(said);
       if (fromKeyboard && neighbour !== undefined) {
@@ -561,7 +568,7 @@ export const createEditingActions = ({
 
     /** Focuses the selected Block's neighbour, if it has one that way. */
     selectNeighbour: (direction: Direction) => {
-      const email = current();
+      const email = drawnEmail();
       const { blockId } = selection;
       const next =
         email &&

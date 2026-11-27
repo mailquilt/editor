@@ -6,6 +6,7 @@ import {
   columnStyles,
   EMAIL_LOOK,
   linkColor,
+  onPhone,
   rowStyles,
   SOCIAL_NETWORKS,
   socialIcons,
@@ -17,7 +18,16 @@ import type {
 } from "@mailquilt/core/internal";
 
 import { escapeAttribute, escapeText } from "./escape.js";
-import { BOXED_BLOCK, ROUNDED_COLUMN, SHARED_COLUMN } from "./finish-html.js";
+import {
+  BOXED_BLOCK,
+  HIDDEN_ON_PHONES,
+  PHONE_ONLY,
+  PHONE_VALUES,
+  ROUNDED_COLUMN,
+  SHARED_COLUMN,
+  SHOWN_ON_PHONES,
+  SHOWN_ON_PHONES_BLOCK,
+} from "./finish-html.js";
 import { socialIconUrl } from "./social-icons.js";
 import {
   headingToHtml,
@@ -61,14 +71,123 @@ interface BlockContext {
    * `finishHtml`, as MJML has no attribute for them on a Block.
    */
   boxes: string[];
+  /** The email's Phone values, as CSS rules for its phone media query. */
+  phoneRules: string[];
 }
+
+/** The CSS properties whose value differs on a phone, as `!important` rules. */
+const changedOnPhone = (
+  desktop: Record<string, string>,
+  phone: Record<string, string>,
+  properties: readonly string[]
+) =>
+  properties
+    .filter((property) => phone[property] !== desktop[property])
+    .flatMap((property) =>
+      phone[property] === undefined
+        ? []
+        : [`${property}:${phone[property]} !important;`]
+    )
+    .join("");
+
+const PADDING = [
+  "padding-top",
+  "padding-right",
+  "padding-bottom",
+  "padding-left",
+] as const;
+
+/**
+ * A class for something with Phone values, whose rules, from `rules` given
+ * that class's selector, join the email's phone media query. Nothing for
+ * something without any, or whose Phone values change nothing.
+ */
+const phoneClass = (
+  context: BlockContext,
+  rules: (selector: string) => readonly string[]
+) => {
+  const name = `${PHONE_VALUES}${context.phoneRules.length + 1}`;
+  const made = rules(`.${name}`);
+  if (made.length === 0) {
+    return;
+  }
+  context.phoneRules.push(made.join(" "));
+  return name;
+};
+
+/** A rule, or none while it has nothing to set. */
+const rule = (selector: string, declarations: string) =>
+  declarations ? [`${selector} { ${declarations} }`] : [];
+
+/**
+ * A Block's Phone values as rules: its padding on its cell, a Social Block's
+ * as its icons take it; its font size and line height on what's inside; and
+ * an Image's width, which stops at its Column's as on a desktop.
+ */
+const blockPhoneRules = (block: Block, style: EmailStyle) => {
+  const phone = onPhone(block);
+  return (selector: string) => {
+    const padding =
+      block.type === "social"
+        ? changedOnPhone(
+            { padding: socialIcons(block.props).blockPadding },
+            {
+              padding: socialIcons(phone.props as BlockProps["social"])
+                .blockPadding,
+            },
+            ["padding"]
+          )
+        : changedOnPhone(blockBoxStyles(block), blockBoxStyles(phone), PADDING);
+    const desktopLook = blockStyles(block, style);
+    const phoneLook = blockStyles(phone, style);
+    const { width } = phone.props as { width?: number };
+    return [
+      ...rule(selector, padding),
+      ...rule(
+        `${selector} *`,
+        changedOnPhone(desktopLook, phoneLook, ["font-size", "line-height"])
+      ),
+      ...(block.type === "image" &&
+      width !== undefined &&
+      width !== block.props.width
+        ? [
+            `${selector} table { width:100% !important; max-width:${width}px !important; }`,
+            `${selector} td { width:auto !important; }`,
+          ]
+        : []),
+    ];
+  };
+};
+
+/** A Row's or Column's padding on a phone, on the cell inside it. */
+const boxPhoneRules =
+  (desktop: Record<string, string>, phone: Record<string, string>) =>
+  (selector: string) =>
+    rule(
+      `${selector} > table > tbody > tr > td`,
+      changedOnPhone(desktop, phone, PADDING)
+    );
+
+/**
+ * What only phones show, between markers `finishHtml` turns into markup that
+ * hides it everywhere else, Outlook on Windows included.
+ */
+const phonesOnly = (kind: "block" | "row", mjml: string) =>
+  `<mj-raw><!--${PHONE_ONLY}${kind}--></mj-raw>${mjml}<mj-raw><!--/${PHONE_ONLY}${kind}--></mj-raw>`;
+
+/** The `css-class` attribute for these classes, or none. */
+const classAttribute = (...classes: (string | false | undefined)[]) => {
+  const names = classes.filter(Boolean);
+  return names.length > 0 ? ` css-class="${names.join(" ")}"` : "";
+};
 
 /**
  * A Block's Box as MJML's attributes: its padding and background. Its border
  * and corners go to `finishHtml`, with a class that marks where. A Social
  * Block's padding is its icons'.
  */
-const boxAttributes = (block: Block, { boxes }: BlockContext) => {
+const boxAttributes = (block: Block, context: BlockContext) => {
+  const { boxes, style } = context;
   const {
     border,
     "border-radius": corners,
@@ -82,13 +201,21 @@ const boxAttributes = (block: Block, { boxes }: BlockContext) => {
   if (rest) {
     boxes.push(rest);
   }
-  return mjmlAttributes({
-    ...(block.type === "social" ? {} : padding),
-    ...(background === undefined
-      ? {}
-      : { "container-background-color": background }),
-    ...(rest ? { "css-class": BOXED_BLOCK } : {}),
-  });
+  // The Box's class first, as `finishHtml` finds it by its start.
+  const classes = classAttribute(
+    rest && BOXED_BLOCK,
+    (block.props as { showOn?: string }).showOn === "desktop" &&
+      HIDDEN_ON_PHONES,
+    "phone" in block.props && phoneClass(context, blockPhoneRules(block, style))
+  );
+  return (
+    mjmlAttributes({
+      ...(block.type === "social" ? {} : padding),
+      ...(background === undefined
+        ? {}
+        : { "container-background-color": background }),
+    }) + classes
+  );
 };
 
 /**
@@ -121,6 +248,14 @@ const socialToMjml = (
  * a URL, has no Box either.
  */
 const blockToMjml = (block: Block, context: BlockContext) => {
+  const mjml = blockMjml(block, context);
+  return mjml && block.props.showOn === "phone"
+    ? phonesOnly("block", mjml)
+    : mjml;
+};
+
+/** A Block as MJML, wherever it shows. */
+const blockMjml = (block: Block, context: BlockContext) => {
   if (
     (block.type === "image" && block.props.src === undefined) ||
     (block.type === "social" &&
@@ -176,9 +311,17 @@ const columnToMjml = (
   shared: boolean
 ) => {
   const { blocks, props, width } = column;
-  const { verticalAlign } = props as ColumnProps;
+  const { phone, verticalAlign } = props as ColumnProps;
+  const styles = columnStyles(column);
+  const phoneName =
+    phone &&
+    phoneClass(context, boxPhoneRules(styles, columnStyles(onPhone(column))));
   const attributes = mjmlAttributes({
-    ...columnStyles(column),
+    // The cell its padding goes on, which MJML adds only for padding.
+    ...(phoneName && !PADDING.some((side) => side in styles)
+      ? { padding: "0px" }
+      : {}),
+    ...styles,
     ...(verticalAlign === undefined ? {} : { "vertical-align": verticalAlign }),
   });
   const rendered = blocks.map((block) => blockToMjml(block, context));
@@ -188,14 +331,14 @@ const columnToMjml = (
       rendered[index] !== "" &&
       blockBoxStyles(block)["border-radius"] !== undefined
   );
-  const classes = [rounded ? ROUNDED_COLUMN : "", shared ? SHARED_COLUMN : ""]
-    .filter(Boolean)
-    .join(" ");
-  return `<mj-column width="${width}%"${attributes}${classes ? ` css-class="${classes}"` : ""}>${rendered.join("")}</mj-column>`;
+  // In this order, as `finishHtml` finds them by it.
+  const classes = classAttribute(
+    rounded && ROUNDED_COLUMN,
+    shared && SHARED_COLUMN,
+    phoneName
+  );
+  return `<mj-column width="${width}%"${attributes}${classes}>${rendered.join("")}</mj-column>`;
 };
-
-/** Hides a Row below the phone width, where the email keeps its `<style>`. */
-const HIDDEN_ON_PHONES = "mq-hide-phone";
 
 /**
  * Columns that share a Row stack on phones unless the Row keeps them side by
@@ -205,12 +348,18 @@ const stacksColumns = ({ columns, props }: Row) =>
   columns.length > 1 && (props as RowProps).stackOnPhone !== false;
 
 const rowToMjml = (row: Row, context: BlockContext) => {
-  const { hideOnPhone, stackOnPhone } = row.props as RowProps;
+  const { phone, showOn, stackOnPhone } = row.props as RowProps;
   const shared = stacksColumns(row);
+  const styles = rowStyles(row);
+  const classes = classAttribute(
+    showOn === "desktop" && HIDDEN_ON_PHONES,
+    phone && phoneClass(context, boxPhoneRules(styles, rowStyles(onPhone(row))))
+  );
   const columns = row.columns
     .map((column) => columnToMjml(column, context, shared))
     .join("");
-  return `<mj-section${mjmlAttributes(rowStyles(row))}${hideOnPhone ? ` css-class="${HIDDEN_ON_PHONES}"` : ""}>${stackOnPhone === false ? `<mj-group>${columns}</mj-group>` : columns}</mj-section>`;
+  const section = `<mj-section${mjmlAttributes(styles)}${classes}>${stackOnPhone === false ? `<mj-group>${columns}</mj-group>` : columns}</mj-section>`;
+  return showOn === "phone" ? phonesOnly("row", section) : section;
 };
 
 /** The room a Row leaves its Columns, inside its padding. */
@@ -232,6 +381,7 @@ export const toMjml = (
   const style = settings.style ?? {};
   const context: BlockContext = {
     boxes: [],
+    phoneRules: [],
     fontFamily: settings.fontFamily,
     headingFontFamily: style.headingFontFamily ?? settings.fontFamily,
     socialIconsUrl,
@@ -241,13 +391,26 @@ export const toMjml = (
   const sectionColor = style.emailBackgroundColor
     ? ` background-color="${escapeAttribute(style.emailBackgroundColor)}"`
     : "";
+  const body = rows.map((row) => rowToMjml(row, context)).join("");
+  const things = rows.flatMap((row) => [
+    row,
+    ...row.columns.flatMap(({ blocks }) => blocks),
+  ]);
+  const shownOn = (device: string) =>
+    things.some(
+      ({ props }) => (props as { showOn?: string }).showOn === device
+    );
   const phoneRules = [
     rows.some(stacksColumns)
       ? `.${SHARED_COLUMN} { max-width:100% !important; }`
       : "",
-    rows.some(({ props }) => (props as RowProps).hideOnPhone)
+    shownOn("desktop")
       ? `.${HIDDEN_ON_PHONES} { display:none !important; }`
       : "",
+    shownOn("phone")
+      ? `.${SHOWN_ON_PHONES} { display:block !important; max-height:none !important; overflow:visible !important; } .${SHOWN_ON_PHONES_BLOCK} { display:table-row !important; }`
+      : "",
+    ...context.phoneRules,
   ].filter(Boolean);
   const phoneStyles =
     phoneRules.length > 0
@@ -275,7 +438,7 @@ export const toMjml = (
     </mj-attributes>
   </mj-head>
   <mj-body background-color="${escapeAttribute(settings.backgroundColor)}" width="${settings.width}px">
-    ${rows.map((row) => rowToMjml(row, context)).join("")}
+    ${body}
   </mj-body>
 </mjml>`;
   // In the order MJML writes the Columns, for `finishHtml`.

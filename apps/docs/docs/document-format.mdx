@@ -51,7 +51,7 @@ Each version of the format, and how a document saved in the one before is upgrad
 | `1` | Mail Quilt 0.1.0 | The first version. |
 | `2` | Mail Quilt 0.2.0 | Stricter colors and URLs. A version 1 email gets a plain space in a color where it has another space after a comma, such as a tab, and `https:` in place of `httpſ:` at the start of a link or image URL. |
 | `3` | Mail Quilt 0.3.0 | The [`mergeTag`](#merge-tags-in-text) node in rich text. Each Merge Tag that sits whole in one piece of text becomes a node, with that text's marks. A tag split across pieces with different marks, such as `{{first` in bold and `_name}}` not, stays text. Bulleted and numbered [Lists](#lists) in a Text Block, a Row's [padding and phone settings](#row), and the [Social](#social) Block, which no older email has. |
-| `4` | Mail Quilt 0.4.0 | The [Email style](#email-style), every Block's [Box](#box), and a [Column](#column)'s settings, which no older email has, so a version 3 email loads with nothing changed but its version. |
+| `4` | Mail Quilt 0.4.0 | The [Email style](#email-style), every Block's [Box](#box), a [Column](#column)'s settings, [showing on a device](#showing-on-a-device) and [Phone values](#phone-values), which no older email has. A Row's `hideOnPhone` is gone: a version 3 Row with `hideOnPhone: true` loads with `showOn: "desktop"`, and one with `false` without either. Nothing else changes but the version. |
 
 An email saved by a newer version can't be opened by a package that only knows an older one.
 
@@ -106,7 +106,7 @@ In the editor, every field is in Style, where each can be set, or cleared back t
 | --- | --- |
 | `backgroundColor` | Optional. A [color](#colors). |
 | `paddingTop`, `paddingRight`, `paddingBottom`, `paddingLeft` | Optional. The space inside the Row on that side, a whole number of pixels from 0 to 200. Defaults to `0`. The Row's Columns share the email's width less its left and right padding. |
-| `hideOnPhone` | Optional. `true` hides the Row on screens under 480px wide. Defaults to `false`. An email client that drops the email's styles on a phone still shows it, as [Tested email clients](./email-clients#rows-on-phones) says. |
+| `showOn`, `phone` | Optional. The devices the Row shows on, and its padding's [Phone values](#phone-values), as below. |
 | `stackOnPhone` | Optional. `false` keeps the Row's Columns side by side on phones, each at its share of the width. Defaults to `true`, which puts them one under another on screens under 480px wide. A Row with one Column looks the same either way, and its settings don't show it. |
 
 ## Column
@@ -124,6 +124,29 @@ In the editor, every field is in Style, where each can be set, or cleared back t
 | `paddingTop`, `paddingRight`, `paddingBottom`, `paddingLeft` | Optional. The space inside the Column on that side, a whole number of pixels from 0 to 200. Defaults to `0`. |
 | `verticalAlign` | Optional. Where the Column sits in its Row when it's shorter than the Row: `"top"`, `"middle"` or `"bottom"`. Defaults to `"top"`. |
 | `borderWidth`, `borderStyle`, `borderColor` | Optional. A [border](#borders) around the Column. |
+| `phone` | Optional. Its padding's [Phone values](#phone-values). A Column shows wherever its Row does, so it has no `showOn`. |
+
+## Showing on a device
+
+A Block's or Row's `showOn` is `"desktop"`, to show it only on screens 480px wide and over, or `"phone"`, to show it only under 480px. Without it, it shows on every device. The email has both versions, and its styles hide one, so an email client that drops the styles shows what's for desktops on a phone too, and leaves out what's for phones, as [Tested email clients](./email-clients#showing-on-a-device-and-phone-values) says. Outlook on Windows never shows what's for phones.
+
+```json
+{ "showOn": "phone" }
+```
+
+## Phone values
+
+A Block's, Row's or Column's `phone` holds a second value for some of its settings, used on screens under 480px wide. A setting it doesn't hold keeps its own value on phones. It can hold only these, and any other key is refused:
+
+| In `phone` | On |
+| --- | --- |
+| `paddingTop`, `paddingRight`, `paddingBottom`, `paddingLeft` | Every Block, Row and Column, as each one's padding. |
+| `fontSize` | A [Text](#text) Block, a [Heading](#heading) and a [Button](#button), a whole number of pixels from 1 to 200. A Button has a font size only on phones. |
+| `width` | An [Image](#image), a whole number of pixels from 1. It stops at its Column's width, as on a desktop. |
+
+```json
+{ "fontSize": 36, "phone": { "fontSize": 28, "paddingLeft": 8 } }
+```
 
 ## Blocks
 
@@ -131,7 +154,7 @@ Every Block has an `id`, which is an [ID](#ids), a `type` from the list below, a
 
 ### Box
 
-Every type of Block also takes these props, which set the box around its content. Each is optional.
+Every type of Block also takes these props, which set the box around its content. Each is optional. Every type takes [`showOn`](#showing-on-a-device) and [`phone`](#phone-values) too.
 
 | Prop | Value |
 | --- | --- |

@@ -35,6 +35,9 @@ const darkTheme = css`
   --mq-color-warning: #ff9b5e;
   --mq-color-on-warning: #101113;
   --mq-color-success: #4ade80;
+  /* On the email, which keeps its own light colors, so as the light theme. */
+  --mq-color-stand-in: #e8eaee;
+  --mq-color-on-stand-in: #52525b;
   --mq-color-scheme: dark;
   --mq-shadow-small: 0 1px 2px rgb(0 0 0 / 40%);
   --mq-shadow:
@@ -78,6 +81,8 @@ export const themeTokens = css`
     --mq-color-warning: #c2410c;
     --mq-color-on-warning: #ffffff;
     --mq-color-success: #15803d;
+    --mq-color-stand-in: #e8eaee;
+    --mq-color-on-stand-in: #52525b;
     /* For what the browser draws itself, such as a dropdown's open list. */
     --mq-color-scheme: light;
 

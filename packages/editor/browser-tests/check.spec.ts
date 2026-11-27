@@ -291,6 +291,29 @@ test.describe("the sandbox", () => {
   });
 });
 
+test("a fix button reaches its field from the Phone view too, where fields keep their names", async ({
+  context,
+  page,
+}) => {
+  await serveImages(context);
+  await openBlocks(page, ["image"]);
+  await canvas(page)
+    .getByRole("group", { name: "View" })
+    .getByRole("button", { name: "Phone" })
+    .click();
+  await openCheck(page);
+
+  await checkPanel(page)
+    .getByRole("listitem")
+    .filter({ hasText: "Image has no alt text" })
+    .getByRole("button", { name: "Add alt text" })
+    .click();
+
+  await expect(
+    canvas(page).getByRole("textbox", { name: "Alt text" })
+  ).toBeFocused();
+});
+
 test("a fix button opens Edit with focus in the field to fix, and the Problem under it", async ({
   context,
   page,

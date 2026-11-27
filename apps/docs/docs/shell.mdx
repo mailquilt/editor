@@ -14,7 +14,7 @@ seo:
 On the left of the top bar, before Undo and Redo, are the heading, which names the email, and with `save-key`, whether it's saved: "Saved" once the email showing is the one saved, or "Not saved" when the browser can't save it. An email you open isn't saved until the person's next change, so until then neither shows. On the right, after the Desktop and Phone views, are More and Export:
 
 - **Export** opens a menu of two files. **HTML file** downloads the email as `email.html`, ready to send. **JSON file** downloads it as `email.json`, the [document format](./document-format) the editor saves. With nothing in the email, Export is off, and its tooltip says to add something first.
-- **More** opens a menu with **Import JSON…**, which opens a `.json` file in place of the current email, which undo can't bring back, and with `save-key` it's saved straight away. If the editor refuses it, the message bar says why and the current email stays.
+- **More** opens a menu with **Not on this device**, how the email shows a Block or Row that isn't on the device being viewed: **Fold**, a thin strip that can still be selected, the default; **Fade**, full size and faded, with a tag; or **Hide**, not drawn, while the Rows list still marks it. With `save-key`, the browser keeps the choice for every Shell on the site. Then comes **Import JSON…**, which opens a `.json` file in place of the current email, which undo can't bring back, and with `save-key` it's saved straight away. If the editor refuses it, the message bar says why and the current email stays.
 
 The message bar shows emails the editor refuses, exports that fail and saves that fail. When the browser can't save, its message has an Export JSON button, while JSON file is in the Export menu. Screen readers announce each message. A message stays until the person's next change, and one that the browser can't save stays until a change saves. One about an import also goes once an import works, and one about an export once either export works. The [Playground](/playground) is a Shell.
 
@@ -85,7 +85,7 @@ Choose what the Shell offers with `actions`. An app that keeps emails on its own
 <MailQuiltShell actions={["export-html"]} />
 ```
 
-`export-html` and `export-json` are the Export menu's items, and `import-json` is More's. They keep their own order, whatever order you name them in. Export shows while it has an item, and More while it has Import JSON, so `actions=""` shows neither. Without `export-json`, a failed save says the browser can't save without suggesting it. If you leave out `export-html`, call `exportHtml()` from a control of your own, so people can still get the HTML.
+`export-html` and `export-json` are the Export menu's items, and `import-json` is More's. They keep their own order, whatever order you name them in. Export shows while it has an item. More always shows, as it has Not on this device too, so `actions=""` shows only More. Without `export-json`, a failed save says the browser can't save without suggesting it. If you leave out `export-html`, call `exportHtml()` from a control of your own, so people can still get the HTML.
 
 The Shell draws its controls and messages from the same [theme tokens](./theme-tokens) as the editor. Set them on `<mail-quilt-shell>`, and the editor inside uses them too. So does `theme`: `<mail-quilt-shell theme="dark">` gives the Shell and its editor the [dark theme](./theme-the-editor#a-dark-theme).
 

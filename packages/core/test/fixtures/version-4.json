@@ -95,6 +95,10 @@
                       "type": "paragraph"
                     }
                   ]
+                },
+                "phone": {
+                  "fontSize": 16,
+                  "paddingTop": 8
                 }
               }
             },
@@ -129,7 +133,10 @@
                 "alt": "{{company}} logo",
                 "href": "https://example.com",
                 "src": "https://example.com/logo.png",
-                "width": 200
+                "width": 200,
+                "phone": {
+                  "width": 120
+                }
               }
             },
             {
@@ -140,7 +147,8 @@
                 "backgroundColor": "#2563eb",
                 "color": "#ffffff",
                 "href": "{{cta_url}}",
-                "label": "Shop now"
+                "label": "Shop now",
+                "showOn": "desktop"
               }
             },
             {
@@ -164,12 +172,21 @@
     },
     {
       "id": "row-2",
-      "props": {},
+      "props": {
+        "phone": {
+          "paddingTop": 0
+        },
+        "showOn": "phone"
+      },
       "columns": [
         {
           "id": "column-2",
           "width": 50,
-          "props": {},
+          "props": {
+            "phone": {
+              "paddingLeft": 4
+            }
+          },
           "blocks": []
         },
         {

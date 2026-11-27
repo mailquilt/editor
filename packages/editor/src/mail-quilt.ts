@@ -23,12 +23,13 @@ import { createAnnouncements } from "./announcements.js";
 import { BLOCK_VIEWS, blockTypeStyles, hasRichText } from "./block-types.js";
 import {
   canvasStyles,
+  drawnEmail,
   MIN_EDITOR_WIDTH,
   renderFloatingToolbar,
   renderNarrowNotice,
   renderRows,
 } from "./canvas.js";
-import type { CanvasEvents, CanvasState } from "./canvas.js";
+import type { CanvasEvents, CanvasState, NotOnDevice } from "./canvas.js";
 import {
   CHECK_PANEL_WIDTH_PX,
   CHECK_STAGE_PADDING_PX,
@@ -356,6 +357,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     },
     // Reflected, as the theme is drawn from the attribute.
     theme: { reflect: true },
+    notOnDevice: { attribute: false },
   };
 
   static override styles = [
@@ -392,6 +394,22 @@ export class MailQuilt extends LitElement implements HostAppProperties {
    * over either. The email keeps its own colors.
    */
   declare theme: MailQuiltTheme | undefined;
+  /**
+   * How the Canvas shows what isn't on the device being viewed, which the
+   * Shell's menu sets. Folded until it's set. The Shell's own, and not yet a
+   * promise to hosts.
+   */
+  declare notOnDevice: NotOnDevice | undefined;
+
+  get #notOnDevice(): NotOnDevice {
+    return this.notOnDevice ?? "fold";
+  }
+
+  /** The email as the Canvas draws it on the device being viewed. */
+  #drawnEmail() {
+    const email = this.#editor?.getDocument();
+    return email && drawnEmail(email, this.#device, this.#notOnDevice);
+  }
 
   /** Each of the editor's texts, in the Host app's words where it gives them. */
   readonly #text = createText(() => this.strings);
@@ -546,6 +564,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
   readonly #editing = createEditingActions({
     announcements: this.#announcements,
     apply: (command) => this.#apply(command),
+    drawnEmail: () => this.#drawnEmail(),
     email: () => this.#editor?.getDocument(),
     focus: this.#focus,
     // Refused without uploadImage, as a dropped file is.
@@ -599,13 +618,14 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     drafts: this.#drafts,
     editing: this.#editing,
     fieldMergeTags: this.#fieldMergeTags,
+    // Of the Blocks the Canvas draws, as one it hides has nowhere for focus.
     firstBlockIn: (rowId) => {
-      const email = this.#editor?.getDocument();
+      const email = this.#drawnEmail();
       const position = email && locateRow(email, rowId);
       return position?.row.columns.flatMap(({ blocks }) => blocks)[0]?.id;
     },
     firstBlockInColumn: (columnId) => {
-      const email = this.#editor?.getDocument();
+      const email = this.#drawnEmail();
       const position = email && locateColumn(email, columnId);
       return (
         position && {
@@ -1460,6 +1480,8 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     return {
       ...this.#panelActions,
       adding: this.#adding.state,
+      device: this.#device,
+      notOnDevice: this.#notOnDevice,
       bar: {
         ...this.#barPanels.state,
         docked: this.#docksMore(this.#width),

@@ -8,6 +8,7 @@ import {
   paddingFields,
   paddingStyles,
 } from "./box-settings.js";
+import { phoneEntry } from "./device-settings.js";
 import type { Column } from "./document.js";
 import { BACKGROUND_COLOR_FIELD } from "./settings-fields.js";
 import type { SettingsField } from "./settings-fields.js";
@@ -24,6 +25,7 @@ export const columnPropsSchema = v.strictObject({
   backgroundColor: v.optional(colorSchema),
   ...paddingEntries,
   ...borderEntries,
+  ...phoneEntry(),
   verticalAlign: v.optional(
     v.picklist(VERTICAL_ALIGN_OPTIONS.map(({ value }) => value))
   ),

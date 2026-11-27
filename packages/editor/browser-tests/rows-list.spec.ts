@@ -66,7 +66,7 @@ test.describe("the Rows list", () => {
     await setValue(page, {
       ...email,
       rows: email.rows.map((row, index) =>
-        index === 1 ? { ...row, props: { hideOnPhone: true } } : row
+        index === 1 ? { ...row, props: { showOn: "desktop" } } : row
       ),
     });
 

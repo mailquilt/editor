@@ -31,7 +31,7 @@ button that opens Check.
 | <kbd>Tab</kbd> | Reaches the selected Block, or with nothing selected the first, and selects it. From there, <kbd>Tab</kbd> goes into its text, if it has any, and then on past the other Blocks, stopping only at the buttons of empty Columns after it, to the Selection bar and the Block's settings. |
 | <kbd>Up</kbd> <kbd>Down</kbd> | Selects the Block before or after this one, in reading order. This reaches every Block in the email. |
 | <kbd>Left</kbd> <kbd>Right</kbd> | Selects a Block in the next Column that has one, as close as it can get to the same position. |
-| <kbd>Enter</kbd> | Goes into the Block's text to edit it. Held down, it goes in and stops, with no empty paragraphs added. |
+| <kbd>Enter</kbd> | Goes into the Block's text to edit it. Held down, it goes in and stops, with no empty paragraphs added. A Block folded as it isn't on the device being viewed has no text drawn, so Enter does nothing there; switch to the view it shows on to edit it. |
 | <kbd>Escape</kbd> | Comes back out of the text to the Block. |
 
 Selecting a Block changes nothing in the email, so it doesn't fire `mq-change`.
@@ -61,7 +61,7 @@ The chip opens a menu of what's around what's selected: a Block's Row and Column
 
 A setting with more than one field, such as a Row's padding or a color, opens a popover under its button, with focus in its first field. <kbd>Escape</kbd> closes it and goes back to its button. <kbd>Tab</kbd> out of it, or a press anywhere else, closes it too.
 
-More opens a panel beside the email where there's room for it, and over the email where there isn't. From the keyboard, focus goes to its first field, or its first action. It has the settings the bar doesn't show, and for a Block its Box: Padding and Border each a button that opens their fields in a popover, as the bar's do, and Background and Corners as fields. Then come Copy, Cut and Paste below, and for a Block, Move to the Column before, Move to the next Column and Select its Row. A Column's More has only Select its Row. One that can't be done, such as moving into the next Column from the only one, stays reachable and says why in its tooltip. Where the bar is short of room, its Move, Duplicate and Delete buttons are in More instead. <kbd>Escape</kbd> closes More and goes back to its button. It stays open as what's selected changes, and shows that instead.
+More opens a panel beside the email where there's room for it, and over the email where there isn't. From the keyboard, focus goes to its first field, or its first action. It has the settings the bar doesn't show, and for a Block its Box: Padding and Border each a button that opens their fields in a popover, as the bar's do, and Background and Corners as fields. For a Block or a Row, Show on is a row of three buttons, All devices, Desktop only and Phones only, and pressing one sets it. Then come Copy, Cut and Paste below, and for a Block, Move to the Column before, Move to the next Column and Select its Row. A Column's More has only Select its Row. One that can't be done, such as moving into the next Column from the only one, stays reachable and says why in its tooltip. Where the bar is short of room, its Move, Duplicate and Delete buttons are in More instead. <kbd>Escape</kbd> closes More and goes back to its button. It stays open as what's selected changes, and shows that instead.
 
 ## Columns
 
@@ -161,6 +161,8 @@ In the Add panel or the Rows list's +, press <kbd>Enter</kbd> on a layout to add
 ## Settings
 
 A settings field, such as a Button's link or a Row's padding, changes the email when you press <kbd>Enter</kbd> or leave the field. Until then, <kbd>Escape</kbd> takes back what you typed and shows the email's value again. A value the editor refuses stays in the field with the reason, until you fix it or press <kbd>Escape</kbd>. With nothing typed, <kbd>Escape</kbd> in a popover's field or More's closes it, and in a field in the Selection bar it's left to your page. A choice of a few, such as an alignment, is a row of buttons in the Selection bar, and pressing one sets it.
+
+In the Phone view, a field that can have a [Phone value](./document-format#phone-values), a font size, padding or an Image's width, changes that, and a field with one is marked with a phone. In the Selection bar, a card under it says both values, and its Use the desktop value button, which the arrow keys reach after the field, clears the Phone value. Elsewhere, the ✕ in the field is that button.
 
 A Social Block's links are a list in its Links popover, each with its URL field and a toolbar of Move up, Move down and Remove. The toolbar comes before the URL, and like the Selection bar it's one stop for <kbd>Tab</kbd>: the arrow keys go across its buttons, and <kbd>Home</kbd> and <kbd>End</kbd> go to its first and last. After a move, focus stays on the button that moved the link. After a removal, it goes to the Remove button of the next link, or of the one before if it was the last, or to the list of networks if none is left. To add a link, choose a network that isn't in the list yet and press Add, and focus goes to the new link's URL. What's typed in a URL stays with its link when links move or are removed.
 
