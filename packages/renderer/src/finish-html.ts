@@ -3,13 +3,16 @@
 /** Marks a Column that shares its Row, for `limitColumnWidths`. */
 export const SHARED_COLUMN = "mq-column";
 
+/** Marks a Column holding a Block with rounded corners, for `roundBoxes`. */
+export const ROUNDED_COLUMN = "mq-round";
+
 /**
  * The start of a marked Column's tag, up to its `width:100%`. It starts at the
  * `<`, which text never has unescaped, so a label or preheader that reads the
  * same is left alone.
  */
 const SHARED_COLUMN_WIDTH = new RegExp(
-  String.raw`(<div class="mj-column-per-(\d+)(?:-(\d+))? mj-outlook-group-fix ${SHARED_COLUMN}" style="[^"]*)width:100%;`,
+  String.raw`(<div class="mj-column-per-(\d+)(?:-(\d+))? mj-outlook-group-fix (?:${ROUNDED_COLUMN} )?${SHARED_COLUMN}" style="[^"]*)width:100%;`,
   "gu"
 );
 
@@ -38,6 +41,24 @@ const limitColumnWidths = (html: string, rowWidths: readonly number[]) => {
 
 /** Marks a Block whose Box has a border or corners, for `addBoxes`. */
 export const BOXED_BLOCK = "mq-box";
+
+/**
+ * The table a marked Column's Blocks are in: the first in it, or inside the
+ * cell its padding or border adds, up to its style's first property.
+ */
+const ROUNDED_COLUMN_TABLE = new RegExp(
+  String.raw`(<div class="mj-column-per-[\d-]+ mj-outlook-group-fix ${ROUNDED_COLUMN}(?: ${SHARED_COLUMN})?" style="[^"]*" >(?:<table border="0" cellpadding="0" cellspacing="0" role="presentation" width="100%" ><tbody><tr><td  style="[^"]*">)?<table border="0" cellpadding="0" cellspacing="0" role="presentation" style=")`,
+  "gu"
+);
+
+/**
+ * A cell's rounded corners only show in a table whose borders are separate,
+ * and the email's styles collapse every table's, so the table holding a
+ * rounded Box's cell keeps them separate. With no spacing between cells, it
+ * looks the same.
+ */
+const roundBoxes = (html: string) =>
+  html.replaceAll(ROUNDED_COLUMN_TABLE, "$1border-collapse:separate;");
 
 /**
  * The start of a marked Block's cell, up to its style's first property. Like
@@ -89,4 +110,7 @@ export const finishHtml = (
   html: string,
   sharedRowWidths: readonly number[],
   boxes: readonly string[] = []
-) => addBoxes(limitColumnWidths(withoutLayout(html), sharedRowWidths), boxes);
+) =>
+  roundBoxes(
+    addBoxes(limitColumnWidths(withoutLayout(html), sharedRowWidths), boxes)
+  );

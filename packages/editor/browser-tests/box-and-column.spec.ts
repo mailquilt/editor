@@ -38,7 +38,7 @@ const columnBox = (page: Page, position: number) =>
   canvas(page)
     .getByTestId("column")
     .nth(position - 1)
-    .locator(".column-box");
+    .getByTestId("column-box");
 
 test.describe("a Column", () => {
   test("is chosen from the chip's menu, its settings change as one undo step, and Escape goes back to its first Block", async ({
@@ -181,7 +181,7 @@ test.describe("a Block's Box", () => {
     const block = canvas(page).getByRole("group", { name: /^Text Block/u });
     await expect(block).toHaveCSS("border-top-left-radius", "8px");
     await expect(block).toHaveCSS("border-top-width", "3px");
-    await expect(block.locator(".ProseMirror")).toHaveCSS("padding-top", "4px");
+    await expect(block.getByRole("textbox")).toHaveCSS("padding-top", "4px");
     expect(await exportHtml(page)).toContain(
       'class="mq-box" style="border:3px solid #000000;border-radius:8px;'
     );

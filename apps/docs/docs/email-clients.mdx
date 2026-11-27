@@ -39,7 +39,8 @@ On screens under 480px wide, a Row's Columns go one under another, and a Row set
 
 A Block's [Box](./document-format#box) and a [Column](./document-format#column)'s settings are written on the table cell around the Block or Column, which every client above reads, Outlook too. Version 0.4 adds them, and they haven't had an Email on Acid run yet; this says what the HTML asks each client to draw.
 
-- **Padding, background colors, borders and a Column's alignment** are plain cell styles, which classic Outlook for Windows draws as set.
+- **Padding, borders and a Column's alignment** are plain cell styles, which classic Outlook for Windows draws as set.
+- **Background colors** are drawn as set when they're solid. Classic Outlook for Windows doesn't support see-through colors written as `rgba()`, so it may show no background for one. Use a solid color, such as `#efe6da`, for a background Outlook readers must see.
 - **Corners** are `border-radius`, which classic Outlook for Windows doesn't support, so it draws a Block's corners square, and a Button's too. The background and border still show, in a square box.
 - **A Column's background** reaches only as far down as its Blocks, in every client, so two Columns of different heights have backgrounds of different heights. Keep a Column's background for a Column as tall as its Row, or give the Row the color instead.
 

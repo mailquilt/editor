@@ -135,7 +135,7 @@ Every type of Block also takes these props, which set the box around its content
 
 | Prop | Value |
 | --- | --- |
-| `paddingTop`, `paddingRight`, `paddingBottom`, `paddingLeft` | The space between the Block's edge and its content on that side, a whole number of pixels from 0 to 200. Defaults to `16`, or `0` for a [Spacer](#spacer). |
+| `paddingTop`, `paddingRight`, `paddingBottom`, `paddingLeft` | The space between the Block's edge and its content on that side, a whole number of pixels from 0 to 200. Defaults to `16`, or `0` for a [Spacer](#spacer). A [Social](#social) Block's icons keep half the space between them from its edge, so a padding less than that, `0` too, leaves them that far in. |
 | `boxBackgroundColor` | A [color](#colors) behind the Block's content and padding. It's named apart from a Button's `backgroundColor`, which is the Button's own color. |
 | `borderWidth`, `borderStyle`, `borderColor` | A [border](#borders) around the Block. |
 | `borderRadius` | The Block's corners, a whole number of pixels from 0 to 100. On a [Button](#button), it shapes the Button itself, over the Email style's `buttonBorderRadius`. Outlook on Windows draws corners square, as [Tested email clients](./email-clients#boxes-and-columns) says. |

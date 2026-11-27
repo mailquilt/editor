@@ -528,7 +528,9 @@ const blockPadding = (
  * is half that size. Half the gap is on every side of each icon, so lines that
  * wrap have the gap between them and each line ends at the same place, whatever
  * the alignment. The Block's padding is that much less on every side, so the
- * icons are as far from its edges as a Block's content is, down to none.
+ * icons are as far from its edges as a Block's content is. Each icon keeps
+ * half the gap on every side, so a padding less than that leaves the icons
+ * that far in, never further out.
  * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
  */
 export const socialIcons = (props: SocialBlockProps) => {

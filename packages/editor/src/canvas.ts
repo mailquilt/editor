@@ -393,7 +393,8 @@ export const canvasStyles = css`
    * leaves that space alone. While it shows, it's on top, to be pressed.
    */
   @media (hover: hover) {
-    .block:has(> .spacer):not(:hover, [aria-current="true"]) .drag-handle {
+    .block:has(> .padded-block > .spacer):not(:hover, [aria-current="true"])
+      .drag-handle {
       pointer-events: none;
     }
   }
@@ -712,6 +713,7 @@ const renderColumn = (
     >
       <div
         class="column-box"
+        data-testid="column-box"
         data-label=${api.text("canvas.column", { column: where.column })}
         style=${styleProperties(columnStyles(column))}
         @click=${onClick}

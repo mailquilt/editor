@@ -17,7 +17,7 @@ import type {
 } from "@mailquilt/core/internal";
 
 import { escapeAttribute, escapeText } from "./escape.js";
-import { BOXED_BLOCK, SHARED_COLUMN } from "./finish-html.js";
+import { BOXED_BLOCK, ROUNDED_COLUMN, SHARED_COLUMN } from "./finish-html.js";
 import { socialIconUrl } from "./social-icons.js";
 import {
   headingToHtml,
@@ -181,7 +181,17 @@ const columnToMjml = (
     ...columnStyles(column),
     ...(verticalAlign === undefined ? {} : { "vertical-align": verticalAlign }),
   });
-  return `<mj-column width="${width}%"${attributes}${shared ? ` css-class="${SHARED_COLUMN}"` : ""}>${blocks.map((block) => blockToMjml(block, context)).join("")}</mj-column>`;
+  const rendered = blocks.map((block) => blockToMjml(block, context));
+  // A Block the email leaves out has no Box to round.
+  const rounded = blocks.some(
+    (block, index) =>
+      rendered[index] !== "" &&
+      blockBoxStyles(block)["border-radius"] !== undefined
+  );
+  const classes = [rounded ? ROUNDED_COLUMN : "", shared ? SHARED_COLUMN : ""]
+    .filter(Boolean)
+    .join(" ");
+  return `<mj-column width="${width}%"${attributes}${classes ? ` css-class="${classes}"` : ""}>${rendered.join("")}</mj-column>`;
 };
 
 /** Hides a Row below the phone width, where the email keeps its `<style>`. */
