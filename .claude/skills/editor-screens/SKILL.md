@@ -5,7 +5,7 @@ description: Screenshots and load recordings of the Mail Quilt editor and site, 
 
 # Editor screens
 
-Makes the evidence `docs/agents/design.md` asks for: the screenshot matrix (every width, light and dark, for the page and for the editor's theme), menus, dialogs and the Preview open, a drag in progress, and a frame-by-frame recording of something loading. The scripts use Playwright's Chromium, taken from `apps/docs`, so they reach inside the editor's Shadow DOM.
+Makes the evidence `docs/agents/design.md` asks for: the screenshot matrix (every width, light and dark, for the page and for the editor's theme), menus, dialogs and Check open, a drag in progress, and a frame-by-frame recording of something loading. The scripts use Playwright's Chromium, taken from `apps/docs`, so they reach inside the editor's Shadow DOM.
 
 ## 1. Run the site
 
@@ -32,36 +32,37 @@ node $S/screens.mjs --out /tmp/shots --name playground --path /playground
 node $S/screens.mjs --out /tmp/shots --name playground --path /playground --editor both
 
 # Steps first, run in order
-node $S/screens.mjs --out /tmp/shots --name preview --widths 768,1440 --path /playground \
-  --step 'click=role=button[name="Preview"]'
-# Below 640 px the narrow notice's button is the way in, and it has its own name
-node $S/screens.mjs --out /tmp/shots --name preview-phone --widths 320,390 --path /playground \
-  --step 'click=role=button[name="Preview email"]'
-# The canvas is behind the narrow notice below 640 px, so shoot it from 768 up
+# The Check Mode; its tab's name gains a count once there are Problems
+node $S/screens.mjs --out /tmp/shots --name check --widths 768,1440 --path /playground \
+  --step 'click=role=tab[name=/^Check/]'
+# The canvas is behind the narrow notice below 640 px, so shoot it from 768 up.
+# From 1440 the Rows list shows each Row's words too, so aim at the email itself.
 node $S/screens.mjs --out /tmp/shots --name block-toolbar --path /playground \
-  --widths 768,1024,1440,1920,2560 --step 'click=text=Get started' --step 'press=Escape'
+  --widths 768,1024,1440,1920,2560 \
+  --step 'click=[data-testid=email] >> text=Get started' --step 'press=Escape'
 
-# A drag in progress: picked up and held over the target, not dropped
+# A drag in progress: picked up and held over the target, not dropped. The
+# Add panel starts closed.
 node $S/screens.mjs --out /tmp/shots --name drag --widths 1440 --path /playground \
-  --step 'drag=text=Divider -> text=Get started'
+  --step 'click=text=/^Add$/' --step 'drag=text=Divider -> [data-testid=email] >> text=Get started'
 
 # Every frame painted while the page loads, with 120 ms of latency
 node $S/filmstrip.mjs --out /tmp/shots --name playground-load --path /playground
 
-# Or while the last step runs, such as the Preview opening
-node $S/filmstrip.mjs --out /tmp/shots --name preview-open --path /playground \
-  --step 'click=role=button[name="Preview"]'
+# Or while the last step runs, such as Check opening
+node $S/filmstrip.mjs --out /tmp/shots --name check-open --path /playground \
+  --step 'click=role=tab[name=/^Check/]'
 ```
 
 - **Steps:** `click=`, `hover=`, `type=<text>`, `press=<key>` (Playwright key names: `Tab`, `Shift+Tab`, `Escape`, `Control+z`, `ArrowDown`), `drag=<from> -> <to>`, `wait=<ms>`.
-- **Targets** are Playwright selectors and reach inside the Shadow DOM: CSS, `text=Label`, or `role=button[name="Preview"]`, which is the surest. A target that matches nothing, or more than one thing, stops the run with a message and saves nothing for that shot, so a wrong screen is never saved as evidence.
+- **Targets** are Playwright selectors and reach inside the Shadow DOM: CSS, `text=Label`, or `role=tab[name=/^Check/]`, which is the surest. Scope one that shows twice, such as a Block's words, which the Rows list repeats from 1440 px: `[data-testid=email] >> text=Get started`. A target that matches nothing, or more than one thing, stops the run with a message and saves nothing for that shot, so a wrong screen is never saved as evidence.
 - **Focus:** each line of output names what has focus, looking through the shadow roots. Use it to check focus paths against `keyboard.mdx` and "Keys and focus" in `docs/agents/decisions.md`. Clicks and keys are real input, so focus moves as it does for a person.
 - **Waiting:** a shot is taken once the page has settled: no request in flight, fonts loaded, and no opening animation still running, inside the editor's Shadow DOM too. Each step waits the same way. `--wait <ms>` waits that long instead, for something that appears after a pause with no request or animation; a `wait=<ms>` step does the same between steps.
 - **While you iterate,** shoot only the state you changed with `--widths 390,1440`. Shoot the full matrix once, when the build is finished.
-- **Widths** default to 320, 390, 768, 1024, 1440, 1920 and 2560. Below 700 px the page is a touch phone. Below 640 px the editor shows its narrow notice instead of the canvas; shoot it on purpose, it's a real state.
+- **Widths** default to 320, 390, 768, 1024, 1440, 1920 and 2560. Below 700 px the page is a touch phone. Below 640 px the editor shows its narrow notice instead of the canvas, with no button; shoot it on purpose, it's a real state.
 - **Themes:** `--themes` is what the browser prefers, which the site follows. `--editor dark` (or `both`) also gives every editor on the page the built-in dark theme, `theme="dark"`, as a host app would. It takes off tokens a page sets inline, such as the Playground's orange accent, which would win over the theme, so the shots show the theme itself.
 - **Reduced motion:** set `SCREENS_REDUCED_MOTION=1`.
-- **Failed requests:** `--block '<url glob>'` makes a request fail, for an error state that comes from the network, such as a host's image upload. The site's own chunks have hashed names and the MJML chunk also holds the editor, so blocking it breaks the whole page; for the Preview's error state, use the editor's browser tests (`packages/editor/browser-tests`) instead.
+- **Failed requests:** `--block '<url glob>'` makes a request fail, for an error state that comes from the network, such as a host's image upload. The site's own chunks have hashed names and the MJML chunk also holds the editor, so blocking it breaks the whole page; for Check's error state, use the editor's browser tests (`packages/editor/browser-tests`) instead.
 
 ## 3. Look, to find faults
 
