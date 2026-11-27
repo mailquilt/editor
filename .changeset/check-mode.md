@@ -4,7 +4,7 @@
 "@mailquilt/react": minor
 ---
 
-Breaking: the Preview dialog is gone, and the Check Mode takes its place. Check shows the exported email in an inbox, at the email's width and in a phone's frame at 375px, with a line for it as an inbox lists it: the host's `sender` and `subject`, then the preheader, or the email's first words without one. Beside it, "Before you export" lists the email's Problems, from `checkEmail`, each with what's wrong, why it matters and a fix button that opens Edit with that part selected and focus in the field that fixes it, and then what passed. With a Merge Tag that has a `sample`, "Show sample values" fills the tags with their samples. After a check, the Check tab shows how many Problems there are, and the count is announced. Problems never stop an export.
+Breaking: the Preview dialog is gone, and the Check Mode takes its place. Check shows the exported email in an inbox, at the email's width and in a phone's frame at 375px, with a line for it as an inbox lists it: the host's `sender` and `subject`, then the preheader, or the email's first words without one. Beside it, "Before you export" lists the email's Problems, from `checkEmail`, each with what's wrong and why it matters, and then what passed. Each Problem but an email too large for Gmail has a fix button, which opens Edit with that part selected and focus in the field that fixes it. With a Merge Tag that has a `sample`, "Show sample values" fills the tags with their samples. After a check, the Check tab shows how many Problems there are, and the count is announced. Problems never stop an export.
 
 What changes for a host:
 

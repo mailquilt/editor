@@ -323,13 +323,14 @@ const elementStyles = css`
 export class MailQuilt extends LitElement implements HostAppProperties {
   static override properties = {
     // A React host gives a new list at each render, which only a change to
-    // one of its tags redraws.
+    // one of its tags redraws. No list isn't an empty one, which Check reads
+    // as a list that has none of the email's tags.
     mergeTags: {
       attribute: false,
       hasChanged: (
         next: HostAppProperties["mergeTags"],
         previous: HostAppProperties["mergeTags"]
-      ) => JSON.stringify(next ?? []) !== JSON.stringify(previous ?? []),
+      ) => JSON.stringify(next) !== JSON.stringify(previous),
     },
     sender: { attribute: false },
     socialIconsUrl: { attribute: false },

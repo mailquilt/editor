@@ -13,6 +13,7 @@ import { claim, keyFor } from "./key-map.js";
 import { locate } from "./positions.js";
 import { refuseFiles } from "./refuse-files.js";
 import type { StringId } from "./strings.js";
+import { styleProperties } from "./style-properties.js";
 import type { Text, TextValues } from "./text.js";
 import { PHONE_WIDTH } from "./top-bar.js";
 
@@ -37,6 +38,9 @@ const PHONE_SCREEN_PX = 286;
 
 /** The phone's frame around its screen. */
 const PHONE_FRAME_PX = PHONE_SCREEN_PX + 14;
+
+/** The phone's frame, as tall as its screen and its edge. */
+const PHONE_FRAME_HEIGHT_PX = 626 + 14;
 
 /** Between the desktop inbox and the phone, side by side. */
 const PREVIEWS_GAP_PX = 36;
@@ -76,6 +80,13 @@ export const checkStyles = css`
     --_mq-inbox-link: #2440e0;
     --_mq-inbox-danger: #b42318;
     --_mq-inbox-zoom: 1;
+    /* How tall the inbox is drawn: as the window shows, under the top bar,
+     * the switch and the captions, with a gap below. */
+    --_mq-inbox-height: max(
+      480px,
+      min(100dvh, var(--_mq-visible-height, 100dvh)) -
+        var(--_mq-top-bar-height) - 140px
+    );
     background: var(--mq-color-workspace);
     display: flex;
     flex: 1 0 auto;
@@ -115,11 +126,24 @@ export const checkStyles = css`
 
   /*
    * The inbox and the phone are drawn smaller where the Workspace is too
-   * narrow for them, as pictures, and their captions keep their size.
+   * narrow for them, as pictures, and their captions keep their size. Each is
+   * scaled in a slot of the size it's drawn at, as CSS zoom would need
+   * Firefox 126 and the editor supports 121.
    */
+  .inbox-slot {
+    height: var(--_mq-inbox-height);
+    width: calc(var(--_mq-inbox-width) * var(--_mq-inbox-zoom));
+  }
+
+  .phone-slot {
+    height: calc(${unsafeCSS(PHONE_FRAME_HEIGHT_PX)}px * var(--_mq-inbox-zoom));
+    width: calc(${unsafeCSS(PHONE_FRAME_PX)}px * var(--_mq-inbox-zoom));
+  }
+
   .inbox,
   .phone-frame {
-    zoom: var(--_mq-inbox-zoom);
+    transform: scale(var(--_mq-inbox-zoom));
+    transform-origin: 0 0;
   }
 
   .check-preview {
@@ -147,19 +171,9 @@ export const checkStyles = css`
     color: var(--_mq-inbox-ink);
     display: flex;
     flex-direction: column;
-    /*
-     * As tall as the window shows, under the top bar, the switch and the
-     * captions, with a gap below, at any zoom.
-     */
-    height: calc(
-      max(
-          480px,
-          min(100dvh, var(--_mq-visible-height, 100dvh)) -
-            var(--_mq-top-bar-height) - 140px
-        ) /
-        var(--_mq-inbox-zoom)
-    );
+    height: calc(var(--_mq-inbox-height) / var(--_mq-inbox-zoom));
     overflow: hidden;
+    width: var(--_mq-inbox-width);
   }
 
   .inbox-header {
@@ -225,6 +239,8 @@ export const checkStyles = css`
       inset 0 0 0 1.5px var(--mq-color-border),
       var(--mq-shadow-small);
     padding: 7px;
+    /* Its own size, which the slot it's scaled in is not. */
+    width: max-content;
   }
 
   .phone-screen {
@@ -259,13 +275,13 @@ export const checkStyles = css`
     width: 12px;
   }
 
-  /* A phone's width, drawn to the screen's. */
+  /* A phone's width, drawn to the screen's, which clips what it leaves. */
   .phone-screen > .inbox-email {
     flex: none;
-    height: calc(582px / var(--_mq-phone-zoom));
+    height: ${unsafeCSS((582 * PHONE_WIDTH) / PHONE_SCREEN_PX)}px;
+    transform: scale(${unsafeCSS(PHONE_SCREEN_PX / PHONE_WIDTH)});
+    transform-origin: 0 0;
     width: ${unsafeCSS(PHONE_WIDTH)}px;
-    zoom: var(--_mq-phone-zoom);
-    --_mq-phone-zoom: ${unsafeCSS(PHONE_SCREEN_PX / PHONE_WIDTH)};
   }
 
   .inbox-email {
@@ -599,19 +615,24 @@ const escapeHtml = (text: string) =>
  * Each Merge Tag in `text` with its `sample`, as one reader would get it. A tag
  * with no sample stays as it's written.
  */
-const withSamples = (
-  text: string,
-  tags: MergeTags,
-  escape: (sample: string) => string = String
-) => {
+const withSamples = (text: string, tags: MergeTags, inHtml = false) => {
   const samples = new Map(
     (tags ?? []).flatMap(({ name, sample }) =>
       sample === undefined ? [] : [[name, sample] as const]
     )
   );
   return text.replaceAll(MERGE_TAGS, (tag) => {
-    const sample = samples.get(tag.slice(2, -2).trim());
-    return sample === undefined ? tag : escape(sample);
+    const written = tag.slice(2, -2).trim();
+    // The export writes a tag's name as any text, so `a&b` is `a&amp;b`.
+    const name = inHtml
+      ? (new DOMParser().parseFromString(written, "text/html").body
+          .textContent ?? written)
+      : written;
+    const sample = samples.get(name);
+    if (sample === undefined) {
+      return tag;
+    }
+    return inHtml ? escapeHtml(sample) : sample;
   });
 };
 
@@ -1066,14 +1087,20 @@ export const renderCheck = (view: CheckView) => {
   if (checked && samples) {
     // Once a check, as the sample values can't change without a new one.
     checked.sampled ??= (() => {
-      const sampled = withSamples(checked.html, mergeTags, escapeHtml);
+      const sampled = withSamples(checked.html, mergeTags, true);
       return { html: sampled, words: firstWords(sampled, 16) };
     })();
   }
   const shown = samples ? checked?.sampled : checked;
   const { width } = email.settings;
   return html`
-    <div class="check" style=${`--_mq-inbox-zoom: ${zoom}`}>
+    <div
+      class="check"
+      style=${styleProperties({
+        "--_mq-inbox-width": `${width + 2 * INBOX_MARGIN_PX}px`,
+        "--_mq-inbox-zoom": String(zoom),
+      })}
+    >
       <div class="check-stage">
         ${
           hasSamples(mergeTags)
@@ -1096,36 +1123,37 @@ export const renderCheck = (view: CheckView) => {
             <figcaption>
               ${ICONS.monitor}${text("check.desktop", { width })}
             </figcaption>
-            <div
-              class="inbox"
-              style=${`width: ${width + 2 * INBOX_MARGIN_PX}px`}
-            >
-              ${renderInboxHeader(view, shown?.words, samples)}
-              ${renderInboxEmail(
-                check.run,
-                shown?.html,
-                { alerts: true, title: text("check.desktopFrame") },
-                text
-              )}
+            <div class="inbox-slot">
+              <div class="inbox">
+                ${renderInboxHeader(view, shown?.words, samples)}
+                ${renderInboxEmail(
+                  check.run,
+                  shown?.html,
+                  { alerts: true, title: text("check.desktopFrame") },
+                  text
+                )}
+              </div>
             </div>
           </figure>
           <figure class="check-preview">
             <figcaption>
               ${ICONS.phone}${text("check.phone", { width: PHONE_WIDTH })}
             </figcaption>
-            <div class="phone-frame">
-              <div class="phone-screen">
-                <span aria-hidden="true" class="phone-bar">
-                  <span class="phone-back">
-                    ${ICONS.chevronLeft}${text("check.inbox")}
+            <div class="phone-slot">
+              <div class="phone-frame">
+                <div class="phone-screen">
+                  <span aria-hidden="true" class="phone-bar">
+                    <span class="phone-back">
+                      ${ICONS.chevronLeft}${text("check.inbox")}
+                    </span>
                   </span>
-                </span>
-                ${renderInboxEmail(
-                  check.run,
-                  shown?.html,
-                  { alerts: false, title: text("check.phoneFrame") },
-                  text
-                )}
+                  ${renderInboxEmail(
+                    check.run,
+                    shown?.html,
+                    { alerts: false, title: text("check.phoneFrame") },
+                    text
+                  )}
+                </div>
               </div>
             </div>
           </figure>

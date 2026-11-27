@@ -386,6 +386,35 @@ test.describe("Merge Tags", () => {
     await expect(inboxEmail(page)).toContainText("Hi <b>Ana</b>");
     await expect(inboxEmail(page).locator("b")).toHaveCount(0);
   });
+
+  // The export writes the tag's & as &amp;, as it does any text's.
+  test("a tag whose name has an & in it gets its sample", async ({ page }) => {
+    await setValue(page, emailWith([[["Hi {{a&b}}"]]]));
+    await giveHost(page, { mergeTags: [{ name: "a&b", sample: "Ana" }] });
+
+    await openCheck(page);
+
+    await expect(inboxEmail(page)).toContainText("Hi Ana");
+  });
+
+  // Without a list, tags aren't checked; an empty one has none of them.
+  test("an empty list of tags is checked, and no list again isn't", async ({
+    page,
+  }) => {
+    await setValue(page, emailWith([[["Hi {{first_name}}"]]]));
+    await openCheck(page);
+    await expect(checkPanel(page)).not.toContainText("Merge Tag");
+
+    await giveHost(page, { mergeTags: [] });
+
+    await expect(checkPanel(page)).toContainText(
+      "first_name isn't one of your Merge Tags"
+    );
+
+    await giveHost(page, { mergeTags: undefined });
+
+    await expect(checkPanel(page)).not.toContainText("Merge Tag");
+  });
 });
 
 test("the inbox shows the host's sender and subject, or else the preheader alone", async ({
