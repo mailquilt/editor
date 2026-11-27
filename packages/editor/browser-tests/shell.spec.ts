@@ -1643,6 +1643,22 @@ test.describe("what isn't on the device being viewed", () => {
   });
 });
 
+test("choosing what isn't on the device never replaces an email saved under the same key", async ({
+  page,
+}) => {
+  await openShell(page, "?save-key=mail-quilt:not-on-device");
+  await focusStartOfTextBlock(page);
+  await page.keyboard.type("Kept ");
+  const savedEmail = () =>
+    page.evaluate(() => localStorage.getItem("mail-quilt:not-on-device"));
+  await expect.poll(savedEmail).toContain("Kept Hello");
+
+  const menu = await openMenu(page, "More");
+  await menu.getByRole("menuitemradio", { name: /^Hide/u }).click();
+
+  expect(await savedEmail()).toContain("Kept Hello");
+});
+
 test.describe("parts", () => {
   test("name the frame and each piece of the header and the messages", async ({
     page,

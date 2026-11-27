@@ -17,12 +17,18 @@ export type ShowOn = (typeof SHOW_ON)[number];
  * Phone values: one optional object holding only the settings that can have
  * one, which are padding and whatever `own` adds, such as a font size.
  */
-export const phoneEntry = (own: v.ObjectEntries = {}) => ({
+export const phoneEntry = <Own extends v.ObjectEntries = Record<never, never>>(
+  own: Own = {} as Own
+) => ({
   phone: v.optional(v.strictObject({ ...paddingEntries, ...own })),
 });
 
 /** What a Block and a Row share: the devices they show on, and Phone values. */
-export const deviceEntries = (own: v.ObjectEntries = {}) => ({
+export const deviceEntries = <
+  Own extends v.ObjectEntries = Record<never, never>,
+>(
+  own: Own = {} as Own
+) => ({
   ...phoneEntry(own),
   showOn: v.optional(v.picklist(SHOW_ON)),
 });

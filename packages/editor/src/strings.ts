@@ -180,6 +180,8 @@ export const STRINGS = {
   "phone.title": "{field} on phones",
   "phone.values": "{phone} on phones, {desktop} on desktop.",
   "phone.useDesktop": "Use the desktop value ({desktop})",
+  /** The desktop value of an Image's width it doesn't set. */
+  "phone.fillsColumn": "filling the Column",
   /** A field without Phone values, in the Phone view. */
   "phone.everyDevice": "Changes on every device",
   "more.squareInOutlook": "Outlook on Windows shows square corners.",

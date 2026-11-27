@@ -690,7 +690,11 @@ export const phoneMark = (
     return NO_MARK;
   }
   const unit = textOf(`unit.${field.unit}`);
-  const desktop = `${fieldText(field, phone.desktop)}${unit}`;
+  // An Image without a width of its own fills its Column on desktop.
+  const desktopText = fieldText(field, phone.desktop);
+  const desktop = desktopText
+    ? `${desktopText}${unit}`
+    : textOf("phone.fillsColumn");
   const values = textOf("phone.values", {
     desktop,
     phone: `${fieldText(field, section.values)}${unit}`,

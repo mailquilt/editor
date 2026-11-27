@@ -157,6 +157,78 @@ test.describe("Phone values", () => {
   });
 });
 
+test.describe("Phone values in a popover", () => {
+  test("a Row's padding stays a field for each side while only some sides have a Phone value", async ({
+    page,
+  }) => {
+    const email = emailWith([[["Hello"]]]);
+    await page.goto("/");
+    await setValue(page, {
+      ...email,
+      rows: email.rows.map((row) => ({
+        ...row,
+        props: {
+          paddingBottom: 16,
+          paddingLeft: 16,
+          paddingRight: 16,
+          paddingTop: 8,
+          phone: { paddingBottom: 8, paddingLeft: 8, paddingRight: 8 },
+        },
+      })),
+    });
+    await selectRow(page, 1);
+    await view(page, "Phone").click();
+
+    const dialog = await openPopover(page, /^Padding/u);
+
+    await expect(
+      dialog.getByRole("switch", { name: "Same on every side" })
+    ).not.toBeChecked();
+    await expect(
+      dialog.getByRole("button", { name: "Use the desktop value (16px)" })
+    ).toHaveCount(3);
+  });
+
+  test("an Image's Phone width says that without it, the Image fills its Column", async ({
+    page,
+  }) => {
+    const email = emailWith([[[]]]);
+    await page.goto("/");
+    await setValue(page, {
+      ...email,
+      rows: email.rows.map((row) => ({
+        ...row,
+        columns: row.columns.map((column) => ({
+          ...column,
+          blocks: [
+            {
+              id: "image",
+              props: {
+                alt: "Beans",
+                phone: { width: 120 },
+                src: "https://example.com/beans.png",
+              },
+              type: "image",
+            },
+          ],
+        })),
+      })),
+    });
+    await canvas(page)
+      .getByRole("group", { name: /^Image Block/u })
+      .click();
+    await view(page, "Phone").click();
+
+    const dialog = await openPopover(page, /^Width/u);
+
+    await expect(
+      dialog.getByRole("button", {
+        name: "Use the desktop value (filling the Column)",
+      })
+    ).toBeVisible();
+  });
+});
+
 test.describe("showing on a device", () => {
   test("a Block for phones only is a strip on the desktop, whole in the Phone view, and left out of the desktop export", async ({
     browser,
@@ -249,6 +321,26 @@ test.describe("showing on a device", () => {
     await view(page, "Phone").click();
 
     await expect(blockWith(page, "Shown")).toHaveAttribute("tabindex", "0");
+  });
+
+  test("Escape from a Row whose first Block is hidden goes to the first Block drawn", async ({
+    page,
+  }) => {
+    await openEmail(page, [[["Phones"], ["Shown"]]]);
+    await textOf(page, "Phones").click();
+    const more = await openMore(page);
+    await more.getByRole("button", { name: "Phones only" }).click();
+    await canvas(page).evaluate((element) => {
+      (element as unknown as { notOnDevice: string }).notOnDevice = "hide";
+    });
+    await selectRow(page, 1);
+    await selectionBar(page)
+      .getByRole("button", { name: /^Row 1/u })
+      .focus();
+
+    await page.keyboard.press("Escape");
+
+    await expect(blockWith(page, "Shown")).toBeFocused();
   });
 
   test("faded, it's drawn whole with a tag; hidden, it isn't drawn and the arrow keys pass it", async ({

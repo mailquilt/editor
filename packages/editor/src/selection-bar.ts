@@ -1908,7 +1908,15 @@ const renderPaddingPopover = (
     return nothing;
   }
   const texts = sides.map((side) => fieldText(side, section.values));
-  const equal = texts.every((value) => value === texts[0]);
+  // In the Phone view, the sides are one field only while each has a Phone
+  // value or none does, so the field's mark holds for all four.
+  const set = section.phone?.set;
+  const equal =
+    texts.every((value) => value === texts[0]) &&
+    (set === undefined ||
+      sides.every(
+        ({ key }) => (set[key] === undefined) === (set[top.key] === undefined)
+      ));
   const same = equal && !api.bar.paddingBySide.has(section.targetId);
   const everySide = { ...top, key: EVERY_SIDE, labelId: "bar.everySide" };
   const everySection: SettingsSection = {

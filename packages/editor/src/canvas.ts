@@ -421,16 +421,16 @@ export const canvasStyles = css`
    * Folded: what isn't on the device being viewed, as a thin strip that says
    * what it is and where it shows, and that can still be selected.
    */
-  /* In the email, so in the image placeholder's light stripes, in either theme. */
+  /* On the email, in stripes of the stand-in color over its background. */
   .away-strip {
     align-items: center;
     background: repeating-linear-gradient(
       -45deg,
-      #f4f5f7 0 6px,
-      #eef0f3 6px 12px
+      var(--mq-color-stand-in) 0 6px,
+      transparent 6px 12px
     );
-    border-block: 1px solid #e4e6ea;
-    color: #52525b;
+    border-block: 1px solid var(--mq-color-stand-in);
+    color: var(--mq-color-on-stand-in);
     cursor: pointer;
     display: flex;
     font:

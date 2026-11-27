@@ -405,6 +405,12 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     return this.notOnDevice ?? "fold";
   }
 
+  /** The email as the Canvas draws it on the device being viewed. */
+  #drawnEmail() {
+    const email = this.#editor?.getDocument();
+    return email && drawnEmail(email, this.#device, this.#notOnDevice);
+  }
+
   /** Each of the editor's texts, in the Host app's words where it gives them. */
   readonly #text = createText(() => this.strings);
   #editor: Editor | undefined;
@@ -558,10 +564,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
   readonly #editing = createEditingActions({
     announcements: this.#announcements,
     apply: (command) => this.#apply(command),
-    drawnEmail: () => {
-      const email = this.#editor?.getDocument();
-      return email && drawnEmail(email, this.#device, this.#notOnDevice);
-    },
+    drawnEmail: () => this.#drawnEmail(),
     email: () => this.#editor?.getDocument(),
     focus: this.#focus,
     // Refused without uploadImage, as a dropped file is.
@@ -615,13 +618,14 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     drafts: this.#drafts,
     editing: this.#editing,
     fieldMergeTags: this.#fieldMergeTags,
+    // Of the Blocks the Canvas draws, as one it hides has nowhere for focus.
     firstBlockIn: (rowId) => {
-      const email = this.#editor?.getDocument();
+      const email = this.#drawnEmail();
       const position = email && locateRow(email, rowId);
       return position?.row.columns.flatMap(({ blocks }) => blocks)[0]?.id;
     },
     firstBlockInColumn: (columnId) => {
-      const email = this.#editor?.getDocument();
+      const email = this.#drawnEmail();
       const position = email && locateColumn(email, columnId);
       return (
         position && {

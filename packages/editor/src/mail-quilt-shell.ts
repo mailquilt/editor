@@ -501,7 +501,8 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
   /** Sets how what isn't on the device shows, and keeps it where it can. */
   #chooseNotOnDevice(choice: NotOnDevice) {
     this.#notOnDevice = choice;
-    if (this.saveKey) {
+    // Never in place of an email kept under the same key.
+    if (this.saveKey && this.saveKey !== NOT_ON_DEVICE_KEY) {
       try {
         localStorage.setItem(NOT_ON_DEVICE_KEY, choice);
       } catch {
