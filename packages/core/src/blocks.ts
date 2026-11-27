@@ -16,6 +16,7 @@ import {
   headingTextSchema,
   richTextSchema,
 } from "./rich-text.js";
+import { rowPropsSchema } from "./row-settings.js";
 import { colorField, pixelField } from "./settings-fields.js";
 import type { SettingsField } from "./settings-fields.js";
 import { parseProps } from "./validation.js";
@@ -606,6 +607,26 @@ export const BLOCK_TYPES: readonly {
  */
 export const blockLabel = (type: string) =>
   blockDefinitions.get(type)?.label ?? type;
+
+/** An object schema's entries, inside the checks of a pipe if it's in one. */
+const entriesOf = (schema: v.GenericSchema): v.ObjectEntries => {
+  const object = "pipe" in schema ? (schema.pipe as unknown[])[0] : schema;
+  return (object as { entries: v.ObjectEntries }).entries;
+};
+
+/**
+ * The settings of a type of Block that can have a Phone value, from its
+ * schema, or a Row's with no type.
+ * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
+ */
+export const phoneValueKeys = (type?: string): readonly string[] => {
+  const schema =
+    type === undefined ? rowPropsSchema : blockDefinitions.get(type)?.schema;
+  const phone = schema && entriesOf(schema).phone;
+  return phone
+    ? Object.keys(entriesOf((phone as { wrapped: v.GenericSchema }).wrapped))
+    : [];
+};
 
 export const validateProps = (
   block: Pick<Block, "id" | "type">,

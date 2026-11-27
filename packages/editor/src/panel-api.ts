@@ -1,6 +1,7 @@
 import type { BlocksDocument, RowLayout } from "@mailquilt/core";
 
 import type { AddingState, AddPlace } from "./adding.js";
+import type { NotOnDevice } from "./canvas.js";
 import type { ShownFieldPicker } from "./field-merge-tags.js";
 import type {
   BlockPosition,
@@ -14,6 +15,7 @@ import type { SettingsDrafts } from "./settings-panel.js";
 import type { ShownMergeTagPicker } from "./text-block-view.js";
 import type { ListType, TextFormats, ToggleableMark } from "./text-commands.js";
 import type { Text } from "./text.js";
+import type { Device } from "./top-bar.js";
 
 /**
  * How the Add panel and picker, the Rows list, the Selection bar and its More
@@ -132,6 +134,13 @@ export interface EmailPanelApi {
 export interface OwnPanelsApi {
   /** The Add panel and the picker, while they're open. */
   adding: AddingState;
+  /**
+   * The device the Canvas shows the email on, which decides whether a field
+   * that can have a Phone value changes it.
+   */
+  device: Device;
+  /** How the Canvas shows what isn't on `device`. */
+  notOnDevice: NotOnDevice;
   /**
    * What the Selection bar has open, and whether More is docked beside the
    * email, where it fits, rather than floating over it.

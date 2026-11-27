@@ -138,18 +138,26 @@ test.describe("choosing the buttons with actions", () => {
     ]);
   });
 
-  test("shows none when empty, and ignores names it doesn't know", async ({
+  test("shows only More, with what isn't on the device, when empty, and ignores names it doesn't know", async ({
     page,
   }) => {
     await openShell(page, "?actions=");
-    await expect(actions(page)).toHaveCount(0);
+    await expect(actions(page)).toHaveCount(1);
     await expect(shell(page).locator('[part="heading"]')).toHaveText("Email");
+    const more = await openMenu(page, "More");
+    await expect(more.getByRole("menuitem")).toHaveCount(0);
+    await expect(more.getByRole("menuitemradio")).toHaveText([
+      /Fold/u,
+      /Fade/u,
+      /Hide/u,
+    ]);
+    await page.keyboard.press("Escape");
 
     await shell(page).evaluate((element) =>
       element.setAttribute("actions", "export-json send-test")
     );
 
-    await expect(actions(page)).toHaveCount(1);
+    await expect(actions(page)).toHaveCount(2);
     const menu = await openMenu(page, "Export");
     await expect(menu.getByRole("menuitem")).toHaveText([/JSON file/u]);
   });
@@ -1595,6 +1603,43 @@ test.describe("too narrow to edit in", () => {
 
     expect(noticeBox.top).toBe(headerBox.bottom);
     expect(noticeBox.bottom).toBe(frameBox.bottom);
+  });
+});
+
+test.describe("what isn't on the device being viewed", () => {
+  test("shows as chosen in More, which the Shell keeps where it has a save key", async ({
+    page,
+  }) => {
+    await openShell(page, "?save-key=test:email");
+    const email = emailWith([[["Hello"]], [["Phones"]]]);
+    await shell(page).evaluate(
+      (element, value) => {
+        (element as MailQuiltShell).value = value;
+      },
+      {
+        ...email,
+        rows: email.rows.map((row, index) =>
+          index === 1 ? { ...row, props: { showOn: "phone" } } : row
+        ),
+      }
+    );
+    const strip = shell(page).getByTestId("away-strip");
+    await expect(strip).toHaveText("Row 2 · Phones only");
+
+    const menu = await openMenu(page, "More");
+    await expect(
+      menu.getByRole("menuitemradio", { name: /^Fold/u })
+    ).toHaveAttribute("aria-checked", "true");
+    await menu.getByRole("menuitemradio", { name: /^Hide/u }).click();
+
+    await expect(strip).toHaveCount(0);
+    await page.reload();
+    await expect(textBlock(page).first()).toHaveText("Hello");
+    await expect(strip).toHaveCount(0);
+    const reopened = await openMenu(page, "More");
+    await expect(
+      reopened.getByRole("menuitemradio", { name: /^Hide/u })
+    ).toHaveAttribute("aria-checked", "true");
   });
 });
 

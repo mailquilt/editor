@@ -456,7 +456,7 @@ export const rowsListStyles = css`
     box-shadow: var(--mq-shadow);
   }
 
-  /* That it isn't on phones, on its picture, or beside its number. */
+  /* That it shows on one device only, on its picture, or beside its number. */
   .rows-badge {
     align-items: center;
     background: var(--mq-color-text);
@@ -703,21 +703,32 @@ const renderPicture = (row: Row, context: PictureContext) => {
           )}
         </span>
       </span>
-      ${
-        (row.props as RowProps).hideOnPhone === true
-          ? html`<span
-              aria-hidden="true"
-              class="rows-badge"
-              data-tooltip=${context.api.text("rows.desktopOnly")}
-              >${ICONS.phoneOff}</span
-            >`
-          : nothing
-      }
+      ${renderShownOnBadge(row, "rows-badge", context.api)}
     </span>
   `;
 };
 
-/** "Row 3 of 6: Heading, Text, Button", and that it's desktop only. */
+/** Where a Row shows, where it isn't every device, and the badge's icon. */
+const SHOWN_ON = {
+  desktop: { icon: ICONS.phoneOff, words: "device.desktopOnly" },
+  phone: { icon: ICONS.phone, words: "device.phonesOnly" },
+} as const;
+
+/** A badge for a Row that shows on one device: "Desktop only" or "Phones only". */
+const renderShownOnBadge = (row: Row, className: string, api: PanelApi) => {
+  const { showOn } = row.props as RowProps;
+  return showOn === undefined
+    ? nothing
+    : html`<span
+        aria-hidden="true"
+        class=${className}
+        data-testid="rows-badge"
+        data-tooltip=${api.text(SHOWN_ON[showOn].words)}
+        >${SHOWN_ON[showOn].icon}</span
+      >`;
+};
+
+/** "Row 3 of 6: Heading, Text, Button", and where it shows if not everywhere. */
 const rowName = (row: Row, index: number, count: number, api: PanelApi) => {
   const { text } = api;
   const types = row.columns.flatMap(({ blocks }) =>
@@ -731,9 +742,13 @@ const rowName = (row: Row, index: number, count: number, api: PanelApi) => {
           type: "unit",
         }).format(types);
   const values = { blocks, count, position: index + 1 };
-  return (row.props as RowProps).hideOnPhone === true
-    ? text("rows.itemDesktopOnly", values)
-    : text("rows.item", values);
+  const { showOn } = row.props as RowProps;
+  return showOn === undefined
+    ? text("rows.item", values)
+    : text("rows.itemShownOn", {
+        ...values,
+        words: text(SHOWN_ON[showOn].words),
+      });
 };
 
 /** "Row 3 of 6 (Alt+↑ or Alt+↓ to move)", for keyboard focus. */
@@ -908,16 +923,8 @@ const renderItems = (
                     api.selectRowInList(row.id, detail === 0)}
                 >
                   <span class="visually-hidden">${name}</span>
-                  <span aria-hidden="true">${index + 1}</span>${
-                    (row.props as RowProps).hideOnPhone === true
-                      ? html`<span
-                          aria-hidden="true"
-                          class="rows-number-badge"
-                          data-tooltip=${api.text("rows.desktopOnly")}
-                          >${ICONS.phoneOff}</span
-                        >`
-                      : nothing
-                  }
+                  <span aria-hidden="true">${index + 1}</span
+                  >${renderShownOnBadge(row, "rows-number-badge", api)}
                 </button>
               `;
         }

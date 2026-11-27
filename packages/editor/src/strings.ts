@@ -70,7 +70,8 @@ export const STRINGS = {
   "canvas.moveRowDown": "Move Row down",
   "canvas.duplicateRow": "Duplicate Row",
   "canvas.deleteRow": "Delete Row",
-  "canvas.hiddenOnPhones": "Hidden on phones",
+  /** In place of a folded Block or Row: "Row 5 · Phones only". */
+  "canvas.notHere": "{name} · {words}",
   "canvas.dropHere": "Add a Block, or drop one here",
   /** An empty Column's button, which shows `canvas.dropHere`, named with where it is. */
   "canvas.addToColumn":
@@ -166,6 +167,18 @@ export const STRINGS = {
   "more.columns": "{count} Columns",
   "more.columnOf": "In Row {row}",
   "more.box": "Box",
+  /** Where a Block or Row shows, in More. */
+  "more.showOn": "Show on",
+  "showOn.all": "All devices",
+  /** A Block or Row that shows on one device, as More, the Rows list and the Canvas say it. */
+  "device.desktopOnly": "Desktop only",
+  "device.phonesOnly": "Phones only",
+  /** A field's Phone value, in the Phone view: "Font size on phones". */
+  "phone.title": "{field} on phones",
+  "phone.values": "{phone} on phones, {desktop} on desktop.",
+  "phone.useDesktop": "Use the desktop value ({desktop})",
+  /** A field without Phone values, in the Phone view. */
+  "phone.everyDevice": "Changes on every device",
   "more.squareInOutlook": "Outlook on Windows shows square corners.",
   "more.oneColumn": "1 Column",
   "more.actions": "Actions",
@@ -264,10 +277,9 @@ export const STRINGS = {
   "rows.list": "Rows",
   /** A Row in the list: "Row 3 of 6: Heading, Text, Button". */
   "rows.item": "Row {position} of {count}: {blocks}",
-  "rows.itemDesktopOnly": "Row {position} of {count}: {blocks}. Desktop only",
+  /** A Row in the list that shows on one device: "…: Text. Phones only". */
+  "rows.itemShownOn": "Row {position} of {count}: {blocks}. {words}",
   "rows.noBlocks": "no Blocks yet",
-  /** The mark on a Row in the list that isn't on phones. */
-  "rows.desktopOnly": "Desktop only",
   /** A Row's tooltip from the keyboard, with the keys that move it. */
   "rows.moveKeys": "Row {position} of {count} ({up} or {down} to move)",
   "rows.collapse": "Collapse the Rows list",
@@ -308,9 +320,6 @@ export const STRINGS = {
   "field.font": "Font",
   "field.fontSize": "Font size",
   "field.height": "Height",
-  "field.hideOnPhone": "Hide on phones",
-  "field.hideOnPhone.description":
-    "On screens under 480px wide. A few phone apps still show it.",
   "field.iconSize": "Icon size",
   "field.iconStyle": "Icon style",
   "field.iconStyle.description":
@@ -348,6 +357,7 @@ export const STRINGS = {
   "field.width": "Width",
 
   "invalid.alignment": "Choose an alignment from the list.",
+  "invalid.showOn": "Choose where it shows from the list.",
   "invalid.altText":
     "A linked Image needs alt text. To leave this empty, remove the link first.",
   "invalid.borderStyle": "Choose a style from the list.",
@@ -575,6 +585,14 @@ export const STRINGS = {
   "shell.exportJsonHelp": "To open in Mail Quilt again",
   "shell.more": "More",
   "shell.importJson": "Import JSON…",
+  /** The ⋯ menu's choice of how the email shows what isn't on the device being viewed. */
+  "shell.notOnDevice": "Not on this device",
+  "shell.fold": "Fold",
+  "shell.foldHelp": "A thin strip you can still select",
+  "shell.fade": "Fade",
+  "shell.fadeHelp": "Full size, faded, with a tag",
+  "shell.hide": "Hide",
+  "shell.hideHelp": "Not drawn. The Rows list still marks it.",
   /** The button in the message that the browser can't save. */
   "shell.exportJsonNow": "Export JSON",
   "shell.cantSave":

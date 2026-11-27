@@ -10,6 +10,7 @@ export {
   blockStyles,
   EMAIL_LOOK,
   linkColor,
+  phoneValueKeys,
   SOCIAL_NETWORKS,
   socialIcons,
 } from "./blocks.js";

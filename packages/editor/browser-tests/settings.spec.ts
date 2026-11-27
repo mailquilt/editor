@@ -18,6 +18,8 @@ import {
   consoleErrors,
   countHostEscapes,
   currentValue,
+  morePanel,
+  openMore,
   emailWith,
   setting,
   openExport,
@@ -226,28 +228,31 @@ test.describe("Row settings", () => {
     );
   });
 
-  test("hide the Row on phones with a switch, and mark it on its tag", async ({
+  test("show the Row on desktop only from More, and mark it on its tag", async ({
     page,
   }) => {
     await setValue(page, emailWith([[["Left"], ["Right"]]]));
     await selectRow(page, 1);
     const stack = await rowField(page, "Stack Columns on phones");
     await expect(stack).toBeChecked();
-    const hide = await rowField(page, "Hide on phones");
-    await expect(hide).not.toBeChecked();
+    await openMore(page);
+    const showOn = morePanel(page).getByRole("group", { name: "Show on" });
+    await expect(
+      showOn.getByRole("button", { name: "All devices" })
+    ).toHaveAttribute("aria-pressed", "true");
 
-    await hide.click();
+    await showOn.getByRole("button", { name: "Desktop only" }).click();
 
     const { rows } = await currentValue(page);
-    expect(rows[0]?.props).toStrictEqual({ hideOnPhone: true });
-    await expect(hide).toBeChecked();
+    expect(rows[0]?.props).toStrictEqual({ showOn: "desktop" });
     await expect(
-      rowTag(page, 1).locator('[data-tooltip="Hidden on phones"]')
+      showOn.getByRole("button", { name: "Desktop only" })
+    ).toHaveAttribute("aria-pressed", "true");
+    await expect(
+      rowTag(page, 1).locator('[data-tooltip="Desktop only"]')
     ).toBeVisible();
     // Said too, as the tag isn't read.
-    await expect(rowTools(page, 1)).toHaveAccessibleDescription(
-      "Hidden on phones"
-    );
+    await expect(rowTools(page, 1)).toHaveAccessibleDescription("Desktop only");
     expect(await violations(page)).toStrictEqual([]);
   });
 });

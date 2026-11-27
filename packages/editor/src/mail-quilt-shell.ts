@@ -5,10 +5,11 @@ import type { PropertyValues, TemplateResult } from "lit";
 import { createRef, ref } from "lit/directives/ref.js";
 import { repeat } from "lit/directives/repeat.js";
 
+import type { NotOnDevice } from "./canvas.js";
 import { HOST_APP_PROPERTIES } from "./host-app.js";
 import type { HostAppProperties } from "./host-app.js";
-import { ICONS } from "./icons.js";
 import "./mail-quilt.js";
+import { ICONS } from "./icons.js";
 import type { MailQuilt } from "./mail-quilt.js";
 import { refuseFiles } from "./refuse-files.js";
 import type { StringId } from "./strings.js";
@@ -21,14 +22,17 @@ import { takeValueSetEarly } from "./value-set-early.js";
 /** The Shell's own buttons. */
 export type ShellAction = "export-html" | "export-json" | "import-json";
 
-/** The Shell's menus in the top bar: Export, and ⋯ with Import JSON. */
+/** The Shell's menus in the top bar: Export, and ⋯ with the view and Import JSON. */
 type Menu = "export" | "more";
 
 /** Where focus goes in a menu once it's drawn. */
 type MenuFocus = "button" | "first" | "last";
 
 interface MenuItem {
-  action: ShellAction;
+  /** What the item does, as its part's name. */
+  action: NotOnDevice | ShellAction;
+  /** One of a group's choices, checked while it's the one chosen. */
+  checked?: boolean;
   /** What the item gives the person, under its name. */
   help?: string;
   icon: TemplateResult;
@@ -129,6 +133,30 @@ const keepUnopened = (key: string, text: string) => {
     localStorage.setItem(name, text);
   }
 };
+
+/**
+ * Where the person's choice of how to show what isn't on a device is kept,
+ * only while the Shell has a `save-key`, as without one it stores nothing.
+ */
+const NOT_ON_DEVICE_KEY = "mail-quilt:not-on-device";
+
+const NOT_ON_DEVICE = ["fold", "fade", "hide"] as const;
+
+/** The person's choice, kept in the browser, or none where it can't be read. */
+const keptNotOnDevice = (): NotOnDevice | undefined => {
+  try {
+    const kept = localStorage.getItem(NOT_ON_DEVICE_KEY);
+    return NOT_ON_DEVICE.find((choice) => choice === kept);
+  } catch {
+    return undefined;
+  }
+};
+
+/** A group of a menu's items, under a heading if it has one. */
+interface MenuSection {
+  heading?: string;
+  items: readonly MenuItem[];
+}
 
 /**
  * A press on a menu's button or items leaves focus where it is. Safari and
@@ -372,6 +400,24 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
         display: block;
       }
 
+      .menu-group {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .menu-heading {
+        color: var(--mq-color-text-muted);
+        font-size: var(--mq-font-size-small);
+        margin: 0;
+        padding: 6px 10px 2px;
+      }
+
+      .menu-separator {
+        border-block-start: 1px solid var(--mq-color-border);
+        margin: var(--mq-space-1) 0;
+      }
+
       .menu-help {
         color: var(--mq-color-text-muted);
         font-size: var(--mq-font-size-small);
@@ -441,6 +487,24 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
   /** The Shell's own words, in the Host app's where it gives them. */
   readonly #text = createText(() => this.strings);
   readonly #editor: MailQuilt = document.createElement("mail-quilt");
+  /**
+   * How the editor shows what isn't on the device being viewed: as the
+   * person chose, or as they chose before where the Shell keeps it.
+   */
+  #notOnDevice: NotOnDevice | undefined;
+
+  /** Sets how what isn't on the device shows, and keeps it where it can. */
+  #chooseNotOnDevice(choice: NotOnDevice) {
+    this.#notOnDevice = choice;
+    if (this.saveKey) {
+      try {
+        localStorage.setItem(NOT_ON_DEVICE_KEY, choice);
+      } catch {
+        // Kept for this page only, where the browser keeps nothing.
+      }
+    }
+    this.requestUpdate();
+  }
   readonly #body = createRef<HTMLElement>();
   readonly #fileInput = createRef<HTMLInputElement>();
   /** The menu that's open in the top bar, if any. */
@@ -590,6 +654,9 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
    */
   protected override updated() {
     const first = this.#editor.childElementCount === 0;
+    this.#notOnDevice ??=
+      (this.saveKey ? keptNotOnDevice() : undefined) ?? "fold";
+    this.#editor.notOnDevice = this.#notOnDevice;
     render(this.#renderSlotted(), this.#editor, { host: this });
     // With no email, the editor draws its top bar only once these are in it.
     if (first) {
@@ -603,7 +670,7 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
       );
       const items = [
         ...this.renderRoot.querySelectorAll<HTMLElement>(
-          `#${focus.menu}-menu > [role="menuitem"]`
+          `#${focus.menu}-menu [role^="menuitem"]`
         ),
       ];
       const to = { button, first: items[0], last: items.at(-1) }[focus.to];
@@ -685,27 +752,42 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
         part="actions"
         slot="top-bar-end"
       >
-        ${
-          shows("import-json")
-            ? this.#renderMenu(
-                "more",
-                {
-                  className: "icon-button",
-                  content: ICONS.more,
-                  label: text("shell.more"),
-                  tooltip: text("shell.more"),
-                },
-                [
+        ${this.#renderMenu(
+          "more",
+          {
+            className: "icon-button",
+            content: ICONS.more,
+            label: text("shell.more"),
+            tooltip: text("shell.more"),
+          },
+          [
+            {
+              heading: text("shell.notOnDevice"),
+              items: NOT_ON_DEVICE.map((choice) => ({
+                action: choice,
+                checked: this.#notOnDevice === choice,
+                help: text(`shell.${choice}Help`),
+                icon: ICONS.check,
+                label: text(`shell.${choice}`),
+                run: () => this.#chooseNotOnDevice(choice),
+              })),
+            },
+            ...(shows("import-json")
+              ? [
                   {
-                    action: "import-json",
-                    icon: ICONS.import,
-                    label: text("shell.importJson"),
-                    run: this.#chooseFile,
+                    items: [
+                      {
+                        action: "import-json" as const,
+                        icon: ICONS.import,
+                        label: text("shell.importJson"),
+                        run: this.#chooseFile,
+                      },
+                    ],
                   },
                 ]
-              )
-            : nothing
-        }
+              : []),
+          ]
+        )}
         ${
           exports.length > 0
             ? this.#renderMenu(
@@ -720,7 +802,7 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
                   part: "export",
                   tooltip: isEmpty ? text("topBar.emptyEmail") : undefined,
                 },
-                exports
+                [{ items: exports }]
               )
             : nothing
         }
@@ -794,7 +876,7 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
       part?: string;
       tooltip?: string;
     },
-    items: readonly MenuItem[]
+    sections: readonly MenuSection[]
   ) {
     const open = this.#openMenu === menu;
     return html`
@@ -831,34 +913,66 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
           role="menu"
           ?hidden=${!open}
         >
-          ${items.map(
-            ({ action, help, icon, label, run }) => html`
-              <button
-                class="menu-item"
-                part=${action}
-                role="menuitem"
-                tabindex="-1"
-                type="button"
-                @click=${({ detail }: MouseEvent) => {
-                  this.#closeMenu("button", detail === 0);
-                  run();
-                }}
+          ${sections.map(
+            ({ heading, items }, index) => html`
+              ${
+                index > 0
+                  ? html`<div class="menu-separator" role="separator"></div>`
+                  : nothing
+              }
+              <div
+                aria-labelledby=${heading ? `${menu}-heading-${index}` : nothing}
+                class="menu-group"
+                role="group"
               >
-                ${icon}
-                <!-- Named by both, as the name has to hold what's shown. -->
-                <span>
-                  <span class="menu-label">${label}</span>
-                  ${
-                    help
-                      ? html`<span class="menu-help">${help}</span>`
-                      : nothing
-                  }
-                </span>
-              </button>
+                ${
+                  heading
+                    ? html`<p
+                        class="menu-heading"
+                        id=${`${menu}-heading-${index}`}
+                      >
+                        ${heading}
+                      </p>`
+                    : nothing
+                }
+                ${items.map((item) => this.#renderMenuItem(item))}
+              </div>
             `
           )}
         </div>
       </div>
+    `;
+  }
+
+  /**
+   * One of a menu's items. A group's choice is checked while it's chosen,
+   * with a check in place of an icon.
+   */
+  #renderMenuItem({ action, checked, help, icon, label, run }: MenuItem) {
+    return html`
+      <button
+        aria-checked=${checked === undefined ? nothing : String(checked)}
+        class="menu-item"
+        part=${checked === undefined ? action : nothing}
+        role=${checked === undefined ? "menuitem" : "menuitemradio"}
+        tabindex="-1"
+        type="button"
+        @click=${({ detail }: MouseEvent) => {
+          this.#closeMenu("button", detail === 0);
+          run();
+        }}
+      >
+        ${
+          checked === false
+            ? html`<span aria-hidden="true" class="icon"></span>`
+            : icon
+        }
+        <!-- Named by both, as the name has to hold what's shown. -->
+        <span>
+          <span class="menu-label">${label}</span>
+          ${help ? html`<span class="menu-help">${help}</span>` : nothing}
+        </span>
+      </button>
     `;
   }
 
@@ -907,7 +1021,7 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
     const menu = anchor.id.replace(/-anchor$/u, "") as Menu;
     const target = event.target as HTMLElement;
     const items = [
-      ...anchor.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+      ...anchor.querySelectorAll<HTMLElement>('[role^="menuitem"]'),
     ];
     const index = items.indexOf(target);
     const { altKey, ctrlKey, key, metaKey, shiftKey } = event;

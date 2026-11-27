@@ -14,6 +14,7 @@ import {
   columnStyles,
   EMAIL_SETTINGS_FIELDS,
   hexColor,
+  phoneValueKeys,
   rowSettingsFields,
   rowStyles,
 } from "../src/internal.js";
@@ -316,6 +317,25 @@ const insert = (blockType: string, props: Record<string, unknown>) => {
     type: "insertBlock",
   });
 };
+
+/** A type's settings that can have a Phone value, in order. */
+const sorted = (type?: string) => [...phoneValueKeys(type)].toSorted();
+
+describe(phoneValueKeys, () => {
+  it("names the settings each kind of thing can have a Phone value for", () => {
+    const padding = [
+      "paddingBottom",
+      "paddingLeft",
+      "paddingRight",
+      "paddingTop",
+    ];
+
+    expect(sorted("heading")).toStrictEqual(["fontSize", ...padding]);
+    expect(sorted("image")).toStrictEqual([...padding, "width"]);
+    expect(sorted("divider")).toStrictEqual(padding);
+    expect(sorted()).toStrictEqual(padding);
+  });
+});
 
 describe("showing on a device, and Phone values", () => {
   it("stores the devices a Block shows on, and its Phone values for font size and padding", () => {

@@ -224,40 +224,42 @@ describe(renderEmail, () => {
     Object.assign(phones?.props ?? {}, { showOn: "phone" });
     (second as { props: object }).props = { phone: { paddingLeft: 0 } };
     second?.blocks.push(
-      {
-        id: "heading",
-        props: {
-          content: {
-            content: [{ content: [plain("Heading")], type: "paragraph" }],
-            type: "doc",
+      ...([
+        {
+          id: "heading",
+          props: {
+            content: {
+              content: [{ content: [plain("Heading")], type: "paragraph" }],
+              type: "doc",
+            },
+            level: 1,
+            phone: { fontSize: 24 },
           },
-          level: 1,
-          phone: { fontSize: 24 },
+          type: "heading",
         },
-        type: "heading",
-      },
-      {
-        id: "button",
-        props: { label: "Shop", phone: { fontSize: 20, paddingTop: 0 } },
-        type: "button",
-      },
-      {
-        id: "image",
-        props: {
-          phone: { width: 120 },
-          src: "https://example.com/beans.png",
-          width: 240,
+        {
+          id: "button",
+          props: { label: "Shop", phone: { fontSize: 20, paddingTop: 0 } },
+          type: "button",
         },
-        type: "image",
-      },
-      {
-        id: "social",
-        props: {
-          links: [{ network: "x", url: "https://x.com/mq" }],
-          phone: { paddingLeft: 0 },
+        {
+          id: "image",
+          props: {
+            phone: { width: 120 },
+            src: "https://example.com/beans.png",
+            width: 240,
+          },
+          type: "image",
         },
-        type: "social",
-      }
+        {
+          id: "social",
+          props: {
+            links: [{ network: "x", url: "https://x.com/mq" }],
+            phone: { paddingLeft: 0 },
+          },
+          type: "social",
+        },
+      ] as Block[])
     );
     email.rows[0] = {
       ...(email.rows[0] as BlocksDocument["rows"][0]),

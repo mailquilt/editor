@@ -26,6 +26,17 @@ export interface SettingsSection {
   values: Record<string, unknown>;
   /** What a color picker shows with no color set: what's behind it. */
   unsetColor?: string;
+  /**
+   * Set in the Phone view, where a field with a key in `keys` changes its
+   * Phone value. `values` then holds each Phone value in place of its
+   * setting, and `desktop` the settings themselves.
+   */
+  phone?: {
+    keys: ReadonlySet<string>;
+    /** The Phone values that are set. */
+    set: Readonly<Record<string, unknown>>;
+    desktop: Readonly<Record<string, unknown>>;
+  };
   command: (changes: Record<string, unknown>) => Command;
   /**
    * More for some fields, by key: a control beside the field, and what went
@@ -194,6 +205,101 @@ export const changeList = (
 };
 
 export const settingsPanelStyles = css`
+  /* A field's Phone value, in the Phone view: tinted, with a phone before it. */
+  .bar-field[data-phone-value],
+  .settings [data-phone-value] input {
+    background: var(--mq-color-accent-soft);
+    border-color: var(--mq-color-accent);
+    color: var(--mq-color-accent-strong);
+  }
+
+  .bar-field[data-phone-value] input {
+    color: inherit;
+  }
+
+  .phone-icon,
+  .phone-clear {
+    align-items: center;
+    color: var(--mq-color-accent-strong);
+    display: inline-flex;
+    flex: none;
+  }
+
+  .phone-icon .icon,
+  .phone-clear .icon {
+    height: 14px;
+    width: 14px;
+  }
+
+  /* At least 24px, the least a target is. */
+  .phone-clear {
+    background: none;
+    border: 0;
+    border-radius: var(--mq-radius-small);
+    cursor: pointer;
+    height: 24px;
+    justify-content: center;
+    padding: 0;
+    width: 24px;
+  }
+
+  .phone-clear:hover {
+    background: var(--mq-color-surface-hover);
+  }
+
+  /* In a panel, the phone and the ✕ sit inside the field, at either end. */
+  .settings [data-phone-value] input {
+    padding-inline: 28px 58px;
+  }
+
+  .settings [data-phone-value] .phone-icon {
+    inset-block: 0;
+    inset-inline-start: 9px;
+    pointer-events: none;
+    position: absolute;
+  }
+
+  .settings [data-phone-value] .phone-clear {
+    inset-block-start: 4px;
+    inset-inline-end: 30px;
+    position: absolute;
+  }
+
+  /* Both values, and a way back to the desktop's, while it has focus or the pointer. */
+  .phone-card {
+    background: var(--mq-color-surface);
+    border: 1px solid var(--mq-color-border);
+    border-radius: var(--mq-radius);
+    box-shadow: var(--mq-shadow);
+    color: var(--mq-color-text);
+    display: none;
+    font-size: var(--mq-font-size-small);
+    inset-block-start: calc(100% + var(--mq-space-1));
+    inset-inline-start: 0;
+    padding: var(--mq-space-3);
+    position: absolute;
+    white-space: nowrap;
+    z-index: var(--_mq-layer-tooltip);
+  }
+
+  [data-phone-value]:is(:hover, :focus-within) > .phone-card {
+    align-items: flex-start;
+    display: flex;
+    flex-direction: column;
+    gap: var(--mq-space-1);
+  }
+
+  .phone-card p {
+    color: var(--mq-color-text-muted);
+    margin: 0 0 var(--mq-space-1);
+  }
+
+  .phone-card .phone-card-title {
+    color: var(--mq-color-text);
+    font-weight: 600;
+    margin: 0;
+  }
+
   .settings {
     display: flex;
     flex-direction: column;
@@ -538,6 +644,111 @@ export const settingsPanelStyles = css`
 `;
 
 const NO_COLOR = "#ffffff";
+
+/**
+ * A number field's mark in the Phone view, where it has a Phone value: the
+ * field tinted, a phone before its value, and an ✕ that clears it. In the
+ * bar, a card under it while it has focus or the pointer says both values,
+ * with a button that clears it from the keyboard, and the ✕ is for a pointer.
+ * Elsewhere, where a card would be cut off, the ✕ is that button, and its
+ * tooltip says both values. A field without Phone values says that it
+ * changes every device.
+ */
+/** A field without a mark, as outside the Phone view. */
+const NO_MARK = {
+  clear: nothing,
+  description: nothing,
+  descriptionId: undefined,
+  icon: nothing,
+  marked: false,
+  tooltip: undefined,
+} as const;
+
+export const phoneMark = (
+  section: SettingsSection,
+  field: Extract<SettingsField, { type: "number" }>,
+  drafts: SettingsDrafts,
+  textOf: Text,
+  { id, inBar }: { id: string; inBar: boolean }
+) => {
+  const { phone } = section;
+  if (!phone) {
+    return NO_MARK;
+  }
+  if (!phone.keys.has(field.key)) {
+    return { ...NO_MARK, tooltip: textOf("phone.everyDevice") };
+  }
+  if (phone.set[field.key] === undefined) {
+    return NO_MARK;
+  }
+  const unit = textOf(`unit.${field.unit}`);
+  const desktop = `${fieldText(field, phone.desktop)}${unit}`;
+  const values = textOf("phone.values", {
+    desktop,
+    phone: `${fieldText(field, section.values)}${unit}`,
+  });
+  const useDesktop = textOf("phone.useDesktop", { desktop });
+  const title = textOf("phone.title", {
+    field: fieldWords(field.labelId, textOf),
+  });
+  const clear = () =>
+    drafts.onCommit(section, field, { badInput: false, text: "" });
+  const descriptionId = `${id}-phone`;
+  const icon = html`<span aria-hidden="true" class="phone-icon"
+    >${ICONS.phone}</span
+  >`;
+  if (!inBar) {
+    return {
+      ...NO_MARK,
+      clear: html`<button
+        aria-label=${useDesktop}
+        class="icon-button phone-clear"
+        data-testid="phone-clear"
+        data-tooltip=${values}
+        type="button"
+        @click=${clear}
+      >
+        ${ICONS.close}
+      </button>`,
+      description: html`<span class="visually-hidden" id=${descriptionId}
+        >${title}. ${values}</span
+      >`,
+      descriptionId,
+      icon,
+      marked: true,
+      tooltip: undefined,
+    };
+  }
+  return {
+    ...NO_MARK,
+    clear: html`<span
+      aria-hidden="true"
+      class="phone-clear"
+      data-testid="phone-clear"
+      @click=${clear}
+      >${ICONS.close}</span
+    >`,
+    description: html`
+      <div class="ui phone-card" id=${descriptionId}>
+        <p class="phone-card-title">${title}</p>
+        <p>${values}</p>
+        <button
+          class="text-button"
+          data-action=${`phone-clear-${field.key}`}
+          tabindex="-1"
+          type="button"
+          @click=${clear}
+        >
+          ${useDesktop}
+        </button>
+      </div>
+    `,
+    descriptionId,
+    icon,
+    marked: true,
+    tooltip: undefined,
+  };
+};
 
 /** Short controls sit beside their label. Text that runs long gets the row. */
 const INLINE_TYPES = new Set<string>(["color", "number", "select", "toggle"]);
@@ -889,12 +1100,16 @@ export const renderField = (
 
   const textControl = (
     type: string,
-    limits?: { max?: number; min: number }
+    limits?: { max?: number; min: number },
+    /** More that describes it, such as its Phone value's card. */
+    describedByMore?: string
   ) => html`
     <input
       aria-activedescendant=${tags.activeDescendant}
       aria-controls=${tags.controls}
-      aria-describedby=${describedBy || nothing}
+      aria-describedby=${
+        [describedBy, describedByMore].filter(Boolean).join(" ") || nothing
+      }
       aria-invalid=${refused ? "true" : "false"}
       autocomplete="off"
       data-draft-key=${key}
@@ -935,12 +1150,21 @@ export const renderField = (
       }
       // The unit shows inside the field, and is part of its name.
       case "number": {
+        const mark = phoneMark(section, field, drafts, textOf, {
+          id,
+          inBar: false,
+        });
         return html`
-          <div class="unit-field">
-            ${textControl("number", field)}
+          <div
+            class="unit-field"
+            ?data-phone-value=${mark.marked}
+            data-tooltip=${mark.tooltip ?? nothing}
+          >
+            ${mark.icon} ${textControl("number", field, mark.descriptionId)}
             <span aria-hidden="true" class="unit">
               ${textOf(`unit.${field.unit}`)}
             </span>
+            ${mark.clear} ${mark.description}
           </div>
         `;
       }
