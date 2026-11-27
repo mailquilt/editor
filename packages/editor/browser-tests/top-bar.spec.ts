@@ -4,6 +4,7 @@ import type { Page } from "@playwright/test";
 import {
   boxOf,
   canvas,
+  checkTab,
   emailWith,
   openBlocks,
   openEmail,
@@ -47,8 +48,8 @@ test.describe("the Modes", () => {
 
     // One stop for Tab, with the arrow keys between the Modes.
     await page.keyboard.press("ArrowRight");
-    await expect(mode(page, "Check")).toBeFocused();
-    await expect(mode(page, "Check")).toHaveAttribute("aria-selected", "true");
+    await expect(checkTab(page)).toBeFocused();
+    await expect(checkTab(page)).toHaveAttribute("aria-selected", "true");
     await expect(textOf(page, "A")).toBeHidden();
     await page.keyboard.press("Home");
     await expect(mode(page, "Edit")).toBeFocused();
@@ -151,7 +152,7 @@ test.describe("the Desktop and Phone views", () => {
     await mode(page, "Style").click();
     await expect(view(page, "Phone")).toHaveAttribute("aria-pressed", "true");
     // Check shows both widths, so it has no switch.
-    await mode(page, "Check").click();
+    await checkTab(page).click();
     await expect(canvas(page).getByRole("group", { name: "View" })).toHaveCount(
       0
     );
