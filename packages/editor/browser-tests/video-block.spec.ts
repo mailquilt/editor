@@ -271,6 +271,21 @@ test("without uploadImage, a copy already drawn can still be chosen, and its cho
   await expect(choice(page, "On the picture")).toBeFocused();
 });
 
+test("without uploadImage, a Video set on the picture with no copy drawn opens its choices with focus on one that can be chosen", async ({
+  page,
+}) => {
+  await openVideo(
+    page,
+    { play: "on", thumbnail: READABLE, url: LINK },
+    { uploads: false }
+  );
+
+  await openPopover(page, /^Play button: /u);
+
+  await expect(choice(page, "On the picture")).toBeDisabled();
+  await expect(choice(page, "Below the picture")).toBeFocused();
+});
+
 test("the play button's choices open at the one chosen, are chosen with the arrow keys, and Escape goes back to the button", async ({
   page,
 }) => {
