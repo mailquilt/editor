@@ -119,6 +119,11 @@ export const uiStyles = css`
     --_mq-font-size-bar-title: 14px;
     --_mq-font-size-panel-title: 15px;
     --_mq-font-size-notice-title: 17px;
+    /* Check's plain text and HTML, in the system's fixed-width font. */
+    --_mq-font-size-code: 13px;
+    --_mq-font-family-code:
+      ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono",
+      monospace;
 
     /* The top bar's height, which what sticks below it stays clear of. */
     --_mq-top-bar-height: 52px;

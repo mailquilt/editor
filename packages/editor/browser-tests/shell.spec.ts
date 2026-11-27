@@ -447,7 +447,7 @@ test.describe("the menus", () => {
 });
 
 test.describe("the editor's API", () => {
-  test("value, mq-change and exportHtml() behave as on <mail-quilt>", async ({
+  test("value, mq-change, exportHtml() and exportText() behave as on <mail-quilt>", async ({
     page,
   }) => {
     await openShell(page);
@@ -456,13 +456,20 @@ test.describe("the editor's API", () => {
     await page.keyboard.type("Oh ");
 
     await expect(changeCount(page)).toHaveText("3");
-    const { html, value } = await shell(page).evaluate(async (element) => {
-      const host = element as MailQuiltShell;
-      return { html: await host.exportHtml(), value: host.value };
-    });
+    const { html, plainText, value } = await shell(page).evaluate(
+      async (element) => {
+        const host = element as MailQuiltShell;
+        return {
+          html: await host.exportHtml(),
+          plainText: host.exportText(),
+          value: host.value,
+        };
+      }
+    );
     expect(JSON.stringify(value)).toContain("Oh Hello");
     expect(html).toMatch(/<!doctype html>/iu);
     expect(html).toContain("Oh Hello");
+    expect(plainText).toBe("Oh Hello");
   });
 
   test("uploadImage reaches the editor, and can be taken away", async ({

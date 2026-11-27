@@ -24,6 +24,7 @@ The editor is the `<mail-quilt>` element, and the [Shell](./shell) is `<mail-qui
 | `mq-change` | An event fired after every change. The new email is in `event.detail.document`. |
 | `mq-error` | An event fired when the editor refuses an email, which then keeps the email it had. The reason is in `event.detail.reason`. The [document format](./document-format) page lists what the editor accepts. |
 | `exportHtml()` | Returns a promise of the email's HTML, ready to send. It rejects if the editor has no email. |
+| `exportText()` | Returns the email as plain text, to send beside its HTML for email apps that show only text, as `renderText()` writes it on a [server](./render-on-a-server#plain-text). It throws if the editor has no email. |
 
 Some of those checks are stricter than CSS. A color is checked as MJML checks it, so every email the editor opens can also be exported: at most one space after each comma, an alpha written as `0.5` and not `.5`, and no named colors such as `red`. A font list goes into the email's CSS, so it holds only font names: letters A to Z, digits, spaces, hyphens, underscores, commas and quotes that close. The [document format](./document-format#colors) page has every rule.
 
@@ -103,6 +104,7 @@ editor.strings = {
 | `mq-change` | Fired after every change, including an import. The new email is in `event.detail.document`. |
 | `mq-error` | Fired when the editor refuses an email you set as `value`. The reason is in `event.detail.reason`, and the message bar shows it too. |
 | `exportHtml()` | Returns a promise of the email's HTML, as on `<mail-quilt>`. |
+| `exportText()` | Returns the email as plain text, as on `<mail-quilt>`. |
 
 ## React
 

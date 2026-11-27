@@ -6,4 +6,5 @@ export type {
   ProblemCode,
 } from "./check-email.js";
 export { renderEmail } from "./render-email.js";
+export { renderText } from "./render-text.js";
 export type { RenderEmailOptions } from "./to-mjml.js";

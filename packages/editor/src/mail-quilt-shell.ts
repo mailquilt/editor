@@ -541,6 +541,17 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
     return await this.#editor.exportHtml();
   }
 
+  /** As on `<mail-quilt>`, and also straight after `value` is set. */
+  exportText() {
+    if (this.#opening.state === "waiting") {
+      this.#openSaved();
+    }
+    if (!this.#editor.value) {
+      throw new Error("<mail-quilt-shell> has no document to export");
+    }
+    return this.#editor.exportText();
+  }
+
   override connectedCallback() {
     super.connectedCallback();
     this.#observeBody();
