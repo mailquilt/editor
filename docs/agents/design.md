@@ -34,7 +34,7 @@ This page sets the bar, the process and the checklist every UI change passes bef
    - every dialog, menu, tooltip and the Preview open, on a phone and on desktop;
    - a frame-by-frame recording of anything that loads, in which nothing already drawn moves or changes;
    - focus and keyboard paths checked in a real browser with real keys, against `keyboard.mdx` and the rules in `docs/agents/decisions.md`, "Keys and focus".
-   While you iterate, shoot only the state you changed, at 390 and 1440 px. Shoot the full set once, when the build is finished, before the design review in step 7.
+   While you iterate, shoot only the state you changed, at 390 and 1440 px. Shoot the full set when the build is finished, before the design review in step 7, and again for any state a review fix changes.
 
    The `editor-screens` skill makes all of these. Tests passing is not evidence of design, and neither are screenshots alone.
 7. **Get a fresh design review.** Give a reviewer agent that hasn't seen your work this page, the brand docs, the `frontend-design` and `emil-design-eng` skills, the code and the evidence, but not your conclusions. Fix each finding or say why it stays.
