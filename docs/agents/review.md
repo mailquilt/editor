@@ -58,7 +58,7 @@ Anything else goes in the backlog issue, unless the maintainer asks for it.
 
 CodeRabbit reviews a pull request once, when it opens, and a later push isn't reviewed again unless someone asks with `@coderabbitai review`. A round of review on each push took about five minutes, and CI another seven, and fixes pushed a few minutes apart cancelled CI before it could finish.
 
-- Open the pull request once the work is committed, and its lint, types, unit tests and the browser tests it touches pass. CI runs every browser suite in all three browsers, so a last full run on your machine before opening it only holds up the review. Say the checks pass only once CI has passed.
+- Open the pull request ready for review, not as a draft, as neither CodeRabbit nor CI checks a draft. Open it once the work is committed, and its lint, types, unit tests and the browser tests it touches pass. CI runs every browser suite in all three browsers, so a last full run on your machine before opening it only holds up the review. Say the checks pass only once CI has passed.
 - Wait for CodeRabbit's review and CI, then check each finding against the code, as for any review.
 - Fix the findings worth doing in one commit and one push. A finding below the release bar goes in that commit if it's quick, or in the backlog issue. It never starts another round.
 - Answer a pre-merge check's warning in a comment on the pull request. Push a change for it only when the code, a changeset or a doc is wrong.
