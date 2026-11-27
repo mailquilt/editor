@@ -1341,8 +1341,9 @@ const uploadExtra = (blockId: string, api: PanelApi) => ({
 });
 
 /**
- * A Video's Command from the bar: a new thumbnail forgets the copy drawn on
- * the old one, and a YouTube link fills in a thumbnail it doesn't have.
+ * A Video's Command from the bar: a YouTube link fills in a thumbnail it
+ * doesn't have, and a new thumbnail is drawn on again where the play button
+ * was on the picture.
  */
 const videoCommand = (
   blockId: string,
@@ -1352,11 +1353,8 @@ const videoCommand = (
   if (typeof props.url === "string") {
     api.videos.fillThumbnail(blockId, props.url);
   }
-  return {
-    blockId,
-    props: api.videos.changes(blockId, props),
-    type: "updateBlockProps",
-  };
+  api.videos.willChange(blockId, props);
+  return { blockId, props, type: "updateBlockProps" };
 };
 
 const desktopBlockSection = (
@@ -2666,7 +2664,11 @@ const renderPlayControl = (
         <legend>${name}</legend>
         ${field.options.map(({ descriptionId, labelId, value }) => {
           const optionId = `bar-play-${value}`;
-          const off = value === "on" && !uploadImage;
+          // Choosing a copy already drawn uploads nothing.
+          const off =
+            value === "on" &&
+            !uploadImage &&
+            section.values.playThumbnail === undefined;
           const meaning = off ? "play.on.noUploads" : descriptionId;
           return html`
             <label

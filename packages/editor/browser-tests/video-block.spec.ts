@@ -251,6 +251,26 @@ test("without the Host app's uploadImage, On the picture is off and says why", a
   expect(await violations(page)).toStrictEqual([]);
 });
 
+test("without uploadImage, a copy already drawn can still be chosen, and its choice takes focus", async ({
+  page,
+}) => {
+  await openVideo(
+    page,
+    {
+      play: "on",
+      playThumbnail: "https://cdn.example/played.png",
+      thumbnail: READABLE,
+      url: LINK,
+    },
+    { uploads: false }
+  );
+
+  await openPopover(page, /^Play button: /u);
+
+  await expect(choice(page, "On the picture")).toBeEnabled();
+  await expect(choice(page, "On the picture")).toBeFocused();
+});
+
 test("the play button's choices open at the one chosen, are chosen with the arrow keys, and Escape goes back to the button", async ({
   page,
 }) => {

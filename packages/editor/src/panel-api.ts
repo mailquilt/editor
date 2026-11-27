@@ -109,12 +109,12 @@ export interface EmailPanelApi {
    */
   videos: Pick<
     Videos,
-    | "changes"
     | "choosePlay"
     | "failureOf"
     | "fillThumbnail"
     | "isAdding"
     | "wantPlay"
+    | "willChange"
   >;
   /** Selects a Row instead of any Block, which the Selection bar then shows. */
   selectRow: (rowId: string, fromKeyboard: boolean) => void;

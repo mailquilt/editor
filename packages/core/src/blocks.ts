@@ -73,6 +73,14 @@ interface BlockDefinition<
    * props, then the Email style, then the built-in look.
    */
   styles: (props: Props, style: EmailStyle) => Record<string, string>;
+  /**
+   * What a change to its props sets, where one prop follows another, before
+   * it's checked. Without it, the change as it's given.
+   */
+  changes?: (
+    props: Props,
+    changes: Record<string, unknown>
+  ) => Record<string, unknown>;
 }
 
 /** Text's line height, as a multiple of its font size. */
@@ -712,6 +720,22 @@ const videoFields = (line: boolean): readonly SettingsField[] => [
 const VIDEO_FIELDS = { line: videoFields(true), noLine: videoFields(false) };
 
 const videoBlock = {
+  // A new thumbnail forgets the copy drawn on the old one, unless a copy comes
+  // with it. While the play button was on the picture, the line shows until
+  // one is drawn on the new thumbnail, so the email never shows the old
+  // picture, nor a video with no sign it's one.
+  changes: (props, changes) =>
+    !("thumbnail" in changes) ||
+    changes.thumbnail === props.thumbnail ||
+    "playThumbnail" in changes
+      ? changes
+      : {
+          ...changes,
+          ...(props.play === "on" && !("play" in changes)
+            ? { play: "below" }
+            : {}),
+          playThumbnail: null,
+        },
   defaults: {} satisfies VideoBlockProps,
   fields: (props) =>
     videoLook(props).line ? VIDEO_FIELDS.line : VIDEO_FIELDS.noLine,
@@ -939,6 +963,15 @@ export const phoneValueKeys = (type?: string): readonly string[] => {
     ? Object.keys(entriesOf((phone as { wrapped: v.GenericSchema }).wrapped))
     : [];
 };
+
+/**
+ * What a change to a Block's props sets, with the props that follow it, such
+ * as a Video's drawn copy, which a new thumbnail drops.
+ */
+export const blockChanges = (
+  { props, type }: Pick<Block, "props" | "type">,
+  changes: Record<string, unknown>
+) => blockDefinitions.get(type)?.changes?.(props, changes) ?? changes;
 
 export const validateProps = (
   block: Pick<Block, "id" | "type">,

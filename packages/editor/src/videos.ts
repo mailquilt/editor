@@ -1,6 +1,5 @@
 import type { ApplyResult, BlocksDocument } from "@mailquilt/core";
 import { MERGE_TAG } from "@mailquilt/core/internal";
-import type { BlockProps } from "@mailquilt/core/internal";
 
 import type { Announcements } from "./announcements.js";
 import type { HostAppProperties } from "./host-app.js";
@@ -12,8 +11,6 @@ import type { Text } from "./text.js";
 // fills in the thumbnail, and "On the picture" draws a play button onto a copy
 // of the thumbnail and uploads it through the Host app's `uploadImage`, as
 // #327 decided. The Block keeps the original thumbnail beside the copy.
-
-type VideoProps = BlockProps["video"];
 
 /** The sites a YouTube video's own link can be on. */
 const YOUTUBE_HOSTS = new Set([
@@ -80,26 +77,6 @@ const youTubeThumbnail = async (id: string) => {
     return always;
   }
   return image.naturalWidth > PLACEHOLDER_WIDTH ? large : always;
-};
-
-/**
- * A change to a Video's props, with a new thumbnail forgetting the copy drawn
- * on the old one. While the play button was on the picture, the line shows
- * until one is drawn on the new thumbnail, so the email never shows a video
- * with no sign it's one.
- */
-export const thumbnailChanges = (
-  props: VideoProps,
-  changes: Record<string, unknown>
-): Record<string, unknown> => {
-  if (!("thumbnail" in changes) || changes.thumbnail === props.thumbnail) {
-    return changes;
-  }
-  return {
-    ...changes,
-    ...(props.play === "on" ? { play: "below" } : {}),
-    playThumbnail: null,
-  };
 };
 
 /** The share of a picture's shorter side the play button's circle spans. */
@@ -378,20 +355,19 @@ export const createVideos = ({
     },
 
     /**
-     * A change from the bar to a Video's props, as its Command takes them: a
-     * new thumbnail forgets the copy drawn on the old one, and a play button
-     * wanted on the picture is drawn on the new one.
+     * Before a change to a Video's props from the bar or an upload: a new
+     * thumbnail while the play button is on the picture, which core turns
+     * back to the line, is drawn on again.
      */
-    changes: (blockId: string, changes: Record<string, unknown>) => {
+    willChange: (blockId: string, changes: Record<string, unknown>) => {
       const props = propsOf(blockId);
-      if (!props) {
-        return changes;
-      }
-      const made = thumbnailChanges(props, changes);
-      if (made.play === "below") {
+      if (
+        props?.play === "on" &&
+        "thumbnail" in changes &&
+        changes.thumbnail !== props.thumbnail
+      ) {
         wanted.add(blockId);
       }
-      return made;
     },
 
     /** Aborts every drawing, and forgets every choice and failure, for a new email. */

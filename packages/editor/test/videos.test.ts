@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { thumbnailChanges, youTubeId } from "../src/videos.js";
+import { youTubeId } from "../src/videos.js";
 
 describe(youTubeId, () => {
   it.each([
@@ -28,41 +28,5 @@ describe(youTubeId, () => {
     ],
   ])("finds no video in %s", (_name, url) => {
     expect(youTubeId(url)).toBeUndefined();
-  });
-});
-
-describe(thumbnailChanges, () => {
-  const thumbnail = "https://a.co/new.jpg";
-
-  it("forgets the drawn copy of the old thumbnail", () => {
-    expect(
-      thumbnailChanges(
-        {
-          play: "none",
-          playThumbnail: "https://a.co/p.jpg",
-          thumbnail: "https://a.co/old.jpg",
-        },
-        { thumbnail }
-      )
-    ).toStrictEqual({ playThumbnail: null, thumbnail });
-  });
-
-  it("shows the line until a play button is drawn on the new one", () => {
-    expect(
-      thumbnailChanges(
-        {
-          play: "on",
-          playThumbnail: "https://a.co/p.jpg",
-          thumbnail: "https://a.co/old.jpg",
-        },
-        { thumbnail }
-      )
-    ).toStrictEqual({ play: "below", playThumbnail: null, thumbnail });
-  });
-
-  it("leaves other changes as they are", () => {
-    expect(
-      thumbnailChanges({ play: "on", thumbnail }, { alt: "A cup", thumbnail })
-    ).toStrictEqual({ alt: "A cup", thumbnail });
   });
 });

@@ -87,6 +87,54 @@ describe("Video Block", () => {
     });
   });
 
+  it.each([
+    [
+      "forgets the copy drawn on the old thumbnail",
+      { play: "none" },
+      { play: "none", thumbnail: "https://a.co/new.jpg" },
+    ],
+    [
+      "shows the line until a play button is drawn on the new one",
+      { play: "on" },
+      { play: "below", thumbnail: "https://a.co/new.jpg" },
+    ],
+  ])("given a new thumbnail, %s", (_name, before, after) => {
+    const editor = createEditor({ document: withVideo() });
+    const apply = (props: Record<string, unknown>) =>
+      editor.apply({ blockId: "video-1", props, type: "updateBlockProps" });
+    apply({
+      ...before,
+      playThumbnail: "https://a.co/p.jpg",
+      thumbnail: "https://a.co/old.jpg",
+    });
+
+    apply({ thumbnail: "https://a.co/new.jpg" });
+
+    expect(propsOf(editor.getDocument())).toStrictEqual(after);
+  });
+
+  it("keeps a copy given with the new thumbnail", () => {
+    const props = {
+      play: "on",
+      playThumbnail: "https://a.co/p2.jpg",
+      thumbnail: "https://a.co/new.jpg",
+    };
+    const editor = createEditor({ document: withVideo() });
+    editor.apply({
+      blockId: "video-1",
+      props: {
+        ...props,
+        playThumbnail: "https://a.co/p.jpg",
+        thumbnail: "https://a.co/old.jpg",
+      },
+      type: "updateBlockProps",
+    });
+
+    editor.apply({ blockId: "video-1", props, type: "updateBlockProps" });
+
+    expect(propsOf(editor.getDocument())).toStrictEqual(props);
+  });
+
   it("has the line's fields only while the line shows", () => {
     expect(fieldKeys({})).toContain("label");
     expect(fieldKeys({ play: "none" })).not.toContain("label");

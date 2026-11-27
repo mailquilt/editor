@@ -590,12 +590,13 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       const isVideo =
         email !== undefined && locate(email, blockId)?.block.type === "video";
       const key = isVideo ? "thumbnail" : "src";
+      if (isVideo) {
+        this.#videos.willChange(blockId, { thumbnail: src });
+      }
       const result = this.#apply(
         {
           blockId,
-          props: isVideo
-            ? this.#videos.changes(blockId, { thumbnail: src })
-            : { src },
+          props: { [key]: src },
           type: "updateBlockProps",
         },
         { refusable: true }
