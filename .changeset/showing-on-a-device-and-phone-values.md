@@ -14,4 +14,6 @@ Breaking: a Row's `hideOnPhone` is gone from format version 4. An email saved by
 
 `STRINGS`, `StringId` and `MailQuiltStrings` gain `canvas.notHere`, `canvas.blockShownOn`, `rows.itemShownOn`, `more.showOn`, `showOn.all`, `device.desktopOnly`, `device.phonesOnly`, `phone.title`, `phone.values`, `phone.useDesktop`, `phone.fillsColumn`, `phone.everyDevice`, `invalid.showOn`, `shell.notOnDevice`, `shell.fold`, `shell.foldHelp`, `shell.fade`, `shell.fadeHelp`, `shell.hide` and `shell.hideHelp`, and lose `canvas.hiddenOnPhones`, `field.hideOnPhone` and `field.hideOnPhone.description`, which no release has had. A full translation typed `Record<StringId, string>` needs the new IDs.
 
+Two theme tokens are added, `--mq-color-stand-in` and `--mq-color-on-stand-in`, the colors of the strip in place of what isn't on the device being viewed. Both are the same in the light and dark themes, as the strip sits on the email.
+
 The Shell's More menu now always shows, as it holds Not on this device, so `actions=""` shows More alone. With `save-key`, the Shell keeps that choice in `localStorage` under `mail-quilt:not-on-device`. Without one, it stores nothing.
