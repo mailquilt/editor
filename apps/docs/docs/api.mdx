@@ -9,13 +9,14 @@ The editor is the `<mail-quilt>` element, and the [Shell](./shell) is `<mail-qui
 
 ## The editor
 
-`<mail-quilt>` has nine properties, two events and two methods:
+`<mail-quilt>` has ten properties, two events and two methods:
 
 | Name | What it does |
 | --- | --- |
 | `value` | The email the editor shows. Set it to open an email, or to `undefined` or `null` to empty the editor. |
 | `uploadImage` | A function that uploads an image to your storage and returns a promise of `{ url }`. With it, the Image settings have an Upload image button, and image files can be dropped or pasted on the email. [Upload images](./upload-images) shows one, and what the editor does with it. |
 | `mergeTags` | Your app's Merge Tags, as an array of `{ name, label, sample, unsubscribe }`, such as `[{ name: "first_name", label: "First name", sample: "Ana" }]`. `name` is what goes between the braces, and the rest are optional. With it, typing `{{` in text, or in any setting that holds text or a URL, opens a list of them to pick from, and the format bar has a Merge Tag button. A tag in text shows its label, or its name without one, but the export always has `{{name}}`. `sample` is what Check shows in the tag's place with Show sample values on, and `unsubscribe: true` marks your unsubscribe link's tag, which Check then looks for. [Merge Tags](#merge-tags) says more. |
+| `fonts` | Your app's web fonts, as an array of `{ name, url, fallback }`, such as `[{ name: "Inter", url: "https://fonts.googleapis.com/css2?family=Inter&display=swap", fallback: "Arial, Helvetica, sans-serif" }]`. Style's font lists offer them as Your fonts, above the system fonts. Without it, the lists hold only system fonts. [Web fonts](#web-fonts) says more. |
 | `sender` | Who the email is from, such as your customer's business name, which Check's inbox shows above the subject. Without it, the inbox shows no sender. |
 | `sendTest` | A function that sends a test of the email through your own sending service, to whoever you choose, such as the person signed in, and returns a promise. It gets `{ html, text, subject }`: the email as `exportHtml()` and `exportText()` give it, with its Merge Tags as written for your service to fill, and your `subject`. With it, Check has a Send a test button, which is off until the email is checked and while a test sends. When the promise resolves, Check says "Test sent." When it rejects with an `Error`, Check shows its message, so write it for the person, such as how many tests their plan has left, or "The test wasn't sent. Try again." when it has none. |
 | `socialIconsUrl` | The URL of a folder in your storage holding the Social Block's icons, copied from `@mailquilt/renderer`'s `icons`. The canvas, Check and `exportHtml()` load the icons from there. Without it, they load from jsDelivr, at the renderer's exact version. [Social icons](./social-icons) says why you might set it. |
@@ -62,6 +63,31 @@ editor.mergeTags = [
 
 Without `mergeTags`, or with no tag it can offer, typing `{{` opens nothing and there's no Merge Tag button.
 
+### Web fonts
+
+Give the editor the web fonts your app allows, such as your customers' brand fonts, and Style's Headings and Body lists offer them as Your fonts, above the system fonts:
+
+```js
+editor.fonts = [
+  {
+    name: "Fraunces",
+    url: "https://fonts.googleapis.com/css2?family=Fraunces:wght@400;700&display=swap",
+    fallback: "Georgia, 'Times New Roman', serif",
+  },
+];
+```
+
+- `name` is the font's family name, as its stylesheet declares it. It's one name of letters, digits, spaces and hyphens, such as `DM Serif Display`.
+- `url` is a stylesheet that declares the font, such as one from Google Fonts or your own storage, and must start with `https:`. It can't hold quotes, brackets, spaces or backslashes, which would end it in the exported HTML, so percent-encode any it needs.
+- `fallback` is the fonts a reader sees where the web font doesn't load, such as `Georgia, serif`. Pick ones close to the web font in shape and width. Each web font in the list says "Falls back to" the first of them.
+- People pick only from your list. They can't add a font of their own.
+- A font picked is stored in the email with its name and URL, in `settings.fonts`, and the email's font is its name followed by its fallback, as in `'Fraunces', Georgia, 'Times New Roman', serif`. So the email exports and renders the same anywhere, even after you take the font off your list. An email whose font isn't on your list, such as one imported, still lists it under Your fonts while it's picked, but the editor doesn't load it into your page, as its stylesheet would apply to the whole page, so the editor shows its fallback.
+- The export loads only the fonts the email uses: a font stops being stored once neither the Body nor the Headings use it, and a heading font in an email with no Heading isn't loaded.
+- The editor loads each font from its URL into your page, so the email and the lists show it. While it loads, its setting says "Loading Fraunces…". If its stylesheet can't be loaded, such as when its URL is wrong or your [Content Security Policy](#content-security-policy) blocks it, the setting says so, and the email shows the fallback. Safari doesn't say when a font file named by a stylesheet that loaded is missing, so there the email shows the fallback without a message.
+- A font whose name, URL or fallback the editor can't take, or whose name an earlier one has, isn't offered, and the editor says why on the console.
+
+Many email clients, Gmail and Outlook among them, don't load web fonts and show the fallback instead. [Tested email clients](./email-clients#web-fonts) lists which do.
+
 ### Text in your words
 
 Every word the editor shows, or reads out to a screen reader, has an ID, and `strings` replaces any of them, such as to translate the editor. `STRINGS` lists every ID with its English, which is what shows for any you leave out:
@@ -93,6 +119,7 @@ editor.strings = {
 | --- | --- |
 | `value` | The email the Shell shows, as on `<mail-quilt>`. With `save-key`, a saved email opens instead of the first one you set. With no `value` and nothing saved, the editor is empty and Export is off. |
 | `uploadImage` | As on `<mail-quilt>`. The Shell passes it to the editor inside. |
+| `fonts` | As on `<mail-quilt>`. The Shell passes it to the editor inside. |
 | `mergeTags` | As on `<mail-quilt>`. The Shell passes it to the editor inside. |
 | `sender` | As on `<mail-quilt>`. The Shell passes it to the editor inside. |
 | `sendTest` | As on `<mail-quilt>`. The Shell passes it to the editor inside. |
@@ -114,11 +141,11 @@ editor.strings = {
 
 | Component | Props |
 | --- | --- |
-| `MailQuilt` | `value`, `onChange`, `onError`, `uploadImage`, `mergeTags`, `sender`, `sendTest`, `socialIconsUrl`, `strings`, `subject`, `theme` and `ref`. |
+| `MailQuilt` | `value`, `onChange`, `onError`, `uploadImage`, `fonts`, `mergeTags`, `sender`, `sendTest`, `socialIconsUrl`, `strings`, `subject`, `theme` and `ref`. |
 | `MailQuiltShell` | The same, and `heading`, `actions` and `saveKey`. `actions` is an array of names, such as `["export-html"]`. |
 
 - `value` is the email to open. `onChange` gets the new email after every change, and `onError` gets the reason when the editor refuses one, or when the editor's code can't load. `onError` is always listening in time.
-- `uploadImage`, `mergeTags`, `sender`, `sendTest`, `socialIconsUrl`, `strings` and `subject` are the editor's properties, which the component sets on the element once the editor has loaded. A new `mergeTags` array or `strings` object at each render redraws nothing unless something in it changed.
+- `uploadImage`, `fonts`, `mergeTags`, `sender`, `sendTest`, `socialIconsUrl`, `strings` and `subject` are the editor's properties, which the component sets on the element once the editor has loaded. A new `fonts` or `mergeTags` array or `strings` object at each render redraws nothing unless something in it changed.
 - `theme` is the element's attribute, so it's in the server's HTML too.
 - `ref` gives you the element once the editor has loaded, so you can call `exportHtml()`.
 - Other props go to the element: `aria-*` attributes, React's events such as `onKeyDown`, and `className`, `hidden`, `id`, `inert`, `lang`, `role`, `slot`, `style`, `suppressHydrationWarning` and `title`.
@@ -174,6 +201,14 @@ Content-Security-Policy: img-src 'self' https:
 ```
 
 An image it blocks doesn't show on the canvas or in Check, and the exported HTML is unchanged. A Social Block's icons load from `https://cdn.jsdelivr.net`, so allow it too, or set [`socialIconsUrl`](./social-icons) and allow your own storage. The editor's own icons and arrows are part of the page, so it needs no other image source, such as `data:`.
+
+With [`fonts`](#web-fonts), the editor adds each font's stylesheet to your page, which loads the font files it names. So `style-src` has to allow the stylesheets' site, and `font-src` the fonts' site. For Google Fonts:
+
+```text
+Content-Security-Policy: style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com
+```
+
+A font it blocks is said under its setting in Style, and the email shows the fallback. The exported HTML is unchanged.
 
 With [`uploadImage`](./upload-images), the editor makes no request of its own. Whatever your function fetches, such as your storage's upload URL, has to be allowed by `connect-src`, and the URL it returns by `img-src`.
 

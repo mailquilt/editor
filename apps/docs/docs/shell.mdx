@@ -69,7 +69,7 @@ Without `save-key`, the Shell stores nothing. Save the email yourself from `mq-c
 
 ## The Shell's API
 
-The Shell takes `value`, `heading`, `actions` and `save-key`, and the editor's `uploadImage`, `mergeTags` and `socialIconsUrl` properties, which it passes on, so people can [upload images](./upload-images) and [pick Merge Tags](./api#merge-tags), and the [Social icons](./social-icons) load from your storage. It fires `mq-change` and `mq-error`, and has `exportHtml()`. In React, these are the `value`, `heading`, `actions`, `saveKey`, `uploadImage`, `mergeTags`, `socialIconsUrl`, `onChange` and `onError` props, with `actions` as an array of names. The [editor's API](./api#the-shell) describes each one.
+The Shell takes `value`, `heading`, `actions` and `save-key`, and the editor's `uploadImage`, `fonts`, `mergeTags` and `socialIconsUrl` properties, which it passes on, so people can [upload images](./upload-images), pick [your web fonts](./api#web-fonts) and [Merge Tags](./api#merge-tags), and the [Social icons](./social-icons) load from your storage. It fires `mq-change` and `mq-error`, and has `exportHtml()`. In React, these are the `value`, `heading`, `actions`, `saveKey`, `uploadImage`, `fonts`, `mergeTags`, `socialIconsUrl`, `onChange` and `onError` props, with `actions` as an array of names. The [editor's API](./api#the-shell) describes each one.
 
 ## Customizing it
 

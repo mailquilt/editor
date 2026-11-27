@@ -9,6 +9,7 @@ import type { Block, BlocksDocument, Column, Row } from "./document.js";
 import {
   emailSettingsSchema,
   newLanguageSettingsSchema,
+  withUsedFonts,
 } from "./email-settings.js";
 import { isSameDocument } from "./is-same-document.js";
 import {
@@ -134,16 +135,21 @@ const planUpdateEmailSettings = (
   document: BlocksDocument,
   settings: Record<string, unknown>
 ): CommandPlan =>
-  planProps({ emailSettings: true }, document.settings, settings, (merged) =>
-    parseProps(
+  planProps({ emailSettings: true }, document.settings, settings, (merged) => {
+    const parsed = parseProps(
       // A saved language sent back unchanged keeps its pass.
       "language" in settings && settings.language !== document.settings.language
         ? newLanguageSettingsSchema
         : emailSettingsSchema,
       merged,
       "the email's settings"
-    )
-  );
+    );
+    // Settings sent back unchanged are refused as unchanged, even with a font
+    // nothing names, which only a change drops.
+    return parsed.ok && !isSameDocument(parsed.props, document.settings)
+      ? { ...parsed, props: { ...withUsedFonts(parsed.props) } }
+      : parsed;
+  });
 
 /**
  * Merges `style` into the Email style as `planProps` merges props, and leaves

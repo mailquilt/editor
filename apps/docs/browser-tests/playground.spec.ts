@@ -1,3 +1,4 @@
+import type { MailQuiltShell } from "@mailquilt/editor";
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
@@ -20,6 +21,28 @@ test("starts with several Rows, so moving one can be tried straight away", async
   await expect(
     page.getByRole("group", { name: /^Text Block, Row/u })
   ).toHaveAccessibleName(/^Text Block, Row 2,/u);
+});
+
+test("offers a few Google Fonts", async ({ browserName, page }) => {
+  test.skip(
+    browserName !== "chromium",
+    "Checks content, so Chromium alone runs it."
+  );
+  await page.goto(PLAYGROUND);
+  await expect(textBlock(page)).toBeVisible();
+
+  const fonts = await page
+    .locator("mail-quilt-shell")
+    .evaluate((element) => (element as MailQuiltShell).fonts ?? []);
+
+  expect(fonts.map(({ name }) => name)).toStrictEqual([
+    "DM Serif Display",
+    "Fraunces",
+    "Inter",
+  ]);
+  for (const { url } of fonts) {
+    expect(url).toMatch(/^https:\/\/fonts\.googleapis\.com\//u);
+  }
 });
 
 test("runs on the Shell, below the page's title", async ({ page }) => {

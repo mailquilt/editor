@@ -539,28 +539,43 @@ test.describe("the editor's API", () => {
     await expect(picker).toHaveCount(0);
   });
 
-  test("sender, subject, sendTest and a Merge Tag's sample reach the editor", async ({
+  test("fonts, sender, subject, sendTest and a Merge Tag's sample reach the editor", async ({
     page,
   }) => {
+    const fonts = [
+      {
+        fallback: "Georgia, serif",
+        name: "Fraunces",
+        url: "https://fonts.googleapis.com/css2?family=Fraunces",
+      },
+    ];
     await openShell(page);
-    await shell(page).evaluate((element) => {
+    await shell(page).evaluate((element, given) => {
       Object.assign(element as MailQuiltShell, {
+        fonts: given,
         mergeTags: [{ name: "first_name", sample: "Ana" }],
         sender: "Northbound",
         sendTest: () => Promise.resolve(),
         subject: "Spring roast",
       });
-    });
+    }, fonts);
 
     const editor = shell(page).locator("mail-quilt");
     await expect
       .poll(() =>
         editor.evaluate((element) => {
-          const { mergeTags, sender, sendTest, subject } = element as MailQuilt;
-          return [mergeTags, sender, subject, typeof sendTest];
+          const {
+            fonts: given,
+            mergeTags,
+            sender,
+            sendTest,
+            subject,
+          } = element as MailQuilt;
+          return [given, mergeTags, sender, subject, typeof sendTest];
         })
       )
       .toEqual([
+        fonts,
         [{ name: "first_name", sample: "Ana" }],
         "Northbound",
         "Spring roast",

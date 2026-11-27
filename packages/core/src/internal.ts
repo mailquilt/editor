@@ -25,11 +25,15 @@ export { NEW_EMAIL_WIDTH } from "./create-email.js";
 export { rowLayoutOf } from "./row-layouts.js";
 export { findBlockPosition } from "./operations.js";
 export { isAllowedLinkHref, MERGE_TAG } from "./rich-text.js";
-export { EMAIL_SETTINGS_FIELDS } from "./email-settings.js";
+export {
+  EMAIL_SETTINGS_FIELDS,
+  isFontFamily,
+  isWebFont,
+} from "./email-settings.js";
 export { rowSettingsFields, rowStyles } from "./row-settings.js";
 export { COLUMN_SETTINGS_FIELDS, columnStyles } from "./column-settings.js";
 export type { ColumnProps } from "./column-settings.js";
-export { hexColor } from "./value-schemas.js";
+export { fontFamilyNames, hexColor } from "./value-schemas.js";
 export type { BlockProps } from "./blocks.js";
 export type { RowProps } from "./row-settings.js";
 export type { SettingsField } from "./settings-fields.js";

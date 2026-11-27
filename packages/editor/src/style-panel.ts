@@ -4,6 +4,7 @@ import type {
   BlocksDocument,
   Command,
   EmailSettings,
+  WebFont,
 } from "@mailquilt/core";
 import {
   blockSettingsFields,
@@ -29,6 +30,8 @@ import type { Direction } from "./positions.js";
 import type { StringId } from "./strings.js";
 import { styleProperties } from "./style-properties.js";
 import type { Text } from "./text.js";
+import { fallbackOf, familyOf, webFontOf, withWebFont } from "./web-fonts.js";
+import type { FontLoad, HostFont, WebFonts } from "./web-fonts.js";
 
 // The Style Mode's panel: the email's Email style, its page color and body
 // font, and the values a selected Block keeps as its own. Hovering or focusing
@@ -227,6 +230,27 @@ const setCommand = (key: StyleKey, value: number | string | null): Command =>
   isEmailSetting(key)
     ? { settings: { [key]: value }, type: "updateEmailSettings" }
     : { style: { [key]: value }, type: "updateEmailStyle" };
+
+/**
+ * A font in a list: what it's called, the family it sets, or `null` for "Same
+ * as body", and for a web font, the font and the first of its fallbacks.
+ */
+interface Font {
+  label: string;
+  value: string | null;
+  web?: WebFont | undefined;
+  fallback?: string | undefined;
+}
+
+/** Something under way, such as a web font loading. */
+const SPINNER = html`<span aria-hidden="true" class="spinner"></span>`;
+
+/** What a setting shows before its web font's name, as it loads. */
+const LOAD_MARKS: Record<FontLoad, unknown> = {
+  failed: ICONS.alert,
+  loaded: nothing,
+  loading: SPINNER,
+};
 
 /** The system fonts, as the email's font has always offered them. */
 const SYSTEM_FONTS =
@@ -544,6 +568,26 @@ export const stylePanelStyles = css`
     height: 30px;
     max-width: 170px;
     padding: 0 6px 0 10px;
+  }
+
+  .style-font[data-failed] {
+    border-color: var(--mq-color-danger);
+  }
+
+  /* The alert before its name, not the chevron after it. */
+  .style-font[data-failed] > .icon:first-child {
+    color: var(--mq-color-danger);
+  }
+
+  /* What's said under a font setting: its web font loading, or not loaded. */
+  .style-note {
+    color: var(--mq-color-text-muted);
+    font-size: var(--mq-font-size-small);
+    margin: 2px 0 var(--mq-space-1);
+  }
+
+  .style-note.failed {
+    color: var(--mq-color-danger);
   }
 
   /* A size reads as what it sizes, in the email's own font. */
@@ -975,8 +1019,11 @@ interface StylePanelHost {
   /** Applies a change; with the same `mergeKey`, it's one step with the last. */
   apply: (command: Command, mergeKey?: string) => ApplyResult | undefined;
   focus: Pick<EditorFocus, "focusWhenRendered">;
+  /** The Host app's web fonts, which the font lists offer. */
+  fonts: () => readonly HostFont[];
   requestUpdate: () => void;
   text: Text;
+  webFonts: WebFonts;
 }
 
 /** What the panel shows, besides its own state. */
@@ -992,8 +1039,10 @@ export type StylePanel = ReturnType<typeof createStylePanel>;
 export const createStylePanel = ({
   apply,
   focus,
+  fonts: hostFonts,
   requestUpdate,
   text,
+  webFonts,
 }: StylePanelHost) => {
   let open: Open | undefined;
   /** The setting the pointer or focus is on, which the Canvas marks. */
@@ -1324,31 +1373,57 @@ export const createStylePanel = ({
   /** The fonts the open list offers, matching what's typed in its search. */
   const fontsFor = (key: StyleKey, settings: EmailSettings) => {
     const current = valueOf(key, settings);
-    const fonts = SYSTEM_FONTS.map(({ label, value }) => ({
-      label: text(label),
-      value: value as string | null,
+    const yours: Font[] = hostFonts().map((font) => ({
+      fallback: fallbackOf(familyOf(font)),
+      label: font.name,
+      value: familyOf(font),
+      web: font,
     }));
-    // A saved email can have a font the list doesn't.
+    const system: Font[] = SYSTEM_FONTS.map(({ label, value }) => ({
+      label: text(label),
+      value,
+    }));
+    // A saved email can have a font the list doesn't, a web font among yours.
     if (
       typeof current === "string" &&
-      !fonts.some(({ value }) => value === current)
+      ![...yours, ...system].some(({ value }) => value === current)
     ) {
-      fonts.push({ label: fontName(current, text), value: current });
+      const web = webFontOf(current, settings.fonts);
+      (web ? yours : system).push({
+        fallback: fallbackOf(current),
+        label: fontName(current, text),
+        value: current,
+        web,
+      });
     }
     const query = open?.query.trim().toLowerCase() ?? "";
-    const matches = (label: string) => label.toLowerCase().includes(query);
-    const same =
-      key === "headingFontFamily" && matches(text("style.sameAsBody"))
-        ? [{ label: text("style.sameAsBody"), value: null }]
-        : [];
-    return [...same, ...fonts.filter(({ label }) => matches(label))];
+    const matches = ({ label }: Font) => label.toLowerCase().includes(query);
+    const same: Font[] = [{ label: text("style.sameAsBody"), value: null }];
+    return [
+      ...(key === "headingFontFamily" ? same : []),
+      ...yours,
+      ...system,
+    ].filter(matches);
   };
 
-  const pickFont = (value: string | null) => {
-    if (!open) {
+  const pickFont = ({ value, web }: Font) => {
+    if (!(open && email)) {
       return;
     }
-    set(open.key, value);
+    if (web && value !== null) {
+      const { settings } = email;
+      const fonts = withWebFont(settings.fonts, web);
+      // With its URL, as one undo step.
+      apply({
+        settings:
+          open.key === "headingFontFamily"
+            ? { fonts, style: { ...settings.style, headingFontFamily: value } }
+            : { fontFamily: value, fonts },
+        type: "updateEmailSettings",
+      });
+    } else {
+      set(open.key, value);
+    }
     close(true);
   };
 
@@ -1368,14 +1443,34 @@ export const createStylePanel = ({
             fonts.findIndex((font) => font.value === value)
           );
     const listId = "style-font-list";
-    const option = (font: (typeof fonts)[number], index: number) => html`
+    /** What's under a font's name: the body font, or a web font's fallback. */
+    const under = (font: Font) => {
+      if (font.value === null) {
+        return text("style.bodyFont", {
+          font: fontName(settings.fontFamily, text),
+        });
+      }
+      return font.web && font.fallback
+        ? text("style.fallsBackTo", { font: font.fallback })
+        : undefined;
+    };
+    /** After it: the tick if it's chosen, or else a spinner while it loads. */
+    const after = (font: Font) => {
+      if (font.value === value) {
+        return ICONS.check;
+      }
+      return font.web && webFonts.load(font.web) === "loading"
+        ? SPINNER
+        : nothing;
+    };
+    const option = (font: Font, index: number) => html`
       <div
         aria-selected=${font.value === value ? "true" : "false"}
         class="font-option"
         ?data-active=${index === active}
         id=${fontOptionId(index)}
         role="option"
-        @click=${() => pickFont(font.value)}
+        @click=${() => pickFont(font)}
         @pointerdown=${(event: PointerEvent) => event.preventDefault()}
       >
         <span>
@@ -1385,20 +1480,19 @@ export const createStylePanel = ({
               "font-family": font.value ?? settings.fontFamily,
             })}
             >${font.label}</span
-          >${
-            font.value === null
-              ? html`<small>
-                  ${text("style.bodyFont", {
-                    font: fontName(settings.fontFamily, text),
-                  })}
-                </small>`
-              : nothing
-          }
+          >${under(font) === undefined ? nothing : html`<small>${under(font)}</small>`}
         </span>
-        ${font.value === value ? ICONS.check : nothing}
+        ${after(font)}
       </div>
     `;
-    const firstSystem = fonts.findIndex(({ value: font }) => font !== null);
+    const firstOf = (web: boolean) =>
+      fonts.findIndex(
+        (font) => font.value !== null && Boolean(font.web) === web
+      );
+    const groups = new Map([
+      [firstOf(true), text("style.yourFonts")],
+      [firstOf(false), text("style.systemFonts")],
+    ]);
     return html`
       <div class="font-search">
         ${ICONS.search}
@@ -1428,14 +1522,13 @@ export const createStylePanel = ({
         id=${listId}
         role="listbox"
       >
-        ${fonts.map((font, index) =>
-          index === firstSystem
-            ? html`<div aria-hidden="true" class="font-group">
-                  ${text("style.systemFonts")}
-                </div>
+        ${fonts.map((font, index) => {
+          const group = groups.get(index);
+          return group
+            ? html`<div aria-hidden="true" class="font-group">${group}</div>
                 ${option(font, index)}`
-            : option(font, index)
-        )}
+            : option(font, index);
+        })}
       </div>
       ${
         fonts.length === 0
@@ -1482,13 +1575,16 @@ export const createStylePanel = ({
     body: (
       words: TemplateResult,
       unset: TemplateResult | typeof nothing
-    ) => TemplateResult
+    ) => TemplateResult,
+    /** The ID of what's said about it under it. */
+    describedBy?: string
   ) => {
     const { isDefault, words } = shownSetting(setting, settings, text);
     const events = markEvents(setting.key);
     return html`
       <button
         aria-expanded=${open?.key === setting.key ? "true" : "false"}
+        aria-describedby=${describedBy ?? nothing}
         aria-haspopup="dialog"
         class=${`style-setting ${setting.kind}`}
         data-action=${`style-${setting.key}`}
@@ -1535,19 +1631,58 @@ export const createStylePanel = ({
       `
     );
 
-  const renderFontSetting = (setting: Setting, settings: EmailSettings) =>
-    renderSetting(
-      setting,
-      settings,
-      (words, unset) => html`
-        <span>${text(setting.label)}</span>
-        <span class="style-value">
-          ${unset}<span class="style-value style-font"
-            >${words}${ICONS.chevronDown}</span
-          >
-        </span>
-      `
-    );
+  /** What's said under a setting whose web font is loading, or didn't load. */
+  const loadNote = (load: FontLoad, font: string, fallback?: string) => {
+    if (load === "loading") {
+      return text("style.fontLoading", { font });
+    }
+    return load === "failed" && fallback
+      ? text("style.fontFailed", { fallback, font })
+      : undefined;
+  };
+
+  /**
+   * A font setting, and while its own value is a web font that's loading or
+   * didn't load, a line under it that says so.
+   */
+  const renderFontSetting = (setting: Setting, settings: EmailSettings) => {
+    const value = valueOf(setting.key, settings);
+    const web =
+      typeof value === "string" ? webFontOf(value, settings.fonts) : undefined;
+    const load = web && webFonts.load(web);
+    const noteId = `style-note-${setting.key}`;
+    // A font that failed shows so only with the sentence that says why.
+    const note =
+      web && load && loadNote(load, web.name, fallbackOf(String(value)));
+    return html`
+      ${renderSetting(
+        setting,
+        settings,
+        (words, unset) => html`
+          <span>${text(setting.label)}</span>
+          <span class="style-value">
+            ${unset}<span
+              class="style-value style-font"
+              ?data-failed=${load === "failed" && Boolean(note)}
+              >${note && load ? LOAD_MARKS[load] : nothing}${words}${ICONS.chevronDown}</span
+            >
+          </span>
+        `,
+        note ? noteId : undefined
+      )}
+      ${
+        note
+          ? html`<p
+              class=${load === "failed" ? "style-note failed" : "style-note"}
+              id=${noteId}
+              role="status"
+            >
+              ${note}
+            </p>`
+          : nothing
+      }
+    `;
+  };
 
   const renderSizeSetting = (
     setting: Setting & { heading: boolean },
@@ -1899,7 +2034,7 @@ export const createStylePanel = ({
           : fonts.findIndex((font) => font.value === value);
       const font = fonts[index];
       if (font) {
-        pickFont(font.value);
+        pickFont(font);
       }
     },
 

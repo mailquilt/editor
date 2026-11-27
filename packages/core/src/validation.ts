@@ -9,8 +9,8 @@ export const describeIssues = (issues: readonly v.BaseIssue<unknown>[]) =>
     .join("; ");
 
 /** Checks what `owner`'s properties would become. */
-export const parseProps = (
-  schema: v.GenericSchema<unknown, Record<string, unknown>>,
+export const parseProps = <Output extends Record<string, unknown>>(
+  schema: v.GenericSchema<unknown, Output>,
   props: unknown,
   owner: string
 ) => {

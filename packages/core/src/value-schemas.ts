@@ -31,6 +31,49 @@ export const fontFamilySchema = v.pipe(
   )
 );
 
+/**
+ * The families a font family names, in order, without their quotes, which
+ * `fontFamilySchema` has checked close. A comma inside quotes is part of a name.
+ * An unquoted name's spaces are one, as CSS reads them.
+ * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
+ */
+export const fontFamilyNames = (fontFamily: string) =>
+  (fontFamily.match(/\s*(?:'[^']*'|"[^"]*"|[^,]+)/gu) ?? [])
+    .map((name) => name.trim())
+    .map((name) =>
+      /^["']/u.test(name) ? name.slice(1, -1) : name.replaceAll(/\s+/gu, " ")
+    )
+    .filter(Boolean);
+
+/**
+ * A web font's name, which the font families name it by and MJML reads as a
+ * pattern. So it can't hold a comma, a quote or anything else CSS or a pattern
+ * would read as its own.
+ */
+export const webFontNameSchema = v.pipe(
+  v.string(),
+  v.regex(
+    /^\w(?:[\w -]*\w)?$/u,
+    "Must be one font name, of letters, digits, spaces and hyphens"
+  )
+);
+
+/**
+ * An allowlist, because MJML writes the URL as it is into a stylesheet link's
+ * attribute and an @import's url(), so a quote, a bracket, a space or a
+ * backslash would end it there. Only https:, which a secure page loads. The
+ * host is ASCII, as punycode writes any other, with no user name in front to
+ * hide it. Either case of the scheme is spelled out, as the JSON Schema's
+ * patterns can't have the i flag.
+ */
+export const webFontUrlSchema = v.pipe(
+  v.string(),
+  v.regex(
+    /^[Hh][Tt][Tt][Pp][Ss]:\/\/[\dA-Za-z](?:[\dA-Za-z.-]*[\dA-Za-z])?(?::\d{1,5})?(?:[#/?][\w!#$%&*+,./:;=?@~-]*)?$/u,
+    "Must be an https: URL with no quotes, brackets, spaces or backslashes"
+  )
+);
+
 /** A whole number of pixels, 1 or more. */
 export const wholePixelsSchema = v.pipe(
   v.number(),

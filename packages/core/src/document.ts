@@ -34,6 +34,18 @@ export interface EmailStyle {
   textFontSize?: number;
 }
 
+/**
+ * A web font the email uses, which the export loads from `url`, a stylesheet
+ * that declares the font, such as Google Fonts'. A font family that names it
+ * carries its fallbacks, as in `'Fraunces', Georgia, serif`.
+ */
+export interface WebFont {
+  /** The font's family name, as its stylesheet declares it. */
+  name: string;
+  /** An `https:` URL. */
+  url: string;
+}
+
 export interface EmailSettings {
   width: number;
   /** The page, around the email. */
@@ -43,6 +55,8 @@ export interface EmailSettings {
   preheader?: string;
   language?: string;
   style?: EmailStyle;
+  /** The web fonts the body or heading font names. Each other one is dropped. */
+  fonts?: WebFont[];
 }
 
 /** A Block of any type, whose props are its own type's. */

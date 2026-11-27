@@ -47,6 +47,28 @@ const createStarterEmail = () => {
 const STARTER_EMAIL = createStarterEmail();
 
 /**
+ * A few Google Fonts, as a Host app would offer its brand's, each falling back
+ * to a system font of the same kind.
+ */
+const PLAYGROUND_FONTS = [
+  {
+    fallback: "Georgia, 'Times New Roman', serif",
+    name: "DM Serif Display",
+    url: "https://fonts.googleapis.com/css2?family=DM+Serif+Display&display=swap",
+  },
+  {
+    fallback: "Georgia, 'Times New Roman', serif",
+    name: "Fraunces",
+    url: "https://fonts.googleapis.com/css2?family=Fraunces:wght@400;700&display=swap",
+  },
+  {
+    fallback: "Arial, Helvetica, sans-serif",
+    name: "Inter",
+    url: "https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap",
+  },
+];
+
+/**
  * The site's own editor wears the site's color, set with theme tokens. React's
  * types name no custom properties, which it sets as they are.
  */
@@ -73,6 +95,7 @@ const Playground = () => {
     <div className="playground">
       <div className="playground-shell">
         <MailQuiltShell
+          fonts={PLAYGROUND_FONTS}
           heading="Your email"
           onError={reportFailedLoad}
           saveKey={SAVED_EMAIL_KEY}
