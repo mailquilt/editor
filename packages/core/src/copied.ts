@@ -49,18 +49,27 @@ export const loadCopied = (json: string): PastedResult => {
     return notCopied(NOT_COPIED);
   }
   const { block, row, version, ...rest } = input as Record<string, unknown>;
+  // A newer format may add keys of its own, so its version is looked at first.
+  const newer =
+    typeof version === "number" &&
+    Number.isInteger(version) &&
+    version > DOCUMENT_VERSION;
   if (
-    Object.keys(rest).length > 0 ||
-    (block === undefined) === (row === undefined)
+    !newer &&
+    (Object.keys(rest).length > 0 ||
+      (block === undefined) === (row === undefined))
   ) {
     return notCopied(NOT_COPIED);
   }
   // In an email of its own, which is checked and migrated as a whole.
-  const holder = row ?? {
-    columns: [{ blocks: [block], id: createId(), props: {}, width: 100 }],
-    id: createId(),
-    props: {},
-  };
+  const holder =
+    row === undefined
+      ? {
+          columns: [{ blocks: [block], id: createId(), props: {}, width: 100 }],
+          id: createId(),
+          props: {},
+        }
+      : row;
   const loaded = loadDocument({
     kind: "blocks",
     rows: [holder],
@@ -69,10 +78,7 @@ export const loadCopied = (json: string): PastedResult => {
   });
   if (!loaded.ok) {
     return {
-      code:
-        typeof version === "number" && version > DOCUMENT_VERSION
-          ? "newerVersion"
-          : "invalid",
+      code: newer ? "newerVersion" : "invalid",
       ok: false,
       // Named as what was copied, not the email it was checked in.
       reason:

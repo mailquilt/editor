@@ -7,9 +7,11 @@ import * as v from "valibot";
 export const MERGE_TAG = /\{\{[^{}]+\}\}/u;
 
 /**
- * A Merge Tag must come first and be complete. Whatever follows it can't have a
- * colon before the path, query or fragment, because the tag's value could be
- * empty or finish a scheme, as in `{{x}}javascript:alert(1)`.
+ * A Merge Tag must come first and be complete. Whatever is typed after it can't
+ * have a colon before the path, query or fragment, because the tag's value
+ * could be empty or finish a scheme, as in `{{x}}javascript:alert(1)`. A second
+ * Merge Tag may follow, and what it is filled with is the sending service's to
+ * check.
  */
 const MERGE_TAG_URL = String.raw`${MERGE_TAG.source}[^:/?#]*(?:[/?#]|$)`;
 

@@ -189,6 +189,20 @@ describe("Image Block", () => {
       expect(propsOf(document)).toStrictEqual(props);
     });
 
+    it("refuses a link given with it, as decorative rather than as missing alt text", () => {
+      const { document, result } = setProps({
+        decorative: true,
+        href: "https://shop.example",
+      });
+
+      expect(result).toStrictEqual({
+        code: "invalidProps",
+        ok: false,
+        reason: expect.not.stringMatching(/needs alt text/u),
+      });
+      expect(propsOf(document)).toStrictEqual({});
+    });
+
     it("refuses alt text once it's decorative", () => {
       const editor = createEditor({
         document: withImage({ decorative: true }),

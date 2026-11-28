@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { Block, Row } from "../src/index.js";
-import { copiedJson, loadCopied } from "../src/internal.js";
+import { copiedJson, DOCUMENT_VERSION, loadCopied } from "../src/internal.js";
 
 const button: Block = {
   id: "b1",
@@ -22,8 +22,10 @@ const row: Row = {
   props: { backgroundColor: "#eeeeee" },
 };
 
+const NEWER = DOCUMENT_VERSION + 1;
+
 describe(loadCopied, () => {
-  it("reads back a copied Block with every setting", () => {
+  it("reads back a copied Block", () => {
     expect(loadCopied(copiedJson({ block: button }))).toStrictEqual({
       block: button,
       ok: true,
@@ -83,9 +85,33 @@ describe(loadCopied, () => {
     ],
     [
       "a newer version, with the message value gives",
-      JSON.stringify({ block: button, version: 5 }),
-      "Version 5 is newer than the supported version 4",
+      JSON.stringify({ block: button, version: NEWER }),
+      `Version ${NEWER} is newer than the supported version ${DOCUMENT_VERSION}`,
       "newerVersion",
+    ],
+    [
+      "a newer version that adds a field of its own",
+      JSON.stringify({ block: button, version: NEWER, wrapper: {} }),
+      `Version ${NEWER} is newer`,
+      "newerVersion",
+    ],
+    [
+      "a version above this one that isn't a whole number",
+      JSON.stringify({ block: button, version: DOCUMENT_VERSION + 0.5 }),
+      "version:",
+      "invalid",
+    ],
+    [
+      "a Row that's null",
+      JSON.stringify({ row: null, version: 3 }),
+      "row: Invalid type",
+      "invalid",
+    ],
+    [
+      "both a Block and a Row",
+      JSON.stringify({ block: button, row, version: 3 }),
+      "Copied content holds one Block or one Row",
+      "notCopied",
     ],
     [
       "an unknown Block type",

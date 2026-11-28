@@ -864,6 +864,15 @@ const allAccepted = (results: Record<string, unknown>) =>
 
 describe("a Merge Tag in a text setting", () => {
   const TAG = "{{name}}";
+  // The sweep would pass with nothing tried, so a type that has text settings
+  // must show some. A Row has none.
+  const WITH_TEXT_SETTINGS = new Set([
+    "button",
+    "image",
+    "menu",
+    "social",
+    "video",
+  ]);
 
   it.each(BLOCK_TYPES.map(({ type }) => type))(
     "is accepted as the whole value of each of a %s Block's",
@@ -887,27 +896,12 @@ describe("a Merge Tag in a text setting", () => {
         TAG
       );
 
+      expect(Object.keys(results).length > 0).toBe(
+        WITH_TEXT_SETTINGS.has(blockType)
+      );
       expect(results).toStrictEqual(allAccepted(results));
     }
   );
-
-  it("is accepted as the whole value of each of a Row's", () => {
-    const { editor, rowId } = setup();
-    const row = editor.getDocument().rows[0] as BlocksDocument["rows"][0];
-
-    const results = acceptedTags(
-      () => rowSettingsFields(row),
-      (key, value) =>
-        editor.apply({
-          props: { [key]: value },
-          rowId,
-          type: "updateRowProps",
-        }),
-      TAG
-    );
-
-    expect(results).toStrictEqual(allAccepted(results));
-  });
 
   it("is accepted as the whole value of each of the email's", () => {
     const { editor } = setup();

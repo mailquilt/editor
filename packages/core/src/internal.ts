@@ -4,7 +4,6 @@
 export {
   blockBoxFields,
   blockBoxStyles,
-  blockLabel,
   blockPaddingCss,
   blockSettingsFields,
   blockStyles,
@@ -19,7 +18,7 @@ export {
   videoLook,
   videoShown,
 } from "./blocks.js";
-export { isHiddenOn, onPhone, SHOW_ON } from "./device-settings.js";
+export { isHiddenOn, onPhone } from "./device-settings.js";
 export type { ShowOn } from "./device-settings.js";
 export { NEW_EMAIL_WIDTH } from "./create-email.js";
 export { rowLayoutOf } from "./row-layouts.js";
@@ -39,7 +38,7 @@ export type { RowProps } from "./row-settings.js";
 export type { SettingsField } from "./settings-fields.js";
 export { editorOfLoaded } from "./editor.js";
 export { copiedJson, loadCopied } from "./copied.js";
-export type { PastedResult, PasteRefusalCode } from "./copied.js";
+export type { PasteRefusalCode } from "./copied.js";
 // What the build turns into the format's JSON Schema.
 export { DOCUMENT_VERSION } from "./document.js";
 export { documentSchema } from "./load-document.js";

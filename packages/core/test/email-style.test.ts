@@ -136,6 +136,17 @@ describe("updateEmailStyle", () => {
     ).toMatchObject({ code: "invalidCommand", ok: false });
   });
 
+  it("refuses a style that's a Date, rather than as nothing to change", () => {
+    const { editor } = setup();
+
+    expect(
+      editor.apply({
+        style: new Date(0) as unknown as Record<string, unknown>,
+        type: "updateEmailStyle",
+      })
+    ).toMatchObject({ code: "invalidCommand", ok: false });
+  });
+
   it("refuses a value the email already has, with no undo step", () => {
     const { editor } = setup();
     editor.apply({ style: { textColor: "#2b1d14" }, type: "updateEmailStyle" });

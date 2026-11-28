@@ -189,8 +189,9 @@ export const applyOperation = (
           `No Block "${blockId}" at index ${from.index} of "${from.columnId}"`
         );
       }
+      const target = getColumn(document, to.columnId).blocks;
       const [block] = blocks.splice(from.index, 1) as [Block];
-      getColumn(document, to.columnId).blocks.splice(to.index, 0, block);
+      target.splice(to.index, 0, block);
       break;
     }
     case "setProps": {

@@ -34,10 +34,11 @@ describe("limited rich text", () => {
       type: "hardBreak",
     });
 
-    expect(loadDocument(email).ok).toBeTruthy();
+    expect(loadDocument(email)).toStrictEqual({ document: email, ok: true });
   });
 
   it.each([
+    ["a text node with no text", { text: "" }, /text: /u],
     [
       "a mark it doesn't know",
       { marks: [{ type: "strike" }], text: "x" },
@@ -103,7 +104,7 @@ describe("limited rich text", () => {
     });
   });
 
-  it("refuses anything but paragraphs at the top level", () => {
+  it("refuses a top-level node that isn't a paragraph or a List", () => {
     const email = emailWithContent({
       content: [{ attrs: { level: 1 }, type: "heading" }],
       type: "doc",

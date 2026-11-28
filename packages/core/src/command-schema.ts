@@ -2,6 +2,7 @@ import * as v from "valibot";
 
 import { ROW_LAYOUTS } from "./row-layouts.js";
 import type { RowLayout } from "./row-layouts.js";
+import { isPlainObject } from "./value-schemas.js";
 
 const indexSchema = v.pipe(v.number(), v.safeInteger(), v.minValue(0));
 
@@ -14,11 +15,7 @@ const layoutSchema = v.picklist(ROW_LAYOUTS);
  * Command is JSON.
  */
 const changesSchema = v.pipe(
-  v.custom<Record<string, unknown>>(
-    (input) =>
-      typeof input === "object" && input !== null && !Array.isArray(input),
-    "Expected an object"
-  ),
+  v.custom<Record<string, unknown>>(isPlainObject, "Expected an object"),
   v.transform((changes) =>
     Object.fromEntries(
       Object.entries(changes).filter(([, value]) => value !== undefined)

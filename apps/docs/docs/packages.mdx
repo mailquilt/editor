@@ -37,7 +37,7 @@ Each package is on npm, linked below, and the code for all of them is in [one re
 | `@mailquilt/renderer` | Node 22 or later, and Chrome and Edge 110, Firefox 115 and Safari 16.4, or later. |
 | `@mailquilt/core` | Node 22 or later, and Chrome and Edge 110, Firefox 115 and Safari 16, or later. |
 
-The packages are built for ES2023, which sets the lowest versions for `core`. The renderer's text patterns need Safari 16.4, and the editor's styles need Chrome 111 and Firefox 121. The editor's tests run in the current Chromium, Firefox and WebKit, so the lowest versions come from what the code uses, not from a test.
+The packages are ES modules, with no CommonJS build. They are built for ES2023, which sets the lowest versions for `core`. The renderer's text patterns need Safari 16.4, and the editor's styles need Chrome 111 and Firefox 121. The editor's tests run in the current Chromium, Firefox and WebKit, so the lowest versions come from what the code uses, not from a test.
 
 ## The editor in your app
 

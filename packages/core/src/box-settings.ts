@@ -9,9 +9,9 @@ import { colorSchema, pixelSchema } from "./value-schemas.js";
 // padding has always been.
 
 /** As much room as padding can take on one side. */
-export const MAX_PADDING = 200;
+const MAX_PADDING = 200;
 
-export const MAX_BORDER_WIDTH = 20;
+const MAX_BORDER_WIDTH = 20;
 
 /** Past half a Block's height, more rounds it no further. */
 export const MAX_CORNERS = 100;
@@ -30,7 +30,7 @@ export const paddingEntries = {
 };
 
 /** The border's styles, in the order a person picks from. */
-export const BORDER_STYLES = ["solid", "dashed", "dotted"] as const;
+const BORDER_STYLES = ["solid", "dashed", "dotted"] as const;
 
 export const borderEntries = {
   borderColor: v.optional(colorSchema),
@@ -52,7 +52,7 @@ export const blockBoxEntries = {
 };
 
 /** What a border is drawn in until a person picks its style or color. */
-export const BORDER_LOOK = { color: "#000000", style: "solid" } as const;
+const BORDER_LOOK = { color: "#000000", style: "solid" } as const;
 
 interface BoxProps {
   paddingTop?: number | undefined;
@@ -77,7 +77,7 @@ export const paddingStyles = (props: BoxProps) => {
 };
 
 /** The border as one CSS value, once it has a width. */
-export const borderValue = ({
+const borderValue = ({
   borderColor = BORDER_LOOK.color,
   borderStyle = BORDER_LOOK.style,
   borderWidth,

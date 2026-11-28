@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { createEditor, isSameDocument, loadDocument } from "../src/index.js";
+import { DOCUMENT_VERSION } from "../src/internal.js";
 import { createDocumentLoader } from "../src/load-document.js";
 
 const readFixture = (name: string) =>
@@ -122,8 +123,11 @@ describe("refusing a document", () => {
     ],
     [
       "a newer version",
-      (email) => ({ ...email, version: 5 }),
-      /version 5 is newer.*version 4/iu,
+      (email) => ({ ...email, version: DOCUMENT_VERSION + 1 }),
+      new RegExp(
+        `version ${DOCUMENT_VERSION + 1} is newer.*version ${DOCUMENT_VERSION}`,
+        "iu"
+      ),
     ],
     [
       "missing settings",
@@ -176,6 +180,26 @@ describe("refusing a document", () => {
         return email;
       },
       /blocks\.0\.props.*list/u,
+    ],
+    [
+      "Row Phone values that are a list",
+      (email) => {
+        email.rows[0].props.phone = [];
+        return email;
+      },
+      /rows\.0\.props\.phone/u,
+    ],
+    [
+      "a Menu link that is a list",
+      (email) => {
+        email.rows[0].columns[0].blocks[0] = {
+          id: "menu",
+          props: { links: [[]] },
+          type: "menu",
+        };
+        return email;
+      },
+      /links\.0/u,
     ],
     [
       "an email width that isn't a positive number",
@@ -368,6 +392,22 @@ describe("refusing a document", () => {
       /"row-2".*110.*100/u,
     ],
     [
+      "Column widths short of 100 by more than rounding",
+      (email) => {
+        email.rows[1].columns[0].width = 49.5;
+        return email;
+      },
+      /"row-2".*99\.5.*100/u,
+    ],
+    [
+      "Column widths over 100 by more than rounding",
+      (email) => {
+        email.rows[1].columns[0].width += 0.01;
+        return email;
+      },
+      /"row-2"/u,
+    ],
+    [
       "a Column width that isn't a number",
       (email) => {
         email.rows[1].columns[0].width = '50" onload="alert(1)';
@@ -455,7 +495,10 @@ describe("refusing a document", () => {
 });
 
 /** A fixture's email as the current version, once its migrations have run. */
-const upgraded = (name: string) => ({ ...readFixture(name), version: 4 });
+const upgraded = (name: string) => ({
+  ...readFixture(name),
+  version: DOCUMENT_VERSION,
+});
 
 describe("opening an email saved with version 3", () => {
   it("loads it as version 4, changing nothing else", () => {
@@ -488,6 +531,18 @@ describe("a Row hidden on phones in version 3", () => {
 
     expect(loaded.ok && loaded.document.rows[0]?.props).toStrictEqual({
       backgroundColor: "#ffffff",
+    });
+  });
+
+  it("keeps the Row's own showOn when it's also hidden", () => {
+    const email = withHiding(true);
+    email.rows[0].props.showOn = "phone";
+
+    const loaded = loadDocument(email);
+
+    expect(loaded.ok && loaded.document.rows[0]?.props).toStrictEqual({
+      backgroundColor: "#ffffff",
+      showOn: "phone",
     });
   });
 

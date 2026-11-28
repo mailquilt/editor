@@ -300,7 +300,9 @@ const fromVersion3 = (document: Record<string, unknown>) => {
     if (isPlainObject(props) && "hideOnPhone" in (props as object)) {
       const { hideOnPhone, ...rest } = props as Record<string, unknown>;
       if (hideOnPhone === true) {
-        (row as { props: object }).props = { ...rest, showOn: "desktop" };
+        // A showOn of its own is the one the schema checks.
+        (row as { props: object }).props =
+          "showOn" in rest ? rest : { ...rest, showOn: "desktop" };
       } else if (hideOnPhone === false) {
         (row as { props: object }).props = rest;
       }
