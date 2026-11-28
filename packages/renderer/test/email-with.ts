@@ -1,7 +1,16 @@
 import type { Block, BlocksDocument, BlockType } from "@mailquilt/core";
 
-/** An export with a line break between tags, so a saved file's diff can be read. */
-export const readable = (html: string) => html.replaceAll("><", ">\n<");
+const PACKAGE_VERSION_IN_URL = /@mailquilt\/renderer@[^/]+\//gu;
+
+/**
+ * An export with a line break between tags, so a saved file's diff can be read.
+ * The renderer's own version in a default icon URL is swapped for `VERSION`, so
+ * a release doesn't change the saved files.
+ */
+export const readable = (html: string) =>
+  html
+    .replaceAll("><", ">\n<")
+    .replaceAll(PACKAGE_VERSION_IN_URL, "@mailquilt/renderer@VERSION/");
 
 /**
  * An email with one Row and one Column holding `blocks`. Their props are cast,
