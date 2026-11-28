@@ -701,6 +701,29 @@ test.describe("refusing a document", () => {
     await expect(textBlock(page)).toHaveText("Hello");
   });
 
+  // So a host that saves each change to the record it set can't write the
+  // email still open over the one it refused.
+  test("after a refusal, edits send no mq-change until the host sets a value the editor takes", async ({
+    page,
+  }) => {
+    await focusStartOfTextBlock(page);
+    await stopClock(page);
+    await page.keyboard.type("ab");
+    const before = await currentValue(page);
+    await setValueAndCollectErrors(page, { ...before, version: 999 });
+    const changes = await hostEvents(page, "mq-change", ["detail"]);
+
+    await page.keyboard.type("c");
+    expect(await changes()).toStrictEqual([]);
+    await expect(textBlock(page)).toHaveText("abcHello");
+
+    await setValue(page, await currentValue(page));
+    await page.keyboard.type("d");
+    expect(await changes()).toStrictEqual([
+      { detail: { document: await currentValue(page) } },
+    ]);
+  });
+
   test("a link that isn't allowed fires mq-error and leaves the email as it was", async ({
     page,
   }) => {
