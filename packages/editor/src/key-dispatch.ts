@@ -203,6 +203,7 @@ export const createKeyDispatch = ({
     editText: () => focus.focus({ on: "text" }),
     firstButton: toolbarStep("first"),
     focusFormatBar: () => focus.focus({ on: "formatBar" }),
+    ignore: doNothing,
     keepPage: doNothing,
     lastButton: toolbarStep("last"),
     leaveToolbar: toolbarStep("leave"),

@@ -58,6 +58,8 @@ export type Action =
   | "editText"
   | "firstButton"
   | "focusFormatBar"
+  /** Nothing, and the press goes no further. */
+  | "ignore"
   /** Nothing, but the browser doesn't go back or forward a page. */
   | "keepPage"
   | "lastButton"
@@ -129,6 +131,7 @@ export type KeyPress = Pick<
   | "key"
   | "keyCode"
   | "metaKey"
+  | "repeat"
   | "shiftKey"
 >;
 
@@ -140,6 +143,8 @@ interface EntryOptions {
    * fires, as the Edit menu's is, and the key keeps its default to fire it.
    */
   clipboard?: ClipboardEventType;
+  /** Matches only a key held down, as it repeats. */
+  held?: boolean;
   keepsDefault?: boolean;
   /**
    * Only when the editor has what it acts on: a Block with text selected, a
@@ -320,14 +325,20 @@ const duplicate = (action: "duplicateBlock" | "duplicateRow"): Entry => ({
 /**
  * Delete and Backspace, as the Delete buttons. Only on a Block or a Row's
  * toolbar, not on a Block's toolbar, and never in text or a field, where they're
- * the text's own.
+ * the text's own. Held down, they delete once: the next Block or Row is where
+ * focus goes, so each repeat would delete another.
  */
-const remove = (action: "deleteBlock" | "deleteRow"): Entry => ({
-  action,
-  keys: ["Delete", "Backspace"],
-  stops: true,
-  waitsForDrag: true,
-});
+const remove = (action: "deleteBlock" | "deleteRow"): Entry[] => {
+  const keys = {
+    keys: ["Delete", "Backspace"],
+    stops: true,
+    waitsForDrag: true,
+  };
+  return [
+    { action: "ignore", held: true, ...keys },
+    { action, ...keys },
+  ];
+};
 
 /**
  * Ctrl/⌘+C, X and V. The browser fires its clipboard event for them, as it
@@ -432,7 +443,7 @@ const KEY_SCOPES = {
         waitsForDrag: true,
       },
       duplicate("duplicateBlock"),
-      remove("deleteBlock"),
+      ...remove("deleteBlock"),
       clipboard("copy", "copyBlock"),
       clipboard("cut", "cutBlock"),
       PASTE,
@@ -499,7 +510,7 @@ const KEY_SCOPES = {
         waitsForDrag: true,
       }).filter(({ direction }) => direction === "up" || direction === "down"),
       duplicate("duplicateRow"),
-      remove("deleteRow"),
+      ...remove("deleteRow"),
       clipboard("copy", "copyRow"),
       clipboard("cut", "cutRow"),
       // After this Row, as a paste with a Row selected goes.
@@ -851,6 +862,7 @@ const applies = (
   if (
     isComposing(press) ||
     (dragging && entry.waitsForDrag) ||
+    (entry.held && !press.repeat) ||
     (entry.needs !== undefined && !context[entry.needs]) ||
     !isOnPlatform(entry, apple)
   ) {
