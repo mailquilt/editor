@@ -8,5 +8,4 @@ What changes for a host:
 
 - Below 640 pixels, the editor is at least 600 pixels tall, as on a laptop, where it was only as tall as its top bar and the notice. Give it a height that fits the window, or let your page scroll with no scrolling box of its own around it, so the Selection bar at its bottom stays in sight.
 - A sheet opens over your whole page, as any modal dialog does, and your page is inert while it's open.
-- `STRINGS`, `StringId` and `MailQuiltStrings` lose `canvas.narrowTitle` and `canvas.narrowText`, and gain `topBar.menu`, `topBar.doneTyping`, `topBar.phoneValues`, `sheet.done`, `sheet.back`, `canvas.tapBlock`, `check.showProblems`, `check.hideProblems` and `shell.exportFile`. A translation written as an object typed `MailQuiltStrings` or `Record<StringId, string>` that sets a removed ID stops compiling, and a full one typed `Record<StringId, string>` also needs the new IDs. Once the editor runs, a removed ID is ignored.
 - Two theme tokens are new: `--mq-color-scrim`, what dims the page behind a sheet, and `--mq-radius-large`, the corners of the sheets and the Selection bar on a phone.

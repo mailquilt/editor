@@ -10,7 +10,4 @@ The renderer writes the links in one line that wraps, with half the gap on eithe
 
 In the editor, a Menu's Selection bar has its Links, alignment, text color, font size and the space between links. Its links are a list in the Links popover, each a line of its label, its URL, and Move up, Move down and Remove, with Add link after them. A new Menu shows "Add the links this menu shows" on the Canvas, and the bar's Add link adds the first link with focus in its label. In Style, the text color, body size and body font reach Menus, and a Menu's own color or size is one it keeps. Check's fix for a Menu link that says too little puts focus in that link's label.
 
-Breaking: `BlockType` and `BlockProps` gain `menu`, so a `switch` that handles every type no longer compiles until it handles it. `STRINGS`, `StringId` and `MailQuiltStrings` gain `block.menu`, `menu.noLinks`, `field.menuGap`, `field.menuLabel`, `field.menuLinks`, `field.menuLinks.add`, `field.menuLinks.description`, `field.menuLinks.item`, `invalid.menuLabel` and `invalid.menuLinks`. Measured with `tsc`:
-
-- Still compiles: a partial translation typed `MailQuiltStrings`, and a full one spread from `STRINGS`.
-- Stops compiling: a full translation typed `Record<StringId, string>` and written out ID by ID. Add the new IDs to it.
+Breaking: `BlockType` and `BlockProps` gain `menu`, so a `switch` that handles every type no longer compiles until it handles it.

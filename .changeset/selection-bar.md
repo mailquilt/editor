@@ -8,7 +8,5 @@ The bar is one stop for Tab, reached from the selected Block after its text, and
 
 What changes for a host:
 
-- The side panel has only its Content and Rows tabs, for adding Blocks and Rows, until those move to the Canvas and the Rows list.
 - A test of your own that clicked a Block's or a Row's toolbar, or the Settings tab, now selects the Block or Row and uses the Selection bar, named "Button settings", "Row 2 settings" or "Email settings". The bar's More button is "More settings and actions", apart from the Shell's own More.
-- The editor's `strings` gain the bar's and More's words, under `bar.` and `more.`, and `paste.notAllowed`, and lose `canvas.blockTools`, `canvas.moveBlockLeft`, `canvas.moveBlockRight`, `canvas.dragRow`, `canvas.selectRow` and the side panel's settings words, `side.settings`, `side.back`, `side.block`, `side.row`, `side.email`, `side.rowTitle`, `side.blockPlace`, `side.layoutOf`, `side.customLayout`, `side.layout` and `side.uploadImage`.
 - No theme token is added or changed. The bar and More use the side panel's tokens.
