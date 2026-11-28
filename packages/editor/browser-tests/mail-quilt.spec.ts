@@ -709,18 +709,19 @@ test.describe("refusing a document", () => {
     await focusStartOfTextBlock(page);
     await stopClock(page);
     await page.keyboard.type("ab");
-    await expect(changeCount(page)).toHaveText("2");
     const before = await currentValue(page);
     await setValueAndCollectErrors(page, { ...before, version: 999 });
+    const changes = await hostEvents(page, "mq-change", ["detail"]);
 
     await page.keyboard.type("c");
+    expect(await changes()).toStrictEqual([]);
     await expect(textBlock(page)).toHaveText("abcHello");
-    await expect(changeCount(page)).toHaveText("2");
 
     await setValue(page, await currentValue(page));
     await page.keyboard.type("d");
-    await expect(changeCount(page)).toHaveText("3");
-    expect(await latestDocument(page)).toStrictEqual(await currentValue(page));
+    expect(await changes()).toStrictEqual([
+      { detail: { document: await currentValue(page) } },
+    ]);
   });
 
   test("a link that isn't allowed fires mq-error and leaves the email as it was", async ({
