@@ -132,6 +132,8 @@ export const STRINGS = {
   "format.applyLink": "Apply",
   "format.removeLink": "Remove link",
   "format.cancelLink": "Cancel",
+  /** Under a link field, while what's typed will be saved with a scheme added. */
+  "field.link.saves": "Links to {href}",
 
   // The Merge Tag picker.
   "mergeTags.picker": "Merge Tags",
@@ -468,7 +470,7 @@ export const STRINGS = {
     "Use a language code such as en or pt-BR, or one Merge Tag such as {{language}}.",
   "invalid.level": "Choose a level from the list.",
   "invalid.link":
-    "Use a URL that starts with https:, http:, mailto: or tel:, such as https://example.com, or a Merge Tag such as {{cta_url}}.",
+    "That isn’t a web address. Try one like example.com/shop, an email address, or a Merge Tag such as {{cta_url}}.",
   "invalid.menuLabel": "Enter the words the link shows.",
   "invalid.menuLinks": "Give each link words to show, and a URL.",
   "invalid.play": "Choose a play button from the list.",

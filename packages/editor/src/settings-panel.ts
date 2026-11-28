@@ -9,6 +9,7 @@ import { repeat } from "lit/directives/repeat.js";
 
 import { place } from "./editor-places.js";
 import { ICONS } from "./icons.js";
+import { linkFilledIn, linkToSave } from "./links.js";
 import { NO_FIELD_TAGS } from "./merge-tag-picker.js";
 import type { FieldTags } from "./merge-tag-picker.js";
 import { placeIn } from "./positions.js";
@@ -451,6 +452,25 @@ export const settingsPanelStyles = css`
 
   .settings .error {
     color: var(--mq-color-danger);
+  }
+
+  /* What a link field will save, as frame e06 draws it: a scheme filled in. */
+  .link-saves {
+    align-items: flex-start;
+    color: var(--mq-color-text-muted);
+    display: flex;
+    font-size: var(--mq-font-size-small);
+    gap: var(--mq-space-1);
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+  }
+
+  .link-saves .icon {
+    color: var(--mq-color-success);
+    flex: none;
+    height: 14px;
+    margin-block-start: 1px;
+    width: 14px;
   }
 
   /* A list field's name reads as any field's label. */
@@ -941,7 +961,43 @@ export const typedIn = (
   text: control.value,
 });
 
-/** What typed text means. Empty asks for the property to be removed. */
+/**
+ * The fields that hold a link, which save the link `linkToSave` gives, and show
+ * the link icon in a list's line.
+ */
+const LINK_KEYS = new Set(["href", "url"]);
+
+/**
+ * What a link field will save, while that's what's typed with a scheme filled
+ * in, as frame e06 draws it. Left out while the Merge Tag picker is open, or
+ * the field says why what was typed was refused, as both show in its place in
+ * the Selection bar.
+ */
+export const renderLinkSaves = (
+  field: Pick<SettingsField, "key">,
+  draft: { refusals: number; text?: string } | undefined,
+  tags: Pick<FieldTags, "list">,
+  id: string,
+  textOf: Text
+) => {
+  const href =
+    LINK_KEYS.has(field.key) && tags.list === nothing && !draft?.refusals
+      ? linkFilledIn(draft?.text)
+      : undefined;
+  return {
+    describedBy: href ? id : "",
+    hint: href
+      ? html`<span class="link-saves" id=${id}>
+          ${ICONS.check}<span>${textOf("field.link.saves", { href })}</span>
+        </span>`
+      : nothing,
+  };
+};
+
+/**
+ * What typed text means. Empty asks for the property to be removed. A link
+ * field's text gets the scheme it was typed without.
+ */
 export const fieldValue = (field: SettingsField, typed: Typed) => {
   if (typed.badInput) {
     return Number.NaN;
@@ -960,7 +1016,10 @@ export const fieldValue = (field: SettingsField, typed: Typed) => {
       field.options.find(({ value }) => String(value) === text)?.value ?? text
     );
   }
-  return field.type === "number" ? Number(text) : text;
+  if (field.type === "number") {
+    return Number(text);
+  }
+  return LINK_KEYS.has(field.key) ? linkToSave(text) : text;
 };
 
 /**
@@ -1012,9 +1071,6 @@ const ITEM_TOOLS = [
     step: 0,
   },
 ] as const;
-
-/** The fields that hold a link, which show the link icon in a list's line. */
-const LINK_KEYS = new Set(["href", "url"]);
 
 /**
  * A list field: its items in order, each with its fields and a toolbar to move
@@ -1104,13 +1160,20 @@ const renderListField = (
       const draft = drafts.draftOf(key);
       const refusals = draft?.refusals ?? 0;
       const fieldName = fieldWords(itemField.labelId, textOf);
+      const saves = renderLinkSaves(
+        itemField,
+        draft,
+        tags,
+        `${inputId}-saves`,
+        textOf
+      );
       // Named as one text, so a translation can put the item's name where
       // its language needs it.
       const input = html`
         <input
           aria-activedescendant=${tags.activeDescendant}
           aria-controls=${tags.controls}
-          aria-describedby=${[description ? descriptionId : "", refusals ? errorId : ""].filter(Boolean).join(" ") || nothing}
+          aria-describedby=${[saves.describedBy, description ? descriptionId : "", refusals ? errorId : ""].filter(Boolean).join(" ") || nothing}
           aria-invalid=${refusals ? "true" : "false"}
           aria-label=${textOf("settings.listItem", { label: fieldName, name })}
           autocomplete="off"
@@ -1154,6 +1217,7 @@ const renderListField = (
             )
           : nothing,
         inputId,
+        saves: saves.hint,
       };
     });
     if (inLine) {
@@ -1162,7 +1226,7 @@ const renderListField = (
           <div class="list-item-line">
             ${parts.map(({ control }) => control)} ${tools}
           </div>
-          ${parts.map(({ error }) => error)}
+          ${parts.map((part) => part.saves)} ${parts.map(({ error }) => error)}
         </li>
       `;
     }
@@ -1172,7 +1236,9 @@ const renderListField = (
           <label for=${parts[0]?.inputId ?? nothing}>${name}</label>
           ${tools}
         </div>
-        ${parts.map(({ control, error }) => html`${control}${error}`)}
+        ${parts.map(
+          ({ control, error, saves }) => html`${control}${saves}${error}`
+        )}
       </li>
     `;
   };
@@ -1284,7 +1350,9 @@ export const renderField = (
   const refusals = draft?.refusals ?? 0;
   const refused = refusals > 0;
   const text = fieldText(field, section.values);
+  const saves = renderLinkSaves(field, draft, tags, `${id}-saves`, textOf);
   const describedBy = [
+    saves.describedBy,
     description ? descriptionId : "",
     refused ? errorId : "",
     extra?.error ? extraErrorId : "",
@@ -1451,7 +1519,7 @@ export const renderField = (
           ? html`<div class="with-control">${control()}${extra.control}</div>`
           : control()
       }
-      ${tags.list}
+      ${tags.list} ${saves.hint}
       ${
         description
           ? html`<p class="description" id=${descriptionId}>${description}</p>`
@@ -1641,8 +1709,12 @@ export const createSettingsDrafts = ({
       } else {
         drafts.set(key, { ...typed, refusals });
       }
-      // The field is a place of its own while it holds a draft.
-      if (drafts.has(key) !== held) {
+      // The field is a place of its own while it holds a draft. A link field
+      // shows what it will save as it's typed.
+      if (
+        drafts.has(key) !== held ||
+        LINK_KEYS.has(typedField(field, part).key)
+      ) {
         requestUpdate();
       }
     },

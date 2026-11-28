@@ -50,6 +50,7 @@ import {
   draftKey,
   fieldText,
   fieldWords,
+  renderLinkSaves,
   phoneMark,
   renderField,
   renderSettingsPanel,
@@ -325,6 +326,7 @@ export const selectionBarStyles = css`
    * takes. Over the email, as the bar's popovers are.
    */
   .bar-field .bar-error,
+  .bar-field .link-saves,
   .bar-anchor > .bar-error,
   .bar-field .field-merge-tag-picker {
     inset-block-start: calc(100% + var(--mq-space-2));
@@ -451,7 +453,8 @@ export const selectionBarStyles = css`
     line-height: 1.4;
   }
 
-  .bar-error {
+  .bar-error,
+  .bar-field .link-saves {
     background: var(--mq-color-surface);
     border-radius: var(--mq-radius-small);
     box-shadow: var(--mq-shadow);
@@ -462,6 +465,11 @@ export const selectionBarStyles = css`
     padding: var(--mq-space-2) var(--mq-space-3);
     white-space: normal;
     width: max(100%, 260px);
+  }
+
+  /* What a link field will save, in the error's place, without its color. */
+  .bar-field .link-saves {
+    color: var(--mq-color-text-muted);
   }
 
   /* A button with words, such as Padding or Upload, quiet until it's pressed. */
@@ -2273,7 +2281,9 @@ const renderTextControl = (
   ]
     .filter(Boolean)
     .join(" ");
+  const saves = renderLinkSaves(field, draft, tags, `${id}-saves`, text);
   const describedBy = [
+    saves.describedBy,
     description ? descriptionId : "",
     refusals ? errorId : "",
   ]
@@ -2331,7 +2341,7 @@ const renderTextControl = (
             </span>`
           : nothing
       }
-      ${tags.list}
+      ${tags.list} ${saves.hint}
       ${
         refusals
           ? keyed(

@@ -189,7 +189,7 @@ test.describe("the links in the Links popover", () => {
     const url = linkField(page, "Journal Link");
     await change(url, "northbound journal");
     await expect(url).toHaveAccessibleDescription(
-      /Use a URL that starts with/u
+      /isn’t a web address/u
     );
 
     await button(page, "Move Journal up").click();

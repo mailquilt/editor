@@ -1,0 +1,10 @@
+---
+"@mailquilt/editor": minor
+---
+
+The editor's link fields fill in the scheme: an address typed without one, such as `example.com/shop`, is saved with `https://`, and an email address with `mailto:`. As it's typed, the field shows the link that will be saved under it, such as "Links to https://example.com/shop". This covers the link field in text and every setting that holds a link: a Button's, an Image's and a Video's link, and a Menu's and a Social Block's URLs. Core's rule for links is unchanged, so a document set through `value` or an Operation still needs the scheme written out. A refused link now says "That isn’t a web address. Try one like example.com/shop, an email address, or a Merge Tag such as {{cta_url}}."
+
+Breaking: `STRINGS`, `StringId` and `MailQuiltStrings` gain `field.link.saves`. Measured with `tsc`:
+
+- Still compiles: a partial translation typed `MailQuiltStrings`, and a full one spread from `STRINGS`.
+- Stops compiling: a full translation typed `Record<StringId, string>` and written out ID by ID. Add the new ID to it.

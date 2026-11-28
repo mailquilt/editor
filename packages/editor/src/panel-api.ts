@@ -170,10 +170,11 @@ export interface OwnPanelsApi {
    */
   bar: BarPanelsState & { docked: boolean };
   /**
-   * Set while the link field is open. Each refusal counts, so the same one again
-   * is a new alert and is read out.
+   * Set while the link field is open, with what's typed in it once it's
+   * changed. Each refusal counts, so the same one again is a new alert and is
+   * read out.
    */
-  linkField: { refusals: number } | undefined;
+  linkField: { refusals: number; typed?: string } | undefined;
   /** Set while the Merge Tag picker is open in the selected Block's text. */
   mergeTagPicker: ShownMergeTagPicker | undefined;
   /**
@@ -222,7 +223,12 @@ export interface OwnPanelsApi {
   closePopover: (returnFocus: boolean) => void;
   /** Opens the link field for the selected Block's text. */
   openLinkField: () => void;
-  /** Links the text, unless the URL isn't allowed, which the field then says. */
+  /** Keeps what's typed in the link field, so it can show what will be saved. */
+  typeLink: (typed: string) => void;
+  /**
+   * Links the text to the link `linkToSave` gives, unless it isn't allowed,
+   * which the field then says.
+   */
   submitLink: (href: string) => void;
   removeLink: () => void;
   cancelLink: () => void;

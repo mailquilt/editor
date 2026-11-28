@@ -853,7 +853,7 @@ test.describe("automated accessibility checks", () => {
     await openEmail(page, [[["A"]]]);
     await textOf(page, "A").click();
     await page.getByRole("button", { exact: true, name: "Link" }).click();
-    await linkUrlField(page).fill("example.com");
+    await linkUrlField(page).fill("example");
     await page.keyboard.press("Enter");
     await expect(page.getByRole("alert")).toBeVisible();
 
@@ -934,7 +934,7 @@ test.describe("automated accessibility checks", () => {
     expect(await violations(page)).toEqual([]);
 
     await page.getByRole("button", { exact: true, name: "Link" }).click();
-    await linkUrlField(page).fill("example.com");
+    await linkUrlField(page).fill("example");
     await page.keyboard.press("Enter");
     await expect(page.getByRole("alert")).toBeVisible();
     expect(await violations(page)).toEqual([]);

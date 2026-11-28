@@ -435,6 +435,8 @@ A color is written as `#rgb`, `#rrggbb`, `rgb()` or `rgba()`, such as `#f00`, `#
 
 A link starts with `https:`, `http:`, `mailto:` or `tel:`, or with a [Merge Tag](#merge-tags) such as `{{cta_url}}`. Other schemes, such as `javascript:`, and relative URLs are refused.
 
+The editor's link fields fill in the scheme: an address typed without one, such as `example.com/shop`, is saved with `https://`, and an email address with `mailto:`. Under the field, the link that will be saved shows as it's typed. A document set through `value` or an Operation isn't changed this way, so it needs the scheme written out.
+
 ### Borders
 
 A border is drawn once it has a `borderWidth`, a whole number of pixels from 1 to 20. `borderStyle` is `"solid"`, `"dashed"` or `"dotted"`, and defaults to `"solid"`. `borderColor` is a [color](#colors), and defaults to `#000000`.
