@@ -543,7 +543,12 @@ export const canvasStyles = css`
     padding: var(--mq-space-5);
   }
 
+  /*
+   * On the editor's surface, as an empty Column's button is, so its words,
+   * in the editor's colors, read on any email background and in either theme.
+   */
   .start-slot {
+    background: var(--mq-color-surface);
     border: 1.5px dashed var(--mq-color-border-strong);
     border-radius: var(--mq-radius-small);
     color: var(--mq-color-text-muted);

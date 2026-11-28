@@ -51,6 +51,8 @@ export type FocusTarget =
   | { on: "emptyColumn"; columnId: string }
   /** Undo or Redo in the top bar while it's enabled, or else the other. */
   | { on: "history"; action: "redo" | "undo" }
+  /** The first of the layouts on an email with no Rows. */
+  | { on: "startLayouts" }
   /**
    * On a phone, a control in the top bar's menu by its `data-action`, or
    * with none, or once the menu is closed, the button that opens it.
@@ -668,6 +670,8 @@ export const createFocus = ({
       found = topMenuControl(target);
     } else if (target.on === "style") {
       found = styleControl(target.action);
+    } else if (target.on === "startLayouts") {
+      found = findPlace(root(), "startLayouts")?.querySelector("button");
     } else if (target.on === "field") {
       // A list field's items are keyed after it, so its first item.
       const key = CSS.escape(target.draftKey);

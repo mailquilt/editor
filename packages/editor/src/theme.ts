@@ -128,6 +128,7 @@ export const uiStyles = css`
     --_mq-font-size-bar-title: 14px;
     --_mq-font-size-panel-title: 15px;
     --_mq-font-size-sheet-title: 16px;
+    --_mq-font-size-page-title: 20px;
     /* Check's plain text and HTML, in the system's fixed-width font. */
     --_mq-font-size-code: 13px;
     --_mq-font-family-code:

@@ -63,6 +63,8 @@ import { createPresses } from "./presses.js";
 import {
   createRowPictures,
   createRowsList,
+  drawText,
+  renderEmailPicture,
   renderRowsList,
   renderRowsSheet,
   ROWS_LIST_COLLAPSED_WIDTH_PX,
@@ -84,6 +86,13 @@ import {
   settingsPanelStyles,
 } from "./settings-panel.js";
 import { openSheets, PHONE_LAYOUT_WIDTH, sheetStyles } from "./sheet.js";
+import {
+  createStarterPictures,
+  renderStartScreen,
+  startScreenStyles,
+} from "./start-screen.js";
+import { startFrom, usableStarters } from "./starter-emails.js";
+import type { OfferedStarter } from "./starter-emails.js";
 import type { MailQuiltStrings } from "./strings.js";
 import { createStylePanel, stylePanelStyles } from "./style-panel.js";
 import type { StyleMark } from "./style-panel.js";
@@ -343,6 +352,21 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     },
     sender: { attribute: false },
     socialIconsUrl: { attribute: false },
+    // As mergeTags. An email is anything a host gives, and one JSON can't
+    // hold, such as with a BigInt, is a change, so the check leaves it out.
+    starterEmails: {
+      attribute: false,
+      hasChanged: (
+        next: HostAppProperties["starterEmails"],
+        previous: HostAppProperties["starterEmails"]
+      ) => {
+        try {
+          return JSON.stringify(next) !== JSON.stringify(previous);
+        } catch {
+          return true;
+        }
+      },
+    },
     // A React host gives a new object at each render.
     strings: {
       attribute: false,
@@ -374,6 +398,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     settingsPanelStyles,
     addingStyles,
     rowsListStyles,
+    startScreenStyles,
     selectionBarStyles,
     stylePanelStyles,
     blockTypeStyles,
@@ -395,6 +420,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
   declare sender: HostAppProperties["sender"];
   declare sendTest: HostAppProperties["sendTest"];
   declare socialIconsUrl: HostAppProperties["socialIconsUrl"];
+  declare starterEmails: HostAppProperties["starterEmails"];
   declare strings: HostAppProperties["strings"];
   declare subject: HostAppProperties["subject"];
   declare uploadImage: HostAppProperties["uploadImage"];
@@ -478,6 +504,17 @@ export class MailQuilt extends LitElement implements HostAppProperties {
   });
   /** Set while the element is connected, as it observes sizes on the page. */
   #rowPictures: ReturnType<typeof createRowPictures> | undefined;
+  #starterPictures: ReturnType<typeof createStarterPictures> | undefined;
+  /** The Host app's Starter emails the editor can offer, checked once for each list. */
+  #starters: OfferedStarter[] = [];
+  /**
+   * Whether the person has started this email: picked a Starter email or
+   * Blank, or it has had a Row. Until then, an email with no Rows shows the
+   * start screen, if there are Starter emails.
+   */
+  #started = false;
+  /** Each Starter email's text Blocks' pictures, drawn once. */
+  readonly #starterTexts = new WeakMap<object, HTMLElement>();
   readonly #barPanels = createBarPanels({
     focus: this.#focus,
     requestUpdate: () => this.requestUpdate(),
@@ -1014,6 +1051,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     });
     this.#insertHover = createInsertHover(this.renderRoot);
     this.#rowPictures = createRowPictures(this.renderRoot);
+    this.#starterPictures = createStarterPictures(this.renderRoot);
     this.#toolFitting = createToolFitting({
       onMove: () => this.#tooltips?.tooltips.sync(),
       root: this.renderRoot,
@@ -1038,6 +1076,8 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     this.#insertHover = undefined;
     this.#rowPictures?.destroy();
     this.#rowPictures = undefined;
+    this.#starterPictures?.destroy();
+    this.#starterPictures = undefined;
     this.#toolFitting?.destroy();
     this.#toolFitting = undefined;
     this.#tooltips?.tooltips.destroy();
@@ -1058,6 +1098,22 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     }
   }
 
+  /**
+   * Checks the Host app's Starter emails once for each list it gives, and
+   * notes an email that has had a Row as started.
+   */
+  #takeStarters(
+    changed: PropertyValues<this>,
+    email: BlocksDocument | undefined
+  ) {
+    if (changed.has("starterEmails")) {
+      this.#starters = usableStarters(this.starterEmails);
+    }
+    if (email?.rows.length) {
+      this.#started = true;
+    }
+  }
+
   protected override willUpdate(changed: PropertyValues<this>) {
     if (changed.has("mergeTags")) {
       for (const view of this.#views.values()) {
@@ -1071,6 +1127,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       this.#check.forget();
     }
     this.#rendered = this.value;
+    this.#takeStarters(changed, this.#rendered);
     // There's nothing to style or check, and the Modes for them are off.
     if (!this.#rendered?.rows.length) {
       this.#mode = "edit";
@@ -1155,6 +1212,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       openSheets(this.shadowRoot);
     }
     this.#rowPictures?.sync();
+    this.#starterPictures?.sync();
     this.#focus.afterUpdate();
     this.#fixNote.sync();
     if (this.isConnected && this.shadowRoot) {
@@ -1218,7 +1276,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       >
         ${renderTopBar(topBar, this.#topBarEvents)}
         <slot name="messages"></slot>
-        ${email ? this.#renderCanvas(email) : nothing}
+        ${email ? this.#renderEdit(email) : nothing}
         ${(["edit", "style", "check"] as const)
           .filter((panel) => !(email && panel === this.#canvasMode))
           .map(
@@ -1323,6 +1381,76 @@ export class MailQuilt extends LitElement implements HostAppProperties {
         },
       }
     );
+  }
+
+  /** Whether the start screen shows in Edit's place, as an email starts. */
+  #showsStart(email: BlocksDocument) {
+    return (
+      !this.#started && email.rows.length === 0 && this.#starters.length > 0
+    );
+  }
+
+  /** Edit's panel: the start screen while it shows, or else the Canvas. */
+  #renderEdit(email: BlocksDocument) {
+    return this.#showsStart(email)
+      ? this.#renderStartScreen()
+      : this.#renderCanvas(email);
+  }
+
+  #renderStartScreen() {
+    return renderStartScreen({
+      onBlank: (fromKeyboard) => {
+        this.#started = true;
+        this.requestUpdate();
+        // The empty email's layouts, its next step, take focus from the card.
+        this.#focus.focusWhenRendered(
+          { on: "startLayouts" },
+          { focusVisible: fromKeyboard }
+        );
+      },
+      onPick: (starter) => this.#startFrom(starter),
+      picture: (starter) =>
+        renderEmailPicture({
+          api: this.#panelApi(starter.email),
+          emailLang: starter.email.settings.language ?? this.#emailLang,
+          failedImages: this.#failedImages,
+          socialIconsUrl: this.socialIconsUrl,
+          textPicture: (block) => {
+            let element = this.#starterTexts.get(block.props);
+            if (!element) {
+              element = drawText(block);
+              this.#starterTexts.set(block.props, element);
+            }
+            return element;
+          },
+        }),
+      starters: this.#starters,
+      text: this.#text,
+    });
+  }
+
+  /**
+   * Makes the email a copy of a Starter email, in one undo step, and says so.
+   * Its card is gone, so focus goes where it goes when a new `value` takes it.
+   */
+  #startFrom(starter: OfferedStarter) {
+    const editor = this.#editor;
+    if (!editor) {
+      return;
+    }
+    const result = startFrom(editor, starter.email);
+    if (!result.ok) {
+      // The Starter emails offered are those a pick works for.
+      console.error(
+        `<mail-quilt> couldn't start from a Starter email: ${result.reason}`
+      );
+      return;
+    }
+    // Here too, for a Starter email with no Rows.
+    this.#started = true;
+    this.#announcements.say(this.#text("said.started", { name: starter.name }));
+    this.requestUpdate();
+    this.#emitChange(editor.getDocument());
   }
 
   /**
@@ -1916,6 +2044,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     this.#videos.clear();
     this.#rowsList.forget();
     this.#stylePanel.forget();
+    this.#started = false;
     this.#reset();
     // Checked once, by the value's setter.
     this.#editor = loaded && editorOfLoaded(loaded);
