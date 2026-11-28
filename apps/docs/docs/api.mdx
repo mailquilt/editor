@@ -115,7 +115,7 @@ editor.value = { ...createEmail(), rows: [] };
 - Each card shows the email's top, drawn as the Canvas draws it, then `name`, and `description` under it if you give one. Blank comes first, for an empty email.
 - `email` is an email as `value` takes one, such as the JSON a Shell's Export JSON button gives you. It's checked as `value` is, and an email from an older version is brought up to date.
 - Picking one makes the email a copy of it, settings and Rows, with new IDs, in one undo step, so Undo takes the email back to empty. The editor fires one `mq-change`, and a screen reader hears "Started from Product launch." A Row whose Column widths aren't one of the [layouts](./document-format)' gets even Columns, as a pasted Row does, which only an email written outside the editor has.
-- A Starter email the editor can't open, or with no `name`, isn't offered, and the editor says why on the console.
+- A Starter email the editor can't open, with no `name`, or with a `description` that isn't text, isn't offered, and the editor says why on the console.
 - A new array at each render, as React gives, redraws nothing unless something in it changed.
 
 [Give customers somewhere to start](./let-customers-design-emails#give-customers-somewhere-to-start) says how to make them.
@@ -159,7 +159,7 @@ editor.strings = {
 ```
 
 - A word in braces, such as `{row}`, is filled in by the editor. Your text can put it anywhere, or leave it out. A Merge Tag in an example, such as `{{cta_url}}`, has two braces and is never filled in.
-- `language` is the language your texts are in, `en` until you set it. The editor marks its own words with it, so a screen reader reads them in that language, and joins lists in it, such as the names of files it can't upload.
+- `language` is the language your texts are in, `en` until you set it. The editor marks its own words with it, so a screen reader reads them in that language, and joins lists in it, such as the names of files it can't upload. It's a language tag, such as `fr` or `pt-BR`. One that isn't, such as `en_US`, is left out, so the words stay marked `en`, and the editor says so on the console.
 - Key names in tooltips and in what a screen reader is told to press have IDs too, such as `key.ctrl`, which a German keyboard calls `Strg`.
 - A message about a refused email, such as the Shell's `shell.cantOpen`, fills `{reason}` with the reason in English, which is for developers. Leave `{reason}` out to show only your words. `mq-error` always gives the English reason.
 - `@mailquilt/editor/strings` defines no elements, so a server can import it too.

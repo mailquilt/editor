@@ -112,7 +112,7 @@ export const STRINGS = {
   "menu.noLinks": "Add the links this menu shows",
   "video.empty": "Add a video",
   "video.emptyWhy":
-    "Paste its link in the bar above, then add a thumbnail. Readers click the thumbnail to watch it, since email can’t play video.",
+    "Paste its link in the bar above, then add a thumbnail. Readers click the thumbnail to watch it, since email can't play video.",
   "video.noThumbnail": "Add a thumbnail",
   "video.addingPlay": "Adding the play button…",
 
@@ -183,7 +183,7 @@ export const STRINGS = {
   "bar.videoUrl": "Paste a link to the video",
   "bar.thumbnail": "Thumbnail",
   "bar.addThumbnail": "Add a thumbnail",
-  "bar.thumbnailWaits": "Paste the video’s link first",
+  "bar.thumbnailWaits": "Paste the video's link first",
   "bar.describeThumbnail": "Describe the thumbnail",
   "bar.playButton": "Play button",
   "bar.uploadThumbnail": "Upload a thumbnail",
@@ -312,13 +312,13 @@ export const STRINGS = {
   "style.own.headingSize": "This Heading is {own}",
   "style.own.headingSizeWhy": "Every other Heading {level} is {shared}.",
   "style.own.headingSizeShare": "Make every Heading {level} {own}",
-  "style.own.headingColor": "This Heading’s text is {own}",
+  "style.own.headingColor": "This Heading's text is {own}",
   "style.own.textSize": "This Text is {own}",
   "style.own.textSizeWhy": "Other body text is {shared}.",
   "style.own.textSizeShare": "Make all body text {own}",
-  "style.own.textColor": "This Text’s color is {own}",
+  "style.own.textColor": "This Text's color is {own}",
   "style.own.menuSize": "This Menu is {own}",
-  "style.own.menuColor": "This Menu’s links are {own}",
+  "style.own.menuColor": "This Menu's links are {own}",
   "style.own.colorWhy": "Other text is {shared}.",
   "style.own.colorShare": "Make all text {own}",
   "style.own.button": "This Button is {own}",
@@ -409,15 +409,15 @@ export const STRINGS = {
   "play.on": "On the picture",
   "play.on.description":
     "A play button drawn into a copy of the thumbnail, uploaded for you.",
-  "play.on.noUploads": "Needs image uploads, which this app doesn’t offer.",
+  "play.on.noUploads": "Needs image uploads, which this app doesn't offer.",
   "play.none": "None",
   "play.none.description":
-    "Just the picture. Some readers won’t know it’s a video.",
-  "play.failed": "The play button couldn’t be added",
+    "Just the picture. Some readers won't know it's a video.",
+  "play.failed": "The play button couldn't be added",
   "play.cantDraw":
-    "{site} doesn’t let the editor draw on its pictures. Upload the thumbnail instead, or keep the line below it.",
+    "{site} doesn't let the editor draw on its pictures. Upload the thumbnail instead, or keep the line below it.",
   "play.cantDrawThis":
-    "The editor can’t draw on this picture. Upload the thumbnail instead, or keep the line below it.",
+    "The editor can't draw on this picture. Upload the thumbnail instead, or keep the line below it.",
   "play.added": "Play button added.",
   "field.link.description": "A URL, or a Merge Tag such as {{cta_url}}.",
   "field.link.needsAltText":
@@ -470,7 +470,7 @@ export const STRINGS = {
     "Use a language code such as en or pt-BR, or one Merge Tag such as {{language}}.",
   "invalid.level": "Choose a level from the list.",
   "invalid.link":
-    "That isn’t a web address. Try one like example.com/shop, an email address, or a Merge Tag such as {{cta_url}}.",
+    "That isn't a web address. Try one like example.com/shop, an email address, or a Merge Tag such as {{cta_url}}.",
   "invalid.menuLabel": "Enter the words the link shows.",
   "invalid.menuLinks": "Give each link words to show, and a URL.",
   "invalid.play": "Choose a play button from the list.",
@@ -650,14 +650,14 @@ export const STRINGS = {
   "problem.imageAltFix": "Add alt text",
   "problem.videoThumbnail": "Video has no thumbnail",
   "problem.videoThumbnailWhy":
-    "It’s left out of the email, so readers don’t see Row {row}’s video.",
+    "It's left out of the email, so readers don't see Row {row}'s video.",
   "problem.videoThumbnailFix": "Add a thumbnail",
-  "problem.videoAlt": "Video’s thumbnail has no alt text",
+  "problem.videoAlt": "Video's thumbnail has no alt text",
   "problem.videoAltWhy":
     "If images are blocked, or for screen readers, the link to the video in Row {row} says nothing.",
   "problem.videoLink": "Video has no link",
   "problem.videoLinkWhy":
-    "It’s left out of the email until it has one, so readers don’t see Row {row}’s video.",
+    "It's left out of the email until it has one, so readers don't see Row {row}'s video.",
   "problem.videoLinkFix": "Add the link",
   "problem.buttonLink": "“{label}” has no link",
   "problem.buttonLinkWhy": "Readers who click it go nowhere.",

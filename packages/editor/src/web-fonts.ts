@@ -32,6 +32,8 @@ export const usableFonts = (given: readonly HostFont[] | undefined) => {
   const usable: HostFont[] = [];
   for (const font of given ?? []) {
     if (
+      // From plain JavaScript, it may be `null`, or an empty slot's `undefined`.
+      font &&
       isWebFont(font) &&
       isFontFamily(font.fallback) &&
       !usable.some(({ name }) => isSameName(name, font.name))

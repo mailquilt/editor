@@ -115,6 +115,12 @@ describe(usableStarters, () => {
       { email: { kind: "blocks" }, name: "Bad" },
     ],
     ["no name", { email: LETTER, name: "" }],
+    // From plain JavaScript, such as a lookup that found nothing.
+    ["nothing at all", null],
+    [
+      "a description that isn't text",
+      { description: { text: "Hero" }, email: LETTER, name: "Odd" },
+    ],
     [
       "a pick core would refuse",
       {
@@ -130,7 +136,7 @@ describe(usableStarters, () => {
     (_name, starter) => {
       const error = vi.spyOn(console, "error").mockImplementation(() => {});
 
-      expect(usableStarters([starter])).toHaveLength(0);
+      expect(usableStarters([starter as never])).toHaveLength(0);
       expect(error).toHaveBeenCalledWith(
         expect.stringContaining("left out a Starter email")
       );

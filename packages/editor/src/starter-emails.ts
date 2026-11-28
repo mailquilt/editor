@@ -6,7 +6,7 @@ import type {
   Editor,
 } from "@mailquilt/core";
 
-import { layoutOf } from "./editing-actions.js";
+import { copyRowCommand } from "./editing-actions.js";
 
 /** A Starter email as the Host app gives it, its `email` not yet checked. */
 export interface StarterEmail {
@@ -49,20 +49,8 @@ export const startFrom = (
       },
       type: "updateEmailSettings",
     },
-    ...starter.rows.map((row, index): Command => ({
-      columns: row.columns.map(({ blocks, props }) => ({
-        blocks: blocks.map((block) => ({
-          props: block.props,
-          type: block.type,
-        })),
-        props,
-      })),
-      index,
-      // Every Row has one, as a Row has 1 to 4 Columns.
-      layout: layoutOf(row) ?? "100",
-      props: row.props,
-      type: "insertRow",
-    })),
+    // Every Row has one, as a Row has 1 to 4 Columns.
+    ...starter.rows.flatMap((row, index) => copyRowCommand(row, index) ?? []),
   ];
   let applied = false;
   for (const command of commands) {
@@ -79,6 +67,13 @@ export const startFrom = (
   return { ok: true };
 };
 
+/** Why picking the email would be refused, from an empty one, or nothing. */
+const tryPick = (email: BlocksDocument) => {
+  const empty = createEditor({ document: { ...createEmail(), rows: [] } });
+  const result = startFrom(empty, email);
+  return result.ok ? undefined : result.reason;
+};
+
 /**
  * The Host app's Starter emails the editor can offer, in its order: each with
  * a name, an email `loadDocument` accepts, as `value` checks one, and a pick
@@ -87,13 +82,20 @@ export const startFrom = (
  */
 export const usableStarters = (given: readonly StarterEmail[] | undefined) => {
   const usable: OfferedStarter[] = [];
-  for (const { description, email, name } of given ?? []) {
+  // Each as the host gives it, which from plain JavaScript may be `null`, or
+  // an empty slot, which `for...of` gives as `undefined`.
+  for (const each of given ?? []) {
+    const { description, email, name }: Partial<StarterEmail> = each ?? {};
     const loaded = loadDocument(email);
     let reason = loaded.ok ? tryPick(loaded.document) : loaded.reason;
-    if (!(typeof name === "string" && name.trim())) {
+    if (!(description === undefined || typeof description === "string")) {
+      reason = "its description isn't text";
+    }
+    const isNamed = typeof name === "string" && name.trim() !== "";
+    if (!isNamed) {
       reason = "it has no name";
     }
-    if (reason === undefined && loaded.ok) {
+    if (isNamed && reason === undefined && loaded.ok) {
       usable.push({
         ...(description === undefined ? {} : { description }),
         email: loaded.document,
@@ -106,11 +108,4 @@ export const usableStarters = (given: readonly StarterEmail[] | undefined) => {
     }
   }
   return usable;
-};
-
-/** Why picking the email would be refused, from an empty one, or nothing. */
-const tryPick = (email: BlocksDocument) => {
-  const empty = createEditor({ document: { ...createEmail(), rows: [] } });
-  const result = startFrom(empty, email);
-  return result.ok ? undefined : result.reason;
 };

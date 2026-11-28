@@ -352,7 +352,7 @@ test.describe("the links in the Links popover", () => {
     const instagram = await setting(page, "Instagram URL");
 
     await change(instagram, "instagram shop");
-    await expect(instagram).toHaveAccessibleDescription(/isn’t a web address/u);
+    await expect(instagram).toHaveAccessibleDescription(/isn't a web address/u);
     // A pressed button takes focus, which goes with its link as it moves to
     // the top, where Move up turns off, or after a removal to the next Remove.
     await tool(page, "Move Instagram up").click();

@@ -79,8 +79,8 @@ export interface HostAppProperties {
    * "Blank", while the email has no Rows and the person hasn't started it.
    * `name` and `description` are what its card says. `email` is checked as
    * `value` is, and picking it makes the email a copy of it, with new IDs, in
-   * one undo step. A Starter email the editor can't open, or with no name, is
-   * left out, and said on the console. Without the list, or once the email has
+   * one undo step. A Starter email the editor can't open, with no name, or
+   * with a description that isn't text, is left out, and said on the console. Without the list, or once the email has
    * anything in it, there's no start screen.
    */
   starterEmails?: readonly StarterEmail[] | undefined;
@@ -92,7 +92,9 @@ export interface HostAppProperties {
   /**
    * Texts that replace the editor's English, by ID, as `STRINGS` lists them,
    * with their placeholders such as `{row}`. Any left out keep their English.
-   * `language` is the language they're in.
+   * `language` is the language they're in, a language tag such as `fr` or
+   * `pt-BR`. One that isn't is left out, so it stays `en`, and said on the
+   * console.
    */
   strings?: MailQuiltStrings | undefined;
   /**
