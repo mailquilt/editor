@@ -386,8 +386,8 @@ test.describe("the menus", () => {
     await expect(menu.getByRole("menuitem").first()).toBeFocused();
     // Back on its button, the menu stays open, and the arrow keys go into it.
     await page.keyboard.press("Shift+Tab");
-    await expect(exportButton).toBeFocused();
-    await expect(exportButton).toHaveAttribute("aria-expanded", "true");
+    await expect(exportButton(page)).toBeFocused();
+    await expect(exportButton(page)).toHaveAttribute("aria-expanded", "true");
     await page.keyboard.press("ArrowUp");
     await expect(menu.getByRole("menuitem").last()).toBeFocused();
     await page.keyboard.press("Shift+Tab");
