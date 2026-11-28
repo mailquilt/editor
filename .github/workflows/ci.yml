@@ -292,7 +292,7 @@ jobs:
 
   # npm trusts this workflow as the packages' publisher, so no token is kept,
   # and each package gets provenance that names the commit it came from. This
-  # job installs nothing and builds nothing: it publishes the tarballs above.
+  # job builds nothing and installs only the root's tools, from the lockfile: it publishes the tarballs above.
   release:
     name: Publish to npm
     needs: [release-pack]
@@ -323,10 +323,13 @@ jobs:
       - run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-      # The changesets CLI alone, at the version the lockfile has, and not the
-      # workspace's dependencies. Provenance is required, so a publish without
-      # it fails rather than going ahead unsigned.
-      - run: pnpm dlx @changesets/cli@3.0.3 publish --from-pack-dir release-pack
+      # The root's tools alone, as the lockfile pins them with their hashes, and
+      # without running any install script. None of the packages' own
+      # dependencies are installed, and nothing is resolved afresh.
+      - run: pnpm install --frozen-lockfile --filter . --ignore-scripts
+      # Provenance is required, so a publish without it fails rather than going
+      # ahead unsigned.
+      - run: pnpm changeset publish --from-pack-dir release-pack
         env:
           PNPM_CONFIG_PROVENANCE: true
       # Changesets tags each package it published, even when another failed,

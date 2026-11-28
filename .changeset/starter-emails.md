@@ -3,7 +3,7 @@
 "@mailquilt/react": minor
 ---
 
-Starter emails. `<mail-quilt>` and `<mail-quilt-shell>` take `starterEmails`, and both React components a `starterEmails` prop: a list of `{ name, description, email }`. While the email has no Rows and the person hasn't started it, a start screen in Edit offers Blank and then each one as a card with a picture of its top. Picking one makes the email a copy of it, settings and Rows with new IDs, in one undo step, with one `mq-change`, and says "Started from" its name. Blank shows the empty email, with focus on its first layout. Once the email has had a Row, or Blank is picked, the start screen doesn't come back until a new `value` is set.
+Breaking: Starter emails. `<mail-quilt>` and `<mail-quilt-shell>` take `starterEmails`, and both React components a `starterEmails` prop: a list of `{ name, description, email }`. While the email has no Rows and the person hasn't started it, a start screen in Edit offers Blank and then each one as a card with a picture of its top. Picking one makes the email a copy of it, settings and Rows with new IDs, in one undo step, with one `mq-change`, and says "Started from" its name. Blank shows the empty email, with focus on its first layout. Once the email has had a Row, or Blank is picked, the start screen doesn't come back until a new `value` is set.
 
 What changes for a host:
 

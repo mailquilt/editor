@@ -3,7 +3,7 @@
 "@mailquilt/react": minor
 ---
 
-Saved Rows. `<mail-quilt>` and `<mail-quilt-shell>` take `savedRows`, and both React components a `savedRows` prop: a list of `{ name, row, version }`, such as your footer. Adding a Row offers them after the empty layouts, in the Rows list's +, the Add panel and the phone's Add sheet, each as a card with a picture of its top and its name. Picking one adds a copy, with new IDs, where an empty Row would go, in one undo step, with one `mq-change`, selects it and says "Footer added, position 2 of 3." In the Add panel, one can also be dragged onto the email, between two Rows, and the search finds one by its name.
+Breaking: Saved Rows. `<mail-quilt>` and `<mail-quilt-shell>` take `savedRows`, and both React components a `savedRows` prop: a list of `{ name, row, version }`, such as your footer. Adding a Row offers them after the empty layouts, in the Rows list's +, the Add panel and the phone's Add sheet, each as a card with a picture of its top and its name. Picking one adds a copy, with new IDs, where an empty Row would go, in one undo step, with one `mq-change`, selects it and says "Footer added, position 2 of 3." In the Add panel, one can also be dragged onto the email, between two Rows, and the search finds one by its name.
 
 What changes for a host:
 
