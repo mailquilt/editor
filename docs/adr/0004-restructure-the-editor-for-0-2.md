@@ -44,3 +44,7 @@ The work is tracked in #85. The code is judged against the standard below. When 
 - What each key does doesn't change. Where the rules differ today, `docs/agents/decisions.md` says which is right, and `keyboard.mdx` stays true.
 - `@mailquilt/core/internal` is a breaking change for anyone who imported those helpers from the main entry. They're marked as not a promise to hosts, and 0.x allows it.
 - A browser test run in three browsers, and the install checks, pass before each step merges.
+
+## Amendment, 2026-11-28
+
+The Side panel is gone ([ADR 0021](./0021-three-modes-and-a-selection-bar.md)), so where this says the Side panel, read the Selection bar and the panels beside the email. The rule that they read the editor's state and change the email through one interface stands.

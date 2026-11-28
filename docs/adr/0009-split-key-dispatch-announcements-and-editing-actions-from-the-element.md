@@ -22,3 +22,7 @@ Before, the element's file was 990 lines. Beside its own work, it dispatched eve
 - Copy, paste and duplicate each go in `editing-actions.ts`, with their keys in the key map and a key action in `key-dispatch.ts`.
 - A new announcement is a call to the announcements module, from the module whose change it describes.
 - What each key, drop and announcement does doesn't change.
+
+## Amendment, 2026-11-28
+
+The Side panel is gone ([ADR 0021](./0021-three-modes-and-a-selection-bar.md)). The toolbars' and the Selection bar's buttons call the same actions without a key, through the panels' interface, as the Side panel did. The split stands.

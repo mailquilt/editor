@@ -14,5 +14,5 @@ Until now one side panel did three jobs: it listed Blocks and Rows to add, showe
 
 - Every Block's settings have to fit the Selection bar. Today's Blocks have at most five, and settings that belong to the whole email move to Email style. A future Block with more opens a larger panel from the bar's "More" button rather than growing the bar.
 - Tab from the selected Block reaches the Selection bar, one stop with arrow keys between its buttons, as the toolbars are today. This changes where ADR 0020's Tab path ends.
-- Below 640px the editor works, with the Selection bar docked at the bottom and sheets for adding, Style and Check, instead of the narrow notice.
+- Below 640px the editor works, with the Selection bar docked at the bottom and sheets for adding and the Selection bar's panels, and Style and Check at the bottom under the email, instead of the narrow notice.
 - Hosts that build their own page around `<mail-quilt>` get the Modes too. The Shell adds the email's name, its save status, Export and its messages to the same top bar.

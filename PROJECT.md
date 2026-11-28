@@ -117,6 +117,8 @@ type EmailSettings = {
   fontFamily: string;
   preheader?: string;
   language?: string;
+  style?: EmailStyle;
+  fonts?: WebFont[];
 };
 
 type Row = {
@@ -132,11 +134,10 @@ type Column = {
   blocks: Block[];
 };
 
+// One shape for each Block type, whose `props` are that type's.
 type Block = {
-  id: string;
-  type: string;
-  props: Record<string, unknown>;
-};
+  [Type in BlockType]: { id: string; type: Type; props: BlockProps[Type] };
+}[BlockType];
 ```
 
 The [document format reference](apps/docs/docs/document-format.mdx) lists every Block's props.
@@ -162,7 +163,7 @@ Version 4 adds Email style, fuller settings with Phone values, decorative images
 | | Released | Planned |
 |---|---|---|
 | **Layout** | Rows, and Columns from preset layouts | — |
-| **Blocks** | Text (with Lists), Heading, Image, Button, Divider, Spacer, Social | Menus and video thumbnails in `0.4.0`. Tables, headers and footers, custom HTML |
+| **Blocks** | Text (with Lists), Heading, Image, Button, Divider, Spacer, Social | Menu and Video Blocks in `0.4.0`. Tables, headers and footers, custom HTML |
 | **Settings** | Alignment, colors, font size, sizes, links and alt text. Email width, background, font, preheader and language. Row background and padding, and hiding or stacking a Row on phones | Email style, spacing, borders, corners, Column settings, showing on one device and Phone values in `0.4.0`. Background images, more Phone values |
 
 Settings are defined as data and drawn by one shared panel:
@@ -523,7 +524,7 @@ Custom Blocks and settings fields, custom checker rules, a media library adapter
 - **Install checks:** the packed packages are installed in fresh plain JavaScript, CDN, React with Vite, and Next.js projects, and tested there.
 - **Email clients:** the export is checked in Email on Acid, in Gmail, Apple Mail, iOS Mail, every version of Outlook, Yahoo, AOL and European webmail, in light and dark mode. The docs list the clients, when they were checked, and the known limits.
 - **By hand, before each release that adds a Block or changes what the renderer writes:** the same check in Email on Acid, with a fixed set of test emails that use every Block and layout. The docs' page of tested clients then gets the new date.
-- **By hand, before `0.1.0`:** typing Japanese in Safari, Firefox and Chrome (automated tests can only simulate it in Chromium), and touch.
+- **By hand, before `1.0.0`:** typing Japanese in Safari, Firefox and Chrome (automated tests can only simulate it in Chromium), and touch.
 
 [`docs/agents/testing.md`](docs/agents/testing.md) says how tests are written here.
 

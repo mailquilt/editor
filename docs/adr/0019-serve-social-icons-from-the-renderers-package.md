@@ -32,3 +32,7 @@ An email can't carry its icons inline: Gmail and Outlook drop SVG and `data:` im
 - The docs and the notices say that the logos are their owners' trademarks, that Mail Quilt isn't affiliated with them, and that a brand's icon is removed from the next release on its owner's request. That changes emails rendered after it. Emails already sent keep loading the icon from their pinned URL. The docs link each network's brand guidelines and say that the person sending the email follows them.
 - A test fails the build if an icon the renderer can name is missing from the package's files.
 - White icons can't be seen where dark mode makes their dark Row light, in classic Outlook for Windows and the Gmail app on iPhone, or turns them dark, in the Gmail app on Android. Outlining them would fix it, but Facebook and Pinterest forbid outlines. The Side panel and the docs say so, and that color icons show on light and dark backgrounds. On a Row in a brand's own color, that brand's color icon can blend in, which the docs say too.
+
+## Amendment, 2026-11-28
+
+The Side panel is gone ([ADR 0021](./0021-three-modes-and-a-selection-bar.md)), so the warning about white icons that the Side panel gave is now the description of the Social Block's Icon style field. The decision stands.

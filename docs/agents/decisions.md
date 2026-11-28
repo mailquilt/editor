@@ -6,7 +6,7 @@ Which module owns what, and why, is in `docs/adr/`:
 
 - The key map and the text's keys, ADR 0004, 0008 and 0014.
 - Places, key scopes, positions and labels, ADR 0007, 0012 and 0015.
-- Selection, focus and presses, and focus after an update, ADR 0011 and 0016.
+- Selection, focus and presses, and focus after an update, ADR 0011 and 0016, and the email as one Tab stop, ADR 0020.
 - What `<mail-quilt>` holds, and the modules it makes, ADR 0009 and 0012.
 - The panels' interface, ADR 0004 and 0016.
 - Block types across the packages, ADR 0013.
@@ -106,7 +106,7 @@ Which module owns what, and why, is in `docs/adr/`:
 - On a phone the chip's menu is a sheet titled "Select", with Done, that starts at what's selected, marked, and goes out from there: its Column, its Row, the email (frame `q02b`).
 - On a phone Style shows one of its three sections at a time, Colors, Text or Button corners, in a sheet of one height, so the top of the email stays in sight as it changes (frame `q03b`).
 - On a phone the drag handles and the tags of Rows that aren't selected are gone, as the frames draw them: a Block moves from More, and a Row from the Rows sheet's arrows.
-- The link sheet keeps the words every link field uses when it refuses a link. Frame `p17` offers "northbound.co/guji" or an email address, which the editor refuses without a scheme, so its words would be untrue.
+- The link sheet keeps the words every link field uses when it refuses a link. Frame `p17` offers "northbound.co/guji" or an email address, which the editor refused without a scheme when this was decided, so its words would have been untrue. Since #333 link fields fill in the scheme, so they are true. The sheet still uses the shared words, but only because one string is simpler than a second to keep in step.
 - While a Block's text is typed in, the format bar is at the bottom, over the keyboard, by the visual viewport, and the top bar has Done in place of the Modes and ⋯, as frame `p06` draws it. Done keeps focus in the text when pressed, as the format bar does, and then goes to the Block.
 - The Playground gives the Shell the window's height at every width, so on a phone the Selection bar stays in sight at its bottom. A Shell with no height of its own grows with the email, and then its bar is at the email's end.
 ## Editing
@@ -144,9 +144,9 @@ Which module owns what, and why, is in `docs/adr/`:
 - A saved language that isn't a code still loads, and can be sent back unchanged. Only a new one has to be a code, or one Merge Tag as its whole value. (#79, #274)
 - A check on saved data that gets stricter comes with a migration, which raises the format version and rewrites what an older version saved as the check now takes it, so every email a release accepted keeps opening. A migration finds what it rewrites by the keys that hold it. (#209)
 - A release that changes the format raises the version once, however many changes it holds. Its release notes say that emails it saves can't be opened by older packages, as a web app and a render worker on different versions would find. (#268)
-- Version 3 is open on `main` until `0.3.0` is published: each pull request that changes the format extends the same version 3 schema and migration, and an email saved from `main` in between isn't supported. The version pull request is made only once all six features of the release are in, so nothing is published with half the format. (#268)
+- Version 3 was open on `main` until `0.3.0` was published: each pull request that changed the format extended the same version 3 schema and migration, and an email saved from `main` in between wasn't supported. The version pull request was made only once all six features of the release were in, so nothing was published with half the format. Version 3 is closed, and the next paragraph's rule is the live one. (#268)
 - The version 3 migration makes a Merge Tag a node only where it sits whole in one run of text, with that run's marks. A tag split across runs with different marks stays text: only an email written outside the editor has one, and the renderer still reads it across runs, so it exports the same. The editor makes one a node only when an edit touches it, with the marks of all its parts, as it does a tag whose `}}` is typed across them. (#272)
-- Version 4 is open on `main` until `0.4.0` is published, as version 3 was. Email style is its first addition, one optional `style` object in the settings, so its migration from version 3 changes nothing but the version. Email style changes through its own Command, `updateEmailStyle`, which merges fields as the other Commands merge props, so `updateEmailSettings` keeps replacing a nested value whole. Once every field is cleared there's no `style` left, so the email is as it was before it had one. (#313)
+- Version 4 is open on `main` until `0.4.0` is published, as version 3 was. Email style is its first addition, one optional `style` object in the settings, so it adds nothing to migrate. The version 4 migration's one rewrite is a Row's `hideOnPhone`, which it changes to `showOn`. Email style changes through its own Command, `updateEmailStyle`, which merges fields as the other Commands merge props, so `updateEmailSettings` keeps replacing a nested value whole. Once every field is cleared there's no `style` left, so the email is as it was before it had one. (#313)
 - A link in a Text Block or Heading that sets its own color stays in that color, over Email style's link color, as the person chose it for that Block's background. Email style's body size sizes Buttons' labels too, as the built-in look gives Buttons and text the same size. (#313)
 - An email is at most 1200px wide, and a font family needs at least one name. (#78)
 - Exports from `core` marked "not a promise to hosts" are for Mail Quilt's own packages, and come from `@mailquilt/core/internal`, not the main entry. (#61, #84)

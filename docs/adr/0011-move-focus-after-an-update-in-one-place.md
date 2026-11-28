@@ -23,3 +23,7 @@ Before, two mechanisms both ran. The update put focus back where it was, or wher
 - A new editing action is synchronous. To move focus or scroll after its change, it names the target, and the update does the rest.
 - An update can run where none ran before, such as when a Block that already has focus is selected again. That renders the editor once more, which is quick at email sizes.
 - What each key, press and drop does with focus doesn't change.
+
+## Amendment, 2026-11-28
+
+The Side panel is gone ([ADR 0021](./0021-three-modes-and-a-selection-bar.md)), so "with the Side panel already showing it" now means with the Selection bar already showing it. The rule stands: selecting what's already selected changes nothing.

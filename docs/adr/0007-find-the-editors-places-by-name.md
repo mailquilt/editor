@@ -23,3 +23,7 @@ Before, selection, key handling and dragging each kept their own list of class s
 - A new place is one name in `editor-places.ts`, `data-place` on its element, and its keys in the key map if it has any. Focus moving into it is a target in the selection module, as for the link field.
 - The editor's CSS keeps its classes, and they can change without touching behaviour.
 - What each key, press and drag does doesn't change.
+
+## Amendment, 2026-11-28
+
+The Side panel is gone, replaced by the Modes and the Selection bar ([ADR 0021](./0021-three-modes-and-a-selection-bar.md)), so its tab and the group of its buttons are no longer places. The decision, that a place is found by name and says what a press does where it's declared, stands.

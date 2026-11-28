@@ -1,5 +1,6 @@
 import { createRequire } from "node:module";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 const ROOT = path.resolve(import.meta.dirname, "../../../..");
 
@@ -119,7 +120,7 @@ export const openPage = async ({
     deviceScaleFactor: 1,
     hasTouch: phone,
     isMobile: phone,
-    reducedMotion: process.env.SCREENS_REDUCED_MOTION ? "reduce" : "no-preference",
+    reducedMotion: process.env.SCREENS_REDUCED_MOTION === "1" ? "reduce" : "no-preference",
     viewport: { height: phone ? 844 : 900, width },
   });
   const page = await context.newPage();
@@ -277,7 +278,7 @@ export const renderSheet = async (htmlPath, pngPath, width) => {
   const { browser, page } = await openPage({ phone: false, theme: "light", width });
 
   try {
-    await page.goto(`file://${htmlPath}`, { waitUntil: "load" });
+    await page.goto(pathToFileURL(htmlPath).href, { waitUntil: "load" });
     await page.screenshot({ fullPage: true, path: pngPath });
   } finally {
     await browser.close();

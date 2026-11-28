@@ -27,7 +27,7 @@ React needs React 18 or 19, and `@mailquilt/react` installs the editor with it. 
 2. **Use an email to start from.** Use one the app already has, or the example email in the [document format](https://editor.mailquilt.com/docs/document-format.md). `createEmail()` from `@mailquilt/core` makes a new one, with one empty Text Block.
 3. **Save the JSON, not the HTML.** The JSON from `mq-change` (`onChange` in React) is the email. Store it, and make HTML from it with `exportHtml()` in the browser or `renderEmail()` on a server: [Render on a server](https://editor.mailquilt.com/docs/render-on-a-server.md).
 4. **Check JSON from anywhere you don't control** with `loadDocument()` before you store or render it: [Change emails in code](https://editor.mailquilt.com/docs/change-emails-in-code.md).
-5. **For Merge Tags, set `mergeTags`** on the element, or pass it as a prop in React: an array of `{ name, label }`, where `name` is what goes between the braces, without them, and `label` is optional. Typing `{{` in text, or in any setting that holds text or a URL, then opens a list of them to pick from: [Merge Tags](https://editor.mailquilt.com/docs/api.md#merge-tags).
+5. **For Merge Tags, set `mergeTags`** on the element, or pass it as a prop in React: an array of `{ name, label }`, where `name` is what goes between the braces, without them, and `label` is optional. A tag can also have a `sample`, which Check shows in its place, and `unsubscribe: true`, which marks the unsubscribe link Check looks for. Typing `{{` in text, or in any setting that holds text or a URL, then opens a list of them to pick from: [Merge Tags](https://editor.mailquilt.com/docs/api.md#merge-tags).
 6. **For image uploads, set `uploadImage`** on the element, or pass it as a prop in React: a function that sends the file to the app's own storage and returns `{ url }`. Pass its `signal` to `fetch`, and reject with an `Error` whose message the user should see: [Upload images](https://editor.mailquilt.com/docs/upload-images.md).
 7. **For Social icons from the app's own storage, set `socialIconsUrl`** on the element, on `renderEmail()`'s options, or as a prop in React, to the URL of a copy of `@mailquilt/renderer`'s `icons` folder. Without it, the Social Block's icons load from jsDelivr, in sent emails too: [Social icons](https://editor.mailquilt.com/docs/social-icons.md).
 
@@ -38,16 +38,16 @@ React needs React 18 or 19, and `@mailquilt/react` installs the editor with it. 
 - **Loading the CDN build by a short URL.** Use the full, pinned path, `https://cdn.jsdelivr.net/npm/@mailquilt/editor@<version>/dist/cdn/index.js`. The bare package URL loads a build that needs a bundler, and an unpinned one can ask for a file the latest release no longer has.
 - **Passing callbacks from a Next.js Server Component.** `MailQuilt` and `MailQuiltShell` render safely on the server, but `onChange` and `onError` need a Client Component. A Shell with `saveKey` and no callbacks can stay a Server Component.
 - **Sharing one `save-key` between emails or people.** Each email and each person needs a key of their own, or one email opens in place of another, and on a shared browser one person's email opens for the next. Start it with the app's name, so no other app on the origin uses it, and add the IDs the app has, such as `my-app:${userId}:${emailId}`. Set it before the Shell opens.
-- **Giving the editor too little room.** It needs at least 640px of width, or it shows a notice instead, and at least 600px of height, growing with the email. Don't give `<mail-quilt>` a fixed height or put it in anything that clips it. For a box of a fixed height, use the Shell.
+- **Giving the editor too little room.** Below 640px of width the editor is laid out for a phone, with the Selection bar at the bottom of what it shows. So give it a height that fits the window, or let the page scroll with no scrolling box of its own around it. It's at least 600px tall and grows with the email, so don't put it in anything that clips it. For a box of a fixed height, such as a panel in a dashboard, use the Shell.
 - **Expecting Merge Tags to come through unchanged whatever they hold.** Tags such as `{{first_name}}` reach the HTML as typed, but any `&`, `<` or `>` inside one is escaped, and a `"` too in a link or image URL. Keep tags to plain names.
-- **Forgetting the Content Security Policy.** Preview needs `'unsafe-inline'` in `style-src`, or it shows the email without its styling. The canvas works without it. `img-src` has to allow the sites the email's images are on, or the canvas and Preview don't show them, and `https://cdn.jsdelivr.net` for the Social icons, unless `socialIconsUrl` is set. A page using the CDN build also needs `script-src` to allow the `dist/cdn/` folder: [Content Security Policy](https://editor.mailquilt.com/docs/api.md).
+- **Forgetting the Content Security Policy.** Check needs `'unsafe-inline'` in `style-src`, or it shows the email without its styling. The canvas works without it. `img-src` has to allow the sites the email's images are on, or the canvas and Check don't show them, and `https://cdn.jsdelivr.net` for the Social icons, unless `socialIconsUrl` is set. A page using the CDN build also needs `script-src` to allow the `dist/cdn/` folder: [Content Security Policy](https://editor.mailquilt.com/docs/api.md).
 - **Yarn Plug'n'Play, or pnpm with `hoist=false`.** MJML needs `cheerio` added as a package extension: [Packages](https://editor.mailquilt.com/docs/packages.md).
 
 ## Restyle the editor
 
 Work in this order, and stop as soon as it matches the app:
 
-1. **Layout.** Give `<mail-quilt>` the full width of the content area, in the page's normal flow. The side panel sits beside the email only while the editor is at least the email's width plus 400px, which is 1000px for the usual 600px email: [Fit the editor into your page](https://editor.mailquilt.com/docs/design-your-editor-page.md).
+1. **Layout.** Give `<mail-quilt>` the full width of the content area, in the page's normal flow. The Rows list, the Add panel, More and the Style panel each dock beside the email only while the editor is wide enough, and otherwise collapse or open over the workspace, so a narrow column makes the editor cramped. The widths are in [Fit the editor into your page](https://editor.mailquilt.com/docs/design-your-editor-page.md).
 2. **Font and accent.** Set `--mq-font-family` and the four accent tokens on the `<mail-quilt>` element, or on `<mail-quilt-shell>` for a Shell: [Theme the editor](https://editor.mailquilt.com/docs/theme-the-editor.md), and every token in [Theme tokens](https://editor.mailquilt.com/docs/theme-tokens.md).
 3. **A dark theme, if the app has one.** Set `theme="dark"` on the element, or `theme="auto"` to follow the person's system, rather than setting color tokens by hand. A color token set on the element wins over the dark theme too, so give the dark theme its own accent with `mail-quilt[theme="dark"] { … }`. With `theme="auto"`, set it for `mail-quilt[theme="auto"]` inside `@media (prefers-color-scheme: dark)`, and on a Shell use `mail-quilt-shell` in place of `mail-quilt`. Set both accents in a stylesheet: one in the element's `style` attribute wins over any stylesheet, so the dark theme can't replace it. Keep these pairs readable together, at 4.5:1 for text: [A dark theme](https://editor.mailquilt.com/docs/theme-the-editor.md#a-dark-theme).
    - `--mq-color-surface` on `--mq-color-text`, the selected Block's tag
@@ -61,16 +61,16 @@ Work in this order, and stop as soon as it matches the app:
 
 Don't:
 
-- **Theme the email.** The tokens never change the email, which keeps its own background, colors and font, so it looks as it will when sent. People change those in the editor's Selection bar, with nothing selected.
+- **Theme the email.** The tokens never change the email, which keeps its own background, colors and font, so it looks as it will when sent. People change those in the editor's Style Mode, as Page and Body.
 - **Reach into the editor's Shadow DOM, or style its internal class names.** They aren't part of the API and change between versions. Use tokens and the documented parts.
-- **Rebuild the editor's own controls**, such as the side panel or the Selection bar. They aren't replaceable in `0.x`. Put the app's own controls around the editor, or use the Shell's header.
+- **Rebuild the editor's own controls**, such as the Rows list or the Selection bar. They aren't replaceable in `0.x`. Put the app's own controls around the editor, or use the Shell's header.
 
 Before you finish, check what [Fit the editor into your page](https://editor.mailquilt.com/docs/design-your-editor-page.md) lists:
 
 - the window narrowed below 640px and back
 - the editor used from the keyboard
 - contrast with the new colors
-- the Preview opened, and the HTML exported once
+- Check opened, and the HTML exported once
 
 ## More
 
