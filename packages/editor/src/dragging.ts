@@ -557,7 +557,7 @@ export const createDragging = ({
   /**
    * Where files dragged in from outside would land: where a new Block from the
    * Add panel would, unless it's on a Block that takes them. Only over the canvas,
-   * as the browser says, and not over the Preview or the narrow notice above it.
+   * as the browser says, and not over the Preview above it.
    */
   const fileLanding = (
     event: DragEvent

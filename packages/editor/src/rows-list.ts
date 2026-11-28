@@ -19,6 +19,7 @@ import { ICONS } from "./icons.js";
 import { keyLabel, keysInWords } from "./key-map.js";
 import type { PanelApi } from "./panel-api.js";
 import { renderThumbnail } from "./selection-bar.js";
+import { renderSheet, renderSheetHead } from "./sheet.js";
 import { styleProperties } from "./style-properties.js";
 import { blockTypeName } from "./text.js";
 
@@ -27,6 +28,9 @@ import { blockTypeName } from "./text.js";
  * select, drag or move with Alt+↑ and Alt+↓, and a + that adds an empty Row.
  * Collapsed, each Row is its number.
  */
+
+/** A picture's width in the Rows sheet on a phone. */
+const SHEET_PICTURE_WIDTH_PX = 72;
 
 /** The expanded list's width, and the collapsed one's. */
 export const ROWS_LIST_WIDTH_PX = 232;
@@ -626,6 +630,92 @@ export const rowsListStyles = css`
     padding-block-start: var(--mq-space-2);
     text-align: center;
   }
+
+  /*
+   * On a phone, the Rows list is a sheet from the top bar's menu, as frame
+   * p14 draws it: each Row's number, picture and Blocks, and buttons to move
+   * it, as there's no Alt+↑ or dragging there.
+   */
+  .rows-sheet-items {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    list-style: none;
+    margin: 0 calc(-1 * var(--mq-space-2)) var(--mq-space-3);
+    padding: 0;
+  }
+
+  .rows-sheet-row {
+    align-items: center;
+    border-radius: var(--mq-radius);
+    display: flex;
+    gap: var(--mq-space-1);
+    padding-inline-end: var(--mq-space-1);
+  }
+
+  .rows-sheet-row:has(> [aria-current="true"]) {
+    background: var(--mq-color-accent-soft);
+  }
+
+  .rows-sheet-select {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    border-radius: var(--mq-radius);
+    cursor: pointer;
+    display: grid;
+    flex: 1;
+    gap: var(--mq-space-3);
+    grid-template-columns: 20px ${unsafeCSS(SHEET_PICTURE_WIDTH_PX)}px minmax(
+        0,
+        1fr
+      );
+    min-height: 52px;
+    min-width: 0;
+    padding: var(--mq-space-1) var(--mq-space-2);
+    text-align: start;
+  }
+
+  .rows-sheet-select .rows-number {
+    color: var(--mq-color-text-muted);
+    text-align: center;
+  }
+
+  .rows-sheet-words {
+    display: flex;
+    flex-direction: column;
+    font-size: var(--_mq-font-size-sheet-title);
+    min-width: 0;
+  }
+
+  .rows-sheet-words > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .rows-sheet-words .shown-on {
+    color: var(--mq-color-text-muted);
+    font-size: var(--mq-font-size);
+  }
+
+  .rows-sheet-row .icon-button {
+    height: 44px;
+    width: 36px;
+  }
+
+  .rows-sheet-add {
+    align-items: center;
+    display: flex;
+    gap: var(--mq-space-2);
+    height: 44px;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .rows-sheet .rows-none {
+    margin: 0 0 var(--mq-space-3);
+  }
 `;
 
 /** What a Row's picture is drawn with, besides the Row. */
@@ -1024,4 +1114,139 @@ export const renderRowsList = (
       </section>
     </div>
   `;
+};
+
+/**
+ * On a phone, the Rows list as a sheet, from the top bar's menu: a Row is
+ * selected by its line, which closes the sheet, and moved by its arrows, and
+ * "Add a Row" opens the Add sheet, which has the empty Rows.
+ */
+export const renderRowsSheet = (
+  api: PanelApi,
+  email: { background: string; font: string; width: number },
+  context: Omit<PictureContext, "api">,
+  events: {
+    addRow: (fromKeyboard: boolean) => void;
+    back: () => void;
+    close: () => void;
+    /** Moves a Row one step, keeping focus with it. */
+    move: (rowId: string, direction: "down" | "up") => void;
+    select: (rowId: string, fromKeyboard: boolean) => void;
+  }
+) => {
+  const { text } = api;
+  const { rows } = api.email;
+  const current = currentRowId(api);
+  const pictures = { ...context, api };
+  const titleId = "rows-sheet-title";
+  return renderSheet({
+    body: html`
+      ${
+        rows.length === 0
+          ? html`<p class="rows-none">
+              <strong>${text("rows.none")}</strong>
+            </p>`
+          : html`<ol class="rows-sheet-items">
+              ${repeat(
+                rows,
+                (row) => row.id,
+                (row, index) => {
+                  const { showOn } = row.props as RowProps;
+                  const types = row.columns.flatMap(({ blocks }) =>
+                    blocks.map(({ type }) => blockTypeName(type, text))
+                  );
+                  const move = (direction: "down" | "up") => {
+                    const off =
+                      direction === "up"
+                        ? index === 0
+                        : index === rows.length - 1;
+                    return html`
+                      <button
+                        aria-label=${text(
+                          direction === "up"
+                            ? "canvas.moveRowUp"
+                            : "canvas.moveRowDown"
+                        )}
+                        class="icon-button"
+                        data-move=${direction}
+                        ?disabled=${off}
+                        type="button"
+                        @click=${() => events.move(row.id, direction)}
+                      >
+                        ${ICONS[direction]}
+                      </button>
+                    `;
+                  };
+                  return html`
+                    <li class="rows-sheet-row" data-row-id=${row.id}>
+                      <button
+                        aria-current=${row.id === current ? "true" : nothing}
+                        aria-label=${rowName(row, index, rows.length, api)}
+                        class="rows-sheet-select"
+                        data-action="select-row"
+                        type="button"
+                        @click=${({ detail }: MouseEvent) =>
+                          events.select(row.id, detail === 0)}
+                      >
+                        <span aria-hidden="true" class="rows-number"
+                          >${index + 1}</span
+                        >
+                        ${renderPicture(row, pictures)}
+                        <span aria-hidden="true" class="rows-sheet-words">
+                          <span
+                            >${
+                              types.length === 0
+                                ? text("rows.emptyRow")
+                                : new Intl.ListFormat(text("language"), {
+                                    style: "short",
+                                    type: "unit",
+                                  }).format(types)
+                            }</span
+                          >
+                          ${
+                            showOn === undefined
+                              ? nothing
+                              : html`<span class="shown-on"
+                                  >${text(SHOWN_ONLY_ON[showOn].words)}</span
+                                >`
+                          }
+                        </span>
+                      </button>
+                      ${move("up")} ${move("down")}
+                    </li>
+                  `;
+                }
+              )}
+            </ol>`
+      }
+      <button
+        class="text-button rows-sheet-add"
+        data-action="add-row"
+        type="button"
+        @click=${({ detail }: MouseEvent) => events.addRow(detail === 0)}
+      >
+        ${ICONS.plus}${text("rows.add")}
+      </button>
+    `,
+    className: "rows-sheet",
+    head: renderSheetHead(
+      {
+        back: events.back,
+        done: events.close,
+        title: text("rows.list"),
+        titleId,
+      },
+      text
+    ),
+    labelledBy: titleId,
+    onClose: events.close,
+    sheetPlace: "rowsSheet",
+    style: {
+      "--_mq-email-background": email.background,
+      "--_mq-email-font": email.font,
+      "--_mq-email-width": `${email.width}px`,
+      "--_mq-picture-scale": String(SHEET_PICTURE_WIDTH_PX / email.width),
+    },
+    testId: "rows-sheet",
+  });
 };

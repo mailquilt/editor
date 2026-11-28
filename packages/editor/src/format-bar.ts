@@ -8,6 +8,7 @@ import type { KeyLabel } from "./key-map.js";
 import { keyLabel, textKeyLabel, withKeys } from "./key-map.js";
 import { fieldTags } from "./merge-tag-picker.js";
 import type { OwnPanelsApi, PanelApi } from "./panel-api.js";
+import { renderSheet, renderSheetHead } from "./sheet.js";
 import type { StringId } from "./strings.js";
 import type { TextBlockView } from "./text-block-view.js";
 import type { ListType, ToggleableMark } from "./text-commands.js";
@@ -27,6 +28,53 @@ export const formatBarStyles = css`
     width: max-content;
     /* Over the floating toolbar, as the Block's toolbar is. */
     z-index: var(--_mq-layer-block-tools);
+  }
+
+  /*
+   * On a phone, at the bottom of the screen, above the keyboard, while the
+   * text is typed in, as frame p06 draws it.
+   */
+  .app[data-phone] .format-bar {
+    border-inline: 0;
+    border-block-end: 0;
+    border-radius: 0;
+    bottom: var(--_mq-keyboard-inset, 0px);
+    flex-wrap: nowrap;
+    inset-block-start: auto;
+    inset-inline: 0;
+    justify-content: space-between;
+    max-width: none;
+    overflow-x: auto;
+    padding: var(--mq-space-1) var(--mq-space-2);
+    position: fixed;
+    /* Over where tool-fitting.ts would move it beside the text. */
+    translate: none !important;
+    width: auto;
+    z-index: var(--_mq-layer-top-bar);
+  }
+
+  .app[data-phone] .format-bar > .icon-button {
+    flex: 1 1 0;
+    height: 44px;
+    max-width: 44px;
+    min-width: 32px;
+    width: auto;
+  }
+
+  /* On a phone, the link field is a sheet, as frame p17 draws it. */
+  dialog.sheet .link-form {
+    border: 0;
+    margin: 0;
+    padding: 0;
+  }
+
+  dialog.sheet .link-form input {
+    height: 44px;
+  }
+
+  dialog.sheet .link-form .text-button {
+    flex: 1 1 100%;
+    height: 44px;
   }
 
   .link-form {
@@ -208,7 +256,7 @@ const renderLinkForm = (
   ]
     .filter(Boolean)
     .join(" ");
-  return html`
+  const linkForm = html`
     <form
       class="link-form"
       data-place=${place("linkField")}
@@ -241,7 +289,7 @@ const renderLinkForm = (
           ? html`<p class="description" id="link-description">${tags.hint}</p>`
           : nothing
       }
-      <button class="text-button primary" type="submit">
+      <button class="text-button primary" ?hidden=${api.phone} type="submit">
         ${api.text("format.applyLink")}
       </button>
       ${
@@ -257,7 +305,12 @@ const renderLinkForm = (
               </button>
             `
       }
-      <button class="text-button" type="button" @click=${api.cancelLink}>
+      <button
+        class="text-button"
+        ?hidden=${api.phone}
+        type="button"
+        @click=${api.cancelLink}
+      >
         ${api.text("format.cancelLink")}
       </button>
       ${
@@ -272,6 +325,31 @@ const renderLinkForm = (
       }
     </form>
   `;
+  if (!api.phone) {
+    return linkForm;
+  }
+  // Apply is the sheet's own button, in Done's place, as frame p17 draws it.
+  return renderSheet({
+    body: linkForm,
+    className: "link-sheet",
+    head: renderSheetHead(
+      {
+        done: ({ currentTarget }: MouseEvent) =>
+          (currentTarget as Element)
+            .closest("dialog")
+            ?.querySelector("form")
+            ?.requestSubmit(),
+        doneLabel: api.text("format.applyLink"),
+        title: api.text("format.link"),
+        titleId: "link-title",
+      },
+      api.text
+    ),
+    labelledBy: "link-title",
+    onClose: api.cancelLink,
+    // So Escape anywhere in it cancels the link, as in its field.
+    sheetPlace: "linkField",
+  });
 };
 
 /**

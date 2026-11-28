@@ -12,6 +12,7 @@ import { renderEmail, renderText } from "@mailquilt/renderer";
 import type { Problem } from "@mailquilt/renderer";
 import { css, html, LitElement, nothing, unsafeCSS } from "lit";
 import type { PropertyValues } from "lit";
+import { keyed } from "lit/directives/keyed.js";
 
 import {
   addingStyles,
@@ -24,9 +25,7 @@ import { BLOCK_VIEWS, blockTypeStyles, hasRichText } from "./block-types.js";
 import {
   canvasStyles,
   drawnEmail,
-  MIN_EDITOR_WIDTH,
   renderFloatingToolbar,
-  renderNarrowNotice,
   renderRows,
 } from "./canvas.js";
 import type { CanvasEvents, CanvasState, NotOnDevice } from "./canvas.js";
@@ -65,6 +64,7 @@ import {
   createRowPictures,
   createRowsList,
   renderRowsList,
+  renderRowsSheet,
   ROWS_LIST_COLLAPSED_WIDTH_PX,
   ROWS_LIST_WIDTH_PX,
   rowsListStyles,
@@ -83,6 +83,7 @@ import {
   draftKey,
   settingsPanelStyles,
 } from "./settings-panel.js";
+import { openSheets, PHONE_LAYOUT_WIDTH, sheetStyles } from "./sheet.js";
 import type { MailQuiltStrings } from "./strings.js";
 import { createStylePanel, stylePanelStyles } from "./style-panel.js";
 import type { StyleMark } from "./style-panel.js";
@@ -104,6 +105,7 @@ import {
   modeTabId,
   PHONE_WIDTH,
   renderTopBar,
+  renderTopMenu,
   topBarStyles,
 } from "./top-bar.js";
 import type { Device, Mode, TopBarEvents } from "./top-bar.js";
@@ -179,9 +181,16 @@ const elementStyles = css`
     min-height: 600px;
   }
 
-  /* Too narrow to edit in, it's only as tall as the top bar and the notice. */
-  .app[data-narrow] {
-    min-height: 0;
+  /*
+   * On a phone, the email takes the width, with no gutters, so there's no
+   * room for a Block's handle, as touch doesn't drag. Frame p08.
+   */
+  .app[data-phone] .editor {
+    --_mq-gutter: 0px;
+  }
+
+  .app[data-phone] .canvas-area {
+    padding-block-end: 0;
   }
 
   /* A Mode's panel other than the Canvas, which fills it: Check. */
@@ -219,22 +228,10 @@ const elementStyles = css`
     scroll-margin-block-start: var(--_mq-top-bar-height);
   }
 
-  /*
-   * Behind the notice for a host too narrow to edit in. Out of sight, but
-   * still in the layout, so a host that takes the width of its content
-   * keeps the width the editor gives it, and grows again with the window.
-   * Every part hides, as the email card and the tools start their styles
-   * again, and so none of them takes focus.
-   */
-  .editor[data-collapsed] {
-    flex-grow: 0 !important;
-    height: 0 !important;
-    min-height: 0 !important;
-  }
-
-  .editor[data-collapsed],
-  .editor[data-collapsed] * {
-    visibility: hidden !important;
+  /* On a phone, the Selection bar is at the bottom, so it's kept clear of. */
+  .app[data-phone] .editor * {
+    scroll-margin-block: var(--_mq-top-bar-height)
+      calc(var(--_mq-phone-bar-height) + 2 * var(--mq-space-2));
   }
 
   .canvas-area {
@@ -384,6 +381,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     mergeTagPickerStyles,
     checkStyles,
     topBarStyles,
+    sheetStyles,
     elementStyles,
     canvasStyles,
     textBlockStyles,
@@ -526,7 +524,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     email: () => this.#editor?.getDocument(),
     exportHtml: () => this.exportHtml(),
     exportText: () => this.exportText(),
-    isShown: () => this.#mode === "check" && !this.#narrow,
+    isShown: () => this.#mode === "check",
     mergeTags: () => this.mergeTags,
     requestUpdate: () => this.requestUpdate(),
     say: (words) => this.#announcements.say(words),
@@ -545,8 +543,10 @@ export class MailQuilt extends LitElement implements HostAppProperties {
   /** Set while the element is connected, as it observes sizes on the page. */
   #toolFitting: ToolFitting | undefined;
   #tooltips: { element: HTMLElement; tooltips: Tooltips } | undefined;
-  /** Too narrow to edit in, as on a phone or in a narrow part of a page. */
-  #narrow = false;
+  /** Laid out for a phone, as on one or in a narrow part of a page. */
+  #phone = false;
+  /** On a phone, the top bar's menu, or the Rows sheet from it, while open. */
+  #phoneSheet: "menu" | "rows" | undefined;
   /** The element's width, which More docks beside the email where it fits. */
   #width = 0;
   /** The element's height, which More floating over the email stays inside. */
@@ -555,10 +555,17 @@ export class MailQuilt extends LitElement implements HostAppProperties {
   #lastInput: "keys" | "pointer" = "pointer";
   /** Edit until the person picks another, and with nothing in the email. */
   #mode: Mode = "edit";
-  #device: Device = "desktop";
+  /** The view the person picked, if they have. */
+  #chosenDevice: Device | undefined;
+
+  /** What the Canvas shows, which on a phone is the Phone view until another is picked. */
+  get #device(): Device {
+    return this.#chosenDevice ?? (this.#phone ? "phone" : "desktop");
+  }
   readonly #topBarEvents: TopBarEvents = {
+    doneTyping: () => this.#focus.focus({ on: "block" }),
     selectDevice: (device) => {
-      this.#device = device;
+      this.#chosenDevice = device;
       this.requestUpdate();
     },
     selectMode: (mode) => {
@@ -572,9 +579,55 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       }
     },
     stepHistory: (step) => this.#stepHistory(step),
+    toggleMenu: (fromKeyboard) => {
+      if (this.#phoneSheet) {
+        this.#closePhoneSheet();
+      } else {
+        this.#phoneSheet = "menu";
+        this.requestUpdate();
+        if (fromKeyboard) {
+          this.#focus.focusWhenRendered({
+            action: "view-desktop",
+            on: "topMenu",
+          });
+        }
+      }
+    },
   };
+
+  /** Closes the top bar's menu, or the Rows sheet from it, back to ⋯. */
+  readonly #closePhoneSheet = () => {
+    if (this.#phoneSheet === undefined) {
+      return;
+    }
+    this.#phoneSheet = undefined;
+    this.requestUpdate();
+    this.#focus.focusWhenRendered({ on: "topMenu" });
+  };
+
   /** Made on the page, as a server rendering the editor has no ResizeObserver. */
   #resizeObserver: ResizeObserver | undefined;
+
+  /**
+   * How much of the window's bottom the on-screen keyboard covers, which what
+   * stays at the bottom on a phone, such as the format bar, keeps above.
+   */
+  readonly #onViewport = () => {
+    if (!this.#phone) {
+      this.style.removeProperty("--_mq-keyboard-inset");
+      return;
+    }
+    const viewport = this.ownerDocument.defaultView?.visualViewport;
+    const covered = viewport
+      ? Math.max(
+          0,
+          (this.ownerDocument.defaultView?.innerHeight ?? 0) -
+            viewport.height -
+            viewport.offsetTop
+        )
+      : 0;
+    this.style.setProperty("--_mq-keyboard-inset", `${Math.round(covered)}px`);
+  };
 
   readonly #announcements = createAnnouncements({
     email: () => this.#editor?.getDocument(),
@@ -707,6 +760,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     closeAddPanel: (returnFocus) => this.#adding.closePanel(returnFocus),
     closeMenu: (returnFocus) => this.#barPanels.closeMenu(returnFocus),
     closeMore: (returnFocus) => this.#barPanels.closeMore(returnFocus),
+    closePopover: (returnFocus) => this.#barPanels.closePopover(returnFocus),
     copySelected: () =>
       this.#keys.runClipboard(
         this.#selection.rowId === undefined ? "copyBlock" : "copyRow"
@@ -725,7 +779,8 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     insertLineBreak: () => this.#selection.selectedText?.insertLineBreak(),
     moveBlock: (direction) => this.#editing.moveBlock(direction),
     moveRow: (rowId, direction) => this.#editing.moveRow(rowId, direction),
-    openAddPanel: (fromKeyboard) => this.#adding.openPanel(fromKeyboard),
+    openAddPanel: (fromKeyboard) =>
+      this.#adding.openPanel(fromKeyboard, fromKeyboard || !this.#phone),
     openLinkField: () => this.#linkForm.open(),
     openPicker: (at, fromKeyboard) => this.#adding.openPicker(at, fromKeyboard),
     openCheck: () => {
@@ -902,21 +957,33 @@ export class MailQuilt extends LitElement implements HostAppProperties {
 
   override connectedCallback() {
     super.connectedCallback();
+    // Laid out for its width from the first frame, rather than as on a laptop
+    // and then, once the observer reports, as on a phone.
+    const { clientWidth } = this;
+    if (clientWidth > 0) {
+      this.#phone = clientWidth < PHONE_LAYOUT_WIDTH;
+    }
     this.#resizeObserver ??= new ResizeObserver(([entry]) => {
       const width = entry?.contentRect.width ?? 0;
       const height = entry?.contentRect.height ?? 0;
-      const narrow = width < MIN_EDITOR_WIDTH;
+      const phone = width < PHONE_LAYOUT_WIDTH;
       const changed =
-        narrow !== this.#narrow ||
+        phone !== this.#phone ||
         height !== this.#height ||
         this.#docksMore(width) !== this.#docksMore(this.#width) ||
         JSON.stringify(this.#rowsListShape(width)) !==
           JSON.stringify(this.#rowsListShape(this.#width)) ||
         this.#docksAdd(width) !== this.#docksAdd(this.#width) ||
         this.#docksStyle(width) !== this.#docksStyle(this.#width) ||
-        // Check draws its inbox smaller to fit.
-        (this.#mode === "check" && width !== this.#width);
-      this.#narrow = narrow;
+        // Check draws its inbox smaller to fit, but on a phone.
+        (this.#mode === "check" && !phone && width !== this.#width);
+      // What's only on a phone closes with the phone layout.
+      if (!phone) {
+        this.#phoneSheet = undefined;
+      }
+      this.#phone = phone;
+      // As the keyboard may be open already, with no viewport event to come.
+      this.#onViewport();
       this.#width = width;
       this.#height = height;
       if (changed) {
@@ -926,6 +993,9 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       }
     });
     this.#resizeObserver.observe(this);
+    const viewport = this.ownerDocument.defaultView?.visualViewport;
+    viewport?.addEventListener("resize", this.#onViewport);
+    viewport?.addEventListener("scroll", this.#onViewport);
     for (const type of CLIPBOARD_EVENTS) {
       this.ownerDocument.addEventListener(type, this.#keys.onClipboard, {
         capture: true,
@@ -954,6 +1024,9 @@ export class MailQuilt extends LitElement implements HostAppProperties {
   override disconnectedCallback() {
     super.disconnectedCallback();
     this.#resizeObserver?.disconnect();
+    const viewport = this.ownerDocument.defaultView?.visualViewport;
+    viewport?.removeEventListener("resize", this.#onViewport);
+    viewport?.removeEventListener("scroll", this.#onViewport);
     for (const type of CLIPBOARD_EVENTS) {
       this.ownerDocument.removeEventListener(type, this.#keys.onClipboard, {
         capture: true,
@@ -1003,8 +1076,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       this.#mode = "edit";
       this.#stylePanel.forget();
     }
-    // Not behind the narrow notice, where it isn't drawn.
-    if (this.#mode === "check" && this.isConnected && !this.#narrow) {
+    if (this.#mode === "check" && this.isConnected) {
       this.#check.ensure();
     }
     const email = this.isConnected ? this.#rendered : undefined;
@@ -1078,6 +1150,10 @@ export class MailQuilt extends LitElement implements HostAppProperties {
   protected override updated() {
     // First, so focus that moves scrolls to where the tools end up.
     this.#toolFitting?.sync();
+    // Before focus moves, as it goes into them.
+    if (this.isConnected && this.shadowRoot) {
+      openSheets(this.shadowRoot);
+    }
     this.#rowPictures?.sync();
     this.#focus.afterUpdate();
     this.#fixNote.sync();
@@ -1101,8 +1177,23 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     const text = this.#text;
     const language = text("language");
     const mode = this.#mode;
-    const narrow = this.#narrow;
+    const phone = this.#phone;
     const keys = blockKeys(text);
+    const topBar = {
+      canRedo: this.#editor?.canRedo() ?? false,
+      canUndo: this.#editor?.canUndo() ?? false,
+      checkCount: this.#check.count,
+      device: this.#device,
+      isEmpty: !email?.rows.length,
+      mode,
+      phone: phone
+        ? {
+            menuOpen: this.#phoneSheet !== undefined,
+            typing: mode === "edit" && this.#selection.editingText,
+          }
+        : undefined,
+      text,
+    };
 
     return html`
       ${
@@ -1123,21 +1214,9 @@ export class MailQuilt extends LitElement implements HostAppProperties {
         data-place=${place("editor")}
         lang=${language}
         part="frame"
-        ?data-narrow=${narrow}
+        ?data-phone=${phone}
       >
-        ${renderTopBar(
-          {
-            canRedo: this.#editor?.canRedo() ?? false,
-            canUndo: this.#editor?.canUndo() ?? false,
-            checkCount: this.#check.count,
-            device: this.#device,
-            isEmpty: !email?.rows.length,
-            mode,
-            narrow,
-            text,
-          },
-          this.#topBarEvents
-        )}
+        ${renderTopBar(topBar, this.#topBarEvents)}
         <slot name="messages"></slot>
         ${email ? this.#renderCanvas(email) : nothing}
         ${(["edit", "style", "check"] as const)
@@ -1149,16 +1228,22 @@ export class MailQuilt extends LitElement implements HostAppProperties {
                 class="mode-panel"
                 id=${modePanelId(panel)}
                 role="tabpanel"
-                ?hidden=${narrow || mode !== panel}
+                ?hidden=${mode !== panel}
               >
                 ${
-                  email && panel === "check" && mode === "check" && !narrow
+                  email && panel === "check" && mode === "check"
                     ? this.#renderCheck(email)
                     : nothing
                 }
               </div>
             `
           )}
+        ${
+          // A new dialog for each, so the one opening takes focus.
+          phone
+            ? keyed(this.#phoneSheet, this.#renderPhoneSheet(email, topBar))
+            : nothing
+        }
         <div
           class="ui tooltip"
           data-place=${place("tooltip")}
@@ -1167,6 +1252,77 @@ export class MailQuilt extends LitElement implements HostAppProperties {
         ></div>
       </div>
     `;
+  }
+
+  /** On a phone, the top bar's menu, or the Rows sheet from it, while open. */
+  #renderPhoneSheet(
+    email: BlocksDocument | undefined,
+    topBar: Parameters<typeof renderTopBar>[0]
+  ) {
+    if (this.#phoneSheet === "menu" || (this.#phoneSheet && !email)) {
+      return renderTopMenu(
+        { ...topBar, rowCount: email?.rows.length ?? 0 },
+        {
+          ...this.#topBarEvents,
+          close: this.#closePhoneSheet,
+          openRows: () => {
+            this.#phoneSheet = "rows";
+            this.requestUpdate();
+          },
+        }
+      );
+    }
+    if (this.#phoneSheet !== "rows" || !email) {
+      return nothing;
+    }
+    const { settings } = email;
+    const toEdit = () => {
+      this.#phoneSheet = undefined;
+      this.#topBarEvents.selectMode("edit");
+    };
+    return renderRowsSheet(
+      this.#panelApi(email),
+      {
+        background: settings.backgroundColor,
+        font: settings.fontFamily,
+        width: this.#canvasWidths()?.email ?? settings.width,
+      },
+      {
+        emailLang: this.#emailLang,
+        failedImages: this.#failedImages,
+        socialIconsUrl: this.socialIconsUrl,
+        textPicture: (block) => this.#rowsList.textPicture(block),
+      },
+      {
+        addRow: (fromKeyboard) => {
+          toEdit();
+          this.#adding.openPanel(fromKeyboard, fromKeyboard);
+        },
+        back: () => {
+          this.#phoneSheet = "menu";
+          this.requestUpdate();
+          this.#focus.focusWhenRendered({ action: "rows", on: "topMenu" });
+        },
+        close: this.#closePhoneSheet,
+        move: (rowId, direction) => {
+          this.#editing.moveRow(rowId, direction);
+          this.#focus.focusWhenRendered({
+            move: direction,
+            on: "rowsSheet",
+            rowId,
+          });
+        },
+        select: (rowId, fromKeyboard) => {
+          toEdit();
+          this.#selection.select({ rowId });
+          this.#focus.revealRow(rowId);
+          this.#focus.focusWhenRendered(
+            { action: "chip", on: "bar" },
+            { focusVisible: fromKeyboard }
+          );
+        },
+      }
+    );
   }
 
   /**
@@ -1178,13 +1334,13 @@ export class MailQuilt extends LitElement implements HostAppProperties {
   }
 
   /**
-   * The Canvas, in Edit with its panels or the narrow notice, or in Style,
+   * The Canvas, in Edit with its panels, or in Style,
    * where the email is only looked at, beside the Style panel.
    */
   #renderCanvas(email: BlocksDocument) {
     const { settings } = email;
     const api = this.#panelApi(email);
-    const narrow = this.#narrow;
+    const phone = this.#phone;
     const canvasMode = this.#canvasMode;
     const styling = canvasMode === "style";
     // The Phone view's email is a phone's width. Its Rows stack and hide as on
@@ -1194,14 +1350,12 @@ export class MailQuilt extends LitElement implements HostAppProperties {
         ? Math.min(settings.width, PHONE_WIDTH)
         : settings.width;
     return html`
-      ${narrow ? renderNarrowNotice(api) : nothing}
       <div
         aria-labelledby=${modeTabId(canvasMode)}
         class=${styling ? "editor styling" : "editor"}
         data-testid="editor"
         id=${modePanelId(canvasMode)}
         role="tabpanel"
-        ?data-collapsed=${narrow}
         ?hidden=${this.#mode === "check"}
         style=${styleProperties({
           "--_mq-editor-height": this.#height ? `${this.#height}px` : undefined,
@@ -1211,8 +1365,9 @@ export class MailQuilt extends LitElement implements HostAppProperties {
         ${
           // First, as they're drawn first, so Tab reaches them in that order.
           // The Add panel takes the Rows list's place where it docks, and
-          // otherwise opens over it.
-          styling || this.#docksAdd(this.#width)
+          // otherwise opens over it. On a phone, it's a sheet from the top
+          // bar's menu.
+          styling || phone || this.#docksAdd(this.#width)
             ? nothing
             : renderRowsList(
                 api,
@@ -1269,7 +1424,8 @@ export class MailQuilt extends LitElement implements HostAppProperties {
           ${
             styling
               ? nothing
-              : html`${renderSelectionBar(api)} ${renderFloatingToolbar(api)}`
+              : html`${renderSelectionBar(api)}
+                ${phone ? nothing : renderFloatingToolbar(api)}`
           }
         </div>
         ${
@@ -1286,6 +1442,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     const room =
       this.#width - CHECK_PANEL_WIDTH_PX - 2 * CHECK_STAGE_PADDING_PX;
     return renderCheck({
+      phone: this.#phone,
       check: this.#check,
       email,
       events: this.#checkEvents,
@@ -1294,7 +1451,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       sendsTests: Boolean(this.sendTest),
       subject: this.subject,
       text: this.#text,
-      zoom: checkZoom(room, email.settings.width),
+      zoom: this.#phone ? 1 : checkZoom(room, email.settings.width),
     });
   }
 
@@ -1344,7 +1501,10 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       };
     } else if (field && blockId === undefined) {
       this.#selection.select(undefined);
-      this.#openFieldIn(fieldShownIn("email", field));
+      // On a phone, the email's bar has no room for its fields, so More has them.
+      this.#openFieldIn(
+        this.#phone ? { in: "more" } : fieldShownIn("email", field)
+      );
       target = {
         draftKey: draftKey({ id: "email", targetId: "" }, { key: field }),
         on: "field",
@@ -1383,8 +1543,19 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     const panel = this.#stylePanel.render({
       email,
       floating: !docked,
+      phone: this.#phone
+        ? {
+            done: () => {
+              this.#topBarEvents.selectMode("edit");
+              this.#focus.focusWhenRendered({ on: "emailTools" });
+            },
+          }
+        : undefined,
       selected: api.selectedBlock?.block,
     });
+    if (this.#phone) {
+      return panel;
+    }
     return docked
       ? html`<div class="style-dock">${panel}</div>`
       : html`<div class="style-float">${panel}</div>`;
@@ -1554,6 +1725,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       adding: this.#adding.state,
       device: this.#device,
       notOnDevice: this.#notOnDevice,
+      phone: this.#phone,
       bar: {
         ...this.#barPanels.state,
         docked: this.#docksMore(this.#width),

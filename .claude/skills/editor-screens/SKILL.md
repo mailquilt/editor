@@ -35,10 +35,9 @@ node $S/screens.mjs --out /tmp/shots --name playground --path /playground --edit
 # The Check Mode; its tab's name gains a count once there are Problems
 node $S/screens.mjs --out /tmp/shots --name check --widths 768,1440 --path /playground \
   --step 'click=role=tab[name=/^Check/]'
-# The canvas is behind the narrow notice below 640 px, so shoot it from 768 up.
 # From 1440 the Rows list shows each Row's words too, so aim at the email itself.
 node $S/screens.mjs --out /tmp/shots --name block-toolbar --path /playground \
-  --widths 768,1024,1440,1920,2560 \
+  --widths 320,390,768,1024,1440,1920,2560 \
   --step 'click=[data-testid=email] >> text=Get started' --step 'press=Escape'
 
 # A drag in progress: picked up and held over the target, not dropped. The
@@ -59,7 +58,7 @@ node $S/filmstrip.mjs --out /tmp/shots --name check-open --path /playground \
 - **Focus:** each line of output names what has focus, looking through the shadow roots. Use it to check focus paths against `keyboard.mdx` and "Keys and focus" in `docs/agents/decisions.md`. Clicks and keys are real input, so focus moves as it does for a person.
 - **Waiting:** a shot is taken once the page has settled: no request in flight, fonts loaded, and no opening animation still running, inside the editor's Shadow DOM too. Each step waits the same way. `--wait <ms>` waits that long instead, for something that appears after a pause with no request or animation; a `wait=<ms>` step does the same between steps.
 - **While you iterate,** shoot only the state you changed with `--widths 390,1440`. Shoot the full matrix once, when the build is finished.
-- **Widths** default to 320, 390, 768, 1024, 1440, 1920 and 2560. Below 700 px the page is a touch phone. Below 640 px the editor shows its narrow notice instead of the canvas, with no button; shoot it on purpose, it's a real state.
+- **Widths** default to 320, 390, 768, 1024, 1440, 1920 and 2560. Below 700 px the page is a touch phone. Below 640 px the editor is laid out for a phone: the Selection bar at the bottom, the top bar's ⋯ menu, and the Add panel, More and the bar's popovers as sheets. Shoot each sheet open there, such as `--step 'click=role=button[name="More"] >> nth=0'` for the top bar's menu.
 - **Themes:** `--themes` is what the browser prefers, which the site follows. `--editor dark` (or `both`) also gives every editor on the page the built-in dark theme, `theme="dark"`, as a host app would. It takes off tokens a page sets inline, such as the Playground's orange accent, which would win over the theme, so the shots show the theme itself.
 - **Reduced motion:** set `SCREENS_REDUCED_MOTION=1`.
 - **Failed requests:** `--block '<url glob>'` makes a request fail, for an error state that comes from the network, such as a host's image upload. The site's own chunks have hashed names and the MJML chunk also holds the editor, so blocking it breaks the whole page; for Check's error state, use the editor's browser tests (`packages/editor/browser-tests`) instead.
@@ -70,6 +69,6 @@ Open every image yourself. You are looking for what is wrong, not confirming tha
 
 - **Filmstrip:** after the first full frame, nothing may appear, disappear, move or change state. A placeholder that becomes something else, or a panel that pops in, is a flash to fix.
 - **Matrix:** text that wraps or is cut off, controls that change size between widths, things that don't line up, contrast that fails in the dark theme, and anything that looks like an unexamined default (design.md, "Question every default").
-- **Phone:** the narrow notice reads well, nothing sits under the iPhone home indicator, and the site's menus work.
+- **Phone:** the Selection bar and each sheet read well, nothing sits under the iPhone home indicator, and the site's menus work.
 
 Then hand the evidence to a fresh design reviewer (design.md, step 7), and in the pull request say what was checked and what was found. Attach images only where a reviewer needs to see a visual change.

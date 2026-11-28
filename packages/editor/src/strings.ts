@@ -56,6 +56,17 @@ export const STRINGS = {
   "topBar.view": "View",
   "topBar.desktop": "Desktop",
   "topBar.phone": "Phone",
+  /** On a phone, the menu of what the top bar has no room for. */
+  "topBar.menu": "More",
+  /** On a phone, leaves the text being typed in. */
+  "topBar.doneTyping": "Done",
+  /** In the phone menu, under the View switch. */
+  "topBar.phoneValues":
+    "Font size, padding and Image width you change in the Phone view apply on phones only.",
+
+  // Sheets, which open from the bottom of a phone's screen.
+  "sheet.done": "Done",
+  "sheet.back": "Back",
 
   // The Canvas.
   "canvas.block":
@@ -88,9 +99,8 @@ export const STRINGS = {
     "Press {editText} to edit the text, and {backToBlock} to come back. In the text, press {formatBar} to reach its formatting. Press {selectBlock} to select another Block, and {moveBlock} to move this one.",
   "canvas.blockKeysNoText":
     "Press {selectBlock} to select another Block, and {moveBlock} to move this one.",
-  "canvas.narrowTitle": "Editing needs more room",
-  "canvas.narrowText":
-    "Make the editor at least {width}px wide, such as by widening the window, to change or check this email.",
+  /** On a phone, in the Selection bar with nothing selected. */
+  "canvas.tapBlock": "Tap a Block to change it",
 
   // What Blocks show on the Canvas before they have content.
   "image.uploading": "Uploading…",
@@ -569,6 +579,9 @@ export const STRINGS = {
   "check.loading": "Loading preview…",
   "check.failed": "The preview couldn't be loaded: {reason}",
   "check.title": "Before you export",
+  /** On a phone, the grab that shows or hides what Check found. */
+  "check.showProblems": "Show what Check found",
+  "check.hideProblems": "Hide what Check found",
   "check.checking": "Checking the email…",
   "check.toFixOne": "1 thing to fix.",
   "check.toFixMany": "{count} things to fix.",
@@ -668,6 +681,8 @@ export const STRINGS = {
   "shell.exportHtmlHelp": "The email, ready to send",
   "shell.exportJson": "JSON file",
   "shell.exportJsonHelp": "To open in Mail Quilt again",
+  /** On a phone, an Export menu item on its own: "Export HTML file". */
+  "shell.exportFile": "Export {file}",
   "shell.more": "More",
   "shell.importJson": "Import JSON…",
   /** The ⋯ menu's choice of how the email shows what isn't on the device being viewed. */

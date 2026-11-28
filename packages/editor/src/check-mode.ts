@@ -692,6 +692,66 @@ export const checkStyles = css`
   .fix-note span {
     color: var(--mq-color-text-muted);
   }
+
+  /*
+   * On a phone, the inbox alone, as wide as the screen, and the Problems at
+   * the bottom, over the email's end, as frame p04 draws them.
+   */
+  .check.phone {
+    flex-direction: column;
+  }
+
+  .check.phone .check-stage {
+    gap: var(--mq-space-3);
+    padding: var(--mq-space-3) 0 0;
+  }
+
+  .check.phone .check-previews,
+  .check.phone .check-preview,
+  .check.phone .inbox-slot {
+    width: 100%;
+  }
+
+  .check.phone .inbox {
+    border-radius: 0;
+    width: 100%;
+  }
+
+  .check.phone .check-code {
+    margin-inline: var(--mq-space-3);
+  }
+
+  .check.phone .check-dock {
+    border: 0;
+    display: flex;
+    flex-direction: column;
+    padding-block-start: var(--mq-space-2);
+    border-radius: var(--mq-radius-large) var(--mq-radius-large) 0 0;
+    bottom: 0;
+    box-shadow: var(--mq-shadow);
+    flex: none;
+    margin-block-start: calc(-1 * var(--mq-space-5));
+    position: sticky;
+    z-index: var(--_mq-layer-selection-bar);
+  }
+
+  /* The grab, which shows or hides the Problems under the head. */
+  .check-handle {
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+  }
+
+  .check-handle:focus-visible {
+    outline: 2px solid var(--mq-color-accent);
+    outline-offset: -2px;
+  }
+
+  .check.phone .check-panel {
+    max-height: 45dvh;
+    padding-block-end: env(safe-area-inset-bottom);
+    position: static;
+  }
 `;
 
 /** What's checked, by the Problems that fail it, and what it says once it passes. */
@@ -941,6 +1001,11 @@ export const createCheck = ({
   let current: Run | undefined;
   let showSamples = true;
   let view: CheckViewName = "inbox";
+  /**
+   * On a phone, whether the Problems are shown under their head, as over
+   * the inbox, or only the head, as over the text and HTML. Frames p04, p11.
+   */
+  let problemsShown = true;
   /** The view whose copy button says it copied, for a moment. */
   let copied: CheckViewName | undefined;
   let copiedTimer: ReturnType<typeof setTimeout> | undefined;
@@ -1034,6 +1099,15 @@ export const createCheck = ({
       return view;
     },
 
+    get problemsShown() {
+      return problemsShown;
+    },
+
+    toggleProblems: () => {
+      problemsShown = !problemsShown;
+      requestUpdate();
+    },
+
     get sending() {
       return sending;
     },
@@ -1045,6 +1119,7 @@ export const createCheck = ({
     selectView: (next: CheckViewName) => {
       if (next !== view) {
         view = next;
+        problemsShown = next === "inbox";
         copied = undefined;
         requestUpdate();
       }
@@ -1218,6 +1293,11 @@ export interface CheckView {
   text: Text;
   /** How much smaller the inbox is drawn, where the Workspace is too narrow. */
   zoom: number;
+  /**
+   * On a phone, the inbox alone, at the phone's width, with the Problems in
+   * a panel at the bottom, as frame p04 draws it.
+   */
+  phone: boolean;
 }
 
 /**
@@ -1474,6 +1554,22 @@ const renderPanel = (view: CheckView) => {
   }
   return html`
     <div class="check-dock">
+      ${
+        view.phone
+          ? html`<button
+              aria-controls="check-problems"
+              aria-expanded=${check.problemsShown ? "true" : "false"}
+              aria-label=${text(
+                check.problemsShown
+                  ? "check.hideProblems"
+                  : "check.showProblems"
+              )}
+              class="sheet-grab check-handle"
+              type="button"
+              @click=${check.toggleProblems}
+            ></button>`
+          : nothing
+      }
       <div
         aria-labelledby="check-title"
         class="check-panel thin-scrollbar"
@@ -1488,7 +1584,9 @@ const renderPanel = (view: CheckView) => {
           <p>${summary}</p>
           ${view.sendsTests ? renderTestResult(view) : nothing}
         </div>
-        ${body}
+        <div id="check-problems" ?hidden=${view.phone && !check.problemsShown}>
+          ${body}
+        </div>
       </div>
     </div>
   `;
@@ -1553,9 +1651,13 @@ const renderInbox = (
       role="tabpanel"
     >
       <figure class="check-preview">
-        <figcaption>
-          ${ICONS.monitor}${text("check.desktop", { width })}
-        </figcaption>
+        ${
+          view.phone
+            ? nothing
+            : html`<figcaption>
+                ${ICONS.monitor}${text("check.desktop", { width })}
+              </figcaption>`
+        }
         <div class="inbox-slot">
           <div class="inbox">
             ${renderInboxHeader(view, shown?.words, samples)}
@@ -1568,28 +1670,32 @@ const renderInbox = (
           </div>
         </div>
       </figure>
-      <figure class="check-preview">
-        <figcaption>
-          ${ICONS.phone}${text("check.phone", { width: PHONE_WIDTH })}
-        </figcaption>
-        <div class="phone-slot">
-          <div class="phone-frame">
-            <div class="phone-screen">
-              <span aria-hidden="true" class="phone-bar">
-                <span class="phone-back">
-                  ${ICONS.chevronLeft}${text("check.inbox")}
-                </span>
-              </span>
-              ${renderInboxEmail(
-                check.run,
-                shown?.html,
-                { alerts: false, title: text("check.phoneFrame") },
-                text
-              )}
-            </div>
-          </div>
-        </div>
-      </figure>
+      ${
+        view.phone
+          ? nothing
+          : html`<figure class="check-preview">
+              <figcaption>
+                ${ICONS.phone}${text("check.phone", { width: PHONE_WIDTH })}
+              </figcaption>
+              <div class="phone-slot">
+                <div class="phone-frame">
+                  <div class="phone-screen">
+                    <span aria-hidden="true" class="phone-bar">
+                      <span class="phone-back">
+                        ${ICONS.chevronLeft}${text("check.inbox")}
+                      </span>
+                    </span>
+                    ${renderInboxEmail(
+                      check.run,
+                      shown?.html,
+                      { alerts: false, title: text("check.phoneFrame") },
+                      text
+                    )}
+                  </div>
+                </div>
+              </div>
+            </figure>`
+      }
     </div>
   `;
 };
@@ -1727,7 +1833,7 @@ export const renderCheck = (view: CheckView) => {
       : renderShownCode(view, checked, samples);
   return html`
     <div
-      class="check"
+      class=${view.phone ? "check phone" : "check"}
       style=${styleProperties({
         "--_mq-inbox-width": `${width + 2 * INBOX_MARGIN_PX}px`,
         "--_mq-inbox-zoom": String(zoom),

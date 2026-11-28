@@ -31,12 +31,16 @@ export const textBlock = (page: Page) =>
 /** The test host's unfriendly CSS pushes the canvas far down the page. */
 export const TALL_VIEWPORT = { height: 1600, width: 1280 };
 
-/** A phone's width, below the 640px the editor needs, so it shows the narrow notice. */
-export const NARROW_VIEWPORT = { height: 800, width: 390 };
+/** A phone's, below 640px, where the editor is laid out for a phone. */
+export const PHONE_VIEWPORT = { height: 800, width: 375 };
 
-/** What the editor shows in place of itself when it's too narrow to edit in. */
-export const narrowNotice = (page: Page) =>
-  canvas(page).getByRole("region", { name: "Editing needs more room" });
+/** On a phone, the sheet open in front, which is a modal dialog. */
+export const sheet = (page: Page, name: string | RegExp) =>
+  canvas(page).getByRole("dialog", { name });
+
+/** On a phone, the top bar's button that opens its menu. */
+export const topMenuButton = (page: Page) =>
+  canvas(page).getByRole("button", { exact: true, name: "More" });
 
 /** The test host's page, with its first email showing. */
 export const openTestPage = async (page: Page) => {

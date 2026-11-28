@@ -6,7 +6,7 @@ import { defineConfig } from "blume";
 import { filesystem } from "blume/sources";
 
 import { codeDark, codeLight } from "./site/code-themes";
-import { EDITOR_MIN_HEIGHT, EDITOR_MIN_WIDTH } from "./site/editor-facts";
+import { EDITOR_MIN_HEIGHT, EDITOR_PHONE_WIDTH } from "./site/editor-facts";
 import { BLOCK_NAMES, COUNTS, EMAIL_WIDTH } from "./site/package-facts";
 import { DESCRIPTION, NPM, REPO, SITE_URL, SOCIAL_IMAGE } from "./site/project";
 
@@ -197,7 +197,7 @@ export default defineConfig({
     "block-count": COUNTS.blocks,
     "block-names": BLOCK_NAMES,
     "editor-min-height": String(EDITOR_MIN_HEIGHT),
-    "editor-min-width": String(EDITOR_MIN_WIDTH),
+    "editor-phone-width": String(EDITOR_PHONE_WIDTH),
     "email-width": String(EMAIL_WIDTH),
     "most-columns": COUNTS.mostColumns,
     "package-count": COUNTS.packages,

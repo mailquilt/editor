@@ -23,7 +23,7 @@ Put `<mail-quilt>` in a page of your own when the editor sits among other things
 - **In Style, the Email style panel, 320px wide, docks beside the email** while the editor is at least the email's width plus 400px, 1000px for the usual email. Otherwise it opens over the workspace's end, and the email stays its width.
 - **In Check, the email is shown at its own width and at a phone's 375px, beside a 352px panel of Problems.** Where they don't quite fit side by side, both are drawn up to a fifth smaller to stay so. With less room, the phone goes below, and where the desktop inbox doesn't fit either, both are drawn smaller together.
 - **The Selection bar keeps to one line.** Where it's short of room for what's selected, its Move, Duplicate and Delete buttons move into More.
-- **Below {{editor-min-width}}px, there's no room to edit.** The editor shows a notice in its place, whichever Mode it's in. It comes back, with the same email, once there's room again.
+- **Below {{editor-phone-width}}px, the editor is laid out for a phone.** The email takes the width, shown at a phone's width until someone picks Desktop, and the Selection bar is docked at the bottom. The Add panel, More, the Selection bar's popovers and the link field open as sheets from the bottom of the window, and the top bar keeps Undo, the Modes and a ⋯ menu with the rest: Redo, Desktop or Phone, the Rows list, and in the Shell, its name, Export and Import. Style and Check keep their panels at the bottom, under the email. The Selection bar stays at the bottom of what the editor shows, so give the editor a height that fits the window, as for a laptop, or let your page scroll with no scrolling box of its own around it.
 
 So give the editor the full width of your content area. Don't put it in a narrow column beside a sidebar of your own.
 
@@ -67,7 +67,7 @@ The [quick start](./quick-start) shows how to open an email in it, save it and e
 
 ## Check it before you ship
 
-- **Narrow the window** below {{editor-min-width}}px and back. The notice should show, then the editor with the same email.
+- **Narrow the window** below {{editor-phone-width}}px and back. The editor should be laid out for a phone, with the Selection bar at the bottom in sight, then as before, with the same email.
 - **Use it from the keyboard.** Tab into the editor, select a Block, move it with Alt and the arrow keys, and edit its text. The [keyboard page](./keyboard) lists every key.
 - **With your own colors, check contrast**: text against the surface and workspace, the selected Block's tag, focus rings and the tooltip.
 - **Open Check**, and export the HTML once. If your page has a Content Security Policy, [Content Security Policy](./api#content-security-policy) says what Check needs.

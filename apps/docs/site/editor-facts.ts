@@ -2,8 +2,11 @@
 // pages out by. The editor doesn't export them, so a browser test checks each
 // one against the editor itself.
 
-/** Narrower than this, `<mail-quilt>` shows a notice in place of the canvas. */
-export const EDITOR_MIN_WIDTH = 640;
+/**
+ * Narrower than this, `<mail-quilt>` is laid out for a phone: the Selection
+ * bar at the bottom, and its panels as sheets.
+ */
+export const EDITOR_PHONE_WIDTH = 640;
 
 /**
  * The least height `<mail-quilt>` takes, however short the email, with its top

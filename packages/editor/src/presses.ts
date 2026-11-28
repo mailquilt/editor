@@ -44,8 +44,11 @@ export const createPresses = ({ focus, selection }: PressesHost) => {
     event.preventDefault();
     commitFocusedField();
     const button = target.closest("button");
+    // Without scrolling: it's under the pointer already, and scrolling a bar
+    // that scrolls sideways, as on a phone, would move it from under the
+    // press, which would then click nothing.
     if (button && !focus.focused()) {
-      button.focus({ focusVisible: false });
+      button.focus({ focusVisible: false, preventScroll: true });
     }
   };
 

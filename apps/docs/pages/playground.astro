@@ -2,25 +2,21 @@
 // The Playground: the Shell on a page of its own, with nothing to install.
 import Playground from "../components/playground.tsx";
 import SitePage from "../components/site-page.astro";
-import { EDITOR_MIN_HEIGHT, EDITOR_MIN_WIDTH } from "../site/editor-facts.ts";
+import { EDITOR_MIN_HEIGHT } from "../site/editor-facts.ts";
 
 /*
- * Where there's room to edit, the Shell's height leaves room for the 4rem docs
- * header and the space around it, so it fits the window once scrolled to, and
- * the email scrolls inside it. It's never shorter than the editor, whose
- * top bar is the Shell's header, or the Shell would scroll by a few pixels. Narrower than the
- * editor needs, as on a phone, the Shell only shows a notice, so it takes that
- * notice's height. The note held in its place until it arrives is as tall.
- *
- * Written here, as a container query can't read a custom property.
+ * The Shell's height leaves room for the 4rem docs header and the space
+ * around it, so it fits the window once scrolled to, and the email scrolls
+ * inside it, with the top bar at its top and, on a phone, the Selection bar
+ * at its bottom. It's never shorter than the editor, whose top bar is the
+ * Shell's header, or the Shell would scroll by a few pixels. The note held in
+ * its place until it arrives is as tall.
  */
 const roomToEdit = `
-  @container (width >= ${EDITOR_MIN_WIDTH}px) {
-    .playground-shell,
-    .playground-waiting {
-      height: calc(100dvh - 6rem);
-      min-height: ${EDITOR_MIN_HEIGHT}px;
-    }
+  .playground-shell,
+  .playground-waiting {
+    height: calc(100dvh - 6rem);
+    min-height: ${EDITOR_MIN_HEIGHT}px;
   }
 `;
 ---

@@ -52,6 +52,16 @@ export type FocusTarget =
   /** Undo or Redo in the top bar while it's enabled, or else the other. */
   | { on: "history"; action: "redo" | "undo" }
   /**
+   * On a phone, a control in the top bar's menu by its `data-action`, or
+   * with none, or once the menu is closed, the button that opens it.
+   */
+  | { on: "topMenu"; action?: string }
+  /**
+   * On a phone, a Row in the Rows sheet: its button that moves it that way
+   * while it can, or else its other one, or the Row itself.
+   */
+  | { on: "rowsSheet"; rowId: string; move?: "down" | "up" }
+  /**
    * In the Rows list: a Row, by its ID, or its toggle, its +, or the first of
    * the +'s layouts, by their `data-action`, or else the toggle.
    */
@@ -165,7 +175,7 @@ const popoverStart = (popover: Element | null | undefined) =>
     'input:not([type="color"], [type="checkbox"], [type="radio"]), select'
   ) ??
   popover?.querySelector<HTMLElement>(
-    'input:not([type="color"], :disabled), button'
+    'input:not([type="color"], :disabled), button:not([data-action^="sheet-"])'
   );
 
 /**
@@ -447,7 +457,10 @@ export const createFocus = ({
     return (
       controls.find((control) => control.dataset.action === action) ??
       // Its first field, or its first action, past its Close button.
-      controls.find((control) => control.dataset.action !== "close-more") ??
+      controls.find(
+        ({ dataset }) =>
+          dataset.action !== "close-more" && dataset.action !== "sheet-done"
+      ) ??
       controls[0]
     );
   };
@@ -463,17 +476,14 @@ export const createFocus = ({
   };
 
   /**
-   * The floating toolbar, or in Style or Check, where it isn't shown, the
-   * Mode's tab, or the narrow notice where the Modes aren't shown.
+   * The floating toolbar, or in Style or Check, or on a phone, where it isn't
+   * shown, the Mode's tab.
    */
   const emailTools = (): Focusable | null | undefined => {
     const toolbar = findPlace(root(), "emailTools");
-    // Not shown: in Style or Check, or behind the narrow notice.
-    if (!toolbar || toolbar.closest("[hidden], [data-collapsed]")) {
-      return (
-        findPlace(root(), "modes")?.querySelector<HTMLElement>(
-          '[aria-selected="true"]'
-        ) ?? findPlace(root(), "notice")
+    if (!toolbar || toolbar.closest("[hidden]")) {
+      return findPlace(root(), "modes")?.querySelector<HTMLElement>(
+        '[aria-selected="true"]'
       );
     }
     // Without scrolling the page to it: in a Shell whose bottom is below the
@@ -520,6 +530,36 @@ export const createFocus = ({
       row ??
       list?.querySelector<HTMLElement>(`[data-action="${action ?? ""}"]`) ??
       list?.querySelector<HTMLElement>('[data-action="toggle-rows"]')
+    );
+  };
+
+  /** On a phone, a control in the top bar's menu, or else its ⋯ button. */
+  const topMenuControl = ({
+    action,
+  }: Extract<FocusTarget, { on: "topMenu" }>) =>
+    (action === undefined
+      ? undefined
+      : findPlace(root(), "topMenu")?.querySelector<HTMLElement>(
+          `[data-action="${CSS.escape(action)}"]:not(:disabled)`
+        )) ?? findPlace(root(), "topMenuButton");
+
+  /** On a phone, a Row's button in the Rows sheet, by the way it moved. */
+  const rowsSheetControl = ({
+    move,
+    rowId,
+  }: Extract<FocusTarget, { on: "rowsSheet" }>) => {
+    const row = findPlace(root(), "rowsSheet")?.querySelector<HTMLElement>(
+      `[data-row-id="${CSS.escape(rowId)}"]`
+    );
+    const ways =
+      move === undefined ? [] : [move, move === "up" ? "down" : "up"];
+    return (
+      ways
+        .map((way) =>
+          row?.querySelector<HTMLElement>(`[data-move="${way}"]:not(:disabled)`)
+        )
+        .find(Boolean) ??
+      row?.querySelector<HTMLElement>('[data-action="select-row"]')
     );
   };
 
@@ -619,6 +659,10 @@ export const createFocus = ({
       found = inList(root(), target.listId, target.at);
     } else if (target.on === "rowsList") {
       found = rowsListControl(target);
+    } else if (target.on === "rowsSheet") {
+      found = rowsSheetControl(target);
+    } else if (target.on === "topMenu") {
+      found = topMenuControl(target);
     } else if (target.on === "style") {
       found = styleControl(target.action);
     } else if (target.on === "field") {
