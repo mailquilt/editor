@@ -3044,11 +3044,16 @@ const renderUploadControl = ({ block }: BlockPosition, api: PanelApi) => {
  * the play button is drawn, it shows as chosen. Why it couldn't be added stays
  * under the button, with a way to upload a thumbnail, as frame k11 draws it.
  */
+/** The popover of a Video's play button choices. */
+const PLAY_POPOVER = "popover-play";
+
 const renderPlayControl = (
   target: Target,
   section: SettingsSection,
   api: PanelApi,
-  open: boolean
+  open: boolean,
+  /** In More on a phone, where it's a stop for Tab and its sheet has a back arrow. */
+  inMore = false
 ) => {
   const field = fieldOf(section, "play");
   if (target.kind !== "block" || field?.type !== "select") {
@@ -3056,7 +3061,7 @@ const renderPlayControl = (
   }
   const { block } = target.position;
   const { text, uploadImage, videos } = api;
-  const id = "popover-play";
+  const id = inMore ? `${IN_MORE}${PLAY_POPOVER}` : PLAY_POPOVER;
   const name = text("bar.playButton");
   const chosen = videos.isAdding(block.id)
     ? "on"
@@ -3114,7 +3119,9 @@ const renderPlayControl = (
   );
   // Its name shows before it, as a Column's settings' do, and is in its own.
   return html`
-    <span aria-hidden="true" class="bar-name">${name}</span>
+    <span aria-hidden="true" class=${inMore ? "box-label" : "bar-name"}
+      >${name}</span
+    >
     <span class="bar-anchor play">
       <button
         aria-describedby=${failure ? failureId : nothing}
@@ -3124,7 +3131,7 @@ const renderPlayControl = (
         class="bar-button"
         data-action=${id}
         data-tooltip=${name}
-        tabindex="-1"
+        tabindex=${inMore ? "0" : "-1"}
         type="button"
         @click=${() => api.togglePopover(id)}
       >
@@ -3201,7 +3208,7 @@ const renderOwnControl = (
         : nothing;
     }
     case "play": {
-      return renderPlayControl(target, section, api, open("popover-play"));
+      return renderPlayControl(target, section, api, open(PLAY_POPOVER));
     }
     case "popover": {
       return renderPopoverControl(section, control, api, open(control.id));
@@ -4045,6 +4052,27 @@ export const fitSelectionBar = (root: ParentNode) => {
  * opens their fields, as the bar's settings do, and its background and
  * corners as fields.
  */
+/** On a phone, a Video's play button in More, as the bar has it elsewhere. */
+const renderPlayMore = (
+  target: Target,
+  section: SettingsSection,
+  api: PanelApi
+) => html`
+  <div class="settings box" data-place=${place("settings")}>
+    <div class="section">
+      <div class="field inline" data-place=${place("boxOpener")}>
+        ${renderPlayControl(
+          target,
+          section,
+          api,
+          api.bar.popover === `${IN_MORE}${PLAY_POPOVER}`,
+          true
+        )}
+      </div>
+    </div>
+  </div>
+`;
+
 /**
  * On a phone, a Column's padding, alignment and border in More, which its bar
  * has no room for, as a Block's Box has them there: padding and border each
@@ -4241,7 +4269,15 @@ const renderMore = (api: PanelApi) => {
   const { text } = api;
   const target = targetOf(api);
   const section = sectionOf(target, api);
-  const fields = moreFieldsOf(target, section, api);
+  // On a phone, a Video's play button is in More, as frame p20 draws it,
+  // with the bar's own control, which draws it on the picture.
+  const playInMore =
+    api.phone &&
+    target.kind === "block" &&
+    target.position.block.type === "video";
+  const fields = moreFieldsOf(target, section, api).filter(
+    ({ key }) => !(playInMore && key === "play")
+  );
   const { subtitle, title } = headingOf(target, text);
   const body = html`
     ${
@@ -4254,6 +4290,7 @@ const renderMore = (api: PanelApi) => {
         ? renderColumnMore(target, api)
         : nothing
     }
+    ${playInMore ? renderPlayMore(target, section, api) : nothing}
     ${
       fields.length > 0 && !(api.phone && target.kind === "column")
         ? renderSettingsPanel(section, api.drafts, fieldTags(api), text, fields)

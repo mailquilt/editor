@@ -8,6 +8,7 @@ import {
   canvas,
   checkPanel,
   checkTab,
+  currentValue,
   emailWith,
   hostEvents,
   linkUrlField,
@@ -124,7 +125,13 @@ test.describe("on a phone", () => {
     await canvas(page)
       .getByRole("button", { exact: true, name: "Done" })
       .click();
-    const count = await blocks.count();
+    const blockCount = async () => {
+      const { rows } = await currentValue(page);
+      return rows.flatMap(({ columns }) =>
+        columns.flatMap((column) => column.blocks)
+      ).length;
+    };
+    const count = await blockCount();
 
     const bar = selectionBar(page);
     // Not drawn there at all, rather than hidden while the bar is short.
@@ -147,7 +154,8 @@ test.describe("on a phone", () => {
       ).toBeVisible();
     }
     await more.getByRole("button", { exact: true, name: "Duplicate" }).click();
-    await expect(blocks).toHaveCount(count + 1);
+    // At once, as a Command applies.
+    expect(await blockCount()).toBe(count + 1);
   });
 
   for (const width of [390, 320]) {
@@ -178,6 +186,31 @@ test.describe("on a phone", () => {
       expect(box.x + box.width - (more.x + more.width)).toBeLessThan(16);
     });
   }
+
+  test("chooses a Video's play button from More, as the bar does", async ({
+    page,
+  }) => {
+    await openFullWidth(page);
+    await selectionBar(page)
+      .getByRole("button", { exact: true, name: "Add" })
+      .click();
+    await sheet(page, "Add").getByRole("button", { name: /Video/u }).click();
+    await moreButton(page).click();
+
+    const more = sheet(page, "Video");
+    // Its own control, which draws the play button on the picture, rather
+    // than a plain list that would only save the choice.
+    await expect(
+      more.getByRole("combobox", { name: "Play button" })
+    ).toHaveCount(0);
+    await more.getByRole("button", { name: /^Play button/u }).click();
+    const choices = sheet(page, "Play button");
+    await expect(choices).toBeVisible();
+    await choices.getByRole("radio", { name: /None/u }).check();
+    await expect(
+      more.getByRole("button", { name: "Play button: None" })
+    ).toBeVisible();
+  });
 
   test("fits a Row's bar, its layouts in a sheet from Columns", async ({
     page,
@@ -440,7 +473,10 @@ test.describe("on a phone", () => {
     await sections
       .getByRole("button", { exact: true, name: "Button corners" })
       .click();
-    await expect(panel.getByRole("radio", { name: "Pill" })).toBeVisible();
+    await panel.getByRole("radio", { name: "Pill" }).check();
+    // Its section's name isn't shown again, but the way back to the default is.
+    await panel.getByRole("button", { name: /^Use the default/u }).click();
+    await expect(panel.getByRole("radio", { name: "Pill" })).not.toBeChecked();
   });
 
   test("goes to the section of the setting a callout's button changes", async ({

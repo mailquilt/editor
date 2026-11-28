@@ -505,9 +505,21 @@ export const stylePanelStyles = css`
     width: 100%;
   }
 
-  /* The section's button names it, so its heading isn't shown again. */
-  .style-panel.phone .style-section > h3 {
+  /*
+   * The section's button names it, so its heading isn't shown again, but for
+   * Button corners', which holds its way back to the default.
+   */
+  .style-panel.phone .style-section > h3:not(:has(#style-corners)) {
     display: none;
+  }
+
+  .style-panel.phone .style-section > h3 > #style-corners {
+    clip-path: inset(50%);
+    height: 1px;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
   }
 
   .style-panel.phone .style-sections {
