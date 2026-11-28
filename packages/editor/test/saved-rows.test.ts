@@ -3,6 +3,7 @@ import type { Row } from "@mailquilt/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { usableSavedRows } from "../src/saved-rows.js";
+import type { SavedRow } from "../src/saved-rows.js";
 
 const { version } = createEmail();
 
@@ -37,6 +38,20 @@ describe(usableSavedRows, () => {
       { name: "Footer", row: FOOTER },
       { name: "Older footer", row: FOOTER },
     ]);
+  });
+
+  it("leaves out an empty slot of a sparse list, and offers the rest", () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const given: SavedRow[] = [];
+    // Its first slot is empty.
+    given[1] = { name: "Footer", row: FOOTER, version };
+
+    expect(usableSavedRows(given)).toStrictEqual([
+      { name: "Footer", row: FOOTER },
+    ]);
+    expect(error).toHaveBeenCalledWith(
+      expect.stringContaining("left out a Saved Row")
+    );
   });
 
   it.each([

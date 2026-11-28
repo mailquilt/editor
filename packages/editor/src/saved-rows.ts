@@ -40,10 +40,10 @@ const leftOut = (name: unknown, reason: string) =>
  */
 export const usableSavedRows = (given: readonly SavedRow[] | undefined) => {
   const usable: OfferedSavedRow[] = [];
-  // Each as the host gives it, which from plain JavaScript may be `null`.
-  for (const { name, row, version } of (given ?? []).map(
-    (each) => each ?? ({} as Partial<SavedRow>)
-  )) {
+  // Each as the host gives it, which from plain JavaScript may be `null`, or
+  // an empty slot, which `for...of` gives as `undefined`.
+  for (const each of given ?? []) {
+    const { name, row, version }: Partial<SavedRow> = each ?? {};
     const loaded = load(row, version);
     if (!(typeof name === "string" && name.trim())) {
       console.error(leftOut(name, "it has no name"));

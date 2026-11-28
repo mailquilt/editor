@@ -119,8 +119,8 @@ test("the Add panel's search finds a Saved Row by its name, and a drag adds it b
   await settle(page);
   await expect(dropIndicator(page)).toBeVisible();
   await page.mouse.up();
-  await settle(page);
 
+  // At once, as a Command's result is.
   expect(await structure(page)).toStrictEqual([
     [["A"]],
     [["Thanks"], ["Unsubscribe"]],

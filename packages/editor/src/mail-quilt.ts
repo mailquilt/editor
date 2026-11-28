@@ -1867,7 +1867,8 @@ export class MailQuilt extends LitElement implements HostAppProperties {
           element = drawText(block);
           this.#offeredTexts.set(block.props, element);
         }
-        return element;
+        // A copy, as the same Saved Row may be drawn in two places at once.
+        return element.cloneNode(true) as HTMLElement;
       },
     });
   }
