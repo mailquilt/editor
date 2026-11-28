@@ -590,7 +590,10 @@ describe(renderEmail, () => {
   // can't change it.
   it("exports an email saved with version 3 as it did before Email style", async () => {
     const email: unknown = JSON.parse(
-      readFileSync(new URL("fixtures/version-3.json", import.meta.url), "utf-8")
+      readFileSync(
+        new URL("../../core/test/fixtures/version-3.json", import.meta.url),
+        "utf-8"
+      )
     );
 
     await expect(

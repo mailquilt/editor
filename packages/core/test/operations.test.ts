@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { Block, BlocksDocument, Column, Row } from "../src/index.js";
+import { DOCUMENT_VERSION } from "../src/internal.js";
 import { applyOperation, reverseOperation } from "../src/operations.js";
 import type { Operation } from "../src/operations.js";
 
@@ -23,7 +24,7 @@ const email = (): BlocksDocument => ({
     fontFamily: "Arial",
     width: 600,
   },
-  version: 2,
+  version: DOCUMENT_VERSION,
 });
 
 const rowIds = (document: BlocksDocument) => document.rows.map(({ id }) => id);
@@ -62,7 +63,7 @@ const move: Operation = {
 const setProps: Operation = {
   blockId: "c",
   previousProps: {},
-  props: { content: "new" },
+  props: { height: 40 },
   type: "setProps",
 };
 
@@ -115,6 +116,18 @@ describe("applying an Operation", () => {
     expect(blockIds(applied(insert))).toStrictEqual([["a", "new", "b"], ["c"]]);
   });
 
+  it("leaves the Block where it was when the Column to move it to is missing", () => {
+    const document = email();
+
+    expect(() =>
+      applyOperation(document, {
+        ...move,
+        to: { columnId: "nope", index: 0 },
+      })
+    ).toThrow(/nope/u);
+    expect(blockIds(document)).toStrictEqual([["a", "b"], ["c"]]);
+  });
+
   it("removes a Block from a Column", () => {
     expect(blockIds(applied(remove))).toStrictEqual([["a"], ["c"]]);
   });
@@ -137,7 +150,7 @@ describe("applying an Operation", () => {
   it("sets a Block's properties", () => {
     const changed = applied(setProps).rows[0]?.columns[1]?.blocks[0];
 
-    expect(changed?.props).toStrictEqual({ content: "new" });
+    expect(changed?.props).toStrictEqual({ height: 40 });
   });
 
   it("inserts a Row at an index", () => {

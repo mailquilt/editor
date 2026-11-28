@@ -1,6 +1,7 @@
 import * as v from "valibot";
 
 import { paddingEntries } from "./box-settings.js";
+import { plainObject } from "./value-schemas.js";
 
 // Showing on a device, and Phone values: what a Block, a Row or a Column has
 // apart from the desktop, below the phone breakpoint.
@@ -20,7 +21,13 @@ export type ShowOn = (typeof SHOW_ON)[number];
 export const phoneEntry = <Own extends v.ObjectEntries = Record<never, never>>(
   own: Own = {} as Own
 ) => ({
-  phone: v.optional(v.strictObject({ ...paddingEntries, ...own })),
+  phone: v.optional(
+    v.pipe(
+      v.unknown(),
+      plainObject,
+      v.strictObject({ ...paddingEntries, ...own })
+    )
+  ),
 });
 
 /** What a Block and a Row share: the devices they show on, and Phone values. */

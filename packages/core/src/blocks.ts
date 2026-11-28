@@ -25,6 +25,7 @@ import {
   fontSizeSchema,
   hexColor,
   MAX_FONT_SIZE,
+  plainObject,
   pixelSchema,
   solidColorSchema,
   wholePixelsSchema,
@@ -295,9 +296,11 @@ const imageBlockSchema = v.pipe(
     // No maximum, as MJML and the canvas both stop at the Column's width.
     width: v.optional(wholePixelsSchema),
   }),
-  // Alt text is all that can name a link around an image.
+  // Alt text is all that can name a link around an image. A decorative Image
+  // has none, so a link on one is the next check's to refuse.
   v.check(
-    ({ alt, href }) => href === undefined || hasAltText(alt),
+    ({ alt, decorative, href }) =>
+      decorative || href === undefined || hasAltText(alt),
     "A linked Image needs alt text"
   ),
   // Exported with empty alt text, so nothing would name a link around it.
@@ -572,13 +575,20 @@ const menuBlockSchema = v.strictObject({
   // In the person's order. A link without a label or a URL is kept, and left
   // out of the email.
   links: v.array(
-    v.strictObject({
-      // Plain text, as the whole label is the link. Not blank.
-      label: v.optional(
-        v.pipe(v.string(), v.regex(/\S/u, "A Menu link's label can't be blank"))
-      ),
-      url: v.optional(linkHrefSchema),
-    })
+    v.pipe(
+      v.unknown(),
+      plainObject,
+      v.strictObject({
+        // Plain text, as the whole label is the link. Not blank.
+        label: v.optional(
+          v.pipe(
+            v.string(),
+            v.regex(/\S/u, "A Menu link's label can't be blank")
+          )
+        ),
+        url: v.optional(linkHrefSchema),
+      })
+    )
   ),
 });
 
@@ -726,7 +736,7 @@ const videoBlock = {
   // picture, nor a video with no sign it's one.
   changes: (props, changes) =>
     !("thumbnail" in changes) ||
-    changes.thumbnail === props.thumbnail ||
+    (changes.thumbnail ?? undefined) === props.thumbnail ||
     "playThumbnail" in changes
       ? changes
       : {
@@ -937,16 +947,12 @@ export const BLOCK_TYPES: readonly {
   readonly type: BlockType;
 }[] = BLOCKS.map(([type, { label }]) => ({ label, type }));
 
-/**
- * What a person calls a type of Block.
- * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
- */
-export const blockLabel = (type: string) =>
-  blockDefinitions.get(type)?.label ?? type;
-
 /** An object schema's entries, inside the checks of a pipe if it's in one. */
 const entriesOf = (schema: v.GenericSchema): v.ObjectEntries => {
-  const object = "pipe" in schema ? (schema.pipe as unknown[])[0] : schema;
+  const object =
+    "pipe" in schema
+      ? (schema.pipe as object[]).find((step) => "entries" in step)
+      : schema;
   return (object as { entries: v.ObjectEntries }).entries;
 };
 

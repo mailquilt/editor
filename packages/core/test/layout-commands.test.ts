@@ -215,7 +215,7 @@ const threeRowEmail = (): BlocksDocument => ({
       },
     ],
     id,
-    props: { backgroundColor: `#${id.length}${id.length}0000` },
+    props: {},
   })),
 });
 
@@ -502,7 +502,7 @@ describe("the Commands that add a Row for a Block", () => {
 });
 
 describe("a Command for what's already so", () => {
-  it("says so with its code alone", () => {
+  it("refuses a move to where the Block already is, as unchanged", () => {
     const { editor } = setup();
 
     expect(editor.apply(move("a", "left", 0))).toStrictEqual({
@@ -530,6 +530,32 @@ describe("a Command for what's already so", () => {
       ).toMatchObject({ code: "unchanged", ok: false });
     }
     expect(operations).toStrictEqual([]);
+  });
+
+  it("moves a Block out of a Row with other Blocks to a Row beside it", () => {
+    const { editor } = setup({
+      ...createEmail(),
+      rows: [
+        {
+          columns: [
+            {
+              blocks: [block("a"), block("b")],
+              id: "c",
+              props: {},
+              width: 100,
+            },
+          ],
+          id: "row",
+          props: {},
+        },
+      ],
+    });
+
+    expectAccepted(
+      editor.apply({ blockId: "a", rowIndex: 1, type: "moveBlockToNewRow" })
+    );
+
+    expect(columnsOf(editor.getDocument())).toStrictEqual([[["b"]], [["a"]]]);
   });
 
   // Empty Rows are kept, as a person can fill them again.

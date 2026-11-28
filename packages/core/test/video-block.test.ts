@@ -113,6 +113,17 @@ describe("Video Block", () => {
     expect(propsOf(editor.getDocument())).toStrictEqual(after);
   });
 
+  it("leaves the play button on when clearing a thumbnail it doesn't have", () => {
+    const editor = createEditor({ document: withVideo() });
+    const apply = (props: Record<string, unknown>) =>
+      editor.apply({ blockId: "video-1", props, type: "updateBlockProps" });
+    apply({ play: "on" });
+
+    apply({ thumbnail: null });
+
+    expect(propsOf(editor.getDocument())).toMatchObject({ play: "on" });
+  });
+
   it("keeps a copy given with the new thumbnail", () => {
     const props = {
       play: "on",
