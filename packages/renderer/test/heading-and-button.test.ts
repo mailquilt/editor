@@ -136,8 +136,9 @@ describe("a Button Block", () => {
   });
 
   it("has no link with only a label", async () => {
-    const html = await renderEmail(emailWith(button({ label: "Button" })));
+    const html = await renderEmail(emailWith(button({ label: "Pay now" })));
 
+    expect(html).toContain("Pay now");
     expect(buttonLink(html)).toBe("");
   });
 

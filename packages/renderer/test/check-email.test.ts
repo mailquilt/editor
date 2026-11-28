@@ -49,6 +49,19 @@ describe(checkEmail, () => {
     ]);
   });
 
+  it("reads a null list of Merge Tags as none, as the editor does", async () => {
+    await expect(
+      codes(
+        ready(
+          text({
+            ...paragraph({ text: "Hi {{frist_name}}", type: "text" }),
+          })
+        ),
+        { mergeTags: null as never }
+      )
+    ).resolves.toStrictEqual([]);
+  });
+
   it("finds an email with no preheader and no language, in its settings' fields", async () => {
     await expect(
       checkEmail(
@@ -104,6 +117,19 @@ describe(checkEmail, () => {
       await expect(codes(email)).resolves.toStrictEqual(expected);
     }
   );
+
+  it("measures the Gmail limit in bytes, so HTML of exactly 102 KB isn't cut off", async () => {
+    const html = "x".repeat(102 * 1024);
+    await expect(codes(ready(text()), { html })).resolves.toStrictEqual([]);
+  });
+
+  it("counts a 3-byte and a 4-byte character as the bytes they take", async () => {
+    // 34 * 1024 characters of 3 bytes are 102 KB, and a 4-byte one tips it over.
+    const html = `${"€".repeat(34 * 1024 - 1)}😀`;
+    await expect(codes(ready(text()), { html })).resolves.toStrictEqual([
+      "html-too-large",
+    ]);
+  });
 
   it("measures the HTML it's given instead of rendering the email", async () => {
     const html = "x".repeat(102 * 1024 + 1);
@@ -428,6 +454,21 @@ describe(checkEmail, () => {
       ).resolves.toStrictEqual(["no-unsubscribe-link"]);
     });
 
+    it("counts a URL written in the text, as the renderer links it", async () => {
+      await expect(
+        codes(
+          ready({
+            props: paragraph({
+              text: "Unsubscribe: https://example.com/u/{{unsubscribe_url}}",
+              type: "text",
+            }),
+            type: "text",
+          }),
+          { mergeTags: MERGE_TAGS }
+        )
+      ).resolves.toStrictEqual([]);
+    });
+
     it("finds no unsubscribe link when the tag is only in the text", async () => {
       await expect(
         codes(
@@ -451,6 +492,30 @@ describe(checkEmail, () => {
 
   // Ratios on white: #767676 is 4.54:1, #777777 4.48:1 and #949494 3.03:1.
   describe("contrast", () => {
+    it("reads the Phone font size too, as large text on a desktop can be small on a phone", async () => {
+      // #888888 is 3.5:1, enough at 24px but not at 12px.
+      const desktop = text({ color: "#888888", fontSize: 24 });
+      await expect(codes(ready(desktop))).resolves.toStrictEqual([]);
+      const block = text({
+        color: "#888888",
+        fontSize: 24,
+        phone: { fontSize: 12 },
+      });
+      await expect(codes(ready(block))).resolves.toStrictEqual([
+        "low-text-contrast",
+      ]);
+    });
+
+    it("doesn't read the Phone font size of a Block that phones don't show", async () => {
+      const block = text({
+        color: "#888888",
+        fontSize: 24,
+        phone: { fontSize: 12 },
+        showOn: "desktop",
+      });
+      await expect(codes(ready(block))).resolves.toStrictEqual([]);
+    });
+
     it.each([
       [
         "a Text Block's own color",
@@ -503,7 +568,7 @@ describe(checkEmail, () => {
       ]);
     });
 
-    // Half-black over white is drawn #808080, and is 3.98:1 before rounding.
+    // Half-black over white is drawn #808080, which is 3.95:1.
     it("names the colors as they're drawn, their contrast and what's needed", async () => {
       const [problem] = await checkEmail(
         ready(text({ color: "rgba(0, 0, 0, 0.5)" }))
@@ -511,7 +576,7 @@ describe(checkEmail, () => {
       expect(problem?.contrast).toStrictEqual({
         background: "#ffffff",
         color: "#808080",
-        ratio: expect.closeTo(3.98, 2),
+        ratio: expect.closeTo(3.95, 2),
         required: 4.5,
       });
     });

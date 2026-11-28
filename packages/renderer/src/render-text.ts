@@ -1,6 +1,7 @@
 import { loadDocument } from "@mailquilt/core";
 import type { Block, RichTextParagraph } from "@mailquilt/core";
 import {
+  isHiddenOn,
   menuLinks,
   SOCIAL_NETWORKS,
   videoLabel,
@@ -68,20 +69,26 @@ const lineToText = (inline: Inline[] = [], capitals?: Capitals) => {
   // Text with the same link, or none.
   let run = "";
   let href: string | undefined;
+  // Line breaks wait for the next text, to join its run if it has the same
+  // link, or else to follow the URL of the run before.
+  let breaks = "";
   for (const node of inline) {
     if (node.type === "hardBreak") {
-      run += "\n";
+      breaks += "\n";
       continue;
     }
     const nodeHref = hrefOf(node);
-    if (nodeHref !== href) {
-      line += runToText(run, href, capitals);
+    if (nodeHref === href) {
+      run += breaks;
+    } else {
+      line += runToText(run, href, capitals) + breaks;
       run = "";
       href = nodeHref;
     }
+    breaks = "";
     run += node.type === "mergeTag" ? `{{${node.attrs.name}}}` : node.text;
   }
-  return line + runToText(run, href, capitals);
+  return line + runToText(run, href, capitals) + breaks;
 };
 
 /** A Block as text, or nothing for one with no words. */
@@ -164,6 +171,9 @@ const blockToText = (block: Block, capitals: Capitals) => {
  * Writes a saved email as plain text, to send beside its HTML. `document` is
  * checked as `renderEmail` checks it, and this throws with the reason if it
  * isn't an email Mail Quilt accepts. It needs no MJML, so it returns at once.
+ * It follows the desktop version: a Row or Block shown only on phones is left
+ * out, as its desktop twin has the words, and Outlook on Windows never shows
+ * it either.
  */
 export const renderText = (document: unknown) => {
   const loaded = loadDocument(document);
@@ -173,8 +183,10 @@ export const renderText = (document: unknown) => {
   const { rows, settings } = loaded.document;
   const capitals = capitalsIn(settings.language);
   return rows
+    .filter((row) => !isHiddenOn(row, "desktop"))
     .flatMap((row) => row.columns)
     .flatMap((column) => column.blocks)
+    .filter((block) => !isHiddenOn(block, "desktop"))
     .map((block) => blockToText(block, capitals))
     .filter((block) => block.trim() !== "")
     .join("\n\n");

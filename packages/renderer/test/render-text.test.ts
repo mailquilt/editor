@@ -255,6 +255,81 @@ describe("the plain text", () => {
     ).toBe("Pack:\n- Beans\n- Filters\n1. Grind\n2. Pour");
   });
 
+  // A line break after a link is the link's last character, so the URL follows
+  // the link's words, then the break, then the next line.
+  it("writes a link's URL before the line break after it, not after", () => {
+    expect(
+      renderText(
+        emailWith(
+          text(
+            paragraph(
+              words("Visit site", [link("https://a.com")]),
+              { type: "hardBreak" },
+              words("Next line")
+            )
+          )
+        )
+      )
+    ).toBe("Visit site (https://a.com)\nNext line");
+  });
+
+  it("keeps a line break inside a link, and a break before a link", () => {
+    expect(
+      renderText(
+        emailWith(
+          text(
+            paragraph(
+              words("Hello"),
+              { type: "hardBreak" },
+              words("Two", [link("https://a.com")]),
+              { type: "hardBreak" },
+              words("lines", [link("https://a.com")])
+            )
+          )
+        )
+      )
+    ).toBe("Hello\nTwo\nlines (https://a.com)");
+  });
+
+  // The desktop version has the words, and Outlook on Windows never shows what's for phones.
+  it("leaves out what only phones show, as its desktop twin has the same words", () => {
+    const twin = (showOn: string, said: string) => ({
+      ...text(paragraph({ text: said, type: "text" })),
+      props: {
+        ...text(paragraph({ text: said, type: "text" })).props,
+        showOn,
+      },
+    });
+    const email = emailWith(
+      twin("desktop", "Sale ends today"),
+      twin("phone", "Sale ends today"),
+      text(paragraph({ text: "For everyone", type: "text" }))
+    );
+    const [row] = email.rows as [(typeof email.rows)[0]];
+    email.rows = [
+      row,
+      {
+        columns: [
+          {
+            blocks: [
+              {
+                id: "block-9",
+                ...text(paragraph({ text: "Row for phones", type: "text" })),
+              },
+            ],
+            id: "column-2",
+            props: {},
+            width: 100,
+          },
+        ],
+        id: "row-2",
+        props: { showOn: "phone" },
+      },
+    ] as typeof email.rows;
+
+    expect(renderText(email)).toBe("Sale ends today\n\nFor everyone");
+  });
+
   it("throws with the reason for an email it can't accept", () => {
     expect(() => renderText({ kind: "blocks" })).toThrow(/version/u);
   });

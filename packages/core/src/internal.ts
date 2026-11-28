@@ -29,6 +29,7 @@ export {
   EMAIL_SETTINGS_FIELDS,
   isFontFamily,
   isWebFont,
+  sameFontName,
 } from "./email-settings.js";
 export { rowSettingsFields, rowStyles } from "./row-settings.js";
 export { COLUMN_SETTINGS_FIELDS, columnStyles } from "./column-settings.js";

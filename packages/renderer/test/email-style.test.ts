@@ -86,3 +86,41 @@ describe("an email with an Email style", () => {
     expect(second).toContain("background-color:#fbf7f1");
   });
 });
+
+describe("a Text Block's List on a phone", () => {
+  // A List's indent is 1.5 times the font size, on the canvas as in the email.
+  it("takes its indent from the Phone font size", async () => {
+    const email = emailWith({
+      props: {
+        content: {
+          content: [
+            {
+              content: [
+                {
+                  content: [
+                    {
+                      content: [{ text: "Beans", type: "text" }],
+                      type: "paragraph",
+                    },
+                  ],
+                  type: "listItem",
+                },
+              ],
+              type: "bulletList",
+            },
+          ],
+          type: "doc",
+        },
+        fontSize: 36,
+        phone: { fontSize: 12 },
+      },
+      type: "text",
+    });
+    email.version = 4;
+
+    const html = await renderEmail(email);
+
+    expect(html).toContain("margin:0 0 0 54px;padding:0");
+    expect(html).toMatch(/ul, [^{]*ol \{ margin-left:18px !important;/u);
+  });
+});
