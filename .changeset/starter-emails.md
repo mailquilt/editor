@@ -11,5 +11,4 @@ What changes for a host:
 - A Starter email's Row whose Column widths aren't a layout's gets even Columns, as a pasted Row does.
 - `createEmail()` gives an email with one Row, so the start screen needs one with `rows: []`.
 - `StarterEmail`, from `@mailquilt/editor` and `@mailquilt/react`, is the type of each, and `HostAppProperties` gains `starterEmails`.
-- `STRINGS`, `StringId` and `MailQuiltStrings` gain `start.title`, `start.text`, `start.blank`, `start.blankText` and `said.started`. A full translation typed `Record<StringId, string>` stops compiling until it adds them; a partial one typed `MailQuiltStrings`, or one spread from `STRINGS`, still compiles.
 - No theme token is added or changed.

@@ -2,7 +2,7 @@
 "@mailquilt/editor": minor
 ---
 
-Breaking: `<mail-quilt>` has a top bar above the email, with Undo and Redo, the three Modes, Edit, Style and Check, and Desktop and Phone views. Edit is the editor as before. Style and Check show nothing yet. A person moves between the Modes by pointer, or from the keyboard as one Tab stop with the arrow keys, and Style and Check are off while the email is empty. Phone shows the email at a phone's width. Undo and Redo have left the toolbar below the email, which keeps Preview. The top bar is the `top-bar` part, and the editor stays at least 600px tall with it.
+Breaking: `<mail-quilt>` has a top bar above the email, with Undo and Redo, the three Modes, Edit, Style and Check, and Desktop and Phone views. Edit is the editor as before. A person moves between the Modes by pointer, or from the keyboard as one Tab stop with the arrow keys, and Style and Check are off while the email is empty. Phone shows the email at a phone's width. Undo and Redo have left the toolbar below the email. The top bar is the `top-bar` part, and the editor stays at least 600px tall with it.
 
 In `<mail-quilt-shell>`, the email's name, whether it's saved, and Export and Import are in the same top bar, and the message bar is below it, so the page has one header. Export is one button with a menu of the HTML file and the JSON file, off while the email is empty, and Import JSON is in a More menu. With `save-key`, the bar says "Saved", or "Not saved" when the browser can't save, and that message has an Export JSON button.
 

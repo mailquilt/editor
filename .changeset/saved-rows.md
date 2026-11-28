@@ -10,6 +10,5 @@ What changes for a host:
 - Each `row` is checked as a paste is, and brought up to date from its `version`. One the editor can't take, with no `version`, or with no `name`, isn't offered, and the console says why.
 - A Saved Row whose Column widths aren't a layout's gets even Columns, as a pasted Row does.
 - `SavedRow`, from `@mailquilt/editor` and `@mailquilt/react`, is the type of each, and `HostAppProperties` gains `savedRows`. An object typed `HostAppProperties` still compiles.
-- `STRINGS`, `StringId` and `MailQuiltStrings` gain `add.savedRows` and `said.savedRowAdded`. A full translation typed `Record<StringId, string>` stops compiling until it adds them; a partial one typed `MailQuiltStrings`, or one spread from `STRINGS`, still compiles.
 - The Rows list's + opens its popover level with the +, moved up as far as it needs to fit, and it scrolls where the window is too short. On the collapsed list it used to open upwards from the +.
 - No theme token is added or changed.

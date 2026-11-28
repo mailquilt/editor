@@ -14,5 +14,4 @@ What changes for a host:
 - The editor adds each font's stylesheet to your page's `<head>`. A Content Security Policy needs `style-src` to allow the stylesheets and `font-src` the font files, such as `https://fonts.googleapis.com` and `https://fonts.gstatic.com`.
 - A font in `fonts` whose name, URL or fallback the editor can't use, or whose name an earlier one has, is left out, and said on the console.
 - `HostFont`, from `@mailquilt/editor`, is the type of each font in the list, and `HostAppProperties` gains `fonts`.
-- `STRINGS`, `StringId` and `MailQuiltStrings` gain `style.yourFonts`, `style.fallsBackTo`, `style.fontLoading` and `style.fontFailed`. A full translation typed `Record<StringId, string>` stops compiling until it adds them; a partial one typed `MailQuiltStrings`, or one spread from `STRINGS`, still compiles.
 - No theme token is added or changed.

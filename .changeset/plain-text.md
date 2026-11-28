@@ -10,6 +10,5 @@ Check gets three tabs above the email: Inbox, as before, Plain text, and HTML, w
 What changes for a host:
 
 - New methods `exportText()` on `<mail-quilt>` and `<mail-quilt-shell>`, and `renderText` from `@mailquilt/renderer`. Nothing is removed or renamed.
-- The editor's `strings` gain `check.views`, `check.viewInbox`, `check.viewText`, `check.viewHtml`, `check.textNote`, `check.htmlNote`, `check.copyText`, `check.copyHtml`, `check.copied`, `check.copiedText`, `check.copiedHtml` and `check.cantCopy`. `StringId` has been in no release, so no released host's translation stops compiling.
 - No theme token is added or changed. The HTML's tag names use `--mq-color-accent-strong` and its attribute values `--mq-color-success`.
 - Copying fires the browser's copy event on the page, as More's Copy does, with the text as `text/plain`.
