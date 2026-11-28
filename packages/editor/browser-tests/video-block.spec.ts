@@ -112,7 +112,7 @@ test("a new Video says what goes in it, and its thumbnail waits for the link", a
   });
   await expect(thumbnail).toHaveAttribute("aria-disabled", "true");
   await expect(thumbnail).toHaveAccessibleDescription(
-    "Paste the video’s link first"
+    "Paste the video's link first"
   );
   expect(await violations(page)).toStrictEqual([]);
 });
@@ -193,9 +193,9 @@ test("a thumbnail whose site doesn't let the editor draw on it says so, with a w
   await page.keyboard.press("Escape");
 
   const failed = selectionBar(page).getByTestId("play-failed");
-  await expect(failed).toContainText("The play button couldn’t be added");
+  await expect(failed).toContainText("The play button couldn't be added");
   await expect(failed).toContainText(
-    "unreadable.example doesn’t let the editor draw"
+    "unreadable.example doesn't let the editor draw"
   );
   await expect(
     failed.getByRole("button", { name: "Upload a thumbnail" })
@@ -246,7 +246,7 @@ test("without the Host app's uploadImage, On the picture is off and says why", a
 
   await expect(choice(page, "On the picture")).toBeDisabled();
   await expect(choice(page, "On the picture")).toHaveAccessibleDescription(
-    "Needs image uploads, which this app doesn’t offer."
+    "Needs image uploads, which this app doesn't offer."
   );
   expect(await violations(page)).toStrictEqual([]);
 });

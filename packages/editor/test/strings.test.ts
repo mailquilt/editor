@@ -6,7 +6,7 @@ import {
   rowSettingsFields,
 } from "@mailquilt/core/internal";
 import type { SettingsField } from "@mailquilt/core/internal";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { STRINGS } from "../src/strings.js";
 import type { MailQuiltStrings } from "../src/strings.js";
@@ -45,6 +45,10 @@ describe(fill, () => {
 });
 
 describe(createText, () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("uses the Host app's text, with its placeholders filled", () => {
     const text = createText(() => ({ "canvas.row": "Ligne {row}" }));
 
@@ -62,6 +66,18 @@ describe(createText, () => {
     const strings = { "topBar.undo": 1 } as unknown as MailQuiltStrings;
 
     expect(createText(() => strings)("topBar.undo")).toBe("Undo");
+  });
+
+  // Intl, which joins lists and writes dates in it, throws on one.
+  it("keeps the English language for one that isn't a language tag, and says so once", () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const text = createText(() => ({ language: "en_US" }));
+
+    expect(text("language")).toBe(STRINGS.language);
+    expect(text("language")).toBe(STRINGS.language);
+    expect(error).toHaveBeenCalledExactlyOnceWith(
+      expect.stringContaining("en_US")
+    );
   });
 
   it("reads the Host app's texts afresh each time", () => {
