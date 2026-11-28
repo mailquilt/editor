@@ -173,4 +173,19 @@ test.describe("Delete and Backspace", () => {
     expect(await structure(page)).toStrictEqual([[["A"]]]);
     await expect(barButton(page, "Row 1")).toBeFocused();
   });
+
+  test("held down, delete one Block, not the Blocks focus moves on to", async ({
+    page,
+  }) => {
+    await openEmail(page, [[["A", "B", "C"]]]);
+    await blockWith(page, "A").focus();
+
+    await page.keyboard.down("Delete");
+    await page.keyboard.down("Delete");
+    await page.keyboard.down("Delete");
+    await page.keyboard.up("Delete");
+
+    expect(await structure(page)).toStrictEqual([[["B", "C"]]]);
+    await expect(blockWith(page, "B")).toBeFocused();
+  });
 });

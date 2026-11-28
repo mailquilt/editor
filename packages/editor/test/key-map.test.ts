@@ -36,6 +36,7 @@ const press = (
     key,
     keyCode: 0,
     metaKey: apple ? mod : false,
+    repeat: false,
     shiftKey: parts.includes("Shift") || /^[A-Z]$/u.test(key),
     ...rest,
   };
@@ -737,6 +738,18 @@ describe("a key held down", () => {
   it("an arrow key repeating goes on to the next Block", () => {
     expect(keyHeardFirst("heldElsewhere", press("ArrowDown"))).toBeUndefined();
   });
+
+  it.each([
+    ["block", "Delete"],
+    ["rowBar", "Backspace"],
+  ] as const)(
+    "on %s, %s repeating deletes nothing more, and stops there",
+    (scope, name) => {
+      expect(keyIn(scope, press(name, { repeat: true }))).toStrictEqual(
+        acts("ignore", { stops: true })
+      );
+    }
+  );
 });
 
 describe("ProseMirror's names for the text's keys", () => {
