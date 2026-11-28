@@ -258,7 +258,9 @@ test.describe("an empty Column on a touch screen", () => {
     );
 
     await expect(column.getByTestId("add-blocks")).toBeVisible();
-    await expect(canvas(page).getByTestId("insert-point").first()).toBeHidden();
+    const insertPoint = canvas(page).getByTestId("insert-point").first();
+    await expect(insertPoint).toBeAttached();
+    await expect(insertPoint).toBeHidden();
     // With no hover to show them, a Block's drag handle always shows, and a
     // Row's tag, which selects the Row, for the Selection bar.
     await expect(

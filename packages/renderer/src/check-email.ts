@@ -9,9 +9,11 @@ import type {
 import {
   blockStyles,
   hexColor,
+  isHiddenOn,
   linkColor,
   menuLinks,
   MERGE_TAG,
+  onPhone,
   videoLabel,
   videoShown,
 } from "@mailquilt/core/internal";
@@ -194,15 +196,16 @@ const parseColor = (color: string): Rgba => {
   return [channel(1), channel(3), channel(5), alpha];
 };
 
-/** `color` painted over a solid `behind`, as a solid color. */
 /** `color` drawn over `behind`, or `behind` alone where there's no color. */
 const over = (color: string | undefined, behind: Rgba): Rgba => {
   if (color === undefined) {
     return behind;
   }
   const [red, green, blue, alpha] = parseColor(color);
+  // Each channel is the 8-bit value the screen draws, so the hex and the ratio
+  // are of the same color.
   const mix = (channel: number, under: number) =>
-    channel * alpha + under * (1 - alpha);
+    Math.round((channel * alpha + under * (1 - alpha)) * 255) / 255;
   return [mix(red, behind[0]), mix(green, behind[1]), mix(blue, behind[2]), 1];
 };
 
@@ -302,6 +305,9 @@ const visibleRuns = ({ content }: RichTextParagraph): Run[] =>
       link: marked(piece, "link"),
     }));
 
+const LINK_CONTRAST_MESSAGE =
+  "Links have too little contrast with what's behind them for everyone to read them. They need 4.5:1, or 3:1 for large text.";
+
 const lowContrast = (
   block: Block,
   behind: Rgba,
@@ -357,8 +363,7 @@ const lowContrast = (
                 code: "low-link-contrast" as const,
                 contrast: linksFail,
                 field: "color",
-                message:
-                  "Links have too little contrast with what's behind them for everyone to read them. They need 4.5:1, or 3:1 for large text.",
+                message: LINK_CONTRAST_MESSAGE,
               },
             ]
           : []),
@@ -383,8 +388,7 @@ const lowContrast = (
               code: "low-link-contrast",
               contrast: links,
               field: "color",
-              message:
-                "Links have too little contrast with what's behind them for everyone to read them. They need 4.5:1, or 3:1 for large text.",
+              message: LINK_CONTRAST_MESSAGE,
             },
           ];
     }
@@ -430,12 +434,26 @@ const isVague = (text: string) =>
       .trim()
   );
 
+const hrefOf = (inline: Inline) =>
+  inline.marks?.find((mark) => mark.type === "link")?.attrs.href;
+
+/** The URL of each address a Text Block or Heading writes, as the renderer links it. */
+const writtenLinksIn = (block: Block) =>
+  block.type === "text" || block.type === "heading"
+    ? paragraphsIn(block.props.content).flatMap(({ content }) =>
+        // A line break keeps a link open across it, but opens none of its own.
+        drawnPieces(content).flatMap((piece) =>
+          piece.type === "text" ? (hrefOf(piece) ?? []) : []
+        )
+      )
+    : [];
+
 /** The text of each link in a paragraph, a run of text with the same URL. */
 const linkTexts = ({ content = [] }: RichTextParagraph) => {
   const texts: string[] = [];
   let previous: string | undefined;
   for (const inline of content) {
-    const href = inline.marks?.find((mark) => mark.type === "link")?.attrs.href;
+    const href = hrefOf(inline);
     const text = inlineText(inline);
     if (href !== undefined && href === previous) {
       texts[texts.length - 1] += text;
@@ -512,11 +530,37 @@ const shownProps = (block: Block): Record<string, unknown> => {
   };
 };
 
+/**
+ * What's too hard to read, at desktop sizes and then on phones, where a Phone
+ * font size can be smaller. Each code once, as the desktop's if both have it.
+ */
+const contrastProblems = (
+  block: Block,
+  behind: Rgba,
+  style: EmailStyle,
+  rowHiddenOnPhone: boolean
+): BlockProblem[] => {
+  const desktop = isHiddenOn(block, "desktop")
+    ? []
+    : lowContrast(block, behind, style);
+  const phone =
+    rowHiddenOnPhone || isHiddenOn(block, "phone")
+      ? []
+      : lowContrast(onPhone(block), behind, style);
+  return [
+    ...desktop,
+    ...phone.filter(
+      ({ code }) => !desktop.some((found) => found.code === code)
+    ),
+  ];
+};
+
 const blockProblems = (
   block: Block,
   knownTags: ReadonlySet<string> | undefined,
   behind: Rgba,
-  style: EmailStyle
+  style: EmailStyle,
+  rowHiddenOnPhone: boolean
 ): BlockProblem[] => {
   const problems: BlockProblem[] = [];
   switch (block.type) {
@@ -578,7 +622,7 @@ const blockProblems = (
     default:
   }
   problems.push(
-    ...lowContrast(block, behind, style),
+    ...contrastProblems(block, behind, style, rowHiddenOnPhone),
     ...vagueLinks(block),
     // A Menu's link without a label or a URL isn't in the email, nor what a
     // Video doesn't show.
@@ -649,7 +693,9 @@ export const checkEmail = async (
   }
   const { rows, settings } = loaded.document;
   const style = settings.style ?? {};
-  const knownTags = mergeTags && new Set(mergeTags.map(({ name }) => name));
+  const knownTags = mergeTags
+    ? new Set(mergeTags.map(({ name }) => name))
+    : undefined;
   const problems = settingsProblems(settings, knownTags);
   const links: string[] = [];
   for (const row of rows) {
@@ -672,9 +718,15 @@ export const checkEmail = async (
         } else if (block.type === "video") {
           links.push(...linksIn({ url: videoShown(block.props)?.url }));
         } else if (block.type !== "image" || block.props.src !== undefined) {
-          links.push(...linksIn(block.props));
+          links.push(...linksIn(block.props), ...writtenLinksIn(block));
         }
-        for (const problem of blockProblems(block, knownTags, behind, style)) {
+        for (const problem of blockProblems(
+          block,
+          knownTags,
+          behind,
+          style,
+          isHiddenOn(row, "phone")
+        )) {
           problems.push({
             ...problem,
             blockId: block.id,

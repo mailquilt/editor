@@ -9,5 +9,4 @@ What changes for a host:
 
 - A new optional property `sendTest` on `<mail-quilt>` and `<mail-quilt-shell>`, and prop on `MailQuilt` and `MailQuiltShell`. The Shell and both React components pass it to the editor. Without it, there's no button. Nothing is removed or renamed.
 - The exported `HostAppProperties` type gains `sendTest`. Code that uses it as usual keeps compiling: `MailQuiltProps` objects, setting properties on the element, and `implements HostAppProperties`. Code that needs every property stops compiling until it adds `sendTest`, such as `Required<HostAppProperties>` or a `{ [Name in keyof HostAppProperties]-?: … }` list.
-- The editor's `strings` gain `check.sendTest`, `check.sendingTest`, `check.testWaits`, `check.testSent` and `check.testFailed`. `StringId` has been in no release, so no released host's translation stops compiling.
 - No theme token is added or changed.

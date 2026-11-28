@@ -1,5 +1,6 @@
 name: Idea
 description: Something Mail Quilt can't do yet.
+type: Feature
 labels: [enhancement, needs-triage]
 body:
   - type: markdown

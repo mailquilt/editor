@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 # A newer push to a pull request replaces its run. On main every commit is
-# checked to the end, as any of them could be released, so each one has a
+# checked to the end, as a rerun of any of them can release, so each one has a
 # group of its own. In a shared group, a run waiting behind another is
 # cancelled when a newer one joins.
 concurrency:
@@ -102,6 +102,7 @@ jobs:
         with:
           # The whole history, so a pull request can be compared with main.
           fetch-depth: 0
+          persist-credentials: false
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -115,7 +116,9 @@ jobs:
         run: |
           removed=$(git diff --name-only --diff-filter=D origin/main...HEAD -- '.changeset/*.md')
           left=$(git ls-files '.changeset/*.md')
-          if [ -n "$removed" ] && [ -z "$left" ]; then
+          # A release also raises a package's version, as the version pull request does.
+          bumped=$(git diff -U0 origin/main...HEAD -- 'packages/*/package.json' | grep '^+  "version":' || true)
+          if [ -n "$removed" ] && [ -z "$left" ] && [ -n "$bumped" ]; then
             echo "A release, so no changeset is needed."
           else
             pnpm changeset status --since=origin/main
@@ -202,6 +205,8 @@ jobs:
           - { browser: webkit, shard: 4, shards: 4 }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -227,14 +232,71 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-  # A commit on main that every job above passed publishes any package whose
-  # version isn't on npm yet, so only the version pull request's merge publishes
-  # anything. npm trusts this workflow as the packages' publisher, so no token is
-  # kept, and each package gets provenance that names the commit it came from.
-  release:
-    name: Publish to npm
+  # A commit on main that every job above passed, and that raised a package's
+  # version, publishes the versions npm doesn't have yet. That is the version
+  # pull request's merge alone, so each release comes from the commit that
+  # versioned it, and a run that overlaps another publishes nothing of its own.
+  # A failed publish goes out on a rerun of that commit's run.
+  #
+  # Two jobs, so the code from dependencies and the build never runs in a job
+  # that can ask for the npm token. This one installs, builds and packs, with
+  # read-only permissions. Its tarballs are all the next job publishes.
+  release-pack:
+    name: Pack for npm
     needs: [check, node-22, browsers]
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      release: ${{ steps.commit.outputs.release }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # This commit and the one before it, to see whether it raised a version.
+          fetch-depth: 2
+          persist-credentials: false
+      # The version pull request is squash-merged, so its commit's parent is main
+      # as it was. A top-level "version" line added in a package.json is a bump.
+      - id: commit
+        run: |
+          bumped=$(git diff -U0 HEAD^ HEAD -- 'packages/*/package.json' | grep '^+  "version":' || true)
+          if [ -n "$bumped" ]; then
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No package's version changed in this commit, so nothing is published."
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          fi
+      - if: ${{ steps.commit.outputs.release == 'true' }}
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      # No cache, so nothing another run saved goes into what's published.
+      - if: ${{ steps.commit.outputs.release == 'true' }}
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - if: ${{ steps.commit.outputs.release == 'true' }}
+        run: pnpm install --frozen-lockfile
+      # Built here, never taken from a cache.
+      - if: ${{ steps.commit.outputs.release == 'true' }}
+        run: pnpm turbo run build --force --filter=@mailquilt/*
+      # A tarball of each package whose version npm lacks, and a plan with the
+      # tarballs' hashes, which the next job publishes from.
+      - if: ${{ steps.commit.outputs.release == 'true' }}
+        run: pnpm changeset pack --out-dir release-pack
+      - if: ${{ steps.commit.outputs.release == 'true' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-pack
+          path: release-pack/
+          if-no-files-found: error
+          retention-days: 1
+
+  # npm trusts this workflow as the packages' publisher, so no token is kept,
+  # and each package gets provenance that names the commit it came from. This
+  # job builds nothing and installs only the root's tools, from the lockfile: it publishes the tarballs above.
+  release:
+    name: Publish to npm
+    needs: [release-pack]
+    if: ${{ needs.release-pack.outputs.release == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -243,27 +305,31 @@ jobs:
       # To prove to npm that this workflow is publishing, and sign provenance.
       id-token: write
     steps:
-      # The token that can push is kept out of the checkout, so the install and
-      # build can't use it. Only the last step has it.
+      # The token that can push is kept out of the checkout, and only the last
+      # step has it. The checkout is for the packages' names and the tags.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
-      # No cache, so nothing another run saved goes into what's published.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
-      - run: pnpm install --frozen-lockfile
-      # Built here, never taken from a cache.
-      - run: pnpm turbo run build --force --filter=@mailquilt/*
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-pack
+          path: release-pack/
       # Changesets tags each published package with an annotated tag, which
       # records who made it.
       - run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-      # Provenance is required, so a publish without it fails rather than
-      # going ahead unsigned.
-      - run: pnpm changeset publish
+      # The root's tools alone, as the lockfile pins them with their hashes, and
+      # without running any install script. None of the packages' own
+      # dependencies are installed, and nothing is resolved afresh.
+      - run: pnpm install --frozen-lockfile --filter . --ignore-scripts
+      # Provenance is required, so a publish without it fails rather than going
+      # ahead unsigned.
+      - run: pnpm changeset publish --from-pack-dir release-pack
         env:
           PNPM_CONFIG_PROVENANCE: true
       # Changesets tags each package it published, even when another failed,

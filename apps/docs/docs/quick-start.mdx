@@ -46,7 +46,7 @@ If the editor will be a page of its own, the [Shell](./shell) gives you that pag
 ## Two things to get right
 
 - **Only pass back the latest email.** An older one counts as a different email, so it opens and clears undo history. If you save each change to a server, don't set `value` from each response, or a slow response could replace what someone typed since.
-- **Listen for `mq-error` before the editor can refuse anything.** It fires just after the code that sets `value` finishes, and it isn't fired again. A listener added before setting `value`, as in the examples, or straight after it, hears it. One added later, such as in a React `useEffect`, misses it, and people see an empty editor with no explanation. The React component's `onError` is always listening in time.
+- **Listen for `mq-error` before the editor can refuse anything.** It fires just after the code that sets `value` finishes, and it isn't fired again. A listener added before setting `value`, as in the examples, or straight after it, hears it. One added later, such as in a React `useEffect`, misses it, and people see an empty editor with no explanation. The React component's `onError` is always listening in time. After a refusal, the editor keeps showing the email it had, and sends no `mq-change` until you set a `value` it takes, so the email still open isn't saved over the one you set. Edits made meanwhile aren't sent.
 
 ## Next
 

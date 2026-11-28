@@ -7,6 +7,7 @@ import {
   boxOf,
   canvas,
   changesSince,
+  editorOf,
   emailWith,
   hoverRow,
   letGo,
@@ -31,12 +32,6 @@ import {
 const WIDE = 1400;
 
 test.use({ viewport: { height: 1600, width: WIDE + 40 } });
-
-const editorOf = async (page: Page, width: number) => {
-  await page.addStyleTag({
-    content: `main { padding: 0 !important } mail-quilt { width: ${width}px !important }`,
-  });
-};
 
 const rowsList = (page: Page) => canvas(page).getByTestId("rows-list");
 
@@ -281,7 +276,6 @@ test.describe("the Rows list", () => {
 
     await pickUp(page, listRow(page, "Row 1 of 30: Text"));
     await moveTo(page, { x: box.x + box.width / 2, y: visibleBottom - 4 });
-    await page.waitForTimeout(300);
 
     await expect
       .poll(() => scroller.evaluate((element) => element.scrollTop))

@@ -105,4 +105,19 @@ describe(htmlLines, () => {
       "<[name:b]>",
     ]);
   });
+
+  it("keeps an @import, which has no braces, on a line of its own before the rules", () => {
+    expect(
+      read(
+        "<style>@import url(https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap);@media (min-width:480px){.a{width:1px;}}</style>"
+      )
+    ).toStrictEqual([
+      "<[name:style]>",
+      "  @import url(https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap);",
+      "  @media (min-width:480px){",
+      "    .a{width:1px;}",
+      "  }",
+      "</[name:style]>",
+    ]);
+  });
 });

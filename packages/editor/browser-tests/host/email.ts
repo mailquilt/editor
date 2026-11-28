@@ -5,8 +5,8 @@ const emailOf = (rows: RichTextText[][][]): BlocksDocument => ({
   kind: "blocks",
   rows: rows.map((columns, rowIndex) => ({
     columns: columns.map((inlines, columnIndex) => ({
-      blocks: inlines.map((inline) => ({
-        id: `block-${inline.text}`,
+      blocks: inlines.map((inline, blockIndex) => ({
+        id: `block-${rowIndex}-${columnIndex}-${blockIndex}`,
         props: {
           content: {
             content: [{ content: [inline], type: "paragraph" }],

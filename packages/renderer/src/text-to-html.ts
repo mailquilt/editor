@@ -296,6 +296,10 @@ export type TextCss = Record<string, string> & {
 /** How far a List's items are indented, as a multiple of the font size. */
 const LIST_INDENT = 1.5;
 
+/** A List's indent in pixels, a margin as classic Outlook takes it. */
+export const listIndent = (fontSize: string) =>
+  Math.round(Number(fontSize.replace("px", "")) * LIST_INDENT);
+
 const LIST_TAGS = { bulletList: "ul", orderedList: "ol" } as const;
 
 /**
@@ -316,7 +320,7 @@ export const richTextToHtml = (
     `${inlineToHtml(linkColor, inline)}${endsWithoutText(inline) ? "<br />" : ""}`;
   // The indent is a margin in pixels, which classic Outlook takes, where it
   // ignores a List's padding. A numbered List starts at 1, its default.
-  const indent = Math.round(Number(fontSize.replace("px", "")) * LIST_INDENT);
+  const indent = listIndent(fontSize);
   return content
     .map((node) => {
       if (node.type === "paragraph") {

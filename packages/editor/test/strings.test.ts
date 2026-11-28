@@ -1,7 +1,9 @@
 import { BLOCK_TYPES } from "@mailquilt/core";
 import type { BlockType } from "@mailquilt/core";
 import {
+  blockBoxFields,
   blockSettingsFields,
+  COLUMN_SETTINGS_FIELDS,
   EMAIL_SETTINGS_FIELDS,
   rowSettingsFields,
 } from "@mailquilt/core/internal";
@@ -114,10 +116,11 @@ const textIdsOf = (field: SettingsField): string[] => [
 ];
 
 // Each type's fields can depend on its props: a Heading's on its level, an
-// Image's on whether it has alt text, and a Video's on whether its line shows.
+// Image's on whether it has alt text or is decorative, and a Video's on
+// whether its line shows.
 const PROPS_OF: Partial<Record<BlockType, Record<string, unknown>[]>> = {
   heading: [{ level: 1 }, { level: 2 }, { level: 3 }],
-  image: [{}, { alt: "A cup" }],
+  image: [{}, { alt: "A cup" }, { decorative: true }],
   video: [{}, { play: "none" }],
 };
 
@@ -126,6 +129,8 @@ describe("the texts core's settings fields name", () => {
     ...EMAIL_SETTINGS_FIELDS,
     ...rowSettingsFields({ columns: [] }),
     ...rowSettingsFields({ columns: [{}, {}] as never }),
+    ...COLUMN_SETTINGS_FIELDS,
+    ...BLOCK_TYPES.flatMap(({ type }) => blockBoxFields(type)),
     ...BLOCK_TYPES.flatMap(({ type }) =>
       (PROPS_OF[type] ?? [{}]).flatMap((props) =>
         blockSettingsFields({ props, type } as never)

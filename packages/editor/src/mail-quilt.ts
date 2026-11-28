@@ -445,6 +445,11 @@ export class MailQuilt extends LitElement implements HostAppProperties {
   /** Each of the editor's texts, in the Host app's words where it gives them. */
   readonly #text = createText(() => this.strings);
   #editor: Editor | undefined;
+  /**
+   * The host last set a `value` the editor refused, so the email still open
+   * isn't the one the host has, and its changes aren't sent.
+   */
+  #refused = false;
   readonly #views = new Map<string, TextBlockView>();
   /** Edits in the same typing session merge into one undo step. */
   #typingSession = 0;
@@ -949,10 +954,12 @@ export class MailQuilt extends LitElement implements HostAppProperties {
    * A document with the same content as the current one changes nothing, so a
    * controlled host keeps its undo history and cursor. Any other document loads
    * and clears undo history. A document that can't be trusted fires `mq-error`,
-   * and the current email stays as it was. Any value is checked, such as a
-   * saved email read back from JSON, so any is allowed.
+   * and the current email stays as it was, sending no `mq-change` until it
+   * takes a value, so a host can't save it over the one it set. Any value is
+   * checked, such as a saved email read back from JSON, so any is allowed.
    */
   set value(value: unknown) {
+    this.#refused = false;
     const current = this.#editor?.getDocument();
     // Checked first, because a controlled host does this after every keystroke.
     if (isSameDocument(value, current)) {
@@ -965,6 +972,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     }
     const loaded = loadDocument(value);
     if (!loaded.ok) {
+      this.#refused = true;
       this.#emitError(loaded.reason);
       return;
     }
@@ -2098,6 +2106,9 @@ export class MailQuilt extends LitElement implements HostAppProperties {
   #emitChange(email: BlocksDocument) {
     this.#check.forget();
     this.#fixNote.close();
+    if (this.#refused) {
+      return;
+    }
     this.dispatchEvent(
       new CustomEvent("mq-change", {
         bubbles: true,

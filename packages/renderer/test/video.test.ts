@@ -50,4 +50,22 @@ describe("a Video Block", () => {
     expect(html).not.toContain("<img");
     expect(html).not.toContain("<a ");
   });
+
+  // MJML loads a font only where it finds its name in the HTML it renders, and
+  // the line is written after, so a Video's line alone must still load its font.
+  it("loads the web font its line is drawn in, when no other Block uses it", async () => {
+    const email = emailWith(video(LINKED));
+    email.version = 4;
+    email.settings.fontFamily = "'Inter', Arial, sans-serif";
+    email.settings.fonts = [
+      {
+        name: "Inter",
+        url: "https://fonts.googleapis.com/css2?family=Inter&display=swap",
+      },
+    ];
+
+    await expect(renderEmail(email)).resolves.toContain(
+      '<link href="https://fonts.googleapis.com/css2?family=Inter&display=swap" rel="stylesheet" type="text/css">'
+    );
+  });
 });

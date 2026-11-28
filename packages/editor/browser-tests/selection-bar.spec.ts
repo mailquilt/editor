@@ -12,6 +12,7 @@ import {
   boxOf,
   canvas,
   currentValue,
+  editorOf,
   emailWith,
   field,
   morePanel,
@@ -30,13 +31,6 @@ import {
   undo,
   violations,
 } from "./helpers.js";
-
-/** The editor this wide, with nothing of the test page around it. */
-const editorOf = async (page: Page, width: number) => {
-  await page.addStyleTag({
-    content: `main { padding: 0 !important } mail-quilt { width: ${width}px !important }`,
-  });
-};
 
 /** Wide enough for More to dock beside the email and the Add panel. */
 const WIDE = 1400;
@@ -267,7 +261,7 @@ test.describe("a Row's padding", () => {
   test("turned off shows each side and changes nothing, and turned on gives every side Top's, as one undo step", async ({
     page,
   }) => {
-    await openEmail(page, [[["A"]]]);
+    await page.goto("/");
     const email = emailWith([[["A"]]]);
     Object.assign(email.rows[0] ?? {}, {
       props: { paddingLeft: 32, paddingTop: 12 },
@@ -320,7 +314,7 @@ test.describe("a Row's padding", () => {
   test("set side by side, stays side by side once the sides are the same", async ({
     page,
   }) => {
-    await openEmail(page, [[["A"]]]);
+    await page.goto("/");
     const email = emailWith([[["A"]]]);
     Object.assign(email.rows[0] ?? {}, { props: { paddingRight: 12 } });
     await setValue(page, email);
@@ -661,20 +655,6 @@ test.describe("More", () => {
     await expect(structure(page)).resolves.toEqual([[["A"]], [[], ["B"]]]);
   });
 
-  test("where the bar's actions go into More with focus on one, focus goes to More's button", async ({
-    page,
-  }) => {
-    await openEmail(page, [[["A"], ["B"]], [["C"]]]);
-    await editorOf(page, 1800);
-    await selectRow(page, 1);
-    await barButton(page, "Duplicate Row").focus();
-
-    await editorOf(page, 645);
-
-    await expect(barButton(page, "Duplicate Row")).toBeHidden();
-    await expect(moreButton(page)).toBeFocused();
-  });
-
   test("has the bar's own actions where the bar is short of room, and only there", async ({
     page,
   }) => {
@@ -689,10 +669,14 @@ test.describe("More", () => {
     ).toBeHidden();
 
     // A Row of two Columns has the widest bar, too wide at the least width
-    // the editor works at.
+    // the editor works at. With focus on one of its actions, focus goes to
+    // More's button.
+    await barButton(page, "Duplicate Row").focus();
     await editorOf(page, 645);
 
     await expect(barButton(page, "Move Row down")).toBeHidden();
+    await expect(barButton(page, "Duplicate Row")).toBeHidden();
+    await expect(moreButton(page)).toBeFocused();
     const down = await moreAction(page, "Move Row down");
     await down.click();
     await expect(structure(page)).resolves.toEqual([[["C"]], [["A"], ["B"]]]);

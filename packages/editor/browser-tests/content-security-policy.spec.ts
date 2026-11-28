@@ -6,12 +6,14 @@ import {
   boxOf,
   canvas,
   centerOf,
+  checkPanel,
   currentValue,
   dropIndicator,
   handleOf,
   layoutTile,
   letGo,
   moveTo,
+  openCheck,
   openAddPanel,
   openStyle,
   openTestPage,
@@ -255,4 +257,21 @@ test("under a strict policy, text pasted from Google Docs or Word keeps its bold
     { text: "plain", type: "text" },
   ]);
   expect(await blockedByPolicy(page)).toStrictEqual([]);
+});
+
+test("under a strict policy, the inbox's first words skip what only phones show", async ({
+  page,
+}) => {
+  await openUnderStrictPolicy(page);
+  const email = structuredClone(STYLED_EMAIL);
+  const [first] = email.rows[0]?.columns[0]?.blocks ?? [];
+  (first as { props: object }).props = {
+    ...first?.props,
+    showOn: "phone",
+  };
+  await setValue(page, email);
+  await openCheck(page);
+
+  await expect(checkPanel(page)).toContainText("“Buy");
+  await expect(checkPanel(page)).not.toContainText("“One");
 });

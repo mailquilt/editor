@@ -565,6 +565,72 @@ describe("adding", () => {
   });
 });
 
+describe("in the Style panel's popovers", () => {
+  it("Escape closes one, and stops there", () => {
+    expect(
+      (["stylePopover", "colorArea", "fontSearch"] as const).map((scope) =>
+        keyIn(scope, press("Escape"))
+      )
+    ).toStrictEqual([
+      acts("closeStylePopover", { stops: true }),
+      acts("closeStylePopover", { stops: true }),
+      acts("closeStylePopover", { stops: true }),
+    ]);
+  });
+
+  it("an arrow key changes a color's shade, and with Shift, ten times as much", () => {
+    expect(keyIn("colorArea", press("ArrowUp"))).toStrictEqual(
+      acts("nudgeColor", { direction: "up", stops: true })
+    );
+    expect(keyIn("colorArea", press("Shift-ArrowLeft"))).toStrictEqual(
+      acts("nudgeColor", { direction: "left", stops: true })
+    );
+  });
+
+  it("↑ and ↓ go along the fonts, and Enter picks one", () => {
+    expect(
+      [press("ArrowUp"), press("ArrowDown"), press("Enter")].map(
+        (each) => keyIn("fontSearch", each)?.action
+      )
+    ).toStrictEqual(["previousFont", "nextFont", "pickFont"]);
+  });
+});
+
+describe("in the other toolbars and lists", () => {
+  it("an arrow key goes along the buttons of a toolbar", () => {
+    expect(
+      (
+        [
+          "columnBar",
+          "startLayouts",
+          "rowsAdd",
+          "modes",
+          "checkViews",
+          "listItemTools",
+        ] as const
+      ).map((scope) => keyIn(scope, press("ArrowRight"))?.action)
+    ).toStrictEqual(Array.from({ length: 6 }, () => "nextButton"));
+  });
+
+  it("Escape unselects a Column, and closes the Rows list's layouts", () => {
+    expect(keyIn("columnBar", press("Escape"))).toStrictEqual(
+      acts("unselectColumn", { stops: true })
+    );
+    expect(keyIn("rowsAdd", press("Escape"))).toStrictEqual(
+      acts("closeRowsAdd", { stops: true })
+    );
+  });
+
+  it("Alt+↑ and Alt+↓ move the Row in the Rows list, and Alt+← only keeps the page", () => {
+    expect(keyIn("rowsItems", press("Alt-ArrowDown"))).toStrictEqual(
+      acts("moveRow", { direction: "down" })
+    );
+    expect(keyIn("rowsItems", press("Alt-ArrowLeft"))).toStrictEqual(
+      acts("keepPage")
+    );
+  });
+});
+
 describe("in a settings field with typed text that isn't applied", () => {
   it("Escape takes back what was typed, and stops there", () => {
     expect(keyIn("settingsDraft", press("Escape"))).toStrictEqual(

@@ -18,6 +18,7 @@ import {
   field,
   setting,
   hostEvents,
+  imageOf,
   openBlocks,
   openExport,
   rowTag,
@@ -49,8 +50,6 @@ const offCenter = (locator: Locator, around: string) =>
     const { width, x } = outer.getBoundingClientRect();
     return Math.round(inner.x + inner.width / 2 - (x + width / 2));
   }, around);
-
-const image = (page: Page) => blockGroup(page, "Image").locator("img");
 
 /** How far down it is from one element to the next. */
 const space = async (from: Locator, to: Locator) => {
@@ -114,7 +113,7 @@ test.describe("an Image", () => {
     await openBlocks(page, ["text"]);
     await addBlock(page, "Image");
 
-    await expect(image(page)).toHaveCount(0);
+    await expect(imageOf(page)).toHaveCount(0);
     await expect(blockGroup(page, "Image")).toContainText("No image URL yet");
   });
 
@@ -125,8 +124,8 @@ test.describe("an Image", () => {
     await change(await setting(page, "Image URL"), PHOTO);
     await change(await setting(page, "Alt text"), "A red bicycle");
 
-    await expect(image(page)).toHaveAttribute("src", PHOTO);
-    await expect(image(page)).toHaveAttribute("alt", "A red bicycle");
+    await expect(imageOf(page)).toHaveAttribute("src", PHOTO);
+    await expect(imageOf(page)).toHaveAttribute("alt", "A red bicycle");
     const { opened } = await openExport(page);
     await expect(
       opened.getByRole("img", { name: "A red bicycle" })
@@ -247,7 +246,7 @@ test.describe("an Image", () => {
       "Screen readers skip it."
     );
     await expect(field(page, "Alt text")).toHaveCount(0);
-    await expect(image(page)).toHaveAttribute("alt", "");
+    await expect(imageOf(page)).toHaveAttribute("alt", "");
     const link = barButton(page, "Link");
     await expect(link).toHaveAttribute("aria-disabled", "true");
     await expect(link).toHaveAccessibleDescription(
@@ -283,7 +282,7 @@ test.describe("an Image", () => {
     await expect(blockGroup(page, "Image")).toContainText(
       `Couldn't load ${missing}`
     );
-    await expect(image(page)).toHaveCount(0);
+    await expect(imageOf(page)).toHaveCount(0);
     // The stand-in's least height, 120px, and the Block's 16px padding above and below.
     await expect(sizeOf(blockGroup(page, "Image"))).resolves.toMatchObject({
       height: 152,
@@ -291,7 +290,7 @@ test.describe("an Image", () => {
 
     await change(await setting(page, "Image URL"), PHOTO);
 
-    await expect(image(page)).toHaveAttribute("src", PHOTO);
+    await expect(imageOf(page)).toHaveAttribute("src", PHOTO);
 
     // Once the URL works, an email the host passes in shows it. The test host
     // passes its own email back after each change, so that comes first.
@@ -305,7 +304,7 @@ test.describe("an Image", () => {
       editor.value = email;
     }, missing);
 
-    await expect(image(page)).toHaveAttribute("src", missing);
+    await expect(imageOf(page)).toHaveAttribute("src", missing);
   });
 
   test("tries a URL that failed again when it's entered again later", async ({
@@ -322,13 +321,13 @@ test.describe("an Image", () => {
     );
 
     await change(await setting(page, "Image URL"), PHOTO);
-    await expect(image(page)).toHaveAttribute("src", PHOTO);
+    await expect(imageOf(page)).toHaveAttribute("src", PHOTO);
 
     // As if it had finished uploading.
     await context.unroute(missing);
     await change(await setting(page, "Image URL"), missing);
 
-    await expect(image(page)).toHaveAttribute("src", missing);
+    await expect(imageOf(page)).toHaveAttribute("src", missing);
   });
 
   test("tries a URL that failed again when it's typed in again", async ({
@@ -350,7 +349,7 @@ test.describe("an Image", () => {
     await url.clear();
     await change(await setting(page, "Image URL"), missing);
 
-    await expect(image(page)).toHaveAttribute("src", missing);
+    await expect(imageOf(page)).toHaveAttribute("src", missing);
   });
 
   test("takes a Merge Tag as its URL and link", async ({ page }) => {
@@ -362,7 +361,7 @@ test.describe("an Image", () => {
     await change(await setting(page, "Link"), "{{site_url}}");
 
     // There's nothing to load yet, and a request for it would only fail.
-    await expect(image(page)).toHaveCount(0);
+    await expect(imageOf(page)).toHaveCount(0);
     await expect(blockGroup(page, "Image")).toContainText("{{logo_url}}");
     await expect(blockProps(page)).resolves.toEqual({
       alt: "{{company}} logo",
@@ -382,7 +381,7 @@ test.describe("an Image", () => {
     await expect(blockGroup(page, "Image").locator("a")).toHaveCount(0);
     await blockGroup(page, "Text").focus();
 
-    await image(page).click();
+    await imageOf(page).click();
 
     await expect(blockGroup(page, "Image")).toBeFocused();
     await expect(page).not.toHaveURL(/shop\.example/u);
@@ -399,7 +398,7 @@ test.describe("an Image", () => {
   }) => {
     await openBlocks(page, ["image"]);
     const drags = await hostEvents(page, "dragstart", []);
-    const { x, y } = await boxOf(image(page));
+    const { x, y } = await boxOf(imageOf(page));
 
     await page.mouse.move(x + 200, y + 200);
     await page.mouse.down();
@@ -414,7 +413,7 @@ test.describe("an Image", () => {
   }) => {
     await openBlocks(page, ["image"]);
 
-    const onCanvas = await sizeOf(image(page));
+    const onCanvas = await sizeOf(imageOf(page));
     const { opened } = await openExport(page, EXPORT_VIEWPORT);
 
     // A 600px email, less the Block's 16px padding on each side.
@@ -430,11 +429,11 @@ test.describe("an Image", () => {
 
     await change(await setting(page, "Width (px)"), "120");
 
-    const onCanvas = await sizeOf(image(page));
+    const onCanvas = await sizeOf(imageOf(page));
     expect(onCanvas).toEqual({ height: 120, width: 120 });
-    await expect(offCenter(image(page), '[data-testid="email"]')).resolves.toBe(
-      0
-    );
+    await expect(
+      offCenter(imageOf(page), '[data-testid="email"]')
+    ).resolves.toBe(0);
 
     const { opened } = await openExport(page, EXPORT_VIEWPORT);
     const exported = opened.locator("img");
@@ -450,7 +449,7 @@ test.describe("an Image", () => {
 
     await change(await setting(page, "Width (px)"), "5000");
 
-    const onCanvas = await sizeOf(image(page));
+    const onCanvas = await sizeOf(imageOf(page));
     const { opened } = await openExport(page, EXPORT_VIEWPORT);
 
     // Half a 600px email, less the Block's 16px padding on each side.
@@ -559,12 +558,7 @@ test.describe("a Spacer", () => {
     await openBlocks(page, ["text", "spacer"]);
     await makeThin(page);
     await blockGroup(page, "Text").focus();
-    const { x, y, width } = await blockGroup(page, "Spacer").evaluate(
-      (element) => {
-        const rect = element.getBoundingClientRect();
-        return { width: rect.width, x: rect.x, y: rect.y };
-      }
-    );
+    const { x, y, width } = await boxOf(blockGroup(page, "Spacer"));
 
     // Just above the line, as a pointer can't be sure of one pixel.
     await page.mouse.click(x + width / 2, y - 3);
@@ -666,12 +660,7 @@ test.describe("a Spacer", () => {
       await openBlocks(page, ["text", "spacer", "heading"]);
       await makeThin(page);
       await blockGroup(page, "Text").focus();
-      const { x, y, width } = await blockGroup(page, "Spacer").evaluate(
-        (element) => {
-          const rect = element.getBoundingClientRect();
-          return { width: rect.width, x: rect.x, y: rect.y };
-        }
-      );
+      const { x, y, width } = await boxOf(blockGroup(page, "Spacer"));
 
       // Along the line, as a pointer finds the handle by finding the Spacer.
       await page.mouse.move(x + width / 2, y);
