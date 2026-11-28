@@ -116,6 +116,11 @@ type Opening =
  */
 type NoticeOf = "export" | "import" | "refused" | "saved";
 
+interface Notice {
+  readonly id: number;
+  readonly words: (text: Text) => string;
+}
+
 /**
  * Keeps a saved email that couldn't be opened where nothing saves, as it may
  * only be from a newer version: under `<key>:unopened`, or `:unopened:2` and
@@ -585,10 +590,7 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
    * works. Each has an ID, so the same notice again is a new alert and is
    * read out.
    */
-  readonly #notices = new Map<
-    NoticeOf,
-    { readonly id: number; readonly words: (text: Text) => string }
-  >();
+  readonly #notices = new Map<NoticeOf, Notice>();
   #noticeId = 0;
 
   constructor() {
@@ -891,18 +893,22 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
               `
             : nothing
         }
-        ${repeat(
-          this.#notices.values(),
-          ({ id }) => id,
-          ({ words }) => html`
-            <div class="message" part="message">
-              ${ICONS.alert}
-              <p role="alert">${words(text)}</p>
-            </div>
-          `
-        )}
+        ${this.#renderNotices([...this.#notices.values()])}
       </div>
     `;
+  }
+
+  #renderNotices(notices: Notice[]) {
+    return repeat(
+      notices,
+      ({ id }) => id,
+      ({ words }) => html`
+        <div class="message" part="message">
+          ${ICONS.alert}
+          <p role="alert">${words(this.#text)}</p>
+        </div>
+      `
+    );
   }
 
   /**
@@ -988,6 +994,13 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
                     </button>`
                   : nothing
               }
+              ${this.#renderNotices(
+                // Here too, as the page behind the open menu is inert.
+                (["export", "import"] as const).flatMap((of) => {
+                  const notice = this.#notices.get(of);
+                  return notice ? [notice] : [];
+                })
+              )}
             </div>`
           : nothing
       }

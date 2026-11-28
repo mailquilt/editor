@@ -1067,12 +1067,6 @@ export const selectionBarStyles = css`
     width: 1px;
   }
 
-  /* The chip's menu opens up, as the bar is at the bottom. */
-  .app[data-phone] .bar-menu {
-    inset-block: auto calc(100% + var(--mq-space-2));
-    transform-origin: bottom left;
-  }
-
   /* With nothing selected: what to do, then More and Add. Frame p08. */
   .bar-hint {
     color: var(--mq-color-text-muted);
@@ -1125,6 +1119,14 @@ export const selectionBarStyles = css`
     position: absolute;
     white-space: nowrap;
     width: 1px;
+  }
+
+  dialog.sheet .bar-menu {
+    background: none;
+    box-shadow: none;
+    min-width: 0;
+    padding: 0;
+    position: static;
   }
 
   dialog.sheet :is(.more-action, .bar-menu > button) {
@@ -3115,6 +3117,48 @@ const renderChip = (target: Target, api: PanelApi) => {
       }
     }
   };
+  const menuItems = () => html`
+    ${
+      target.kind === "row"
+        ? nothing
+        : menuItem(ICONS.rows, row, (fromKeyboard) =>
+            api.selectRow(target.position.row.id, fromKeyboard)
+          )
+    }
+    ${columns.map(({ id, name }) =>
+      menuItem(ICONS.column, name, (fromKeyboard) =>
+        api.selectColumn(id, fromKeyboard)
+      )
+    )}
+    ${menuItem(ICONS.mail, text("bar.email"), (fromKeyboard) =>
+      api.selectEmail(fromKeyboard)
+    )}
+  `;
+  // On a phone, a sheet, as the bar it would open from scrolls sideways and
+  // would cut it off.
+  const renderChipMenu = () =>
+    api.phone
+      ? renderSheet({
+          body: html`<div
+            aria-label=${text("bar.around")}
+            class="bar-menu"
+            id="bar-menu"
+            role="menu"
+          >
+            ${menuItems()}
+          </div>`,
+          labelledBy: "bar-menu",
+          onClose: () => api.closeMenu(true),
+          sheetPlace: "barMenu",
+        })
+      : html`<div
+          aria-label=${text("bar.around")}
+          class="ui bar-menu"
+          data-place=${place("barMenu")}
+          role="menu"
+        >
+          ${menuItems()}
+        </div>`;
   return html`
     <span class="bar-anchor">
       <button
@@ -3129,34 +3173,7 @@ const renderChip = (target: Target, api: PanelApi) => {
         <span class="chip-icon">${chipIcon()}</span>
         ${chipWords()} ${ICONS.chevronDown}
       </button>
-      ${
-        api.bar.menuOpen
-          ? html`
-              <div
-                aria-label=${text("bar.around")}
-                class="ui bar-menu"
-                data-place=${place("barMenu")}
-                role="menu"
-              >
-                ${
-                  target.kind === "row"
-                    ? nothing
-                    : menuItem(ICONS.rows, row, (fromKeyboard) =>
-                        api.selectRow(target.position.row.id, fromKeyboard)
-                      )
-                }
-                ${columns.map(({ id, name }) =>
-                  menuItem(ICONS.column, name, (fromKeyboard) =>
-                    api.selectColumn(id, fromKeyboard)
-                  )
-                )}
-                ${menuItem(ICONS.mail, text("bar.email"), (fromKeyboard) =>
-                  api.selectEmail(fromKeyboard)
-                )}
-              </div>
-            `
-          : nothing
-      }
+      ${api.bar.menuOpen ? renderChipMenu() : nothing}
     </span>
   `;
 };

@@ -960,8 +960,19 @@ export const stylePanelStyles = css`
     padding-inline-start: 32px;
   }
 
+  /*
+   * In a sheet on a phone, the list scrolls under the search field, rather
+   * than the sheet's body, so the font the arrow keys are on stays in sight.
+   */
+  dialog.sheet.style-popover.font > .sheet-body {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
   /* Positioned, as the options' offsets that keep one in sight are from it. */
-  .style-popover > .font-list {
+  .style-popover > .font-list,
+  dialog.sheet.style-popover.font > .sheet-body > .font-list {
     flex-shrink: 1;
     position: relative;
     margin-block-start: var(--mq-space-1);
@@ -2043,6 +2054,10 @@ export const createStylePanel = ({
      * or back to its own. Anywhere else in it, Tab is the browser's.
      */
     tabOut(event: KeyboardEvent) {
+      // A sheet on a phone is modal, so the browser keeps Tab in it.
+      if (phone) {
+        return;
+      }
       const from = event.target as Element;
       const popover = closestPlace(from, "stylePopover");
       const panel = closestPlace(from, "stylePanel");

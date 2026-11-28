@@ -1,6 +1,7 @@
 import { expect } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 
+import type { MailQuilt } from "../src/index.js";
 import {
   blockWith,
   boxOf,
@@ -15,6 +16,7 @@ import {
   selectionBar,
   sheet,
   structure,
+  styleSetting,
   test,
   textBlock,
   textOf,
@@ -63,6 +65,28 @@ test.describe("on a phone", () => {
     const bar = await boxOf(selectionBar(page));
     const email = await boxOf(canvas(page).getByTestId("email"));
     expect(bar.y).toBeGreaterThanOrEqual(email.y + email.height);
+  });
+
+  test("opens the chip's menu above the Selection bar, in sight", async ({
+    page,
+  }) => {
+    await openEmail(page, [[["A"]]]);
+    await selectBlock(page, "A");
+
+    const chip = selectionBar(page).locator('[data-action="chip"]');
+    await chip.click();
+    const row = canvas(page).getByRole("menuitem").first();
+    // Not clipped by the bar, which scrolls sideways.
+    await expect(row).toBeInViewport({ ratio: 1 });
+    await row.click();
+    await expect(chip).toHaveAccessibleName("Row 1");
+
+    // Escape closes it back to the chip.
+    await chip.click();
+    await expect(canvas(page).getByRole("menuitem").first()).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(canvas(page).getByRole("menu")).toHaveCount(0);
+    await expect(chip).toBeFocused();
   });
 
   test("with nothing selected, says to tap a Block, and adds from a sheet", async ({
@@ -206,6 +230,64 @@ test.describe("on a phone", () => {
       canvas(page).getByRole("tab", { exact: true, name: "Edit" })
     ).toHaveAttribute("aria-selected", "true");
     await expect(textBlock(page)).toBeVisible();
+  });
+
+  test("keeps the font the arrow keys are on in sight, in the font sheet", async ({
+    page,
+  }) => {
+    // Enough of the Host app's fonts that the list scrolls.
+    await page.route("https://fonts.example.com/**", (route) =>
+      route.fulfill({ body: "", contentType: "text/css" })
+    );
+    await openEmail(page, [[["A"]]]);
+    await canvas(page).evaluate((element) => {
+      (element as MailQuilt).fonts = Array.from({ length: 30 }, (_, index) => ({
+        fallback: "serif",
+        name: `Font ${index}`,
+        url: `https://fonts.example.com/${index}.css`,
+      }));
+    });
+    await canvas(page).getByRole("tab", { exact: true, name: "Style" }).click();
+    await styleSetting(page, "Headings").focus();
+    await page.keyboard.press("Enter");
+    const search = canvas(page).getByRole("combobox", { name: "Search fonts" });
+    await expect(search).toBeFocused();
+
+    for (let step = 0; step < 30; step += 1) {
+      await page.keyboard.press("ArrowDown");
+    }
+    const active = canvas(page).locator('[role="option"][data-active]');
+    await expect(active).toBeInViewport({ ratio: 1 });
+    // The list scrolls under the search field, which stays in sight.
+    await expect(search).toBeInViewport({ ratio: 1 });
+  });
+
+  test("keeps Tab in a Style sheet, at its first and last stops", async ({
+    page,
+  }) => {
+    await openEmail(page, [[["A"]]]);
+    await canvas(page).getByRole("tab", { exact: true, name: "Style" }).click();
+    await styleSetting(page, "Headings").focus();
+    await page.keyboard.press("Enter");
+    const fonts = sheet(page, "Headings");
+    await expect(fonts).toBeVisible();
+
+    // Round past both ends, which the Style panel's own Tab used to leave by.
+    // Chromium and WebKit stop once at the page itself on the way round, for
+    // the browser's own controls, but never at the Style panel behind.
+    await fonts.getByRole("button", { exact: true, name: "Back" }).focus();
+    for (const key of ["Shift+Tab", "Tab"]) {
+      for (let step = 0; step < 5; step += 1) {
+        await page.keyboard.press(key);
+        await expect(fonts).toBeVisible();
+        expect(
+          (await holdsFocus(fonts)) ||
+            (await page.evaluate(
+              () => document.activeElement === document.body
+            ))
+        ).toBe(true);
+      }
+    }
   });
 
   test("checks the email, with its Problems at the bottom", async ({
@@ -394,5 +476,29 @@ test.describe("the Shell on a phone", () => {
     const fade = menu.getByRole("button", { exact: true, name: "Fade" });
     await fade.click();
     await expect(fade).toHaveAttribute("aria-pressed", "true");
+  });
+
+  test("says in the Shell's menu why a file couldn't be imported", async ({
+    page,
+  }) => {
+    page.on("filechooser", () => null);
+    await page.goto("/shell.html?narrow");
+    await expect(textBlock(page)).toBeVisible();
+    await topMenuButton(page).click();
+    const choosing = page.waitForEvent("filechooser");
+    await canvas(page)
+      .getByRole("button", { exact: true, name: "Import JSON…" })
+      .click();
+    const chooser = await choosing;
+    await chooser.setFiles({
+      buffer: Buffer.from("{not json"),
+      mimeType: "application/json",
+      name: "email.json",
+    });
+    // In the open sheet, as the page behind it is inert. The Shell slots it
+    // in, so it's in the sheet's accessibility tree, not under it in the DOM.
+    await expect(sheet(page, /^Email/u)).toMatchAriaSnapshot(
+      "- alert: /couldn't be imported/"
+    );
   });
 });

@@ -982,6 +982,8 @@ export class MailQuilt extends LitElement implements HostAppProperties {
         this.#phoneSheet = undefined;
       }
       this.#phone = phone;
+      // As the keyboard may be open already, with no viewport event to come.
+      this.#onViewport();
       this.#width = width;
       this.#height = height;
       if (changed) {
