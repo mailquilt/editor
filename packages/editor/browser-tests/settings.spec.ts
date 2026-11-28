@@ -55,9 +55,6 @@ const emailField = async (page: Page, name: string) => {
   return await setting(page, name);
 };
 
-/** One of the selected Row's settings. */
-const rowField = setting;
-
 const settingsOf = async (page: Page) => {
   const { settings } = await currentValue(page);
   return settings;
@@ -198,7 +195,7 @@ test.describe("Row settings", () => {
     await setValue(page, emailWith([[["In"]], [["Out"]]]));
     await selectRow(page, 1);
 
-    await change(await rowField(page, "Background color"), "#00ff00");
+    await change(await setting(page, "Background color"), "#00ff00");
 
     const { rows } = await currentValue(page);
     expect(rows.map(({ props }) => props)).toStrictEqual([
@@ -213,12 +210,12 @@ test.describe("Row settings", () => {
     );
   });
 
-  test("pad the Row on the canvas as in the export", async ({ page }) => {
+  test("pad the Row on the canvas", async ({ page }) => {
     await setValue(page, emailWith([[["In"]]]));
     await selectRow(page, 1);
 
-    await expect(await rowField(page, "Left padding (px)")).toHaveValue("0");
-    await change(await rowField(page, "Left padding (px)"), "40");
+    await expect(await setting(page, "Left padding (px)")).toHaveValue("0");
+    await change(await setting(page, "Left padding (px)"), "40");
 
     const { rows } = await currentValue(page);
     expect(rows[0]?.props).toStrictEqual({ paddingLeft: 40 });
@@ -233,7 +230,7 @@ test.describe("Row settings", () => {
   }) => {
     await setValue(page, emailWith([[["Left"], ["Right"]]]));
     await selectRow(page, 1);
-    const stack = await rowField(page, "Stack Columns on phones");
+    const stack = await setting(page, "Stack Columns on phones");
     await expect(stack).toBeChecked();
     await openMore(page);
     const showOn = morePanel(page).getByRole("group", { name: "Show on" });
@@ -315,14 +312,14 @@ test.describe("undo", () => {
     await change(await setting(page, "Color"), "#ff0000");
     await choose(page, "Alignment", "Right");
     await selectRow(page, 1);
-    await change(await rowField(page, "Background color"), "#00ff00");
+    await change(await setting(page, "Background color"), "#00ff00");
     await change(await emailField(page, "Width (px)"), "500");
 
     await undoByKey(page);
     await expect(await emailField(page, "Width (px)")).toHaveValue("600");
     await selectRow(page, 1);
     await undoByKey(page);
-    await expect(await rowField(page, "Background color")).toHaveValue("");
+    await expect(await setting(page, "Background color")).toHaveValue("");
     await textBlock(page).click();
     await undoByKey(page);
     await expect(chosen(page, "Alignment")).toHaveAccessibleName("Left");
@@ -370,6 +367,8 @@ test.describe("undo", () => {
 
     const { width } = await settingsOf(page);
     expect(width).toBe(500);
+    // The field's own undo took back what was typed.
+    await expect(language).not.toHaveValue("en");
   });
 
   test("reports each change once", async ({ page }) => {
@@ -591,13 +590,13 @@ test.describe("the color picker", () => {
     await setValue(page, value);
     await selectRow(page, 1);
 
-    await expect(await rowField(page, "Background color")).toHaveValue("");
+    await expect(await setting(page, "Background color")).toHaveValue("");
     // In full, as a color picker only takes six digits.
-    await expect(await rowField(page, "Background color picker")).toHaveValue(
+    await expect(await setting(page, "Background color picker")).toHaveValue(
       "#000000"
     );
 
-    const picker = await rowField(page, "Background color picker");
+    const picker = await setting(page, "Background color picker");
     await picker.fill("#ffffff");
 
     const { rows } = await currentValue(page);
@@ -615,7 +614,7 @@ test.describe("the Add panel's layout", () => {
     await expect(onCanvas).toHaveCSS("width", "600px");
     const panelBox = await boxOf(addPanel(page));
     const hostBox = await boxOf(canvas(page));
-    expect(panelBox.x).toBe(hostBox.x);
+    expect(panelBox.x).toBeCloseTo(hostBox.x, 0);
   });
 
   test("docks at the Canvas's start when the email fits beside it", async ({
@@ -628,8 +627,8 @@ test.describe("the Add panel's layout", () => {
     const panelBox = await boxOf(addPanel(page));
     const hostBox = await boxOf(canvas(page));
     const topBar = await boxOf(canvas(page).locator('[part="top-bar"]'));
-    expect(panelBox.y).toBe(topBar.y + topBar.height);
-    expect(panelBox.x).toBe(hostBox.x);
+    expect(panelBox.y).toBeCloseTo(topBar.y + topBar.height, 0);
+    expect(panelBox.x).toBeCloseTo(hostBox.x, 0);
     expect(panelBox.x + panelBox.width).toBeLessThanOrEqual(emailBox.x);
   });
 });

@@ -87,6 +87,13 @@ const indicatorBox = async (page: Page) => {
 const scrollTop = (page: Page) =>
   page.evaluate(() => document.scrollingElement?.scrollTop ?? 0);
 
+/** Scales the editor to half its size, as a host page that zooms it would. */
+const scaleCanvas = (page: Page) =>
+  canvas(page).evaluate((element) => {
+    element.style.transform = "scale(0.5)";
+    element.style.transformOrigin = "0 0";
+  });
+
 /**
  * Puts the editor in a container fixed over the page, which scrolls it, and
  * returns the container. An editor wider than it can scroll it sideways.
@@ -319,7 +326,7 @@ test.describe("moving a Block by its handle", () => {
     await openEmail(page, [[["One", "Two"]]]);
     const expectChanges = await changesSince(page);
 
-    await drag(page, handleOf(page, "Two"), await centerOf(selectionBar(page)));
+    await drag(page, handleOf(page, "One"), await centerOf(selectionBar(page)));
 
     expect(await structure(page)).toStrictEqual([[["One", "Two"]]]);
     await expectChanges(0);
@@ -486,10 +493,7 @@ test.describe("while dragging", () => {
     page,
   }) => {
     await openEmail(page, [[["One", "Two"]]]);
-    await canvas(page).evaluate((element) => {
-      element.style.transform = "scale(0.5)";
-      element.style.transformOrigin = "0 0";
-    });
+    await scaleCanvas(page);
     const before = await boxOf(blockWith(page, "One"));
     const text = await boxOf(textOf(page, "One"));
 
@@ -579,10 +583,7 @@ test.describe("while dragging", () => {
     page,
   }) => {
     await openEmail(page, [[["One", "Two"], ["Three"]]]);
-    await canvas(page).evaluate((element) => {
-      element.style.transform = "scale(0.5)";
-      element.style.transformOrigin = "0 0";
-    });
+    await scaleCanvas(page);
     await pickUp(page, handleOf(page, "Three"));
     const two = await boxOf(blockWith(page, "Two"));
     const left = await boxOf(column(page, 0, 0));

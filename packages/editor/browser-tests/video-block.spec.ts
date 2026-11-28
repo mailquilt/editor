@@ -15,6 +15,7 @@ import {
   selectionBar,
   serveImages,
   setValue,
+  settle,
   test,
   violations,
 } from "./helpers.js";
@@ -224,16 +225,21 @@ test("going past On the picture with the arrow keys draws nothing", async ({
 }) => {
   await openVideo(page, { thumbnail: READABLE, url: LINK });
   await playButton(page).focus();
+  // The clock is the test's, so the wait before a draw needs no guess at how
+  // long it is.
+  await page.clock.install();
 
   await page.keyboard.press("Enter");
   await page.keyboard.press("ArrowDown");
   // As a person reads the choice before going on.
-  await page.waitForTimeout(250);
+  await page.clock.fastForward(250);
   await page.keyboard.press("ArrowDown");
 
   await expect(choice(page, "None")).toBeFocused();
   expect(await blockProps(page)).toMatchObject({ play: "none" });
-  await page.waitForTimeout(800);
+  // Well past when a draw on the picture would start.
+  await page.clock.fastForward(10_000);
+  await settle(page);
   expect(await page.evaluate(() => window.videoUploads.length)).toBe(0);
 });
 

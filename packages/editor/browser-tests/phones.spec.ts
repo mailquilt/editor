@@ -40,6 +40,14 @@ const holdsFocus = (locator: Locator) =>
     return focused !== null && element.contains(focused);
   });
 
+/**
+ * Whether focus is in `locator`, or at the page itself. Chromium and WebKit
+ * stop once there on the way round, for the browser's own controls.
+ */
+const heldOrAtPage = async (page: Page, locator: Locator) =>
+  (await holdsFocus(locator)) ||
+  (await page.evaluate(() => document.activeElement === document.body));
+
 /** Selects a Text Block by tapping its text, then leaves the text for the Block. */
 const selectBlock = async (page: Page, text: string) => {
   await textOf(page, text).click();
@@ -355,16 +363,15 @@ test.describe("on a phone", () => {
       more.getByRole("combobox", { name: "Alignment" })
     ).toBeFocused();
 
-    for (let step = 0; step < 30; step += 1) {
-      await page.keyboard.press("Tab");
-    }
-    await expect.poll(() => holdsFocus(more)).toBe(true);
-    for (let step = 0; step < 30; step += 1) {
-      await page.keyboard.press("Shift+Tab");
+    for (const key of ["Tab", "Shift+Tab"]) {
+      for (let step = 0; step < 30; step += 1) {
+        await page.keyboard.press(key);
+        expect(await heldOrAtPage(page, more)).toBe(true);
+      }
     }
     await expect.poll(() => holdsFocus(more)).toBe(true);
 
-    // Escape on a control with its tooltip showing closes only the tooltip.
+    // Escape from Done closes the sheet, and focus goes back to More.
     await more.getByRole("button", { exact: true, name: "Done" }).focus();
     await page.keyboard.press("Escape");
     await expect(more).toBeHidden();
@@ -583,12 +590,7 @@ test.describe("on a phone", () => {
       for (let step = 0; step < 5; step += 1) {
         await page.keyboard.press(key);
         await expect(fonts).toBeVisible();
-        expect(
-          (await holdsFocus(fonts)) ||
-            (await page.evaluate(
-              () => document.activeElement === document.body
-            ))
-        ).toBe(true);
+        expect(await heldOrAtPage(page, fonts)).toBe(true);
       }
     }
   });
@@ -792,6 +794,9 @@ test.describe("the Shell on a phone", () => {
     // The Shell's are slotted into the sheet, so they're the editor's children.
     const menu = canvas(page);
 
+    await expect(menu.locator("#phone-not-on-device")).toHaveText(
+      "Not on this device"
+    );
     await expect(
       menu.getByRole("button", { exact: true, name: "Export HTML file" })
     ).toBeVisible();

@@ -45,35 +45,45 @@ const fontSizeOf = (locator: Locator) =>
   locator.evaluate((element) => getComputedStyle(element).fontSize);
 
 /**
- * A Text Block's font size in the export, read in a page `width` px wide, as
- * an email client that keeps the email's styles draws it.
+ * Reads the export in a page `width` px wide, as an email client that keeps the
+ * email's styles draws it. The page closes even when the read fails.
  */
-const exportedFontSize = async (
+const readExport = async <Read>(
   browser: Browser,
   html: string,
   width: number,
-  text: string
+  read: (page: Page) => Promise<Read>
 ) => {
   const page = await browser.newPage({ viewport: { height: 800, width } });
-  await page.setContent(html);
-  const size = await fontSizeOf(page.locator("p", { hasText: text }));
-  await page.close();
-  return size;
+  try {
+    await page.setContent(html);
+    return await read(page);
+  } finally {
+    await page.close();
+  }
 };
 
-/** Whether the export shows `text` in a page `width` px wide. */
-const exportShows = async (
+/** A Text Block's font size in the export, at this width. */
+const exportedFontSize = (
   browser: Browser,
   html: string,
   width: number,
   text: string
-) => {
-  const page = await browser.newPage({ viewport: { height: 800, width } });
-  await page.setContent(html);
-  const shown = await page.locator("p", { hasText: text }).isVisible();
-  await page.close();
-  return shown;
-};
+) =>
+  readExport(browser, html, width, (page) =>
+    fontSizeOf(page.locator("p", { hasText: text }))
+  );
+
+/** Whether the export shows `text` at this width. */
+const exportShows = (
+  browser: Browser,
+  html: string,
+  width: number,
+  text: string
+) =>
+  readExport(browser, html, width, (page) =>
+    page.locator("p", { hasText: text }).isVisible()
+  );
 
 test.describe("Phone values", () => {
   test("a font size changed in the Phone view is a Phone value, marked, and drawn as the export draws it at both widths", async ({

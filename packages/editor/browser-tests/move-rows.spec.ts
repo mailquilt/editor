@@ -183,6 +183,7 @@ test.describe("moving a selected Row from the keyboard", () => {
     await selectRow(page, 1);
     // Listening before the key is pressed, so the press can't come first.
     const leftPrevented = await watchPrevented(page, "ArrowLeft");
+    const rightPrevented = await watchPrevented(page, "ArrowRight");
 
     await page.keyboard.press("Alt+ArrowUp");
     await expect(announcement(page)).toHaveText("The Row can't move up.");
@@ -193,6 +194,7 @@ test.describe("moving a selected Row from the keyboard", () => {
     await page.keyboard.press("Alt+ArrowLeft");
     await expect.poll(leftPrevented).toBe(true);
     await page.keyboard.press("Alt+ArrowRight");
+    await expect.poll(rightPrevented).toBe(true);
     await expect(announcement(page)).toHaveText("The Row can't move up.");
     await expect(structure(page)).resolves.toEqual([[["One"]], [["Two"]]]);
   });

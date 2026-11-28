@@ -84,6 +84,32 @@ describe(startFrom, () => {
     );
     expect(editor.canUndo()).toBeFalsy();
   });
+
+  it("puts the email back as it was when a later Row is refused", () => {
+    const editor = createEditor({ document: emptyEmail() });
+    const [first, second] = LETTER.rows;
+    const refused = {
+      ...LETTER,
+      rows: [
+        first,
+        {
+          ...second,
+          columns: [
+            {
+              ...second?.columns[0],
+              blocks: [{ id: "b9", props: { height: -1 }, type: "spacer" }],
+            },
+          ],
+        },
+      ],
+    } as BlocksDocument;
+
+    expect(startFrom(editor, refused).ok).toBeFalsy();
+    expect(editor.getDocument()).toStrictEqual(
+      expect.objectContaining({ rows: [], settings: emptyEmail().settings })
+    );
+    expect(editor.canUndo()).toBeFalsy();
+  });
 });
 
 describe(usableStarters, () => {
