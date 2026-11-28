@@ -506,6 +506,14 @@ describe(checkEmail, () => {
       ]);
     });
 
+    it("doesn't read the Phone font size of a Block in a Row that phones don't show", async () => {
+      const email = ready(
+        text({ color: "#888888", fontSize: 24, phone: { fontSize: 12 } })
+      );
+      (email.rows[0] as { props: object }).props = { showOn: "desktop" };
+      await expect(codes(email)).resolves.toStrictEqual([]);
+    });
+
     it("doesn't read the Phone font size of a Block that phones don't show", async () => {
       const block = text({
         color: "#888888",

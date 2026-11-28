@@ -537,14 +537,16 @@ const shownProps = (block: Block): Record<string, unknown> => {
 const contrastProblems = (
   block: Block,
   behind: Rgba,
-  style: EmailStyle
+  style: EmailStyle,
+  rowHiddenOnPhone: boolean
 ): BlockProblem[] => {
   const desktop = isHiddenOn(block, "desktop")
     ? []
     : lowContrast(block, behind, style);
-  const phone = isHiddenOn(block, "phone")
-    ? []
-    : lowContrast(onPhone(block), behind, style);
+  const phone =
+    rowHiddenOnPhone || isHiddenOn(block, "phone")
+      ? []
+      : lowContrast(onPhone(block), behind, style);
   return [
     ...desktop,
     ...phone.filter(
@@ -557,7 +559,8 @@ const blockProblems = (
   block: Block,
   knownTags: ReadonlySet<string> | undefined,
   behind: Rgba,
-  style: EmailStyle
+  style: EmailStyle,
+  rowHiddenOnPhone: boolean
 ): BlockProblem[] => {
   const problems: BlockProblem[] = [];
   switch (block.type) {
@@ -619,7 +622,7 @@ const blockProblems = (
     default:
   }
   problems.push(
-    ...contrastProblems(block, behind, style),
+    ...contrastProblems(block, behind, style, rowHiddenOnPhone),
     ...vagueLinks(block),
     // A Menu's link without a label or a URL isn't in the email, nor what a
     // Video doesn't show.
@@ -717,7 +720,13 @@ export const checkEmail = async (
         } else if (block.type !== "image" || block.props.src !== undefined) {
           links.push(...linksIn(block.props), ...writtenLinksIn(block));
         }
-        for (const problem of blockProblems(block, knownTags, behind, style)) {
+        for (const problem of blockProblems(
+          block,
+          knownTags,
+          behind,
+          style,
+          isHiddenOn(row, "phone")
+        )) {
           problems.push({
             ...problem,
             blockId: block.id,
