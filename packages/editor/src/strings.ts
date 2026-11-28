@@ -560,6 +560,7 @@ export const STRINGS = {
   "paste.newerVersion":
     "Can't paste. It was copied from a newer version of the editor.",
   "paste.invalid": "Can't paste. Something in what's copied isn't valid.",
+  "paste.nothing": "Can't paste. Nothing in what's copied can go in the email.",
   "paste.noUploads": "Can't paste. This editor can't upload images.",
   "paste.notAllowed":
     "Can't paste. The browser didn't let the editor read the clipboard. Paste with the keyboard or the browser's Edit menu instead.",

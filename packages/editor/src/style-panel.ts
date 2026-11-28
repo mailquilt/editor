@@ -1565,14 +1565,21 @@ export const createStylePanel = ({
         ${after(font)}
       </div>
     `;
-    const firstOf = (web: boolean) =>
-      fonts.findIndex(
-        (font) => font.value !== null && Boolean(font.web) === web
+    // Each group of fonts is named, as a web font and a system font can have
+    // the same name. Its heading only shows the name, which the group has.
+    const group = (web: boolean, name: string) => {
+      const options = fonts.flatMap((font, index) =>
+        font.value !== null && Boolean(font.web) === web
+          ? [option(font, index)]
+          : []
       );
-    const groups = new Map([
-      [firstOf(true), text("style.yourFonts")],
-      [firstOf(false), text("style.systemFonts")],
-    ]);
+      return options.length > 0
+        ? html`<div aria-label=${name} role="group">
+            <div aria-hidden="true" class="font-group">${name}</div>
+            ${options}
+          </div>`
+        : nothing;
+    };
     return html`
       <div class="font-search">
         ${ICONS.search}
@@ -1602,13 +1609,11 @@ export const createStylePanel = ({
         id=${listId}
         role="listbox"
       >
-        ${fonts.map((font, index) => {
-          const group = groups.get(index);
-          return group
-            ? html`<div aria-hidden="true" class="font-group">${group}</div>
-                ${option(font, index)}`
-            : option(font, index);
-        })}
+        ${fonts.map((font, index) =>
+          font.value === null ? option(font, index) : nothing
+        )}
+        ${group(true, text("style.yourFonts"))}
+        ${group(false, text("style.systemFonts"))}
       </div>
       ${
         fonts.length === 0
@@ -2265,7 +2270,8 @@ export const createStylePanel = ({
         root,
         "stylePopover"
       )?.querySelector<HTMLElement>("[data-active]");
-      const list = option?.parentElement;
+      // Past its group, which doesn't scroll. Its offsets are from the list.
+      const list = option?.closest<HTMLElement>('[role="listbox"]');
       // Only the list scrolls, never the page around the editor.
       if (!(option && list)) {
         return;

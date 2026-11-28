@@ -1189,13 +1189,18 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
       return;
     }
     if (index === -1) {
-      // On the button: the arrows open it too, at either end.
+      // On the button: the arrows open it too, at either end, or go into it
+      // when it's open.
       if (
         (key === "ArrowDown" || key === "ArrowUp") &&
         target.getAttribute("aria-disabled") !== "true"
       ) {
         event.preventDefault();
-        this.#toggleMenu(menu, key === "ArrowDown" ? "first" : "last", true);
+        if (this.#openMenu === menu) {
+          (key === "ArrowDown" ? items[0] : items.at(-1))?.focus();
+        } else {
+          this.#toggleMenu(menu, key === "ArrowDown" ? "first" : "last", true);
+        }
       }
       return;
     }

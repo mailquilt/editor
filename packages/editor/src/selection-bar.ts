@@ -3501,41 +3501,50 @@ const renderChip = (target: Target, api: PanelApi) => {
   `;
 };
 
-/** A button with its keys in its tooltip and `aria-keyshortcuts`. */
+/**
+ * A button with its keys in its tooltip and `aria-keyshortcuts`. While it
+ * can't be used, it's off with `aria-disabled`, so the arrow keys still reach
+ * it, and its tooltip and description say why.
+ */
 const renderKeyedButton = (
   {
     action,
-    disabled = false,
+    danger = false,
+    disabledWhy,
     icon,
     keys,
     label,
     onClick,
-    danger = false,
-  }: {
-    action: string;
-    disabled?: boolean;
-    icon: TemplateResult;
-    keys?: { keys: string; shortcuts: string };
-    label: string;
-    onClick: (event: MouseEvent) => void;
-    danger?: boolean;
-  },
+  }: ActionButton,
   text: Text
-) => html`
-  <button
-    aria-keyshortcuts=${keys?.shortcuts ?? nothing}
-    aria-label=${label}
-    class=${danger ? "icon-button danger" : "icon-button"}
-    data-action=${action}
-    data-tooltip=${keys ? withKeys(label, keys.keys, text) : label}
-    ?disabled=${disabled}
-    tabindex="-1"
-    type="button"
-    @click=${onClick}
-  >
-    ${icon}
-  </button>
-`;
+) => {
+  const whyId = `bar-${action}-off`;
+  return html`
+    <button
+      aria-describedby=${disabledWhy ? whyId : nothing}
+      aria-disabled=${disabledWhy ? "true" : nothing}
+      aria-keyshortcuts=${keys?.shortcuts ?? nothing}
+      aria-label=${label}
+      class=${danger ? "icon-button danger" : "icon-button"}
+      data-action=${action}
+      data-tooltip=${disabledWhy ?? (keys ? withKeys(label, keys.keys, text) : label)}
+      tabindex="-1"
+      type="button"
+      @click=${(event: MouseEvent) => {
+        if (!disabledWhy) {
+          onClick(event);
+        }
+      }}
+    >
+      ${icon}
+    </button>
+    ${
+      disabledWhy
+        ? html`<span class="visually-hidden" id=${whyId}>${disabledWhy}</span>`
+        : nothing
+    }
+  `;
+};
 
 /**
  * With nothing selected, at the bar's end, the Add button, which opens the
@@ -3590,9 +3599,7 @@ const renderActions = (target: Target, api: PanelApi) => {
   const own = actionsOf(target, api);
   return html`
     <span class="bar-actions">
-      ${own.map(({ disabledWhy, ...action }) =>
-        renderKeyedButton({ ...action, disabled: Boolean(disabledWhy) }, text)
-      )}
+      ${own.map((action) => renderKeyedButton(action, text))}
     </span>
     ${more}
   `;

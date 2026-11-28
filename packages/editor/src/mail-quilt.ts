@@ -1849,7 +1849,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     if (this.#editor !== editor) {
       return;
     }
-    this.#editing.paste(readPasted(data) ?? { refused: "notCopied" });
+    this.#editing.paste(readPasted(data));
   }
 
   /**
