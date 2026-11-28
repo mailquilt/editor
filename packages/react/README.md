@@ -47,4 +47,20 @@ Pass the email you saved for this person, or `createEmail()` for a new one, from
 
 On the server it renders an empty `<mail-quilt>`, and the editor loads in the browser.
 
+`MailQuiltShell` is a whole editor page: the editor with a header, Import and Export, and messages. Give its parent a height. With `saveKey`, it keeps the email in the browser. `actions` picks its buttons, and `heading` is the text in its header:
+
+```tsx
+import { MailQuiltShell } from "@mailquilt/react";
+
+export const EmailPage = () => (
+  <div style={{ height: "100dvh" }}>
+    <MailQuiltShell
+      actions={["export-html", "export-json"]}
+      heading="Newsletter"
+      saveKey="my-app:email"
+    />
+  </div>
+);
+```
+
 [Docs](https://editor.mailquilt.com/docs/react) · [Playground](https://editor.mailquilt.com/playground) · [Source](https://github.com/mailquilt/editor) · MIT

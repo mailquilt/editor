@@ -118,3 +118,40 @@ export const unnamedTag: MailQuiltProps = {
 
 /** JSON from a database is `unknown` until the renderer has checked it. */
 export const htmlFor = (saved: unknown): Promise<string> => renderEmail(saved);
+
+/** The rest of the Host app's properties, each of a type that isn't `any`. */
+export const hostAppProps: [MailQuiltProps, MailQuiltShellProps] = [
+  {
+    fonts: [
+      {
+        fallback: "Georgia, serif",
+        name: "Fraunces",
+        url: "https://fonts.example/f.css",
+      },
+    ],
+    savedRows: [{ name: "Footer", row: {}, version: 4 }],
+    sender: "Northbound",
+    socialIconsUrl: "https://cdn.example/icons/",
+    starterEmails: [{ email: {}, name: "Letter" }],
+    strings: { "topBar.undo": "Annuler" },
+    subject: "Spring roast",
+  },
+  { sender: "Northbound" },
+];
+
+export const wrongHostAppProps: MailQuiltProps[] = [
+  // @ts-expect-error A font needs its fallback.
+  { fonts: [{ name: "Fraunces", url: "https://fonts.example/f.css" }] },
+  // @ts-expect-error A Saved Row needs the email's version it's from.
+  { savedRows: [{ name: "Footer", row: {} }] },
+  // @ts-expect-error The sender is text.
+  { sender: 1 },
+  // @ts-expect-error The icons' folder is a URL, as text.
+  { socialIconsUrl: new URL("https://cdn.example/icons/") },
+  // @ts-expect-error A Starter email needs a name.
+  { starterEmails: [{ email: {} }] },
+  // @ts-expect-error Only the editor's texts can be replaced.
+  { strings: { notAnId: "Hello" } },
+  // @ts-expect-error The subject is text.
+  { subject: 1 },
+];

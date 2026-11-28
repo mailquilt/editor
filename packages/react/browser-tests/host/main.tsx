@@ -94,6 +94,16 @@ const firstEmail = () =>
     ? refusedEmail
     : emailWith("Hello");
 
+/** Other props the element takes, which React 18 and 19 are both to pass on. */
+const elementProps = {
+  hidden: false,
+  id: "newsletter",
+  inert: false,
+  role: "region",
+  style: { minHeight: "123px" },
+  title: "Weekly",
+} as const;
+
 /** A host that leaves out `onError`. */
 const noOnError = new URLSearchParams(window.location.search).has(
   "no-on-error"
@@ -105,6 +115,8 @@ const Host = () => {
   const [errors, setErrors] = useState<string[]>([]);
   const [changes, setChanges] = useState(0);
   const [shown, setShown] = useState(true);
+  const [keys, setKeys] = useState(0);
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
 
   return (
     <main>
@@ -114,13 +126,19 @@ const Host = () => {
       <button onClick={() => setDocument(emailWith("Replaced"))} type="button">
         Replace email
       </button>
+      <button onClick={() => setTheme("light")} type="button">
+        Change theme
+      </button>
+      <output data-testid="key-count">{keys}</output>
       <output data-testid="change-count">{changes}</output>
       <output data-testid="errors">{errors.join("\n")}</output>
       <output data-testid="latest-document">{JSON.stringify(document)}</output>
       {shown && (
         <MailQuilt
+          {...elementProps}
           aria-label="Newsletter"
           className="host-editor"
+          onKeyDown={() => setKeys((count) => count + 1)}
           // A new function each render, so the wrapper replaces its listener.
           onChange={(next) => {
             setDocument(next);
@@ -140,7 +158,7 @@ const Host = () => {
           socialIconsUrl={SOCIAL_ICONS_URL}
           strings={strings()}
           subject="Spring roast"
-          theme="dark"
+          theme={theme}
           uploadImage={uploadImage}
           value={document}
         />
@@ -183,6 +201,7 @@ const ShellHost = () => {
   const [document, setDocument] = useState(firstEmail);
   const [ready, setReady] = useState(false);
   const [changed, setChanged] = useState(false);
+  const [keys, setKeys] = useState(0);
   // The wrapper hands over the element only after it has set `value`.
   const attach = useCallback((element: MailQuiltShellElement | null) => {
     setReady(element !== null);
@@ -202,15 +221,18 @@ const ShellHost = () => {
   return (
     <main style={{ display: "grid", gridTemplateRows: "auto 700px" }}>
       <output data-testid="ready">{ready ? "yes" : "no"}</output>
+      <output data-testid="key-count">{keys}</output>
       <button onClick={() => setChanged(true)} type="button">
         Change props
       </button>
       <MailQuiltShell
+        {...elementProps}
         actions={actions}
         aria-label="Newsletter"
         className="host-editor"
         heading={changed ? "Renamed" : "Campaign"}
         onChange={(next) => setDocument(next)}
+        onKeyDown={() => setKeys((count) => count + 1)}
         ref={attach}
         fonts={fonts()}
         savedRows={savedRows()}

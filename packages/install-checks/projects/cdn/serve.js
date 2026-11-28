@@ -19,4 +19,4 @@ createServer(async (request, response) => {
   } catch {
     response.writeHead(404).end();
   }
-}).listen(Number(port));
+}).listen(Number(port), "127.0.0.1");
