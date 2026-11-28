@@ -1,7 +1,11 @@
 import { expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
-/** Waits until the page has drawn a frame, and run what that frame queued. */
+/**
+ * Waits until the page has drawn a frame, and run what that frame queued. The
+ * editor's `settle` and install-checks' `focusStartOfTextBlock` wait the same
+ * way, as each package's tests stay independent: change the wait in all three.
+ */
 export const afterAFrame = async (page: Page) => {
   await page.evaluate(
     () =>

@@ -2,8 +2,10 @@ import { expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
 /**
- * Puts the cursor at the start of the Text Block, waiting as the editor's own
- * tests do, so a lost cursor scrambles what's typed next.
+ * Puts the cursor at the start of the Text Block, so a lost cursor scrambles
+ * what's typed next. It waits as `afterAFrame` in the React package's browser
+ * tests and `settle` in the editor's do, as each package's tests stay
+ * independent: change the wait in all three.
  */
 export const focusStartOfTextBlock = async (page: Page) => {
   const block = page.getByRole("textbox", { name: "Text Block" });

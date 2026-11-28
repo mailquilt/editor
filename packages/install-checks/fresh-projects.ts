@@ -19,10 +19,12 @@ export const portsVariable = "MAILQUILT_INSTALL_CHECKS_PORTS";
 
 // Each run has its own folder, and its own ports, so two checkouts can run the
 // checks at once. `run.ts` picks them, and Playwright and its workers inherit
-// them through the environment.
+// them through the environment. `run.ts` removes the folder, so it always makes
+// its own, and a variable left in a shell can't make it remove another one.
 const folderVariable = "MAILQUILT_INSTALL_CHECKS_FOLDER";
+const startedByRun = path.basename(process.argv[1] ?? "") === "run.ts";
 const folder =
-  process.env[folderVariable] ??
+  (startedByRun ? undefined : process.env[folderVariable]) ??
   // Outside the repo, so pnpm can't find its workspace from a fresh project.
   path.join(tmpdir(), `mailquilt-install-checks-${randomUUID()}`);
 process.env[folderVariable] = folder;

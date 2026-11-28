@@ -73,7 +73,7 @@ test("a later value replaces the email in the editor", async ({ page }) => {
   await expect(textBlock(page)).toHaveText("Replaced");
 });
 
-test("other props such as className and aria-label reach the element", async ({
+test("other props reach the element, and a key pressed inside it reaches onKeyDown", async ({
   page,
 }) => {
   for (const [query, tag] of [
@@ -84,7 +84,28 @@ test("other props such as className and aria-label reach the element", async ({
     const element = page.locator(tag);
     await expect(element).toHaveClass("host-editor");
     await expect(element).toHaveAttribute("aria-label", "Newsletter");
+    await expect(element).toHaveAttribute("id", "newsletter");
+    await expect(element).toHaveAttribute("role", "region");
+    await expect(element).toHaveAttribute("title", "Weekly");
+    await expect(element).toHaveCSS("min-height", "123px");
+    // `false` leaves them off, as React 18 would write the text "false".
+    await expect(element).not.toHaveAttribute("hidden");
+    await expect(element).not.toHaveAttribute("inert");
+
+    await expect(textBlock(page)).toHaveText("Hello");
+    await textBlock(page).click();
+    await page.keyboard.press("Shift");
+    await expect(page.getByTestId("key-count")).not.toHaveText("0");
   }
+});
+
+test("theme can change after the editor has started", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator("mail-quilt")).toHaveAttribute("theme", "dark");
+
+  await page.getByRole("button", { name: "Change theme" }).click();
+
+  await expect(page.locator("mail-quilt")).toHaveAttribute("theme", "light");
 });
 
 test("uploadImage reaches the element", async ({ page }) => {

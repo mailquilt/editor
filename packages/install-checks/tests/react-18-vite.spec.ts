@@ -1,5 +1,9 @@
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+
 import { expect, test } from "@playwright/test";
 
+import { freshProjectDir } from "../fresh-projects.ts";
 import { freshProjects } from "../ports.ts";
 import {
   checkLoadSaveExport,
@@ -37,4 +41,21 @@ test("className reaches a React 18 app's element as its class, and false leaves 
   await expect(page.getByRole("textbox", { name: "Text Block" })).toHaveText(
     "Hello"
   );
+});
+
+test("renders on a React 18 server with nothing for the element there, and no warning", async () => {
+  const { stderr, stdout } = await promisify(execFile)(
+    "node",
+    ["server-render.js"],
+    {
+      cwd: freshProjectDir("react-18-vite"),
+      env: { ...process.env, NODE_ENV: "development" },
+    }
+  );
+
+  expect(JSON.parse(stdout)).toStrictEqual({
+    html: "<mail-quilt></mail-quilt>",
+    shellHtml: "<mail-quilt-shell></mail-quilt-shell>",
+  });
+  expect(stderr).toBe("");
 });

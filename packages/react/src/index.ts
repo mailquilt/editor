@@ -13,7 +13,7 @@ import {
   forwardRef,
   useEffect,
   useImperativeHandle,
-  useLayoutEffect,
+  useLayoutEffect as useClientLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -28,6 +28,7 @@ import type {
 export type {
   BlocksDocument,
   HostAppProperties,
+  HostFont,
   MailQuilt as MailQuiltElement,
   MailQuiltShell as MailQuiltShellElement,
   MailQuiltStrings,
@@ -37,6 +38,40 @@ export type {
   StarterEmail,
   StringId,
 } from "@mailquilt/editor";
+
+/**
+ * Each Host app property, so the components pass on every one. A property
+ * `HostAppProperties` adds and this leaves out is a type error.
+ */
+const HOST_APP_PROPERTIES = Object.keys({
+  fonts: true,
+  mergeTags: true,
+  savedRows: true,
+  sender: true,
+  sendTest: true,
+  socialIconsUrl: true,
+  starterEmails: true,
+  strings: true,
+  subject: true,
+  uploadImage: true,
+} satisfies {
+  [Name in keyof HostAppProperties]-?: true;
+}) as readonly (keyof HostAppProperties)[];
+
+/**
+ * The Host app's properties, each of them, even when left out, so one taken
+ * away is taken off the element, and the props that are left for the element.
+ */
+const splitHostApp = <Props extends HostAppProperties>(props: Props) => ({
+  hostApp: Object.fromEntries(
+    HOST_APP_PROPERTIES.map((name) => [name, props[name]])
+  ) as HostAppProperties,
+  rest: Object.fromEntries(
+    Object.entries(props).filter(
+      ([name]) => !HOST_APP_PROPERTIES.includes(name as keyof HostAppProperties)
+    )
+  ) as Omit<Props, keyof HostAppProperties>,
+});
 
 /** What both components take, the Host app's properties among them. */
 interface EditorProps<Host> extends HostAppProperties {
@@ -93,6 +128,13 @@ export interface MailQuiltShellProps
   /** Where the Shell keeps the email in the browser. Without it, nothing is stored. */
   saveKey?: string;
 }
+
+/**
+ * A layout effect in the browser. React 18 warns of one on a server, where
+ * effects never run, so there it's `useEffect`, which doesn't.
+ */
+const useLayoutEffect =
+  typeof window === "undefined" ? useEffect : useClientLayoutEffect;
 
 /** Only called from an effect, so a server never runs the editor. */
 const loadEditor = () => import("@mailquilt/editor");
@@ -215,69 +257,30 @@ const elementAttributes = ({
 
 /** The editor. Its `ref` comes as an argument, as React 18 has no `ref` prop. */
 const Editor = (
-  {
-    onChange,
-    onError,
-    fonts,
-    mergeTags,
-    sender,
-    sendTest,
-    socialIconsUrl,
-    savedRows,
-    starterEmails,
-    strings,
-    subject,
-    uploadImage,
-    value,
-    ...attributes
-  }: MailQuiltProps,
+  { onChange, onError, value, ...props }: MailQuiltProps,
   ref: ForwardedRef<MailQuiltElement>
-) =>
-  createElement("mail-quilt", {
-    ...elementAttributes(attributes),
-    ref: useEditorElement({
-      hostApp: {
-        fonts,
-        mergeTags,
-        sender,
-        sendTest,
-        socialIconsUrl,
-        savedRows,
-        starterEmails,
-        strings,
-        subject,
-        uploadImage,
-      },
-      onChange,
-      onError,
-      ref,
-      value,
-    }),
+) => {
+  const { hostApp, rest } = splitHostApp(props);
+  return createElement("mail-quilt", {
+    ...elementAttributes(rest),
+    ref: useEditorElement({ hostApp, onChange, onError, ref, value }),
   });
+};
 
 /** The Shell. Its `ref` comes as an argument, as React 18 has no `ref` prop. */
 const Shell = (
   {
     actions,
-    fonts,
     heading,
-    mergeTags,
     onChange,
     onError,
     saveKey,
-    sender,
-    sendTest,
-    socialIconsUrl,
-    savedRows,
-    starterEmails,
-    strings,
-    subject,
-    uploadImage,
     value,
-    ...rest
+    ...props
   }: MailQuiltShellProps,
   ref: ForwardedRef<MailQuiltShellElement>
 ) => {
+  const { hostApp, rest } = splitHostApp(props);
   // React's types only know the attributes of built-in elements.
   const attributes: Record<string, unknown> = {
     ...elementAttributes(rest),
@@ -287,24 +290,7 @@ const Shell = (
   };
   return createElement("mail-quilt-shell", {
     ...attributes,
-    ref: useEditorElement({
-      hostApp: {
-        fonts,
-        mergeTags,
-        sender,
-        sendTest,
-        socialIconsUrl,
-        savedRows,
-        starterEmails,
-        strings,
-        subject,
-        uploadImage,
-      },
-      onChange,
-      onError,
-      ref,
-      value,
-    }),
+    ref: useEditorElement({ hostApp, onChange, onError, ref, value }),
   });
 };
 

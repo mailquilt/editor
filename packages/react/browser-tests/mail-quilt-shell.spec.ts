@@ -18,15 +18,15 @@ test("shows the email in value, with the heading", async ({ page }) => {
 test("actions picks the Shell's exports, and an empty list shows none", async ({
   page,
 }) => {
-  for (const [query, menuItems] of [
-    ["/?shell&only-html", [/HTML file/u]],
-    ["/?shell&no-actions", []],
+  for (const [query, menuItems, exportButtons] of [
+    ["/?shell&only-html", [/HTML file/u], 1],
+    ["/?shell&no-actions", [], 0],
   ] as const) {
     await page.goto(query);
     await expect(textBlock(page)).toHaveText("Hello");
     await expect(
       shell(page).getByRole("button", { exact: true, name: "Export" })
-    ).toHaveCount(menuItems.length);
+    ).toHaveCount(exportButtons);
     if (menuItems.length > 0) {
       await shell(page).getByRole("button", { name: "Export" }).click();
       await expect(shell(page).getByRole("menuitem")).toHaveText([
