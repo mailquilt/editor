@@ -11,7 +11,7 @@ const packages = [
     id: "react",
     link: "Read the React guide",
     needs: "Installs the editor for you.",
-    when: "Your app uses React 19.",
+    when: "Your app uses React 18 or 19.",
   },
   {
     href: "/docs/quick-start",
@@ -164,6 +164,7 @@ const levels = [
                     data-copy={`npm install @mailquilt/${id}`}
                     type="button">Copy</button
                   >
+                  <span class="site-visually-hidden" role="status"></span>
                 </div>
                 <a class="site-link site-small" href={withBase(href)}>{link}</a>
               </div>

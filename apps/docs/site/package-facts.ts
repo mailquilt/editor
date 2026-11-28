@@ -4,41 +4,14 @@
 import { BLOCK_TYPES, ROW_LAYOUTS } from "@mailquilt/core";
 
 import site from "../package.json" with { type: "json" };
+import { BLOCK_NAMES, inWords, MOST_COLUMNS } from "./core-facts";
 import { examples } from "./examples";
 
-const WORDS = [
-  "no",
-  "one",
-  "two",
-  "three",
-  "four",
-  "five",
-  "six",
-  "seven",
-  "eight",
-  "nine",
-  "ten",
-  "eleven",
-  "twelve",
-];
-
-/** A count in words, as the site writes one, such as "six". */
-export const inWords = (count: number) => WORDS[count] ?? String(count);
-
-/** Joined as a sentence lists things, such as "a, b and c". */
-const listed = (items: readonly string[]) =>
-  items.length < 2
-    ? items.join("")
-    : `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
+export { BLOCK_NAMES, inWords, MOST_COLUMNS };
 
 /** Each published package, as the site installs every one of them. */
 const packages = Object.keys(site.dependencies).filter((name) =>
   name.startsWith("@mailquilt/")
-);
-
-/** The most Columns a Row can have. */
-export const MOST_COLUMNS = Math.max(
-  ...ROW_LAYOUTS.map((layout) => layout.split("/").length)
 );
 
 export const COUNTS = {
@@ -48,9 +21,6 @@ export const COUNTS = {
   mostColumns: inWords(MOST_COLUMNS),
   packages: inWords(packages.length),
 };
-
-/** Every type of Block by name, in the order the editor offers them. */
-export const BLOCK_NAMES = listed(BLOCK_TYPES.map(({ label }) => label));
 
 /** How wide a new email is, in pixels. */
 export { NEW_EMAIL_WIDTH as EMAIL_WIDTH } from "@mailquilt/core/internal";

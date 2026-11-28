@@ -174,9 +174,12 @@ test("in a narrow window, the landing page shows a picture of the editor", async
   test.skip(browserName !== "chromium", SAME_IN_EVERY_BROWSER);
   await page.setViewportSize({ height: 800, width: 390 });
   await page.goto("/");
-  // An editor the page started would arrive after an import, so the page has
-  // to finish loading before anything can show it didn't start one.
-  await page.waitForLoadState("networkidle");
+  // The page decides whether to start the editor in the same step that marks
+  // its stage as started, so wait for that mark before checking it didn't.
+  await expect(page.locator("[data-home-editor]")).toHaveAttribute(
+    "data-started",
+    "true"
+  );
 
   await expect(
     page.getByRole("img", { name: /Mail Quilt editor/u })
@@ -225,6 +228,18 @@ test.describe("without JavaScript", () => {
         page.getByRole("heading", { name: `@mailquilt/${name}` })
       ).toBeVisible();
     }
+  });
+
+  test("the landing page leaves out the controls that need its script", async ({
+    browserName,
+    page,
+  }) => {
+    test.skip(browserName !== "chromium", SAME_IN_EVERY_BROWSER);
+    await page.goto("/");
+
+    await expect(page.getByRole("tab")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Copy" })).toHaveCount(0);
+    await expect(page.getByRole("group", { name: "Row layout" })).toBeHidden();
   });
 
   test("the landing page says its editor is only a picture", async ({
@@ -596,6 +611,10 @@ test("the landing page copies a package's install command", async ({
 
   await expect(
     page.getByRole("tabpanel", { name: "editor" }).getByRole("button")
+  ).toHaveText("Copied");
+  // A screen reader hears it from the status region, not the button.
+  await expect(
+    page.getByRole("tabpanel", { name: "editor" }).getByRole("status")
   ).toHaveText("Copied");
   const copied = await page.evaluate(
     () => (window as unknown as { copied: string[] }).copied

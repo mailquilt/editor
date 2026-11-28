@@ -258,6 +258,16 @@
   color: var(--site-dash);
 }
 
+/* Read out by a screen reader, and not drawn. */
+.site-visually-hidden {
+  position: absolute;
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
 .site-command button {
   flex: none;
   min-width: 4.25rem;

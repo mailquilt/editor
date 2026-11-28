@@ -133,11 +133,17 @@ test("the docs' Merge Tag code fills and escapes each value, in text and in a li
        } catch ({ message }) {
          missing = message;
        }
-       console.log("RESULT" + JSON.stringify({ filled, missing }));`,
+       let empty;
+       try {
+         fillMergeTags(html, { cta_url: "https://example.com", "customer.preferred_name": "Ada", first_name: undefined });
+       } catch ({ message }) {
+         empty = message;
+       }
+       console.log("RESULT" + JSON.stringify({ empty, filled, missing }));`,
     ],
     { cwd: freshProjectDir("plain-js") }
   );
-  const { filled, missing } = JSON.parse(
+  const { empty, filled, missing } = JSON.parse(
     stdout.slice(stdout.indexOf("RESULT") + "RESULT".length)
   );
 
@@ -148,4 +154,6 @@ test("the docs' Merge Tag code fills and escapes each value, in text and in a li
   expect(filled).toContain("Signed up as Ada.");
   expect(filled).not.toMatch(/\{\{[^{}]+\}\}/u);
   expect(missing).toBe("No value for {{ cta_url }}");
+  // Not the word "undefined" in the reader's email.
+  expect(empty).toBe("No value for {{first_name}}");
 });

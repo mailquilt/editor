@@ -1,7 +1,8 @@
 // Run before the build. Each page's date comes from the last commit that
-// changed its file, so a host that checks out only the last commit would leave
-// every page undated. This fetches the rest of the history first. Outside a
-// git checkout, or without a network, the build goes on without it.
+// changed its file, which a host that checks out only the last commit can't
+// tell, so every page would be undated. This fetches the rest of the history
+// first. Outside a git checkout, or without a network, the build goes on
+// without it, and a page's date is left out while the checkout is shallow.
 import { execFileSync } from "node:child_process";
 
 const git = (...args: string[]) =>

@@ -313,8 +313,8 @@ kbd {
  * A thing that can be picked up. Under the pointer it lifts out of a dashed
  * slot, as the envelope does in the logo. The element becomes the slot, its
  * ::before becomes the lifted surface, and its children ride on that surface.
+ * Things that lift: Blume's cards and page-end links.
  */
-/* Things that lift: Blume's cards and page-end links. */
 :is([data-blume-page-end] nav > a, a[data-blume-card][href]) {
   position: relative;
   overflow: visible;
