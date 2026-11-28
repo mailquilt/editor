@@ -84,7 +84,7 @@ const BLOCK_CANT_MOVE = {
  * A Row's layout, or for Column widths that aren't one, as a saved email may
  * have, the layout with as many Columns, all the same width.
  */
-const layoutOf = (row: Row) =>
+export const layoutOf = (row: Row) =>
   rowLayoutOf(row) ??
   ROW_LAYOUTS.find((layout) => layout.split("/").length === row.columns.length);
 

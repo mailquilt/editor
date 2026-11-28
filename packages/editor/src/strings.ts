@@ -342,6 +342,13 @@ export const STRINGS = {
   "canvas.startTitle": "Start with a Row",
   "canvas.startText": "Pick how many Columns it has. You can change it after.",
 
+  // The start screen, which offers the Host app's Starter emails.
+  "start.title": "Start an email",
+  "start.text":
+    "Begin from a starter email, or a blank one. You can change everything after.",
+  "start.blank": "Blank",
+  "start.blankText": "An empty email",
+
   // Settings fields.
   "settings.none": "None",
   "settings.picker": "{label} picker",
@@ -527,6 +534,7 @@ export const STRINGS = {
   "said.blockPasted":
     "Block pasted, Row {row}, Column {column}, position {position} of {count}.",
   "said.rowPasted": "Row pasted, position {position} of {count}.",
+  "said.started": "Started from {name}.",
   "said.undoMovedBlock":
     "Undo moved a Block to Row {row}, Column {column}, position {position} of {count}.",
   "said.redoMovedBlock":

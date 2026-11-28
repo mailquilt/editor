@@ -719,7 +719,7 @@ export const rowsListStyles = css`
 `;
 
 /** What a Row's picture is drawn with, besides the Row. */
-interface PictureContext {
+export interface PictureContext {
   api: PanelApi;
   /** A text Block's picture, as `RowsList.textPicture` makes it. */
   textPicture: (
@@ -734,7 +734,9 @@ interface PictureContext {
  * A text as its schema draws it, without its editor: no cursor, nothing to
  * type in, and no focus.
  */
-const drawText = (block: Extract<Block, { type: "heading" | "text" }>) => {
+export const drawText = (
+  block: Extract<Block, { type: "heading" | "text" }>
+) => {
   const { schema } = BLOCK_VIEWS[block.type].text;
   const element = document.createElement("div");
   element.className = "ProseMirror";
@@ -784,31 +786,58 @@ const renderPictureBlock = (
       </div>`;
 };
 
-/** A Row as the Canvas draws it, but nothing in it to press or reach. */
-const renderPicture = (row: Row, context: PictureContext) => {
+/** A Row's Columns and Blocks as the Canvas draws them. */
+const renderPictureRow = (row: Row, context: PictureContext) => {
   const style = context.api.email.settings.style ?? {};
   return html`
-    <span class="rows-card">
-      <span
-        aria-hidden="true"
-        class="rows-picture"
-        data-place=${place("rowPicture")}
-        inert
-      >
-        <span class="picture-row" style=${styleProperties(rowLook(row, style))}>
-          ${row.columns.map(
-            ({ blocks, width }) => html`
-              <span
-                class=${blocks.length === 0 ? "picture-column empty" : "picture-column"}
-                style=${styleProperties({ width: `${width}%` })}
-              >
-                ${blocks.map((block) => renderPictureBlock(block, context, style))}
-              </span>
-            `
-          )}
-        </span>
-      </span>
-      ${renderShownOnBadge(row, "rows-badge", context.api)}
+    <span class="picture-row" style=${styleProperties(rowLook(row, style))}>
+      ${row.columns.map(
+        ({ blocks, width }) => html`
+          <span
+            class=${blocks.length === 0 ? "picture-column empty" : "picture-column"}
+            style=${styleProperties({ width: `${width}%` })}
+          >
+            ${blocks.map((block) => renderPictureBlock(block, context, style))}
+          </span>
+        `
+      )}
+    </span>
+  `;
+};
+
+/** A Row as the Canvas draws it, but nothing in it to press or reach. */
+const renderPicture = (row: Row, context: PictureContext) => html`
+  <span class="rows-card">
+    <span
+      aria-hidden="true"
+      class="rows-picture"
+      data-place=${place("rowPicture")}
+      inert
+    >
+      ${renderPictureRow(row, context)}
+    </span>
+    ${renderShownOnBadge(row, "rows-badge", context.api)}
+  </span>
+`;
+
+/**
+ * The whole of `context.api.email` as the Canvas draws it, at its width, to
+ * scale with `--_mq-picture-scale`, such as a Starter email on its card.
+ */
+export const renderEmailPicture = (context: PictureContext) => {
+  const { settings } = context.api.email;
+  return html`
+    <span
+      aria-hidden="true"
+      class="rows-picture"
+      inert
+      style=${styleProperties({
+        "--_mq-email-font": settings.fontFamily,
+        "--_mq-email-width": `${settings.width}px`,
+        "background-color": settings.backgroundColor,
+      })}
+    >
+      ${context.api.email.rows.map((row) => renderPictureRow(row, context))}
     </span>
   `;
 };

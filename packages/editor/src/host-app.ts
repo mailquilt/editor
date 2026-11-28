@@ -1,3 +1,4 @@
+import type { StarterEmail } from "./starter-emails.js";
 import type { MailQuiltStrings } from "./strings.js";
 import type { HostFont } from "./web-fonts.js";
 
@@ -64,6 +65,16 @@ export interface HostAppProperties {
    */
   socialIconsUrl?: string | undefined;
   /**
+   * Ready-made emails to begin from, which a start screen offers, after
+   * "Blank", while the email has no Rows and the person hasn't started it.
+   * `name` and `description` are what its card says. `email` is checked as
+   * `value` is, and picking it makes the email a copy of it, with new IDs, in
+   * one undo step. A Starter email the editor can't open, or with no name, is
+   * left out, and said on the console. Without the list, or once the email has
+   * anything in it, there's no start screen.
+   */
+  starterEmails?: readonly StarterEmail[] | undefined;
+  /**
    * The email's subject, as Check's inbox shows it before the preheader.
    * Without it, the inbox shows the preheader alone.
    */
@@ -98,6 +109,7 @@ export const HOST_APP_PROPERTIES = Object.keys({
   sender: true,
   sendTest: true,
   socialIconsUrl: true,
+  starterEmails: true,
   strings: true,
   subject: true,
   uploadImage: true,

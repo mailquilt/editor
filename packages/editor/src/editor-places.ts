@@ -132,6 +132,8 @@ const PLACES = {
   rowsDropIndicator: {},
   /** A Row's picture in the Rows list, which is sized as it's drawn. */
   rowPicture: {},
+  /** A Starter email's picture on the start screen, scaled to its card. */
+  starterPicture: {},
   /** The Selection bar with nothing selected, which has the email's settings. */
   emailBar: { press: "keepsFocus" },
   /** Settings fields, in a popover from the Selection bar or its More panel. */

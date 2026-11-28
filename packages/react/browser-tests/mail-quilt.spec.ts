@@ -210,6 +210,22 @@ test("fonts reaches the element", async ({ page }) => {
   }
 });
 
+test("starterEmails reaches the element", async ({ page }) => {
+  for (const [query, tag] of [
+    ["/", "mail-quilt"],
+    ["/?shell", "mail-quilt-shell"],
+  ] as const) {
+    await page.goto(query);
+    await expect(textBlock(page)).toHaveText("Hello");
+    const given = await page
+      .locator(tag)
+      .evaluate((element: MailQuiltElement | MailQuiltShellElement) =>
+        element.starterEmails?.map(({ name }) => name)
+      );
+    expect(given).toEqual(["Letter"]);
+  }
+});
+
 test("socialIconsUrl reaches the element", async ({ page }) => {
   for (const [query, tag] of [
     ["/", "mail-quilt"],

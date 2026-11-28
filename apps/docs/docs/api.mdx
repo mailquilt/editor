@@ -9,7 +9,7 @@ The editor is the `<mail-quilt>` element, and the [Shell](./shell) is `<mail-qui
 
 ## The editor
 
-`<mail-quilt>` has ten properties, two events and two methods:
+`<mail-quilt>` has eleven properties, two events and two methods:
 
 | Name | What it does |
 | --- | --- |
@@ -17,6 +17,7 @@ The editor is the `<mail-quilt>` element, and the [Shell](./shell) is `<mail-qui
 | `uploadImage` | A function that uploads an image to your storage and returns a promise of `{ url }`. With it, the Image settings have an Upload image button, and image files can be dropped or pasted on the email. [Upload images](./upload-images) shows one, and what the editor does with it. |
 | `mergeTags` | Your app's Merge Tags, as an array of `{ name, label, sample, unsubscribe }`, such as `[{ name: "first_name", label: "First name", sample: "Ana" }]`. `name` is what goes between the braces, and the rest are optional. With it, typing `{{` in text, or in any setting that holds text or a URL, opens a list of them to pick from, and the format bar has a Merge Tag button. A tag in text shows its label, or its name without one, but the export always has `{{name}}`. `sample` is what Check shows in the tag's place with Show sample values on, and `unsubscribe: true` marks your unsubscribe link's tag, which Check then looks for. [Merge Tags](#merge-tags) says more. |
 | `fonts` | Your app's web fonts, as an array of `{ name, url, fallback }`, such as `[{ name: "Inter", url: "https://fonts.googleapis.com/css2?family=Inter&display=swap", fallback: "Arial, Helvetica, sans-serif" }]`. Style's font lists offer them as Your fonts, above the system fonts. Without it, the lists hold only system fonts. [Web fonts](#web-fonts) says more. |
+| `starterEmails` | Your app's Starter emails, as an array of `{ name, description, email }`, such as `[{ name: "Product launch", description: "Hero, two products, quote", email: launchEmail }]`. While the email has no Rows, a start screen offers them as cards, after Blank, and picking one makes the email a copy of it. Without it, there's no start screen. [Starter emails](#starter-emails) says more. |
 | `sender` | Who the email is from, such as your customer's business name, which Check's inbox shows above the subject. Without it, the inbox shows no sender. |
 | `sendTest` | A function that sends a test of the email through your own sending service, to whoever you choose, such as the person signed in, and returns a promise. It gets `{ html, text, subject }`: the email as `exportHtml()` and `exportText()` give it, with its Merge Tags as written for your service to fill, and your `subject`. With it, Check has a Send a test button, which is off until the email is checked and while a test sends. When the promise resolves, Check says "Test sent." When it rejects with an `Error`, Check shows its message, so write it for the person, such as how many tests their plan has left, or "The test wasn't sent. Try again." when it has none. |
 | `socialIconsUrl` | The URL of a folder in your storage holding the Social Block's icons, copied from `@mailquilt/renderer`'s `icons`. The canvas, Check and `exportHtml()` load the icons from there. Without it, they load from jsDelivr, at the renderer's exact version. [Social icons](./social-icons) says why you might set it. |
@@ -88,6 +89,36 @@ editor.fonts = [
 
 Many email clients, Gmail and Outlook among them, don't load web fonts and show the fallback instead. [Tested email clients](./email-clients#web-fonts) lists which do.
 
+### Starter emails
+
+Give the editor the emails your customers can begin from, and it offers them on a start screen while the email is empty:
+
+```js
+editor.starterEmails = [
+  {
+    name: "Product launch",
+    description: "Hero, two products, quote",
+    email: launchEmail,
+  },
+  {
+    name: "Letter",
+    description: "Heading, text, sign-off",
+    email: letterEmail,
+  },
+];
+// An email with no Rows, so the start screen shows.
+editor.value = { ...createEmail(), rows: [] };
+```
+
+- The start screen shows only while the email has no Rows and the person hasn't started it. `createEmail()` from `@mailquilt/core` gives an email with one Row, so pass it with `rows: []`, as above. Once the email has had a Row, or the person picks Blank, it doesn't show again until you set a new `value`, even if they delete every Row or undo the pick.
+- Each card shows the email's top, drawn as the Canvas draws it, then `name`, and `description` under it if you give one. Blank comes first, for an empty email.
+- `email` is an email as `value` takes one, such as the JSON a Shell's Export JSON button gives you. It's checked as `value` is, and an email from an older version is brought up to date.
+- Picking one makes the email a copy of it, settings and Rows, with new IDs, in one undo step, so Undo takes the email back to empty. The editor fires one `mq-change`, and a screen reader hears "Started from Product launch." A Row whose Column widths aren't one of the [layouts](./document-format)' gets even Columns, as a pasted Row does, which only an email written outside the editor has.
+- A Starter email the editor can't open, or with no `name`, isn't offered, and the editor says why on the console.
+- A new array at each render, as React gives, redraws nothing unless something in it changed.
+
+[Give customers somewhere to start](./let-customers-design-emails#give-customers-somewhere-to-start) says how to make them.
+
 ### Text in your words
 
 Every word the editor shows, or reads out to a screen reader, has an ID, and `strings` replaces any of them, such as to translate the editor. `STRINGS` lists every ID with its English, which is what shows for any you leave out:
@@ -121,6 +152,7 @@ editor.strings = {
 | `uploadImage` | As on `<mail-quilt>`. The Shell passes it to the editor inside. |
 | `fonts` | As on `<mail-quilt>`. The Shell passes it to the editor inside. |
 | `mergeTags` | As on `<mail-quilt>`. The Shell passes it to the editor inside. |
+| `starterEmails` | As on `<mail-quilt>`. The Shell passes it to the editor inside. |
 | `sender` | As on `<mail-quilt>`. The Shell passes it to the editor inside. |
 | `sendTest` | As on `<mail-quilt>`. The Shell passes it to the editor inside. |
 | `socialIconsUrl` | As on `<mail-quilt>`. The Shell passes it to the editor inside. |
@@ -141,11 +173,11 @@ editor.strings = {
 
 | Component | Props |
 | --- | --- |
-| `MailQuilt` | `value`, `onChange`, `onError`, `uploadImage`, `fonts`, `mergeTags`, `sender`, `sendTest`, `socialIconsUrl`, `strings`, `subject`, `theme` and `ref`. |
+| `MailQuilt` | `value`, `onChange`, `onError`, `uploadImage`, `fonts`, `mergeTags`, `starterEmails`, `sender`, `sendTest`, `socialIconsUrl`, `strings`, `subject`, `theme` and `ref`. |
 | `MailQuiltShell` | The same, and `heading`, `actions` and `saveKey`. `actions` is an array of names, such as `["export-html"]`. |
 
 - `value` is the email to open. `onChange` gets the new email after every change, and `onError` gets the reason when the editor refuses one, or when the editor's code can't load. `onError` is always listening in time.
-- `uploadImage`, `fonts`, `mergeTags`, `sender`, `sendTest`, `socialIconsUrl`, `strings` and `subject` are the editor's properties, which the component sets on the element once the editor has loaded. A new `fonts` or `mergeTags` array or `strings` object at each render redraws nothing unless something in it changed.
+- `uploadImage`, `fonts`, `mergeTags`, `starterEmails`, `sender`, `sendTest`, `socialIconsUrl`, `strings` and `subject` are the editor's properties, which the component sets on the element once the editor has loaded. A new `fonts`, `mergeTags` or `starterEmails` array or `strings` object at each render redraws nothing unless something in it changed.
 - `theme` is the element's attribute, so it's in the server's HTML too.
 - `ref` gives you the element once the editor has loaded, so you can call `exportHtml()`.
 - Other props go to the element: `aria-*` attributes, React's events such as `onKeyDown`, and `className`, `hidden`, `id`, `inert`, `lang`, `role`, `slot`, `style`, `suppressHydrationWarning` and `title`.
@@ -174,6 +206,7 @@ editor.strings = {
 | `ShellAction` | `@mailquilt/editor` and `@mailquilt/react` | One of the Shell's button names. |
 | `HostAppProperties` | `@mailquilt/editor` and `@mailquilt/react` | The properties through which your app gives the editor what it can't do itself, such as `uploadImage`. |
 | `MailQuiltStrings`, `StringId` | `@mailquilt/editor` and `@mailquilt/react` | What `strings` takes, and the ID of one of the editor's texts, as `STRINGS` lists them. |
+| `StarterEmail` | `@mailquilt/editor` and `@mailquilt/react` | One of `starterEmails`: `{ name, description, email }`. |
 | `MailQuiltTheme` | `@mailquilt/editor` and `@mailquilt/react` | What `theme` takes: `"light"`, `"dark"` or `"auto"`. |
 
 `addEventListener` on the elements knows `mq-change` and `mq-error` by name, so their events are typed without a cast. Angular's templates type them the same way. For Vue's and Svelte's templates, `@mailquilt/editor/vue` and `@mailquilt/editor/svelte` type both elements' properties and events, as [Vue, Angular and Svelte](./other-frameworks) shows.

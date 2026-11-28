@@ -77,6 +77,9 @@ const fonts = () => [
   },
 ];
 
+/** A new list each render, as a host writing it inline would give. */
+const starterEmails = () => [{ email: emailWith("Started"), name: "Letter" }];
+
 /** A newer version than this editor can read, so it's refused. */
 const refusedEmail = { ...emailWith("Refused"), version: 999 };
 
@@ -123,6 +126,7 @@ const Host = () => {
               : (reason) => setErrors((all) => [...all, reason])
           }
           fonts={fonts()}
+          starterEmails={starterEmails()}
           mergeTags={mergeTags()}
           sender="Northbound"
           sendTest={sendTest}
@@ -202,6 +206,7 @@ const ShellHost = () => {
         onChange={(next) => setDocument(next)}
         ref={attach}
         fonts={fonts()}
+        starterEmails={starterEmails()}
         mergeTags={mergeTags()}
         sender="Northbound"
         sendTest={sendTest}
