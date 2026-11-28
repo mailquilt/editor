@@ -53,7 +53,11 @@ export const licenseOf = (root: string) => {
     readFileSync(path.join(root, "package.json"), "utf-8")
   );
   const { author, name, version } = manifest;
-  const license: string = manifest.license?.type ?? manifest.license;
+  const license: string | undefined =
+    manifest.license?.type ?? manifest.license ?? manifest.licenses?.[0]?.type;
+  if (!license) {
+    throw new Error(`${name} has no license in its package.json.`);
+  }
   const file = readdirSync(root).find((each) => /^licen[cs]e/iu.test(each));
   return `${name}@${version} (${license})\n\n${
     file

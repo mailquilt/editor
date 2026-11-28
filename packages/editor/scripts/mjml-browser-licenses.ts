@@ -76,7 +76,7 @@ const importsOf = (root: string, dependencies: string[]) => {
   for (const file of scriptsIn(root)) {
     const source = readFileSync(file, "utf-8");
     for (const { groups } of source.matchAll(
-      /(?:require\(|from |import\()\s*["'](?<specifier>[^"'.][^"']*)["']/gu
+      /(?:require\(|require\.resolve\(|from |import\(|import )\s*["'](?<specifier>[^"'.][^"']*)["']/gu
     )) {
       const name = packageName(groups?.specifier ?? "");
       if (wanted.has(name)) {

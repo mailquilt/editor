@@ -278,7 +278,7 @@ export const uiStyles = css`
     }
   }
 
-  .icon-button.danger:hover {
+  .icon-button.danger:hover:not(:disabled, [aria-disabled="true"]) {
     color: var(--mq-color-danger);
   }
 

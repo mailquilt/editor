@@ -243,6 +243,21 @@ test("going past On the picture with the arrow keys draws nothing", async ({
   expect(await page.evaluate(() => window.videoUploads.length)).toBe(0);
 });
 
+test("removing the editor stops a play button that was about to be drawn", async ({
+  page,
+}) => {
+  await openVideo(page, { thumbnail: READABLE, url: LINK });
+  await playButton(page).focus();
+
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("ArrowDown");
+  await expect(choice(page, "On the picture")).toBeChecked();
+  await canvas(page).evaluate((element) => element.remove());
+
+  await page.waitForTimeout(1000);
+  expect(await page.evaluate(() => window.videoUploads.length)).toBe(0);
+});
+
 test("without the Host app's uploadImage, On the picture is off and says why", async ({
   page,
 }) => {

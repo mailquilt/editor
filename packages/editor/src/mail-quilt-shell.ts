@@ -1356,8 +1356,10 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
     }
   }
 
-  /** Always renders, so the same notice again is read out again. */
-  /** `words` are made at each render, so they follow a change to `strings`. */
+  /**
+   * Always renders, so the same notice again is read out again. `words` are
+   * made at each render, so they follow a change to `strings`.
+   */
   #showNotice(of: NoticeOf, words: (text: Text) => string) {
     this.#noticeId += 1;
     this.#notices.set(of, { id: this.#noticeId, words });

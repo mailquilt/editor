@@ -135,7 +135,6 @@ export const topBarStyles = css`
     min-width: 0;
   }
 
-  /* At the right edge, on a line of its own too when the bar wraps. */
   .top-bar-end {
     gap: 6px;
     justify-content: flex-end;

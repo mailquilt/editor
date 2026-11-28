@@ -74,13 +74,15 @@ const grabAt = (target: Element): Grab | undefined => {
   const tile = closestPlace(target, "paletteItem");
   if (tile) {
     const { blockType, rowLayout, savedRow } = tile.dataset;
-    let source: DragSource = { rowLayout: rowLayout as string };
     if (blockType !== undefined) {
-      source = { blockType };
-    } else if (savedRow !== undefined) {
-      source = { savedRow: Number(savedRow) };
+      return { element: tile, source: { blockType } };
     }
-    return { element: tile, source };
+    if (savedRow !== undefined) {
+      return { element: tile, source: { savedRow: Number(savedRow) } };
+    }
+    return rowLayout === undefined
+      ? undefined
+      : { element: tile, source: { rowLayout } };
   }
   return undefined;
 };
@@ -554,6 +556,9 @@ export const createDragging = ({
     );
   };
 
+  /** The scrolling containers of a file drag, found once, as they don't change during it. */
+  let fileScroll: AutoScroll | undefined;
+
   /**
    * Where files dragged in from outside would land: where a new Block from the
    * Add panel would, unless it's on a Block that takes them. Only over the canvas,
@@ -574,11 +579,8 @@ export const createDragging = ({
       return undefined;
     }
     const pointer = { x: event.clientX, y: event.clientY };
-    const landed = landing(
-      { blockType: "image" },
-      pointer,
-      createAutoScroll(root.host)
-    );
+    fileScroll ??= createAutoScroll(root.host);
+    const landed = landing({ blockType: "image" }, pointer, fileScroll);
     const block =
       landed &&
       findPlaces(email, "block").find((each) => contains(each, pointer));
@@ -613,6 +615,7 @@ export const createDragging = ({
     }
     // Leaving one element for another, the next comes straight after.
     if (event.type === "dragleave") {
+      fileScroll = undefined;
       if (!drag) {
         showFileDrag();
       }
@@ -625,6 +628,7 @@ export const createDragging = ({
       showFileDrag(target);
       return;
     }
+    fileScroll = undefined;
     showFileDrag();
     if (target) {
       onDropFiles([...dataTransfer.files], target.position);

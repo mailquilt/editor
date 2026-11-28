@@ -136,13 +136,6 @@ export const ICONS = {
   search: icon(
     svg`<circle cx="11" cy="11" r="6.5" /><path d="m20 20-4.2-4.2" />`
   ),
-  /** A dashed frame with a pointer at its corner, for selecting what it frames. */
-  select: icon(
-    svg`<rect height="12" rx="2" stroke-dasharray="3 3" width="12" x="3" y="3" /><path d="m12 12 8.5 3.2-3.7 1.6-1.6 3.7z" fill="currentColor" />`
-  ),
-  settings: icon(
-    svg`<path d="M4 6h9M19 6h1M4 12h3M13 12h7M4 18h11M21 18h-1" /><circle cx="16" cy="6" r="2.5" /><circle cx="10" cy="12" r="2.5" /><circle cx="18" cy="18" r="2.5" />`
-  ),
   underline: icon(svg`<path d="M7 4v7a5 5 0 0 0 10 0V4M5 20h14" />`),
   undo: icon(svg`<path d="M9 14 4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />`),
   up: icon(svg`<path d="M12 19V5M6 11l6-6 6 6" />`),

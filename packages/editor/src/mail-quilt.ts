@@ -7,7 +7,11 @@ import type {
   LoadResult,
   RichTextDocument,
 } from "@mailquilt/core";
-import { EMAIL_LOOK, editorOfLoaded } from "@mailquilt/core/internal";
+import {
+  EMAIL_LOOK,
+  editorOfLoaded,
+  isMergeTagName,
+} from "@mailquilt/core/internal";
 import { renderEmail, renderText } from "@mailquilt/renderer";
 import type { Problem } from "@mailquilt/renderer";
 import { css, html, LitElement, nothing, unsafeCSS } from "lit";
@@ -103,7 +107,6 @@ import { styleProperties } from "./style-properties.js";
 import { createTextBlockView, textBlockStyles } from "./text-block-view.js";
 import type { ShownMergeTagPicker, TextBlockView } from "./text-block-view.js";
 import type { TextFormats } from "./text-commands.js";
-import { isMergeTagName } from "./text-schema.js";
 import { blockTypeName, createText } from "./text.js";
 import type { Text } from "./text.js";
 import { themeTokens, uiStyles } from "./theme.js";
@@ -148,7 +151,7 @@ const PANEL_WIDTH_PX = 320;
 const ADD_WIDTH_PX = 288;
 
 /**
- * Whether a list from the host, such as `starterEmails`, changed. A React host
+ * Whether a value from the host, such as `starterEmails`, changed. A React host
  * gives a new one at each render. One JSON can't hold, such as with a BigInt,
  * is a change, so the check leaves it out.
  */
@@ -349,23 +352,11 @@ const elementStyles = css`
 export class MailQuilt extends LitElement implements HostAppProperties {
   static override properties = {
     // As mergeTags.
-    fonts: {
-      attribute: false,
-      hasChanged: (
-        next: HostAppProperties["fonts"],
-        previous: HostAppProperties["fonts"]
-      ) => JSON.stringify(next) !== JSON.stringify(previous),
-    },
+    fonts: { attribute: false, hasChanged: hasHostListChanged },
     // A React host gives a new list at each render, which only a change to
     // one of its tags redraws. No list isn't an empty one, which Check reads
     // as a list that has none of the email's tags.
-    mergeTags: {
-      attribute: false,
-      hasChanged: (
-        next: HostAppProperties["mergeTags"],
-        previous: HostAppProperties["mergeTags"]
-      ) => JSON.stringify(next) !== JSON.stringify(previous),
-    },
+    mergeTags: { attribute: false, hasChanged: hasHostListChanged },
     savedRows: { attribute: false, hasChanged: hasHostListChanged },
     sender: { attribute: false },
     socialIconsUrl: { attribute: false },
@@ -374,7 +365,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     strings: {
       attribute: false,
       hasChanged: (next: MailQuiltStrings, previous: MailQuiltStrings) =>
-        JSON.stringify(next ?? {}) !== JSON.stringify(previous ?? {}),
+        hasHostListChanged(next ?? {}, previous ?? {}),
     },
     // Only whether there's one changes what shows, and a React host may give
     // a new function at each render, such as on each key.
@@ -1112,6 +1103,8 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     this.#toolFitting = undefined;
     this.#tooltips?.tooltips.destroy();
     this.#tooltips = undefined;
+    // A play button still waiting to be drawn isn't, for an email no one sees.
+    this.#videos.clear();
     this.#reset();
   }
 
@@ -1731,9 +1724,13 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     return widths !== undefined && width >= widths.withGutters + PANEL_WIDTH_PX;
   }
 
-  /** The email's width on the Canvas, and with its gutters. */
+  /**
+   * The email's width on the Canvas, and with its gutters. From the email as
+   * last rendered, as a copy of the whole email for its width alone costs
+   * more than a resize or a keystroke should.
+   */
   #canvasWidths() {
-    const settings = this.#editor?.getDocument().settings;
+    const settings = this.#rendered?.settings;
     if (!settings) {
       return;
     }

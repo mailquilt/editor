@@ -24,6 +24,7 @@ import { renderThumbnail } from "./selection-bar.js";
 import { renderSheet, renderSheetHead } from "./sheet.js";
 import { styleProperties } from "./style-properties.js";
 import { blockTypeName } from "./text.js";
+import type { Text } from "./text.js";
 
 /**
  * The Rows list, beside the Canvas in Edit: each Row as a small picture, to
@@ -821,7 +822,10 @@ const renderPictureBlock = (
       </div>`;
 };
 
-/** A Row's Columns and Blocks as the Canvas draws them. */
+/**
+ * A Row's Columns and Blocks as the Canvas draws them on a desktop, with their
+ * desktop values, in the Phone view too.
+ */
 const renderPictureRow = (row: Row, context: PictureContext) => {
   const style = context.api.email.settings.style ?? {};
   return html`
@@ -891,19 +895,23 @@ const renderShownOnBadge = (row: Row, className: string, api: PanelApi) => {
       >`;
 };
 
-/** "Row 3 of 6: Heading, Text, Button", and where it shows if not everywhere. */
-const rowName = (row: Row, index: number, count: number, api: PanelApi) => {
-  const { text } = api;
+/** The names of a Row's Blocks, such as "Heading, Text, Button", or none for a Row without any. */
+const blockNames = (row: Row, text: Text) => {
   const types = row.columns.flatMap(({ blocks }) =>
     blocks.map(({ type }) => blockTypeName(type, text))
   );
-  const blocks =
-    types.length === 0
-      ? text("rows.noBlocks")
-      : new Intl.ListFormat(text("language"), {
-          style: "short",
-          type: "unit",
-        }).format(types);
+  return types.length === 0
+    ? undefined
+    : new Intl.ListFormat(text("language"), {
+        style: "short",
+        type: "unit",
+      }).format(types);
+};
+
+/** "Row 3 of 6: Heading, Text, Button", and where it shows if not everywhere. */
+const rowName = (row: Row, index: number, count: number, api: PanelApi) => {
+  const { text } = api;
+  const blocks = blockNames(row, text) ?? text("rows.noBlocks");
   const values = { blocks, count, position: index + 1 };
   const { showOn } = row.props as RowProps;
   return showOn === undefined
@@ -1221,9 +1229,6 @@ export const renderRowsSheet = (
                 (row) => row.id,
                 (row, index) => {
                   const { showOn } = row.props as RowProps;
-                  const types = row.columns.flatMap(({ blocks }) =>
-                    blocks.map(({ type }) => blockTypeName(type, text))
-                  );
                   const move = (direction: "down" | "up") => {
                     const off =
                       direction === "up"
@@ -1263,14 +1268,7 @@ export const renderRowsSheet = (
                         ${renderPicture(row, pictures)}
                         <span aria-hidden="true" class="rows-sheet-words">
                           <span
-                            >${
-                              types.length === 0
-                                ? text("rows.emptyRow")
-                                : new Intl.ListFormat(text("language"), {
-                                    style: "short",
-                                    type: "unit",
-                                  }).format(types)
-                            }</span
+                            >${blockNames(row, text) ?? text("rows.emptyRow")}</span
                           >
                           ${
                             showOn === undefined

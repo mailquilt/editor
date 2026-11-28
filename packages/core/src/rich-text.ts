@@ -6,6 +6,14 @@ import * as v from "valibot";
  */
 export const MERGE_TAG = /\{\{[^{}]+\}\}/u;
 
+const MERGE_TAG_NAME = /^[^{}]+$/u;
+
+/**
+ * A Merge Tag's name: any text without braces.
+ * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
+ */
+export const isMergeTagName = (name: string) => MERGE_TAG_NAME.test(name);
+
 /**
  * A Merge Tag must come first and be complete. Whatever is typed after it can't
  * have a colon before the path, query or fragment, because the tag's value
@@ -88,7 +96,7 @@ const inlineSchema = v.variant("type", [
       name: v.pipe(
         v.string(),
         v.regex(
-          /^[^{}]+$/u,
+          MERGE_TAG_NAME,
           "A Merge Tag's name can't be empty or hold a brace"
         )
       ),

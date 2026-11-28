@@ -837,7 +837,7 @@ export const selectionBarStyles = css`
     width: 100%;
   }
 
-  .bar-name + .bar-anchor > .bar-button {
+  .bar-name + .bar-anchor.play > .bar-button {
     padding: 0 var(--mq-space-2);
     width: auto;
   }
@@ -1748,11 +1748,11 @@ const desktopBoxSection = (
   api: PanelApi
 ): SettingsSection => ({
   command: (props) => ({ blockId: block.id, props, type: "updateBlockProps" }),
-  // A Button's corners are its own shape's, so unset they're what it shows.
   // Behind a Box without its own color: its Column's, or what's behind that.
   unsetColor:
     (column.props as ColumnProps).backgroundColor ??
     behindColumn({ column, columnIndex: 0, row, rowIndex: 0 }, api),
+  // A Button's corners are its own shape's, so unset they're what it shows.
   fields: blockBoxFields(block.type).map((field) =>
     field.key === "borderRadius" && block.type === "button"
       ? {
@@ -2078,7 +2078,7 @@ const CONTROLS: Readonly<
       grid: true,
       icon: ICONS.padding,
       id: "popover-padding",
-      keys: ["paddingTop", "paddingRight", "paddingBottom", "paddingLeft"],
+      keys: PADDING_KEYS,
       kind: "popover",
       label: (_values, text) => text("bar.padding"),
       name: "bar.padding",
@@ -3064,6 +3064,9 @@ const renderUploadControl = ({ block }: BlockPosition, api: PanelApi) => {
   `;
 };
 
+/** The popover of a Video's play button choices. */
+const PLAY_POPOVER = "popover-play";
+
 /**
  * A Video's play button: its name and choice, which opens the choices, each
  * with what it means, as frame k07 draws them. "On the picture" needs the
@@ -3071,9 +3074,6 @@ const renderUploadControl = ({ block }: BlockPosition, api: PanelApi) => {
  * the play button is drawn, it shows as chosen. Why it couldn't be added stays
  * under the button, with a way to upload a thumbnail, as frame k11 draws it.
  */
-/** The popover of a Video's play button choices. */
-const PLAY_POPOVER = "popover-play";
-
 const renderPlayControl = (
   target: Target,
   section: SettingsSection,
@@ -3634,10 +3634,6 @@ const barKeys = (
 ): { keys: string; shortcuts: string } =>
   keyLabel(scope, action, { direction });
 
-/**
- * Move up, move down, duplicate and delete, as the Block's and Row's toolbars
- * had them. From the keyboard, a click has a `detail` of 0.
- */
 /** Why a Row can't move that way, at the top or the bottom, if it can't. */
 const cantMoveRowWhy = (
   rowIndex: number,
@@ -3651,6 +3647,10 @@ const cantMoveRowWhy = (
   return rowIndex === count - 1 ? text("more.lastRow") : undefined;
 };
 
+/**
+ * Move up, move down, duplicate and delete, as the Block's and Row's toolbars
+ * had them. From the keyboard, a click has a `detail` of 0.
+ */
 const actionsOf = (
   target: Exclude<Target, { kind: "email" }>,
   api: PanelApi
@@ -3815,6 +3815,7 @@ const renderMoreAction = ({
   label,
   narrowOnly = false,
   onClick,
+  tile = false,
 }: {
   action: string;
   danger?: boolean;
@@ -3825,12 +3826,14 @@ const renderMoreAction = ({
   label: string;
   narrowOnly?: boolean;
   onClick: (event: MouseEvent) => void;
+  /** On a phone, as a tile that has no shortcut to show. */
+  tile?: boolean;
 }) => html`
   <button
     aria-disabled=${disabledWhy ? "true" : nothing}
     aria-keyshortcuts=${keys?.shortcuts ?? nothing}
     class=${[
-      "more-action",
+      tile ? "more-tile" : "more-action",
       danger ? "danger" : "",
       narrowOnly ? "narrow-only" : "",
     ]
@@ -3845,8 +3848,7 @@ const renderMoreAction = ({
       }
     }}
   >
-    ${icon}<span>${label}</span
-    ><kbd aria-hidden="true">${keys?.keys ?? ""}</kbd>
+    ${icon}<span>${label}</span>${tile ? nothing : html`<kbd aria-hidden="true">${keys?.keys ?? ""}</kbd>`}
   </button>
 `;
 
@@ -3867,27 +3869,14 @@ const renderActionTiles = (
   api: PanelApi
 ) => html`
   <div class="more-tiles">
-    ${actionsOf(target, api).map(
-      ({ action, danger, disabledWhy, icon, keys, label, onClick }) => html`
-        <button
-          aria-disabled=${disabledWhy ? "true" : nothing}
-          aria-keyshortcuts=${keys?.shortcuts ?? nothing}
-          class=${danger ? "more-tile danger" : "more-tile"}
-          data-action=${`more-${action}`}
-          data-tooltip=${disabledWhy ?? nothing}
-          type="button"
-          @click=${(event: MouseEvent) => {
-            if (!disabledWhy) {
-              onClick(event);
-            }
-          }}
-        >
-          ${icon}<span
-            >${TILE_LABELS[action] ? api.text(TILE_LABELS[action]) : label}</span
-          >
-        </button>
-      `
-    )}
+    ${actionsOf(target, api).map((button) => {
+      const short = TILE_LABELS[button.action];
+      return renderMoreAction({
+        ...button,
+        label: short ? api.text(short) : button.label,
+        tile: true,
+      });
+    })}
   </div>
 `;
 
@@ -4081,11 +4070,6 @@ export const fitSelectionBar = (root: ParentNode) => {
   }
 };
 
-/**
- * A Block's Box, in More: padding and its border each from a button that
- * opens their fields, as the bar's settings do, and its background and
- * corners as fields.
- */
 /** On a phone, a Video's play button in More, as the bar has it elsewhere. */
 const renderPlayMore = (
   target: Target,
@@ -4107,6 +4091,25 @@ const renderPlayMore = (
   </div>
 `;
 
+/** A popover's button in More, with its name, as the Box and a Column's have it. */
+const renderBoxOpener = (
+  section: SettingsSection,
+  api: PanelApi,
+  control: Extract<NamedControl, { kind: "popover" }>,
+  label: string
+) => html`
+  <div class="field inline" data-place=${place("boxOpener")}>
+    <span aria-hidden="true" class="box-label">${label}</span>
+    ${renderPopoverControl(
+      section,
+      control,
+      api,
+      api.bar.popover === control.id,
+      true
+    )}
+  </div>
+`;
+
 /**
  * On a phone, a Column's padding, alignment and border in More, which its bar
  * has no room for, as a Block's Box has them there: padding and border each
@@ -4118,27 +4121,14 @@ const renderColumnMore = (
 ) => {
   const { text } = api;
   const section = sectionOf(target, api);
-  const opener = (
-    control: Extract<NamedControl, { kind: "popover" }>,
-    label: string
-  ) => html`
-    <div class="field inline" data-place=${place("boxOpener")}>
-      <span aria-hidden="true" class="box-label">${label}</span>
-      ${renderPopoverControl(
-        section,
-        control,
-        api,
-        api.bar.popover === control.id,
-        true
-      )}
-    </div>
-  `;
   return html`
     <div class="settings box" data-place=${place("settings")}>
       <div class="section">
         <fieldset>
           <legend>${section.legend}</legend>
-          ${opener(
+          ${renderBoxOpener(
+            section,
+            api,
             {
               grid: true,
               id: `${IN_MORE}popover-padding`,
@@ -4154,7 +4144,9 @@ const renderColumnMore = (
             .map((each) =>
               renderField(section, each, api.drafts, fieldTags(api), text)
             )}
-          ${opener(
+          ${renderBoxOpener(
+            section,
+            api,
             {
               id: `${IN_MORE}popover-border`,
               keys: BORDER_KEYS,
@@ -4170,33 +4162,25 @@ const renderColumnMore = (
   `;
 };
 
+/**
+ * A Block's Box, in More: padding and its border each from a button that
+ * opens their fields, as the bar's settings do, and its background and
+ * corners as fields.
+ */
 const renderBox = (position: BlockPosition, api: PanelApi) => {
   const { text } = api;
   const section = boxSection(position, api);
   const field = (key: string) =>
     section.fields.filter((each) => each.key === key);
-  const opener = (
-    control: Extract<NamedControl, { kind: "popover" }>,
-    label: string
-  ) => html`
-    <div class="field inline" data-place=${place("boxOpener")}>
-      <span aria-hidden="true" class="box-label">${label}</span>
-      ${renderPopoverControl(
-        section,
-        control,
-        api,
-        api.bar.popover === control.id,
-        true
-      )}
-    </div>
-  `;
   const fallback = Number(field("paddingTop")[0]?.default ?? 0);
   return html`
     <div class="settings box" data-place=${place("settings")}>
       <div class="section">
         <fieldset>
           <legend>${section.legend}</legend>
-          ${opener(
+          ${renderBoxOpener(
+            section,
+            api,
             {
               grid: true,
               id: `${IN_MORE}popover-padding`,
@@ -4210,7 +4194,9 @@ const renderBox = (position: BlockPosition, api: PanelApi) => {
           ${field("boxBackgroundColor").map((each) =>
             renderField(section, each, api.drafts, fieldTags(api), text)
           )}
-          ${opener(
+          ${renderBoxOpener(
+            section,
+            api,
             {
               id: `${IN_MORE}popover-border`,
               keys: BORDER_KEYS,

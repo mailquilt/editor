@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { linkToSave } from "../src/links.js";
+import { linkFilledIn, linkToSave } from "../src/links.js";
 
 describe("the link a link field saves", () => {
   it("adds https:// to an address typed without a scheme", () => {
@@ -45,5 +45,21 @@ describe("the link a link field saves", () => {
     ["a protocol-relative URL", "//northbound.co"],
   ])("keeps %s as it's typed", (_, typed) => {
     expect(linkToSave(typed)).toBe(typed);
+  });
+});
+
+describe("the link a link field says it will save", () => {
+  it.each([
+    ["a bare domain", " northbound.co ", "https://northbound.co"],
+    ["an email address", "ana@northbound.co", "mailto:ana@northbound.co"],
+  ])("fills in %s", (_, typed, href) => {
+    expect(linkFilledIn(typed)).toBe(href);
+  });
+
+  it.each([
+    ["nothing typed", undefined],
+    ["a link as it is", "https://northbound.co"],
+  ])("says nothing for %s", (_, typed) => {
+    expect(linkFilledIn(typed)).toBeUndefined();
   });
 });

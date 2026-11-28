@@ -51,8 +51,6 @@ interface AddingHost {
   selected: () => "block" | "row" | undefined;
 }
 
-export type Adding = ReturnType<typeof createAdding>;
-
 export const createAdding = ({
   focus,
   requestUpdate,
@@ -711,6 +709,9 @@ export const renderSavedRows = (
 ) => {
   const { text } = api;
   const { backgroundColor, width } = api.email.settings;
+  const positions = new Map(
+    api.savedRows.map((saved, index) => [saved, index])
+  );
   return html`
     <h3 class="add-section-title saved-rows-title">
       <span>${text("add.savedRows")}</span>
@@ -727,7 +728,7 @@ export const renderSavedRows = (
           <button
             class="add-tile"
             data-place=${inPanel ? place("paletteItem") : nothing}
-            data-saved-row=${api.savedRows.indexOf(saved)}
+            data-saved-row=${positions.get(saved)}
             data-testid="saved-row"
             tabindex=${index === 0 ? "0" : "-1"}
             type="button"

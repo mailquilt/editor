@@ -23,7 +23,7 @@ export type { ShowOn } from "./device-settings.js";
 export { NEW_EMAIL_WIDTH } from "./create-email.js";
 export { rowLayoutOf } from "./row-layouts.js";
 export { findBlockPosition } from "./operations.js";
-export { isAllowedLinkHref, MERGE_TAG } from "./rich-text.js";
+export { isAllowedLinkHref, isMergeTagName, MERGE_TAG } from "./rich-text.js";
 export {
   EMAIL_SETTINGS_FIELDS,
   isFontFamily,

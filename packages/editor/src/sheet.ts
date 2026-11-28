@@ -159,7 +159,7 @@ export const sheetStyles = css`
   }
 `;
 
-export interface SheetHead {
+interface SheetHead {
   title: unknown;
   /** Under the title, such as where a Block is. */
   subtitle?: string;

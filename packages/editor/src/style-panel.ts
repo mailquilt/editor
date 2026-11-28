@@ -366,19 +366,22 @@ const colorsIn = (email: BlocksDocument) => {
   return [...found];
 };
 
-/** The copy of a callout for a Block's own value, by the Block's type and prop. */
+/** Whether a Block's own value, by its prop, is a size or a color. */
+const ownKind = (prop: string) => (prop === "fontSize" ? "size" : "color");
+
 /** The title of a Block's own color, by its type, where it isn't Text's. */
 const COLOR_TITLES: Partial<Record<Block["type"], StringId>> = {
   heading: "style.own.headingColor",
   menu: "style.own.menuColor",
 };
 
+/** The copy of a callout for a Block's own value, by the Block's type and prop. */
 const calloutCopy = (
   block: Block,
   { own, prop, shared }: OwnValue,
   text: Text
 ): { title: string; why: string; share: string } => {
-  const kind = prop === "fontSize" ? "size" : "color";
+  const kind = ownKind(prop);
   const values = {
     level: "level" in block.props ? String(block.props.level) : "",
     own: shown(kind, own, text),
@@ -1273,7 +1276,7 @@ export const createStylePanel = ({
         step="1"
         type="range"
         .value=${live(String(Math.round(hsv.h)))}
-        @change=${() => {
+        @blur=${() => {
           session += 1;
         }}
         @input=${({ currentTarget }: Event) =>
@@ -1281,6 +1284,12 @@ export const createStylePanel = ({
             ...hsv,
             h: Number((currentTarget as HTMLInputElement).value),
           })}
+        @pointerdown=${() => {
+          session += 1;
+        }}
+        @pointerup=${() => {
+          session += 1;
+        }}
       />
       <div class="hex-field">
         <span aria-hidden="true" class="hex-label">${text("style.hex")}</span>
@@ -1930,11 +1939,7 @@ export const createStylePanel = ({
                   }}
                 >
                   ${text("style.own.makeIt", {
-                    shared: shown(
-                      value.prop === "fontSize" ? "size" : "color",
-                      value.shared,
-                      text
-                    ),
+                    shared: shown(ownKind(value.prop), value.shared, text),
                   })}
                 </button>
                 <button

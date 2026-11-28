@@ -302,7 +302,7 @@ export const blockTypeStyles = css`
 `;
 
 /** What a Block without text needs to draw, apart from its props and styles. */
-export interface DrawContext {
+interface DrawContext {
   /** The email's language, which a Block's own words take. */
   lang: string;
   /** The editor's own words, for what stands in for content. */
