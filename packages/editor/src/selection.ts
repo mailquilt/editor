@@ -83,7 +83,7 @@ export const createSelection = ({
       editingText = inText;
       requestUpdate();
     }
-    // The Block is selected already.
+    // While focus is being restored, the Block is selected already.
     if (!focus.restoring) {
       select({ blockId });
     }

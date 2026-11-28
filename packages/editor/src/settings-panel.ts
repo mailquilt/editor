@@ -5,6 +5,7 @@ import { css, html, nothing } from "lit";
 import type { TemplateResult } from "lit";
 import { keyed } from "lit/directives/keyed.js";
 import { live } from "lit/directives/live.js";
+import { createRef, ref } from "lit/directives/ref.js";
 import { repeat } from "lit/directives/repeat.js";
 
 import { place } from "./editor-places.js";
@@ -52,7 +53,7 @@ export interface SettingsSection {
  * What's typed in a field. A number field the browser can't read, such as
  * "1e", has empty text and `badInput`.
  */
-export interface Typed {
+interface Typed {
   text: string;
   badInput: boolean;
 }
@@ -104,7 +105,7 @@ export interface SettingsDrafts {
 }
 
 /** A field whose value is a list of items, each with its own text. */
-export type ListField = Extract<SettingsField, { type: "list" }>;
+type ListField = Extract<SettingsField, { type: "list" }>;
 
 type ListItem = Readonly<Record<string, unknown>>;
 
@@ -118,7 +119,7 @@ export interface ListPart {
  * What a person does to a list field's items, each found by its key. An item
  * added to a list with options is for the option `item`.
  */
-export type ListChange =
+type ListChange =
   | { type: "add"; item?: string }
   | { type: "move"; item: string; step: -1 | 1 }
   | { type: "remove"; item: string };
@@ -929,10 +930,7 @@ const itemOf = (
   field: ListField,
   values: Record<string, unknown>,
   item: string
-) =>
-  itemsOf(field, values).find(
-    (entry, index) => keyOf(field, entry, index) === item
-  );
+) => itemsOf(field, values)[indexOf(field, itemsOf(field, values), item)];
 
 /** The field that's typed in: one of a list item's, or else the field itself. */
 const typedField = (field: SettingsField, part?: ListPart): SettingsField =>
@@ -1259,6 +1257,7 @@ const renderListField = (
     }
     const used = new Set(items.map((entry) => entry[field.itemKey]));
     const unused = field.options.filter(({ value }) => !used.has(value));
+    const chosen = createRef<HTMLSelectElement>();
     if (unused.length === 0) {
       return html`<p class="description">
         ${fieldWords(field.allAddedId, textOf)}
@@ -1267,7 +1266,10 @@ const renderListField = (
     return html`
       <div class="with-control">
         <div class="select-field">
-          <select aria-label=${fieldWords(field.chooseLabelId, textOf)}>
+          <select
+            aria-label=${fieldWords(field.chooseLabelId, textOf)}
+            ${ref(chosen)}
+          >
             ${unused.map(
               ({ labelId, value }) =>
                 html`<option .value=${value}>
@@ -1282,11 +1284,8 @@ const renderListField = (
           data-place=${place("controls")}
           type="button"
           @click=${(event: MouseEvent) => {
-            const select = (
-              event.currentTarget as Element
-            ).previousElementSibling?.querySelector("select");
-            if (select) {
-              change({ item: select.value, type: "add" })(event);
+            if (chosen.value) {
+              change({ item: chosen.value.value, type: "add" })(event);
             }
           }}
         >
@@ -1637,6 +1636,8 @@ export const createSettingsDrafts = ({
     }
     if (result?.ok) {
       // A change to one field can make what another was refused for fine.
+      // A list item's text isn't retried, as no refusal of one depends on
+      // another field.
       for (const other of section.fields) {
         const draft = drafts.get(draftKey(section, other));
         if (draft?.refusals) {

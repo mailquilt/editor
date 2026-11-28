@@ -320,6 +320,24 @@ test.describe("the Style Mode", () => {
     expect(await styleOf(page)).toBeUndefined();
   });
 
+  test("the arrow keys along the hue are one undo step", async ({ page }) => {
+    await page.setViewportSize(TALL_VIEWPORT);
+    await openStyled(page);
+    await styleSetting(page, "Text").click();
+    const hex = stylePanel(page).getByLabel("Hex");
+    await change(hex, "#3366cc");
+
+    await stylePanel(page).getByLabel("Hue").focus();
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("ArrowRight");
+    expect(await textColorOf(page)).not.toBe("#3366cc");
+    await hex.focus();
+    await undoByKey(page);
+
+    expect(await textColorOf(page)).toBe("#3366cc");
+  });
+
   test("refuses a color it can't take, and says why", async ({ page }) => {
     await openStyled(page);
     await styleSetting(page, "Buttons").click();

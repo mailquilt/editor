@@ -4,7 +4,7 @@ import type { MarkType, Node as ProseMirrorNode } from "prosemirror-model";
 import { EditorState } from "prosemirror-state";
 
 import { tagsToNodes } from "./merge-tags.js";
-import { pastedHtmlParser, withoutStyles } from "./pasted-html.js";
+import { inertBody, pastedHtmlParser } from "./pasted-html.js";
 import type { TextSchema } from "./text-schema.js";
 
 /**
@@ -27,11 +27,8 @@ export const asPasted = (fragment: Fragment, bold?: MarkType): Fragment =>
   );
 
 /** HTML read through the schema's parser, as ProseMirror reads a paste. */
-const fromHtml = (schema: TextSchema, html: string) => {
-  const holder = document.implementation.createHTMLDocument("").body;
-  holder.innerHTML = withoutStyles(html);
-  return pastedHtmlParser(schema).parse(holder);
-};
+const fromHtml = (schema: TextSchema, html: string) =>
+  pastedHtmlParser(schema).parse(inertBody(html));
 
 /** A paragraph for each line, as ProseMirror reads pasted plain text. */
 const fromText = (schema: TextSchema, text: string) =>

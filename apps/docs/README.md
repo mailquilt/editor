@@ -30,4 +30,5 @@ Blume's version is pinned, so an upgrade only comes when you choose one. The sit
 - The selectors in `theme.css` that restyle Blume's header, sidebar, table of contents, cards and page-end links. They match Blume's own attributes and classes, such as `[data-blume-header]` and `a.bg-accent`.
 - `[data-blume-tab-panel]` in `styles/home.css`, which joins an install command to the file under it.
 - `publicHoistPattern` in the root `pnpm-workspace.yaml`, which hoists Blume's `astro` so `blume check` can type-check the `.astro` files.
+- `patches/blume@2.2.7.patch`, which makes the search's `/` shortcut ignore typing inside a shadow root, such as the playground's editor. It's keyed to this version, so an upgrade has to drop it or redo it, and check whether Blume fixed it. `playground.spec.ts` covers it.
 - The `_headers` file Blume writes, which `blume.config.ts` adds the security headers to.

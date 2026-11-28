@@ -11,7 +11,7 @@ import type { BlockProps, PasteRefusalCode } from "@mailquilt/core/internal";
 import { DOMSerializer } from "prosemirror-model";
 
 import { BLOCK_VIEWS, hasRichText } from "./block-types.js";
-import { withoutStyles } from "./pasted-html.js";
+import { inertBody } from "./pasted-html.js";
 import { pastedContent } from "./pasted-text.js";
 
 /**
@@ -196,10 +196,7 @@ export type Pasted =
 
 /** The JSON a copy from a Mail Quilt editor holds, if the HTML is one. */
 const copiedIn = (html: string) => {
-  // A document of its own, where nothing loads or runs, without the styles
-  // that the page's Content Security Policy would report.
-  const holder = document.implementation.createHTMLDocument("").body;
-  holder.innerHTML = withoutStyles(html);
+  const holder = inertBody(html);
   return holder.querySelector(`[${COPIED}]`)?.getAttribute(COPIED) ?? undefined;
 };
 

@@ -1,4 +1,4 @@
-import { isAllowedLinkHref } from "@mailquilt/core/internal";
+import { isAllowedLinkHref, isMergeTagName } from "@mailquilt/core/internal";
 import { Schema } from "prosemirror-model";
 import type { MarkSpec, NodeSpec } from "prosemirror-model";
 
@@ -71,9 +71,6 @@ const marks = {
     toDOM: () => ["u", 0],
   },
 } satisfies Record<string, MarkSpec>;
-
-/** A Merge Tag's name, as core takes it: any text without braces. */
-export const isMergeTagName = (name: string) => /^[^{}]+$/u.test(name);
 
 /**
  * Paragraphs of text, line breaks and Merge Tags, the nodes of ADR 0001 and

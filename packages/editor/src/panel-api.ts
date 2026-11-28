@@ -34,7 +34,7 @@ export type PanelApi = EmailPanelApi & OwnPanelsApi;
 
 /**
  * What a host's own panel would need: the email, what's selected, and every
- * change to them. It's private in 0.2, so that offering the editor in parts
+ * change to them. It's private, so that offering the editor in parts
  * later means documenting it (ADR 0004).
  */
 export interface EmailPanelApi {

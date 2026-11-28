@@ -317,6 +317,10 @@ const touched = (state: EditorState) => {
   };
 };
 
+/** The formatting that typing after the selection's end keeps, if any. */
+const marksForTyping = ({ selection, storedMarks }: EditorState) =>
+  storedMarks ?? (selection.$to.parentOffset ? selection.$from.marks() : null);
+
 /**
  * The selection on the same text after a change that only moved the structure
  * around it, such as a List, and the formatting turned on or off for what's
@@ -424,9 +428,7 @@ export const createTextCommands = (
    * the formatting, so typing after it carries on, but has none of its own.
    */
   const insertLineBreak: TextCommand = (state, dispatch) => {
-    const { $from, $to } = state.selection;
-    const marks =
-      state.storedMarks ?? ($to.parentOffset ? $from.marks() : null);
+    const marks = marksForTyping(state);
     if (dispatch) {
       const tr = state.tr.replaceSelectionWith(
         schema.nodes.hardBreak.create(),
@@ -454,7 +456,7 @@ export const createTextCommands = (
    * formatting. In an empty item, the item leaves the List.
    */
   const newItem: TextCommand = (state, dispatch) => {
-    const { $from, $to, empty } = state.selection;
+    const { $from, empty } = state.selection;
     if (!isInItem($from)) {
       return false;
     }
@@ -462,8 +464,7 @@ export const createTextCommands = (
       dispatch?.(liftItem(state.tr, $from));
       return true;
     }
-    const marks =
-      state.storedMarks ?? ($to.parentOffset ? $from.marks() : null);
+    const marks = marksForTyping(state);
     const tr = state.tr.deleteSelection();
     if (!isInItem(tr.selection.$from)) {
       return false;
@@ -536,8 +537,9 @@ export const createTextCommands = (
         return false;
       }
       const { doc } = state;
-      let { end, start } = touched(state);
-      const { firstItem, lastItem } = touched(state);
+      const touch = touched(state);
+      const { firstItem, lastItem } = touch;
+      let { end, start } = touch;
       const nodes: Node[] = [];
       if (listOf(state) === type) {
         for (let index = start; index < end; index += 1) {

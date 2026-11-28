@@ -56,7 +56,7 @@ export const renderStartScreen = ({
 }: {
   /** From a button's click, which from a key has a `detail` of 0. */
   onBlank: (fromKeyboard: boolean) => void;
-  onPick: (starter: OfferedStarter, fromKeyboard: boolean) => void;
+  onPick: (starter: OfferedStarter) => void;
   /** The email drawn at its own width, which the card scales to fit. */
   picture: (starter: OfferedStarter) => TemplateResult;
   starters: readonly OfferedStarter[];
@@ -97,7 +97,7 @@ export const renderStartScreen = ({
             >
               ${picture(starter)}
             </span>`,
-            (fromKeyboard) => onPick(starter, fromKeyboard)
+            () => onPick(starter)
           )
         )}
       </ul>

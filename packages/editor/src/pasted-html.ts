@@ -193,6 +193,17 @@ export const withoutStyles = (html: string) => {
 };
 
 /**
+ * The body of a document of its own, where nothing loads or runs, holding
+ * pasted `html` without the styles that the page's Content Security Policy
+ * would report.
+ */
+export const inertBody = (html: string) => {
+  const holder = document.implementation.createHTMLDocument("").body;
+  holder.innerHTML = withoutStyles(html);
+  return holder;
+};
+
+/**
  * Gives `withoutStyles`' styles back, as ProseMirror applies them: each
  * element's own, then each style sheet's rules after them, in order.
  */

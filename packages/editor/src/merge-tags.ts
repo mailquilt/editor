@@ -1,4 +1,4 @@
-import { MERGE_TAG } from "@mailquilt/core/internal";
+import { isMergeTagName, MERGE_TAG } from "@mailquilt/core/internal";
 import type { Mark, Node as ProseMirrorNode } from "prosemirror-model";
 import { Plugin, PluginKey } from "prosemirror-state";
 import type {
@@ -9,7 +9,6 @@ import type {
 import { AddMarkStep, RemoveMarkStep } from "prosemirror-transform";
 import type { EditorView } from "prosemirror-view";
 
-import { isMergeTagName } from "./text-schema.js";
 import type { TextSchema } from "./text-schema.js";
 
 const MERGE_TAGS = new RegExp(MERGE_TAG.source, "gu");
