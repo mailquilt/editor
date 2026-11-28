@@ -166,6 +166,8 @@ const barControls = (bar: Element) =>
  * first control, such as a switch.
  */
 const popoverStart = (popover: Element | null | undefined) =>
+  // What it says to start at, such as the layout a Row has.
+  popover?.querySelector<HTMLElement>("[data-start]:not(:disabled)") ??
   // Of choices, the one chosen, as Tab reaches a group of them there. A
   // control that's off can't take focus, so it's passed over.
   popover?.querySelector<HTMLElement>(
@@ -581,8 +583,9 @@ export const createFocus = ({
         return popoverStart(findPlace(root(), "barPopover"));
       }
       case "barMenu": {
+        // Its first item, rather than a sheet's Done, on a phone.
         return findPlace(root(), "barMenu")?.querySelector<HTMLElement>(
-          "button:not(:disabled)"
+          "[role^='menuitem']:not(:disabled)"
         );
       }
       case "more": {

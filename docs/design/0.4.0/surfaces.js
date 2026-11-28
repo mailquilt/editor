@@ -578,3 +578,97 @@ AFTER.push(() => {
   }
   document.querySelectorAll("section.frame").forEach((f) => f.insertAdjacentHTML("beforebegin", `<div class="frame-l">${f.id}</div>`));
 });
+
+// ---------- Phones: follow-ups to #329, unpicked ----------
+// Directions for the maintainer to pick from: where the build and the picked
+// phone frames differ, and phone states no frame drew. README section 14.
+document.querySelector("svg").insertAdjacentHTML("beforeend", `<symbol id="lbreak" viewBox="0 0 24 24"><path d="M19 5v7a3 3 0 0 1-3 3H5M9 11l-4 4 4 4"/></symbol>`);
+group("q0", "Phones: follow-ups to pick (#329)", "Unpicked. The email's settings with nothing selected, the chip's menu, Style, the format bar while typing, and a Block's bar when its controls don't fit. Each direction is its own frame.");
+const qHome = `<div class="home"></div>`;
+const qHead = (title, { back, sub, done = "Done" } = {}) => `<div class="sheet-h">${back ? `<span class="ib">${ic("left")}</span>` : ""}<div style="flex:1;min-width:0;${back ? "margin-left:6px" : ""}"><b>${title}</b>${sub ? `<div style="color:var(--text-3);font-size:13px">${sub}</div>` : ""}</div><span class="btn sm">${done}</span></div>`;
+const qField = (label, value, note) => `<div style="display:grid;gap:6px;margin:8px 0 6px"><span style="color:var(--text-2)">${label}</span><span class="fld" style="height:44px"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${value}</span></span>${note ? `<div class="note" style="margin:0">${note}</div>` : ""}</div>`;
+const qEmailFields = `<div class="pr"><span>Width</span><span class="v"><span class="num" style="height:40px">600<span class="u">px</span></span></span></div>
+  ${qField("Preheader", "First harvest from Guji. Your price holds until Friday.", "The short text inboxes show after the subject.")}
+  ${qField("Language", "en", "A language code, such as en or pt-BR, or one Merge Tag.")}`;
+const qEmailBg = `${mtopM("edit")}<div class="mcv">${email({}, true)}</div>`;
+const qBtnBg = `${mtopM("edit")}<div class="mcv">${email({ sel: "btn", grip: false }, true)}</div>`;
+const qTextBg = `${mtopM("edit")}<div class="mcv">${email({ sel: "p", grip: false }, true)}</div>`;
+
+// Q1. The email's settings, with nothing selected.
+F.push({ id: "q01a-email-bar", phone: true, html: () => `${qEmailBg}<div class="msel">Tap a Block to change it<span class="ib" style="margin-left:auto;width:44px;height:44px">${ic("more", "lg")}</span><span class="btn acc" style="margin-left:0">${ic("plus", "sm")}Add</span></div>${qHome}` });
+F.push({ id: "q01a-email-sheet", phone: true, html: () => `${qEmailBg}${scrim}<div class="sheet">${'<div class="grab"></div>'}${qHead("Email")}${qEmailFields}</div>${qHome}` });
+F.push({ id: "q01b-top-menu", phone: true, html: () => F.find((f) => f.id === "p09-top-menu").html().replace(`<div class="mi">${ic("rows", "sm")}Rows<kbd>6</kbd></div>`, `<div class="mi">${ic("rows", "sm")}Rows<kbd>6</kbd></div><div class="mi" style="background:var(--hover)">${ic("mail", "sm")}Email settings<kbd>${ic("right", "sm")}</kbd></div>`) });
+F.push({ id: "q01b-email-sheet", phone: true, html: () => `${qEmailBg}${scrim}<div class="sheet"><div class="grab"></div>${qHead("Email settings", { back: true })}${qEmailFields}</div>${qHome}` });
+F.push({ id: "q01c-email-chip", phone: true, html: () => `${qEmailBg}<div class="mbar" style="gap:8px"><span class="swb" style="padding:0 10px 0 0;gap:2px;color:var(--accent-2);font-weight:600;font-size:15px;background:var(--accent-soft);border-radius:8px"><span class="ib on" style="background:none;width:40px">${ic("mail", "lg")}</span>Email<span style="margin-left:4px;display:flex">${ic("chev", "sm")}</span></span><span style="flex:1;min-width:0;color:var(--text-3);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Tap a Block to change it</span><span class="btn acc" style="height:40px;border-radius:10px;font-size:14px">${ic("plus", "sm")}Add</span></div>${qHome}` });
+
+// Q2. The chip's menu: select what's around the selected Block.
+const qMi = (icon, name, extra = "", style = "") => `<div class="mi"${style ? ` style="${style}"` : ""}>${ic(icon, "sm")}${name}<kbd>${extra}</kbd></div>`;
+F.push({ id: "q02a-chip-menu-actions", phone: true, html: () => `${qBtnBg}${scrim}<div class="sheet"><div class="grab"></div><div style="margin:0 -8px">${qMi("rows", "Row 3")}${qMi("col", "Column 1")}${qMi("mail", "Email")}</div></div>${qHome}` });
+F.push({ id: "q02b-chip-menu-select", phone: true, html: () => `${qBtnBg}${scrim}<div class="sheet"><div class="grab"></div>${qHead("Select", { sub: "The Button, or what it’s in" })}<div style="margin:0 -8px">${qMi("button", "Button", ic("check", "sm"), "background:var(--accent-soft);color:var(--accent-2)")}${qMi("col", "Column 1")}${qMi("rows", "Row 3")}${qMi("mail", "Email")}</div></div>${qHome}` });
+
+// Q3. Style.
+const qColors = `<div class="kv"><span>Page</span><span class="v"><span class="hex">#EFE8DE</span><span class="sw" style="background:#efe8de;width:24px;height:24px"></span></span></div>
+    <div class="kv"><span>Email</span><span class="v"><span class="hex">#FBF7F1</span><span class="sw" style="background:#fbf7f1;width:24px;height:24px"></span></span></div>
+    <div class="kv"><span>Text</span><span class="v"><span class="hex">#2B1D14</span><span class="sw" style="background:#2b1d14;width:24px;height:24px"></span></span></div>
+    <div class="kv"><span>Buttons</span><span class="v"><span class="hex">#2B1D14</span><span class="sw" style="background:#2b1d14;width:24px;height:24px"></span></span></div>
+    <div class="kv"><span>Links</span><span class="v"><span class="hex">#B5652B</span><span class="sw" style="background:#b5652b;width:24px;height:24px"></span></span></div>`;
+const qShapes = (link) => `<h4 style="margin:14px 0 8px;font-size:12px;display:flex;justify-content:space-between">Button corners${link ? `<span style="color:var(--accent-2);font-weight:500">Use the default (3px)</span>` : ""}</h4><div class="shape2">${[["Square", 0], ["Rounded", 5], ["Pill", 9]].map(([n, r], i) => `<span class="shp${i === 2 ? " on" : ""}"><span class="tile"><i style="border-radius:${r}px"></i></span><small>${n}</small></span>`).join("")}</div>`;
+const qRowLink = (label, value) => `<div class="kv"><span>${label}</span><span class="v" style="color:var(--text-2)">${value}${ic("right", "sm")}</span></div>`;
+const qM = (v) => `<span class="m" style="display:flex;align-items:center;gap:4px">${v}${ic("right", "sm")}</span>`;
+const qSizes = `<div class="typ" style="margin-top:4px"><span class="s" style="font-size:24px">Heading 1</span>${qM("32px")}</div>
+    <div class="typ"><span class="s" style="font-size:19px">Heading 2</span>${qM("24px")}</div>
+    <div class="typ"><span class="s" style="font-size:16px">Heading 3</span>${qM("20px")}</div>
+    <div class="typ"><span style="font: 15px Arial;color:var(--text)">Body text</span>${qM("16px")}</div>`;
+const qStyleBg = `${mtopM("style")}<div class="mcv">${email({}, true)}</div>`;
+F.push({ id: "q03a-style-rows", phone: true, html: () => `${qStyleBg}<div class="sheet"><div class="grab"></div>${qHead("Email style")}${qColors}
+    ${qRowLink("Fonts", "Georgia / Arial")}${qRowLink("Text sizes", "32 / 16px")}${qShapes(false)}</div>${qHome}` });
+F.push({ id: "q03a-style-fonts", phone: true, html: () => `${qStyleBg}<div class="sheet"><div class="grab"></div>${qHead("Fonts", { back: true })}
+    ${qRowLink("Headings", "Georgia")}${qRowLink("Body", "Arial")}</div>${qHome}` });
+F.push({ id: "q03a-style-sizes", phone: true, html: () => `${qStyleBg}<div class="sheet"><div class="grab"></div>${qHead("Text sizes", { back: true })}${qSizes}</div>${qHome}` });
+const qTabs = (on) => `<div class="seg t" style="margin-bottom:12px">${["Colors", "Text", "Button corners"].map((t, i) => `<span${i === on ? ' class="on"' : ""}>${t}</span>`).join("")}</div>`;
+const qStyleTabbed = (on, body) => `${qStyleBg}<div class="sheet" style="height:440px"><div class="grab"></div>${qHead("Email style")}${qTabs(on)}${body}</div>${qHome}`;
+F.push({ id: "q03b-style-tabs-colors", phone: true, html: () => qStyleTabbed(0, qColors) });
+F.push({ id: "q03b-style-tabs-text", phone: true, html: () => qStyleTabbed(1, `${qRowLink("Headings", "Georgia")}${qRowLink("Body", "Arial")}<div style="border-top:1px solid var(--line);margin:6px 0 2px"></div>${qSizes}`) });
+F.push({ id: "q03b-style-tabs-corners", phone: true, html: () => qStyleTabbed(2, `<div class="shape2" style="margin-top:4px">${[["Square", 0], ["Rounded", 5], ["Pill", 9]].map(([n, r], i) => `<span class="shp${i === 2 ? " on" : ""}"><span class="tile"><i style="border-radius:${r}px"></i></span><small>${n}</small></span>`).join("")}</div><div style="margin:6px -8px 0">${qMi("x", "Use the default (3px)")}</div>`) });
+
+// Q4. The format bar while typing.
+const qTypingTop = `<div class="mtop"><span class="ib">${ic("undo")}</span><span style="justify-self:center;color:var(--text-2);font-size:12px">Saved</span><span class="btn sm acc" style="justify-self:end">Done</span></div>`;
+const qTyping = `<div class="mcv" style="top:52px">${email({ sel: "p", edit: "text", grip: false }, true).replace('{{first_na<span class="caret" style="background:#2b1d14"></span>', '<span class="caret" style="background:#2b1d14"></span>')}</div>`;
+const qKb = `<div class="kb"><div>${"<i></i>".repeat(10)}</div><div>${"<i></i>".repeat(9)}</div><div>${"<i></i>".repeat(7)}</div><div><i style="width:220px"></i></div></div>`;
+const qFbar = (inner, style = "") => `<div class="mbar" style="bottom:290px;left:0;right:0;border-radius:0;height:48px;box-shadow:0 -1px 0 var(--line);${style}">${inner}</div>`;
+const qIb = (icon, on) => `<span class="ib${on ? " on" : ""}">${ic(icon)}</span>`;
+F.push({ id: "q04a-format-bar", phone: true, html: () => `${qTypingTop}${qTyping}${qFbar(`${qIb("bold")}${qIb("ital")}${qIb("link")}${qIb("braces")}${qIb("ul")}<span class="ib" style="margin-left:auto">${ic("more")}</span>`)}${qKb}` });
+F.push({ id: "q04a-format-more", phone: true, html: () => `${qTypingTop}${qTyping}${scrim}<div class="sheet"><div class="grab"></div>${qHead("Text formatting")}<div style="margin:0 -8px">${qMi("under", "Underline")}${qMi("ol", "Numbered list")}${qMi("lbreak", "Line break")}</div></div>${qHome}` });
+const qAll8 = (w) => `${qIb("bold")}${qIb("ital")}${qIb("under")}<span class="vr" style="margin:0 2px"></span>${qIb("ul")}${qIb("ol")}<span class="vr" style="margin:0 2px"></span>${qIb("link")}${qIb("lbreak")}${qIb("braces")}`.replaceAll('<span class="ib">', `<span class="ib" style="width:${w}px">`);
+F.push({ id: "q04b-format-all", phone: true, html: () => `${qTypingTop}${qTyping}${qFbar(qAll8(40), "justify-content:space-between;gap:0")}${qKb}` });
+F.push({ id: "q04b-format-all-320", phone: true, w: 320, h: 640, cls: "w320", html: () => `${qTypingTop}${qTyping.replace('<div class="mcv" style="top:52px">', '<div class="mcv" style="top:52px"><div style="margin-top:-250px">').replace(/<\/div>$/, "</div></div>")}${qFbar(qAll8(32), "justify-content:space-between;gap:0;padding:0 4px;bottom:220px")}${qKb.replace('<div class="kb">', '<div class="kb" style="height:220px;padding:8px 3px 30px;gap:8px">').replaceAll("<i></i>", '<i style="width:auto;flex:1;max-width:28px"></i>').replace('<i style="width:220px">', '<i style="width:160px">')}` });
+
+// Q5. A Block's docked bar when its controls don't fit.
+const qChip = (icon) => `<span class="ib on">${ic(icon, "lg")}</span>`;
+const qLinkFld = (w) => `<span class="fld" style="flex:1;min-width:0">${ic("link", "sm")}<span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">northbound.co/spring-roast</span></span>`;
+const qSw = (c) => `<span class="swb"><span class="sw" style="background:${c};width:24px;height:24px"></span></span>`;
+const qSize = `<span class="num" style="height:44px;font-size:15px">16<span class="u">px</span></span>`;
+const qMoreEnd = `<span class="ib" style="margin-left:auto">${ic("more", "lg")}</span>`;
+const qBar = (inner) => `<div class="mbar">${inner}</div>${qHome}`;
+const qBar320 = (inner) => `<div class="mbar" style="left:6px;right:6px;bottom:30px;height:54px;padding:0 6px">${inner.replaceAll('class="ib', 'style="width:40px;height:40px" class="ib').replace('<span class="fld" style="', '<span class="fld" style="height:40px;font-size:14px;').replace('<span class="swb">', '<span class="swb" style="height:40px;padding:0 6px">')}</div><div class="home" style="bottom:6px"></div>`;
+const qBtn320Bg = `<div class="mtop" style="padding:0 4px"><span class="ib">${ic("undo")}</span><div class="modes"><span class="on" style="padding:0 8px">Edit</span><span style="padding:0 8px">Style</span><span style="padding:0 8px">Check<span class="count">2</span></span></div><span class="ib">${ic("more")}</span></div><div class="mcv"><div style="margin-top:-150px">${email({ sel: "btn", grip: false }, true)}</div></div>`;
+F.push({ id: "q05a-button", phone: true, html: () => `${qBtnBg}${qBar(`${qChip("button")}${qLinkFld()}${qSw("#2b1d14")}${qMoreEnd}`)}` });
+F.push({ id: "q05a-text", phone: true, html: () => `${qTextBg}${qBar(`${qChip("text")}${qSize}${qSw("#4a3a2e")}${qMoreEnd}`)}` });
+F.push({ id: "q05a-button-320", phone: true, w: 320, h: 640, cls: "w320", html: () => `${qBtn320Bg}${qBar320(`${qChip("button")}${qLinkFld()}${qSw("#2b1d14")}<span class="ib">${ic("more", "lg")}</span>`)}` });
+const qActs = `<div class="bgrid" style="margin-bottom:12px"><span class="bt">${ic("up")}Move up</span><span class="bt">${ic("down")}Move down</span><span class="bt">${ic("dup")}Duplicate</span><span class="bt" style="color:var(--warn)">${ic("trash")}Delete</span></div>`;
+const qAlign = `<div class="pr"><span>Alignment</span><span class="v"><span class="seg"><span class="ib">${ic("al", "sm")}</span><span class="ib on">${ic("ac", "sm")}</span><span class="ib">${ic("ar", "sm")}</span></span></span></div>`;
+const qTextColor = `<div class="pr"><span>Text color</span><span class="v"><span class="swf"><span class="sw" style="background:#ffffff"></span>#FFFFFF</span></span></div>`;
+const qFill = `<div class="pr"><span>Background color</span><span class="v"><span class="swf"><span class="sw" style="background:#2b1d14"></span>#2B1D14</span></span></div>`;
+const qBox = `<div class="mp-s" style="margin-top:6px"><h5>Box</h5><div class="pr"><span>Padding</span><span class="v"><span class="num">10 · 24<span class="u">px</span>${ic("right", "sm")}</span></span></div><div class="pr"><span>Background</span><span class="v dimtxt">None${ic("right", "sm")}</span></div><div class="pr"><span>Border</span><span class="v dimtxt">None${ic("right", "sm")}</span></div><div class="pr"><span>Corners</span><span class="v"><span class="num">100<span class="u">px</span></span></span></div></div>
+  <div class="mp-s"><h5>Show on</h5><div class="seg t"><span class="on">All devices</span><span>Desktop only</span><span>Phones only</span></div></div>
+  <div class="mp-s" style="padding-bottom:0"><div class="mi">${ic("dup", "sm")}Copy<kbd></kbd></div><div class="mi">${ic("cut", "sm")}Cut<kbd></kbd></div></div>`;
+const qBtnMore = (own) => `${qBtnBg}${scrim}<div class="sheet" style="max-height:calc(100% - 60px);overflow:hidden"><div class="grab"></div>${qHead("Button", { sub: "Row 3, Column 1" })}${qActs}${own}${qBox}</div>${qHome}`;
+F.push({ id: "q05a-button-more", phone: true, html: () => qBtnMore(`${qField("Label", "Shop the roast")}${qTextColor}${qAlign}`) });
+F.push({ id: "q05b-button", phone: true, html: () => `${qBtnBg}${qBar(`${qChip("button")}${qLinkFld()}${qMoreEnd}`)}` });
+F.push({ id: "q05b-text", phone: true, html: () => `${qTextBg}${qBar(`${qChip("text")}${qSize}${qMoreEnd}`)}` });
+F.push({ id: "q05b-button-320", phone: true, w: 320, h: 640, cls: "w320", html: () => `${qBtn320Bg}${qBar320(`${qChip("button")}${qLinkFld()}<span class="ib">${ic("more", "lg")}</span>`)}` });
+F.push({ id: "q05b-button-more", phone: true, html: () => qBtnMore(`${qFill}${qTextColor}${qAlign}${qField("Label", "Shop the roast")}`) });
+
+// Q5, a third direction: the bar fills in its own order until it's full, and never scrolls.
+F.push({ id: "q05c-text", phone: true, html: () => `${qTextBg}${qBar(`${qChip("text")}${qSize}${qSw("#4a3a2e")}<span class="seg">${qIb("al", true).replaceAll('class="ib', 'style="width:40px;height:40px" class="ib')}${qIb("ac").replace('class="ib', 'style="width:40px;height:40px" class="ib')}${qIb("ar").replace('class="ib', 'style="width:40px;height:40px" class="ib')}</span>${qMoreEnd}`)}` });
+F.push({ id: "q05c-text-320", phone: true, w: 320, h: 640, cls: "w320", html: () => `${qBtn320Bg.replace(/<div class="mcv">[\s\S]*$/, `<div class="mcv"><div style="margin-top:-60px">${email({ sel: "p", grip: false }, true)}</div></div>`)}${qBar320(`${qChip("text")}${qSize}${qSw("#4a3a2e")}<span style="flex:1"></span><span class="ib">${ic("more", "lg")}</span>`)}` });

@@ -8,12 +8,14 @@ import {
   canvas,
   checkPanel,
   checkTab,
+  emailWith,
   hostEvents,
   linkUrlField,
   moreButton,
   openEmail,
   PHONE_VIEWPORT,
   selectionBar,
+  setValue,
   sheet,
   structure,
   styleSetting,
@@ -39,6 +41,18 @@ const selectBlock = async (page: Page, text: string) => {
   await textOf(page, text).click();
   await canvas(page).getByRole("button", { exact: true, name: "Done" }).click();
   await expect(blockWith(page, text)).toHaveAttribute("aria-current", "true");
+};
+
+/**
+ * The Shell, as wide as the phone, rather than the test page's box, which is
+ * narrower than any phone once its own styles have had their way.
+ */
+const openFullWidth = async (page: Page) => {
+  await page.goto("/shell.html?narrow");
+  await page
+    .getByTestId("frame")
+    .evaluate((frame) => frame.style.setProperty("width", "100%"));
+  await expect(textBlock(page).first()).toBeVisible();
 };
 
 test.describe("on a phone", () => {
@@ -67,7 +81,7 @@ test.describe("on a phone", () => {
     expect(bar.y).toBeGreaterThanOrEqual(email.y + email.height);
   });
 
-  test("opens the chip's menu above the Selection bar, in sight", async ({
+  test("opens the chip's menu as a sheet: what's selected, then what it's in", async ({
     page,
   }) => {
     await openEmail(page, [[["A"]]]);
@@ -75,17 +89,180 @@ test.describe("on a phone", () => {
 
     const chip = selectionBar(page).locator('[data-action="chip"]');
     await chip.click();
-    const row = canvas(page).getByRole("menuitem").first();
-    // Not clipped by the bar, which scrolls sideways.
-    await expect(row).toBeInViewport({ ratio: 1 });
-    await row.click();
+    const select = sheet(page, "Select");
+    await expect(select).toBeVisible();
+    await expect(select).toContainText("The Text Block, or what it's in");
+    const items = canvas(page).getByRole("menuitemradio");
+    await expect(items).toHaveText(["Text", "Column 1", "Row 1", "Email"]);
+    await expect(items.first()).toHaveAttribute("aria-checked", "true");
+    await expect(items.first()).toBeFocused();
+    // Not clipped by the bar.
+    await expect(items.last()).toBeInViewport({ ratio: 1 });
+
+    await items.nth(2).click();
+    await expect(select).toBeHidden();
     await expect(chip).toHaveAccessibleName("Row 1");
 
-    // Escape closes it back to the chip.
+    // Done and Escape close it back to the chip.
     await chip.click();
-    await expect(canvas(page).getByRole("menuitem").first()).toBeFocused();
+    await select.getByRole("button", { exact: true, name: "Done" }).click();
+    await expect(select).toBeHidden();
+    await expect(chip).toBeFocused();
+    await chip.click();
+    await expect(items.first()).toBeFocused();
     await page.keyboard.press("Escape");
-    await expect(canvas(page).getByRole("menu")).toHaveCount(0);
+    await expect(select).toBeHidden();
+    await expect(chip).toBeFocused();
+  });
+
+  test("keeps a Block's bar to its main field, a color and More, with its actions in More", async ({
+    page,
+  }) => {
+    await openFullWidth(page);
+    const blocks = textBlock(page);
+    await blocks.first().click();
+    await canvas(page)
+      .getByRole("button", { exact: true, name: "Done" })
+      .click();
+    const count = await blocks.count();
+
+    const bar = selectionBar(page);
+    // Not drawn there at all, rather than hidden while the bar is short.
+    await expect(bar.locator('[data-action="move-up"]')).toHaveCount(0);
+    await expect(bar.locator('[data-action^="choice-align"]')).toHaveCount(0);
+    await expect(bar.getByRole("button", { name: /^Color/u })).toBeVisible();
+    // It all fits, so nothing scrolls out of sight.
+    expect(
+      await bar.evaluate(
+        ({ scrollWidth, clientWidth }) => scrollWidth <= clientWidth
+      )
+    ).toBe(true);
+
+    await moreButton(page).click();
+    const more = sheet(page, "Text");
+    await expect(more.getByText("Alignment", { exact: true })).toBeVisible();
+    for (const name of ["Move up", "Move down", "Duplicate", "Delete"]) {
+      await expect(
+        more.getByRole("button", { exact: true, name })
+      ).toBeVisible();
+    }
+    await more.getByRole("button", { exact: true, name: "Duplicate" }).click();
+    await expect(blocks).toHaveCount(count + 1);
+  });
+
+  for (const width of [390, 320]) {
+    test(`fits a Button's bar at ${width}px, with its link, its fill and More at the end`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ height: 800, width });
+      await openFullWidth(page);
+      await selectionBar(page)
+        .getByRole("button", { exact: true, name: "Add" })
+        .click();
+      await sheet(page, "Add")
+        .getByRole("button", { name: /Button/u })
+        .click();
+
+      const bar = selectionBar(page);
+      await expect(bar.getByRole("textbox")).toBeVisible();
+      const fill = bar.getByRole("button", { name: /^Fill/u });
+      await expect(fill).toBeInViewport({ ratio: 1 });
+      expect(
+        await bar.evaluate(
+          ({ scrollWidth, clientWidth }) => scrollWidth <= clientWidth
+        )
+      ).toBe(true);
+      // More is at the bar's end.
+      const more = await boxOf(moreButton(page));
+      const box = await boxOf(bar);
+      expect(box.x + box.width - (more.x + more.width)).toBeLessThan(16);
+    });
+  }
+
+  test("fits a Row's bar, its layouts in a sheet from Columns", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ height: 800, width: 320 });
+    await openFullWidth(page);
+    await textBlock(page).first().click();
+    await canvas(page)
+      .getByRole("button", { exact: true, name: "Done" })
+      .click();
+    await selectionBar(page).locator('[data-action="chip"]').click();
+    await canvas(page).getByRole("menuitemradio", { name: "Row 1" }).click();
+
+    const bar = selectionBar(page);
+    expect(
+      await bar.evaluate(
+        ({ scrollWidth, clientWidth }) => scrollWidth <= clientWidth
+      )
+    ).toBe(true);
+    const columns = bar.getByRole("button", { name: /^Columns/u });
+    await columns.focus();
+    await page.keyboard.press("Enter");
+    const layouts = sheet(page, "Columns");
+    // At the layout the Row has, and Tab goes along the rest.
+    await expect(
+      layouts.getByRole("button", { name: "100 layout" })
+    ).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(
+      layouts.getByRole("button", { name: "50/50 layout" })
+    ).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(textBlock(page).first()).toBeVisible();
+    await expect(layouts).toBeHidden();
+    await expect(columns).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(
+      layouts.getByRole("button", { name: "50/50 layout" })
+    ).toBeFocused();
+  });
+
+  test("fits a Column's bar, with its padding, alignment and border in More", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ height: 800, width: 320 });
+    await openFullWidth(page);
+    await textBlock(page).first().click();
+    await canvas(page)
+      .getByRole("button", { exact: true, name: "Done" })
+      .click();
+    await selectionBar(page).locator('[data-action="chip"]').click();
+    await canvas(page).getByRole("menuitemradio", { name: "Column 1" }).click();
+
+    const bar = selectionBar(page);
+    expect(
+      await bar.evaluate(
+        ({ scrollWidth, clientWidth }) => scrollWidth <= clientWidth
+      )
+    ).toBe(true);
+    await moreButton(page).click();
+    const more = sheet(page, "Column 1");
+    await expect(more).toBeVisible();
+    // As a Block's More has them: each opens its own sheet.
+    await expect(more.getByRole("button", { name: /^Border/u })).toBeVisible();
+    await more.getByRole("button", { name: /^Padding/u }).click();
+    await expect(sheet(page, "Padding")).toBeVisible();
+  });
+
+  test("with nothing selected, opens the email's settings from its Email chip", async ({
+    page,
+  }) => {
+    await openEmail(page, [[["A"]]]);
+    const bar = selectionBar(page);
+    await expect(
+      bar.getByRole("button", { name: "More settings and actions" })
+    ).toHaveCount(0);
+
+    const chip = bar.getByRole("button", { exact: true, name: "Email" });
+    await chip.click();
+    const settings = sheet(page, "Email");
+    await expect(
+      canvas(page).getByRole("textbox", { exact: true, name: "Preheader" })
+    ).toBeVisible();
+    await settings.getByRole("button", { exact: true, name: "Done" }).click();
+    await expect(settings).toBeHidden();
     await expect(chip).toBeFocused();
   });
 
@@ -118,6 +295,10 @@ test.describe("on a phone", () => {
     const more = sheet(page, "Text");
     await expect(more).toBeVisible();
     await expect.poll(() => holdsFocus(more)).toBe(true);
+    // At its first setting, not the Move up button above it.
+    await expect(
+      more.getByRole("combobox", { name: "Alignment" })
+    ).toBeFocused();
 
     for (let step = 0; step < 30; step += 1) {
       await page.keyboard.press("Tab");
@@ -232,6 +413,62 @@ test.describe("on a phone", () => {
     await expect(textBlock(page)).toBeVisible();
   });
 
+  test("shows Style's sections one at a time, in a sheet that keeps its height", async ({
+    page,
+  }) => {
+    await openFullWidth(page);
+    await canvas(page).getByRole("tab", { exact: true, name: "Style" }).click();
+    const panel = canvas(page).getByTestId("style-panel");
+    const sections = panel.getByRole("group", { name: "Style settings" });
+    const colors = sections.getByRole("button", {
+      exact: true,
+      name: "Colors",
+    });
+    const type = sections.getByRole("button", { exact: true, name: "Text" });
+    await expect(colors).toHaveAttribute("aria-pressed", "true");
+    await expect(styleSetting(page, "Page")).toBeVisible();
+    await expect(styleSetting(page, "Headings")).toBeHidden();
+    const { height } = await boxOf(panel);
+
+    await type.click();
+    await expect(type).toHaveAttribute("aria-pressed", "true");
+    await expect(styleSetting(page, "Headings")).toBeVisible();
+    await expect(styleSetting(page, "Page")).toBeHidden();
+    const after = await boxOf(panel);
+    expect(after.height).toBe(height);
+
+    await sections
+      .getByRole("button", { exact: true, name: "Button corners" })
+      .click();
+    await expect(panel.getByRole("radio", { name: "Pill" })).toBeVisible();
+  });
+
+  test("goes to the section of the setting a callout's button changes", async ({
+    page,
+  }) => {
+    const email = emailWith([[["A"]]]);
+    const block = email.rows[0]?.columns[0]?.blocks[0];
+    if (block) {
+      Object.assign(block.props, { fontSize: 20 });
+    }
+    await page.goto("/");
+    await setValue(page, email);
+    await selectBlock(page, "A");
+    await canvas(page).getByRole("tab", { exact: true, name: "Style" }).click();
+    const panel = canvas(page).getByTestId("style-panel");
+    await expect(
+      panel.getByRole("button", { exact: true, name: "Colors" })
+    ).toHaveAttribute("aria-pressed", "true");
+
+    await panel
+      .getByRole("button", { name: "Make all body text 20px" })
+      .click();
+    await expect(
+      panel.getByRole("button", { exact: true, name: "Text" })
+    ).toHaveAttribute("aria-pressed", "true");
+    await expect(styleSetting(page, "Body text")).toBeFocused();
+  });
+
   test("keeps the font the arrow keys are on in sight, in the font sheet", async ({
     page,
   }) => {
@@ -248,6 +485,10 @@ test.describe("on a phone", () => {
       }));
     });
     await canvas(page).getByRole("tab", { exact: true, name: "Style" }).click();
+    // On a phone, the fonts are in the Text section.
+    await canvas(page)
+      .getByRole("button", { exact: true, name: "Text" })
+      .click();
     await styleSetting(page, "Headings").focus();
     await page.keyboard.press("Enter");
     const search = canvas(page).getByRole("combobox", { name: "Search fonts" });
@@ -267,6 +508,10 @@ test.describe("on a phone", () => {
   }) => {
     await openEmail(page, [[["A"]]]);
     await canvas(page).getByRole("tab", { exact: true, name: "Style" }).click();
+    // On a phone, the fonts are in the Text section.
+    await canvas(page)
+      .getByRole("button", { exact: true, name: "Text" })
+      .click();
     await styleSetting(page, "Headings").focus();
     await page.keyboard.press("Enter");
     const fonts = sheet(page, "Headings");

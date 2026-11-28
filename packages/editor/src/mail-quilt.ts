@@ -1480,7 +1480,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       target = { blockId: position.block.id, on: "text" };
     } else if (position && field) {
       this.#selection.select({ blockId: position.block.id });
-      this.#openFieldIn(fieldShownIn(position.block, field));
+      this.#openFieldIn(fieldShownIn(position.block, field, this.#phone));
       // A Menu's link that says too little is the one with those words, of
       // those the email shows, as only they're checked.
       const { block } = position;
@@ -1501,10 +1501,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       };
     } else if (field && blockId === undefined) {
       this.#selection.select(undefined);
-      // On a phone, the email's bar has no room for its fields, so More has them.
-      this.#openFieldIn(
-        this.#phone ? { in: "more" } : fieldShownIn("email", field)
-      );
+      this.#openFieldIn(fieldShownIn("email", field, this.#phone));
       target = {
         draftKey: draftKey({ id: "email", targetId: "" }, { key: field }),
         on: "field",

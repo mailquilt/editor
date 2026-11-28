@@ -49,6 +49,23 @@ interface Setting {
   unset?: StringId;
 }
 
+type PhoneSection = "colors" | "corners" | "type";
+
+/** Which of the panel's sections a setting is in. */
+const sectionOf = (key: string): PhoneSection => {
+  if (COLORS.some((setting) => setting.key === key)) {
+    return "colors";
+  }
+  return key === CORNERS_SETTING.key ? "corners" : "type";
+};
+
+/** The panel's sections, which a phone shows one at a time. */
+const PHONE_SECTIONS: readonly { id: PhoneSection; label: StringId }[] = [
+  { id: "colors", label: "style.colors" },
+  { id: "type", label: "style.type" },
+  { id: "corners", label: "style.corners" },
+];
+
 const COLORS: readonly Setting[] = [
   { key: "backgroundColor", kind: "color", label: "style.page" },
   {
@@ -456,7 +473,7 @@ export const stylePanelStyles = css`
 
   /*
    * On a phone, at the bottom of the screen with the email above it, as
-   * frame p03 draws it, and as tall as half the screen at most.
+   * frame q03b draws it, half the screen tall.
    */
   .app[data-phone] .editor.styling {
     flex-direction: column;
@@ -471,7 +488,8 @@ export const stylePanelStyles = css`
     border-radius: var(--mq-radius-large) var(--mq-radius-large) 0 0;
     bottom: 0;
     box-shadow: var(--mq-shadow);
-    max-height: 50dvh;
+    /* One height, so switching its sections doesn't move the email. */
+    height: 50dvh;
     padding-block-start: var(--mq-space-2);
     top: auto;
     z-index: var(--_mq-layer-selection-bar);
@@ -485,6 +503,16 @@ export const stylePanelStyles = css`
     );
     padding: var(--mq-space-2) 0 env(safe-area-inset-bottom);
     width: 100%;
+  }
+
+  /* The section's button names it, so its heading isn't shown again. */
+  .style-panel.phone .style-section > h3 {
+    display: none;
+  }
+
+  .style-panel.phone .style-sections {
+    flex: none;
+    margin: 0 var(--mq-space-4) var(--mq-space-2);
   }
 
   .style-panel.phone .style-body {
@@ -1112,6 +1140,8 @@ export const createStylePanel = ({
   let overridden = new Set<StyleKey>();
   /** Whether the panel was last drawn for a phone, where popovers are sheets. */
   let phone = false;
+  /** On a phone, the one section shown, as frame q03b draws it. */
+  let phoneSection: PhoneSection = "colors";
 
   const close = (returnFocus: boolean) => {
     if (!open) {
@@ -1767,6 +1797,36 @@ export const createStylePanel = ({
     );
   };
 
+  /**
+   * On a phone, which of the panel's three sections shows, so each fits the
+   * sheet without scrolling and the email stays in sight above it.
+   */
+  const renderPhoneSections = () => html`
+    <div
+      aria-label=${text("style.sections")}
+      class="segments sheet-choices style-sections"
+      role="group"
+    >
+      ${PHONE_SECTIONS.map(
+        ({ id, label }) => html`
+          <button
+            aria-pressed=${phoneSection === id ? "true" : "false"}
+            class="segment"
+            data-action=${`style-section-${id}`}
+            type="button"
+            @click=${() => {
+              close(false);
+              phoneSection = id;
+              requestUpdate();
+            }}
+          >
+            ${text(label)}
+          </button>
+        `
+      )}
+    </div>
+  `;
+
   const renderCorners = (settings: EmailSettings) => {
     const value = settings.style?.buttonBorderRadius;
     const key: StyleKey = "buttonBorderRadius";
@@ -1848,11 +1908,15 @@ export const createStylePanel = ({
             props: { [value.prop]: null },
             type: "updateBlockProps",
           });
-          const done = () =>
+          const done = () => {
+            // On a phone, in the section that has it, which may not show.
+            phoneSection = sectionOf(value.key);
+            requestUpdate();
             focus.focusWhenRendered({
               action: `style-${value.key}`,
               on: "style",
             });
+          };
           return html`
             <div class="style-callout">
               <p class="title">${copy.title}</p>
@@ -2153,7 +2217,8 @@ export const createStylePanel = ({
                       titleId: "style-title",
                     },
                     text
-                  )}`
+                  )}
+                  ${renderPhoneSections()}`
               : html`<div class="style-head">
                   <h2 id="style-title">${text("style.title")}</h2>
                   <p>${text("style.lead")}</p>
@@ -2170,16 +2235,30 @@ export const createStylePanel = ({
             }}
           >
             ${renderCallouts(selected, settings)}
-            <section class="style-section">
-              <h3>${text("style.colors")}</h3>
-              ${COLORS.map((setting) => renderColorSetting(setting, settings))}
-            </section>
-            <section class="style-section">
-              <h3>${text("style.type")}</h3>
-              ${FONTS.map((setting) => renderFontSetting(setting, settings))}
-              ${SIZES.map((setting) => renderSizeSetting(setting, settings))}
-            </section>
-            ${renderCorners(settings)}
+            ${
+              !onPhone || phoneSection === "colors"
+                ? html`<section class="style-section">
+                    <h3>${text("style.colors")}</h3>
+                    ${COLORS.map((setting) =>
+                      renderColorSetting(setting, settings)
+                    )}
+                  </section>`
+                : nothing
+            }
+            ${
+              !onPhone || phoneSection === "type"
+                ? html`<section class="style-section">
+                    <h3>${text("style.type")}</h3>
+                    ${FONTS.map((setting) => renderFontSetting(setting, settings))}
+                    ${SIZES.map((setting) => renderSizeSetting(setting, settings))}
+                  </section>`
+                : nothing
+            }
+            ${
+              !onPhone || phoneSection === "corners"
+                ? renderCorners(settings)
+                : nothing
+            }
           </div>
           ${renderPopover(shownEmail)}
         </section>

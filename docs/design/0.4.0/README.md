@@ -380,3 +380,68 @@ Picked by the maintainer on 2026-11-24.
 **B. The Video's play button: all three, as the "Play button" setting** in section 10: below the picture (default), on the picture (drawn in and uploaded), or none.
 
 **C. What's not on this device: the person chooses, Fold (default), Fade or Hide,** in the ⋯ menu, as section 7 says.
+
+---
+
+## 14. Phone follow-ups
+
+**Picked by the maintainer on 2026-11-28: Q1 c, Q2 b, Q3 b, Q4 b, Q5 a; Q6 builds to `p17-errors`.** The picked frames are the visual spec; the others stay for the record. After #329 shipped, the build differed from the picked phone frames in a few places, and some phone states had never been drawn. Each state below has its directions as separate `q` frames, drawn at 390px (and 320px where width matters), light and dark.
+
+### Q1. The email's settings, with nothing selected
+
+**Job.** Let the person set the email's Width, Preheader and Language on a phone, where the email's bar has no room for them. These are the email's fields outside Style (`EMAIL_SETTINGS_FIELDS` without background and font), in that order.
+
+| Direction | Frames |
+|---|---|
+| a. As built: the bar reads "Tap a Block to change it", then ⋯ and Add; ⋯ opens a sheet titled "Email" | `q01a-email-bar`, `q01a-email-sheet` |
+| b. The top bar's ⋯ sheet (`p09`) gets "Email settings" with a chevron, which opens a sheet with a back arrow; the docked bar is `p08`'s hint and Add | `q01b-top-menu`, `q01b-email-sheet` |
+| c. The docked bar starts with an "Email" chip, as the desktop bar does with nothing selected; it opens `q01a-email-sheet` | `q01c-email-chip` |
+
+**Copy.** "Email" (or "Email settings" in b), "Done". "Width", "Preheader" with "The short text inboxes show after the subject.", "Language" with "A language code, such as en or pt-BR, or one Merge Tag."
+
+### Q2. The chip's menu
+
+**Job.** Select what's around the selected Block: its Column, its Row, or the Email.
+
+| Direction | Frames |
+|---|---|
+| a. As built: an action sheet with no title or Done, "Row 3", "Column 1", "Email" | `q02a-chip-menu-actions` |
+| b. A sheet titled "Select" (the menu's screen reader name today), with Done; the Block itself first and marked, then outward: Column, Row, Email | `q02b-chip-menu-select` |
+
+**Copy.** "Select", "The Button, or what it’s in", "Done".
+
+### Q3. Style
+
+**Job.** Set the look every Block shares, while seeing the email change.
+
+`p03-style` leaves out, from what the Style panel has: the Headings and Body fonts as two settings (it shows one "Fonts" row), the four sizes (Heading 1, Heading 2, Heading 3, Body text), the names under the corner shapes and their title "Button corners", "Use the default", the section titles "Colors" and "Text", and the callouts for a selected Block's own values.
+
+| Direction | Frames |
+|---|---|
+| a. `p03` with a "Text sizes" row; "Fonts" and "Text sizes" open sheets with a back arrow | `q03a-style-rows`, `q03a-style-fonts`, `q03a-style-sizes` |
+| b. The panel's own three sections as tabs: "Colors", "Text", "Button corners", in a sheet of one height that leaves the top of the email in sight | `q03b-style-tabs-colors`, `q03b-style-tabs-text`, `q03b-style-tabs-corners` |
+
+### Q4. The format bar while typing
+
+**Job.** Format the words being typed, above the keyboard. `p06`'s align icon is a frame mistake: alignment is a Text Block setting in its Selection bar (`g08`), not a format, and the build rightly leaves it out.
+
+| Direction | Frames |
+|---|---|
+| a. `p06`'s set without the align icon (Bold, Italic, Link, Merge Tag, Bulleted list), and ⋯ opening a "Text formatting" sheet with Underline, Numbered list and Line break. Opening the sheet hides the keyboard | `q04a-format-bar`, `q04a-format-more` |
+| b. All eight in the bar, grouped: Bold, Italic, Underline; Bulleted list, Numbered list; Link, Line break, Merge Tag. They fit at 390 (40px each) and at 320 (32px each), so nothing scrolls | `q04b-format-all`, `q04b-format-all-320` |
+
+### Q5. A Block's bar when its controls don't fit
+
+**Job.** Keep the settings a person changes most within one tap, and the rest one tap away in More, without a bar that scrolls.
+
+| Direction | Frames |
+|---|---|
+| a. Chip, the main field, one color, ⋯ | `q05a-button`, `q05a-text`, `q05a-button-320`, `q05a-button-more` |
+| b. Chip, the main field, ⋯ | `q05b-button`, `q05b-text`, `q05b-button-320`, `q05b-button-more` |
+| c. The bar takes the Block's controls in order until it's full, then ⋯; it never scrolls. A Button at 390 is a's; a Text Block keeps its alignment at 390 and loses it at 320 | `q05c-text`, `q05c-text-320` |
+
+In each, More starts with the bar's own actions as four buttons ("Move up", "Move down", "Duplicate", "Delete"), then the settings the bar left out, then Box, Show on and the rest of Actions.
+
+### Q6. A link that isn't one
+
+Not a new direction: build it to `p17-errors`. Its sheet is titled "Link", with "Apply" in Done's place, in the accent and dimmed while the link is refused; the field has the error edge and a link icon; under it, "That isn’t a web address. Try one like northbound.co/guji, an email address, or a Merge Tag.", with no icon; then a full-width "Remove link".
