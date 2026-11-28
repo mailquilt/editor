@@ -72,6 +72,21 @@ export const formatBarStyles = css`
     height: 44px;
   }
 
+  /* A refused link has the error's edge, as frame p17 draws it. */
+  .link-form input[aria-invalid="true"] {
+    border-color: var(--mq-color-danger);
+  }
+
+  /* The sheet's title names it, so its label isn't shown again. */
+  dialog.sheet .link-form .link-label {
+    clip-path: inset(50%);
+    height: 1px;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+  }
+
   dialog.sheet .link-form .text-button {
     flex: 1 1 100%;
     height: 44px;
@@ -268,7 +283,7 @@ const renderLinkForm = (
       }}
     >
       <label>
-        ${api.text("format.linkUrl")}
+        <span class="link-label">${api.text("format.linkUrl")}</span>
         <input
           aria-activedescendant=${tags.activeDescendant}
           aria-controls=${tags.controls}

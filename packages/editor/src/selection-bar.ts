@@ -997,15 +997,39 @@ export const selectionBarStyles = css`
     scrollbar-width: none;
   }
 
-  /* As wide as what's in it, so More stays at the end as the rest scrolls. */
+  /*
+   * As wide as the bar, so a field shrinks to fit, as frame q05a draws it,
+   * and More is at the end.
+   */
   .app[data-phone] .selection-bar .bar-content {
+    flex: 1 1 auto;
     margin-inline: 0;
     max-width: none;
+    min-width: 0;
+  }
+
+  /* Its own width while fitSelectionBar measures it, rather than the bar's. */
+  .app[data-phone] .selection-bar .bar-content[data-measuring] {
+    flex: none;
+  }
+
+  .app[data-phone] .selection-bar .bar-content > .bar-anchor:has(> .bar-field),
+  .app[data-phone] .selection-bar .bar-content > .bar-field {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  .app[data-phone]
+    .selection-bar
+    .bar-content
+    > [data-action="more"]:last-child {
+    margin-inline-start: auto;
   }
 
   /*
-   * What doesn't fit scrolls under More, which stays at the end, over the
-   * bar's own padding there too, so nothing shows past it.
+   * Where it still doesn't fit, as in a part of a page narrower than a phone,
+   * what doesn't scrolls under More, which stays at the end, over the bar's
+   * own padding there too, so nothing shows past it.
    */
   .app[data-phone] .selection-bar:has([data-action="more"]:last-child) {
     padding-inline-end: 0;
@@ -1067,14 +1091,46 @@ export const selectionBarStyles = css`
     width: 1px;
   }
 
-  /* With nothing selected: what to do, then More and Add. Frame p08. */
+  /*
+   * With nothing selected, the email's chip, which opens its settings, in the
+   * accent with its name and chevron, as frame q01c draws it.
+   */
+  .app[data-phone] .bar-chip.email-chip {
+    background: var(--mq-color-accent-soft);
+    border-radius: var(--mq-radius);
+    color: var(--mq-color-accent-strong);
+    flex: none;
+    font-weight: 600;
+    gap: var(--mq-space-1);
+    padding-inline-end: var(--mq-space-3);
+  }
+
+  /* One color across it, rather than an icon in a tile of its own. */
+  .app[data-phone] .bar-chip.email-chip .chip-icon {
+    background: none;
+    padding-inline-start: var(--mq-space-3);
+    width: auto;
+  }
+
+  .app[data-phone] .bar-chip.email-chip > .icon {
+    clip-path: none;
+    height: 16px;
+    position: static;
+    width: 16px;
+  }
+
+  /* With nothing selected: the email's chip, what to do, then Add. */
   .bar-hint {
     color: var(--mq-color-text-muted);
     flex: 1;
     font-size: var(--_mq-font-size-bar-title);
-    overflow: hidden;
-    padding-inline-start: var(--mq-space-2);
-    text-overflow: ellipsis;
+    line-height: 1.3;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    padding-inline: var(--mq-space-2);
+    text-wrap: balance;
+    /* On two lines where one doesn't fit, rather than cut off. */
+    white-space: normal;
   }
 
   .app[data-phone] .bar-content:has(> .bar-hint) {
@@ -1121,12 +1177,60 @@ export const selectionBarStyles = css`
     width: 1px;
   }
 
+  /* Room inside its edge for an item's focus ring. */
   dialog.sheet .bar-menu {
     background: none;
     box-shadow: none;
     min-width: 0;
-    padding: 0;
+    padding: var(--mq-space-1) 0;
     position: static;
+  }
+
+  /* On a phone, the bar's own actions, at the top of More. Frame q05a. */
+  .more-tiles {
+    display: grid;
+    gap: var(--mq-space-2);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    padding: var(--mq-space-3) var(--mq-space-4);
+  }
+
+  .more-tile {
+    align-items: center;
+    background: transparent;
+    border: 1px solid var(--mq-color-border);
+    border-radius: var(--mq-radius);
+    color: var(--mq-color-text);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: var(--mq-space-1);
+    justify-content: center;
+    min-height: 60px;
+    padding: var(--mq-space-2) var(--mq-space-1);
+    text-align: center;
+  }
+
+  .more-tile.danger {
+    color: var(--mq-color-danger);
+  }
+
+  .more-tile[aria-disabled="true"] {
+    color: var(--mq-color-text-muted);
+    cursor: default;
+  }
+
+  .more-tile:hover:not([aria-disabled="true"]) {
+    background: var(--mq-color-surface-hover);
+  }
+
+  /* What's selected, marked, at the top of the chip's menu. Frame q02b. */
+  dialog.sheet .bar-menu > [aria-checked="true"] {
+    background: var(--mq-color-accent-soft);
+    color: var(--mq-color-accent-strong);
+  }
+
+  dialog.sheet .bar-menu > button > .icon:last-child:not(:first-child) {
+    justify-self: end;
   }
 
   dialog.sheet :is(.more-action, .bar-menu > button) {
@@ -2023,17 +2127,59 @@ const CONTROLS: Readonly<
   ],
 };
 
-const controlsOf = (target: Target) => {
+/** What tells a control apart in `PHONE_BAR`: its field, its popover, or its kind. */
+const controlId = (control: Control) => {
+  if ("key" in control) {
+    return control.key;
+  }
+  return "id" in control ? control.id : control.kind;
+};
+
+/**
+ * On a phone, the controls a Block's bar keeps: its main one and, where it has
+ * one, a color, as frame q05a draws them. The rest are in More, so the bar
+ * never scrolls.
+ */
+const PHONE_BAR: Readonly<Record<BlockType, readonly string[]>> = {
+  button: ["href", "backgroundColor"],
+  divider: ["color", "thickness"],
+  heading: ["level", "color"],
+  image: ["upload", "src", "popover-link"],
+  menu: ["popover-links", "color"],
+  social: ["popover-links"],
+  spacer: ["height"],
+  text: ["fontSize", "color"],
+  video: ["url", "popover-thumbnail"],
+};
+
+const PHONE_COLUMN_BAR: ReadonlySet<string> = new Set(["backgroundColor"]);
+
+const blockControls = (
+  { props, type }: { props: unknown; type: BlockType },
+  phone: boolean
+) => {
+  const controls = CONTROLS[type](props as Record<string, unknown>);
+  return phone
+    ? controls.filter((control) => PHONE_BAR[type].includes(controlId(control)))
+    : controls;
+};
+
+const controlsOf = (target: Target, phone: boolean) => {
   switch (target.kind) {
     case "block": {
-      const { block } = target.position;
-      return CONTROLS[block.type](block.props as Record<string, unknown>);
+      return blockControls(target.position.block, phone);
     }
     case "row": {
       return CONTROLS.row(target.position.row.columns.length);
     }
+    // On a phone, its background, as a Block's bar keeps its main controls,
+    // and More has the rest.
     case "column": {
-      return CONTROLS.column;
+      return phone
+        ? CONTROLS.column.filter((control) =>
+            PHONE_COLUMN_BAR.has(controlId(control))
+          )
+        : CONTROLS.column;
     }
     default: {
       return CONTROLS.email;
@@ -2047,10 +2193,14 @@ const controlsOf = (target: Target) => {
  */
 export const fieldShownIn = (
   of: { type: BlockType; props: Record<string, unknown> } | "email",
-  key: string
+  key: string,
+  phone: boolean
 ): { in: "bar" } | { in: "more" } | { in: "popover"; id: string } => {
-  const controls =
-    of === "email" ? CONTROLS.email : CONTROLS[of.type](of.props);
+  // On a phone, the email's bar has no room for its fields, so More has them.
+  if (of === "email" && phone) {
+    return { in: "more" };
+  }
+  const controls = of === "email" ? CONTROLS.email : blockControls(of, phone);
   const control = controls.find((each) => keysOf(each).includes(key));
   switch (control?.kind) {
     case undefined: {
@@ -2079,7 +2229,7 @@ const moreFieldsOf = (
   const shown = new Set(
     api.phone && target.kind === "email"
       ? []
-      : controlsOf(target).flatMap(keysOf)
+      : controlsOf(target, api.phone).flatMap(keysOf)
   );
   return section.fields.filter(({ key }) => !shown.has(key));
 };
@@ -2768,11 +2918,13 @@ export const renderThumbnail = (layout: RowLayout) => html`
   </span>
 `;
 
+/** On a phone, the popover of a Row's layouts. */
+const LAYOUT_POPOVER = "popover-layout";
+
 const renderLayoutControl = ({ row }: RowPosition, api: PanelApi) => {
   const { text } = api;
   const current = rowLayoutOf(row);
-  return html`
-    <span aria-hidden="true" class="bar-name">${text("bar.columns")}</span>
+  const choices = html`
     <span aria-label=${text("bar.columns")} class="segments" role="group">
       ${ROW_LAYOUTS.map(
         (layout) => html`
@@ -2781,15 +2933,66 @@ const renderLayoutControl = ({ row }: RowPosition, api: PanelApi) => {
             aria-pressed=${layout === current ? "true" : "false"}
             class="segment layout-option"
             data-action=${`layout-${layout}`}
+            ?data-start=${api.phone && layout === current}
             data-tooltip=${text("bar.layout", { layout })}
-            tabindex="-1"
+            tabindex=${api.phone ? "0" : "-1"}
             type="button"
-            @click=${() => api.setRowLayout(row.id, layout)}
+            @click=${() => {
+              api.setRowLayout(row.id, layout);
+              // A sheet's done once a layout's chosen.
+              if (api.phone) {
+                api.closePopover(true);
+              }
+            }}
           >
             ${renderThumbnail(layout)}
           </button>
         `
       )}
+    </span>
+  `;
+  if (!api.phone) {
+    return html`
+      <span aria-hidden="true" class="bar-name">${text("bar.columns")}</span>
+      ${choices}
+    `;
+  }
+  // On a phone, the layout it has, which opens the rest as a sheet, as frame
+  // p15 draws it.
+  const open = api.bar.popover === LAYOUT_POPOVER;
+  return html`
+    <span class="bar-anchor">
+      <button
+        aria-expanded=${open ? "true" : "false"}
+        aria-haspopup="dialog"
+        aria-label=${
+          current === undefined
+            ? text("bar.columns")
+            : text("bar.valueOf", {
+                label: text("bar.columns"),
+                value: text("bar.layout", { layout: current }),
+              })
+        }
+        class="bar-button"
+        data-action=${LAYOUT_POPOVER}
+        tabindex="-1"
+        type="button"
+        @click=${() => api.togglePopover(LAYOUT_POPOVER)}
+      >
+        ${current === undefined ? nothing : renderThumbnail(current)}<span
+          class="words"
+          >${text("bar.columns")}</span
+        >
+      </button>
+      ${
+        open
+          ? renderPopoverBox(
+              api,
+              { className: "layouts", legend: text("bar.columns") },
+              choices
+            )
+          : nothing
+      }
     </span>
   `;
 };
@@ -2841,11 +3044,16 @@ const renderUploadControl = ({ block }: BlockPosition, api: PanelApi) => {
  * the play button is drawn, it shows as chosen. Why it couldn't be added stays
  * under the button, with a way to upload a thumbnail, as frame k11 draws it.
  */
+/** The popover of a Video's play button choices. */
+const PLAY_POPOVER = "popover-play";
+
 const renderPlayControl = (
   target: Target,
   section: SettingsSection,
   api: PanelApi,
-  open: boolean
+  open: boolean,
+  /** In More on a phone, where it's a stop for Tab and its sheet has a back arrow. */
+  inMore = false
 ) => {
   const field = fieldOf(section, "play");
   if (target.kind !== "block" || field?.type !== "select") {
@@ -2853,7 +3061,7 @@ const renderPlayControl = (
   }
   const { block } = target.position;
   const { text, uploadImage, videos } = api;
-  const id = "popover-play";
+  const id = inMore ? `${IN_MORE}${PLAY_POPOVER}` : PLAY_POPOVER;
   const name = text("bar.playButton");
   const chosen = videos.isAdding(block.id)
     ? "on"
@@ -2911,7 +3119,9 @@ const renderPlayControl = (
   );
   // Its name shows before it, as a Column's settings' do, and is in its own.
   return html`
-    <span aria-hidden="true" class="bar-name">${name}</span>
+    <span aria-hidden="true" class=${inMore ? "box-label" : "bar-name"}
+      >${name}</span
+    >
     <span class="bar-anchor play">
       <button
         aria-describedby=${failure ? failureId : nothing}
@@ -2921,7 +3131,7 @@ const renderPlayControl = (
         class="bar-button"
         data-action=${id}
         data-tooltip=${name}
-        tabindex="-1"
+        tabindex=${inMore ? "0" : "-1"}
         type="button"
         @click=${() => api.togglePopover(id)}
       >
@@ -2998,7 +3208,7 @@ const renderOwnControl = (
         : nothing;
     }
     case "play": {
-      return renderPlayControl(target, section, api, open("popover-play"));
+      return renderPlayControl(target, section, api, open(PLAY_POPOVER));
     }
     case "popover": {
       return renderPopoverControl(section, control, api, open(control.id));
@@ -3044,11 +3254,28 @@ const renderOwnControl = (
 const renderChip = (target: Target, api: PanelApi) => {
   const { text } = api;
   if (target.kind === "email") {
-    return html`
-      <span class="bar-chip">
-        <span class="chip-icon">${ICONS.mail}</span>${text("bar.email")}
-      </span>
-    `;
+    // On a phone, it opens the email's settings, which its bar has no room
+    // for, as frame q01c draws it.
+    return api.phone
+      ? html`
+          <button
+            aria-expanded=${api.bar.moreOpen ? "true" : "false"}
+            aria-haspopup="dialog"
+            class="bar-chip email-chip"
+            data-action="more"
+            tabindex="0"
+            type="button"
+            @click=${({ detail }: MouseEvent) => api.toggleMore(detail === 0)}
+          >
+            <span class="chip-icon">${ICONS.mail}</span
+            ><span>${text("bar.email")}</span>${ICONS.chevronDown}
+          </button>
+        `
+      : html`
+          <span class="bar-chip">
+            <span class="chip-icon">${ICONS.mail}</span>${text("bar.email")}
+          </span>
+        `;
   }
   const { rowIndex } = target.position;
   const row = text("canvas.row", { row: rowIndex + 1 });
@@ -3134,23 +3361,92 @@ const renderChip = (target: Target, api: PanelApi) => {
       api.selectEmail(fromKeyboard)
     )}
   `;
-  // On a phone, a sheet, as the bar it would open from scrolls sideways and
-  // would cut it off.
+  /** On a phone, an item of the chip's menu, checked where it's what's selected. */
+  const radio = (
+    icon: TemplateResult,
+    words: string,
+    then: ((fromKeyboard: boolean) => void) | undefined
+  ) => html`
+    <button
+      aria-checked=${then ? "false" : "true"}
+      role="menuitemradio"
+      tabindex="-1"
+      type="button"
+      @click=${then ? select(then) : () => api.closeMenu(true)}
+    >
+      ${icon}<span>${words}</span>${then ? nothing : ICONS.check}
+    </button>
+  `;
+
+  /**
+   * On a phone, a sheet, as the bar it would open from scrolls sideways and
+   * would cut it off. As frame q02b draws it, it starts at what's selected,
+   * marked, and goes out from there: its Column, its Row, the email.
+   */
+  const renderPhoneChipMenu = () => {
+    let current = row;
+    if (target.kind === "block") {
+      current = blockTypeName(target.position.block.type, text);
+    } else if (target.kind === "column") {
+      current = text("canvas.column", {
+        column: target.position.columnIndex + 1,
+      });
+    }
+    let subtitle: string | undefined;
+    if (target.kind === "block") {
+      subtitle = text("bar.aroundBlock", { block: current });
+    } else if (target.kind === "column") {
+      subtitle = text("bar.aroundColumn", { column: current });
+    }
+    return renderSheet({
+      body: html`<div
+        aria-label=${text("bar.around")}
+        class="bar-menu"
+        role="menu"
+      >
+        ${radio(chipIcon(), current, undefined)}
+        ${
+          target.kind === "block"
+            ? columns.map(({ id, name }) =>
+                radio(ICONS.column, name, (fromKeyboard) =>
+                  api.selectColumn(id, fromKeyboard)
+                )
+              )
+            : nothing
+        }
+        ${
+          target.kind === "row"
+            ? columns.map(({ id, name }) =>
+                radio(ICONS.column, name, (fromKeyboard) =>
+                  api.selectColumn(id, fromKeyboard)
+                )
+              )
+            : radio(ICONS.rows, row, (fromKeyboard) =>
+                api.selectRow(target.position.row.id, fromKeyboard)
+              )
+        }
+        ${radio(ICONS.mail, text("bar.email"), (fromKeyboard) =>
+          api.selectEmail(fromKeyboard)
+        )}
+      </div>`,
+      className: "bar-menu-sheet",
+      head: renderSheetHead(
+        {
+          done: () => api.closeMenu(true),
+          subtitle,
+          title: text("bar.around"),
+          titleId: "bar-menu-title",
+        },
+        text
+      ),
+      labelledBy: "bar-menu-title",
+      onClose: () => api.closeMenu(true),
+      sheetPlace: "barMenu",
+    });
+  };
   const renderChipMenu = () =>
     api.phone
-      ? renderSheet({
-          body: html`<div
-            aria-label=${text("bar.around")}
-            class="bar-menu"
-            id="bar-menu"
-            role="menu"
-          >
-            ${menuItems()}
-          </div>`,
-          labelledBy: "bar-menu",
-          onClose: () => api.closeMenu(true),
-          sheetPlace: "barMenu",
-        })
+      ? renderPhoneChipMenu()
       : html`<div
           aria-label=${text("bar.around")}
           class="ui bar-menu"
@@ -3248,18 +3544,21 @@ const renderActions = (target: Target, api: PanelApi) => {
       class="icon-button"
       data-action="more"
       data-tooltip=${text("bar.more")}
-      tabindex=${api.phone && target.kind === "email" ? "0" : "-1"}
+      tabindex="-1"
       type="button"
       @click=${({ detail }: MouseEvent) => api.toggleMore(detail === 0)}
     >
       ${ICONS.more}
     </button>
   `;
-  // The email's settings all fit the bar, so it has no More, but on a phone.
+  // The email's settings all fit the bar, so it has no More, and on a phone
+  // its chip opens them.
   if (target.kind === "email") {
-    return api.phone
-      ? html`${more} ${renderAddButton(api)}`
-      : renderAddButton(api);
+    return renderAddButton(api);
+  }
+  // On a phone, they're at the top of More, so the bar never scrolls.
+  if (api.phone) {
+    return more;
   }
   const own = actionsOf(target, api);
   return html`
@@ -3418,7 +3717,7 @@ export const renderSelectionBar = (api: PanelApi) => {
   const { text } = api;
   const target = targetOf(api);
   const section = sectionOf(target, api);
-  const controls = controlsOf(target);
+  const controls = controlsOf(target, api.phone);
   // Said, as the marks on the Canvas aren't read.
   const showOn =
     target.kind === "row" || target.kind === "block"
@@ -3441,7 +3740,8 @@ export const renderSelectionBar = (api: PanelApi) => {
         <div class="bar-content">
           ${
             api.phone && target.kind === "email"
-              ? html`<span class="bar-hint">${text("canvas.tapBlock")}</span>`
+              ? html`${renderChip(target, api)}
+                  <span class="bar-hint">${text("canvas.tapBlock")}</span>`
               : html`
                   ${renderChip(target, api)} ${renderSeparator()}
                   ${controls.map((control, index) =>
@@ -3516,6 +3816,47 @@ const renderMoreAction = ({
   </button>
 `;
 
+/** On a phone, a short name for each of the bar's actions, as a tile in More. */
+const TILE_LABELS: Readonly<Record<string, StringId>> = {
+  delete: "more.delete",
+  duplicate: "more.duplicate",
+  "move-down": "more.moveDown",
+  "move-up": "more.moveUp",
+};
+
+/**
+ * On a phone, the bar's own actions at the top of More, as four tiles, as
+ * frame q05a-button-more draws them, as the bar keeps only what it shows.
+ */
+const renderActionTiles = (
+  target: Extract<Target, { kind: "block" | "row" }>,
+  api: PanelApi
+) => html`
+  <div class="more-tiles">
+    ${actionsOf(target, api).map(
+      ({ action, danger, disabledWhy, icon, keys, label, onClick }) => html`
+        <button
+          aria-disabled=${disabledWhy ? "true" : nothing}
+          aria-keyshortcuts=${keys?.shortcuts ?? nothing}
+          class=${danger ? "more-tile danger" : "more-tile"}
+          data-action=${`more-${action}`}
+          data-tooltip=${disabledWhy ?? nothing}
+          type="button"
+          @click=${(event: MouseEvent) => {
+            if (!disabledWhy) {
+              onClick(event);
+            }
+          }}
+        >
+          ${icon}<span
+            >${TILE_LABELS[action] ? api.text(TILE_LABELS[action]) : label}</span
+          >
+        </button>
+      `
+    )}
+  </div>
+`;
+
 /** Why a Block can't move into the Column that way, if it can't. */
 const cantMoveWhy = (
   { columnIndex, row }: BlockPosition,
@@ -3557,9 +3898,13 @@ const renderMoreActions = (
   return html`
     <div class="more-actions">
       <h3>${text("more.actions")}</h3>
-      ${actionsOf(target, api).map((button) =>
-        renderMoreAction({ ...button, narrowOnly: true })
-      )}
+      ${
+        api.phone
+          ? nothing
+          : actionsOf(target, api).map((button) =>
+              renderMoreAction({ ...button, narrowOnly: true })
+            )
+      }
       ${renderMoreAction({
         action: "copy",
         icon: ICONS.duplicate,
@@ -3707,6 +4052,90 @@ export const fitSelectionBar = (root: ParentNode) => {
  * opens their fields, as the bar's settings do, and its background and
  * corners as fields.
  */
+/** On a phone, a Video's play button in More, as the bar has it elsewhere. */
+const renderPlayMore = (
+  target: Target,
+  section: SettingsSection,
+  api: PanelApi
+) => html`
+  <div class="settings box" data-place=${place("settings")}>
+    <div class="section">
+      <div class="field inline" data-place=${place("boxOpener")}>
+        ${renderPlayControl(
+          target,
+          section,
+          api,
+          api.bar.popover === `${IN_MORE}${PLAY_POPOVER}`,
+          true
+        )}
+      </div>
+    </div>
+  </div>
+`;
+
+/**
+ * On a phone, a Column's padding, alignment and border in More, which its bar
+ * has no room for, as a Block's Box has them there: padding and border each
+ * open their own sheet.
+ */
+const renderColumnMore = (
+  target: Extract<Target, { kind: "column" }>,
+  api: PanelApi
+) => {
+  const { text } = api;
+  const section = sectionOf(target, api);
+  const opener = (
+    control: Extract<NamedControl, { kind: "popover" }>,
+    label: string
+  ) => html`
+    <div class="field inline" data-place=${place("boxOpener")}>
+      <span aria-hidden="true" class="box-label">${label}</span>
+      ${renderPopoverControl(
+        section,
+        control,
+        api,
+        api.bar.popover === control.id,
+        true
+      )}
+    </div>
+  `;
+  return html`
+    <div class="settings box" data-place=${place("settings")}>
+      <div class="section">
+        <fieldset>
+          <legend>${section.legend}</legend>
+          ${opener(
+            {
+              grid: true,
+              id: `${IN_MORE}popover-padding`,
+              keys: PADDING_KEYS,
+              kind: "popover",
+              label: (values) => paddingWords(values, 0, text),
+              name: "bar.padding",
+            },
+            text("bar.padding")
+          )}
+          ${section.fields
+            .filter(({ key }) => key === "verticalAlign")
+            .map((each) =>
+              renderField(section, each, api.drafts, fieldTags(api), text)
+            )}
+          ${opener(
+            {
+              id: `${IN_MORE}popover-border`,
+              keys: BORDER_KEYS,
+              kind: "popover",
+              label: (values) => borderWords(values, text),
+              name: "bar.border",
+            },
+            text("bar.border")
+          )}
+        </fieldset>
+      </div>
+    </div>
+  `;
+};
+
 const renderBox = (position: BlockPosition, api: PanelApi) => {
   const { text } = api;
   const section = boxSection(position, api);
@@ -3840,11 +4269,30 @@ const renderMore = (api: PanelApi) => {
   const { text } = api;
   const target = targetOf(api);
   const section = sectionOf(target, api);
-  const fields = moreFieldsOf(target, section, api);
+  // On a phone, a Video's play button is in More, as frame p20 draws it,
+  // with the bar's own control, which draws it on the picture.
+  const playInMore =
+    api.phone &&
+    target.kind === "block" &&
+    target.position.block.type === "video";
+  const fields = moreFieldsOf(target, section, api).filter(
+    ({ key }) => !(playInMore && key === "play")
+  );
   const { subtitle, title } = headingOf(target, text);
   const body = html`
     ${
-      fields.length > 0
+      api.phone && (target.kind === "block" || target.kind === "row")
+        ? renderActionTiles(target, api)
+        : nothing
+    }
+    ${
+      api.phone && target.kind === "column"
+        ? renderColumnMore(target, api)
+        : nothing
+    }
+    ${playInMore ? renderPlayMore(target, section, api) : nothing}
+    ${
+      fields.length > 0 && !(api.phone && target.kind === "column")
         ? renderSettingsPanel(section, api.drafts, fieldTags(api), text, fields)
         : nothing
     }

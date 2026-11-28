@@ -155,6 +155,8 @@ export const STRINGS = {
   "bar.path": "{row} /",
   /** The chip's menu, of what's around what's selected. */
   "bar.around": "Select",
+  "bar.aroundBlock": "The {block} Block, or what it's in",
+  "bar.aroundColumn": "{column}, or what it's in",
   "bar.more": "More settings and actions",
   "bar.close": "Close",
   /** A color button's name: what it shows, such as "Fill", and its value. */
@@ -213,6 +215,10 @@ export const STRINGS = {
   "more.squareInOutlook": "Outlook on Windows shows square corners.",
   "more.oneColumn": "1 Column",
   "more.actions": "Actions",
+  "more.moveUp": "Move up",
+  "more.moveDown": "Move down",
+  "more.duplicate": "Duplicate",
+  "more.delete": "Delete",
   "more.copy": "Copy",
   "more.cut": "Cut",
   "more.paste": "Paste below",
@@ -245,6 +251,7 @@ export const STRINGS = {
   "style.title": "Email style",
   "style.lead": "Every Block uses these unless it sets its own.",
   "style.colors": "Colors",
+  "style.sections": "Style settings",
   "style.page": "Page",
   "style.email": "Email",
   "style.text": "Text",
