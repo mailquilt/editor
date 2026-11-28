@@ -352,13 +352,20 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     },
     sender: { attribute: false },
     socialIconsUrl: { attribute: false },
-    // As mergeTags.
+    // As mergeTags. An email is anything a host gives, and one JSON can't
+    // hold, such as with a BigInt, is a change, so the check leaves it out.
     starterEmails: {
       attribute: false,
       hasChanged: (
         next: HostAppProperties["starterEmails"],
         previous: HostAppProperties["starterEmails"]
-      ) => JSON.stringify(next) !== JSON.stringify(previous),
+      ) => {
+        try {
+          return JSON.stringify(next) !== JSON.stringify(previous);
+        } catch {
+          return true;
+        }
+      },
     },
     // A React host gives a new object at each render.
     strings: {

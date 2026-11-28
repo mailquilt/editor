@@ -5,7 +5,7 @@ import type { MailQuilt, StarterEmail } from "../src/index.js";
 import {
   announcement,
   canvas,
-  changesSince,
+  hostEvents,
   emailWith,
   setValue,
   structure,
@@ -48,17 +48,18 @@ test("picking a Starter email makes the email a copy of it, in one undo step", a
     "Heading, text, sign-off"
   );
   expect(await violations(page)).toStrictEqual([]);
-  const changes = await changesSince(page);
+  const changes = await hostEvents(page, "mq-change", ["type"]);
 
   await card(page, "Letter").click();
 
-  await expect(startScreen(page)).toHaveCount(0);
+  // At once, as a Command's result is, rather than once the screen has gone.
   expect(await structure(page)).toStrictEqual([
     [["Dear Ana"]],
     [["See you"], ["Jonah"]],
   ]);
+  expect(await changes()).toHaveLength(1);
+  await expect(startScreen(page)).toHaveCount(0);
   await expect(announcement(page)).toHaveText("Started from Letter.");
-  await changes(1);
 
   await undo(page);
 
@@ -116,4 +117,20 @@ test("a Starter email with no Rows closes the start screen too", async ({
 
   await expect(startScreen(page)).toHaveCount(0);
   await expect(canvas(page).getByTestId("start-row")).toBeVisible();
+});
+
+test("a Starter email JSON can't hold, such as one with a BigInt, is left out, and the rest are offered", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await canvas(page).evaluate((element, letter) => {
+    (element as MailQuilt).starterEmails = [
+      { email: { version: 10n }, name: "BigInt" },
+      letter,
+    ];
+  }, LETTER);
+  await setValue(page, emailWith([]));
+
+  await expect(card(page, "Letter")).toBeVisible();
+  await expect(card(page, "BigInt")).toHaveCount(0);
 });
