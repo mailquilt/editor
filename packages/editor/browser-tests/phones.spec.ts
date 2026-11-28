@@ -581,6 +581,28 @@ test.describe("on a phone", () => {
     await expect(checkPanel(page)).toBeInViewport();
   });
 
+  test("shows the link a bar field will save above the bar, clear of its scrolling", async ({
+    page,
+  }) => {
+    const email = emailWith([[[]]]);
+    email.rows[0]?.columns[0]?.blocks.push({
+      id: "button-1",
+      props: { label: "Shop" },
+      type: "button",
+    });
+    await openFullWidth(page);
+    await setValue(page, email);
+    await canvas(page).getByRole("group", { name: "Button Block" }).click();
+
+    await selectionBar(page)
+      .getByRole("textbox", { exact: true, name: "Link" })
+      .fill("example.com");
+
+    await expect(
+      canvas(page).getByText("Links to https://example.com")
+    ).toBeInViewport({ ratio: 1 });
+  });
+
   test("fixes a Problem with the email's own field in More", async ({
     page,
   }) => {

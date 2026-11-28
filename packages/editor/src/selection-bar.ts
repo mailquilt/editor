@@ -1060,6 +1060,23 @@ export const selectionBarStyles = css`
 
   .app[data-phone] .selection-bar .bar-field {
     height: 44px;
+    /* So what floats from it is placed by the dock, outside the scrolling. */
+    position: static;
+  }
+
+  /*
+   * The bar scrolls along, which would cut off what shows under a field. So
+   * its error, the link it will save and its Merge Tags show above the bar,
+   * as wide as it.
+   */
+  .app[data-phone]
+    .selection-bar
+    .bar-field
+    :is(.bar-error, .link-saves, .field-merge-tag-picker) {
+    inset-block-end: calc(100% + var(--mq-space-2));
+    inset-block-start: auto;
+    inset-inline: 0;
+    width: auto;
   }
 
   /* Inputs under 16px make Safari on a phone zoom the page. */

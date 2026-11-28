@@ -188,9 +188,7 @@ test.describe("the links in the Links popover", () => {
     await change(linkField(page, "Link 2 Label"), "Journal");
     const url = linkField(page, "Journal Link");
     await change(url, "northbound journal");
-    await expect(url).toHaveAccessibleDescription(
-      /isn’t a web address/u
-    );
+    await expect(url).toHaveAccessibleDescription(/isn’t a web address/u);
 
     await button(page, "Move Journal up").click();
 
