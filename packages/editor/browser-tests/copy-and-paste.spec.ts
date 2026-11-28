@@ -481,6 +481,19 @@ test.describe("pasting from outside", () => {
     );
   });
 
+  test("a clipboard with nothing to paste is refused, and says so", async ({
+    page,
+  }) => {
+    await openEmail(page, [[["A"]]]);
+
+    await pasteAt(blockWith(page, "A"), { "text/plain": "  " });
+
+    expect(await structure(page)).toStrictEqual([[["A"]]]);
+    await expect(announcement(page)).toHaveText(
+      "Can't paste. Nothing in what's copied can go in the email."
+    );
+  });
+
   test("a copy from a newer version is refused, and says why", async ({
     page,
   }) => {

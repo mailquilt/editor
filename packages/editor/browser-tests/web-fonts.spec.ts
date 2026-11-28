@@ -139,6 +139,18 @@ test.describe("web fonts", () => {
     await expect(list).toContainText(
       /^\s*Your fonts\s*Brand Serif\s*Falls back to Georgia\s*System fonts\s*Arial/u
     );
+    // Each font's group is in its name's context, as a web font and a system
+    // font can have the same name.
+    await expect(
+      list
+        .getByRole("group", { name: "Your fonts" })
+        .getByRole("option", { name: /^Brand Serif/u })
+    ).toBeVisible();
+    await expect(
+      list
+        .getByRole("group", { name: "System fonts" })
+        .getByRole("option", { name: /^Arial/u })
+    ).toBeVisible();
     expect(await violations(page)).toStrictEqual([]);
   });
 

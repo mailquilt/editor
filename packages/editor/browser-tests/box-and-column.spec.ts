@@ -83,6 +83,24 @@ test.describe("a Column", () => {
     await expect(selectionBar(page)).toHaveAccessibleName("Text settings");
   });
 
+  test("selected, leaves the Blocks out of Tab, so Shift+Tab from the bar keeps it selected", async ({
+    page,
+  }) => {
+    await openEmail(page, [[["A"], ["B"]]]);
+    await blockWith(page, "B").focus();
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Enter");
+    await expect(barButton(page, "Row 1 / Column 2")).toBeFocused();
+
+    await page.keyboard.press("Shift+Tab");
+
+    await expect(blockWith(page, "A")).not.toBeFocused();
+    await expect(selectionBar(page)).toHaveAccessibleName("Column 2 settings");
+  });
+
   test("is chosen by a press on its own space, beside its Blocks", async ({
     page,
   }) => {

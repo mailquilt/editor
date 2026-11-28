@@ -264,11 +264,6 @@ export const focusToolbarButton = (from: Element, step: ToolbarStep) => {
 };
 
 /**
- * What focus on an element in the editor is on, or else the floating toolbar.
- * In a place that belongs to the text being edited, it's on that text, which
- * stays when the place closes.
- */
-/**
  * A button on a list field item's toolbar, as the same button of that item,
  * wherever the item goes.
  */
@@ -323,6 +318,11 @@ const styleTargetOf = (element: Element): FocusTarget | undefined => {
 const listTargetOf = (element: Element) =>
   listToolOf(element) ?? rowsListTargetOf(element) ?? styleTargetOf(element);
 
+/**
+ * What focus on an element in the editor is on, or else the floating toolbar.
+ * In a place that belongs to the text being edited, it's on that text, which
+ * stays when the place closes.
+ */
 const targetOf = (element: Element): FocusTarget => {
   if (isOfText(element)) {
     return { on: "text" };

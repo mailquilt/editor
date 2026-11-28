@@ -51,7 +51,7 @@ Hold <kbd>Alt</kbd> (Option on a Mac) and press an arrow key to move the selecte
 | <kbd>Alt</kbd> + <kbd>Up</kbd> <kbd>Down</kbd> | Moves the Block up or down its Column. Past the end of the Column, it moves into the next Row. Past the top or bottom of the email, it gets a Row of its own, unless it's alone in its Row already, when it stays and the editor says it can't move. |
 | <kbd>Alt</kbd> + <kbd>Left</kbd> <kbd>Right</kbd> | Moves the Block into the next Column, including an empty one. It stops at the edge of its Row. |
 
-Each move is one step for undo, and focus stays on the Block, so the next press moves it again.
+Each move is one step for undo, and focus stays on the Block, so the next press moves it again. In a view that doesn't show every Row, such as the Phone view with a Row that's only on desktop, a Block moved into a Row the view folds or hides leaves what the email shows, and focus goes to the toolbar below the email. Switch to the view that shows the Row to go on moving it.
 
 Inside a Block's text, the arrow keys move the cursor instead, and <kbd>Alt</kbd> with an arrow key moves it by a word on macOS. Press <kbd>Escape</kbd> first to move the Block.
 
@@ -71,7 +71,9 @@ More opens a panel beside the email where there's room for it, and over the emai
 
 ## Columns
 
-A Column is selected from the keyboard by the Selection bar's chip, whose menu names a Block's Column, or a Row's Columns, empty ones too, or with the pointer by a press on the Column's own space, beside or below its Blocks. With a Column selected, the Selection bar has its background, padding, alignment and border. A Column moves, copies and is deleted only with its Row, so it has none of those keys.
+A Column is selected from the keyboard by the Selection bar's chip, whose menu names a Block's Column, or a Row's Columns, empty ones too, or with the pointer by a press on the Column's own space, beside or below its Blocks. With a Column selected, the Selection bar has its background, padding, alignment and border. A Column moves, copies and is deleted only with its Row, so it has none of those keys, and nothing is pasted with a Column selected.
+
+While a Column is selected, no Block is a stop for <kbd>Tab</kbd>, as while a Row is, so <kbd>Tab</kbd> and <kbd>Shift</kbd> + <kbd>Tab</kbd> leave it selected.
 
 | Key | What it does |
 | --- | --- |
@@ -123,7 +125,7 @@ These do what the Duplicate and Delete buttons in the Selection bar do, and each
 | --- | --- |
 | <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>C</kbd> | On a Block, copies it. In the Selection bar with a Row selected, copies the Row with its Blocks. |
 | <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>X</kbd> | Cuts: copies the Block or Row, then deletes it as <kbd>Delete</kbd> does, and focus moves the same way. |
-| <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>V</kbd> | On a Block, in the Selection bar outside its fields, or in the toolbar below the email, pastes. What's pasted is selected, with focus on it, or for a Row on the Selection bar's chip. A pasted Block, Row or text is one step for undo, and image files are added as dropped ones are. |
+| <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>V</kbd> | On a Block, in the Selection bar outside its fields, or in the toolbar below the email, pastes. With a Column selected, it pastes nothing. What's pasted is selected, with focus on it, or for a Row on the Selection bar's chip. A pasted Block, Row or text is one step for undo, and image files are added as dropped ones are. |
 
 The browser's Edit menu does the same, and so do More's Copy, Cut and Paste below. Paste below reads the clipboard through the browser, which asks the person first, and if it says no, the editor says why. A paste goes where this table says.
 
@@ -134,7 +136,7 @@ The browser's Edit menu does the same, and so do More's Copy, Cut and Paste belo
 | Text or HTML from another app | A new Text Block after it | A new Text Block in a new Row after it | A new Text Block in a new Row at the end |
 | An image file | A new Image Block after it | A new Image Block in a new Row after it | A new Image Block in a new Row at the end |
 
-A Block or Row pasted from a Mail Quilt editor, in this email, another one, or another tab, keeps every setting, and gets new IDs. Pasted anywhere else, such as in a document, it's text and simple HTML: text keeps its formatting and Lists, an Image is an image, and a Button is a link. Text or HTML from another app keeps only what a Text Block can hold, as when it's pasted into text, and each `{{name}}` in it becomes a Merge Tag. An image file uploads as a dropped one does, as [Upload images](./upload-images#pasting-an-image) says. Without `uploadImage` it's refused, and screen readers hear that the editor can't upload images. A copy from a newer version of the editor is refused, and screen readers hear why.
+A Block or Row pasted from a Mail Quilt editor, in this email, another one, or another tab, keeps every setting, and gets new IDs. Pasted anywhere else, such as in a document, it's text and simple HTML: text keeps its formatting and Lists, an Image is an image, and a Button is a link. Text or HTML from another app keeps only what a Text Block can hold, as when it's pasted into text, and each `{{name}}` in it becomes a Merge Tag. An image file uploads as a dropped one does, as [Upload images](./upload-images#pasting-an-image) says. Without `uploadImage` it's refused, and screen readers hear that the editor can't upload images. A copy from a newer version of the editor is refused, and screen readers hear why, as they do when nothing in what's copied can go in the email, such as only spaces.
 
 In a Block's text or a settings field, these keys copy, cut and paste text as usual. A Block pasted into text gives its text.
 

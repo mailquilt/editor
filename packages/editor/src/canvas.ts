@@ -1069,8 +1069,11 @@ export const renderRows = (
   }
   const drawn = blocksIn(drawnEmail(api.email, api.device, api.notOnDevice));
   const selected = api.selectedBlock?.block.id;
-  // The selected Block, unless it isn't drawn, as in a folded Row.
-  let tabStop = api.selectedRow ? undefined : drawn[0]?.id;
+  // The selected Block, unless it isn't drawn, as in a folded Row. With a Row
+  // or a Column selected, no Block is a stop, so Tab and Shift+Tab leave the
+  // selection alone.
+  let tabStop =
+    api.selectedRow || api.selectedColumn ? undefined : drawn[0]?.id;
   if (selected !== undefined && drawn.some(({ id }) => id === selected)) {
     tabStop = selected;
   }

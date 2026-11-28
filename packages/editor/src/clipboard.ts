@@ -184,12 +184,15 @@ export const writeCopy = (
   );
 };
 
-/** What a paste brings, read as untrusted, or why it can't be pasted. */
+/**
+ * What a paste brings, read as untrusted, or why it can't be pasted: as core
+ * refused it, or with nothing in it that can, such as only spaces.
+ */
 export type Pasted =
   | { block: NewBlock }
   | { row: Row }
   | { files: File[] }
-  | { refused: PasteRefusalCode };
+  | { refused: PasteRefusalCode | "nothing" };
 
 /** The JSON a copy from a Mail Quilt editor holds, if the HTML is one. */
 const copiedIn = (html: string) => {
@@ -204,9 +207,9 @@ const copiedIn = (html: string) => {
  * What the clipboard brings outside any text: what a Mail Quilt editor copied,
  * checked by core, else image files, else text or HTML from outside as a Text
  * Block. Files come only without text, as an app such as Word puts a picture
- * of the text beside it. Undefined for nothing that can be pasted.
+ * of the text beside it. Refused as "nothing" when none of it can be pasted.
  */
-export const readPasted = (data: DataTransfer): Pasted | undefined => {
+export const readPasted = (data: DataTransfer): Pasted => {
   const html = data.getData("text/html");
   const text = data.getData("text/plain");
   const copied = html ? copiedIn(html) : undefined;
@@ -224,5 +227,7 @@ export const readPasted = (data: DataTransfer): Pasted | undefined => {
     return { files };
   }
   const content = pastedContent(BLOCK_VIEWS.text.text.schema, { html, text });
-  return content && { block: { props: { content }, type: "text" } };
+  return content
+    ? { block: { props: { content }, type: "text" } }
+    : { refused: "nothing" };
 };

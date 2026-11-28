@@ -1482,6 +1482,7 @@ export const renderField = (
         return html`
           <input
             aria-describedby=${describedBy || nothing}
+            aria-invalid=${refused ? "true" : "false"}
             ?disabled=${field.disabled ?? false}
             id=${id}
             role="switch"

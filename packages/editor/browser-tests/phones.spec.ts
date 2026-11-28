@@ -3,9 +3,11 @@ import type { Locator, Page } from "@playwright/test";
 
 import type { MailQuilt } from "../src/index.js";
 import {
+  blockGroup,
   blockWith,
   boxOf,
   canvas,
+  change,
   checkPanel,
   checkTab,
   currentValue,
@@ -13,6 +15,7 @@ import {
   hostEvents,
   linkUrlField,
   moreButton,
+  openBlocks,
   openEmail,
   PHONE_VIEWPORT,
   selectionBar,
@@ -210,6 +213,25 @@ test.describe("on a phone", () => {
     await expect(
       more.getByRole("button", { name: "Play button: None" })
     ).toBeVisible();
+  });
+
+  test("marks a refused switch in More invalid, as its field would be", async ({
+    page,
+  }) => {
+    await openBlocks(page, ["image"]);
+    await blockGroup(page, "Image").focus();
+    await moreButton(page).click();
+    const more = sheet(page, "Image");
+    await change(
+      more.getByRole("textbox", { exact: true, name: "Alt text" }),
+      "A red bicycle"
+    );
+    const decorative = more.getByRole("switch", { name: "Decorative" });
+
+    await decorative.click();
+
+    await expect(decorative).toHaveAttribute("aria-invalid", "true");
+    await expect(page.getByRole("alert")).toContainText("its alt text first");
   });
 
   test("fits a Row's bar, its layouts in a sheet from Columns", async ({

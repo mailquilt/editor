@@ -27,6 +27,7 @@ import {
   TALL_VIEWPORT,
   test,
   textBlock,
+  tooltip,
   undoByKey,
   watchPrevented,
 } from "./helpers.js";
@@ -50,17 +51,47 @@ const clickRowTool = async (page: Page, position: number, name: string) => {
 };
 
 test.describe("the Move Row buttons", () => {
-  test("are disabled on the first and last Row", async ({ page }) => {
+  test("are off on the first and last Row, still reached by the arrow keys, and say why", async ({
+    page,
+  }) => {
     await openEmail(page, [[["One"]], [["Two"]], [["Three"]]]);
 
     await selectRow(page, 1);
-    await expect(rowTool(page, 1, "Move Row up")).toBeDisabled();
-    await expect(rowTool(page, 1, "Move Row down")).toBeEnabled();
+    const up = rowTool(page, 1, "Move Row up");
+    await expect(up).toHaveAttribute("aria-disabled", "true");
+    await expect(up).toHaveAccessibleDescription("It's the first Row");
+    await expect(rowTool(page, 1, "Move Row down")).not.toHaveAttribute(
+      "aria-disabled"
+    );
+    // The arrow keys reach it, and its tooltip says why.
+    await page.keyboard.press("End");
+    await page.keyboard.press("ArrowLeft");
+    await page.keyboard.press("ArrowLeft");
+    await page.keyboard.press("ArrowLeft");
+    await page.keyboard.press("ArrowLeft");
+    await expect(up).toBeFocused();
+    await expect(tooltip(page)).toHaveText("It's the first Row");
+    // Off, though still reachable, so a press does nothing.
+    await page.keyboard.press("Enter");
+    await expect(structure(page)).resolves.toEqual([
+      [["One"]],
+      [["Two"]],
+      [["Three"]],
+    ]);
+    await expect(up).toBeFocused();
+
     await selectRow(page, 2);
-    await expect(rowTool(page, 2, "Move Row up")).toBeEnabled();
-    await expect(rowTool(page, 2, "Move Row down")).toBeEnabled();
+    await expect(rowTool(page, 2, "Move Row up")).not.toHaveAttribute(
+      "aria-disabled"
+    );
+    await expect(rowTool(page, 2, "Move Row down")).not.toHaveAttribute(
+      "aria-disabled"
+    );
     await selectRow(page, 3);
-    await expect(rowTool(page, 3, "Move Row down")).toBeDisabled();
+    await expect(rowTool(page, 3, "Move Row down")).toHaveAttribute(
+      "aria-disabled",
+      "true"
+    );
   });
 
   test("move the Row with its Blocks, as one undo step", async ({ page }) => {
@@ -106,9 +137,12 @@ test.describe("moving a selected Row from the keyboard", () => {
       [["Three"]],
       [["Two"]],
     ]);
-    // Disabled now, on the last Row, so focus goes to the tool that took its
-    // place, and the arrow keys go past it.
-    await expect(rowTool(page, 3, "Duplicate Row")).toBeFocused();
+    // Off now, on the last Row, it keeps focus, as it stays reachable.
+    await expect(rowTool(page, 3, "Move Row down")).toBeFocused();
+    await expect(rowTool(page, 3, "Move Row down")).toHaveAttribute(
+      "aria-disabled",
+      "true"
+    );
     await page.keyboard.press("ArrowLeft");
     await expect(rowTool(page, 3, "Move Row up")).toBeFocused();
 

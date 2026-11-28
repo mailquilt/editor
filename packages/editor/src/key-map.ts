@@ -147,11 +147,10 @@ interface EntryOptions {
   held?: boolean;
   keepsDefault?: boolean;
   /**
-   * Only when the editor has what it acts on: a Block with text selected, a
-   * Row selected, or a step to undo or redo. Otherwise the press reaches the
-   * host page.
+   * Only when the editor has what it acts on: a Block with text selected, or
+   * a step to undo or redo. Otherwise the press reaches the host page.
    */
-  needs?: "canRedo" | "canUndo" | "selectedRow" | "selectedText";
+  needs?: "canRedo" | "canUndo" | "selectedText";
   /** Only on devices other than Apple's. */
   platform?: "other";
   stops: boolean;
@@ -310,6 +309,16 @@ const MOVE_BLOCK = arrows("Alt-", {
   stops: false,
   waitsForDrag: true,
 });
+
+/**
+ * A Row moves only up and down, so Alt+← and Alt+→ only keep the page. As for
+ * a Block, not while a drag is still going.
+ */
+const MOVE_ROW = arrows("Alt-", {
+  action: "moveRow",
+  stops: false,
+  waitsForDrag: true,
+}).filter(({ direction }) => direction === "up" || direction === "down");
 
 /**
  * Ctrl/⌘+D, as the Duplicate buttons. The browser would otherwise bookmark
@@ -503,12 +512,7 @@ const KEY_SCOPES = {
       // A selected Row's Blocks aren't stops for Tab, so this is the way back
       // to them.
       escape("unselectRow"),
-      // A Row moves only up and down, so Alt+← and Alt+→ only keep the page.
-      ...arrows("Alt-", {
-        action: "moveRow",
-        stops: false,
-        waitsForDrag: true,
-      }).filter(({ direction }) => direction === "up" || direction === "down"),
+      ...MOVE_ROW,
       duplicate("duplicateRow"),
       ...remove("deleteRow"),
       clipboard("copy", "copyRow"),
@@ -559,15 +563,7 @@ const KEY_SCOPES = {
    * only keep the page.
    */
   rowsItems: {
-    keys: [
-      ...arrows("Alt-", {
-        action: "moveRow",
-        stops: false,
-        waitsForDrag: true,
-      }).filter(({ direction }) => direction === "up" || direction === "down"),
-      OPEN_ADD,
-      ...TOOLBAR,
-    ],
+    keys: [...MOVE_ROW, OPEN_ADD, ...TOOLBAR],
     within: "editor",
   },
   /** The layouts on an email with no Rows, one stop for Tab. */
@@ -843,8 +839,6 @@ interface Context {
   canUndo: boolean;
   /** A Block or Row is being dragged. */
   dragging: boolean;
-  /** A Row is selected. */
-  selectedRow: boolean;
   /** The selected Block has text. */
   selectedText: boolean;
 }
@@ -884,7 +878,6 @@ const bindingIn = <Of extends string>(
     canRedo = false,
     canUndo = false,
     dragging = false,
-    selectedRow = false,
     selectedText = false,
   }: Partial<Context>
 ): Binding<Of> | undefined => {
@@ -894,7 +887,6 @@ const bindingIn = <Of extends string>(
       canRedo,
       canUndo,
       dragging,
-      selectedRow,
       selectedText,
     })
   );

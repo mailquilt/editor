@@ -273,17 +273,11 @@ export const createKeyDispatch = ({
         editing.cutRow(rowId, data);
       }
     },
-    paste: (data) => {
-      const pasted = readPasted(data);
-      if (pasted) {
-        editing.paste(pasted);
-      }
-    },
+    paste: (data) => editing.paste(readPasted(data)),
     pasteAfterRow: (data) => {
-      const pasted = readPasted(data);
       const rowId = rowOf();
-      if (pasted && rowId !== undefined) {
-        editing.paste(pasted, rowId);
+      if (rowId !== undefined) {
+        editing.paste(readPasted(data), rowId);
       }
     },
   };
@@ -318,7 +312,6 @@ export const createKeyDispatch = ({
     canRedo: canStep("redo"),
     canUndo: canStep("undo"),
     dragging: isDragging(),
-    selectedRow: selection.rowId !== undefined,
     selectedText: selection.selectedText !== undefined,
   });
 
