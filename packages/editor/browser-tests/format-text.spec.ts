@@ -49,7 +49,7 @@ interface SavedNode {
 }
 
 /** A paragraph's text, with each line break as a new line. */
-const textOf = (paragraph: SavedNode | undefined) =>
+const paragraphText = (paragraph: SavedNode | undefined) =>
   (paragraph?.content ?? [])
     .map(({ text, type }) => (type === "hardBreak" ? "\n" : (text ?? "")))
     .join("");
@@ -62,10 +62,10 @@ const savedOutline = async (page: Page) => {
   const nodes = (await savedParagraphs(page)) as SavedNode[] | undefined;
   return nodes?.map((node) =>
     node.type === "paragraph"
-      ? textOf(node)
+      ? paragraphText(node)
       : {
           [node.type]: (node.content ?? []).map((item) =>
-            textOf(item.content?.[0])
+            paragraphText(item.content?.[0])
           ),
         }
   );
@@ -322,7 +322,10 @@ test.describe("the toolbar", () => {
 
   test("its Bold button names its shortcut", async ({ page }) => {
     await selectAllInBlock(page);
-    const mod = process.platform === "darwin" ? "Meta" : "Control";
+    const apple = await page.evaluate(() =>
+      /Mac|iPhone|iPod|iPad/u.test(navigator.platform)
+    );
+    const mod = apple ? "Meta" : "Control";
 
     await expect(formatButton(page, "Bold")).toHaveAttribute(
       "aria-keyshortcuts",
@@ -531,31 +534,27 @@ test.describe("Lists", () => {
       .toStrictEqual([{ bulletList: ["Hellox"] }]);
   });
 
-  test("Shift+Ctrl/⌘+8 and 7 turn each kind on, switch between them and turn them off, on any layout, and typing a List's marker makes none", async ({
+  test("Shift+Ctrl/⌘+8 and 7 turn each kind on, switch between them and turn them off", async ({
     page,
   }) => {
-    await cursorAtEndOfBlock(page);
-    await page.keyboard.press("Enter");
-    await page.keyboard.type("- a");
-    await page.keyboard.press("Enter");
-    await page.keyboard.type("1. b");
-    await expect
-      .poll(() => savedOutline(page))
-      .toStrictEqual(["Hello", "- a", "1. b"]);
-    await selectAll(page);
+    await selectAllInBlock(page);
 
     await page.keyboard.press("ControlOrMeta+Shift+8");
     await expect
       .poll(() => savedOutline(page))
-      .toStrictEqual([{ bulletList: ["Hello", "- a", "1. b"] }]);
+      .toStrictEqual([{ bulletList: ["Hello"] }]);
     await page.keyboard.press("ControlOrMeta+Shift+7");
     await expect
       .poll(() => savedOutline(page))
-      .toStrictEqual([{ orderedList: ["Hello", "- a", "1. b"] }]);
+      .toStrictEqual([{ orderedList: ["Hello"] }]);
     await page.keyboard.press("ControlOrMeta+Shift+7");
-    await expect
-      .poll(() => savedOutline(page))
-      .toStrictEqual(["Hello", "- a", "1. b"]);
+    await expect.poll(() => savedOutline(page)).toStrictEqual(["Hello"]);
+  });
+
+  test("Shift+Ctrl/⌘+8 turns on a bulleted List on any layout", async ({
+    page,
+  }) => {
+    await selectAllInBlock(page);
 
     // As on a German layout, where Shift+8 types "(".
     await textBlock(page)
@@ -574,9 +573,22 @@ test.describe("Lists", () => {
         Object.defineProperty(event, "keyCode", { value: 56 });
         text.dispatchEvent(event);
       });
+
     await expect
       .poll(() => savedOutline(page))
-      .toStrictEqual([{ bulletList: ["Hello", "- a", "1. b"] }]);
+      .toStrictEqual([{ bulletList: ["Hello"] }]);
+  });
+
+  test("typing a List's marker makes no List", async ({ page }) => {
+    await cursorAtEndOfBlock(page);
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("- a");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("1. b");
+
+    await expect
+      .poll(() => savedOutline(page))
+      .toStrictEqual(["Hello", "- a", "1. b"]);
   });
 
   test("the format bar's buttons show which List the text is in, and switch it", async ({
@@ -646,6 +658,7 @@ test.describe("links", () => {
     await expect(linkUrlField(page)).toBeVisible();
     await expect(linkUrlField(page)).toHaveAttribute("aria-invalid", "true");
     await expect(linkUrlField(page)).toHaveAccessibleDescription(/Merge Tag/u);
+    await settle(page);
     expect(await savedInline(page)).toStrictEqual([
       { text: "Hello", type: "text" },
     ]);
@@ -718,6 +731,7 @@ test.describe("links", () => {
 
     await expect(linkUrlField(page)).toBeHidden();
     await expect(textBlock(page).first()).toBeFocused();
+    await settle(page);
     expect(await savedInline(page)).toStrictEqual([
       { text: "Hello", type: "text" },
     ]);
@@ -729,6 +743,7 @@ test.describe("links", () => {
 
     await expect(linkUrlField(page)).toBeHidden();
     await expect(textBlock(page).first()).toBeFocused();
+    await settle(page);
     expect(await savedInline(page)).toStrictEqual([
       { text: "Hello", type: "text" },
     ]);
@@ -1055,7 +1070,10 @@ test.describe("undo and redo", () => {
 
     await undoByKey(page);
 
+    await settle(page);
     await expect(textBlock(page).first()).toHaveText("Hellox");
+    // The field's own undo ran.
+    await expect(linkUrlField(page)).not.toHaveValue("https");
   });
 
   test("the Undo button closes the link field and returns to the Block", async ({

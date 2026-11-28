@@ -22,6 +22,7 @@ import {
   moreAction,
   morePanel,
   moreButton,
+  moveCursorToLineEnd,
   moveCursorToLineStart,
   PHONE_VIEWPORT,
   sheet,
@@ -67,9 +68,13 @@ const controlsWithoutRing = (page: Page) =>
     const controls = root.querySelectorAll<HTMLElement>(
       'button:not(:disabled, [role="tab"][aria-controls^="mode-panel"][aria-selected="false"]), input, select, [role="group"][tabindex], [role="textbox"]'
     );
-    return [...controls]
+    let examined = 0;
+    const withoutRing = [...controls]
       .filter((control) => {
         control.focus();
+        if (root.activeElement === control) {
+          examined += 1;
+        }
         // A field in the Selection bar draws its ring around its icon and its
         // name too, on the label it's in.
         const label = control.closest("label");
@@ -86,6 +91,11 @@ const controlsWithoutRing = (page: Page) =>
       .map(
         (control) => control.getAttribute("aria-label") ?? control.textContent
       );
+    // A selector or panel that matched nothing focusable would pass for nothing.
+    if (examined === 0) {
+      throw new Error("No control took focus, so none was checked");
+    }
+    return withoutRing;
   });
 
 /**
@@ -492,7 +502,7 @@ test.describe("typing inside a Block", () => {
     );
     await openEmail(page, [[["A"]]]);
     await textOf(page, "A").click();
-    await page.keyboard.press("End");
+    await moveCursorToLineEnd(page);
     const session = await page.context().newCDPSession(page);
 
     for (const text of ["に", "にほ"]) {

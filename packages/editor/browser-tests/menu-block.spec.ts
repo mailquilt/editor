@@ -11,6 +11,7 @@ import {
   canvas,
   change,
   checkPanel,
+  emailWith,
   exportHtml,
   inboxEmail,
   openCheck,
@@ -20,7 +21,6 @@ import {
   test,
   violations,
 } from "./helpers.js";
-import { emailWith } from "./host/email.js";
 
 const SHOP = { label: "Shop", url: "https://northbound.co/shop" } as const;
 const JOURNAL = {

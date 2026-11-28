@@ -19,6 +19,7 @@ import {
   dropFilesAt,
   dropIndicator,
   field,
+  imageOf,
   selectionBar,
   setting,
   openBlocks,
@@ -28,6 +29,7 @@ import {
   openCheck,
   redo,
   serveImages,
+  settle,
   TALL_VIEWPORT,
   test,
   topOf,
@@ -49,7 +51,7 @@ test.use({ viewport: TALL_VIEWPORT });
 declare global {
   interface Window {
     /** Each call to the test's `uploadImage`, which waits for the test. */
-    uploads: {
+    uploads?: {
       name: string;
       type: string;
       signal: AbortSignal;
@@ -62,11 +64,12 @@ declare global {
 /** Gives the editor an `uploadImage` that waits until the test settles it. */
 const giveUploadImage = (page: Page) =>
   canvas(page).evaluate((element) => {
-    window.uploads = [];
+    const uploads: NonNullable<Window["uploads"]> = [];
+    window.uploads = uploads;
     (element as MailQuilt).uploadImage = (file, { signal }) =>
       // oxlint-disable-next-line promise/avoid-new -- The test settles each upload.
       new Promise((resolve, reject) => {
-        window.uploads.push({
+        uploads.push({
           name: file.name,
           reject,
           resolve,
@@ -97,8 +100,6 @@ const uploadCalls = (page: Page) =>
   page.evaluate(() =>
     (window.uploads ?? []).map(({ name, type }) => ({ name, type }))
   );
-
-const image = (page: Page) => blockGroup(page, "Image").locator("img");
 
 /** An Image Block, selected, with its settings showing. */
 const openImage = async (page: Page) => {
@@ -176,7 +177,7 @@ test.describe("uploading an image from the Image settings", () => {
       "Use a PNG, JPEG or GIF image."
     );
     await expect(uploadCalls(page)).resolves.toEqual([]);
-    await expect(image(page)).toHaveAttribute("src", PHOTO);
+    await expect(imageOf(page)).toHaveAttribute("src", PHOTO);
   });
 
   test("says why the editor refused a file in the Host app's words, as strings changes", async ({
@@ -208,9 +209,12 @@ test.describe("uploading an image from the Image settings", () => {
     await pickFile(page);
 
     await pickFile(page, "logo.svg", "image/svg+xml");
-    await page.evaluate((url) => window.uploads[0]?.resolve({ url }), UPLOADED);
+    await page.evaluate(
+      (url) => window.uploads?.[0]?.resolve({ url }),
+      UPLOADED
+    );
 
-    await expect(image(page)).toHaveAttribute("src", UPLOADED);
+    await expect(imageOf(page)).toHaveAttribute("src", UPLOADED);
     await expect.poll(() => uploadError(page)).toBe("");
   });
 
@@ -223,14 +227,14 @@ test.describe("uploading an image from the Image settings", () => {
 
     await pickFile(page, "big.jpg", "image/jpeg");
     await page.evaluate(() =>
-      window.uploads[0]?.reject(new Error("Images can be up to 5 MB."))
+      window.uploads?.[0]?.reject(new Error("Images can be up to 5 MB."))
     );
 
     await expect
       .poll(() => uploadError(page))
       .toBe("Images can be up to 5 MB.");
     await expect(announcement(page)).toHaveText("Images can be up to 5 MB.");
-    await expect(image(page)).toHaveAttribute("src", PHOTO);
+    await expect(imageOf(page)).toHaveAttribute("src", PHOTO);
     await changes(0);
 
     await change(await setting(page, "Image URL"), UPLOADED);
@@ -245,7 +249,7 @@ test.describe("uploading an image from the Image settings", () => {
     await giveUploadImage(page);
 
     await pickFile(page);
-    await page.evaluate(() => window.uploads[0]?.reject());
+    await page.evaluate(() => window.uploads?.[0]?.reject());
 
     await expect
       .poll(() => uploadError(page))
@@ -259,7 +263,7 @@ test.describe("uploading an image from the Image settings", () => {
     await pickFile(page);
     await page.evaluate(() =>
       // oxlint-disable-next-line no-script-url -- What's being refused.
-      window.uploads[0]?.resolve({ url: "javascript:alert(1)" })
+      window.uploads?.[0]?.resolve({ url: "javascript:alert(1)" })
     );
 
     await expect
@@ -281,7 +285,10 @@ test.describe("uploading an image from the Image settings", () => {
     );
 
     await pickFile(page);
-    await page.evaluate((url) => window.uploads[0]?.resolve({ url }), UPLOADED);
+    await page.evaluate(
+      (url) => window.uploads?.[0]?.resolve({ url }),
+      UPLOADED
+    );
 
     await expect(await setting(page, "Image URL")).toHaveValue(UPLOADED);
     await expect(await setting(page, "Image URL")).toHaveAttribute(
@@ -305,9 +312,12 @@ test.describe("uploading an image from the Image settings", () => {
 
     await context.unroute(missing);
     await pickFile(page);
-    await page.evaluate((url) => window.uploads[0]?.resolve({ url }), missing);
+    await page.evaluate(
+      (url) => window.uploads?.[0]?.resolve({ url }),
+      missing
+    );
 
-    await expect(image(page)).toHaveAttribute("src", missing);
+    await expect(imageOf(page)).toHaveAttribute("src", missing);
   });
 
   test("is aborted when its Block is deleted, and what it gives is dropped", async ({
@@ -323,10 +333,14 @@ test.describe("uploading an image from the Image settings", () => {
     await page.keyboard.press("Delete");
 
     await expect
-      .poll(() => page.evaluate(() => window.uploads[0]?.signal.aborted))
+      .poll(() => page.evaluate(() => window.uploads?.[0]?.signal.aborted))
       .toBe(true);
 
-    await page.evaluate((url) => window.uploads[0]?.resolve({ url }), UPLOADED);
+    await page.evaluate(
+      (url) => window.uploads?.[0]?.resolve({ url }),
+      UPLOADED
+    );
+    await settle(page);
 
     await expect(announcement(page)).toHaveText("Block deleted.");
     await changes(1);
@@ -346,11 +360,14 @@ test.describe("uploading an image from the Image settings", () => {
       .toEqual([{ name: "photo.png", type: "image/png" }]);
     await expect(blockGroup(page, "Image")).toContainText("Uploading…");
     await expect(announcement(page)).toHaveText("Uploading image.");
-    await expect(image(page)).toHaveCount(0);
+    await expect(imageOf(page)).toHaveCount(0);
 
-    await page.evaluate((url) => window.uploads[0]?.resolve({ url }), UPLOADED);
+    await page.evaluate(
+      (url) => window.uploads?.[0]?.resolve({ url }),
+      UPLOADED
+    );
 
-    await expect(image(page)).toHaveAttribute("src", UPLOADED);
+    await expect(imageOf(page)).toHaveAttribute("src", UPLOADED);
     await expect(announcement(page)).toHaveText("Image uploaded.");
     await expect(await setting(page, "Image URL")).toHaveValue(UPLOADED);
     await expect(await setting(page, "Image URL")).toBeEditable();
@@ -389,9 +406,12 @@ test.describe("dropping image files", () => {
       "notes.pdf: Use a PNG, JPEG or GIF image."
     );
 
-    await page.evaluate((url) => window.uploads[0]?.resolve({ url }), UPLOADED);
+    await page.evaluate(
+      (url) => window.uploads?.[0]?.resolve({ url }),
+      UPLOADED
+    );
 
-    await expect(image(page)).toHaveAttribute("src", UPLOADED);
+    await expect(imageOf(page)).toHaveAttribute("src", UPLOADED);
     await expect(blockTypes(page)).resolves.toEqual(["text", "image"]);
 
     // Alone, the file is refused by the Block, and still by its name.
@@ -447,7 +467,10 @@ test.describe("dropping image files", () => {
     await expect(second).toHaveAttribute("aria-current", "true");
 
     // Each uploads on its own.
-    await page.evaluate((url) => window.uploads[1]?.resolve({ url }), UPLOADED);
+    await page.evaluate(
+      (url) => window.uploads?.[1]?.resolve({ url }),
+      UPLOADED
+    );
 
     await expect(second.locator("img")).toHaveAttribute("src", UPLOADED);
     await expect(first).toContainText("Uploading…");
@@ -505,7 +528,7 @@ test.describe("dropping image files", () => {
     await expect.poll(() => uploadCalls(page)).toHaveLength(2);
     // At once, as a Host app that checks each file's size itself fails them.
     await page.evaluate(() => {
-      for (const upload of window.uploads) {
+      for (const upload of window.uploads ?? []) {
         upload.reject(new Error("Images can be up to 5 MB."));
       }
     });
@@ -517,7 +540,7 @@ test.describe("dropping image files", () => {
       "aria-current",
       "true"
     );
-    await expect(image(page)).toHaveCount(0);
+    await expect(imageOf(page)).toHaveCount(0);
     await expect
       .poll(() => uploadError(page))
       .toBe("Images can be up to 5 MB.");
@@ -560,7 +583,7 @@ test.describe("dropping image files", () => {
 
     await expect(blockTypes(page)).resolves.toEqual(["text"]);
     await expect
-      .poll(() => page.evaluate(() => window.uploads[0]?.signal.aborted))
+      .poll(() => page.evaluate(() => window.uploads?.[0]?.signal.aborted))
       .toBe(true);
 
     await redo(page);

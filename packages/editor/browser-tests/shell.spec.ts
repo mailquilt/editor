@@ -20,12 +20,17 @@ import {
   hostEvents,
   selectRow,
   setting,
+  settle,
   test,
   textBlock,
   violations,
 } from "./helpers.js";
 
 const shell = (page: Page) => page.locator("mail-quilt-shell");
+
+/** The Shell's Export button in the top bar. */
+const exportButton = (page: Page) =>
+  shell(page).getByRole("button", { exact: true, name: "Export" });
 
 /** Opens one of the Shell's menus in the top bar, and returns it. */
 const openMenu = async (page: Page, name: "Export" | "More") => {
@@ -328,18 +333,14 @@ test.describe("moving an email with JSON", () => {
     });
     await page.goto("/shell.html?refused-first");
     await expect(shell(page).getByRole("alert")).toContainText("newer");
-    const exportButton = shell(page).getByRole("button", {
-      exact: true,
-      name: "Export",
-    });
 
-    await expect(exportButton).toHaveAttribute("aria-disabled", "true");
-    await exportButton.hover({ force: true });
+    await expect(exportButton(page)).toHaveAttribute("aria-disabled", "true");
+    await exportButton(page).hover({ force: true });
     await expect(canvas(page).getByRole("tooltip")).toHaveText(
       "Add something to the email first"
     );
     // Playwright waits for a control that's off, so the click is sent as is.
-    await exportButton.click({ force: true });
+    await exportButton(page).click({ force: true });
     await expect(shell(page).getByRole("menu")).toHaveCount(0);
     await expect(
       shell(page).evaluate((element) =>
@@ -358,17 +359,13 @@ test.describe("moving an email with JSON", () => {
     page,
   }) => {
     await openShell(page);
-    const exportButton = shell(page).getByRole("button", {
-      exact: true,
-      name: "Export",
-    });
     // Delete in the Selection bar, with a Row selected, deletes that Row.
     await selectRow(page, 1);
     await page.keyboard.press("Delete");
 
-    await expect(exportButton).toHaveAttribute("aria-disabled", "true");
+    await expect(exportButton(page)).toHaveAttribute("aria-disabled", "true");
     await page.keyboard.press("ControlOrMeta+z");
-    await expect(exportButton).not.toHaveAttribute("aria-disabled");
+    await expect(exportButton(page)).not.toHaveAttribute("aria-disabled");
   });
 });
 
@@ -377,15 +374,11 @@ test.describe("the menus", () => {
     page,
   }) => {
     await openShell(page);
-    const exportButton = shell(page).getByRole("button", {
-      exact: true,
-      name: "Export",
-    });
     const menu = shell(page).getByRole("menu");
-    await exportButton.focus();
+    await exportButton(page).focus();
 
     await page.keyboard.press("Enter");
-    await expect(exportButton).toHaveAttribute("aria-expanded", "true");
+    await expect(exportButton(page)).toHaveAttribute("aria-expanded", "true");
     await expect(menu.getByRole("menuitem").first()).toBeFocused();
     await page.keyboard.press("ArrowDown");
     await expect(menu.getByRole("menuitem").last()).toBeFocused();
@@ -395,8 +388,8 @@ test.describe("the menus", () => {
     await page.keyboard.press("Escape");
 
     await expect(menu).toHaveCount(0);
-    await expect(exportButton).toBeFocused();
-    await expect(exportButton).toHaveAttribute("aria-expanded", "false");
+    await expect(exportButton(page)).toBeFocused();
+    await expect(exportButton(page)).toHaveAttribute("aria-expanded", "false");
     // As Escape acts with any modifiers.
     await page.keyboard.press("Enter");
     await page.keyboard.press("Shift+Escape");
@@ -413,9 +406,7 @@ test.describe("the menus", () => {
     const menu = shell(page).getByRole("menu");
 
     await openMenu(page, "Export");
-    await shell(page)
-      .getByRole("button", { exact: true, name: "Export" })
-      .click();
+    await exportButton(page).click();
     await expect(menu).toHaveCount(0);
 
     // As Safari and Firefox on a Mac don't focus a button that's clicked.
@@ -1104,7 +1095,8 @@ test.describe("saving in the browser", () => {
     );
     await page.keyboard.type("Unsaved ");
 
-    await expect(changeCount(page)).toHaveText("14");
+    await expect(textBlock(page)).toHaveText("Saved Unsaved Hello");
+    await settle(page);
     expect(await saved(page)).toContain("Saved Hello");
     expect(await saved(page)).not.toContain("Unsaved");
   });
@@ -1127,7 +1119,8 @@ test.describe("saving in the browser", () => {
 
     await focusStartOfTextBlock(page);
     await page.keyboard.type("Oh ");
-    await expect(changeCount(page)).toHaveText("3");
+    await expect(textBlock(page)).toHaveText("Oh Hello");
+    await settle(page);
 
     expect(
       await page.evaluate(
@@ -1558,10 +1551,7 @@ test("shows the dragging cursor over the Shell during a drag", async ({
   page,
 }) => {
   await openShell(page);
-  const button = shell(page).getByRole("button", {
-    exact: true,
-    name: "Export",
-  });
+  const button = exportButton(page);
   const cursor = () =>
     button.evaluate((element) => getComputedStyle(element).cursor);
   const usual = await cursor();

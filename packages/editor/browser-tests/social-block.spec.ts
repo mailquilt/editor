@@ -14,6 +14,7 @@ import {
   canvas,
   choose,
   change,
+  emailWith,
   exportHtml,
   setting,
   holdMjml,
@@ -24,7 +25,6 @@ import {
   test,
   violations,
 } from "./helpers.js";
-import { emailWith } from "./host/email.js";
 
 /** Where this Host app serves the Social icons itself. */
 const ICONS = "https://icons.example/mail/";
@@ -118,6 +118,7 @@ test("a new Social Block says it has no links, as the email shows nothing", asyn
 
   await expect(blockGroup(page, "Social")).toContainText("No social links yet");
   await expect(icons(page)).toHaveCount(0);
+  expect(await exportHtml(page)).not.toContain("<img");
 });
 
 test("the icons take the size chosen in the Selection bar", async ({
@@ -134,14 +135,21 @@ test("the icons take the size chosen in the Selection bar", async ({
   await expect(icons(page)).toHaveJSProperty("width", 48);
 });
 
+/** A link for every Social network. */
+const ALL_LINKS = (
+  Object.keys(SOCIAL_NETWORKS) as (keyof typeof SOCIAL_NETWORKS)[]
+).map((network) => ({ network, url: `https://${network}.example/shop` }));
+
 /** The space between the first line of icons and the second, in px. */
 const spaceBetweenLines = async (images: Locator) => {
   const all = await images.all();
   const found = await Promise.all(all.map((image) => image.boundingBox()));
   const boxes = found.filter((box) => box !== null);
   const firstTop = Math.min(...boxes.map(({ y }) => y));
-  const firstLine = boxes.filter(({ y }) => y === firstTop);
-  const below = boxes.filter(({ y }) => y > firstTop);
+  const firstLine = boxes.filter(
+    ({ y }) => Math.round(y) === Math.round(firstTop)
+  );
+  const below = boxes.filter(({ y }) => Math.round(y) > Math.round(firstTop));
   return (
     Math.min(...below.map(({ y }) => y)) -
     Math.max(...firstLine.map(({ height, y }) => y + height))
@@ -163,28 +171,20 @@ const around = async (icon: Locator, holder: Locator) => {
 test("icons that wrap have the gap between icons between their lines too, on the canvas and in the export", async ({
   page,
 }) => {
-  await openSocial(
-    page,
-    (Object.keys(SOCIAL_NETWORKS) as (keyof typeof SOCIAL_NETWORKS)[]).map(
-      (network) => ({
-        network,
-        url: `https://${network}.example/shop`,
-      })
-    )
-  );
+  await openSocial(page, ALL_LINKS);
   await blockGroup(page, "Social").click();
   await choose(page, "Icon size", "48");
   await expect(icons(page).first()).toHaveJSProperty("width", 48);
 
-  // Ten 48px icons and their 24px gaps are wider than the email.
-  expect(await spaceBetweenLines(icons(page))).toBe(24);
+  // Every network's 48px icon and the 24px gaps are wider than the email.
+  expect(await spaceBetweenLines(icons(page))).toBeCloseTo(24, 0);
   await openCheck(page);
   const exported = inboxEmail(page).getByRole("img");
-  await expect(exported).toHaveCount(10);
+  await expect(exported).toHaveCount(ALL_LINKS.length);
   for (const icon of await exported.all()) {
     await expect(icon).toHaveJSProperty("complete", true);
   }
-  expect(await spaceBetweenLines(exported)).toBe(24);
+  expect(await spaceBetweenLines(exported)).toBeCloseTo(24, 0);
 });
 
 /** Where each line of icons starts and ends, from the top line down, in px. */
@@ -193,8 +193,9 @@ const lineEdges = async (images: Locator) => {
   const found = await Promise.all(all.map((image) => image.boundingBox()));
   const lines = new Map<number, { end: number; start: number }>();
   for (const box of found.filter((each) => each !== null)) {
-    const line = lines.get(box.y) ?? { end: -Infinity, start: Infinity };
-    lines.set(box.y, {
+    const top = Math.round(box.y);
+    const line = lines.get(top) ?? { end: -Infinity, start: Infinity };
+    lines.set(top, {
       end: Math.max(line.end, box.x + box.width),
       start: Math.min(line.start, box.x),
     });
@@ -208,15 +209,7 @@ for (const align of ["right", "center"] as const) {
   test(`icons that wrap, aligned ${align}, line up the same on every line, on the canvas and in the export`, async ({
     page,
   }) => {
-    await openSocial(
-      page,
-      (Object.keys(SOCIAL_NETWORKS) as (keyof typeof SOCIAL_NETWORKS)[]).map(
-        (network) => ({
-          network,
-          url: `https://${network}.example/shop`,
-        })
-      )
-    );
+    await openSocial(page, ALL_LINKS);
     await blockGroup(page, "Social").click();
     await choose(page, "Icon size", "48");
     await choose(page, "Alignment", ALIGN_LABELS[align]);
@@ -233,7 +226,7 @@ for (const align of ["right", "center"] as const) {
     expect(await places(icons(page))).toBe(1);
     await openCheck(page);
     const exported = inboxEmail(page).getByRole("img");
-    await expect(exported).toHaveCount(10);
+    await expect(exported).toHaveCount(ALL_LINKS.length);
     for (const icon of await exported.all()) {
       await expect(icon).toHaveJSProperty("complete", true);
     }

@@ -297,12 +297,17 @@ export const changeCount = (page: Page) => page.getByTestId("change-count");
 
 /**
  * Checks how many `mq-change` events the test host has had since this was
- * called, as the count it shows.
+ * called, as the count it shows. For none, the page settles first, as the count
+ * already shows none, and an event that comes a moment later would be missed.
  */
 export const changesSince = async (page: Page) => {
   const before = Number(await changeCount(page).textContent());
-  return (count: number) =>
-    expect(changeCount(page)).toHaveText(String(before + count));
+  return async (count: number) => {
+    if (count === 0) {
+      await settle(page);
+    }
+    await expect(changeCount(page)).toHaveText(String(before + count));
+  };
 };
 
 /** The document the test host last received in an `mq-change`. */
@@ -389,13 +394,19 @@ export const consoleErrors = (page: Page) => {
   return errors;
 };
 
+/** Sets the editor's width on the test page, with no padding around it. */
+export const editorOf = async (page: Page, width: number) => {
+  await page.addStyleTag({
+    content: `main { padding: 0 !important } mail-quilt { width: ${width}px !important }`,
+  });
+};
+
 /** Opens the test page with an email of these Rows of Text Blocks. */
 export const openEmail = async (page: Page, rows: string[][][]) => {
   await page.goto("/");
   await setValue(page, emailWith(rows));
   await expect(textBlock(page).first()).toBeVisible();
-  // An email the editor refused, such as one with two Blocks of the same text
-  // and so the same id, would leave the test working on something else.
+  // An email the editor refused would leave the test working on something else.
   expect(await structure(page)).toEqual(rows);
 };
 
@@ -436,9 +447,6 @@ export const selectRow = async (page: Page, position: number) => {
   await rowTag(page, position).click();
   await expect(rowTools(page, position)).toBeVisible();
 };
-
-/** Shows a Row's tools: the Selection bar with the Row selected. */
-export const showRowTools = selectRow;
 
 /** A layout in the Selection bar, with a Row selected. */
 export const layoutOption = (page: Page, layout: string) =>
@@ -554,6 +562,9 @@ export const dropIndicator = (page: Page) =>
 /** The text of the Text Block with this exact text. */
 export const textOf = (page: Page, text: string) =>
   blockWith(page, text).getByRole("textbox", { name: "Text Block" });
+
+/** The picture in an Image Block. */
+export const imageOf = (page: Page) => blockGroup(page, "Image").locator("img");
 
 /** The selected Block, if there is one. */
 export const selectedBlock = (page: Page) =>
@@ -773,7 +784,7 @@ export interface Point {
 }
 
 /** A file to drop, by its name and type. */
-export interface DroppedFile {
+interface DroppedFile {
   name: string;
   type: string;
 }

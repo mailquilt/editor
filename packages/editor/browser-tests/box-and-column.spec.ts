@@ -7,6 +7,7 @@ import {
   boxOf,
   canvas,
   currentValue,
+  editorOf,
   exportHtml,
   field,
   morePanel,
@@ -20,13 +21,6 @@ import {
   undo,
   violations,
 } from "./helpers.js";
-
-/** Wide enough for More to dock beside the email. */
-const editorOf = async (page: Page, width: number) => {
-  await page.addStyleTag({
-    content: `main { padding: 0 !important } mail-quilt { width: ${width}px !important }`,
-  });
-};
 
 const columnProps = async (page: Page, row: number, column: number) => {
   const { rows } = await currentValue(page);

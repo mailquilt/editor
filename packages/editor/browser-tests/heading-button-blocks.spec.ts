@@ -24,6 +24,7 @@ import {
   TALL_VIEWPORT,
   test,
   textBlock,
+  watchPrevented,
 } from "./helpers.js";
 
 const headingText = (page: Page) =>
@@ -154,6 +155,7 @@ test.describe("a Heading", () => {
     const exported = await boxOf(opened.getByRole("heading"));
 
     expect(toTenths(exported.height)).toBe(toTenths(onCanvas));
+    await opened.close();
   });
 });
 
@@ -192,10 +194,13 @@ test.describe("Bold in a Heading, which is already bold", () => {
       await openBlocks(page, ["heading"]);
       await headingText(page).click();
       await page.keyboard.press("ControlOrMeta+a");
+      const prevented = await watchPrevented(page, "b");
 
       await page.keyboard.press(keys);
       await settle(page);
 
+      // The key reached the editor, which kept the browser from bolding it.
+      expect(await prevented()).toBe(true);
       const props = await blockProps(page, -1);
       expect(JSON.stringify(props)).not.toContain("bold");
       await expect(headingText(page).locator("strong")).toHaveCount(0);
@@ -280,6 +285,7 @@ test.describe("a Button", () => {
 
     expect(onCanvas).toBeGreaterThan(25);
     expect(onCanvas).toBe(exported);
+    await opened.close();
   });
 
   test("is selected by a click on it, without going anywhere", async ({
@@ -355,5 +361,6 @@ test.describe("a Button", () => {
       // The export is centered on its page.
       x: toTenths(onCanvas.x - email + EXPORT_VIEWPORT.width / 2),
     });
+    await opened.close();
   });
 });

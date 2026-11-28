@@ -178,6 +178,9 @@ test("meets WCAG 2.2 AA in each Mode", async ({ page }) => {
   await openEmail(page, [[["A"]]]);
   for (const name of ["Edit", "Style", "Check"]) {
     await mode(page, name).click();
-    expect(await violations(page)).toEqual([]);
+    // Check shows the email in sandboxed iframes, left out here as check.spec.ts does.
+    expect(
+      await violations(page, "mail-quilt", { excludeIframe: name === "Check" })
+    ).toEqual([]);
   }
 });

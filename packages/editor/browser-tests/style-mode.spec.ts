@@ -3,6 +3,7 @@ import { expect } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 
 import {
+  boxOf,
   canvas,
   change,
   currentValue,
@@ -161,7 +162,7 @@ test("the Canvas draws each Email style field as the export does", async ({
   await opened.close();
 
   expect(onCanvas).toEqual(exported);
-  // So the export did take each field, and the two don't match by default.
+  // So the export did take each field.
   expect(exported).toEqual({
     button: {
       "background-color": "rgb(17, 34, 51)",
@@ -379,12 +380,13 @@ test.describe("the Style Mode", () => {
     ).toHaveCSS("font-family", /^Georgia/u);
 
     await page.keyboard.press("Enter");
-    // "Same as body", the default, is first, above the font that's chosen.
-    await page.keyboard.press("ArrowUp");
-    await page.keyboard.press("ArrowUp");
-    await page.keyboard.press("ArrowUp");
-    await page.keyboard.press("Enter");
+    await stylePanel(page)
+      .getByRole("option", { name: /^Same as body/u })
+      .click();
     expect(await styleOf(page)).toBeUndefined();
+    await expect(
+      canvas(page).getByTestId("email").getByText("Shared", { exact: true })
+    ).toHaveCSS("font-family", /^Arial/u);
   });
 
   test("opens with a field's text selected to type over, and Tab past a popover's ends goes on to the settings around it", async ({
@@ -536,11 +538,9 @@ test.describe("the Style Mode", () => {
   }) => {
     await openStyled(page);
     const email = canvas(page).getByTestId("email");
-    const docked = await stylePanel(page).boundingBox();
-    const shown = await email.boundingBox();
-    expect((shown?.x ?? 0) + (shown?.width ?? 0)).toBeLessThanOrEqual(
-      docked?.x ?? 0
-    );
+    const docked = await boxOf(stylePanel(page));
+    const shown = await boxOf(email);
+    expect(shown.x + shown.width).toBeLessThanOrEqual(docked.x);
 
     await page.setViewportSize({ height: 800, width: 960 });
     await expect(stylePanel(page)).toHaveClass(/floating/u);
