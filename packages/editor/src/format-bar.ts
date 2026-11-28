@@ -6,8 +6,10 @@ import { place } from "./editor-places.js";
 import { ICONS } from "./icons.js";
 import type { KeyLabel } from "./key-map.js";
 import { keyLabel, textKeyLabel, withKeys } from "./key-map.js";
+import { linkToSave } from "./links.js";
 import { fieldTags } from "./merge-tag-picker.js";
 import type { OwnPanelsApi, PanelApi } from "./panel-api.js";
+import { renderLinkSaves } from "./settings-panel.js";
 import { renderSheet, renderSheetHead } from "./sheet.js";
 import type { StringId } from "./strings.js";
 import type { TextBlockView } from "./text-block-view.js";
@@ -141,6 +143,10 @@ export const formatBarStyles = css`
     color: var(--mq-color-text-muted);
   }
 
+  .link-form .link-saves {
+    flex-basis: 100%;
+  }
+
   .link-form .field-merge-tag-picker {
     flex-basis: 100%;
   }
@@ -235,14 +241,22 @@ export const createLinkForm = ({
     view()?.removeLink();
   };
 
-  const submit = (href: string) => {
+  const submit = (typed: string) => {
+    const href = linkToSave(typed);
     if (!isAllowedLinkHref(href)) {
-      state = { refusals: (state?.refusals ?? 0) + 1 };
+      state = { refusals: (state?.refusals ?? 0) + 1, typed };
       requestUpdate();
       return;
     }
     close();
     view()?.setLink(href);
+  };
+
+  const type = (typed: string) => {
+    if (state) {
+      state = { ...state, typed };
+      requestUpdate();
+    }
   };
 
   return {
@@ -254,18 +268,27 @@ export const createLinkForm = ({
       return state;
     },
     submit,
+    type,
   };
 };
 
 const LINK_URL_ID = "link-url";
 
 const renderLinkForm = (
-  refusals: number,
+  { refusals, typed }: NonNullable<PanelApi["linkField"]>,
   href: string | undefined,
   api: PanelApi
 ) => {
   const tags = fieldTags(api)(LINK_URL_ID);
+  const saves = renderLinkSaves(
+    { key: "href" },
+    { refusals, text: typed },
+    tags,
+    "link-saves",
+    api.text
+  );
   const describedBy = [
+    saves.describedBy,
     tags.hint ? "link-description" : "",
     refusals ? "link-error" : "",
   ]
@@ -296,9 +319,11 @@ const renderLinkForm = (
           spellcheck="false"
           type="text"
           value=${href ?? ""}
+          @input=${({ currentTarget }: Event) =>
+            api.typeLink((currentTarget as HTMLInputElement).value)}
         />
       </label>
-      ${tags.list}
+      ${saves.hint} ${tags.list}
       ${
         tags.hint
           ? html`<p class="description" id="link-description">${tags.hint}</p>`
@@ -468,7 +493,7 @@ export const renderFormatBar = (api: PanelApi) => {
             `
           : nothing
       }
-      ${linkField ? renderLinkForm(linkField.refusals, formats?.linkHref, api) : nothing}
+      ${linkField ? renderLinkForm(linkField, formats?.linkHref, api) : nothing}
     </div>
   `;
 };

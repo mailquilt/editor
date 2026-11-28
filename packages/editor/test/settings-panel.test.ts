@@ -38,6 +38,14 @@ describe("what's typed in a settings field means", () => {
     expect(fieldValue(field("text"), typed(" Hi "))).toBe("Hi");
   });
 
+  it("the link to save, in a link field", () => {
+    const link: SettingsField = { ...field("text"), key: "href" };
+
+    expect(fieldValue(link, typed(" northbound.co "))).toBe(
+      "https://northbound.co"
+    );
+  });
+
   it("a number, in a number field", () => {
     expect(fieldValue(field("number"), typed("12"))).toBe(12);
   });

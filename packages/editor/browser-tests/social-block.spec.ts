@@ -351,10 +351,8 @@ test.describe("the links in the Links popover", () => {
     await selectSocial(page);
     const instagram = await setting(page, "Instagram URL");
 
-    await change(instagram, "instagram.com/shop");
-    await expect(instagram).toHaveAccessibleDescription(
-      /Use a URL that starts with/u
-    );
+    await change(instagram, "instagram shop");
+    await expect(instagram).toHaveAccessibleDescription(/isn’t a web address/u);
     // A pressed button takes focus, which goes with its link as it moves to
     // the top, where Move up turns off, or after a removal to the next Remove.
     await tool(page, "Move Instagram up").click();
@@ -365,7 +363,7 @@ test.describe("the links in the Links popover", () => {
     expect(await blockProps(page)).toMatchObject({
       links: [{ network: "instagram" }, X],
     });
-    await expect(instagram).toHaveValue("instagram.com/shop");
+    await expect(instagram).toHaveValue("instagram shop");
     await expect(instagram).toHaveAttribute("aria-invalid", "true");
     expect(await violations(page)).toStrictEqual([]);
   });

@@ -659,6 +659,36 @@ test.describe("links", () => {
     await expect(page.getByRole("alert")).not.toHaveAttribute("data-seen");
   });
 
+  test("an address typed without https:// shows, then saves, the link with it", async ({
+    page,
+  }) => {
+    await selectAllInBlock(page);
+    await formatButton(page, "Link").click();
+    await linkUrlField(page).fill("example.com/shop");
+
+    await expect(
+      page.getByText("Links to https://example.com/shop")
+    ).toBeVisible();
+    await expect(linkUrlField(page)).toHaveAccessibleDescription(
+      /Links to https:\/\/example\.com\/shop/u
+    );
+
+    await page.keyboard.press("Enter");
+
+    // The host page shows what it last received once React renders it.
+    await expect
+      .poll(() => savedInline(page))
+      .toStrictEqual([
+        {
+          marks: [
+            { attrs: { href: "https://example.com/shop" }, type: "link" },
+          ],
+          text: "Hello",
+          type: "text",
+        },
+      ]);
+  });
+
   test("spaces around a pasted URL are ignored", async ({ page }) => {
     await selectAllInBlock(page);
     await formatButton(page, "Link").click();

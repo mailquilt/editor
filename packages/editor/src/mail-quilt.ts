@@ -866,6 +866,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     },
     stepHistory: (step) => this.#stepHistory(step),
     submitLink: (href) => this.#linkForm.submit(href),
+    typeLink: (typed) => this.#linkForm.type(typed),
     toggleList: (type) => this.#selection.selectedText?.toggleList(type),
     toggleMark: (mark) => this.#selection.selectedText?.toggleMark(mark),
     toggleMenu: () => this.#barPanels.toggleMenu(),
