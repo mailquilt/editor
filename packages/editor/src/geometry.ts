@@ -1,3 +1,5 @@
+import { closestPlace } from "./editor-places.js";
+
 /** A point in the window, as a pointer event gives it. */
 export interface Point {
   x: number;
@@ -41,4 +43,23 @@ export const shadowRootsUpFrom = (root: ShadowRoot) => {
     roots.push(node);
   }
   return roots;
+};
+
+/**
+ * The room a popover has: the editor, which clips it, below its top bar, which
+ * stays in sight as the page scrolls, and in the window.
+ */
+export const roomFor = (anchor: Element) => {
+  const editor = closestPlace(anchor, "editor")?.getBoundingClientRect();
+  // Such as "52px".
+  const topBar = Number(
+    getComputedStyle(anchor)
+      .getPropertyValue("--_mq-top-bar-height")
+      .trim()
+      .slice(0, -2)
+  );
+  return {
+    bottom: Math.min(editor?.bottom ?? innerHeight, innerHeight),
+    top: Math.max(editor?.top ?? 0, 0) + (topBar || 0),
+  };
 };

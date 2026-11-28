@@ -53,13 +53,14 @@ export type ColumnPosition = NonNullable<ReturnType<typeof locateColumn>>;
 
 /**
  * What a drag brings: a Block or Row on the canvas, or a new Block or Row from
- * the Add panel.
+ * the Add panel, an empty one or a Saved Row, by its place in the list.
  */
 export type DragSource =
   | { blockId: string }
   | { blockType: string }
   | { rowId: string }
-  | { rowLayout: string };
+  | { rowLayout: string }
+  | { savedRow: number };
 
 /** Where a drop lands: in a Column, or in a new Row of its own. */
 export type DropPosition =
@@ -184,12 +185,15 @@ export const moveRowCommand = (
 /** A Row, new or on the canvas, which only ever lands between Rows. */
 export const isRowSource = (
   source: DragSource
-): source is { rowId: string } | { rowLayout: string } =>
-  "rowLayout" in source || "rowId" in source;
+): source is { rowId: string } | { rowLayout: string } | { savedRow: number } =>
+  "rowLayout" in source || "rowId" in source || "savedRow" in source;
 
-/** The Command for a drop, which adds a Row if it landed outside any. */
+/**
+ * The Command for a drop, which adds a Row if it landed outside any. A Saved
+ * Row's is `copyRowCommand`'s, as its Row is the editor's.
+ */
 export const dropCommand = (
-  source: DragSource,
+  source: Exclude<DragSource, { savedRow: number }>,
   position: DropPosition
 ): Command => {
   if (isRowSource(source)) {

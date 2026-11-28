@@ -63,6 +63,7 @@ import { createPresses } from "./presses.js";
 import {
   createRowPictures,
   createRowsList,
+  placeRowsAdd,
   drawText,
   renderEmailPicture,
   renderRowsList,
@@ -71,6 +72,8 @@ import {
   ROWS_LIST_WIDTH_PX,
   rowsListStyles,
 } from "./rows-list.js";
+import { usableSavedRows } from "./saved-rows.js";
+import type { OfferedSavedRow } from "./saved-rows.js";
 import {
   blockDraftKey,
   createBarPanels,
@@ -87,7 +90,7 @@ import {
 } from "./settings-panel.js";
 import { openSheets, PHONE_LAYOUT_WIDTH, sheetStyles } from "./sheet.js";
 import {
-  createStarterPictures,
+  createEmailPictures,
   renderStartScreen,
   startScreenStyles,
 } from "./start-screen.js";
@@ -143,6 +146,19 @@ const PANEL_WIDTH_PX = 320;
  * docks beside the usual email from 968px wide, on a small laptop too.
  */
 const ADD_WIDTH_PX = 288;
+
+/**
+ * Whether a list from the host, such as `starterEmails`, changed. A React host
+ * gives a new one at each render. One JSON can't hold, such as with a BigInt,
+ * is a change, so the check leaves it out.
+ */
+const hasHostListChanged = (next: unknown, previous: unknown) => {
+  try {
+    return JSON.stringify(next) !== JSON.stringify(previous);
+  } catch {
+    return true;
+  }
+};
 
 /** Typing after a gap this long starts a new undo step. */
 const TYPING_PAUSE_MS = 1000;
@@ -350,23 +366,10 @@ export class MailQuilt extends LitElement implements HostAppProperties {
         previous: HostAppProperties["mergeTags"]
       ) => JSON.stringify(next) !== JSON.stringify(previous),
     },
+    savedRows: { attribute: false, hasChanged: hasHostListChanged },
     sender: { attribute: false },
     socialIconsUrl: { attribute: false },
-    // As mergeTags. An email is anything a host gives, and one JSON can't
-    // hold, such as with a BigInt, is a change, so the check leaves it out.
-    starterEmails: {
-      attribute: false,
-      hasChanged: (
-        next: HostAppProperties["starterEmails"],
-        previous: HostAppProperties["starterEmails"]
-      ) => {
-        try {
-          return JSON.stringify(next) !== JSON.stringify(previous);
-        } catch {
-          return true;
-        }
-      },
-    },
+    starterEmails: { attribute: false, hasChanged: hasHostListChanged },
     // A React host gives a new object at each render.
     strings: {
       attribute: false,
@@ -417,6 +420,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
 
   declare fonts: HostAppProperties["fonts"];
   declare mergeTags: HostAppProperties["mergeTags"];
+  declare savedRows: HostAppProperties["savedRows"];
   declare sender: HostAppProperties["sender"];
   declare sendTest: HostAppProperties["sendTest"];
   declare socialIconsUrl: HostAppProperties["socialIconsUrl"];
@@ -504,7 +508,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
   });
   /** Set while the element is connected, as it observes sizes on the page. */
   #rowPictures: ReturnType<typeof createRowPictures> | undefined;
-  #starterPictures: ReturnType<typeof createStarterPictures> | undefined;
+  #emailPictures: ReturnType<typeof createEmailPictures> | undefined;
   /** The Host app's Starter emails the editor can offer, checked once for each list. */
   #starters: OfferedStarter[] = [];
   /**
@@ -513,8 +517,10 @@ export class MailQuilt extends LitElement implements HostAppProperties {
    * start screen, if there are Starter emails.
    */
   #started = false;
-  /** Each Starter email's text Blocks' pictures, drawn once. */
-  readonly #starterTexts = new WeakMap<object, HTMLElement>();
+  /** The Host app's Saved Rows the editor can offer, checked once for each list. */
+  #savedRows: OfferedSavedRow[] = [];
+  /** Each Starter email's and Saved Row's text Blocks' pictures, drawn once. */
+  readonly #offeredTexts = new WeakMap<object, HTMLElement>();
   readonly #barPanels = createBarPanels({
     focus: this.#focus,
     requestUpdate: () => this.requestUpdate(),
@@ -793,6 +799,11 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       this.#rowsList.closeAdd(false);
       this.#editing.addRow(layout, fromKeyboard);
     },
+    addSavedRow: (saved, fromKeyboard) => {
+      this.#closeFloatingAdd();
+      this.#rowsList.closeAdd(false);
+      this.#editing.addSavedRow(saved, fromKeyboard);
+    },
     cancelLink: () => this.#linkForm.cancel(),
     closeAddPanel: (returnFocus) => this.#adding.closePanel(returnFocus),
     closeMenu: (returnFocus) => this.#barPanels.closeMenu(returnFocus),
@@ -1040,7 +1051,17 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     }
     this.#dragging = createDragging({
       acceptsFiles: () => Boolean(this.uploadImage),
-      onDrop: (source, position) => this.#editing.drop(source, position),
+      onDrop: (source, position) => {
+        if (!("savedRow" in source)) {
+          this.#editing.drop(source, position);
+          return;
+        }
+        // A Row lands only between Rows.
+        const saved = this.#savedRows[source.savedRow];
+        if (saved && "rowIndex" in position) {
+          this.#editing.addSavedRow(saved, false, position.rowIndex);
+        }
+      },
       onDropFiles: (files, target) => this.#uploads.drop(files, target),
       root: this.renderRoot,
       // As it's drawn, which a drag goes by.
@@ -1051,7 +1072,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     });
     this.#insertHover = createInsertHover(this.renderRoot);
     this.#rowPictures = createRowPictures(this.renderRoot);
-    this.#starterPictures = createStarterPictures(this.renderRoot);
+    this.#emailPictures = createEmailPictures(this.renderRoot);
     this.#toolFitting = createToolFitting({
       onMove: () => this.#tooltips?.tooltips.sync(),
       root: this.renderRoot,
@@ -1076,8 +1097,8 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     this.#insertHover = undefined;
     this.#rowPictures?.destroy();
     this.#rowPictures = undefined;
-    this.#starterPictures?.destroy();
-    this.#starterPictures = undefined;
+    this.#emailPictures?.destroy();
+    this.#emailPictures = undefined;
     this.#toolFitting?.destroy();
     this.#toolFitting = undefined;
     this.#tooltips?.tooltips.destroy();
@@ -1099,15 +1120,18 @@ export class MailQuilt extends LitElement implements HostAppProperties {
   }
 
   /**
-   * Checks the Host app's Starter emails once for each list it gives, and
-   * notes an email that has had a Row as started.
+   * Checks the Host app's Starter emails and Saved Rows once for each list it
+   * gives, and notes an email that has had a Row as started.
    */
-  #takeStarters(
+  #takeHostLists(
     changed: PropertyValues<this>,
     email: BlocksDocument | undefined
   ) {
     if (changed.has("starterEmails")) {
       this.#starters = usableStarters(this.starterEmails);
+    }
+    if (changed.has("savedRows")) {
+      this.#savedRows = usableSavedRows(this.savedRows);
     }
     if (email?.rows.length) {
       this.#started = true;
@@ -1127,7 +1151,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       this.#check.forget();
     }
     this.#rendered = this.value;
-    this.#takeStarters(changed, this.#rendered);
+    this.#takeHostLists(changed, this.#rendered);
     // There's nothing to style or check, and the Modes for them are off.
     if (!this.#rendered?.rows.length) {
       this.#mode = "edit";
@@ -1212,7 +1236,8 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       openSheets(this.shadowRoot);
     }
     this.#rowPictures?.sync();
-    this.#starterPictures?.sync();
+    this.#emailPictures?.sync();
+    placeRowsAdd(this.renderRoot);
     this.#focus.afterUpdate();
     this.#fixNote.sync();
     if (this.isConnected && this.shadowRoot) {
@@ -1409,21 +1434,7 @@ export class MailQuilt extends LitElement implements HostAppProperties {
         );
       },
       onPick: (starter) => this.#startFrom(starter),
-      picture: (starter) =>
-        renderEmailPicture({
-          api: this.#panelApi(starter.email),
-          emailLang: starter.email.settings.language ?? this.#emailLang,
-          failedImages: this.#failedImages,
-          socialIconsUrl: this.socialIconsUrl,
-          textPicture: (block) => {
-            let element = this.#starterTexts.get(block.props);
-            if (!element) {
-              element = drawText(block);
-              this.#starterTexts.set(block.props, element);
-            }
-            return element;
-          },
-        }),
+      picture: (starter) => this.#emailPicture(starter.email),
       starters: this.#starters,
       text: this.#text,
     });
@@ -1840,6 +1851,27 @@ export class MailQuilt extends LitElement implements HostAppProperties {
     this.#editing.paste(readPasted(data) ?? { refused: "notCopied" });
   }
 
+  /**
+   * An email the editor offers, a Starter email or the email with a Saved Row,
+   * as the Canvas draws it, each text drawn once.
+   */
+  #emailPicture(email: BlocksDocument) {
+    return renderEmailPicture({
+      api: this.#panelApi(email),
+      emailLang: email.settings.language ?? this.#emailLang,
+      failedImages: this.#failedImages,
+      socialIconsUrl: this.socialIconsUrl,
+      textPicture: (block) => {
+        let element = this.#offeredTexts.get(block.props);
+        if (!element) {
+          element = drawText(block);
+          this.#offeredTexts.set(block.props, element);
+        }
+        return element;
+      },
+    });
+  }
+
   /** What the Add panel, the Selection bar and More show, and what they do. */
   #panelApi(email: BlocksDocument): PanelApi {
     // Only with a tag the picker can offer.
@@ -1869,6 +1901,10 @@ export class MailQuilt extends LitElement implements HostAppProperties {
       insertMergeTag: offersTags ? this.#insertMergeTag : undefined,
       linkField: this.#linkForm.state,
       rowsList: this.#rowsList.state,
+      savedRows: this.#savedRows,
+      // In the email it's added to, so its look is the email's.
+      savedRowPicture: (saved) =>
+        this.#emailPicture({ ...email, rows: [saved.row] }),
       mergeTagPicker: this.#mergeTagPicker,
       selectedBlock: this.#editing.selectedBlock(email),
       selectedColumn: this.#editing.selectedColumn(email),

@@ -240,6 +240,7 @@ export const STRINGS = {
   "add.emptyRows": "Empty Rows",
   "add.addBlock": "Add {type} Block",
   "add.addLayout": "Add {layout} Row",
+  "add.savedRows": "Saved Rows",
   "add.here": "Add a Block here",
   /** Under the picker, where what's picked goes: "Adds below the Text, in Row 3". */
   "add.below": "Adds below the {type}, in Row {row}",
@@ -534,6 +535,7 @@ export const STRINGS = {
   "said.blockPasted":
     "Block pasted, Row {row}, Column {column}, position {position} of {count}.",
   "said.rowPasted": "Row pasted, position {position} of {count}.",
+  "said.savedRowAdded": "{name} added, position {position} of {count}.",
   "said.started": "Started from {name}.",
   "said.undoMovedBlock":
     "Undo moved a Block to Row {row}, Column {column}, position {position} of {count}.",

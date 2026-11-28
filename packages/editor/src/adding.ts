@@ -10,8 +10,10 @@ import { ICONS } from "./icons.js";
 import { keyLabel } from "./key-map.js";
 import type { PanelApi } from "./panel-api.js";
 import { locate } from "./positions.js";
+import type { OfferedSavedRow } from "./saved-rows.js";
 import { renderThumbnail } from "./selection-bar.js";
 import { renderSheet, renderSheetHead } from "./sheet.js";
+import { styleProperties } from "./style-properties.js";
 import { blockTypeName } from "./text.js";
 import type { Text } from "./text.js";
 
@@ -401,6 +403,51 @@ export const addingStyles = css`
     border-color: var(--mq-color-accent);
   }
 
+  /* "Saved Rows" and how many, at the end. */
+  .saved-rows-title {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .saved-rows-count {
+    color: var(--mq-color-text-muted);
+    font-weight: 500;
+  }
+
+  /* A Saved Row: the top of its picture, and its name under it. */
+  .add-tiles.saved-rows {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .add-tiles.saved-rows .add-tile {
+    align-items: stretch;
+    color: var(--mq-color-text);
+    gap: 0;
+    justify-content: start;
+    padding: var(--mq-space-1);
+    text-align: start;
+  }
+
+  .saved-row-picture {
+    aspect-ratio: 16 / 9;
+    border-radius: var(--mq-radius-small);
+    display: block;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .saved-row-picture .rows-picture {
+    inset: 0 auto auto 0;
+    position: absolute;
+  }
+
+  /* A long word, such as a German name, wraps rather than leaving the card. */
+  .saved-row-name {
+    font-weight: 400;
+    overflow-wrap: anywhere;
+    padding: var(--mq-space-2) var(--mq-space-1) var(--mq-space-1);
+  }
+
   .add-none {
     margin: var(--mq-space-5) 0 var(--mq-space-4);
     text-align: center;
@@ -567,6 +614,16 @@ const isMatch = (name: string, query: string) =>
 const blocksMatching = (query: string, text: Text) =>
   BLOCK_TYPES.filter(({ type }) => isMatch(blockTypeName(type, text), query));
 
+/** Every Saved Row for "Saved Rows" or a word of it, or one's own name. */
+const savedRowsMatching = (
+  saved: readonly OfferedSavedRow[],
+  query: string,
+  text: Text
+) =>
+  isMatch(text("add.savedRows"), query)
+    ? saved
+    : saved.filter(({ name }) => isMatch(name, query));
+
 /** Every layout for "Empty Rows" or a word of it, or a layout's own name. */
 const layoutsMatching = (query: string, text: Text) =>
   isMatch(text("add.emptyRows"), query)
@@ -641,6 +698,59 @@ const renderBlockTiles = (
   </div>
 `;
 
+/**
+ * The Host app's Saved Rows, under their title and how many: one stop for Tab,
+ * with arrow keys between them, each a picture of its top and its name, which
+ * is all it's named by, as the picture's words are on screen too. In the
+ * Add panel, each is also what a drag picks up, by its place in `api.savedRows`.
+ */
+export const renderSavedRows = (
+  api: PanelApi,
+  shown: readonly OfferedSavedRow[],
+  inPanel: boolean
+) => {
+  const { text } = api;
+  const { backgroundColor, width } = api.email.settings;
+  return html`
+    <h3 class="add-section-title saved-rows-title">
+      <span>${text("add.savedRows")}</span>
+      <span aria-hidden="true" class="saved-rows-count">${shown.length}</span>
+    </h3>
+    <div
+      aria-label=${text("add.savedRows")}
+      class="add-tiles saved-rows"
+      data-place=${inPanel ? place("addTiles") : nothing}
+      role="group"
+    >
+      ${shown.map(
+        (saved, index) => html`
+          <button
+            class="add-tile"
+            data-place=${inPanel ? place("paletteItem") : nothing}
+            data-saved-row=${api.savedRows.indexOf(saved)}
+            data-testid="saved-row"
+            tabindex=${index === 0 ? "0" : "-1"}
+            type="button"
+            @click=${({ detail }: MouseEvent) =>
+              api.addSavedRow(saved, detail === 0)}
+          >
+            <span
+              aria-hidden="true"
+              class="saved-row-picture"
+              data-email-width=${width}
+              data-place=${place("emailPicture")}
+              style=${styleProperties({ "background-color": backgroundColor })}
+            >
+              ${api.savedRowPicture(saved)}
+            </span>
+            <span class="saved-row-name">${saved.name}</span>
+          </button>
+        `
+      )}
+    </div>
+  `;
+};
+
 /** What a screen reader hears when nothing matches the search. */
 const noMatchWords = (
   query: string,
@@ -677,6 +787,9 @@ export const renderAddPanel = (api: PanelApi, docked: boolean) => {
   const query = api.adding.panel?.query ?? "";
   const blocks = blocksMatching(query, text);
   const layouts = layoutsMatching(query, text);
+  const saved = savedRowsMatching(api.savedRows, query, text);
+  const nothingMatches =
+    blocks.length === 0 && layouts.length === 0 && saved.length === 0;
   const body = html`
     ${renderSearch("panel", query, api)}
     ${
@@ -722,16 +835,9 @@ export const renderAddPanel = (api: PanelApi, docked: boolean) => {
           `
         : nothing
     }
-    ${
-      blocks.length === 0 && layouts.length === 0
-        ? renderNoMatch(query, "add.nothing", text)
-        : nothing
-    }
-    ${renderSaid(
-      blocks.length === 0 && layouts.length === 0
-        ? noMatchWords(query, "add.nothing", text)
-        : ""
-    )}
+    ${saved.length > 0 ? renderSavedRows(api, saved, true) : nothing}
+    ${nothingMatches ? renderNoMatch(query, "add.nothing", text) : nothing}
+    ${renderSaid(nothingMatches ? noMatchWords(query, "add.nothing", text) : "")}
   `;
   if (api.phone) {
     return renderSheet({

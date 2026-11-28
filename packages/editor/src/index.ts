@@ -10,5 +10,6 @@ export type { MailQuiltStrings, StringId } from "./strings.js";
 export type { ShellAction } from "./mail-quilt-shell.js";
 export type { MailQuiltTheme } from "./theme.js";
 export type { HostFont } from "./web-fonts.js";
+export type { SavedRow } from "./saved-rows.js";
 export type { StarterEmail } from "./starter-emails.js";
 export type { BlocksDocument } from "@mailquilt/core";

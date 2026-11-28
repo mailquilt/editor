@@ -525,6 +525,8 @@ export class MailQuiltShell extends LitElement implements HostAppProperties {
   /** As on `<mail-quilt>`. */
   declare sender: HostAppProperties["sender"];
   /** As on `<mail-quilt>`. */
+  declare savedRows: HostAppProperties["savedRows"];
+  /** As on `<mail-quilt>`. */
   declare starterEmails: HostAppProperties["starterEmails"];
   /** As on `<mail-quilt>`. */
   declare sendTest: HostAppProperties["sendTest"];

@@ -90,7 +90,7 @@ export const renderStartScreen = ({
             html`<span
               class="starter-picture"
               data-email-width=${starter.email.settings.width}
-              data-place=${place("starterPicture")}
+              data-place=${place("emailPicture")}
               style=${styleProperties({
                 "background-color": starter.email.settings.backgroundColor,
               })}
@@ -119,7 +119,7 @@ const scale = (picture: HTMLElement) => {
  * another email. A ResizeObserver reports before the page is painted, so a
  * picture is never drawn at a guessed size.
  */
-export const createStarterPictures = (root: ShadowRoot) => {
+export const createEmailPictures = (root: ShadowRoot) => {
   const observed = new Set<Element>();
   const sizes = new ResizeObserver((entries) => {
     for (const { target } of entries) {
@@ -137,7 +137,7 @@ export const createStarterPictures = (root: ShadowRoot) => {
           sizes.unobserve(picture);
         }
       }
-      for (const picture of findPlaces(root, "starterPicture")) {
+      for (const picture of findPlaces(root, "emailPicture")) {
         if (observed.has(picture)) {
           scale(picture);
         } else {

@@ -539,7 +539,7 @@ test.describe("the editor's API", () => {
     await expect(picker).toHaveCount(0);
   });
 
-  test("fonts, sender, subject, sendTest, starterEmails and a Merge Tag's sample reach the editor", async ({
+  test("fonts, sender, subject, sendTest, starterEmails, savedRows and a Merge Tag's sample reach the editor", async ({
     page,
   }) => {
     const fonts = [
@@ -550,6 +550,10 @@ test.describe("the editor's API", () => {
       },
     ];
     const starterEmails = [{ email: emailWith([[["Hi"]]]), name: "Letter" }];
+    const footer = emailWith([[["Bye"]]]);
+    const savedRows = [
+      { name: "Footer", row: footer.rows[0], version: footer.version },
+    ];
     await openShell(page);
     await shell(page).evaluate(
       (element, given) => {
@@ -558,11 +562,12 @@ test.describe("the editor's API", () => {
           mergeTags: [{ name: "first_name", sample: "Ana" }],
           sender: "Northbound",
           sendTest: () => Promise.resolve(),
+          savedRows: given.savedRows,
           starterEmails: given.starterEmails,
           subject: "Spring roast",
         });
       },
-      { fonts, starterEmails }
+      { fonts, savedRows, starterEmails }
     );
 
     const editor = shell(page).locator("mail-quilt");
@@ -574,10 +579,19 @@ test.describe("the editor's API", () => {
             mergeTags,
             sender,
             sendTest,
+            savedRows: saved,
             starterEmails: starters,
             subject,
           } = element as MailQuilt;
-          return [given, mergeTags, sender, subject, typeof sendTest, starters];
+          return [
+            given,
+            mergeTags,
+            sender,
+            subject,
+            typeof sendTest,
+            starters,
+            saved,
+          ];
         })
       )
       .toEqual([
@@ -587,6 +601,7 @@ test.describe("the editor's API", () => {
         "Spring roast",
         "function",
         starterEmails,
+        savedRows,
       ]);
   });
 

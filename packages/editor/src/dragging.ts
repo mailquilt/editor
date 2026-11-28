@@ -73,14 +73,14 @@ const grabAt = (target: Element): Grab | undefined => {
   }
   const tile = closestPlace(target, "paletteItem");
   if (tile) {
-    const { blockType, rowLayout } = tile.dataset;
-    return {
-      element: tile,
-      source:
-        blockType === undefined
-          ? { rowLayout: rowLayout as string }
-          : { blockType },
-    };
+    const { blockType, rowLayout, savedRow } = tile.dataset;
+    let source: DragSource = { rowLayout: rowLayout as string };
+    if (blockType !== undefined) {
+      source = { blockType };
+    } else if (savedRow !== undefined) {
+      source = { savedRow: Number(savedRow) };
+    }
+    return { element: tile, source };
   }
   return undefined;
 };
