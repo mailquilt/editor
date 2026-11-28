@@ -25,6 +25,7 @@ import {
 } from "./email-style.js";
 import type { Hsv, OwnValue, StyleKey } from "./email-style.js";
 import type { EditorFocus } from "./focus.js";
+import { roomFor } from "./geometry.js";
 import { ICONS } from "./icons.js";
 import type { Direction } from "./positions.js";
 import { renderSheet, renderSheetHead } from "./sheet.js";
@@ -183,25 +184,6 @@ const POPOVER_HEIGHTS: Record<Kind, number> = {
   corners: 0,
   font: 420,
   size: 150,
-};
-
-/**
- * The room a popover has: the editor, which clips it, below its top bar, which
- * stays in sight as the page scrolls, and in the window.
- */
-const roomFor = (anchor: Element) => {
-  const editor = closestPlace(anchor, "editor")?.getBoundingClientRect();
-  // Such as "52px".
-  const topBar = Number(
-    getComputedStyle(anchor)
-      .getPropertyValue("--_mq-top-bar-height")
-      .trim()
-      .slice(0, -2)
-  );
-  return {
-    bottom: Math.min(editor?.bottom ?? innerHeight, innerHeight),
-    top: Math.max(editor?.top ?? 0, 0) + (topBar || 0),
-  };
 };
 
 /**

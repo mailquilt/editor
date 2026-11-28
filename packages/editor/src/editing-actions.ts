@@ -31,6 +31,7 @@ import type {
   DropPosition,
   RowPosition,
 } from "./positions.js";
+import type { OfferedSavedRow } from "./saved-rows.js";
 import type { EditorSelection } from "./selection.js";
 import type { StringId } from "./strings.js";
 import { blockTypeName } from "./text.js";
@@ -88,6 +89,33 @@ export const layoutOf = (row: Row) =>
   rowLayoutOf(row) ??
   ROW_LAYOUTS.find((layout) => layout.split("/").length === row.columns.length);
 
+/**
+ * The Command that inserts a copy of a Row at `index`, as a paste, a duplicate
+ * or a Saved Row does: its props, and its Columns' and Blocks', with new IDs.
+ * None for a Row with more Columns than a layout has.
+ */
+export const copyRowCommand = (
+  row: Row,
+  index: number
+): Command | undefined => {
+  const layout = layoutOf(row);
+  return (
+    layout && {
+      columns: row.columns.map(({ blocks, props }) => ({
+        blocks: blocks.map((block) => ({
+          props: block.props,
+          type: block.type,
+        })),
+        props,
+      })),
+      index,
+      layout,
+      props: row.props,
+      type: "insertRow",
+    }
+  );
+};
+
 export type EditingActions = ReturnType<typeof createEditingActions>;
 
 export const createEditingActions = ({
@@ -134,6 +162,15 @@ export const createEditingActions = ({
       selectedRow(email)?.row.columns[0] ??
       email.rows.at(-1)?.columns.at(-1);
     return column && { columnId: column.id, index: column.blocks.length };
+  };
+
+  /** After the selected Row, or the selected Column's or Block's Row, or else at the end. */
+  const newRowIndex = (email: BlocksDocument) => {
+    const rowIndex =
+      selectedRow(email)?.rowIndex ??
+      selectedColumn(email)?.rowIndex ??
+      selectedBlock(email)?.rowIndex;
+    return rowIndex === undefined ? email.rows.length : rowIndex + 1;
   };
 
   /**
@@ -282,18 +319,45 @@ export const createEditingActions = ({
       if (!email) {
         return;
       }
-      const rowIndex =
-        selectedRow(email)?.rowIndex ??
-        selectedColumn(email)?.rowIndex ??
-        selectedBlock(email)?.rowIndex;
       const result = apply({
-        index: rowIndex === undefined ? email.rows.length : rowIndex + 1,
+        index: newRowIndex(email),
         layout,
         type: "insertRow",
       });
       if (result?.ok && result.createdId !== undefined) {
         selection.selectRow(result.createdId, fromKeyboard);
       }
+    },
+
+    /**
+     * A copy of a Saved Row, in one Command, where `addRow` adds one or at
+     * `rowIndex`, as a drop gives it. It's selected, and its name and place
+     * are said.
+     */
+    addSavedRow: (
+      saved: OfferedSavedRow,
+      fromKeyboard: boolean,
+      rowIndex?: number
+    ) => {
+      const email = current();
+      const command =
+        email && copyRowCommand(saved.row, rowIndex ?? newRowIndex(email));
+      const result = command && apply(command);
+      const added = result?.ok && current();
+      const position =
+        added && result.createdId !== undefined
+          ? locateRow(added, result.createdId)
+          : undefined;
+      if (!(added && position)) {
+        return;
+      }
+      selection.selectRow(position.row.id, fromKeyboard);
+      announcements.say(
+        text("said.savedRowAdded", {
+          ...placeIn(position.rowIndex, added.rows.length),
+          name: saved.name,
+        })
+      );
     },
 
     /** Puts the selected Block on the clipboard, and says where it is. */
@@ -332,8 +396,14 @@ export const createEditingActions = ({
 
     deleteRow,
 
-    /** What's dropped: a Block or Row moved, or a new one, which is selected. */
-    drop: (source: DragSource, position: DropPosition) => {
+    /**
+     * What's dropped: a Block or Row moved, or a new one, which is selected.
+     * A Saved Row is the editor's to give, as `addSavedRow` takes it.
+     */
+    drop: (
+      source: Exclude<DragSource, { savedRow: number }>,
+      position: DropPosition
+    ) => {
       const result = apply(dropCommand(source, position));
       if (!result?.ok) {
         return;
@@ -398,24 +468,9 @@ export const createEditingActions = ({
     duplicateRow: (rowId: string) => {
       const email = current();
       const position = email && locateRow(email, rowId);
-      const layout = position && layoutOf(position.row);
-      if (!(position && layout)) {
-        return;
-      }
-      const { row, rowIndex } = position;
-      const result = apply({
-        columns: row.columns.map(({ blocks, props }) => ({
-          blocks: blocks.map((block) => ({
-            props: block.props,
-            type: block.type,
-          })),
-          props,
-        })),
-        index: rowIndex + 1,
-        layout,
-        props: row.props,
-        type: "insertRow",
-      });
+      const command =
+        position && copyRowCommand(position.row, position.rowIndex + 1);
+      const result = command && apply(command);
       if (result?.ok && result.createdId !== undefined) {
         selection.select({ rowId: result.createdId });
         focus.revealRow(result.createdId);
@@ -529,23 +584,8 @@ export const createEditingActions = ({
         return;
       }
       if ("row" in pasted) {
-        const { row: copied } = pasted;
-        const layout = layoutOf(copied);
-        const result =
-          layout &&
-          apply({
-            columns: copied.columns.map(({ blocks, props }) => ({
-              blocks: blocks.map((each) => ({
-                props: each.props,
-                type: each.type,
-              })),
-              props,
-            })),
-            index: nextRowIndex,
-            layout,
-            props: copied.props,
-            type: "insertRow",
-          });
+        const command = copyRowCommand(pasted.row, nextRowIndex);
+        const result = command && apply(command);
         if (result?.ok && result.createdId !== undefined) {
           selection.selectRow(result.createdId, true);
           announcements.rowMoved(result.createdId, "said.rowPasted");

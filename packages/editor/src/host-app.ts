@@ -1,3 +1,4 @@
+import type { SavedRow } from "./saved-rows.js";
 import type { StarterEmail } from "./starter-emails.js";
 import type { MailQuiltStrings } from "./strings.js";
 import type { HostFont } from "./web-fonts.js";
@@ -58,6 +59,15 @@ export interface HostAppProperties {
       }) => Promise<unknown>)
     | undefined;
   /**
+   * Ready-made Rows, such as the Host app's footer, which adding a Row offers
+   * beside the empty layouts. `name` is what it's called there. `row` is a Row
+   * as an email's `rows` holds one, and `version` the email's `version`. Each
+   * is checked as a paste is, and added as a copy, with new IDs, in one undo
+   * step. A Saved Row the editor can't take, or with no name, is left out, and
+   * said on the console.
+   */
+  savedRows?: readonly SavedRow[] | undefined;
+  /**
    * The URL of a folder of the Host app's own holding the Social Block's
    * icons, copied from `@mailquilt/renderer`'s `icons`. The Canvas, the Preview
    * and `exportHtml()` load them from there. Without it, they load from
@@ -106,6 +116,7 @@ export interface HostAppProperties {
 export const HOST_APP_PROPERTIES = Object.keys({
   fonts: true,
   mergeTags: true,
+  savedRows: true,
   sender: true,
   sendTest: true,
   socialIconsUrl: true,

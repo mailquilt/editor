@@ -6,6 +6,7 @@ import { css, html, nothing, unsafeCSS } from "lit";
 import { repeat } from "lit/directives/repeat.js";
 import { DOMSerializer } from "prosemirror-model";
 
+import { renderSavedRows } from "./adding.js";
 import {
   BLOCK_VIEWS,
   hasRichText,
@@ -13,8 +14,9 @@ import {
   textBlockLook,
 } from "./block-types.js";
 import { renderAwayStrip, rowLook, SHOWN_ONLY_ON } from "./canvas.js";
-import { closestPlace, findPlaces, place } from "./editor-places.js";
+import { closestPlace, findPlace, findPlaces, place } from "./editor-places.js";
 import type { EditorFocus } from "./focus.js";
+import { roomFor } from "./geometry.js";
 import { ICONS } from "./icons.js";
 import { keyLabel, keysInWords } from "./key-map.js";
 import type { PanelApi } from "./panel-api.js";
@@ -152,6 +154,33 @@ export const createRowsList = ({ focus, requestUpdate }: RowsListHost) => {
       return { addOpen, expanded };
     },
   };
+};
+
+/**
+ * Places the +'s layouts beside it, level with its top, and moves them up as
+ * far as they need to fit the room the editor has, as frame l09 draws them and
+ * as Style's color popover is placed. Where there's less room than they need,
+ * such as with many Saved Rows in a short window, they scroll. Measured after
+ * each update, before the page is painted, so they're never drawn elsewhere
+ * first.
+ */
+export const placeRowsAdd = (root: ShadowRoot) => {
+  const popover = findPlace(root, "rowsAdd");
+  const anchor = popover?.parentElement;
+  if (!(popover && anchor)) {
+    return;
+  }
+  const gap = 8;
+  const room = roomFor(anchor);
+  const box = anchor.getBoundingClientRect();
+  const maxHeight = room.bottom - room.top - 2 * gap;
+  const height = Math.min(popover.scrollHeight, maxHeight);
+  const top = Math.max(
+    room.top + gap,
+    Math.min(box.top, room.bottom - gap - height)
+  );
+  popover.style.maxHeight = `${maxHeight}px`;
+  popover.style.insetBlockStart = `${top - box.top}px`;
 };
 
 /**
@@ -599,27 +628,33 @@ export const rowsListStyles = css`
     border-radius: var(--mq-radius);
     box-shadow: var(--mq-shadow);
     color: var(--mq-color-text);
-    inset-block-start: var(--mq-space-2);
+    inset-block-start: 0;
     inset-inline-start: calc(100% + var(--mq-space-1));
+    /* Placed by placeRowsAdd, which also sets its height where it must scroll. */
+    overflow-y: auto;
     padding: var(--mq-space-3);
     position: absolute;
     width: 300px;
     z-index: var(--_mq-layer-selection-bar);
   }
 
-  .rows-add-anchor {
-    position: relative;
+  /* Wider for two Saved Rows across, as frame l03-add-row draws it. */
+  .rows-add.saved {
+    width: 360px;
   }
 
-  /* Collapsed, the + is at the list's end, so its layouts open upwards. */
-  .rows-list.collapsed .rows-add {
-    inset-block: auto 0;
+  .rows-add-anchor {
+    position: relative;
   }
 
   .rows-add h3 {
     font-size: var(--mq-font-size-small);
     font-weight: 600;
     margin: 0 0 var(--mq-space-2);
+  }
+
+  .rows-add .saved-rows-title {
+    margin-block-start: var(--mq-space-4);
   }
 
   .rows-add-foot {
@@ -921,7 +956,7 @@ const renderAdd = (api: PanelApi, open: boolean) => {
           ? html`
               <div
                 aria-label=${text("rows.add")}
-                class="ui rows-add"
+                class=${api.savedRows.length > 0 ? "ui rows-add saved" : "ui rows-add"}
                 data-place=${place("rowsAdd")}
                 data-testid="rows-add"
                 role="dialog"
@@ -948,6 +983,11 @@ const renderAdd = (api: PanelApi, open: boolean) => {
                     `
                   )}
                 </div>
+                ${
+                  api.savedRows.length > 0
+                    ? renderSavedRows(api, api.savedRows, false)
+                    : nothing
+                }
                 <p class="rows-add-foot">
                   ${
                     current

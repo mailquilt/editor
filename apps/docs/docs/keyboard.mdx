@@ -102,7 +102,7 @@ The list's Rows are one stop for <kbd>Tab</kbd>: the current Row, or else the fi
 
 With the pointer, a click selects a Row the same way, and dragging a Row's picture moves it. A Row dragged on the email can be dropped on the list too.
 
-The list's + opens the layouts of an empty Row, with focus on the first. The arrow keys go along them, and <kbd>Enter</kbd> adds an empty Row with that layout after the current Row, or at the end with nothing selected, as the layouts say under them. <kbd>Escape</kbd> closes them and goes back to the +.
+The list's + opens the layouts of an empty Row, with focus on the first. The arrow keys go along them, and <kbd>Enter</kbd> adds an empty Row with that layout after the current Row, or at the end with nothing selected, as the layouts say under them. Where your app offers [Saved Rows](./api#saved-rows), they're after the layouts, one more stop for <kbd>Tab</kbd> with the arrow keys along them, and <kbd>Enter</kbd> adds a copy of one in the same place. <kbd>Escape</kbd> closes them and goes back to the +.
 
 An email with no Rows says "Start with a Row" on the email, with the same layouts, one stop for <kbd>Tab</kbd>, and <kbd>/</kbd> there opens the Add panel.
 
@@ -144,7 +144,7 @@ In a Block's text or a settings field, these keys copy, cut and paste text as us
 | --- | --- |
 | <kbd>/</kbd> | On a Block, in the Selection bar outside its fields, on a Row in the Rows list, on an empty Column's button, or in the toolbar below the email, opens the Add panel with focus in its search. In a Block's text or a field, it types a slash. On a keyboard where <kbd>/</kbd> needs Shift, such as a German one, <kbd>Shift</kbd> + <kbd>/</kbd> works too. |
 
-The Add panel has every type of Block, then the layouts of an empty Row. Type in its search to show only the ones whose name has what you typed. <kbd>Down</kbd> goes from the search to the first Block, and <kbd>Enter</kbd> adds the first one that's shown. <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>Z</kbd> in the search undoes the email, so you can take back what you just added. The Blocks are one stop for <kbd>Tab</kbd>, and the Rows another: the arrow keys go along them, and <kbd>Home</kbd> and <kbd>End</kbd> go to the first and last.
+The Add panel has every type of Block, then the layouts of an empty Row, then your app's [Saved Rows](./api#saved-rows), if it offers any. Type in its search to show only the ones whose name has what you typed. <kbd>Down</kbd> goes from the search to the first Block, and <kbd>Enter</kbd> adds the first one that's shown. <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>Z</kbd> in the search undoes the email, so you can take back what you just added. The Blocks are one stop for <kbd>Tab</kbd>, the empty Rows another, and the Saved Rows a third: the arrow keys go along them, and <kbd>Home</kbd> and <kbd>End</kbd> go to the first and last.
 
 <kbd>Enter</kbd> on a Block adds it after the selected Block, in the same
 Column. With a Row selected instead, it goes to the end of that Row's first
@@ -164,7 +164,7 @@ With a mouse, rest the pointer on the edge between two Blocks, and a line with a
 
 ## Adding a Row
 
-In the Add panel or the Rows list's +, press <kbd>Enter</kbd> on a layout to add an empty Row with it after the selected Row, or after the Row of the selected Block. With nothing selected, it goes at the end of the email. The new Row is selected, with focus on the Selection bar's chip.
+In the Add panel or the Rows list's +, press <kbd>Enter</kbd> on a layout to add an empty Row with it, or on a Saved Row to add a copy of it, after the selected Row, or after the Row of the selected Block. With nothing selected, it goes at the end of the email. The new Row is selected, with focus on the Selection bar's chip.
 
 ## Settings
 

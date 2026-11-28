@@ -36,6 +36,8 @@ Save the JSON from the editor's change event, keyed however your app keys a cust
 
 Mail Quilt has no template library, so the starter emails are yours to make, which also means they can match your app. Design each one in the [Playground](/playground), or in a [Shell](./shell) in your app, and keep what its Export JSON button gives you. When a customer creates an email, give the editor your starter emails as [`starterEmails`](./api#starter-emails) and an email with no Rows as its `value`, and a start screen lets them pick one or start blank. To skip the choice, pass one starter email as `value` instead.
 
+The parts your customers reuse, such as your footer, can be [Saved Rows](./api#saved-rows): Rows from an email you designed the same way, which the editor offers wherever a Row is added.
+
 To make starter emails in code instead, such as one per customer with their name already in it, use [Commands](./change-emails-in-code) from the core package.
 
 ## Merge Tags

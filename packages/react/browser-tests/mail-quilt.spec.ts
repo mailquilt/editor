@@ -226,6 +226,22 @@ test("starterEmails reaches the element", async ({ page }) => {
   }
 });
 
+test("savedRows reaches the element", async ({ page }) => {
+  for (const [query, tag] of [
+    ["/", "mail-quilt"],
+    ["/?shell", "mail-quilt-shell"],
+  ] as const) {
+    await page.goto(query);
+    await expect(textBlock(page)).toHaveText("Hello");
+    const given = await page
+      .locator(tag)
+      .evaluate((element: MailQuiltElement | MailQuiltShellElement) =>
+        element.savedRows?.map(({ name }) => name)
+      );
+    expect(given).toEqual(["Footer"]);
+  }
+});
+
 test("socialIconsUrl reaches the element", async ({ page }) => {
   for (const [query, tag] of [
     ["/", "mail-quilt"],

@@ -1,4 +1,5 @@
 import type { BlocksDocument, RowLayout } from "@mailquilt/core";
+import type { TemplateResult } from "lit";
 
 import type { AddingState, AddPlace } from "./adding.js";
 import type { NotOnDevice } from "./canvas.js";
@@ -10,6 +11,7 @@ import type {
   RowPosition,
 } from "./positions.js";
 import type { RowsListState } from "./rows-list.js";
+import type { OfferedSavedRow } from "./saved-rows.js";
 import type { BarPanelsState } from "./selection-bar.js";
 import type { SettingsDrafts } from "./settings-panel.js";
 import type { ShownMergeTagPicker } from "./text-block-view.js";
@@ -67,6 +69,8 @@ export interface EmailPanelApi {
   addBlockAt: (blockType: string, at: AddPlace) => void;
   /** After the selected Row or Block's Row, or else at the end, and selects it. */
   addRow: (layout: RowLayout, fromKeyboard: boolean) => void;
+  /** A copy of a Saved Row where `addRow` adds one, selected, and said. */
+  addSavedRow: (saved: OfferedSavedRow, fromKeyboard: boolean) => void;
   /** The selected Block. From the keyboard, focus goes to its neighbour. */
   deleteBlock: (fromKeyboard: boolean) => void;
   /**
@@ -182,6 +186,10 @@ export interface OwnPanelsApi {
     | undefined;
   /** What's typed in the settings fields and isn't the email's value. */
   drafts: SettingsDrafts;
+  /** The Host app's Saved Rows that the editor offers, in its order. */
+  savedRows: readonly OfferedSavedRow[];
+  /** A Saved Row as the Canvas would draw it in this email, at its width. */
+  savedRowPicture: (saved: OfferedSavedRow) => TemplateResult;
   /** Whether the person expanded or collapsed the Rows list, and its + is open. */
   rowsList: RowsListState;
 
