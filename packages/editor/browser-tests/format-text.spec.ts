@@ -675,13 +675,18 @@ test.describe("links", () => {
 
     await page.keyboard.press("Enter");
 
-    expect(await savedInline(page)).toStrictEqual([
-      {
-        marks: [{ attrs: { href: "https://example.com/shop" }, type: "link" }],
-        text: "Hello",
-        type: "text",
-      },
-    ]);
+    // The host page shows what it last received once React renders it.
+    await expect
+      .poll(() => savedInline(page))
+      .toStrictEqual([
+        {
+          marks: [
+            { attrs: { href: "https://example.com/shop" }, type: "link" },
+          ],
+          text: "Hello",
+          type: "text",
+        },
+      ]);
   });
 
   test("spaces around a pasted URL are ignored", async ({ page }) => {
