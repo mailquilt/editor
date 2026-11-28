@@ -79,7 +79,7 @@ editor.fonts = [
 ];
 ```
 
-- `name` is the font's family name, as its stylesheet declares it. It's one name of letters, digits, spaces and hyphens, such as `DM Serif Display`.
+- `name` is the font's family name, as its stylesheet declares it. It's one name of letters, digits, spaces, hyphens and underscores, such as `DM Serif Display`.
 - `url` is a stylesheet that declares the font, such as one from Google Fonts or your own storage, and must start with `https:`. It can't hold quotes, brackets, spaces or backslashes, which would end it in the exported HTML, so percent-encode any it needs.
 - `fallback` is the fonts a reader sees where the web font doesn't load, such as `Georgia, serif`. Pick ones close to the web font in shape and width. Each web font in the list says "Falls back to" the first of them.
 - People pick only from your list. They can't add a font of their own.
@@ -219,6 +219,9 @@ editor.strings = {
 | `BlockType` | `@mailquilt/core` | One of the Block types, as in `BLOCK_TYPES`. |
 | `RichTextDocument`, `RichTextHeadingDocument`, `RichTextParagraph`, `RichTextList`, `RichTextListItem`, `RichTextText`, `RichTextHardBreak`, `RichTextMergeTag`, `RichTextMark` | `@mailquilt/core` | A Text Block's [rich text](./document-format#rich-text), a Heading's, which has no [Lists](./document-format#lists), and their parts. |
 | `Command`, `RowLayout` | `@mailquilt/core` | One of the [Commands](./change-emails-in-code#commands), and one of the layouts in `ROW_LAYOUTS`. |
+| `WebFont` | `@mailquilt/core` | One of an email's web fonts, as the [document format](./document-format) has it: `{ name, url }`. |
+| `NewBlock`, `NewColumn` | `@mailquilt/core` | A Block and a Column for the `columns` of an [`insertRow`](./change-emails-in-code#commands) Command, each with the `props` it starts with. |
+| `HostFont` | `@mailquilt/editor` | One of `fonts`: `{ name, url, fallback }`. |
 | `Operation` | `@mailquilt/core` | A record of one change, as [`subscribe()`](./change-emails-in-code#listening-for-changes) gives it to you. |
 | `Editor` | `@mailquilt/core` | What `createEditor()` returns. |
 | `ApplyOptions`, `ApplyResult`, `RefusalCode` | `@mailquilt/core` | What `apply()` takes as its second argument, what it returns, and the [`code`](./change-emails-in-code#commands) of a refusal. |

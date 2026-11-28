@@ -31,10 +31,13 @@ const send = async (email) => {
 const sendAndReport = async (email) => {
   try {
     await send(email);
-    status.textContent = unsaved ? "" : "Saved";
+    // Not "Saved" while a newer email is still waiting to be sent.
+    status.textContent = unsaved || sending > 1 ? "" : "Saved";
   } catch (error) {
     // Keep it, unless a newer email is waiting, so the next save sends it.
-    unsaved ??= email;
+    if (sending === 1) {
+      unsaved ??= email;
+    }
     status.textContent = `Not saved: ${error.message}`;
   }
 };

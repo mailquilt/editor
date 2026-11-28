@@ -46,9 +46,10 @@ A Command is a plain object with a `type`. `apply()` returns `{ ok: true }` when
 | `moveBlock` | `blockId`, `columnId`, `index` | Moves a Block within its Column or to another. |
 | `moveBlockToNewRow` | `blockId`, `rowIndex` | Moves a Block into a new Row of its own. |
 | `removeBlock` | `blockId` | Removes a Block. |
-| `insertRow` | `index`, `layout`, and optionally `props` and `columns` | Adds a Row with a layout, such as `"50/50"`, empty unless `columns` gives it Blocks. |
+| `insertRow` | `index`, `layout`, and optionally `props` and `columns` | Adds a Row with a layout, such as `"50/50"`, empty unless `columns` gives it Blocks. Each entry of `columns` is `{ blocks, props }`, and its optional `props` are the new Column's settings. |
 | `setRowLayout` | `rowId`, `layout` | Changes a Row's layout. |
 | `updateRowProps` | `rowId`, `props` | Changes a Row's settings. |
+| `updateColumnProps` | `columnId`, `props` | Changes a Column's [settings](./document-format#column), such as its padding, background or border. |
 | `moveRow` | `rowId`, `index` | Moves a Row, with its Blocks. |
 | `removeRow` | `rowId` | Removes a Row. |
 | `updateEmailSettings` | `settings` | Changes the email's width, background, font, preheader or language. |
@@ -138,7 +139,7 @@ Each Operation is a record of one thing that happened to the email, and is plain
 | `insert` | A Block, Column or Row was added: `block`, `column` or `row`, with the whole of what was added, and `at`, where it is now. |
 | `remove` | A Block, Column or Row was taken out: `block`, `column` or `row`, with the whole of what was removed, and `at`, where it was. |
 | `move` | A Block moved, with `blockId`, or a Row did, with `rowId`. `from` is where it was, and `to` where it is, as an index once it had left `from`. |
-| `setProps` | A Block's, a Row's or the email's settings changed, named by `blockId`, `rowId` or `emailSettings: true`, which `updateEmailStyle` gives too. `props` holds all of them after the change, and `previousProps` all of them before it. |
+| `setProps` | A Block's, a Row's, a Column's or the email's settings changed, named by `blockId`, `rowId`, `columnId` or `emailSettings: true`, which `updateEmailStyle` gives too. `props` holds all of them after the change, and `previousProps` all of them before it. |
 | `setColumnWidth` | A Column's width changed: `columnId`, its `width`, and its `previousWidth`, as percentages. |
 
 A Block's position, in `at`, `from` or `to`, is `{ columnId, index }`. A Column's is `{ rowId, index }`, and a Row's is `{ index }`:

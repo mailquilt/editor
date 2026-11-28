@@ -50,7 +50,7 @@ Store the JSON from `onChange`, and make the HTML when you send. A Route Handler
 </include>
 
 - **It runs in the Node.js runtime**, which is the default for Route Handlers. The renderer needs Node 22 or later. It hasn't been tested in the Edge runtime.
-- **A refused email gets a 422** with the renderer's reason, such as an email saved by a newer version of Mail Quilt. So does a body that isn't JSON.
+- **A refused email gets a 422** with the renderer's reason, such as an email saved by a newer version of Mail Quilt. So does a body that isn't JSON, and so does any other failure, as the one `catch` can't tell them apart. In your app, answer 500 for what isn't the caller's doing, and keep its message out of the response.
 - **As written, anyone who can reach this route can render any email they post.** In your app, check who's asking, or load the email from your own storage by its ID rather than from the request.
 
 MJML, the library that writes the HTML, loads the first time a request renders an email.

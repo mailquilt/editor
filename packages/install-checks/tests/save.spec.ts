@@ -207,3 +207,64 @@ test("leaving while a save is on its way asks first", async ({ page }) => {
   const asked = await dialog;
   expect(asked.type()).toBe("beforeunload");
 });
+
+test("a failed save with a newer one waiting doesn't send the older email again", async ({
+  page,
+}) => {
+  // The first save fails only once the second is waiting for it.
+  const answer = new EventTarget();
+  let answers = 0;
+  const saves = await fakeServer(page, async () => {
+    answers += 1;
+    if (answers === 1) {
+      await once(answer, "first");
+      return 500;
+    }
+    return 204;
+  });
+  const savesSent = await countSavesSent(page);
+  await openAndTypeAtStart(page, "One ");
+  await page.clock.runFor(SAVE_AFTER_MS);
+  await expect.poll(() => saves.length).toBe(1);
+  await page.keyboard.type("Two ");
+  await page.clock.runFor(SAVE_AFTER_MS);
+  answer.dispatchEvent(new Event("first"));
+  await expect.poll(() => saves.length).toBe(2);
+  await expect(page.locator("#save-status")).toHaveText("Saved");
+
+  await page.evaluate(() => {
+    Object.defineProperty(document, "visibilityState", { value: "hidden" });
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  // A second round trip, so a save the event started has been sent by now.
+  await page.evaluate(() => 0);
+
+  expect(await savesSent()).toBe(2);
+});
+
+test("it doesn't say Saved while a newer save is still waiting", async ({
+  page,
+}) => {
+  // The first save is answered, and the second is held, so the first ends while
+  // the second waits.
+  const first = new EventTarget();
+  const second = new EventTarget();
+  let answers = 0;
+  const saves = await fakeServer(page, async () => {
+    answers += 1;
+    await once(answers === 1 ? first : second, "answer");
+    return 204;
+  });
+  await openAndTypeAtStart(page, "One ");
+  await page.clock.runFor(SAVE_AFTER_MS);
+  await expect.poll(() => saves.length).toBe(1);
+  await page.keyboard.type("Two ");
+  await page.clock.runFor(SAVE_AFTER_MS);
+
+  first.dispatchEvent(new Event("answer"));
+  await expect.poll(() => saves.length).toBe(2);
+  await expect(page.locator("#save-status")).toHaveText("");
+
+  second.dispatchEvent(new Event("answer"));
+  await expect(page.locator("#save-status")).toHaveText("Saved");
+});

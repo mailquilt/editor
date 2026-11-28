@@ -41,7 +41,7 @@ export const MAIL_QUILT = {
   build: `Nothing: the editor and its panel come ready, with ${COUNTS.blocks} Blocks.`,
   cost: "MIT. Free, with no paid plan.",
   frameworks:
-    "Any framework, as a Web Component, and a React component for React 19.",
+    "Any framework, as a Web Component, and a React component for React 18 or 19.",
   outlook:
     "Works in classic Outlook for Windows, with limits: emoji are black and white, and dark mode inverts the colors.",
   saved:

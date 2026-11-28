@@ -1,5 +1,6 @@
 import type { BlocksDocument } from "@mailquilt/core";
 
+import { BLOCK_NAMES, inWords, MOST_COLUMNS } from "./core-facts";
 import { paragraph } from "./rich-text";
 
 /**
@@ -22,7 +23,7 @@ export const homeEmail: BlocksDocument = {
               id: "home-text",
               props: {
                 content: paragraph(
-                  "Hi {{first_name}}, this editor is live. Type here, drag a Block in from the right, or press Tab and do all of it from the keyboard."
+                  "Hi {{first_name}}, this editor is live. Type here, drag a Block in from the Add panel, or press Tab and do all of it from the keyboard."
                 ),
               },
               type: "text",
@@ -53,7 +54,9 @@ export const homeEmail: BlocksDocument = {
             {
               id: "home-rows",
               props: {
-                content: paragraph("A Row holds one to four Columns."),
+                content: paragraph(
+                  `A Row holds one to ${inWords(MOST_COLUMNS)} Columns.`
+                ),
                 fontSize: 14,
               },
               type: "text",
@@ -68,9 +71,7 @@ export const homeEmail: BlocksDocument = {
             {
               id: "home-columns",
               props: {
-                content: paragraph(
-                  "Each Column holds Blocks: Text, Heading, Image, Button, Divider, Spacer, Social, Menu and Video."
-                ),
+                content: paragraph(`Each Column holds Blocks: ${BLOCK_NAMES}.`),
                 fontSize: 14,
               },
               type: "text",

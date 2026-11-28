@@ -20,16 +20,28 @@ const findAll = <Element extends HTMLElement>(selector: string) => [
 
 const wireCopy = () => {
   for (const button of findAll<HTMLButtonElement>("[data-copy]")) {
+    // Said in a status region too, as a screen reader doesn't read a button's
+    // new words when it's the one that changed them.
+    const status = button.nextElementSibling;
+    const say = (words: string) => {
+      button.textContent = words;
+      if (status) {
+        status.textContent = words;
+      }
+    };
     button.addEventListener("click", async () => {
       try {
         await navigator.clipboard.writeText(button.dataset.copy ?? "");
-        button.textContent = "Copied";
+        say("Copied");
       } catch {
         // The browser refused, as it does on a page that isn't secure.
-        button.textContent = "Couldn't copy";
+        say("Couldn't copy");
       }
       setTimeout(() => {
         button.textContent = "Copy";
+        if (status) {
+          status.textContent = "";
+        }
       }, 2000);
     });
   }

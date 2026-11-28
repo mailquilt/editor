@@ -10,8 +10,8 @@ export const POST = async (request: Request) => {
       headers: { "Content-Type": "text/html; charset=utf-8" },
     });
   } catch (error) {
-    // The body isn't JSON, or the renderer refused the email. The message says
-    // why.
+    // The body isn't JSON, or the renderer refused the email, and the message
+    // says why. Any other failure lands here too.
     return Response.json(
       { reason: error instanceof Error ? error.message : String(error) },
       { status: 422 }

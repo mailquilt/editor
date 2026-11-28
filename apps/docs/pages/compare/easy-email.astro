@@ -1,13 +1,11 @@
 ---
 // Mail Quilt beside Easy Email. Every line about Easy Email was read from its
-// own site, README or packages on the date below. Check them again before
-// changing it.
+// own site, README or packages on COMPARED, in site/project.ts. Check them again
+// before changing it.
 import SitePage from "../../components/site-page.astro";
 import Versus from "../../components/versus.astro";
-import { REASONS } from "../../site/project.ts";
+import { COMPARED, REASONS } from "../../site/project.ts";
 import type { CompareRow } from "../../site/project.ts";
-
-const CHECKED = "16 November 2026";
 
 const rows: CompareRow[] = [
   {
@@ -93,7 +91,7 @@ const sources = [
   </header>
 
   <Versus
-    checked={CHECKED}
+    checked={COMPARED}
     ours={ours}
     rows={rows}
     sources={sources}

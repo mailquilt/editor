@@ -516,6 +516,15 @@
   box-shadow: 0 0 0 1px var(--site-accent);
 }
 
+/* These do nothing without the page's script, so without it they aren't shown. */
+@media (scripting: none) {
+  .home-pieces,
+  .home-layout-picker,
+  .site-command button {
+    display: none;
+  }
+}
+
 .home-mini {
   display: flex;
   gap: 0.1875rem;

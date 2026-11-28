@@ -13,17 +13,19 @@ const escapeHtml = (value) =>
 /**
  * Fills each Merge Tag in an email's HTML with its value from `values`, keyed
  * by the tag's name, such as `{ first_name: "Ada" }`. Throws if a tag has no
- * value, and names the tags.
+ * value, and names the tags. A value of `undefined` or `null` counts as none, so
+ * give `""` to fill a tag with nothing.
  */
 export const fillMergeTags = (html, values) => {
   const missing = new Set();
   const filled = html.replaceAll(MERGE_TAG, (tag, name) => {
     const key = name.trim();
-    if (!Object.hasOwn(values, key)) {
+    const value = Object.hasOwn(values, key) ? values[key] : undefined;
+    if (value === undefined || value === null) {
       missing.add(tag);
       return tag;
     }
-    return escapeHtml(values[key]);
+    return escapeHtml(value);
   });
   if (missing.size > 0) {
     throw new Error(`No value for ${[...missing].join(", ")}`);

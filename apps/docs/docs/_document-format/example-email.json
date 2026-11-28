@@ -189,7 +189,7 @@
               "type": "text",
               "props": {
                 "align": "center",
-                "color": "#71717a",
+                "color": "#52525b",
                 "fontSize": 12,
                 "content": {
                   "type": "doc",
