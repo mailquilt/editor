@@ -42,8 +42,11 @@ const emailStyleSchema = v.strictObject({
   textFontSize: v.optional(fontSizeSchema),
 }) satisfies v.GenericSchema<unknown, EmailStyle>;
 
-/** Font names are case-insensitive in CSS. */
-const sameFontName = (one: string, other: string) =>
+/**
+ * Font names are case-insensitive in CSS.
+ * For Mail Quilt's own packages: not documented, and not yet a promise to hosts.
+ */
+export const sameFontName = (one: string, other: string) =>
   one.toLowerCase() === other.toLowerCase();
 
 const webFontSchema = v.strictObject({

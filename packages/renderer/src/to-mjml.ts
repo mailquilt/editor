@@ -11,6 +11,7 @@ import {
   onPhone,
   playMarkColor,
   rowStyles,
+  sameFontName,
   SOCIAL_NETWORKS,
   socialIcons,
   videoLabel,
@@ -37,6 +38,7 @@ import {
 import { socialIconUrl } from "./social-icons.js";
 import {
   headingToHtml,
+  listIndent,
   plainTextToHtml,
   richTextToHtml,
 } from "./text-to-html.js";
@@ -169,6 +171,22 @@ const blockPhoneRules = (block: Block, style: EmailStyle) => {
         `${selector} *`,
         changedOnPhone(desktopLook, phoneLook, ["font-size", "line-height"])
       ),
+      // A List's indent follows the font size, as on the canvas.
+      ...(block.type === "text" &&
+      block.props.content.content.some(({ type }) => type !== "paragraph")
+        ? rule(
+            `${selector} ul, ${selector} ol`,
+            changedOnPhone(
+              {
+                "margin-left": `${listIndent(desktopLook["font-size"] as string)}px`,
+              },
+              {
+                "margin-left": `${listIndent(phoneLook["font-size"] as string)}px`,
+              },
+              ["margin-left"]
+            )
+          )
+        : []),
       ...(block.type === "image" &&
       width !== undefined &&
       width !== block.props.width
@@ -293,7 +311,7 @@ const menuToMjml = (
   const cell = `padding:0px ${linkPadding}px;`;
   const links = shown.map(
     ({ label, url }) =>
-      `<a href="${escapeAttribute(url)}" style="${escapeAttribute(`display:inline-block;color:${color};font-family:${fontFamily};font-size:${fontSize};line-height:${lineHeight};text-decoration:none;word-break:break-word;overflow-wrap:anywhere;${cell}`)}">${plainTextToHtml(label)}</a>`
+      `<a href="${escapeAttribute(url)}" target="_blank" style="${escapeAttribute(`display:inline-block;color:${color};font-family:${fontFamily};font-size:${fontSize};line-height:${lineHeight};text-decoration:none;word-break:break-word;overflow-wrap:anywhere;${cell}`)}">${plainTextToHtml(label)}</a>`
   );
   return `<mj-text${attributes} padding="${blockPadding}"><div style="font-size:0px !important;line-height:0px !important;"><!--[if mso | IE]><table role="presentation" border="0" cellpadding="0" cellspacing="0" align="${align}"><tr><td style="${cell}"><![endif]-->${links.join(` <!--[if mso | IE]></td><td style="${cell}"><![endif]-->`)}<!--[if mso | IE]></td></tr></table><![endif]--></div></mj-text>`;
 };
@@ -344,18 +362,6 @@ const videoToMjml = (
 };
 
 /**
- * A Block as MJML. The casts are safe, as core's styles for a type always set
- * the same properties. A Block the email leaves out, such as an Image without
- * a URL, has no Box either.
- */
-const blockToMjml = (block: Block, context: BlockContext) => {
-  const mjml = blockMjml(block, context);
-  return mjml && block.props.showOn === "phone"
-    ? phonesOnly("block", mjml)
-    : mjml;
-};
-
-/**
  * Whether the email leaves a Block out until it has what it shows: an Image
  * its image, a Social or Menu Block a link, and a Video its link and thumbnail.
  */
@@ -379,7 +385,10 @@ const isLeftOut = (block: Block) => {
   }
 };
 
-/** A Block as MJML, wherever it shows. */
+/**
+ * A Block as MJML, wherever it shows. The casts are safe, as core's styles for
+ * a type always set the same properties.
+ */
 const blockMjml = (block: Block, context: BlockContext) => {
   if (isLeftOut(block)) {
     return "";
@@ -435,6 +444,18 @@ const blockMjml = (block: Block, context: BlockContext) => {
       throw new Error(`Can't render unknown Block ${JSON.stringify(unknown)}`);
     }
   }
+};
+
+/**
+ * A Block as MJML, between markers that hide it everywhere but on phones when
+ * it's for phones only. A Block the email leaves out, such as an Image without
+ * a URL, has no Box either.
+ */
+const blockToMjml = (block: Block, context: BlockContext) => {
+  const mjml = blockMjml(block, context);
+  return mjml && block.props.showOn === "phone"
+    ? phonesOnly("block", mjml)
+    : mjml;
 };
 
 const columnToMjml = (
@@ -500,6 +521,17 @@ const innerWidth = ({ props }: Row, emailWidth: number) => {
   return emailWidth - paddingLeft - paddingRight;
 };
 
+/**
+ * The tags that load web fonts, written as MJML writes them for an `mj-font`,
+ * which loads a font only where it finds the name in the body's HTML, so one
+ * used only by a Video's line, which `finishHtml` writes after, would be left
+ * out. The URL isn't escaped, as MJML writes it as it is into an @import's
+ * url() too, where &amp; would stay &amp;. Core checked that it holds nothing
+ * to end either.
+ */
+const fontTags = (fonts: readonly { url: string }[]) =>
+  `<mj-raw><!--[if !mso]><!-->${fonts.map(({ url }) => `<link href="${url}" rel="stylesheet" type="text/css">`).join("")}<style type="text/css"> ${fonts.map(({ url }) => `@import url(${url});`).join(" ")} </style><!--<![endif]--></mj-raw>`;
+
 /** Throws if the document can't be trusted, and renders migrated older ones. */
 export const toMjml = (
   document: unknown,
@@ -557,23 +589,17 @@ export const toMjml = (
     : "";
   // Only the fonts the email is drawn in, by whole name, as MJML would load
   // Inter for a font-family naming Inter Tight. The heading font draws only
-  // Headings. The URL isn't escaped, as MJML writes it as it is into an
-  // @import's url() too, where &amp; would stay &amp;. Core checked that it
-  // holds nothing to end either, and the name too.
-  const drawnIn = new Set(
-    [
-      settings.fontFamily,
-      ...(things.some((thing) => "type" in thing && thing.type === "heading")
-        ? [context.headingFontFamily]
-        : []),
-    ]
-      .flatMap(fontFamilyNames)
-      .map((name) => name.toLowerCase())
+  // Headings.
+  const drawnIn = [
+    settings.fontFamily,
+    ...(things.some((thing) => "type" in thing && thing.type === "heading")
+      ? [context.headingFontFamily]
+      : []),
+  ].flatMap(fontFamilyNames);
+  const usedFonts = (settings.fonts ?? []).filter(({ name }) =>
+    drawnIn.some((family) => sameFontName(family, name))
   );
-  const fonts = (settings.fonts ?? [])
-    .filter(({ name }) => drawnIn.has(name.toLowerCase()))
-    .map(({ name, url }) => `<mj-font name="${name}" href="${url}" />`)
-    .join("");
+  const fonts = usedFonts.length > 0 ? fontTags(usedFonts) : "";
   const mjml = `<mjml${language}>
   <mj-head>
     ${preheader}
