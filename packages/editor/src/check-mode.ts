@@ -903,8 +903,21 @@ interface Run {
   test?: { state: "sent" } | { state: "failed"; message?: string };
 }
 
-/** Bytes in KB, as Gmail counts them. */
-const kilobytes = (bytes: number) => Math.round(bytes / 1024);
+/** Gmail cuts off an email over this size. */
+const GMAIL_CUT_OFF_BYTES = 102 * 1024;
+
+/**
+ * Bytes in KB, as Gmail counts them, to one decimal that never crosses its
+ * cut-off: an email over it shows more than 102, and one under it, less.
+ */
+export const kilobytes = (bytes: number) => {
+  const tenths = (bytes * 10) / 1024;
+  return (
+    (bytes > GMAIL_CUT_OFF_BYTES ? Math.ceil(tenths) : Math.floor(tenths)) / 10
+  );
+};
+
+const SEND_TEST_WHY_ID = "send-test-why";
 
 const MERGE_TAGS = new RegExp(MERGE_TAG.source, "gu");
 
@@ -920,19 +933,25 @@ const escapeHtml = (text: string) =>
  * Each Merge Tag in `text` with its `sample`, as one reader would get it. A tag
  * with no sample stays as it's written.
  */
-const withSamples = (text: string, tags: MergeTags, inHtml = false) => {
+export const withSamples = (text: string, tags: MergeTags, inHtml = false) => {
   const samples = new Map(
     (tags ?? []).flatMap(({ name, sample }) =>
       sample === undefined ? [] : [[name, sample] as const]
     )
   );
   return text.replaceAll(MERGE_TAGS, (tag) => {
+    // A tag cut by markup, as when its runs have different marks, isn't one
+    // the sending service fills, so every reader gets it as it's written.
+    if (inHtml && tag.includes("<")) {
+      return tag;
+    }
     const written = tag.slice(2, -2).trim();
     // The export writes a tag's name as any text, so `a&b` is `a&amp;b`.
-    const name = inHtml
-      ? (new DOMParser().parseFromString(written, "text/html").body
-          .textContent ?? written)
-      : written;
+    const name =
+      inHtml && written.includes("&")
+        ? (new DOMParser().parseFromString(written, "text/html").body
+            .textContent ?? written)
+        : written;
     const sample = samples.get(name);
     if (sample === undefined) {
       return tag;
@@ -944,8 +963,15 @@ const withSamples = (text: string, tags: MergeTags, inHtml = false) => {
 /** The first words a reader sees in the email, as an inbox shows them with no preheader. */
 const firstWords = (emailHtml: string, count: number) => {
   const { body } = new DOMParser().parseFromString(emailHtml, "text/html");
+  // Rows and Blocks hidden from desktop are hidden inline, so no reader of the
+  // inbox's desktop email sees their words.
+  for (const element of body.querySelectorAll<HTMLElement>("[style]")) {
+    if (element.style.display === "none") {
+      element.remove();
+    }
+  }
   const words = (body.textContent ?? "")
-    .replaceAll(/[͏​-‍⁠﻿]/gu, "")
+    .replaceAll(/[\u034F\u200B-\u200D\u2060\uFEFF]/gu, "")
     .split(/\s+/u)
     .filter(Boolean);
   return words.slice(0, count).join(" ");
@@ -1251,20 +1277,17 @@ const renderEmailFrame = (emailHtml: string, title: string) => html`
 
 /**
  * The email, or what's in its place until it's there. A failure is said once,
- * from the desktop inbox, which `alerts`.
+ * by the status region as the check ends, so it's no alert.
  */
 const renderInboxEmail = (
   run: Run | undefined,
   shown: string | undefined,
-  { alerts, title }: { alerts: boolean; title: string },
+  { title }: { title: string },
   text: Text
 ) => {
   const result = run?.result;
   if (result && "failure" in result) {
-    return html`<p
-      class="inbox-waiting failed"
-      role=${alerts ? "alert" : nothing}
-    >
+    return html`<p class="inbox-waiting failed">
       ${text("check.failed", { reason: result.failure })}
     </p>`;
   }
@@ -1471,20 +1494,27 @@ const renderSendTest = ({ check, text }: CheckView) => {
   }
   const off = sending || why !== undefined;
   return html`<button
-    aria-disabled=${off ? "true" : nothing}
-    class=${why === undefined ? "text-button send-test" : "text-button send-test waiting"}
-    data-tooltip=${why ?? nothing}
-    type="button"
-    @click=${check.sendTest}
-  >
-    ${
-      sending
-        ? html`<span aria-hidden="true" class="spinner"></span>${text(
-              "check.sendingTest"
-            )}`
-        : html`${ICONS.send}${text("check.sendTest")}`
-    }
-  </button>`;
+      aria-describedby=${why === undefined ? nothing : SEND_TEST_WHY_ID}
+      aria-disabled=${off ? "true" : nothing}
+      class=${why === undefined ? "text-button send-test" : "text-button send-test waiting"}
+      data-tooltip=${why ?? nothing}
+      type="button"
+      @click=${check.sendTest}
+    >
+      ${
+        sending
+          ? html`<span aria-hidden="true" class="spinner"></span>${text(
+                "check.sendingTest"
+              )}`
+          : html`${ICONS.send}${text("check.sendTest")}`
+      }</button
+    >${
+      why === undefined
+        ? nothing
+        : html`<span class="visually-hidden" id=${SEND_TEST_WHY_ID}
+            >${why}</span
+          >`
+    }`;
 };
 
 /** How the last test of this email went, which the status region also says. */
@@ -1664,7 +1694,7 @@ const renderInbox = (
             ${renderInboxEmail(
               check.run,
               shown?.html,
-              { alerts: true, title: text("check.desktopFrame") },
+              { title: text("check.desktopFrame") },
               text
             )}
           </div>
@@ -1688,7 +1718,7 @@ const renderInbox = (
                     ${renderInboxEmail(
                       check.run,
                       shown?.html,
-                      { alerts: false, title: text("check.phoneFrame") },
+                      { title: text("check.phoneFrame") },
                       text
                     )}
                   </div>
@@ -1798,13 +1828,7 @@ ${samples ? run?.sampledText : run?.text}</pre>`,
     id=${VIEW_PANEL_ID}
     role="tabpanel"
   >
-    ${renderInboxEmail(
-      check.run,
-      undefined,
-      // Said once already, as the check ended.
-      { alerts: false, title: "" },
-      text
-    )}
+    ${renderInboxEmail(check.run, undefined, { title: "" }, text)}
   </div>`;
 };
 

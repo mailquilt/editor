@@ -117,16 +117,20 @@ test("MJML failing to load shows the reason, Edit keeps working, and coming back
 
   await openCheck(page);
 
-  await expect(canvas(page).getByRole("alert").first()).toContainText(
-    "The preview couldn't be loaded:"
-  );
+  await expect(
+    canvas(page).getByText("The preview couldn't be loaded:")
+  ).toHaveCount(2);
+  // Said once, by the status region, so the page has no alert as well.
+  await expect(canvas(page).getByRole("alert")).toHaveCount(0);
   await expect(announcement(page)).toHaveText("The email couldn't be checked.");
   await editTab(page).click();
   await focusStartOfTextBlock(page);
   await page.keyboard.type("a");
   await expect(textBlock(page)).toHaveText("aHello");
   await openCheck(page);
-  await expect(canvas(page).getByRole("alert").first()).toBeVisible();
+  await expect(
+    canvas(page).getByText("The preview couldn't be loaded:").first()
+  ).toBeVisible();
   await editTab(page).click();
 
   // With no change to the email since, as the Preview tried again.
@@ -134,7 +138,9 @@ test("MJML failing to load shows the reason, Edit keeps working, and coming back
   await openCheck(page);
 
   await expect(inboxEmail(page)).toContainText("aHello");
-  await expect(canvas(page).getByRole("alert")).toHaveCount(0);
+  await expect(
+    canvas(page).getByText("The preview couldn't be loaded:")
+  ).toHaveCount(0);
 });
 
 test.describe("reflecting the latest edits", () => {
@@ -460,6 +466,22 @@ test("the inbox shows the host's sender and subject, or else the preheader alone
   ).toBeVisible();
 });
 
+test("the words an inbox shows with no preheader skip what only phones show", async ({
+  page,
+}) => {
+  const email = emailWith([[["Phone only words", "Desktop real words"]]]);
+  const [phoneOnly] = email.rows[0]?.columns[0]?.blocks ?? [];
+  (phoneOnly as { props: object }).props = {
+    ...phoneOnly?.props,
+    showOn: "phone",
+  };
+  await setValue(page, email);
+  await openCheck(page);
+
+  await expect(checkPanel(page)).toContainText("Desktop real words");
+  await expect(checkPanel(page)).not.toContainText("Phone only words");
+});
+
 test("a Problem's words are the host's, through strings", async ({ page }) => {
   await giveHost(page, {
     strings: {
@@ -593,7 +615,7 @@ test.describe("the Plain text and HTML tabs", () => {
 
     await expect(shown(page, "HTML")).toContainText("Hi {{first_name}}");
     await expect(canvas(page)).toContainText(
-      `${Math.round(new TextEncoder().encode(html).length / 1024)} KB · read only`
+      `${Math.floor((new TextEncoder().encode(html).length * 10) / 1024) / 10} KB · read only`
     );
     await expect(
       canvas(page).getByRole("switch", { name: "Show sample values" })
@@ -607,6 +629,29 @@ test.describe("the Plain text and HTML tabs", () => {
 
     expect(await copiedText(page)).toBe(html);
     await expect(announcement(page)).toHaveText("HTML copied.");
+  });
+
+  test("HTML shows a web font's @import", async ({ page }) => {
+    const email = emailWith([[["Hello"]]]);
+    email.settings.fontFamily = "'Inter', Arial, Helvetica, sans-serif";
+    const inter = {
+      fallback: "Arial, Helvetica, sans-serif",
+      name: "Inter",
+      url: "https://fonts.googleapis.com/css2?family=Inter&display=swap",
+    };
+    email.settings.fonts = [{ name: inter.name, url: inter.url }];
+    await page.route("https://fonts.googleapis.com/**", (route) =>
+      route.fulfill({ body: "", contentType: "text/css" })
+    );
+    await giveHost(page, { fonts: [inter] });
+    await setValue(page, email);
+    await openCheck(page);
+
+    await viewTab(page, "HTML").click();
+
+    await expect(shown(page, "HTML")).toContainText(
+      "@import url(https://fonts.googleapis.com/css2?family=Inter&display=swap);"
+    );
   });
 
   test("the tabs are one Tab stop, chosen as the arrow keys reach them, with the text's box after them", async ({
@@ -689,6 +734,9 @@ test.describe("Send a test", () => {
     await giveHost(page, { subject: "Spring roast" });
     await openCheck(page);
     await expect(sendTestButton(page)).toHaveAttribute("aria-disabled", "true");
+    await expect(sendTestButton(page)).toHaveAccessibleDescription(
+      "Wait for the check to finish"
+    );
     await sendTestButton(page).press("Enter");
     await release();
     await expect(sendTestButton(page)).not.toHaveAttribute("aria-disabled");
