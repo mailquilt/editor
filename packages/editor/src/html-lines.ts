@@ -50,7 +50,8 @@ const OUTLOOK_COMMENT =
  * An at-rule with no block, such as an `@import`, an at-rule's opening, a rule
  * with its declarations, or an at-rule's end.
  */
-const CSS_PIECE = /@[^{};]+;|@[^{}]+\{|[^{}]+\{[^{}]*\}|\}/gu;
+const CSS_PIECE =
+  /@(?:[^{};()"']|\([^)]*\)|"[^"]*"|'[^']*')+;|@[^{}]+\{|[^{}]+\{[^{}]*\}|\}/gu;
 
 type Line = HtmlPart[];
 

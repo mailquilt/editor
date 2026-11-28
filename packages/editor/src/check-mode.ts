@@ -960,13 +960,18 @@ export const withSamples = (text: string, tags: MergeTags, inHtml = false) => {
   });
 };
 
+/** A style that hides an element, as the export writes it. */
+const DISPLAY_NONE = /(?:^|;)\s*display\s*:\s*none\s*(?:;|$)/iu;
+
 /** The first words a reader sees in the email, as an inbox shows them with no preheader. */
 const firstWords = (emailHtml: string, count: number) => {
   const { body } = new DOMParser().parseFromString(emailHtml, "text/html");
   // Rows and Blocks hidden from desktop are hidden inline, so no reader of the
   // inbox's desktop email sees their words.
-  for (const element of body.querySelectorAll<HTMLElement>("[style]")) {
-    if (element.style.display === "none") {
+  // Read from the attribute's text, as a page whose policy blocks inline
+  // styles doesn't apply them to HTML read here.
+  for (const element of body.querySelectorAll("[style]")) {
+    if (DISPLAY_NONE.test(element.getAttribute("style") ?? "")) {
       element.remove();
     }
   }
