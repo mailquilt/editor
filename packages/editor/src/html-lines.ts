@@ -46,8 +46,12 @@ const ATTRIBUTE =
 const OUTLOOK_COMMENT =
   /^(?<open><!--\[if [^\]]*\]>)(?<tags>[\s\S]*)(?<close><!\[endif\]-->)$/u;
 
-/** An at-rule's opening, a rule with its declarations, or an at-rule's end. */
-const CSS_PIECE = /@[^{}]+\{|[^{}]+\{[^{}]*\}|\}/gu;
+/**
+ * An at-rule with no block, such as an `@import`, an at-rule's opening, a rule
+ * with its declarations, or an at-rule's end.
+ */
+const CSS_PIECE =
+  /@(?:[^{};()"']|\([^)]*\)|"[^"]*"|'[^']*')+;|@[^{}]+\{|[^{}]+\{[^{}]*\}|\}/gu;
 
 type Line = HtmlPart[];
 
@@ -145,7 +149,7 @@ const cssLines = (indent: string, css: string): Line[] => {
       depth -= 1;
     }
     const line = [textPart(indent + "  ".repeat(depth) + rule)];
-    if (rule.startsWith("@")) {
+    if (rule.startsWith("@") && rule.endsWith("{")) {
       depth += 1;
     }
     return line;
