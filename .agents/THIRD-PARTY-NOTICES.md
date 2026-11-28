@@ -1,6 +1,6 @@
 # Third-party notices
 
-The agent skills in `skills/` are copied from other repositories, as listed in `skills-lock.json`. They are not part of the Mail Quilt packages. `email-html-mjml` and `frontend-design` carry their own license files. The others are under the MIT License below, with these copyright notices:
+The agent skills in `.agents/skills/` are copied from other repositories, as listed in `skills-lock.json`. They are not part of the Mail Quilt packages. `email-html-mjml` and `frontend-design` carry their own license files. The others are under the MIT License below, with these copyright notices:
 
 | Skills | Source | Copyright |
 | --- | --- | --- |

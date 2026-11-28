@@ -22,3 +22,7 @@ Before, a Block's `type` was any string and its `props` any object. The renderer
 - A new Block type is added to core's `BLOCKS`, and the compiler then names each place in the renderer and the editor that needs it.
 - A host's email written in TypeScript as a `BlocksDocument` is checked against each type's props. One written without that type, whose `type` is then a `string`, no longer type-checks as a `Block`.
 - What the editor shows and the exported HTML don't change.
+
+## Amendment, 2026-11-28
+
+This ADR says that a type core adds and the renderer or the editor doesn't handle fails to compile. That holds for the renderer's `blockMjml` and `blockToText`, whose `switch` ends in a `never`, and for the editor's `BLOCK_VIEWS`, which is typed by `BlockType`. It doesn't hold for every place that decides by type. `isLeftOut`, `ownPadding`, core's `paddingFallback`, the editor's `REACHES` and `OWN_KEYS` and the clipboard's `htmlOf` test the type as a string and have a default, which a new type falls into with no error. Their defaults are the right ones for a type that needs nothing special, so a new Block type is also checked against each of them by hand. The decision to have one list stands.

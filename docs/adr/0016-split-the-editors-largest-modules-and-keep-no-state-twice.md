@@ -34,3 +34,7 @@ Saving to `localStorage` adds about a millisecond, so the Shell still saves each
 - Selection and focus each have one owner, as ADR 0004 asks, in two modules rather than one, and presses a third. What each key, press and drop does doesn't change.
 - A host's own panel, if the editor is offered in parts, is documented from `EmailPanelApi`. A change to a Block's settings goes through the settings fields' drafts today, and would need an action of its own there.
 - `editorOfLoaded` is in `@mailquilt/core/internal`, and not a promise to hosts.
+
+## Amendment, 2026-11-28
+
+The Side panel is gone ([ADR 0021](./0021-three-modes-and-a-selection-bar.md)). Where this says what the Side panel shows, read what the Selection bar and the panels beside the email show. The split of the modules and the rule that no state is kept twice stand.

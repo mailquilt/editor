@@ -26,3 +26,7 @@ Before, "place" meant five things: an element found by its `data-place`, where i
 - A new name for where something is picks one of these: a place in the interface, a key scope, or a position in the email.
 - `data-place`, `editor-places.ts` and its helpers keep their names, as they're the one meaning of place that's left.
 - What every key, press, drag and announcement does doesn't change.
+
+## Amendment, 2026-11-28
+
+The Side panel and `PanelTab` are gone ([ADR 0021](./0021-three-modes-and-a-selection-bar.md)), and the selection module no longer keeps a tab. A position is still called a position, and the dragging module is still `dragging.ts`.
