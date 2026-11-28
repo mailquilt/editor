@@ -26,7 +26,7 @@ The editor is the `<mail-quilt>` element, and the [Shell](./shell) is `<mail-qui
 | `subject` | The email's subject, which Check's inbox shows before the preheader. Without it, the inbox shows the preheader alone, or the email's first words when it has no preheader. |
 | `theme` | The editor's built-in theme: `light`, the default, `dark`, or `auto`, which follows the person's system. An attribute too, such as `theme="dark"`. A [theme token](./theme-tokens) you set wins over either theme, and the email keeps its own colors. [A dark theme](./theme-the-editor#a-dark-theme) says more. |
 | `mq-change` | An event fired after every change. The new email is in `event.detail.document`. |
-| `mq-error` | An event fired when the editor refuses an email, which then keeps the email it had. The reason is in `event.detail.reason`. The [document format](./document-format) page lists what the editor accepts. |
+| `mq-error` | An event fired when the editor refuses an email, which then keeps the email it had. Until you set a `value` it takes, it sends no `mq-change`, even as the person edits, so your app can't save the email still open over the one you set. The reason is in `event.detail.reason`. The [document format](./document-format) page lists what the editor accepts. |
 | `exportHtml()` | Returns a promise of the email's HTML, ready to send. It rejects if the editor has no email. |
 | `exportText()` | Returns the email as plain text, to send beside its HTML for email apps that show only text, as `renderText()` writes it on a [server](./render-on-a-server#plain-text). It throws if the editor has no email. |
 
@@ -188,7 +188,7 @@ editor.strings = {
 | `actions` | What the Shell offers, by name and separated by spaces: `export-html` and `export-json` in the Export menu, and `import-json` in the More menu. Leave it out to offer all three. |
 | `save-key` | Where the email is kept in the browser, as the `saveKey` property. Use one for each email and each person. Leave it out to store nothing. [Saving](./shell#saving) says how it works. |
 | `mq-change` | Fired after every change, including an import. The new email is in `event.detail.document`. |
-| `mq-error` | Fired when the editor refuses an email you set as `value`. The reason is in `event.detail.reason`, and the message bar shows it too. |
+| `mq-error` | Fired when the editor refuses an email you set as `value`. The reason is in `event.detail.reason`, and the message bar shows it too. As on `<mail-quilt>`, no `mq-change` is sent, and nothing is saved under `save-key`, until you set a `value` the editor takes. |
 | `exportHtml()` | Returns a promise of the email's HTML, as on `<mail-quilt>`. |
 | `exportText()` | Returns the email as plain text, as on `<mail-quilt>`. |
 
